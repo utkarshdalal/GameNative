@@ -82,6 +82,8 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
 import app.gamenative.ui.data.XServerState
+import app.gamenative.ui.widget.PerformanceHudConfig
+import app.gamenative.ui.widget.PerformanceHudSize
 import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
@@ -354,11 +356,52 @@ fun XServerScreen(
     var showQuickMenu by remember { mutableStateOf(false) }
     var hasPhysicalController by remember { mutableStateOf(false) }
     var keepPausedForEditor by remember { mutableStateOf(false) }
+    var isPerformanceHudEnabled by remember { mutableStateOf(PrefManager.showFps) }
+
+    fun loadPerformanceHudConfig(): PerformanceHudConfig {
+        return PerformanceHudConfig(
+            showFrameRate = PrefManager.performanceHudShowFrameRate,
+            showCpuUsage = PrefManager.performanceHudShowCpuUsage,
+            showGpuUsage = PrefManager.performanceHudShowGpuUsage,
+            showRamUsage = PrefManager.performanceHudShowRamUsage,
+            showBatteryLevel = PrefManager.performanceHudShowBatteryLevel,
+            showPowerDraw = PrefManager.performanceHudShowPowerDraw,
+            showBatteryRuntime = PrefManager.performanceHudShowBatteryRuntime,
+            showClockTime = PrefManager.performanceHudShowClockTime,
+            showCpuTemperature = PrefManager.performanceHudShowCpuTemperature,
+            showGpuTemperature = PrefManager.performanceHudShowGpuTemperature,
+            backgroundOpacity = PrefManager.performanceHudBackgroundOpacity,
+            size = PerformanceHudSize.fromPrefValue(PrefManager.performanceHudSize),
+        )
+    }
+
+    var performanceHudConfig by remember { mutableStateOf(loadPerformanceHudConfig()) }
     var performanceHudView by remember { mutableStateOf<PerformanceHudView?>(null) }
     var performanceHudHost by remember { mutableStateOf<FrameLayout?>(null) }
     var isDraggingPerformanceHud by remember { mutableStateOf(false) }
     var performanceHudDragOffsetX by remember { mutableStateOf(0f) }
     var performanceHudDragOffsetY by remember { mutableStateOf(0f) }
+
+    fun persistPerformanceHudConfig(config: PerformanceHudConfig) {
+        PrefManager.performanceHudShowFrameRate = config.showFrameRate
+        PrefManager.performanceHudShowCpuUsage = config.showCpuUsage
+        PrefManager.performanceHudShowGpuUsage = config.showGpuUsage
+        PrefManager.performanceHudShowRamUsage = config.showRamUsage
+        PrefManager.performanceHudShowBatteryLevel = config.showBatteryLevel
+        PrefManager.performanceHudShowPowerDraw = config.showPowerDraw
+        PrefManager.performanceHudShowBatteryRuntime = config.showBatteryRuntime
+        PrefManager.performanceHudShowClockTime = config.showClockTime
+        PrefManager.performanceHudShowCpuTemperature = config.showCpuTemperature
+        PrefManager.performanceHudShowGpuTemperature = config.showGpuTemperature
+        PrefManager.performanceHudBackgroundOpacity = config.backgroundOpacity
+        PrefManager.performanceHudSize = config.size.prefValue
+    }
+
+    fun applyPerformanceHudConfig(config: PerformanceHudConfig) {
+        performanceHudConfig = config
+        persistPerformanceHudConfig(config)
+        performanceHudView?.setConfig(config)
+    }
 
     fun restorePerformanceHudPosition() {
         val host = performanceHudHost ?: return
@@ -415,9 +458,13 @@ fun XServerScreen(
         }
 
         val targetLayout = performanceHudHost ?: return
-        val hud = PerformanceHudView(context) {
-            frameRating?.currentFPS ?: 0f
-        }
+        val hud = PerformanceHudView(
+            context = context,
+            fpsProvider = {
+                frameRating?.currentFPS ?: 0f
+            },
+            initialConfig = performanceHudConfig,
+        )
         val layoutParams = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
             FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -708,7 +755,8 @@ fun XServerScreen(
             }
 
             QuickMenuAction.PERFORMANCE_HUD -> {
-                val enabled = performanceHudView == null
+                val enabled = !isPerformanceHudEnabled
+                isPerformanceHudEnabled = enabled
                 PrefManager.showFps = enabled
                 updatePerformanceHud(enabled)
                 PostHog.capture(
@@ -1437,7 +1485,7 @@ fun XServerScreen(
             frameRating = FrameRating(context)
             frameRating?.setVisibility(View.GONE)
 
-            if (PrefManager.showFps) {
+            if (isPerformanceHudEnabled) {
                 frameLayout.post {
                     updatePerformanceHud(true)
                 }
@@ -1587,6 +1635,9 @@ fun XServerScreen(
             isVisible = showQuickMenu,
             onDismiss = dismissOverlayMenu,
             onItemSelected = onQuickMenuItemSelected,
+            isPerformanceHudEnabled = isPerformanceHudEnabled,
+            performanceHudConfig = performanceHudConfig,
+            onPerformanceHudConfigChanged = ::applyPerformanceHudConfig,
             hasPhysicalController = hasPhysicalController,
         )
 
