@@ -344,6 +344,7 @@
     <string name="touchpad_help">Pomoc touchpada</string>
     <string name="hide_controls_with_controller">Ukryj kontroler ekranowy przy podłączonym kontrolerze</string>
     <string name="hide_controls_with_controller_description">Automatycznie ukrywa kontroler ekranowy, gdy podłączony jest kontroler fizyczny</string>
+    <string name="gyro_aiming">Celowanie gyro (mysz)</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Wybierz przypisanie</string>
@@ -719,6 +720,8 @@
     <string name="touchscreen_mode_description">Dla powieści wizualnych i gier RTS</string>
     <string name="shooter_mode_toggle">Tryb strzelanki</string>
     <string name="shooter_mode_toggle_description">Zamień drążki na dynamiczne joysticki</string>
+    <string name="gyro_sensitivity">Czułość żyroskopu</string>
+    <string name="gyro_sensitivity_description">Mnożnik celowania gyro myszą (gdy włączone w grze)</string>
     <string name="shooter_mode_on">Włącz mysz</string>
     <string name="shooter_mode_off">Włącz drążki</string>
 

@@ -27,6 +27,8 @@ import com.winlator.xserver.ScreenInfo;
 import com.winlator.xserver.XKeycode;
 import com.winlator.xserver.XServer;
 
+import timber.log.Timber;
+
 public class TouchpadView extends View implements View.OnCapturedPointerListener {
     private static final byte MAX_FINGERS = 4;
     private static final short MAX_TWO_FINGERS_SCROLL_DISTANCE = 350;
@@ -111,6 +113,12 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     // Accumulated deltas for deciding which two-finger gesture to lock into
     private float accumulatedPinchDelta, accumulatedPanDelta;
 
+    // Gyro aiming: device rotation drives relative mouse movement
+    private static final float GYRO_BASE_SENSITIVITY = 400f;
+    private GyroAimingHelper gyroAimingHelper;
+    private boolean gyroAimingEnabled;
+    private float gyroSensitivity = 1f;
+
     public TouchpadView(Context context, XServer xServer, boolean capturePointerOnExternalMouse) {
         super(context);
         this.capturePointerOnExternalMouse = capturePointerOnExternalMouse;
@@ -141,6 +149,12 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             setFocusableInTouchMode(true);
             setOnCapturedPointerListener(this);
         }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        setGyroAimingEnabled(false);
     }
 
     @Override
@@ -1300,5 +1314,43 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     public void setTouchscreenMouseDisabled(boolean disabled) {
         this.touchscreenMouseDisabled = disabled;
+    }
+
+    public void setGyroAimingEnabled(boolean enabled) {
+        if (gyroAimingEnabled == enabled) return;
+        gyroAimingEnabled = enabled;
+        Timber.d("GyroAiming: setGyroAimingEnabled(%s)", enabled);
+        if (enabled) {
+            if (gyroAimingHelper == null) {
+                float sens = GYRO_BASE_SENSITIVITY * gyroSensitivity;
+                gyroAimingHelper = new GyroAimingHelper(getContext(), (dx, dy) -> {
+                    if (!isEnabled()) return;
+                    if (!gyroAimingEnabled) return;
+                    if (xServer.isRelativeMouseMovement()) {
+                        xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
+                    } else {
+                        xServer.injectPointerMoveDelta(dx, dy);
+                    }
+                }, sens);
+            } else {
+                gyroAimingHelper.setSensitivity(GYRO_BASE_SENSITIVITY * gyroSensitivity);
+            }
+            gyroAimingHelper.start();
+        } else {
+            if (gyroAimingHelper != null) {
+                gyroAimingHelper.stop();
+            }
+        }
+    }
+
+    public void setGyroSensitivity(float sensitivity) {
+        gyroSensitivity = sensitivity > 0 ? sensitivity : 1f;
+        if (gyroAimingHelper != null) {
+            gyroAimingHelper.setSensitivity(GYRO_BASE_SENSITIVITY * gyroSensitivity);
+        }
+    }
+
+    public boolean isGyroAimingEnabled() {
+        return gyroAimingEnabled;
     }
 }

@@ -297,6 +297,7 @@
     <string name="performance_hud_clock_time">Clock time</string>
     <string name="performance_hud_cpu_temperature">CPU temperature</string>
     <string name="performance_hud_gpu_temperature">GPU temperature</string>
+    <string name="gyro_aiming">Gyro mouse aiming</string>
     <string name="touchpad_help">Touchpad Help</string>
     <string name="hide_controls_with_controller">Hide on-screen controls with controller</string>
     <string name="hide_controls_with_controller_description">Automatically hide on-screen controls when a physical controller is connected</string>
@@ -710,6 +711,8 @@
     <string name="touchscreen_mode_description">For visual novels and RTS games</string>
     <string name="shooter_mode_toggle">Shooter Mode</string>
     <string name="shooter_mode_toggle_description">Auto-replace stick elements with dynamic joysticks</string>
+    <string name="gyro_sensitivity">Gyro sensitivity</string>
+    <string name="gyro_sensitivity_description">Multiplier for gyro mouse aiming (when enabled in-game)</string>
     <string name="shooter_mode_on">Enable Mouse</string>
     <string name="shooter_mode_off">Enable Sticks</string>
 

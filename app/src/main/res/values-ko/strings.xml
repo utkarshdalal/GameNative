@@ -345,6 +345,7 @@
     <string name="touchpad_help">터치패드 도움말</string>
     <string name="hide_controls_with_controller">컨트롤러 연결 시 화면 컨트롤 숨기기</string>
     <string name="hide_controls_with_controller_description">물리 컨트롤러가 연결되면 화면 컨트롤을 자동으로 숨깁니다</string>
+    <string name="gyro_aiming">자이로 마우스 조준</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">바인딩 선택</string>
@@ -720,6 +721,8 @@
     <string name="touchscreen_mode_description">비주얼 노벨 및 RTS 게임용</string>
     <string name="shooter_mode_toggle">슈터 모드</string>
     <string name="shooter_mode_toggle_description">스틱 요소를 동적 조이스틱으로 교체</string>
+    <string name="gyro_sensitivity">자이로 감도</string>
+    <string name="gyro_sensitivity_description">자이로 마우스 조준 배율(인게임에서 활성화 시)</string>
     <string name="shooter_mode_on">마우스 활성화</string>
     <string name="shooter_mode_off">스틱 활성화</string>
 

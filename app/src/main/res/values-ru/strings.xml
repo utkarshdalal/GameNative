@@ -1019,6 +1019,8 @@ https://gamenative.app
     <string name="shooter_mode_settings">Настройки динамических джойстиков</string>
     <string name="shooter_mode_toggle">Режим стрельбы</string>
     <string name="shooter_mode_toggle_description">Автоматически заменять элементы джойстика на динамические джойстики</string>
+    <string name="gyro_sensitivity">Чувствительность гироскопа</string>
+    <string name="gyro_sensitivity_description">Множитель прицеливания гироскопом/мышью (при включении в игре)</string>
     <string name="shortcuts">Ярлыки</string>
     <string name="shoulder_buttons_category">Шифты</string>
     <string name="show_fps">Показать FPS</string>
@@ -1179,6 +1181,7 @@ https://gamenative.app
     <string name="tooltip_label">показать подсказку</string>
     <string name="total_playtime">Общее время игры: %s часов</string>
     <string name="touchpad_help">Справка сенсорной панели</string>
+    <string name="gyro_aiming">Прицеливание гироскопом (мышь)</string>
     <string name="touchscreen_mode">Режим сенсорного экрана</string>
     <string name="touchscreen_mode_description">Для визуальных романов и игр RTS</string>
     <string name="two_factor_enter_code">Введите 5-значный код</string>

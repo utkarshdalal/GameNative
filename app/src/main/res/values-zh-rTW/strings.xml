@@ -330,6 +330,7 @@
     <string name="touchpad_help">觸摸板支援</string>
     <string name="hide_controls_with_controller">使用控制器時隱藏螢幕控制器</string>
     <string name="hide_controls_with_controller_description">當實體控制器連接時自動隱藏螢幕控制器</string>
+    <string name="gyro_aiming">陀螺儀滑鼠瞄準</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">選擇綁定</string>
@@ -703,6 +704,8 @@
     <string name="touchscreen_mode_description">適用於視覺小說與即時戰略遊戲</string>
     <string name="shooter_mode_toggle">射擊模式</string>
     <string name="shooter_mode_toggle_description">以動態搖桿取代搖桿元素</string>
+    <string name="gyro_sensitivity">陀螺儀靈敏度</string>
+    <string name="gyro_sensitivity_description">陀螺儀滑鼠瞄準倍率（在遊戲中啟用時）</string>
     <string name="shooter_mode_on">啟用滑鼠</string>
     <string name="shooter_mode_off">啟用搖桿</string>
 

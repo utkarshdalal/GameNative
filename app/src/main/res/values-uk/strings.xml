@@ -327,6 +327,7 @@
     <string name="touchpad_help">Довідка сенсорної панелі</string>
     <string name="hide_controls_with_controller">Приховувати екранні елементи з контролером</string>
     <string name="hide_controls_with_controller_description">Автоматично приховувати екранні елементи керування, коли під\'єднано фізичний контролер</string>
+    <string name="gyro_aiming">Прицілювання гіроскопом (миша)</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Вибрати призначення</string>
@@ -701,6 +702,8 @@
     <string name="touchscreen_mode_description">Для візуальних романів та ігор RTS</string>
     <string name="shooter_mode_toggle">Режим шутера</string>
     <string name="shooter_mode_toggle_description">Замінити джойстики на динамічні</string>
+    <string name="gyro_sensitivity">Чутливість гіроскопа</string>
+    <string name="gyro_sensitivity_description">Множник прицілювання гіроскопом (коли увімкнено в грі)</string>
     <string name="shooter_mode_on">Увімкнути мишу</string>
     <string name="shooter_mode_off">Увімкнути джойстики</string>
 

@@ -260,6 +260,7 @@
     <string name="touchpad_help">Touchpad-hjælp</string>
     <string name="hide_controls_with_controller">Skjul on-screen-kontroller med controller</string>
     <string name="hide_controls_with_controller_description">Skjul automatisk on-screen-kontroller når en fysisk controller er tilsluttet</string>
+    <string name="gyro_aiming">Gyro-mus-sigte</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Vælg binding</string>
@@ -530,6 +531,8 @@
     <string name="touchscreen_mode_description">Til visuelle romaner og RTS-spil</string>
     <string name="shooter_mode_toggle">Shooter-tilstand</string>
     <string name="shooter_mode_toggle_description">Erstat stick-elementer med dynamiske joysticks</string>
+    <string name="gyro_sensitivity">Gyro-følsomhed</string>
+    <string name="gyro_sensitivity_description">Multiplikator for gyro-mus-sigte (når aktiveret in-game)</string>
     <string name="shooter_mode_on">Aktiver mus</string>
     <string name="shooter_mode_off">Aktiver sticks</string>
 

@@ -325,6 +325,7 @@
     <string name="touchpad_help">Touchpad-Hilfe</string>
     <string name="hide_controls_with_controller">On-Screen-Controller bei Gamepad ausblenden</string>
     <string name="hide_controls_with_controller_description">On-Screen-Steuerung automatisch ausblenden, wenn ein physischer Controller verbunden ist</string>
+    <string name="gyro_aiming">Gyro-Mauszielen</string>
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Belegung auswählen</string>
     <string name="bind_button">Belege: %1$s</string>
@@ -680,6 +681,8 @@
     <string name="touchscreen_mode_description">Für Visual Novels und RTS-Spiele</string>
     <string name="shooter_mode_toggle">Shooter-Modus</string>
     <string name="shooter_mode_toggle_description">Stick-Elemente durch dynamische Joysticks ersetzen</string>
+    <string name="gyro_sensitivity">Gyro-Empfindlichkeit</string>
+    <string name="gyro_sensitivity_description">Multiplikator für Gyro-Mauszielen (wenn im Spiel aktiviert)</string>
     <string name="shooter_mode_on">Maus aktivieren</string>
     <string name="shooter_mode_off">Sticks aktivieren</string>
 

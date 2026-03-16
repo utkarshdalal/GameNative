@@ -260,6 +260,7 @@
     <string name="touchpad_help">Ajuda Touchpad</string>
     <string name="hide_controls_with_controller">Ocultar controles on-screen com controle</string>
     <string name="hide_controls_with_controller_description">Ocultar automaticamente controles on-screen quando um controle físico estiver conectado</string>
+    <string name="gyro_aiming">Mira com gyro (mouse)</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Selecionar Binding</string>
@@ -530,6 +531,8 @@
     <string name="touchscreen_mode_description">Para visual novels e jogos de estratégia em tempo real</string>
     <string name="shooter_mode_toggle">Modo tiro</string>
     <string name="shooter_mode_toggle_description">Substituir sticks por joysticks dinâmicos</string>
+    <string name="gyro_sensitivity">Sensibilidade do gyro</string>
+    <string name="gyro_sensitivity_description">Multiplicador para mira com gyro/mouse (quando ativado no jogo)</string>
     <string name="shooter_mode_on">Ativar mouse</string>
     <string name="shooter_mode_off">Ativar sticks</string>
 

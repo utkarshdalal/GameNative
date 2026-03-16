@@ -1,7 +1,11 @@
 package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -23,6 +27,8 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.winlator.container.Container
+
+private val GYRO_SENSITIVITY_VALUES = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
 
 @Composable
 fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
@@ -97,6 +103,16 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
             subtitle = { Text(text = stringResource(R.string.shooter_mode_toggle_description)) },
             state = config.shooterMode,
             onCheckedChange = { state.config.value = config.copy(shooterMode = it) },
+        )
+        SettingsListDropdown(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.gyro_sensitivity)) },
+            subtitle = { Text(text = stringResource(R.string.gyro_sensitivity_description)) },
+            value = (GYRO_SENSITIVITY_VALUES.withIndex().minByOrNull { abs(it.value - config.gyroSensitivity) }?.index ?: 3).coerceIn(0, GYRO_SENSITIVITY_VALUES.lastIndex),
+            items = GYRO_SENSITIVITY_VALUES.map { "${(it * 100).toInt()}%" },
+            onItemSelected = { index ->
+                state.config.value = config.copy(gyroSensitivity = GYRO_SENSITIVITY_VALUES[index])
+            },
         )
         SettingsListDropdown(
             colors = settingsTileColors(),

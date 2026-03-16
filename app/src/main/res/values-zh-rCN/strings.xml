@@ -330,6 +330,7 @@
     <string name="touchpad_help">触摸板支持</string>
     <string name="hide_controls_with_controller">使用控制器时隐藏屏幕控制器</string>
     <string name="hide_controls_with_controller_description">当实体控制器连接时自动隐藏屏幕控制器</string>
+    <string name="gyro_aiming">陀螺仪鼠标瞄准</string>
 
     <!-- 控制器绑定对话框 -->
     <string name="select_binding">选择绑定</string>
@@ -701,6 +702,8 @@
     <string name="touchscreen_mode_description">适用于视觉小说和即时战略游戏</string>
     <string name="shooter_mode_toggle">射击模式</string>
     <string name="shooter_mode_toggle_description">用动态摇杆替换摇杆元素</string>
+    <string name="gyro_sensitivity">陀螺仪灵敏度</string>
+    <string name="gyro_sensitivity_description">陀螺仪鼠标瞄准倍率（在游戏中启用时）</string>
     <string name="shooter_mode_on">启用鼠标</string>
     <string name="shooter_mode_off">启用摇杆</string>
 

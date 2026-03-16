@@ -332,6 +332,7 @@
     <string name="touchpad_help">Aide du pavé tactile</string>
     <string name="hide_controls_with_controller">Masquer les contrôles à l\'écran avec manette</string>
     <string name="hide_controls_with_controller_description">Masquer automatiquement les contrôles à l\'écran lorsqu\'un contrôleur physique est connecté</string>
+    <string name="gyro_aiming">Visée souris gyro</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Sélectionner l\'affectation</string>
@@ -706,6 +707,8 @@
     <string name="touchscreen_mode_description">Pour les visual novels et jeux de stratégie en temps réel</string>
     <string name="shooter_mode_toggle">Mode tireur</string>
     <string name="shooter_mode_toggle_description">Remplacer les sticks par des joysticks dynamiques</string>
+    <string name="gyro_sensitivity">Sensibilité gyro</string>
+    <string name="gyro_sensitivity_description">Multiplicateur pour la visée souris gyro (quand activé en jeu)</string>
     <string name="shooter_mode_on">Activer la souris</string>
     <string name="shooter_mode_off">Activer les sticks</string>
 

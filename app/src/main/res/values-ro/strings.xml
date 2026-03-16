@@ -334,6 +334,7 @@
     <string name="touchpad_help">Ajutor touchpad</string>
     <string name="hide_controls_with_controller">Ascunde controalele pe ecran când există controller</string>
     <string name="hide_controls_with_controller_description">Ascunde automat controalele pe ecran când un controller fizic este conectat</string>
+    <string name="gyro_aiming">Țintire mouse gyro</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Selectează acțiunea</string>
@@ -711,6 +712,8 @@
 	<string name="touchscreen_mode_description">Pentru visual novels și jocuri RTS</string>
 	<string name="shooter_mode_toggle">Mod shooter</string>
 	<string name="shooter_mode_toggle_description">Înlocuiește stick-urile cu joystick-uri dinamice</string>
+	<string name="gyro_sensitivity">Sensibilitate gyro</string>
+	<string name="gyro_sensitivity_description">Multiplicator pentru țintire mouse gyro (când este activat în joc)</string>
 	<string name="shooter_mode_on">Activează mouse-ul</string>
 	<string name="shooter_mode_off">Activează stick-urile</string>
 

@@ -347,6 +347,7 @@
     <string name="touchpad_help">Ayuda del touchpad</string>
     <string name="hide_controls_with_controller">Ocultar controles táctiles al usar mando</string>
     <string name="hide_controls_with_controller_description">Oculta automáticamente los controles en pantalla cuando se conecta un mando físico.</string>
+    <string name="gyro_aiming">Apuntado con gyro (ratón)</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Seleccionar asignación</string>
@@ -755,6 +756,8 @@
     <string name="touchscreen_mode_description">Para novelas visuales y juegos de estrategia en tiempo real.</string>
     <string name="shooter_mode_toggle">Modo tirador</string>
     <string name="shooter_mode_toggle_description">Reemplaza los sticks por joysticks dinámicos.</string>
+    <string name="gyro_sensitivity">Sensibilidad gyro</string>
+    <string name="gyro_sensitivity_description">Multiplicador para apuntado con gyro/ratón (cuando está activado en el juego)</string>
     <string name="shooter_mode_on">Activar ratón</string>
     <string name="shooter_mode_off">Activar sticks</string>
 

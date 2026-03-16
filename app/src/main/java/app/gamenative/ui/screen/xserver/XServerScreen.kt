@@ -938,6 +938,19 @@ fun XServerScreen(
                 false
             }
 
+            QuickMenuAction.GYRO_AIMING -> {
+                val currentlyEnabled = container.getExtra("gyroAiming", "false") == "true"
+                val newEnabled = !currentlyEnabled
+                container.putExtra("gyroAiming", if (newEnabled) "true" else "false")
+                container.saveData()
+                PluviaApp.touchpadView?.setGyroAimingEnabled(newEnabled)
+                PostHog.capture(
+                    event = "gyro_aiming_toggled",
+                    properties = mapOf("enabled" to newEnabled),
+                )
+                true
+            }
+
             QuickMenuAction.EXIT_GAME -> {
                 PostHog.capture(
                     event = "game_closed",
@@ -1367,6 +1380,8 @@ fun XServerScreen(
                 PluviaApp.touchpadView = TouchpadView(context, getxServer(), PrefManager.getBoolean("capture_pointer_on_external_mouse", true))
                 frameLayout.addView(PluviaApp.touchpadView)
                 PluviaApp.touchpadView?.setMoveCursorToTouchpoint(PrefManager.getBoolean("move_cursor_to_touchpoint", false))
+                PluviaApp.touchpadView?.setGyroSensitivity(container.getExtra("gyroSensitivity", "1").toFloatOrNull()?.coerceIn(0.25f, 2f) ?: 1f)
+                PluviaApp.touchpadView?.setGyroAimingEnabled(container.getExtra("gyroAiming", "false") == "true")
 
                 // Add invisible IME receiver to capture system keyboard input when keyboard is on external display
                 val imeDisplayContext = context.display?.let { display ->

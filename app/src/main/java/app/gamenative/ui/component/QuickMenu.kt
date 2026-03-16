@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -91,6 +92,7 @@ object QuickMenuAction {
     const val EDIT_CONTROLS = 4
     const val EDIT_PHYSICAL_CONTROLLER = 5
     const val PERFORMANCE_HUD = 6
+    const val GYRO_AIMING = 7
 }
 
 private object QuickMenuTab {
@@ -245,6 +247,14 @@ fun QuickMenu(
                 icon = Icons.Default.TouchApp,
                 labelResId = R.string.input_controls,
                 accentColor = PluviaTheme.colors.accentPurple,
+            )
+        )
+        add(
+            QuickMenuItem(
+                id = QuickMenuAction.GYRO_AIMING,
+                icon = Icons.Default.GpsFixed,
+                labelResId = R.string.gyro_aiming,
+                accentColor = PluviaTheme.colors.accentCyan,
             )
         )
         if (hasPhysicalController) {
