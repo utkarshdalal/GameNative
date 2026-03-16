@@ -215,43 +215,37 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleLaunchIntent(intent)
+        handleLaunchIntent(intent, isNewIntent = true)
     }
-    private fun handleLaunchIntent(intent: Intent) {
-        Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}")
+
+    private fun handleLaunchIntent(intent: Intent, isNewIntent: Boolean = false) {
+        // recents re-delivers the same intent with this flag — don't re-launch
+        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) {
+            Timber.d("[IntentLaunch]: Ignoring intent re-delivered from recents")
+            return
+        }
+        Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}, isNewIntent=$isNewIntent")
         try {
             val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
             if (launchRequest != null) {
                 Timber.d("[IntentLaunch]: Received external launch intent for app ${launchRequest.appId}")
-                wasLaunchedViaExternalIntent = true
 
-                val gameSource = ContainerUtils.extractGameSourceFromContainerId(launchRequest.appId)
-                val runsWithoutSteam = gameSource == GameSource.STEAM &&
-                    ContainerUtils.hasContainer(this, launchRequest.appId) &&
-                    ContainerUtils.getContainer(this, launchRequest.appId).isSteamOfflineMode()
-
-                // only defer to pending for Steam games that need login;
-                // non-Steam games and Steam-offline-mode games can launch without Steam
-                if (gameSource == GameSource.STEAM && !SteamService.isLoggedIn && !runsWithoutSteam) {
-                    setPendingLaunchRequest(launchRequest)
-                    Timber.d("[IntentLaunch]: Steam game but not logged in, stored pending launch request for app ${launchRequest.appId}")
-                } else {
-                    // clear any stale pending request so it doesn't fire on later login
+                if (isNewIntent) {
+                    // supersedes any stale pending request
                     consumePendingLaunchRequest()
-
+                    // UI is already up — emit directly, ViewModel listener exists
                     Timber.d("[IntentLaunch]: Emitting ExternalGameLaunch event for app ${launchRequest.appId}")
-                    lifecycleScope.launch {
-                        PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId))
-                    }
-
-                    // Apply config override if present
                     launchRequest.containerConfig?.let { config ->
                         IntentLaunchManager.applyTemporaryConfigOverride(this, launchRequest.appId, config)
                     }
+                    lifecycleScope.launch {
+                        PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId))
+                    }
+                } else {
+                    // cold start — store as pending, PluviaMain consumes when UI is ready
+                    setPendingLaunchRequest(launchRequest)
+                    Timber.d("[IntentLaunch]: Stored pending launch request for app ${launchRequest.appId}")
                 }
-            } else {
-                wasLaunchedViaExternalIntent = false
-                Timber.d("[IntentLaunch]: parseLaunchIntent returned null")
             }
         } catch (e: Exception) {
             Timber.e(e, "[IntentLaunch]: Failed to handle launch intent")
