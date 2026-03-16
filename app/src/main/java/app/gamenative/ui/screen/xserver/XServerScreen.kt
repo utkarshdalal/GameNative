@@ -1892,7 +1892,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
         if (winHandler != null) {
             winHandler.refreshControllerMappings()
         }
-}
+    }
 }
 
 private fun hideInputControls() {
