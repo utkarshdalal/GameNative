@@ -360,6 +360,27 @@ object PrefManager {
             setPref(PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE, value)
         }
 
+    private val PERFORMANCE_HUD_SHOW_FRAME_RATE_GRAPH = booleanPreferencesKey("performance_hud_show_frame_rate_graph")
+    var performanceHudShowFrameRateGraph: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_FRAME_RATE_GRAPH, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_FRAME_RATE_GRAPH, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_CPU_USAGE_GRAPH = booleanPreferencesKey("performance_hud_show_cpu_usage_graph")
+    var performanceHudShowCpuUsageGraph: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_CPU_USAGE_GRAPH, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_CPU_USAGE_GRAPH, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_GPU_USAGE_GRAPH = booleanPreferencesKey("performance_hud_show_gpu_usage_graph")
+    var performanceHudShowGpuUsageGraph: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_GPU_USAGE_GRAPH, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_GPU_USAGE_GRAPH, value)
+        }
+
     private val PERFORMANCE_HUD_BACKGROUND_OPACITY = floatPreferencesKey("performance_hud_background_opacity")
     var performanceHudBackgroundOpacity: Float
         get() = getPref(PERFORMANCE_HUD_BACKGROUND_OPACITY, 0.72f)

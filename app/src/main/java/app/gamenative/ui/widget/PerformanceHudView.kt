@@ -4,7 +4,10 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
@@ -12,14 +15,17 @@ import android.text.TextUtils
 import android.text.format.DateFormat
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.io.File
+import java.util.ArrayDeque
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,6 +63,9 @@ data class PerformanceHudConfig(
     val showClockTime: Boolean = false,
     val showCpuTemperature: Boolean = true,
     val showGpuTemperature: Boolean = true,
+    val showFrameRateGraph: Boolean = false,
+    val showCpuUsageGraph: Boolean = false,
+    val showGpuUsageGraph: Boolean = false,
     val backgroundOpacity: Float = DEFAULT_BACKGROUND_OPACITY,
     val size: PerformanceHudSize = PerformanceHudSize.MEDIUM,
 ) {
@@ -82,8 +91,7 @@ class PerformanceHudView(
     private var config = initialConfig
     private var isCompactMode = initialCompactMode
     private var lastSnapshot: HudSnapshot? = null
-    private var attachedRows: List<TextView> = emptyList()
-    private var attachedCompactMode = isCompactMode
+    private var attachedMetricSignature: List<MetricSignature> = emptyList()
     private var appearance = appearanceFor(initialConfig.size)
     private var smoothedBatteryRuntimeHours: Double? = null
 
@@ -91,45 +99,73 @@ class PerformanceHudView(
         shape = GradientDrawable.RECTANGLE
     }
 
-    private val fpsText = createRow(0xFF4CAF50.toInt())
-    private val cpuText = createRow(0xFF42A5F5.toInt())
-    private val gpuText = createRow(0xFFEF5350.toInt())
-    private val ramText = createRow(0xFFFFEE58.toInt())
-    private val batteryText = createRow(0xFFFFFFFF.toInt())
-    private val powerText = createRow(0xFF4DD0E1.toInt())
-    private val runtimeText = createRow(0xFFA5D6A7.toInt())
-    private val clockText = createRow(0xFFFFCC80.toInt())
-    private val cpuTempText = createRow(0xFFBDBDBD.toInt())
-    private val gpuTempText = createRow(0xFFBDBDBD.toInt())
-
-    private val allRows = listOf(
-        fpsText,
-        cpuText,
-        gpuText,
-        ramText,
-        batteryText,
-        powerText,
-        runtimeText,
-        clockText,
-        cpuTempText,
-        gpuTempText,
-    )
-
-    private val contentContainer = LinearLayout(context).apply {
+    private val stackedContainer = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
         layoutParams = LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
         )
     }
+
+    private val compactContainer = WrapLayout(context).apply {
+        layoutParams = LayoutParams(
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+        )
+    }
+
+    private val fpsMetric = createMetricViews(
+        id = MetricId.FPS,
+        textColor = 0xFF4CAF50.toInt(),
+        graphColor = 0xFF7CFF6B.toInt(),
+        graphScaleMode = GraphScaleMode.FPS_DYNAMIC,
+    )
+    private val cpuMetric = createMetricViews(
+        id = MetricId.CPU,
+        textColor = 0xFF42A5F5.toInt(),
+        graphColor = 0xFF42A5F5.toInt(),
+        graphScaleMode = GraphScaleMode.PERCENT_100,
+    )
+    private val gpuMetric = createMetricViews(
+        id = MetricId.GPU,
+        textColor = 0xFFEF5350.toInt(),
+        graphColor = 0xFFEF5350.toInt(),
+        graphScaleMode = GraphScaleMode.PERCENT_100,
+    )
+    private val ramMetric = createMetricViews(MetricId.RAM, 0xFFFFEE58.toInt())
+    private val batteryMetric = createMetricViews(MetricId.BATTERY, 0xFFFFFFFF.toInt())
+    private val powerMetric = createMetricViews(MetricId.POWER, 0xFF4DD0E1.toInt())
+    private val runtimeMetric = createMetricViews(MetricId.RUNTIME, 0xFFA5D6A7.toInt())
+    private val clockMetric = createMetricViews(MetricId.CLOCK, 0xFFFFCC80.toInt())
+    private val cpuTempMetric = createMetricViews(MetricId.CPU_TEMP, 0xFFBDBDBD.toInt())
+    private val gpuTempMetric = createMetricViews(MetricId.GPU_TEMP, 0xFFBDBDBD.toInt())
+
+    private val allMetrics = listOf(
+        fpsMetric,
+        cpuMetric,
+        gpuMetric,
+        ramMetric,
+        batteryMetric,
+        powerMetric,
+        runtimeMetric,
+        clockMetric,
+        cpuTempMetric,
+        gpuTempMetric,
+    )
+
+    private val allTextRows = allMetrics.flatMap { listOf(it.stackedText, it.compactText) }
+    private val allGraphs = allMetrics.flatMap { listOfNotNull(it.stackedGraph, it.compactGraph) }
 
     private var lastCpuTotal: Long? = null
     private var lastCpuIdle: Long? = null
 
     init {
         background = backgroundDrawable
-        addView(contentContainer)
+        addView(stackedContainer)
+        addView(compactContainer)
         applyAppearance()
-        refreshVisibleRows()
+        applyLayoutMode()
+        refreshVisibleMetrics()
     }
 
     fun isCompactMode(): Boolean = isCompactMode
@@ -140,7 +176,7 @@ class PerformanceHudView(
         }
 
         isCompactMode = compactMode
-        refreshVisibleRows()
+        applyLayoutMode()
         requestLayout()
     }
 
@@ -151,7 +187,8 @@ class PerformanceHudView(
 
         this.config = config
         applyAppearance()
-        lastSnapshot?.let(::renderSnapshot) ?: refreshVisibleRows()
+        lastSnapshot?.let(::applySnapshotText) ?: refreshVisibleMetrics()
+        refreshVisibleMetrics()
     }
 
     override fun onAttachedToWindow() {
@@ -162,6 +199,11 @@ class PerformanceHudView(
     override fun onDetachedFromWindow() {
         stopUpdates()
         super.onDetachedFromWindow()
+    }
+
+    private fun applyLayoutMode() {
+        stackedContainer.visibility = if (isCompactMode) GONE else VISIBLE
+        compactContainer.visibility = if (isCompactMode) VISIBLE else GONE
     }
 
     private fun startUpdates() {
@@ -217,22 +259,53 @@ class PerformanceHudView(
             ),
         )
 
-        allRows.forEach { row ->
-            row.setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.textSizeSp)
-            row.maxLines = 1
-            row.ellipsize = TextUtils.TruncateAt.END
+        compactContainer.horizontalSpacing = appearance.columnSpacingDp.dp
+        compactContainer.verticalSpacing = appearance.rowSpacingDp.dp
+
+        allTextRows.forEach { textView ->
+            textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.textSizeSp)
+            textView.maxLines = 1
+            textView.ellipsize = TextUtils.TruncateAt.END
         }
 
-        attachedRows = emptyList()
+        allMetrics.forEach(::applyMetricAppearance)
+        allGraphs.forEach { it.applyAppearance(appearance) }
+
+        attachedMetricSignature = emptyList()
         requestLayout()
     }
 
+    private fun applyMetricAppearance(metric: MetricViews) {
+        metric.stackedText.setPadding(0, appearance.rowVerticalPaddingDp.dp, 0, 0)
+        metric.compactText.setPadding(0, 0, 0, 0)
+
+        (metric.stackedGraph?.layoutParams as? LinearLayout.LayoutParams)?.let { params ->
+            params.width = appearance.stackedGraphWidthDp.dp
+            params.height = appearance.stackedGraphHeightDp.dp
+            params.topMargin = appearance.stackedGraphTopMarginDp.dp
+            params.bottomMargin = appearance.stackedGraphBottomMarginDp.dp
+            metric.stackedGraph.layoutParams = params
+        }
+
+        (metric.compactGraph?.layoutParams as? LinearLayout.LayoutParams)?.let { params ->
+            params.width = appearance.compactGraphWidthDp.dp
+            params.height = appearance.compactGraphHeightDp.dp
+            params.marginStart = appearance.compactGraphStartMarginDp.dp
+            metric.compactGraph.layoutParams = params
+        }
+    }
+
     private fun collectSnapshot(currentFps: Float): HudSnapshot {
+        val cpuPercent = readCpuUsagePercent()
+        val gpuPercent = readGpuUsagePercent()
         val batterySnapshot = collectBatterySnapshot()
         return HudSnapshot(
+            fpsValue = currentFps,
+            cpuValue = cpuPercent?.toFloat(),
+            gpuValue = gpuPercent?.toFloat(),
             fps = String.format(Locale.US, "FPS %.1f", currentFps),
-            cpu = readCpuUsagePercent()?.let { "CPU $it%" },
-            gpu = readGpuUsagePercent()?.let { "GPU $it%" },
+            cpu = cpuPercent?.let { "CPU $it%" },
+            gpu = gpuPercent?.let { "GPU $it%" },
             ram = "RAM ${readUsedRamText()}",
             battery = batterySnapshot.percent?.let { "BAT $it%" },
             power = batterySnapshot.powerWatts?.let { watts ->
@@ -301,101 +374,161 @@ class PerformanceHudView(
 
     private fun renderSnapshot(snapshot: HudSnapshot) {
         lastSnapshot = snapshot
-
-        fpsText.text = snapshot.fps
-        cpuText.text = snapshot.cpu.orEmpty()
-        gpuText.text = snapshot.gpu.orEmpty()
-        ramText.text = snapshot.ram
-        batteryText.text = snapshot.battery.orEmpty()
-        powerText.text = snapshot.power.orEmpty()
-        runtimeText.text = snapshot.runtime.orEmpty()
-        clockText.text = snapshot.clock.orEmpty()
-        cpuTempText.text = snapshot.cpuTemp.orEmpty()
-        gpuTempText.text = snapshot.gpuTemp.orEmpty()
-
-        refreshVisibleRows()
+        recordGraphSamples(snapshot)
+        applySnapshotText(snapshot)
+        refreshVisibleMetrics()
     }
 
-    private fun refreshVisibleRows() {
-        val visibleRows = buildList {
-            addRowIfVisible(fpsText, config.showFrameRate)
-            addRowIfVisible(cpuText, config.showCpuUsage)
-            addRowIfVisible(gpuText, config.showGpuUsage)
-            addRowIfVisible(ramText, config.showRamUsage)
-            addRowIfVisible(batteryText, config.showBatteryLevel)
-            addRowIfVisible(powerText, config.showPowerDraw)
-            addRowIfVisible(runtimeText, config.showBatteryRuntime)
-            addRowIfVisible(clockText, config.showClockTime)
-            addRowIfVisible(cpuTempText, config.showCpuTemperature)
-            addRowIfVisible(gpuTempText, config.showGpuTemperature)
-        }
-
-        val shouldRebuildLayout =
-            attachedCompactMode != isCompactMode ||
-                visibleRows.size != attachedRows.size ||
-                visibleRows.zip(attachedRows).any { (current, previous) -> current !== previous }
-
-        if (shouldRebuildLayout) {
-            rebuildLayout(visibleRows)
-            attachedRows = visibleRows
-            attachedCompactMode = isCompactMode
-        }
-
-        visibility = if (visibleRows.isEmpty()) GONE else VISIBLE
+    private fun recordGraphSamples(snapshot: HudSnapshot) {
+        fpsMetric.stackedGraph?.addSample(snapshot.fpsValue)
+        fpsMetric.compactGraph?.addSample(snapshot.fpsValue)
+        cpuMetric.stackedGraph?.addSample(snapshot.cpuValue)
+        cpuMetric.compactGraph?.addSample(snapshot.cpuValue)
+        gpuMetric.stackedGraph?.addSample(snapshot.gpuValue)
+        gpuMetric.compactGraph?.addSample(snapshot.gpuValue)
     }
 
-    private fun rebuildLayout(visibleRows: List<TextView>) {
-        contentContainer.removeAllViews()
-        contentContainer.orientation = if (isCompactMode) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
-        contentContainer.gravity = if (isCompactMode) Gravity.CENTER_VERTICAL else Gravity.START
+    private fun applySnapshotText(snapshot: HudSnapshot) {
+        updateMetricText(fpsMetric, snapshot.fps)
+        updateMetricText(cpuMetric, snapshot.cpu)
+        updateMetricText(gpuMetric, snapshot.gpu)
+        updateMetricText(ramMetric, snapshot.ram)
+        updateMetricText(batteryMetric, snapshot.battery)
+        updateMetricText(powerMetric, snapshot.power)
+        updateMetricText(runtimeMetric, snapshot.runtime)
+        updateMetricText(clockMetric, snapshot.clock)
+        updateMetricText(cpuTempMetric, snapshot.cpuTemp)
+        updateMetricText(gpuTempMetric, snapshot.gpuTemp)
+    }
 
-        visibleRows.forEachIndexed { index, row ->
-            (row.parent as? ViewGroup)?.removeView(row)
-            applyRowAppearance(row)
-            contentContainer.addView(row, createRowLayoutParams(index, visibleRows.lastIndex))
+    private fun updateMetricText(metric: MetricViews, text: String?) {
+        val safeText = text.orEmpty()
+        metric.stackedText.text = safeText
+        metric.compactText.text = safeText
+    }
 
-            if (isCompactMode && index < visibleRows.lastIndex) {
-                contentContainer.addView(createSeparator())
+    private fun refreshVisibleMetrics() {
+        val visibleMetrics = buildList {
+            addMetricIfVisible(fpsMetric, config.showFrameRate, config.showFrameRateGraph)
+            addMetricIfVisible(cpuMetric, config.showCpuUsage, config.showCpuUsageGraph)
+            addMetricIfVisible(gpuMetric, config.showGpuUsage, config.showGpuUsageGraph)
+            addMetricIfVisible(ramMetric, config.showRamUsage)
+            addMetricIfVisible(batteryMetric, config.showBatteryLevel)
+            addMetricIfVisible(powerMetric, config.showPowerDraw)
+            addMetricIfVisible(runtimeMetric, config.showBatteryRuntime)
+            addMetricIfVisible(clockMetric, config.showClockTime)
+            addMetricIfVisible(cpuTempMetric, config.showCpuTemperature)
+            addMetricIfVisible(gpuTempMetric, config.showGpuTemperature)
+        }
+
+        val signatures = visibleMetrics.map { MetricSignature(it.metric.id, it.showGraph) }
+        if (signatures != attachedMetricSignature) {
+            rebuildVisibleMetrics(visibleMetrics)
+            attachedMetricSignature = signatures
+        }
+
+        visibility = if (visibleMetrics.isEmpty()) GONE else VISIBLE
+    }
+
+    private fun MutableList<VisibleMetric>.addMetricIfVisible(
+        metric: MetricViews,
+        enabled: Boolean,
+        showGraph: Boolean = false,
+    ) {
+        val isMetricVisible = enabled && metric.stackedText.text.isNotBlank()
+        val shouldShowGraph = isMetricVisible && showGraph && metric.supportsGraph
+
+        metric.stackedGraph?.visibility = if (shouldShowGraph) VISIBLE else GONE
+        metric.compactGraph?.visibility = if (shouldShowGraph) VISIBLE else GONE
+
+        if (isMetricVisible) {
+            add(VisibleMetric(metric = metric, showGraph = shouldShowGraph))
+        }
+    }
+
+    private fun rebuildVisibleMetrics(visibleMetrics: List<VisibleMetric>) {
+        stackedContainer.removeAllViews()
+        compactContainer.removeAllViews()
+
+        visibleMetrics.forEachIndexed { index, visibleMetric ->
+            stackedContainer.addView(
+                visibleMetric.metric.stackedContainer,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    if (index < visibleMetrics.lastIndex) {
+                        bottomMargin = appearance.rowSpacingDp.dp
+                    }
+                },
+            )
+            compactContainer.addView(visibleMetric.metric.compactContainer)
+        }
+    }
+
+    private fun createMetricViews(
+        id: MetricId,
+        textColor: Int,
+        graphColor: Int? = null,
+        graphScaleMode: GraphScaleMode? = null,
+    ): MetricViews {
+        val stackedText = createTextView(textColor)
+        val compactText = createTextView(textColor)
+        val stackedGraph = if (graphColor != null && graphScaleMode != null) {
+            MetricGraphView(context, graphColor, graphScaleMode)
+        } else {
+            null
+        }
+        val compactGraph = if (graphColor != null && graphScaleMode != null) {
+            MetricGraphView(context, graphColor, graphScaleMode)
+        } else {
+            null
+        }
+
+        val stackedContainer = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(stackedText)
+            stackedGraph?.let {
+                addView(
+                    it,
+                    LinearLayout.LayoutParams(
+                        appearance.stackedGraphWidthDp.dp,
+                        appearance.stackedGraphHeightDp.dp,
+                    ),
+                )
+                it.visibility = GONE
             }
         }
-    }
 
-    private fun applyRowAppearance(row: TextView) {
-        val verticalPadding = if (isCompactMode) 0 else appearance.rowVerticalPaddingDp.dp
-        row.setPadding(0, verticalPadding, 0, verticalPadding)
-    }
-
-    private fun MutableList<TextView>.addRowIfVisible(view: TextView, enabled: Boolean) {
-        if (enabled && view.text.isNotBlank()) {
-            add(view)
-        }
-    }
-
-    private fun createRowLayoutParams(index: Int, lastIndex: Int): LinearLayout.LayoutParams {
-        return LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-        ).apply {
-            if (!isCompactMode && index < lastIndex) {
-                bottomMargin = appearance.rowSpacingDp.dp
+        val compactContainer = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(compactText)
+            compactGraph?.let {
+                addView(
+                    it,
+                    LinearLayout.LayoutParams(
+                        appearance.compactGraphWidthDp.dp,
+                        appearance.compactGraphHeightDp.dp,
+                    ),
+                )
+                it.visibility = GONE
             }
         }
+
+        return MetricViews(
+            id = id,
+            supportsGraph = stackedGraph != null && compactGraph != null,
+            stackedText = stackedText,
+            compactText = compactText,
+            stackedContainer = stackedContainer,
+            compactContainer = compactContainer,
+            stackedGraph = stackedGraph,
+            compactGraph = compactGraph,
+        )
     }
 
-    private fun createSeparator(): TextView {
-        val horizontalPadding = (appearance.columnSpacingDp.dp / 4).coerceAtLeast(1)
-        return TextView(context).apply {
-            text = " | "
-            setTextColor(0x88FFFFFF.toInt())
-            setTypeface(Typeface.MONOSPACE, Typeface.BOLD)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.textSizeSp)
-            maxLines = 1
-            ellipsize = TextUtils.TruncateAt.END
-            setPadding(horizontalPadding, 0, horizontalPadding, 0)
-        }
-    }
-
-    private fun createRow(color: Int): TextView {
+    private fun createTextView(color: Int): TextView {
         return TextView(context).apply {
             setTextColor(color)
             setTypeface(Typeface.MONOSPACE, Typeface.BOLD)
@@ -539,36 +672,78 @@ class PerformanceHudView(
                 containerHorizontalPaddingDp = 8,
                 containerVerticalPaddingDp = 6,
                 rowVerticalPaddingDp = 1,
-                rowSpacingDp = 1,
+                rowSpacingDp = 4,
                 columnSpacingDp = 8,
                 cornerRadiusDp = 8,
                 strokeWidthDp = 1,
+                stackedGraphWidthDp = 60,
+                stackedGraphHeightDp = 12,
+                compactGraphWidthDp = 38,
+                compactGraphHeightDp = 10,
+                stackedGraphTopMarginDp = 1,
+                stackedGraphBottomMarginDp = 2,
+                compactGraphStartMarginDp = 4,
             )
             PerformanceHudSize.MEDIUM -> HudAppearance(
                 textSizeSp = 11f,
                 containerHorizontalPaddingDp = 10,
                 containerVerticalPaddingDp = 8,
                 rowVerticalPaddingDp = 2,
-                rowSpacingDp = 2,
+                rowSpacingDp = 6,
                 columnSpacingDp = 12,
                 cornerRadiusDp = 10,
                 strokeWidthDp = 1,
+                stackedGraphWidthDp = 72,
+                stackedGraphHeightDp = 16,
+                compactGraphWidthDp = 44,
+                compactGraphHeightDp = 12,
+                stackedGraphTopMarginDp = 1,
+                stackedGraphBottomMarginDp = 3,
+                compactGraphStartMarginDp = 6,
             )
             PerformanceHudSize.LARGE -> HudAppearance(
                 textSizeSp = 13f,
                 containerHorizontalPaddingDp = 12,
                 containerVerticalPaddingDp = 10,
                 rowVerticalPaddingDp = 3,
-                rowSpacingDp = 3,
+                rowSpacingDp = 8,
                 columnSpacingDp = 14,
                 cornerRadiusDp = 12,
                 strokeWidthDp = 1,
+                stackedGraphWidthDp = 88,
+                stackedGraphHeightDp = 20,
+                compactGraphWidthDp = 56,
+                compactGraphHeightDp = 16,
+                stackedGraphTopMarginDp = 2,
+                stackedGraphBottomMarginDp = 4,
+                compactGraphStartMarginDp = 8,
             )
         }
     }
 
     private val Int.dp: Int
         get() = (this * resources.displayMetrics.density).roundToInt()
+
+    private val Float.dpF: Float
+        get() = this * resources.displayMetrics.density
+
+    private enum class MetricId {
+        FPS,
+        CPU,
+        GPU,
+        RAM,
+        BATTERY,
+        POWER,
+        RUNTIME,
+        CLOCK,
+        CPU_TEMP,
+        GPU_TEMP,
+    }
+
+    private enum class GraphScaleMode {
+        FPS_DYNAMIC,
+        PERCENT_100,
+    }
 
     private data class BatterySnapshot(
         val percent: Int? = null,
@@ -577,6 +752,9 @@ class PerformanceHudView(
     )
 
     private data class HudSnapshot(
+        val fpsValue: Float,
+        val cpuValue: Float?,
+        val gpuValue: Float?,
         val fps: String,
         val cpu: String?,
         val gpu: String?,
@@ -598,7 +776,223 @@ class PerformanceHudView(
         val columnSpacingDp: Int,
         val cornerRadiusDp: Int,
         val strokeWidthDp: Int,
+        val stackedGraphWidthDp: Int,
+        val stackedGraphHeightDp: Int,
+        val compactGraphWidthDp: Int,
+        val compactGraphHeightDp: Int,
+        val stackedGraphTopMarginDp: Int,
+        val stackedGraphBottomMarginDp: Int,
+        val compactGraphStartMarginDp: Int,
     )
+
+    private data class MetricViews(
+        val id: MetricId,
+        val supportsGraph: Boolean,
+        val stackedText: TextView,
+        val compactText: TextView,
+        val stackedContainer: LinearLayout,
+        val compactContainer: LinearLayout,
+        val stackedGraph: MetricGraphView? = null,
+        val compactGraph: MetricGraphView? = null,
+    )
+
+    private data class VisibleMetric(
+        val metric: MetricViews,
+        val showGraph: Boolean,
+    )
+
+    private data class MetricSignature(
+        val id: MetricId,
+        val showGraph: Boolean,
+    )
+
+    private inner class MetricGraphView(
+        context: Context,
+        lineColor: Int,
+        private val scaleMode: GraphScaleMode,
+    ) : View(context) {
+        private val samples = ArrayDeque<Float>()
+        private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(102, Color.red(lineColor), Color.green(lineColor), Color.blue(lineColor))
+            style = Paint.Style.STROKE
+            strokeWidth = 2.5f.dpF
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = lineColor
+            style = Paint.Style.STROKE
+            strokeWidth = 1.5f.dpF
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        private val path = Path()
+
+        fun applyAppearance(appearance: HudAppearance) {
+            linePaint.strokeWidth = when (appearance.textSizeSp) {
+                in 0f..10.5f -> 1.2f.dpF
+                in 10.5f..12f -> 1.5f.dpF
+                else -> 1.8f.dpF
+            }
+            glowPaint.strokeWidth = linePaint.strokeWidth * 2f
+            invalidate()
+        }
+
+        fun addSample(value: Float?) {
+            val sample = value
+                ?.takeIf { it.isFinite() && it >= 0f }
+                ?: Float.NaN
+            if (samples.size >= GRAPH_SAMPLE_COUNT) {
+                samples.removeFirst()
+            }
+            samples.addLast(sample)
+            invalidate()
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            if (width <= 0 || height <= 0 || samples.isEmpty()) {
+                return
+            }
+
+            val values = samples.toList()
+            val validValues = values.filter { it.isFinite() }
+            if (validValues.size < 2) {
+                return
+            }
+
+            val chartWidth = width.toFloat()
+            val chartHeight = height.toFloat()
+            val maxValue = when (scaleMode) {
+                GraphScaleMode.FPS_DYNAMIC -> max(GRAPH_FPS_MIN_SCALE, (validValues.maxOrNull() ?: GRAPH_FPS_MIN_SCALE) * 1.05f)
+                GraphScaleMode.PERCENT_100 -> 100f
+            }
+            val xStep = if (values.size > 1) chartWidth / (values.size - 1) else chartWidth
+
+            path.reset()
+            var hasActiveSegment = false
+            values.forEachIndexed { index, value ->
+                if (!value.isFinite()) {
+                    hasActiveSegment = false
+                    return@forEachIndexed
+                }
+
+                val x = index * xStep
+                val normalized = (value / maxValue).coerceIn(0f, 1f)
+                val y = chartHeight - (normalized * chartHeight)
+                if (!hasActiveSegment) {
+                    path.moveTo(x, y)
+                    hasActiveSegment = true
+                } else {
+                    path.lineTo(x, y)
+                }
+            }
+
+            canvas.drawPath(path, glowPaint)
+            canvas.drawPath(path, linePaint)
+        }
+    }
+
+    private inner class WrapLayout(context: Context) : ViewGroup(context) {
+        var horizontalSpacing: Int = 0
+            set(value) {
+                field = value
+                requestLayout()
+            }
+
+        var verticalSpacing: Int = 0
+            set(value) {
+                field = value
+                requestLayout()
+            }
+
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val widthMode = MeasureSpec.getMode(widthMeasureSpec)
+            val maxContentWidth = when (widthMode) {
+                MeasureSpec.UNSPECIFIED -> Int.MAX_VALUE
+                else -> (MeasureSpec.getSize(widthMeasureSpec) - paddingLeft - paddingRight).coerceAtLeast(0)
+            }
+
+            var lineWidth = 0
+            var lineHeight = 0
+            var maxLineWidthUsed = 0
+            var totalHeight = paddingTop + paddingBottom
+            var visibleChildCount = 0
+
+            for (index in 0 until childCount) {
+                val child = getChildAt(index)
+                if (child.visibility == GONE) continue
+
+                measureChild(child, widthMeasureSpec, heightMeasureSpec)
+                val childWidth = child.measuredWidth
+                val childHeight = child.measuredHeight
+                val proposedWidth = if (lineWidth == 0) {
+                    childWidth
+                } else {
+                    lineWidth + horizontalSpacing + childWidth
+                }
+
+                if (lineWidth > 0 && proposedWidth > maxContentWidth) {
+                    maxLineWidthUsed = max(maxLineWidthUsed, lineWidth)
+                    totalHeight += lineHeight + verticalSpacing
+                    lineWidth = childWidth
+                    lineHeight = childHeight
+                } else {
+                    lineWidth = proposedWidth
+                    lineHeight = max(lineHeight, childHeight)
+                }
+                visibleChildCount++
+            }
+
+            if (visibleChildCount > 0) {
+                maxLineWidthUsed = max(maxLineWidthUsed, lineWidth)
+                totalHeight += lineHeight
+            }
+
+            val measuredWidth = resolveSize(maxLineWidthUsed + paddingLeft + paddingRight, widthMeasureSpec)
+            val measuredHeight = resolveSize(totalHeight, heightMeasureSpec)
+            setMeasuredDimension(measuredWidth, measuredHeight)
+        }
+
+        override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+            val maxContentWidth = (right - left - paddingLeft - paddingRight).coerceAtLeast(0)
+            var x = paddingLeft
+            var y = paddingTop
+            var lineHeight = 0
+
+            for (index in 0 until childCount) {
+                val child = getChildAt(index)
+                if (child.visibility == GONE) continue
+
+                val childWidth = child.measuredWidth
+                val childHeight = child.measuredHeight
+                val proposedRight = if (x == paddingLeft) {
+                    x + childWidth
+                } else {
+                    x + horizontalSpacing + childWidth
+                }
+
+                if (x != paddingLeft && proposedRight - paddingLeft > maxContentWidth) {
+                    x = paddingLeft
+                    y += lineHeight + verticalSpacing
+                    lineHeight = 0
+                }
+
+                if (x != paddingLeft) {
+                    x += horizontalSpacing
+                }
+
+                child.layout(
+                    x,
+                    y,
+                    x + childWidth,
+                    y + childHeight,
+                )
+                x += childWidth
+                lineHeight = max(lineHeight, childHeight)
+            }
+        }
+    }
 
     private companion object {
         const val UPDATE_INTERVAL_MS = 1_000L
@@ -607,5 +1001,7 @@ class PerformanceHudView(
         const val MAX_RUNTIME_HOURS = 72.0
         const val RUNTIME_SMOOTHING_OLD_WEIGHT = 0.65
         const val RUNTIME_SMOOTHING_NEW_WEIGHT = 0.35
+        const val GRAPH_SAMPLE_COUNT = 30
+        const val GRAPH_FPS_MIN_SCALE = 60f
     }
 }

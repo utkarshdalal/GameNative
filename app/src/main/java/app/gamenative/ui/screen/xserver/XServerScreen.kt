@@ -371,6 +371,9 @@ fun XServerScreen(
             showClockTime = PrefManager.performanceHudShowClockTime,
             showCpuTemperature = PrefManager.performanceHudShowCpuTemperature,
             showGpuTemperature = PrefManager.performanceHudShowGpuTemperature,
+            showFrameRateGraph = PrefManager.performanceHudShowFrameRateGraph,
+            showCpuUsageGraph = PrefManager.performanceHudShowCpuUsageGraph,
+            showGpuUsageGraph = PrefManager.performanceHudShowGpuUsageGraph,
             backgroundOpacity = PrefManager.performanceHudBackgroundOpacity,
             size = PerformanceHudSize.fromPrefValue(PrefManager.performanceHudSize),
         )
@@ -398,6 +401,9 @@ fun XServerScreen(
         PrefManager.performanceHudShowClockTime = config.showClockTime
         PrefManager.performanceHudShowCpuTemperature = config.showCpuTemperature
         PrefManager.performanceHudShowGpuTemperature = config.showGpuTemperature
+        PrefManager.performanceHudShowFrameRateGraph = config.showFrameRateGraph
+        PrefManager.performanceHudShowCpuUsageGraph = config.showCpuUsageGraph
+        PrefManager.performanceHudShowGpuUsageGraph = config.showGpuUsageGraph
         PrefManager.performanceHudBackgroundOpacity = config.backgroundOpacity
         PrefManager.performanceHudSize = config.size.prefValue
     }

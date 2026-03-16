@@ -251,8 +251,11 @@
     <string name="performance_hud_metrics">Shown metrics</string>
     <string name="performance_hud_metrics_description">Choose which stats appear in the overlay.</string>
     <string name="performance_hud_frame_rate">Frame rate</string>
+    <string name="performance_hud_frame_rate_graph">FPS graph</string>
     <string name="performance_hud_cpu_usage">CPU usage</string>
+    <string name="performance_hud_cpu_usage_graph">CPU graph</string>
     <string name="performance_hud_gpu_usage">GPU usage</string>
+    <string name="performance_hud_gpu_usage_graph">GPU graph</string>
     <string name="performance_hud_ram_usage">RAM usage</string>
     <string name="performance_hud_battery_level">Battery level</string>
     <string name="performance_hud_power_draw">Power draw</string>

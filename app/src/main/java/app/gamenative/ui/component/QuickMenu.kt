@@ -21,8 +21,6 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -126,6 +124,9 @@ private fun applyPerformanceHudPreset(
             showClockTime = false,
             showCpuTemperature = false,
             showGpuTemperature = false,
+            showFrameRateGraph = false,
+            showCpuUsageGraph = false,
+            showGpuUsageGraph = false,
         )
 
         PerformanceHudPreset.ESSENTIAL -> currentConfig.copy(
@@ -139,6 +140,9 @@ private fun applyPerformanceHudPreset(
             showClockTime = false,
             showCpuTemperature = false,
             showGpuTemperature = false,
+            showFrameRateGraph = false,
+            showCpuUsageGraph = false,
+            showGpuUsageGraph = false,
         )
 
         PerformanceHudPreset.BATTERY -> currentConfig.copy(
@@ -152,6 +156,9 @@ private fun applyPerformanceHudPreset(
             showClockTime = true,
             showCpuTemperature = false,
             showGpuTemperature = false,
+            showFrameRateGraph = true,
+            showCpuUsageGraph = false,
+            showGpuUsageGraph = false,
         )
 
         PerformanceHudPreset.FULL -> currentConfig.copy(
@@ -165,6 +172,9 @@ private fun applyPerformanceHudPreset(
             showClockTime = true,
             showCpuTemperature = true,
             showGpuTemperature = true,
+            showFrameRateGraph = true,
+            showCpuUsageGraph = true,
+            showGpuUsageGraph = true,
         )
     }
 }
@@ -183,7 +193,10 @@ private fun matchesPerformanceHudPreset(
         currentConfig.showBatteryRuntime == presetConfig.showBatteryRuntime &&
         currentConfig.showClockTime == presetConfig.showClockTime &&
         currentConfig.showCpuTemperature == presetConfig.showCpuTemperature &&
-        currentConfig.showGpuTemperature == presetConfig.showGpuTemperature
+        currentConfig.showGpuTemperature == presetConfig.showGpuTemperature &&
+        currentConfig.showFrameRateGraph == presetConfig.showFrameRateGraph &&
+        currentConfig.showCpuUsageGraph == presetConfig.showCpuUsageGraph &&
+        currentConfig.showGpuUsageGraph == presetConfig.showGpuUsageGraph
 }
 
 @Composable
@@ -463,7 +476,6 @@ fun QuickMenu(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PerformanceHudQuickMenuTab(
     isPerformanceHudEnabled: Boolean,
@@ -496,10 +508,9 @@ private fun PerformanceHudQuickMenuTab(
             title = stringResource(R.string.performance_hud_presets),
         )
 
-        FlowRow(
+        Row(
             modifier = Modifier.padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             PerformanceHudPreset.values().forEach { preset ->
                 QuickMenuChoiceChip(
@@ -531,10 +542,9 @@ private fun PerformanceHudQuickMenuTab(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
         )
 
-        FlowRow(
+        Row(
             modifier = Modifier.padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             listOf(
                 PerformanceHudSize.SMALL to R.string.performance_hud_size_small,
@@ -594,6 +604,16 @@ private fun PerformanceHudQuickMenuTab(
             accentColor = accentColor,
         )
         QuickMenuToggleRow(
+            title = stringResource(R.string.performance_hud_frame_rate_graph),
+            enabled = performanceHudConfig.showFrameRateGraph,
+            onToggle = {
+                onPerformanceHudConfigChanged(
+                    performanceHudConfig.copy(showFrameRateGraph = !performanceHudConfig.showFrameRateGraph),
+                )
+            },
+            accentColor = accentColor,
+        )
+        QuickMenuToggleRow(
             title = stringResource(R.string.performance_hud_cpu_usage),
             enabled = performanceHudConfig.showCpuUsage,
             onToggle = {
@@ -604,11 +624,31 @@ private fun PerformanceHudQuickMenuTab(
             accentColor = accentColor,
         )
         QuickMenuToggleRow(
+            title = stringResource(R.string.performance_hud_cpu_usage_graph),
+            enabled = performanceHudConfig.showCpuUsageGraph,
+            onToggle = {
+                onPerformanceHudConfigChanged(
+                    performanceHudConfig.copy(showCpuUsageGraph = !performanceHudConfig.showCpuUsageGraph),
+                )
+            },
+            accentColor = accentColor,
+        )
+        QuickMenuToggleRow(
             title = stringResource(R.string.performance_hud_gpu_usage),
             enabled = performanceHudConfig.showGpuUsage,
             onToggle = {
                 onPerformanceHudConfigChanged(
                     performanceHudConfig.copy(showGpuUsage = !performanceHudConfig.showGpuUsage),
+                )
+            },
+            accentColor = accentColor,
+        )
+        QuickMenuToggleRow(
+            title = stringResource(R.string.performance_hud_gpu_usage_graph),
+            enabled = performanceHudConfig.showGpuUsageGraph,
+            onToggle = {
+                onPerformanceHudConfigChanged(
+                    performanceHudConfig.copy(showGpuUsageGraph = !performanceHudConfig.showGpuUsageGraph),
                 )
             },
             accentColor = accentColor,
