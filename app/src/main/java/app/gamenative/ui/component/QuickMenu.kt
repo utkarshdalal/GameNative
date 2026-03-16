@@ -74,10 +74,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.ui.data.PerformanceHudConfig
+import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.adaptivePanelWidth
-import app.gamenative.ui.widget.PerformanceHudConfig
-import app.gamenative.ui.widget.PerformanceHudSize
+import app.gamenative.utils.MathUtils.normalizedProgress
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -1503,12 +1504,6 @@ private fun QuickMenuItemRow(
         )
     }
 }
-
-private fun normalizedProgress(
-    value: Float,
-    min: Float,
-    max: Float,
-): Float = ((value - min) / (max - min)).coerceIn(0f, 1f)
 
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable

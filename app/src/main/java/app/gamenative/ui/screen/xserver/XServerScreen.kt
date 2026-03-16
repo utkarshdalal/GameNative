@@ -82,9 +82,9 @@ import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
+import app.gamenative.ui.data.PerformanceHudConfig
+import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.data.XServerState
-import app.gamenative.ui.widget.PerformanceHudConfig
-import app.gamenative.ui.widget.PerformanceHudSize
 import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner

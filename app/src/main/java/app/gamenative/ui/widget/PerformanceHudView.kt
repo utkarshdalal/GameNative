@@ -20,6 +20,9 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import app.gamenative.ui.data.PerformanceHudConfig
+import app.gamenative.ui.data.PerformanceHudSize
+import app.gamenative.utils.DateTimeUtils.formatRuntimeHours
 import java.io.File
 import java.util.ArrayDeque
 import java.util.Date
@@ -35,44 +38,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-enum class PerformanceHudSize(val prefValue: String) {
-    SMALL("small"),
-    MEDIUM("medium"),
-    LARGE("large"),
-    ;
-
-    companion object {
-        fun fromPrefValue(value: String?): PerformanceHudSize {
-            return values().firstOrNull { it.prefValue == value } ?: MEDIUM
-        }
-    }
-}
-
-/**
- * Controls which metrics are rendered inside the floating performance HUD.
- */
-data class PerformanceHudConfig(
-    val showFrameRate: Boolean = true,
-    val showCpuUsage: Boolean = true,
-    val showGpuUsage: Boolean = true,
-    val showRamUsage: Boolean = true,
-    val showBatteryLevel: Boolean = true,
-    val showPowerDraw: Boolean = true,
-    val showBatteryRuntime: Boolean = false,
-    val showClockTime: Boolean = false,
-    val showCpuTemperature: Boolean = true,
-    val showGpuTemperature: Boolean = true,
-    val showFrameRateGraph: Boolean = false,
-    val showCpuUsageGraph: Boolean = false,
-    val showGpuUsageGraph: Boolean = false,
-    val backgroundOpacity: Float = DEFAULT_BACKGROUND_OPACITY,
-    val size: PerformanceHudSize = PerformanceHudSize.MEDIUM,
-) {
-    companion object {
-        const val DEFAULT_BACKGROUND_OPACITY = 0.72f
-    }
-}
 
 /**
  * Lightweight floating HUD shown above the in-game surface.
@@ -356,7 +321,7 @@ class PerformanceHudView(
                         ?.let { (it * RUNTIME_SMOOTHING_OLD_WEIGHT) + (rawHours * RUNTIME_SMOOTHING_NEW_WEIGHT) }
                         ?: rawHours
                     smoothedBatteryRuntimeHours = smoothedHours
-                    "LEFT ${formatRuntime(smoothedHours)}"
+                    "LEFT ${formatRuntimeHours(smoothedHours)}"
                 }
             }
         }
@@ -673,17 +638,6 @@ class PerformanceHudView(
         return null
     }
 
-    private fun formatRuntime(hours: Double): String {
-        val totalMinutes = (hours * 60.0).roundToInt().coerceAtLeast(1)
-        val wholeHours = totalMinutes / 60
-        val minutes = totalMinutes % 60
-        return when {
-            wholeHours > 0 && minutes > 0 -> "${wholeHours}h ${minutes}m"
-            wholeHours > 0 -> "${wholeHours}h"
-            else -> "${minutes}m"
-        }
-    }
-
     private fun readFirstLine(path: String): String? {
         return try {
             File(path).bufferedReader().use { it.readLine() }
@@ -754,64 +708,6 @@ class PerformanceHudView(
     private val Float.dpF: Float
         get() = this * resources.displayMetrics.density
 
-    private enum class MetricId {
-        FPS,
-        CPU,
-        GPU,
-        RAM,
-        BATTERY,
-        POWER,
-        RUNTIME,
-        CLOCK,
-        CPU_TEMP,
-        GPU_TEMP,
-    }
-
-    private enum class GraphScaleMode {
-        FPS_DYNAMIC,
-        PERCENT_100,
-    }
-
-    private data class BatterySnapshot(
-        val percent: Int? = null,
-        val powerWatts: Double? = null,
-        val runtimeText: String? = null,
-    )
-
-    private data class HudSnapshot(
-        val fpsValue: Float,
-        val cpuValue: Float?,
-        val gpuValue: Float?,
-        val fps: String,
-        val cpu: String?,
-        val gpu: String?,
-        val ram: String,
-        val battery: String?,
-        val power: String?,
-        val runtime: String?,
-        val clock: String,
-        val cpuTemp: String?,
-        val gpuTemp: String?,
-    )
-
-    private data class HudAppearance(
-        val textSizeSp: Float,
-        val containerHorizontalPaddingDp: Int,
-        val containerVerticalPaddingDp: Int,
-        val rowVerticalPaddingDp: Int,
-        val rowSpacingDp: Int,
-        val columnSpacingDp: Int,
-        val cornerRadiusDp: Int,
-        val strokeWidthDp: Int,
-        val stackedGraphWidthDp: Int,
-        val stackedGraphHeightDp: Int,
-        val compactGraphWidthDp: Int,
-        val compactGraphHeightDp: Int,
-        val stackedGraphTopMarginDp: Int,
-        val stackedGraphBottomMarginDp: Int,
-        val compactGraphStartMarginDp: Int,
-    )
-
     private data class MetricViews(
         val id: MetricId,
         val supportsGraph: Boolean,
@@ -825,12 +721,6 @@ class PerformanceHudView(
 
     private data class VisibleMetric(
         val metric: MetricViews,
-        val showText: Boolean,
-        val showGraph: Boolean,
-    )
-
-    private data class MetricSignature(
-        val id: MetricId,
         val showText: Boolean,
         val showGraph: Boolean,
     )
