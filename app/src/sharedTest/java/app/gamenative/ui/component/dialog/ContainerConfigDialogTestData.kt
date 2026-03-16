@@ -187,6 +187,7 @@ private fun buildWinComponents(): String {
         "direct3d" to 0,
         "directsound" to 0,
         "directinput" to 0,
+        "directinput8" to 0,
         "directmusic" to 1,
         "directshow" to 1,
         "directplay" to 1,
