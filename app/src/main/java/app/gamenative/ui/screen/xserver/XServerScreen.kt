@@ -59,6 +59,8 @@ import app.gamenative.ui.util.SnackbarManager
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
@@ -185,6 +187,12 @@ private val isExiting = AtomicBoolean(false)
 private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
 private const val EXIT_PROCESS_POLL_INTERVAL_MS = 1_000L
 private const val EXIT_PROCESS_RESPONSE_TIMEOUT_MS = 2_000L
+
+private data class XServerViewReleaseBinding(
+    val xServerView: XServerView,
+    val windowModificationListener: WindowManager.OnWindowModificationListener,
+)
+
 private val CORE_WINE_PROCESSES = setOf(
     "wineserver",
     "services",
@@ -839,6 +847,55 @@ fun XServerScreen(
         }
     }
 
+    DisposableEffect(lifecycleOwner, xServerView) {
+        val currentXServerView = xServerView
+        if (currentXServerView == null) {
+            onDispose { }
+        } else {
+            fun syncRendererToCurrentLifecycleState() {
+                if (!currentXServerView.isAttachedToWindow) return
+
+                when {
+                    lifecycleOwner.lifecycle.currentState == Lifecycle.State.DESTROYED -> Unit
+                    lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) -> {
+                        Timber.d("Synchronizing XServerView renderer to current resumed lifecycle state")
+                        currentXServerView.onResume()
+                    }
+                    else -> {
+                        Timber.d("Synchronizing XServerView renderer to current paused lifecycle state")
+                        currentXServerView.onPause()
+                    }
+                }
+            }
+
+            val observer = LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_PAUSE,
+                    Lifecycle.Event.ON_RESUME -> {
+                        Timber.d("Synchronizing XServerView renderer for lifecycle event: $event")
+                        syncRendererToCurrentLifecycleState()
+                    }
+                    else -> Unit
+                }
+            }
+            val attachStateListener = object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {
+                    syncRendererToCurrentLifecycleState()
+                }
+
+                override fun onViewDetachedFromWindow(v: View) = Unit
+            }
+
+            lifecycleOwner.lifecycle.addObserver(observer)
+            currentXServerView.addOnAttachStateChangeListener(attachStateListener)
+            syncRendererToCurrentLifecycleState()
+            onDispose {
+                currentXServerView.removeOnAttachStateChangeListener(attachStateListener)
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            }
+        }
+    }
+
     val isPortrait = container.isPortraitMode
     // var launchedView by rememberSaveable { mutableStateOf(false) }
     Box(modifier = Modifier.fillMaxSize()) {
@@ -1007,6 +1064,7 @@ fun XServerScreen(
                     }
                 getxServer().windowManager.addOnWindowModificationListener(wmListener)
                 windowModificationListener = wmListener
+                mainRoot.tag = XServerViewReleaseBinding(this, wmListener)
 
                 if (PluviaApp.xEnvironment == null) {
                     // Launch all blocking wine setup operations on a background thread to avoid blocking main thread
@@ -1379,11 +1437,16 @@ fun XServerScreen(
             gameRoot = null
             removePerformanceHud()
             performanceHudHost = null
-            // Remove the WindowManager listener to prevent duplicates on AndroidView recreation
-            windowModificationListener?.let { listener ->
-                xServerView?.getxServer()?.windowManager?.removeOnWindowModificationListener(listener)
+
+            val releaseBinding = view.tag as? XServerViewReleaseBinding
+            releaseBinding?.let { binding ->
+                // Remove the WindowManager listener associated with the released AndroidView.
+                binding.xServerView.getxServer().windowManager.removeOnWindowModificationListener(binding.windowModificationListener)
+                if (PluviaApp.xServerView === binding.xServerView) {
+                    PluviaApp.xServerView = null
+                }
             }
-            windowModificationListener = null
+            view.tag = null
         },
     )
         }

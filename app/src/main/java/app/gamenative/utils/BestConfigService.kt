@@ -12,19 +12,16 @@ import com.winlator.fexcore.FEXCorePresetManager
 import com.winlator.core.KeyValueSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import timber.log.Timber
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -32,12 +29,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object BestConfigService {
     private const val API_BASE_URL = "https://api.gamenative.app/api/best-config"
-    private const val TIMEOUT_SECONDS = 10L
-
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build()
+    private val httpClient = Net.http
 
     // In-memory cache keyed by "${gameName}_${gpuName}"
     private val cache = ConcurrentHashMap<String, BestConfigResponse>()
@@ -91,42 +83,40 @@ object BestConfigService {
         }
 
         try {
-            withTimeout(TIMEOUT_SECONDS * 1000) {
-                val requestBody = JSONObject().apply {
-                    put("gameName", gameName)
-                    put("gpuName", gpuName)
-                }
+            val requestBody = JSONObject().apply {
+                put("gameName", gameName)
+                put("gpuName", gpuName)
+            }
 
-                val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")
-                if (attestation != null) {
-                    requestBody.put("nonce", attestation.first)
-                    requestBody.put("attestationChain", org.json.JSONArray(attestation.second))
-                }
+            val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")
+            if (attestation != null) {
+                requestBody.put("nonce", attestation.first)
+                requestBody.put("attestationChain", org.json.JSONArray(attestation.second))
+            }
 
-                val mediaType = "application/json".toMediaType()
-                val bodyString = requestBody.toString()
-                val body = bodyString.toRequestBody(mediaType)
+            val mediaType = "application/json".toMediaType()
+            val bodyString = requestBody.toString()
+            val body = bodyString.toRequestBody(mediaType)
 
-                val integrityToken = PlayIntegrity.requestToken(bodyString.toByteArray())
+            val integrityToken = PlayIntegrity.requestToken(bodyString.toByteArray())
 
-                val requestBuilder = Request.Builder()
-                    .url(API_BASE_URL)
-                    .post(body)
-                    .header("Content-Type", "application/json")
-                if (integrityToken != null) {
-                    requestBuilder.header("X-Integrity-Token", integrityToken)
-                }
-                val request = requestBuilder.build()
+            val requestBuilder = Request.Builder()
+                .url(API_BASE_URL)
+                .post(body)
+                .header("Content-Type", "application/json")
+            if (integrityToken != null) {
+                requestBuilder.header("X-Integrity-Token", integrityToken)
+            }
+            val request = requestBuilder.build()
 
-                val response = httpClient.newCall(request).execute()
-
+            httpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     Timber.tag("BestConfigService")
                         .w("API request failed - HTTP ${response.code}")
-                    return@withTimeout null
+                    return@withContext null
                 }
 
-                val responseBody = response.body?.string() ?: return@withTimeout null
+                val responseBody = response.body?.string() ?: return@withContext null
                 val jsonResponse = JSONObject(responseBody)
 
                 val bestConfigJson = jsonResponse.getJSONObject("bestConfig")
@@ -139,7 +129,6 @@ object BestConfigService {
                     matchedDeviceId = jsonResponse.getInt("matchedDeviceId")
                 )
 
-                // Cache the response
                 cache[cacheKey] = bestConfigResponse
 
                 Timber.tag("BestConfigService")
@@ -147,10 +136,6 @@ object BestConfigService {
 
                 bestConfigResponse
             }
-        } catch (e: java.util.concurrent.TimeoutException) {
-            Timber.tag("BestConfigService")
-                .e(e, "Timeout while fetching best config")
-            null
         } catch (e: Exception) {
             Timber.tag("BestConfigService")
                 .e(e, "Error fetching best config: ${e.message}")

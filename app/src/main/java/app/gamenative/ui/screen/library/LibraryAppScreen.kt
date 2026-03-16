@@ -39,7 +39,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -100,7 +99,6 @@ import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.screen.library.components.GameOptionsPanel
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.ui.util.AdaptiveHeroHeight
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
@@ -623,13 +621,12 @@ internal fun AppScreenContent(
             // Hero Section (Parallax)
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(AdaptiveHeroHeight.get()),
+                    .fillMaxWidth(),
             ) {
                 // Hero background image
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .matchParentSize()
                         .graphicsLayer {
                             translationY = parallaxOffset
                         },
@@ -675,7 +672,7 @@ internal fun AppScreenContent(
                 // Gradient overlay (bottom, for title/action bar)
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .matchParentSize()
                         .background(
                             brush = Brush.verticalGradient(
                                 colors = listOf(
@@ -719,9 +716,8 @@ internal fun AppScreenContent(
                 // Bottom overlay with title and action bar
                 Column(
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .padding(top = 128.dp, start = 20.dp, end = 20.dp, bottom = 16.dp),
                 ) {
                     // Game title
                     Text(
@@ -835,16 +831,6 @@ internal fun AppScreenContent(
                             contentDescription = stringResource(R.string.options),
                             onClick = { optionsMenuVisible = true },
                         )
-
-                        if (isInstalled) {
-                            ActionIconButton(
-                                icon = Icons.Default.Cloud,
-                                contentDescription = stringResource(R.string.cloud),
-                                onClick = {
-                                    optionsMenu.find { it.optionType == AppOptionMenuType.ForceCloudSync }?.onClick?.invoke()
-                                },
-                            )
-                        }
 
                         if (isInstalled || hasPartialDownload) {
                             ActionIconButton(

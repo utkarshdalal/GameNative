@@ -87,6 +87,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -423,59 +424,91 @@ private fun UserLoginScreenContent(
                                 ),
                         )
 
-                        // Make the content scrollable
                         val scrollState = rememberScrollState()
-                        Column(
+                        BoxWithConstraints(
                             modifier = Modifier
                                 .padding(horizontal = 24.dp, vertical = 12.dp)
-                                .fillMaxWidth()
-                                .verticalScroll(scrollState),
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                                .fillMaxWidth(),
                         ) {
-                            if (userLoginState.loginScreen == LoginScreen.TWO_FACTOR) {
-                                TwoFactorAuthScreenContent(
-                                    userLoginState = userLoginState,
-                                    message = when {
-                                        userLoginState.previousCodeIncorrect ->
-                                            stringResource(R.string.steam_2fa_incorrect)
+                            val cardContentMaxHeight = maxHeight
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .verticalScroll(scrollState),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                if (userLoginState.loginScreen == LoginScreen.TWO_FACTOR) {
+                                    TwoFactorAuthScreenContent(
+                                        userLoginState = userLoginState,
+                                        message = when {
+                                            userLoginState.previousCodeIncorrect ->
+                                                stringResource(R.string.steam_2fa_incorrect)
 
-                                        userLoginState.loginResult == LoginResult.DeviceAuth ->
-                                            stringResource(R.string.steam_2fa_device)
+                                            userLoginState.loginResult == LoginResult.DeviceAuth ->
+                                                stringResource(R.string.steam_2fa_device)
 
-                                        userLoginState.loginResult == LoginResult.DeviceConfirm ->
-                                            stringResource(R.string.steam_2fa_confirmation)
+                                            userLoginState.loginResult == LoginResult.DeviceConfirm ->
+                                                stringResource(R.string.steam_2fa_confirmation)
 
-                                        userLoginState.loginResult == LoginResult.EmailAuth ->
-                                            stringResource(
-                                                R.string.steam_2fa_email,
-                                                userLoginState.email ?: "...",
-                                            )
+                                            userLoginState.loginResult == LoginResult.EmailAuth ->
+                                                stringResource(
+                                                    R.string.steam_2fa_email,
+                                                    userLoginState.email ?: "...",
+                                                )
 
-                                        else -> ""
-                                    },
-                                    onSetTwoFactor = onSetTwoFactor,
-                                    onLogin = onTwoFactorLogin,
-                                )
-                            } else {
-                                if (isLandscape) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                    ) {
-                                        QRCodeLogin(
+                                            else -> ""
+                                        },
+                                        onSetTwoFactor = onSetTwoFactor,
+                                        onLogin = onTwoFactorLogin,
+                                    )
+                                } else {
+                                    if (isLandscape) {
+                                        Row(
                                             modifier = Modifier
-                                                .weight(1f)
-                                                .fillMaxHeight(),
-                                            isQrFailed = userLoginState.isQrFailed,
-                                            qrCode = userLoginState.qrCode,
-                                            onQrRetry = onQrRetry,
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .fillMaxHeight(),
+                                                .fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                                         ) {
+                                            QRCodeLogin(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .fillMaxHeight(),
+                                                isQrFailed = userLoginState.isQrFailed,
+                                                qrCode = userLoginState.qrCode,
+                                                onQrRetry = onQrRetry,
+                                                availableHeight = cardContentMaxHeight,
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .fillMaxHeight(),
+                                            ) {
+                                                CredentialsForm(
+                                                    connectionState = connectionState,
+                                                    username = userLoginState.username,
+                                                    onUsername = onUsername,
+                                                    password = userLoginState.password,
+                                                    onPassword = onPassword,
+                                                    rememberSession = userLoginState.rememberSession,
+                                                    onRememberSession = onRememberSession,
+                                                    onLoginBtnClick = onCredentialLogin,
+                                                    onRetryConnection = onRetryConnection,
+                                                    onContinueOffline = onContinueOffline,
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth(),
+                                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                                        ) {
+                                            QRCodeLogin(
+                                                modifier = Modifier
+                                                    .fillMaxWidth(),
+                                                isQrFailed = userLoginState.isQrFailed,
+                                                qrCode = userLoginState.qrCode,
+                                                onQrRetry = onQrRetry,
+                                            )
                                             CredentialsForm(
                                                 connectionState = connectionState,
                                                 username = userLoginState.username,
@@ -489,32 +522,6 @@ private fun UserLoginScreenContent(
                                                 onContinueOffline = onContinueOffline,
                                             )
                                         }
-                                    }
-                                } else {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth(),
-                                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                                    ) {
-                                        QRCodeLogin(
-                                            modifier = Modifier
-                                                .fillMaxWidth(),
-                                            isQrFailed = userLoginState.isQrFailed,
-                                            qrCode = userLoginState.qrCode,
-                                            onQrRetry = onQrRetry,
-                                        )
-                                        CredentialsForm(
-                                            connectionState = connectionState,
-                                            username = userLoginState.username,
-                                            onUsername = onUsername,
-                                            password = userLoginState.password,
-                                            onPassword = onPassword,
-                                            rememberSession = userLoginState.rememberSession,
-                                            onRememberSession = onRememberSession,
-                                            onLoginBtnClick = onCredentialLogin,
-                                            onRetryConnection = onRetryConnection,
-                                            onContinueOffline = onContinueOffline,
-                                        )
                                     }
                                 }
                             }
@@ -826,12 +833,15 @@ private fun QRCodeLogin(
     isQrFailed: Boolean,
     qrCode: String?,
     onQrRetry: () -> Unit,
+    availableHeight: Dp = Dp.Unspecified,
 ) {
     BoxWithConstraints(modifier = modifier) {
         val instructionTextHeight = 40.dp
         val qrPadding = 16.dp
-        val availableForQr = maxHeight - instructionTextHeight - qrPadding
+        val effectiveHeight = if (availableHeight != Dp.Unspecified) availableHeight else maxHeight
+        val availableForQr = effectiveHeight - instructionTextHeight - qrPadding
         val qrSize = availableForQr.coerceIn(100.dp, 200.dp)
+        val showInstructionText = effectiveHeight - qrSize - qrPadding >= instructionTextHeight
 
         var showQrFailed by remember { mutableStateOf(false) }
         LaunchedEffect(isQrFailed) {
@@ -877,15 +887,17 @@ private fun QRCodeLogin(
                         .size(qrSize),
                     color = MaterialTheme.colorScheme.primary,
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                if (showInstructionText) {
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                Text(
-                    text = stringResource(R.string.login_qr_instructions),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
+                    Text(
+                        text = stringResource(R.string.login_qr_instructions),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
             } else {
                 Box(
                     modifier = Modifier
@@ -922,15 +934,17 @@ private fun QRCodeLogin(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                if (showInstructionText) {
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                Text(
-                    text = stringResource(R.string.login_qr_instructions),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
+                    Text(
+                        text = stringResource(R.string.login_qr_instructions),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
             }
         }
     }

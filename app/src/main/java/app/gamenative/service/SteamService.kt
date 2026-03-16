@@ -411,6 +411,22 @@ class SteamService : Service(), IChallengeUrlChanged {
         val externalAppInstallPath: String
             get() = Paths.get(PrefManager.externalStoragePath, "Steam", "steamapps", "common").pathString
 
+        // all install paths: internal + configured external + all mounted volumes
+        val allInstallPaths: List<String>
+            get() {
+                val paths = mutableListOf(internalAppInstallPath)
+                // only include configured external path if it's a real absolute path
+                if (PrefManager.externalStoragePath.isNotBlank()) {
+                    paths += externalAppInstallPath
+                }
+                for (volPath in DownloadService.externalVolumePaths) {
+                    if (volPath.isNotBlank()) {
+                        paths += Paths.get(volPath, "Steam", "steamapps", "common").pathString
+                    }
+                }
+                return paths.distinct()
+            }
+
         private val internalAppStagingPath: String
             get() {
                 return Paths.get(DownloadService.baseDataDirPath, "Steam", "steamapps", "staging").pathString
@@ -761,22 +777,21 @@ class SteamService : Service(), IChallengeUrlChanged {
             val appName = getAppDirName(info)
             val oldName = info?.name.orEmpty()
 
-            // Internal first (legacy installs), external second
-            val internalPath = Paths.get(internalAppInstallPath, appName)
-            if (Files.exists(internalPath)) return internalPath.pathString
-            val internalOld = Paths.get(internalAppInstallPath, oldName)
-            if (oldName.isNotEmpty() && Files.exists(internalOld)) return internalOld.pathString
-
-            val externalPath = Paths.get(externalAppInstallPath, appName)
-            if (Files.exists(externalPath)) return externalPath.pathString
-            val externalOld = Paths.get(externalAppInstallPath, oldName)
-            if (oldName.isNotEmpty() && Files.exists(externalOld)) return externalOld.pathString
-
-            // Nothing on disk yet – default to whatever location you want new installs to use
-            if (PrefManager.useExternalStorage) {
-                return externalPath.pathString
+            // search internal, configured external, and all mounted volumes
+            for (basePath in allInstallPaths) {
+                val path = Paths.get(basePath, appName)
+                if (Files.exists(path)) return path.pathString
+                if (oldName.isNotEmpty()) {
+                    val oldPath = Paths.get(basePath, oldName)
+                    if (Files.exists(oldPath)) return oldPath.pathString
+                }
             }
-            return internalPath.pathString
+
+            // nothing on disk yet — default to preferred install location
+            if (PrefManager.useExternalStorage) {
+                return Paths.get(externalAppInstallPath, appName).pathString
+            }
+            return Paths.get(internalAppInstallPath, appName).pathString
         }
 
         private fun isExecutable(flags: Any): Boolean = when (flags) {

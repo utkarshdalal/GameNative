@@ -110,6 +110,7 @@
     <string name="best_config_known_config_invalid">Известная конфигурация невалидна</string>
     <string name="best_config_missing_content">%s отсутствует</string>
     <string name="best_config_no_config_available">Нет доступной лучшей конфигурации для этой игры</string>
+    <string name="best_config_fetch_failed">Не удалось получить конфигурацию. Проверьте сетевое подключение.</string>
     <string name="bind_button">Привязать: %1$s</string>
     <string name="binding_none">Нет</string>
     <string name="bindings">Привязки</string>
