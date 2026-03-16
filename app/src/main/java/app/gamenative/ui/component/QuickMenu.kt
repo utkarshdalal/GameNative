@@ -56,6 +56,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -996,6 +997,7 @@ private fun QuickMenuAdjustmentRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val shape = RoundedCornerShape(14.dp)
+    var isAdjustmentLocked by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -1019,7 +1021,7 @@ private fun QuickMenuAdjustmentRow(
                 },
             )
             .then(
-                if (isFocused) {
+                if (isFocused && !isAdjustmentLocked) {
                     Modifier.border(
                         width = 2.dp,
                         color = accentColor.copy(alpha = 0.7f),
@@ -1036,22 +1038,31 @@ private fun QuickMenuAdjustmentRow(
                     Modifier
                 }
             )
-            .selectable(
-                selected = isFocused,
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = {},
-            )
+            .onFocusChanged {
+                if (!it.isFocused) {
+                    isAdjustmentLocked = false
+                }
+            }
             .focusable(interactionSource = interactionSource)
             .onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
-                    when (keyEvent.nativeKeyEvent.keyCode) {
-                        KeyEvent.KEYCODE_DPAD_LEFT -> {
+                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && isFocused) {
+                    when {
+                        keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_A -> {
+                            isAdjustmentLocked = !isAdjustmentLocked
+                            true
+                        }
+
+                        isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_B -> {
+                            isAdjustmentLocked = false
+                            true
+                        }
+
+                        isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_LEFT -> {
                             onDecrease()
                             true
                         }
 
-                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                        isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> {
                             onIncrease()
                             true
                         }
@@ -1062,6 +1073,12 @@ private fun QuickMenuAdjustmentRow(
                     false
                 }
             }
+            .selectable(
+                selected = isFocused,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {},
+            )
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Row(
@@ -1075,11 +1092,23 @@ private fun QuickMenuAdjustmentRow(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
             )
-            Text(
-                text = valueText,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = valueText,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (isAdjustmentLocked) {
+                    Text(
+                        text = "●",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = accentColor,
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -1093,7 +1122,8 @@ private fun QuickMenuAdjustmentRow(
         ) {
             QuickMenuAdjustmentButton(
                 text = "-",
-                isFocused = isFocused,
+                rowIsFocused = isFocused,
+                isAdjustmentLocked = isAdjustmentLocked,
                 accentColor = accentColor,
                 onClick = onDecrease,
             )
@@ -1140,7 +1170,8 @@ private fun QuickMenuAdjustmentRow(
 
             QuickMenuAdjustmentButton(
                 text = "+",
-                isFocused = isFocused,
+                rowIsFocused = isFocused,
+                isAdjustmentLocked = isAdjustmentLocked,
                 accentColor = accentColor,
                 onClick = onIncrease,
             )
@@ -1151,7 +1182,8 @@ private fun QuickMenuAdjustmentRow(
 @Composable
 private fun QuickMenuAdjustmentButton(
     text: String,
-    isFocused: Boolean,
+    rowIsFocused: Boolean,
+    isAdjustmentLocked: Boolean,
     accentColor: Color,
     onClick: () -> Unit,
 ) {
@@ -1161,13 +1193,19 @@ private fun QuickMenuAdjustmentButton(
             .fillMaxHeight()
             .clip(RoundedCornerShape(10.dp))
             .background(
-                if (isFocused) accentColor.copy(alpha = 0.18f)
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                if (isAdjustmentLocked) {
+                    accentColor.copy(alpha = 0.25f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (rowIsFocused) 0.32f else 0.45f)
+                },
             )
             .border(
-                width = 1.dp,
-                color = if (isFocused) accentColor.copy(alpha = 0.55f)
-                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                width = if (isAdjustmentLocked) 2.dp else 1.dp,
+                color = if (isAdjustmentLocked) {
+                    accentColor.copy(alpha = 0.9f)
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                },
                 shape = RoundedCornerShape(10.dp),
             )
             .clickable(
@@ -1181,7 +1219,7 @@ private fun QuickMenuAdjustmentButton(
             text = text,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurface,
+            color = if (isAdjustmentLocked) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

@@ -283,6 +283,13 @@ object PrefManager {
             setPref(SHOW_FPS, value)
         }
 
+    private val PERFORMANCE_HUD_COMPACT_MODE = booleanPreferencesKey("performance_hud_compact_mode")
+    var performanceHudCompactMode: Boolean
+        get() = getPref(PERFORMANCE_HUD_COMPACT_MODE, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_COMPACT_MODE, value)
+        }
+
     private val PERFORMANCE_HUD_SHOW_FRAME_RATE = booleanPreferencesKey("performance_hud_show_frame_rate")
     var performanceHudShowFrameRate: Boolean
         get() = getPref(PERFORMANCE_HUD_SHOW_FRAME_RATE, true)

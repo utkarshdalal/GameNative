@@ -8,11 +8,13 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
+import android.text.TextUtils
 import android.text.format.DateFormat
 import android.util.TypedValue
+import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.GridLayout
+import android.widget.LinearLayout
 import android.widget.TextView
 import java.io.File
 import java.util.Date
@@ -73,12 +75,15 @@ class PerformanceHudView(
     context: Context,
     private val fpsProvider: () -> Float,
     initialConfig: PerformanceHudConfig = PerformanceHudConfig(),
+    initialCompactMode: Boolean = false,
 ) : FrameLayout(context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var updateJob: Job? = null
     private var config = initialConfig
+    private var isCompactMode = initialCompactMode
     private var lastSnapshot: HudSnapshot? = null
     private var attachedRows: List<TextView> = emptyList()
+    private var attachedCompactMode = isCompactMode
     private var appearance = appearanceFor(initialConfig.size)
     private var smoothedBatteryRuntimeHours: Double? = null
 
@@ -110,22 +115,33 @@ class PerformanceHudView(
         gpuTempText,
     )
 
-    private val contentContainer = GridLayout(context).apply {
-        orientation = GridLayout.HORIZONTAL
-        columnCount = 2
+    private val contentContainer = LinearLayout(context).apply {
         layoutParams = LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
         )
-        background = backgroundDrawable
     }
 
     private var lastCpuTotal: Long? = null
     private var lastCpuIdle: Long? = null
 
     init {
+        background = backgroundDrawable
         addView(contentContainer)
         applyAppearance()
+        refreshVisibleRows()
+    }
+
+    fun isCompactMode(): Boolean = isCompactMode
+
+    fun setCompactMode(compactMode: Boolean) {
+        if (isCompactMode == compactMode) {
+            return
+        }
+
+        isCompactMode = compactMode
+        refreshVisibleRows()
+        requestLayout()
     }
 
     fun setConfig(config: PerformanceHudConfig) {
@@ -155,7 +171,8 @@ class PerformanceHudView(
 
         updateJob = scope.launch {
             while (isActive) {
-                val currentFps = fpsProvider().coerceAtLeast(0f)
+                val rawFps = fpsProvider()
+                val currentFps = if (rawFps.isFinite()) rawFps.coerceAtLeast(0f) else 0f
                 val snapshot = withContext(Dispatchers.IO) {
                     collectSnapshot(currentFps)
                 }
@@ -174,7 +191,7 @@ class PerformanceHudView(
         appearance = appearanceFor(config.size)
         val opacity = config.backgroundOpacity.coerceIn(MIN_BACKGROUND_OPACITY, MAX_BACKGROUND_OPACITY)
 
-        contentContainer.setPadding(
+        setPadding(
             appearance.containerHorizontalPaddingDp.dp,
             appearance.containerVerticalPaddingDp.dp,
             appearance.containerHorizontalPaddingDp.dp,
@@ -202,7 +219,8 @@ class PerformanceHudView(
 
         allRows.forEach { row ->
             row.setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.textSizeSp)
-            row.setPadding(0, appearance.rowVerticalPaddingDp.dp, 0, appearance.rowVerticalPaddingDp.dp)
+            row.maxLines = 1
+            row.ellipsize = TextUtils.TruncateAt.END
         }
 
         attachedRows = emptyList()
@@ -312,22 +330,39 @@ class PerformanceHudView(
             addRowIfVisible(gpuTempText, config.showGpuTemperature)
         }
 
-        val columnCount = if (visibleRows.size <= 1) 1 else 2
         val shouldRebuildLayout =
-            contentContainer.columnCount != columnCount ||
+            attachedCompactMode != isCompactMode ||
                 visibleRows.size != attachedRows.size ||
                 visibleRows.zip(attachedRows).any { (current, previous) -> current !== previous }
 
         if (shouldRebuildLayout) {
-            contentContainer.removeAllViews()
-            contentContainer.columnCount = columnCount
-            visibleRows.forEachIndexed { index, row ->
-                contentContainer.addView(row, createRowLayoutParams(index, columnCount))
-            }
+            rebuildLayout(visibleRows)
             attachedRows = visibleRows
+            attachedCompactMode = isCompactMode
         }
 
         visibility = if (visibleRows.isEmpty()) GONE else VISIBLE
+    }
+
+    private fun rebuildLayout(visibleRows: List<TextView>) {
+        contentContainer.removeAllViews()
+        contentContainer.orientation = if (isCompactMode) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
+        contentContainer.gravity = if (isCompactMode) Gravity.CENTER_VERTICAL else Gravity.START
+
+        visibleRows.forEachIndexed { index, row ->
+            (row.parent as? ViewGroup)?.removeView(row)
+            applyRowAppearance(row)
+            contentContainer.addView(row, createRowLayoutParams(index, visibleRows.lastIndex))
+
+            if (isCompactMode && index < visibleRows.lastIndex) {
+                contentContainer.addView(createSeparator())
+            }
+        }
+    }
+
+    private fun applyRowAppearance(row: TextView) {
+        val verticalPadding = if (isCompactMode) 0 else appearance.rowVerticalPaddingDp.dp
+        row.setPadding(0, verticalPadding, 0, verticalPadding)
     }
 
     private fun MutableList<TextView>.addRowIfVisible(view: TextView, enabled: Boolean) {
@@ -336,19 +371,27 @@ class PerformanceHudView(
         }
     }
 
-    private fun createRowLayoutParams(index: Int, columnCount: Int): GridLayout.LayoutParams {
-        return GridLayout.LayoutParams().apply {
-            width = ViewGroup.LayoutParams.WRAP_CONTENT
-            height = ViewGroup.LayoutParams.WRAP_CONTENT
-            rowSpec = GridLayout.spec(GridLayout.UNDEFINED)
-            columnSpec = GridLayout.spec(GridLayout.UNDEFINED)
-            val isFirstColumn = columnCount > 1 && index % columnCount == 0
-            setMargins(
-                0,
-                appearance.rowSpacingDp.dp,
-                if (isFirstColumn) appearance.columnSpacingDp.dp else 0,
-                appearance.rowSpacingDp.dp,
-            )
+    private fun createRowLayoutParams(index: Int, lastIndex: Int): LinearLayout.LayoutParams {
+        return LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        ).apply {
+            if (!isCompactMode && index < lastIndex) {
+                bottomMargin = appearance.rowSpacingDp.dp
+            }
+        }
+    }
+
+    private fun createSeparator(): TextView {
+        val horizontalPadding = (appearance.columnSpacingDp.dp / 4).coerceAtLeast(1)
+        return TextView(context).apply {
+            text = " | "
+            setTextColor(0x88FFFFFF.toInt())
+            setTypeface(Typeface.MONOSPACE, Typeface.BOLD)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.textSizeSp)
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+            setPadding(horizontalPadding, 0, horizontalPadding, 0)
         }
     }
 
