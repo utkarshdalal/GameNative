@@ -53,12 +53,10 @@ object DownloadService {
         if (lastUpdateTime < (time - 5 * 1000) || lastUpdateTime > time) {
             lastUpdateTime = time
 
-            // scan internal + all mounted external volumes, deduplicate across volumes
+            // scan all install paths, deduplicate across volumes
             val dirs = mutableSetOf<String>()
-            dirs += getSubdirectories(SteamService.internalAppInstallPath)
-            for (volPath in externalVolumePaths) {
-                val extInstallPath = java.nio.file.Paths.get(volPath, "Steam", "steamapps", "common").toString()
-                dirs += getSubdirectories(extInstallPath)
+            for (installPath in SteamService.allInstallPaths) {
+                dirs += getSubdirectories(installPath)
             }
 
             downloadDirectoryApps = dirs.toMutableList()
