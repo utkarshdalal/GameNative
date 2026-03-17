@@ -367,7 +367,7 @@ fun QuickMenu(
                                     icon = Icons.Default.QueryStats,
                                     contentDescriptionResId = R.string.performance_hud,
                                     selected = selectedTab == QuickMenuTab.HUD,
-                                    accentColor = PluviaTheme.colors.accentWarning,
+                                    accentColor = PluviaTheme.colors.accentPurple,
                                     onSelected = { selectedTab = QuickMenuTab.HUD },
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = hudTabFocusRequester,
@@ -496,7 +496,7 @@ private fun PerformanceHudQuickMenuTab(
     focusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
-    val accentColor = PluviaTheme.colors.accentWarning
+    val accentColor = PluviaTheme.colors.accentPurple
 
     Column(
         modifier = modifier
