@@ -36,10 +36,19 @@ public class EffectComposer {
         effects.clear();
         effects.addAll(newEffects);
 
+        ArrayList<Effect> removedEffects = new ArrayList<>();
         for (Effect effect : previousEffects) {
             if (!effects.contains(effect)) {
-                effect.destroy();
+                removedEffects.add(effect);
             }
+        }
+
+        if (!removedEffects.isEmpty()) {
+            renderer.xServerView.queueEvent(() -> {
+                for (Effect effect : removedEffects) {
+                    effect.destroy();
+                }
+            });
         }
 
         renderer.xServerView.requestRender();
