@@ -315,12 +315,6 @@ fun GeneralTabContent(
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.show_fps)) },
-            state = config.showFPS,
-            onCheckedChange = { state.config.value = config.copy(showFPS = it) },
-        )
-        SettingsSwitch(
-            colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.force_dlc)) },
             subtitle = { Text(text = stringResource(R.string.force_dlc_description)) },
             state = config.forceDlc,

@@ -247,6 +247,39 @@
     <string name="screen_effects_ntsc_description">Adds retro composite TV warping, bleed, and scanlines.</string>
     <string name="screen_effects_reset">Reset</string>
     <string name="screen_effects_close">Close</string>
+    <string name="quick_menu_tab_general">General</string>
+    <string name="quick_menu_tab_controller">Controller</string>
+    <string name="performance_hud">Performance HUD</string>
+    <string name="performance_hud_description">Show or hide the in-game overlay.</string>
+    <string name="performance_hud_presets">Presets</string>
+    <string name="performance_hud_presets_description">Quickly switch between common HUD layouts.</string>
+    <string name="performance_hud_preset_fps_only">1</string>
+    <string name="performance_hud_preset_essential">2</string>
+    <string name="performance_hud_preset_battery">3</string>
+    <string name="performance_hud_preset_full">4</string>
+    <string name="performance_hud_appearance">Appearance</string>
+    <string name="performance_hud_appearance_description">Adjust HUD size and background opacity.</string>
+    <string name="performance_hud_size">Size</string>
+    <string name="performance_hud_size_small">S</string>
+    <string name="performance_hud_size_medium">M</string>
+    <string name="performance_hud_size_large">L</string>
+    <string name="performance_hud_background_opacity">Background opacity</string>
+    <string name="performance_hud_percentage_value">%1$d%%</string>
+    <string name="performance_hud_metrics">Shown metrics</string>
+    <string name="performance_hud_metrics_description">Choose which stats appear in the overlay.</string>
+    <string name="performance_hud_frame_rate">Frame rate</string>
+    <string name="performance_hud_frame_rate_graph">FPS graph</string>
+    <string name="performance_hud_cpu_usage">CPU usage</string>
+    <string name="performance_hud_cpu_usage_graph">CPU graph</string>
+    <string name="performance_hud_gpu_usage">GPU usage</string>
+    <string name="performance_hud_gpu_usage_graph">GPU graph</string>
+    <string name="performance_hud_ram_usage">RAM usage</string>
+    <string name="performance_hud_battery_level">Battery level</string>
+    <string name="performance_hud_power_draw">Power draw</string>
+    <string name="performance_hud_runtime_left">Runtime left</string>
+    <string name="performance_hud_clock_time">Clock time</string>
+    <string name="performance_hud_cpu_temperature">CPU temperature</string>
+    <string name="performance_hud_gpu_temperature">GPU temperature</string>
     <string name="touchpad_help">Touchpad Help</string>
     <string name="hide_controls_with_controller">Hide on-screen controls with controller</string>
     <string name="hide_controls_with_controller_description">Automatically hide on-screen controls when a physical controller is connected</string>
@@ -598,6 +631,7 @@
     <string name="launch_steam_client_description">Reduces performance and slows down launch\nAllows online play and fixes DRM and controller issues\nNot all games work</string>
     <string name="steam_offline_mode">Steam Offline Mode</string>
     <string name="steam_offline_mode_description">Launch Steam games in offline mode</string>
+    <string name="achievement_unlocked">Achievement Unlocked</string>
     <string name="allow_steam_updates">Allow Steam updates</string>
     <string name="allow_steam_updates_description">Updates Steam to the latest version. Significantly reduces performance.</string>
     <string name="steam_type">Steam Type</string>
@@ -921,6 +955,10 @@
     <string name="main_installing_glibc">Installing glibc components...</string>
     <string name="main_installing_bionic">Installing Bionic components...</string>
     <string name="main_loading">Loading...</string>
+    <string name="download_failed_title">Download Failed</string>
+    <string name="download_failed_message">A required file could not be downloaded. Please check your network connection and try again.</string>
+    <string name="install_failed_title">Installation Failed</string>
+    <string name="install_failed_message">System files could not be installed. Please try again. If the problem persists, try a different network or use a VPN.</string>
 
     <!-- PluviaMain: Session Conflicts -->
     <string name="main_app_running_title">App Running</string>
@@ -1013,6 +1051,7 @@
     <string name="best_config_applied_successfully">Config applied successfully</string>
     <string name="best_config_known_config_invalid">Known config invalid</string>
     <string name="best_config_no_config_available">No best config available for this game</string>
+    <string name="best_config_fetch_failed">Failed to fetch config. Please check your network connection.</string>
     <string name="best_config_apply_failed">Failed to apply config: %s</string>
     <string name="best_config_missing_content">%s missing</string>
     <string name="import_config">Import config</string>

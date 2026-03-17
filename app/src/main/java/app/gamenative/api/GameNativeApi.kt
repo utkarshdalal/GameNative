@@ -1,6 +1,7 @@
 package app.gamenative.api
 
 import app.gamenative.BuildConfig
+import app.gamenative.utils.Net
 import app.gamenative.utils.PlayIntegrity
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -9,19 +10,13 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.IOException
-import java.util.concurrent.TimeUnit
 
 object GameNativeApi {
 
     val BASE_URL: String =
         if (BuildConfig.DEBUG) "http://10.0.2.2:8787" else "https://api.gamenative.app"
 
-    val httpClient: OkHttpClient by lazy {
-        OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(10, TimeUnit.SECONDS)
-            .build()
-    }
+    val httpClient: OkHttpClient = Net.http
 
     inline fun <T> executeRequest(request: Request, parser: (String) -> T): ApiResult<T> {
         return try {

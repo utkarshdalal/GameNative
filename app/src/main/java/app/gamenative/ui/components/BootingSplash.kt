@@ -56,7 +56,7 @@ fun BootingSplash(
             "Tip: Try the Adreno or Snapdragon 8 Elite drivers on glibc if you are on a compatible device.",
             "Tip: If you are getting a black screen when launching a game, try Open Container and launching the game from A: drive.",
             "Tip: You can add different locations for Custom Games in the settings.",
-            "Tip: Turn off \"Show FPS\" to get rid of the mesa overlay.",
+            "Tip: Use the quick menu performance HUD when you want FPS stats in-game.",
             "Tip: Install packages in A:\\_CommonRedist if your game doesn't launch.",
             "Tip: You can enable or disable the onscreen controller with your device's back key.",
             "Tip: You can bring up the keyboard with your device's back key.",

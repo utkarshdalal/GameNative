@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -55,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -75,6 +77,159 @@ import kotlin.math.abs
 
 private const val SCREEN_EFFECT_PERCENT_STEP = 5f
 private const val SCREEN_EFFECT_GAMMA_STEP = 0.1f
+
+@Composable
+fun ScreenEffectsTabContent(
+    renderer: GLRenderer,
+    modifier: Modifier = Modifier,
+    firstItemFocusRequester: FocusRequester? = null,
+) {
+    val composer = renderer.effectComposer
+    val initialColorEffect = composer.getEffect(ColorEffect::class.java)
+
+    var brightness by remember(renderer) {
+        mutableFloatStateOf((initialColorEffect?.brightness ?: 0f) * 100f)
+    }
+    var contrast by remember(renderer) {
+        mutableFloatStateOf((initialColorEffect?.contrast ?: 0f) * 100f)
+    }
+    var gamma by remember(renderer) {
+        mutableFloatStateOf(initialColorEffect?.gamma ?: 1.0f)
+    }
+    var enableToon by remember(renderer) {
+        mutableStateOf(composer.getEffect(ToonEffect::class.java) != null)
+    }
+    var enableFXAA by remember(renderer) {
+        mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
+    }
+    var enableCRT by remember(renderer) {
+        mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
+    }
+    var enableNTSC by remember(renderer) {
+        mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
+    }
+
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableCRT, enableNTSC) {
+        val effects = mutableListOf<Effect>()
+
+        if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
+            val colorEffect = ColorEffect()
+            colorEffect.brightness = brightness / 100f
+            colorEffect.contrast = contrast / 100f
+            colorEffect.gamma = gamma
+            effects += colorEffect
+        }
+
+        if (enableToon) {
+            effects += composer.getEffect(ToonEffect::class.java) ?: ToonEffect()
+        }
+        if (enableFXAA) {
+            effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
+        }
+        if (enableCRT) {
+            effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
+        }
+        if (enableNTSC) {
+            effects += composer.getEffect(NTSCCombinedEffect::class.java) ?: NTSCCombinedEffect()
+        }
+
+        composer.setEffects(effects)
+    }
+
+    fun resetEffects() {
+        brightness = 0f
+        contrast = 0f
+        gamma = 1.0f
+        enableToon = false
+        enableFXAA = false
+        enableCRT = false
+        enableNTSC = false
+    }
+
+    Column(
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .focusGroup()
+            .padding(vertical = 12.dp),
+    ) {
+        OptionSectionHeader(text = stringResource(R.string.screen_effects_color_adjustments))
+
+        ScreenEffectAdjustmentRow(
+            title = stringResource(R.string.screen_effects_brightness),
+            valueText = formatPercent(brightness),
+            progress = normalizedProgress(brightness, -100f, 100f),
+            onDecrease = {
+                brightness = (brightness - SCREEN_EFFECT_PERCENT_STEP).coerceIn(-100f, 100f)
+            },
+            onIncrease = {
+                brightness = (brightness + SCREEN_EFFECT_PERCENT_STEP).coerceIn(-100f, 100f)
+            },
+            focusRequester = firstItemFocusRequester,
+        )
+        ScreenEffectAdjustmentRow(
+            title = stringResource(R.string.screen_effects_contrast),
+            valueText = formatPercent(contrast),
+            progress = normalizedProgress(contrast, -100f, 100f),
+            onDecrease = {
+                contrast = (contrast - SCREEN_EFFECT_PERCENT_STEP).coerceIn(-100f, 100f)
+            },
+            onIncrease = {
+                contrast = (contrast + SCREEN_EFFECT_PERCENT_STEP).coerceIn(-100f, 100f)
+            },
+        )
+        ScreenEffectAdjustmentRow(
+            title = stringResource(R.string.screen_effects_gamma),
+            valueText = String.format("%.2fx", gamma),
+            progress = normalizedProgress(gamma, 0.5f, 2.5f),
+            onDecrease = {
+                gamma = (gamma - SCREEN_EFFECT_GAMMA_STEP).coerceIn(0.5f, 2.5f)
+            },
+            onIncrease = {
+                gamma = (gamma + SCREEN_EFFECT_GAMMA_STEP).coerceIn(0.5f, 2.5f)
+            },
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        OptionSectionHeader(text = stringResource(R.string.screen_effects_shader_toggles))
+
+        ScreenEffectToggleRow(
+            title = stringResource(R.string.screen_effects_toon),
+            subtitle = stringResource(R.string.screen_effects_toon_description),
+            enabled = enableToon,
+            onToggle = { enableToon = !enableToon },
+        )
+        ScreenEffectToggleRow(
+            title = stringResource(R.string.screen_effects_fxaa),
+            subtitle = stringResource(R.string.screen_effects_fxaa_description),
+            enabled = enableFXAA,
+            onToggle = { enableFXAA = !enableFXAA },
+        )
+        ScreenEffectToggleRow(
+            title = stringResource(R.string.screen_effects_crt),
+            subtitle = stringResource(R.string.screen_effects_crt_description),
+            enabled = enableCRT,
+            onToggle = { enableCRT = !enableCRT },
+        )
+        ScreenEffectToggleRow(
+            title = stringResource(R.string.screen_effects_ntsc),
+            subtitle = stringResource(R.string.screen_effects_ntsc_description),
+            enabled = enableNTSC,
+            onToggle = { enableNTSC = !enableNTSC },
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        ScreenEffectActionRow(
+            title = stringResource(R.string.screen_effects_reset),
+            icon = Icons.Default.RestartAlt,
+            accentColor = PluviaTheme.colors.accentPurple,
+            onClick = ::resetEffects,
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
 
 @Composable
 fun ScreenEffectsPanel(
@@ -338,7 +493,7 @@ fun ScreenEffectsPanel(
                     ScreenEffectActionRow(
                         title = stringResource(R.string.screen_effects_reset),
                         icon = Icons.Default.RestartAlt,
-                        accentColor = MaterialTheme.colorScheme.secondary,
+                        accentColor = PluviaTheme.colors.accentPurple,
                         onClick = ::resetEffects,
                     )
 
@@ -361,12 +516,14 @@ private fun ScreenEffectAdjustmentRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val accentColor = PluviaTheme.colors.accentPink
+    val accentColor = PluviaTheme.colors.accentPurple
+    val shape = RoundedCornerShape(14.dp)
+    var isAdjustmentLocked by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(shape)
             .background(
                 if (isFocused) {
                     Brush.horizontalGradient(
@@ -385,40 +542,64 @@ private fun ScreenEffectAdjustmentRow(
                 },
             )
             .then(
-                if (isFocused) {
+                if (isFocused && !isAdjustmentLocked) {
                     Modifier.border(
                         width = 2.dp,
                         color = accentColor.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = shape,
                     )
                 } else {
                     Modifier
                 },
             )
-            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .selectable(
-                selected = isFocused,
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = {},
+            .then(
+                if (focusRequester != null) {
+                    Modifier.focusRequester(focusRequester)
+                } else {
+                    Modifier
+                }
             )
+            .onFocusChanged {
+                if (!it.isFocused) {
+                    isAdjustmentLocked = false
+                }
+            }
+            .focusable(interactionSource = interactionSource)
             .onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
-                    when (keyEvent.nativeKeyEvent.keyCode) {
-                        KeyEvent.KEYCODE_DPAD_LEFT -> {
+                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && isFocused) {
+                    when {
+                        keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_A -> {
+                            isAdjustmentLocked = !isAdjustmentLocked
+                            true
+                        }
+
+                        isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_B -> {
+                            isAdjustmentLocked = false
+                            true
+                        }
+
+                        isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_LEFT -> {
                             onDecrease()
                             true
                         }
-                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
+
+                        isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> {
                             onIncrease()
                             true
                         }
+
                         else -> false
                     }
                 } else {
                     false
                 }
             }
+            .selectable(
+                selected = isFocused,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {},
+            )
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Row(
@@ -432,11 +613,23 @@ private fun ScreenEffectAdjustmentRow(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
             )
-            Text(
-                text = valueText,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = valueText,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (isAdjustmentLocked) {
+                    Text(
+                        text = "●",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = accentColor,
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -448,35 +641,13 @@ private fun ScreenEffectAdjustmentRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .width(44.dp)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        if (isFocused) accentColor.copy(alpha = 0.18f)
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = if (isFocused) accentColor.copy(alpha = 0.55f)
-                        else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                        shape = RoundedCornerShape(10.dp),
-                    )
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDecrease,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "-",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurface,
-                )
-            }
+            ScreenEffectAdjustmentButton(
+                text = "-",
+                rowIsFocused = isFocused,
+                isAdjustmentLocked = isAdjustmentLocked,
+                accentColor = accentColor,
+                onClick = onDecrease,
+            )
 
             Box(
                 modifier = Modifier
@@ -518,36 +689,59 @@ private fun ScreenEffectAdjustmentRow(
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .width(44.dp)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        if (isFocused) accentColor.copy(alpha = 0.18f)
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = if (isFocused) accentColor.copy(alpha = 0.55f)
-                        else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                        shape = RoundedCornerShape(10.dp),
-                    )
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onIncrease,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "+",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurface,
-                )
-            }
+            ScreenEffectAdjustmentButton(
+                text = "+",
+                rowIsFocused = isFocused,
+                isAdjustmentLocked = isAdjustmentLocked,
+                accentColor = accentColor,
+                onClick = onIncrease,
+            )
         }
+    }
+}
+
+@Composable
+private fun ScreenEffectAdjustmentButton(
+    text: String,
+    rowIsFocused: Boolean,
+    isAdjustmentLocked: Boolean,
+    accentColor: Color,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .width(44.dp)
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(10.dp))
+            .background(
+                if (isAdjustmentLocked) {
+                    accentColor.copy(alpha = 0.25f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (rowIsFocused) 0.32f else 0.45f)
+                },
+            )
+            .border(
+                width = if (isAdjustmentLocked) 2.dp else 1.dp,
+                color = if (isAdjustmentLocked) {
+                    accentColor.copy(alpha = 0.9f)
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                },
+                shape = RoundedCornerShape(10.dp),
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = if (isAdjustmentLocked) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -560,7 +754,7 @@ private fun ScreenEffectToggleRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val accentColor = PluviaTheme.colors.accentPink
+    val accentColor = PluviaTheme.colors.accentPurple
 
     Row(
         modifier = Modifier
