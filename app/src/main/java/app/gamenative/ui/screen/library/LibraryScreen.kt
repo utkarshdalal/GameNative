@@ -79,10 +79,12 @@ import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.enums.SortOption
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.model.LibraryViewModel
+import app.gamenative.service.SteamService
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import app.gamenative.ui.screen.library.components.LibraryListPane
 import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
 import app.gamenative.ui.screen.library.components.LibrarySearchBar
+import app.gamenative.ui.screen.library.components.LibrarySourceNotLoggedInSplash
 import app.gamenative.ui.screen.library.components.LibraryTabBar
 import app.gamenative.ui.screen.auth.AmazonOAuthActivity
 import app.gamenative.ui.screen.auth.EpicOAuthActivity
@@ -91,6 +93,9 @@ import app.gamenative.ui.screen.library.components.SystemMenu
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.PlatformAuthUiHelpers
 import app.gamenative.ui.util.PlatformLogoutCallbacks
+import app.gamenative.service.amazon.AmazonService
+import app.gamenative.service.epic.EpicService
+import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.PlatformOAuthHandlers
 import kotlinx.coroutines.launch
@@ -768,21 +773,67 @@ private fun LibraryScreenContent(
         if (selectedAppId == null) {
             // Use Box to allow content to scroll behind the tab bar
             Box(modifier = Modifier.fillMaxSize()) {
-                // Library list (content scrolls behind tab bar)
-                LibraryListPane(
-                    state = state,
-                    listState = listState,
-                    currentLayout = currentPaneType,
-                    firstGridItemFocusRequester = gridFirstItemFocusRequester,
-                    focusTargetListIndex = gridFocusTargetListIndex,
-                    onPageChange = onPageChange,
-                    onNavigate = { appId ->
-                        selectedAppId = appId
-                        selectedLibraryItem = state.appInfoList.find { it.appId == appId }
-                    },
-                    onRefresh = onRefresh,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                // When on Steam/GOG/Epic/Amazon tab and not logged in, or LOCAL tab with no custom games, show splash
+                val showEmptyStateSplash = when (state.currentTab) {
+                    LibraryTab.STEAM -> !SteamService.isLoggedIn
+                    LibraryTab.GOG -> !GOGService.hasStoredCredentials(context)
+                    LibraryTab.EPIC -> !EpicService.hasStoredCredentials(context)
+                    LibraryTab.AMAZON -> !AmazonService.hasStoredCredentials(context)
+                    LibraryTab.LOCAL -> PrefManager.customGamesCount == 0
+                    else -> false
+                }
+                if (showEmptyStateSplash) {
+                    val (messageResId, buttonResId, onAction) = when (state.currentTab) {
+                        LibraryTab.STEAM -> Triple(
+                            R.string.library_source_not_logged_in_steam,
+                            R.string.steam_sign_in,
+                            onGoOnline,
+                        )
+                        LibraryTab.GOG -> Triple(
+                            R.string.library_source_not_logged_in_gog,
+                            R.string.gog_settings_login_title,
+                            { gogOAuthLauncher.launch(Intent(context, GOGOAuthActivity::class.java)) },
+                        )
+                        LibraryTab.EPIC -> Triple(
+                            R.string.library_source_not_logged_in_epic,
+                            R.string.epic_settings_login_title,
+                            { epicOAuthLauncher.launch(Intent(context, EpicOAuthActivity::class.java)) },
+                        )
+                        LibraryTab.AMAZON -> Triple(
+                            R.string.library_source_not_logged_in_amazon,
+                            R.string.amazon_settings_login_title,
+                            { amazonOAuthLauncher.launch(Intent(context, AmazonOAuthActivity::class.java)) },
+                        )
+                        LibraryTab.LOCAL -> Triple(
+                            R.string.library_source_no_custom_games,
+                            R.string.add_custom_game_dialog_title,
+                            onAddCustomGameClick,
+                        )
+                        else -> throw IllegalStateException("showEmptyStateSplash is true only for Steam/GOG/Epic/Amazon/LOCAL")
+                    }
+                    LibrarySourceNotLoggedInSplash(
+                        messageResId = messageResId,
+                        signInButtonLabelResId = buttonResId,
+                        onSignInClick = onAction,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    // Library list (content scrolls behind tab bar)
+                    LibraryListPane(
+                        state = state,
+                        listState = listState,
+                        currentLayout = currentPaneType,
+                        firstGridItemFocusRequester = gridFirstItemFocusRequester,
+                        focusTargetListIndex = gridFocusTargetListIndex,
+                        onPageChange = onPageChange,
+                        onNavigate = { appId ->
+                            selectedAppId = appId
+                            selectedLibraryItem = state.appInfoList.find { it.appId == appId }
+                        },
+                        onRefresh = onRefresh,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
 
                 // Top overlay: Tab bar OR Search bar
                 if (state.isSearching) {
