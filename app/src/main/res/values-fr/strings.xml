@@ -785,7 +785,7 @@
     <string name="settings_interface_hide_statusbar_title">Masquer la barre d\'état hors jeu</string>
     <string name="settings_interface_hide_statusbar_subtitle">Masquer la barre d\'état Android dans la liste de jeux, les paramètres, etc. L\'application redémarrera lors du changement.</string>
     <string name="settings_interface_icon_style">Style d\'icône</string>
-    <string name="settings_interface_wifi_only_title">Télécharger uniquement via Wi-Fi</string>
+    <string name="settings_interface_wifi_only_title">Télécharger uniquement via Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Empêcher les téléchargements sur données cellulaires</string>
     <string name="settings_interface_external_storage_title">Écrire sur le stockage externe</string>
     <string name="settings_interface_no_external_storage">Aucun stockage externe détecté</string>

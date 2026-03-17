@@ -749,7 +749,7 @@
     <string name="settings_interface_hide_statusbar_title">Statusleiste außerhalb der Spiele verbergen</string>
     <string name="settings_interface_hide_statusbar_subtitle">Android-Statusleiste in Spieleliste, Einstellungen etc. ausblenden (Neustart nötig).</string>
     <string name="settings_interface_icon_style">Iconstil</string>
-    <string name="settings_interface_wifi_only_title">Nur über WLAN herunterladen</string>
+    <string name="settings_interface_wifi_only_title">Nur über WLAN/LAN herunterladen</string>
     <string name="settings_interface_wifi_only_subtitle">Verhindert Downloads über mobile Daten</string>
     <string name="settings_interface_external_storage_title">Auf externen Speicher schreiben</string>
     <string name="settings_interface_no_external_storage">Kein externer Speicher erkannt</string>

@@ -790,7 +790,7 @@
 	<string name="settings_interface_hide_statusbar_title">Ascunde bara de stare în afara jocului</string>
 	<string name="settings_interface_hide_statusbar_subtitle">Ascunde bara de stare Android în lista de jocuri, setări etc. Aplicația se va reporni după modificare.</string>
 	<string name="settings_interface_icon_style">Stil iconițe</string>
-	<string name="settings_interface_wifi_only_title">Descarcă doar prin Wi‑Fi</string>
+	<string name="settings_interface_wifi_only_title">Descarcă doar prin Wi‑Fi/LAN</string>
 	<string name="settings_interface_wifi_only_subtitle">Previne descărcările pe date mobile</string>
 	<string name="settings_interface_external_storage_title">Scrie pe stocare externă</string>
 	<string name="settings_interface_no_external_storage">Nu a fost detectată stocare externă</string>

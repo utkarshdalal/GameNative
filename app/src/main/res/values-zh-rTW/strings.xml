@@ -782,7 +782,7 @@
     <string name="settings_interface_external_links_subtitle">連結將以您的主要網頁瀏覽器開啟</string>
     <string name="settings_interface_hide_statusbar_title">在非遊戲狀態時隱藏狀態列</string>
     <string name="settings_interface_hide_statusbar_subtitle">在遊戲清單、設定等介面隱藏 Android 狀態列。變更後應用程式將重新啟動。</string>
-    <string name="settings_interface_wifi_only_title">僅限透過 Wi-Fi 下載</string>
+    <string name="settings_interface_wifi_only_title">僅限透過 Wi-Fi/LAN 下載</string>
     <string name="settings_interface_wifi_only_subtitle">禁止使用行動數據下載</string>
     <string name="settings_interface_external_storage_title">寫入外部儲存裝置</string>
     <string name="settings_interface_no_external_storage">未偵測到外部儲存裝置</string>

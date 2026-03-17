@@ -607,7 +607,7 @@
     <string name="settings_interface_hide_statusbar_title">Skjul statuslinje når ikke i spillet</string>
     <string name="settings_interface_hide_statusbar_subtitle">Skjul Android-statuslinje i spilliste, indstillinger osv. Appen genstarter når den ændres.</string>
     <string name="settings_interface_icon_style">Ikonstil</string>
-    <string name="settings_interface_wifi_only_title">Download kun via Wi-Fi</string>
+    <string name="settings_interface_wifi_only_title">Download kun via Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Forhindrer downloads på mobildata</string>
     <string name="settings_interface_external_storage_title">Skriv til ekstern lager</string>
     <string name="settings_interface_no_external_storage">Ingen ekstern lager fundet</string>

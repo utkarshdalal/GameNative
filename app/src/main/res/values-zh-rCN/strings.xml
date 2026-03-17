@@ -780,7 +780,7 @@
     <string name="settings_interface_external_links_subtitle">链接将以您的主要网页浏览器打开</string>
     <string name="settings_interface_hide_statusbar_title">在非游戏状态时隐藏状态栏</string>
     <string name="settings_interface_hide_statusbar_subtitle">在游戏列表、设置等界面隐藏 Android 状态栏。更改后应用程序将重新启动。</string>
-    <string name="settings_interface_wifi_only_title">仅限通过 Wi-Fi 下载</string>
+    <string name="settings_interface_wifi_only_title">仅限通过 Wi-Fi/LAN 下载</string>
     <string name="settings_interface_wifi_only_subtitle">禁止使用移动数据下载</string>
     <string name="settings_interface_external_storage_title">写入外部存储设备</string>
     <string name="settings_interface_no_external_storage">未检测到外部存储设备</string>

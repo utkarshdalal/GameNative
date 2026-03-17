@@ -607,7 +607,7 @@
     <string name="settings_interface_hide_statusbar_title">Ocultar barra de status fora do jogo</string>
     <string name="settings_interface_hide_statusbar_subtitle">Ocultar barra de status do Android na lista de jogos, configurações, etc. O app será reiniciado quando alterado.</string>
     <string name="settings_interface_icon_style">Estilo de ícone</string>
-    <string name="settings_interface_wifi_only_title">Baixar apenas por Wi-Fi</string>
+    <string name="settings_interface_wifi_only_title">Baixar apenas por Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Impedir downloads usando dados móveis</string>
     <string name="settings_interface_external_storage_title">Gravar no armazenamento externo</string>
     <string name="settings_interface_no_external_storage">Nenhum armazenamento externo detectado</string>

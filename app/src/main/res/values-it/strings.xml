@@ -781,7 +781,7 @@
     <string name="settings_interface_hide_statusbar_title">Nascondi barra di stato quando non in gioco</string>
     <string name="settings_interface_hide_statusbar_subtitle">Nascondi barra di stato Android nell\'elenco giochi, impostazioni, ecc. L\'app si riavvierà se modificato.</string>
     <string name="settings_interface_icon_style">Stile icona</string>
-    <string name="settings_interface_wifi_only_title">Scarica solo tramite Wi-Fi</string>
+    <string name="settings_interface_wifi_only_title">Scarica solo tramite Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Impedisci download su rete cellulare</string>
     <string name="settings_interface_external_storage_title">Scrivi su memoria esterna</string>
     <string name="settings_interface_no_external_storage">Nessuna memoria esterna rilevata</string>

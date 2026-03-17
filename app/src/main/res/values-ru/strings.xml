@@ -929,7 +929,7 @@ https://gamenative.app
     <string name="settings_interface_storage_volume_title">Том хранилища</string>
     <string name="settings_interface_title">Интерфейс</string>
     <string name="settings_interface_wifi_only_subtitle">Предотвратить загрузки по сотовым данным</string>
-    <string name="settings_interface_wifi_only_title">Загружать только через Wi-Fi</string>
+    <string name="settings_interface_wifi_only_title">Загружать только через Wi-Fi/LAN</string>
     <string name="settings_language">Язык</string>
     <string name="settings_language_changing">Изменение языка и перезагрузка...</string>
     <string name="settings_language_restart_confirm">Перезагрузить</string>

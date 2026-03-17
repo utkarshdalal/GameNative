@@ -799,7 +799,7 @@
     <string name="settings_interface_hide_statusbar_title">Hide status bar when not in game</string>
     <string name="settings_interface_hide_statusbar_subtitle">Hide Android status bar in game list, settings, etc. App will restart when changed.</string>
     <string name="settings_interface_icon_style">Icon style</string>
-    <string name="settings_interface_wifi_only_title">Download only over Wi-Fi</string>
+    <string name="settings_interface_wifi_only_title">Download only over Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Prevent downloads on cellular data</string>
     <string name="settings_interface_external_storage_title">Write to external storage</string>
     <string name="settings_interface_no_external_storage">No external storage detected</string>
