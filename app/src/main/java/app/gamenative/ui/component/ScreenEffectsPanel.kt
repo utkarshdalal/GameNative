@@ -152,8 +152,6 @@ fun ScreenEffectsTabContent(
             .focusGroup()
             .padding(vertical = 12.dp),
     ) {
-        OptionSectionHeader(text = stringResource(R.string.screen_effects_color_adjustments))
-
         ScreenEffectAdjustmentRow(
             title = stringResource(R.string.screen_effects_brightness),
             valueText = formatPercent(brightness),
@@ -190,8 +188,6 @@ fun ScreenEffectsTabContent(
         )
 
         Spacer(modifier = Modifier.height(20.dp))
-
-        OptionSectionHeader(text = stringResource(R.string.screen_effects_shader_toggles))
 
         ScreenEffectToggleRow(
             title = stringResource(R.string.screen_effects_toon),

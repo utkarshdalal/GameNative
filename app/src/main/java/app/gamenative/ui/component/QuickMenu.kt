@@ -438,15 +438,6 @@ fun QuickMenu(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             )
 
-                            if (selectedTab == QuickMenuTab.EFFECTS) {
-                                Text(
-                                    text = stringResource(R.string.screen_effects_live_preview),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 4.dp),
-                                )
-                            }
-
                             HorizontalDivider(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
