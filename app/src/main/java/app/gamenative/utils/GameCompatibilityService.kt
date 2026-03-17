@@ -5,26 +5,18 @@ import androidx.compose.ui.graphics.Color
 import app.gamenative.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import timber.log.Timber
-import java.util.concurrent.TimeUnit
 
 /**
  * Service for fetching game compatibility information from GameNative API.
  */
 object GameCompatibilityService {
     private const val API_BASE_URL = "https://api.gamenative.app/api/game-runs"
-    private const val TIMEOUT_SECONDS = 10L
-
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build()
+    private val httpClient = Net.http
 
     /**
      * Data class for API request.
@@ -84,42 +76,40 @@ object GameCompatibilityService {
         }
 
         try {
-            withTimeout(TIMEOUT_SECONDS * 1000) {
-                val requestBody = JSONObject().apply {
-                    put("gameNames", org.json.JSONArray(gameNames))
-                    put("gpuName", gpuName)
-                }
+            val requestBody = JSONObject().apply {
+                put("gameNames", org.json.JSONArray(gameNames))
+                put("gpuName", gpuName)
+            }
 
-                val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")
-                if (attestation != null) {
-                    requestBody.put("nonce", attestation.first)
-                    requestBody.put("attestationChain", org.json.JSONArray(attestation.second))
-                }
+            val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")
+            if (attestation != null) {
+                requestBody.put("nonce", attestation.first)
+                requestBody.put("attestationChain", org.json.JSONArray(attestation.second))
+            }
 
-                val mediaType = "application/json".toMediaType()
-                val bodyString = requestBody.toString()
-                val body = bodyString.toRequestBody(mediaType)
+            val mediaType = "application/json".toMediaType()
+            val bodyString = requestBody.toString()
+            val body = bodyString.toRequestBody(mediaType)
 
-                val integrityToken = PlayIntegrity.requestToken(bodyString.toByteArray())
+            val integrityToken = PlayIntegrity.requestToken(bodyString.toByteArray())
 
-                val requestBuilder = Request.Builder()
-                    .url(API_BASE_URL)
-                    .post(body)
-                    .header("Content-Type", "application/json")
-                if (integrityToken != null) {
-                    requestBuilder.header("X-Integrity-Token", integrityToken)
-                }
-                val request = requestBuilder.build()
+            val requestBuilder = Request.Builder()
+                .url(API_BASE_URL)
+                .post(body)
+                .header("Content-Type", "application/json")
+            if (integrityToken != null) {
+                requestBuilder.header("X-Integrity-Token", integrityToken)
+            }
+            val request = requestBuilder.build()
 
-                val response = httpClient.newCall(request).execute()
-
+            httpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     Timber.tag("GameCompatibilityService")
                         .w("API request failed - HTTP ${response.code}")
-                    return@withTimeout null
+                    return@withContext null
                 }
 
-                val responseBody = response.body?.string() ?: return@withTimeout null
+                val responseBody = response.body?.string() ?: return@withContext null
                 val jsonResponse = JSONObject(responseBody)
 
                 val result = mutableMapOf<String, GameCompatibilityResponse>()
@@ -145,10 +135,6 @@ object GameCompatibilityService {
                     .d("Fetched compatibility for ${result.size} games")
                 result
             }
-        } catch (e: java.util.concurrent.TimeoutException) {
-            Timber.tag("GameCompatibilityService")
-                .e(e, "Timeout while fetching compatibility data")
-            null
         } catch (e: Exception) {
             Timber.tag("GameCompatibilityService")
                 .e(e, "Error fetching compatibility data: ${e.message}")

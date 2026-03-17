@@ -57,10 +57,10 @@ import android.content.res.Configuration
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.dialog.LoadingDialog
+import app.gamenative.utils.Net
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
 import java.io.InputStream
@@ -73,15 +73,6 @@ import okhttp3.Response
 import java.io.FileOutputStream
 import kotlinx.coroutines.delay
 
-object Net {
-    val http: OkHttpClient by lazy { OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(0,  TimeUnit.MILLISECONDS)     // no per-packet timer
-        .pingInterval(30, TimeUnit.SECONDS)         // keep HTTP/2 alive
-        .retryOnConnectionFailure(true)             // default, but explicit
-        .build() }
-
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

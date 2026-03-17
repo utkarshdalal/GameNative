@@ -37,6 +37,7 @@ import app.gamenative.service.epic.EpicService
 import app.gamenative.ui.PluviaMain
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.utils.AnimatedPngDecoder
+import app.gamenative.data.GameSource
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
@@ -224,10 +225,21 @@ class MainActivity : ComponentActivity() {
                 Timber.d("[IntentLaunch]: Received external launch intent for app ${launchRequest.appId}")
                 wasLaunchedViaExternalIntent = true
 
-                // If already logged in, emit event immediately
-                // Otherwise store for processing after login
-                if (SteamService.isLoggedIn) {
-                    Timber.d("[IntentLaunch]: User already logged in, emitting ExternalGameLaunch event immediately")
+                val gameSource = ContainerUtils.extractGameSourceFromContainerId(launchRequest.appId)
+                val runsWithoutSteam = gameSource == GameSource.STEAM &&
+                    ContainerUtils.hasContainer(this, launchRequest.appId) &&
+                    ContainerUtils.getContainer(this, launchRequest.appId).isSteamOfflineMode()
+
+                // only defer to pending for Steam games that need login;
+                // non-Steam games and Steam-offline-mode games can launch without Steam
+                if (gameSource == GameSource.STEAM && !SteamService.isLoggedIn && !runsWithoutSteam) {
+                    setPendingLaunchRequest(launchRequest)
+                    Timber.d("[IntentLaunch]: Steam game but not logged in, stored pending launch request for app ${launchRequest.appId}")
+                } else {
+                    // clear any stale pending request so it doesn't fire on later login
+                    consumePendingLaunchRequest()
+
+                    Timber.d("[IntentLaunch]: Emitting ExternalGameLaunch event for app ${launchRequest.appId}")
                     lifecycleScope.launch {
                         PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId))
                     }
@@ -236,10 +248,6 @@ class MainActivity : ComponentActivity() {
                     launchRequest.containerConfig?.let { config ->
                         IntentLaunchManager.applyTemporaryConfigOverride(this, launchRequest.appId, config)
                     }
-                } else {
-                    // Store the launch request to be processed after login
-                    setPendingLaunchRequest(launchRequest)
-                    Timber.d("[IntentLaunch]: User not logged in, stored pending launch request for app ${launchRequest.appId}")
                 }
             } else {
                 wasLaunchedViaExternalIntent = false

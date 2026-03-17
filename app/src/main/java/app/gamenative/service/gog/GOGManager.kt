@@ -28,6 +28,7 @@ import app.gamenative.utils.Net
 import app.gamenative.utils.StorageUtils
 import com.winlator.container.Container
 import com.winlator.core.envvars.EnvVars
+import com.winlator.core.FileUtils as WinlatorFileUtils
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -783,48 +784,75 @@ class GOGManager @Inject constructor(
     }
 
     /**
-     * Runs GOG scriptinterpreter.exe before launch when the game's _gog_manifest.json has scriptInterpreter true.
-     * Uses scriptinterpreter from the game dir (_CommonRedist/ISI/scriptinterpreter.exe).
+     * Creates the GOG scriptinterpreter rootdir symlink when present. /DIR and /supportDir use
+     * A:\_CommonRedist\ISI\rootdir; rootdir must be a symlink to the actual game install root so
+     * it resolves correctly when the drive is mounted.
      */
-    fun runScriptInterpreterIfNeeded(
-        appId: String,
-        guestProgramLauncherComponent: GuestProgramLauncherComponent,
-    ) {
-        val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
-        Timber.tag("GOG").i("runScriptInterpreterIfNeeded: appId=$appId")
-        val game = runBlocking { getGameFromDbById(gameId.toString()) } ?: return
+    private fun ensureScriptInterpreterRootDirSymlink(gameInstallDir: File) {
+        val commonRedistDir = File(gameInstallDir, "_CommonRedist")
+        val isiDir = File(commonRedistDir, "ISI")
+        if (isiDir.isDirectory) {
+            val rootDirLink = File(isiDir, "rootdir")
+            if (!rootDirLink.exists() || !WinlatorFileUtils.isSymlink(rootDirLink)) {
+                try {
+                WinlatorFileUtils.symlink(gameInstallDir, rootDirLink)
+                    Timber.tag("GOG").d(
+                        "Created scriptinterpreter rootdir symlink: ${rootDirLink.absolutePath} -> ${gameInstallDir.absolutePath}",
+                    )
+                } catch (e: Exception) {
+                    Timber.tag("GOG").e(
+                        e,
+                        "Failed to create scriptinterpreter rootdir symlink: ${rootDirLink.absolutePath} -> ${gameInstallDir.absolutePath}",
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns command parts to run GOG scriptinterpreter.exe for each product (when required by
+     * _gog_manifest.json). Used by LaunchSteps to prepend to the game launch command so it runs
+     * in the same Wine session. Returns empty list if not needed or not available.
+     */
+    fun getScriptInterpreterPartsForLaunch(appId: String): List<String> {
+        val gameId = ContainerUtils.extractGameIdFromContainerId(appId) ?: return emptyList()
+        val game = runBlocking { getGameFromDbById(gameId.toString()) } ?: return emptyList()
         val computedPath = getGameInstallPath(gameId.toString(), game.title)
         val gameInstallPath = when {
             game.installPath.isNotEmpty() && File(game.installPath).exists() -> game.installPath
             else -> computedPath
         }
         val gameInstallDir = File(gameInstallPath)
-        if (!GOGManifestUtils.needsScriptInterpreter(gameInstallDir)) return
-        val root = GOGManifestUtils.readLocalManifest(gameInstallDir) ?: return
+        if (!GOGManifestUtils.needsScriptInterpreter(gameInstallDir)) return emptyList()
+        val root = GOGManifestUtils.readLocalManifest(gameInstallDir) ?: return emptyList()
         val isiRelativePath = "_CommonRedist/ISI/scriptinterpreter.exe"
-        if (!File(gameInstallPath, isiRelativePath).exists()) {
-            Timber.tag("GOG").w("scriptinterpreter.exe not found at $isiRelativePath, skipping setup")
-            return
-        }
+        if (!File(gameInstallPath, isiRelativePath).exists()) return emptyList()
+
+        ensureScriptInterpreterRootDirSymlink(gameInstallDir)
+
         val isiRelativePathWin = isiRelativePath.replace('/', '\\')
         val gameDriveLetter = "A"
         val buildId = root.optString("buildId", "")
         val versionName = root.optString("versionName", "")
         val langCode = root.optString("language", "en").let { if (it.length <= 2) "$it-US" else it }
-        val language = when {
-            langCode.startsWith("en") -> "English"
-            else -> "English"
-        }
-        val productsArray = root.optJSONArray("products") ?: return
+        val language = "English"
+        val productsArray = root.optJSONArray("products") ?: return emptyList()
 
+        val parts = mutableListOf<String>()
         for (i in 0 until productsArray.length()) {
             val product = productsArray.getJSONObject(i)
             val productId = product.optString("productId", "")
             if (productId.isEmpty()) continue
+
             val exePathWin = "$gameDriveLetter:\\$isiRelativePathWin"
+            // HACK: /DIR and /supportDir point to a \"rootdir\" folder inside ISI, which is a symlink
+            // to the actual game install root (created during redist download). This gives
+            // scriptinterpreter a full path with drive + folder name while still resolving
+            // to the game directory that the drive letter is mapped to.
+            val dirAndSupport = "$gameDriveLetter:\\_CommonRedist\\ISI\\rootdir"
             val args = listOf(
                 "/VERYSILENT",
-                "/DIR=$gameDriveLetter:\\",
+                "/DIR=$dirAndSupport",
                 "/Language=$language",
                 "/LANG=$language",
                 "/ProductId=$productId",
@@ -832,25 +860,15 @@ class GOGManager @Inject constructor(
                 "/buildId=$buildId",
                 "/versionName=$versionName",
                 "/lang-code=$langCode",
-                "/supportDir=$gameDriveLetter:\\",
+                "/supportDir=$dirAndSupport",
                 "/nodesktopshorctut",
                 "/nodesktopshortcut",
             ).joinToString(" ")
-            val exePathEscaped = exePathWin.replace("\\", "\\\\")
-            val argsEscaped = args.replace("\\", "\\\\")
-            val cmd = "wine $exePathEscaped $argsEscaped"
-            Timber.tag("GOG").i("Running scriptinterpreter for product $productId")
-            val previousWorkingDir = guestProgramLauncherComponent.workingDir
-            try {
-                PluviaApp.events.emit(app.gamenative.events.AndroidEvent.SetBootingSplashText("Running GOG script interpreter..."))
-                guestProgramLauncherComponent.workingDir = gameInstallDir
-                guestProgramLauncherComponent.execShellCommand(cmd, true)
-            } catch (e: Exception) {
-                Timber.tag("GOG").e(e, "scriptinterpreter failed for product $productId")
-            } finally {
-                guestProgramLauncherComponent.workingDir = previousWorkingDir
-            }
+
+            parts.add("$exePathWin $args")
         }
+
+        return parts
     }
 
     // ==========================================================================

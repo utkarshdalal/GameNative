@@ -6,4 +6,9 @@ enum class Marker(val fileName: String ) {
     STEAM_DLL_REPLACED(".steam_dll_replaced"),
     STEAM_DLL_RESTORED(".steam_dll_restored"),
     STEAM_COLDCLIENT_USED(".steam_coldclient_used"),
+    VCREDIST_INSTALLED(".vcredist_installed"),
+    GOG_SCRIPT_INSTALLED(".gog_script_installed"),
+    PHYSX_INSTALLED(".physx_installed"),
+    OPENAL_INSTALLED(".openal_installed"),
+    XNA_INSTALLED(".xna_installed"),
 }

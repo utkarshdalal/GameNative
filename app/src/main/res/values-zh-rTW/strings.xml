@@ -214,6 +214,39 @@
     <string name="open_navigation_menu">開啟導航選單</string>
     <string name="quick_menu_title">快捷選單</string>
     <string name="quick_menu_back">返回</string>
+    <string name="quick_menu_tab_general">一般</string>
+    <string name="quick_menu_tab_controller">控制器</string>
+    <string name="performance_hud">效能 HUD</string>
+    <string name="performance_hud_description">顯示或隱藏遊戲內疊加層。</string>
+    <string name="performance_hud_presets">預設</string>
+    <string name="performance_hud_presets_description">快速切換常用 HUD 版面配置。</string>
+    <string name="performance_hud_preset_fps_only">1</string>
+    <string name="performance_hud_preset_essential">2</string>
+    <string name="performance_hud_preset_battery">3</string>
+    <string name="performance_hud_preset_full">4</string>
+    <string name="performance_hud_appearance">外觀</string>
+    <string name="performance_hud_appearance_description">調整 HUD 大小與背景不透明度。</string>
+    <string name="performance_hud_size">大小</string>
+    <string name="performance_hud_size_small">S</string>
+    <string name="performance_hud_size_medium">M</string>
+    <string name="performance_hud_size_large">L</string>
+    <string name="performance_hud_background_opacity">背景不透明度</string>
+    <string name="performance_hud_percentage_value">%1$d%%</string>
+    <string name="performance_hud_metrics">顯示的指標</string>
+    <string name="performance_hud_metrics_description">選擇要在疊加層中顯示的統計資料。</string>
+    <string name="performance_hud_frame_rate">幀率</string>
+    <string name="performance_hud_frame_rate_graph">FPS 圖表</string>
+    <string name="performance_hud_cpu_usage">CPU 使用率</string>
+    <string name="performance_hud_cpu_usage_graph">CPU 圖表</string>
+    <string name="performance_hud_gpu_usage">GPU 使用率</string>
+    <string name="performance_hud_gpu_usage_graph">GPU 圖表</string>
+    <string name="performance_hud_ram_usage">RAM 使用量</string>
+    <string name="performance_hud_battery_level">電池電量</string>
+    <string name="performance_hud_power_draw">功耗</string>
+    <string name="performance_hud_runtime_left">剩餘時間</string>
+    <string name="performance_hud_clock_time">時間</string>
+    <string name="performance_hud_cpu_temperature">CPU 溫度</string>
+    <string name="performance_hud_gpu_temperature">GPU 溫度</string>
     <string name="touchpad_help">觸摸板支援</string>
     <string name="hide_controls_with_controller">使用控制器時隱藏螢幕控制器</string>
     <string name="hide_controls_with_controller_description">當實體控制器連接時自動隱藏螢幕控制器</string>
@@ -529,6 +562,7 @@
     <string name="launch_steam_client_beta">啟動 Steam 用戶端 (Beta)</string>
     <string name="steam_offline_mode">Steam 離線模式</string>
     <string name="steam_offline_mode_description">以離線模式啟動 Steam 遊戲</string>
+    <string name="achievement_unlocked">成就已解鎖</string>
     <string name="launch_steam_client_description">降低效能並減慢啟動速度\n允許線上遊玩並修復 DRM 和控制器問題\n並非所有遊戲都適用</string>
     <string name="allow_steam_updates">允許 Steam 更新</string>
     <string name="allow_steam_updates_description">將 Steam 更新至最新版本, 會顯著降低效能</string>
@@ -971,6 +1005,7 @@
     <string name="best_config_applied_successfully">配置已成功套用</string>
     <string name="best_config_known_config_invalid">已知配置無效</string>
     <string name="best_config_no_config_available">此遊戲沒有可用的最佳配置</string>
+    <string name="best_config_fetch_failed">無法取得配置，請檢查網路連線。</string>
     <string name="best_config_apply_failed">套用配置失敗: %s</string>
     <string name="best_config_missing_content">%s 缺少</string>
     <string name="import_config">匯入設定</string>
@@ -1212,6 +1247,17 @@
     <string name="manifest_content_untrusted">內容不受信任，未安裝。</string>
     <string name="manifest_type_mismatch">下載的內容與預期類型不符。</string>
     <string name="manifest_glibc_not_supported">不支援 GLIBC 版本。</string>
+
+    <!-- Library: source not logged in splash -->
+    <string name="library_source_not_logged_in_steam">登入以存取您的 Steam 遊戲庫。</string>
+    <string name="library_source_not_logged_in_gog">登入以存取您的 GOG 遊戲庫。</string>
+    <string name="library_source_not_logged_in_epic">登入以存取您的 Epic 遊戲庫。</string>
+    <string name="library_source_not_logged_in_amazon">登入以存取您的 Amazon 遊戲庫。</string>
+    <string name="library_source_no_custom_games">您尚未新增任何自訂遊戲。</string>
+    <string name="download_failed_title">下載失敗</string>
+    <string name="download_failed_message">無法下載必要的檔案。請檢查您的網路連線後重試。</string>
+    <string name="install_failed_title">安裝失敗</string>
+    <string name="install_failed_message">無法安裝系統檔案。請重試。如果問題持續存在，請嘗試使用其他網路或使用 VPN。</string>
 </resources>
 
 

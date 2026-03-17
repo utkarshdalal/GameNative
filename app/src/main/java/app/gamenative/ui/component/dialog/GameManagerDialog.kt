@@ -141,7 +141,8 @@ fun GameManagerDialog(
         allDownloadableApps.sortBy { it.first }
 
         // Add Base Game
-        allDownloadableApps.add(0, Pair(gameId, downloadableDepots.toSortedMap().values.first()))
+        val baseDepot = downloadableDepots.values.firstOrNull { it.dlcAppId == INVALID_APP_ID } ?: return@LaunchedEffect
+        allDownloadableApps.add(0, Pair(gameId, baseDepot))
         selectedAppIds[gameId] = true
         enabledAppIds[gameId] = false
     }

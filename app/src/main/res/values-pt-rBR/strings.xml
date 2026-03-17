@@ -143,6 +143,39 @@
     <string name="open_navigation_menu">Abrir Menu de Navegação</string>
     <string name="quick_menu_title">Menu rápido</string>
     <string name="quick_menu_back">Voltar</string>
+    <string name="quick_menu_tab_general">Geral</string>
+    <string name="quick_menu_tab_controller">Controle</string>
+    <string name="performance_hud">HUD de desempenho</string>
+    <string name="performance_hud_description">Mostrar ou ocultar a sobreposição no jogo.</string>
+    <string name="performance_hud_presets">Predefinições</string>
+    <string name="performance_hud_presets_description">Alterne rapidamente entre layouts comuns de HUD.</string>
+    <string name="performance_hud_preset_fps_only">1</string>
+    <string name="performance_hud_preset_essential">2</string>
+    <string name="performance_hud_preset_battery">3</string>
+    <string name="performance_hud_preset_full">4</string>
+    <string name="performance_hud_appearance">Aparência</string>
+    <string name="performance_hud_appearance_description">Ajuste o tamanho do HUD e a opacidade do fundo.</string>
+    <string name="performance_hud_size">Tamanho</string>
+    <string name="performance_hud_size_small">S</string>
+    <string name="performance_hud_size_medium">M</string>
+    <string name="performance_hud_size_large">L</string>
+    <string name="performance_hud_background_opacity">Opacidade do fundo</string>
+    <string name="performance_hud_percentage_value">%1$d%%</string>
+    <string name="performance_hud_metrics">Métricas exibidas</string>
+    <string name="performance_hud_metrics_description">Escolha quais estatísticas aparecem na sobreposição.</string>
+    <string name="performance_hud_frame_rate">Taxa de quadros</string>
+    <string name="performance_hud_frame_rate_graph">Gráfico de FPS</string>
+    <string name="performance_hud_cpu_usage">Uso de CPU</string>
+    <string name="performance_hud_cpu_usage_graph">Gráfico de CPU</string>
+    <string name="performance_hud_gpu_usage">Uso de GPU</string>
+    <string name="performance_hud_gpu_usage_graph">Gráfico de GPU</string>
+    <string name="performance_hud_ram_usage">Uso de RAM</string>
+    <string name="performance_hud_battery_level">Nível da bateria</string>
+    <string name="performance_hud_power_draw">Consumo de energia</string>
+    <string name="performance_hud_runtime_left">Tempo restante</string>
+    <string name="performance_hud_clock_time">Hora</string>
+    <string name="performance_hud_cpu_temperature">Temperatura da CPU</string>
+    <string name="performance_hud_gpu_temperature">Temperatura da GPU</string>
     <string name="touchpad_help">Ajuda Touchpad</string>
     <string name="hide_controls_with_controller">Ocultar controles on-screen com controle</string>
     <string name="hide_controls_with_controller_description">Ocultar automaticamente controles on-screen quando um controle físico estiver conectado</string>
@@ -368,6 +401,7 @@
     <string name="launch_steam_client_beta">Iniciar o cliente Steam (Beta)</string>
     <string name="steam_offline_mode">Modo Offline do Steam</string>
     <string name="steam_offline_mode_description">Iniciar jogos Steam no modo offline</string>
+    <string name="achievement_unlocked">Conquista desbloqueada</string>
     <string name="launch_steam_client_description">Reduz o desempenho e atrasa a inicialização\nPermite jogo online e corrige problemas de DRM e de controle\nNem todos os jogos funcionam</string>
     <string name="allow_steam_updates">Permitir atualizações do Steam</string>
     <string name="allow_steam_updates_description">Atualiza o Steam para a versão mais recente. Reduz significativamente o desempenho.</string>
@@ -800,6 +834,7 @@
     <string name="best_config_applied_successfully">Config aplicada com sucesso</string>
     <string name="best_config_known_config_invalid">Config conhecida inválida</string>
     <string name="best_config_no_config_available">Nenhuma melhor config disponível para este jogo</string>
+    <string name="best_config_fetch_failed">Falha ao obter a configuração. Verifique sua conexão de rede.</string>
     <string name="best_config_apply_failed">Falha ao aplicar config: %s</string>
     <string name="best_config_missing_content">%s ausente</string>
     <string name="import_config">Importar configuração</string>
@@ -1085,4 +1120,15 @@
     <string name="manifest_content_untrusted">O conteúdo não é confiável e não foi instalado.</string>
     <string name="manifest_type_mismatch">O conteúdo baixado não corresponde ao tipo esperado.</string>
     <string name="manifest_glibc_not_supported">Compilações GLIBC não são suportadas.</string>
+
+    <!-- Library: source not logged in splash -->
+    <string name="library_source_not_logged_in_steam">Faça login para acessar sua biblioteca Steam.</string>
+    <string name="library_source_not_logged_in_gog">Faça login para acessar sua biblioteca GOG.</string>
+    <string name="library_source_not_logged_in_epic">Faça login para acessar sua biblioteca Epic.</string>
+    <string name="library_source_not_logged_in_amazon">Faça login para acessar sua biblioteca Amazon.</string>
+    <string name="library_source_no_custom_games">Você não adicionou nenhum jogo personalizado.</string>
+    <string name="download_failed_title">Falha no Download</string>
+    <string name="download_failed_message">Um arquivo necessário não pôde ser baixado. Verifique sua conexão de rede e tente novamente.</string>
+    <string name="install_failed_title">Falha na Instalação</string>
+    <string name="install_failed_message">Os arquivos do sistema não puderam ser instalados. Tente novamente. Se o problema persistir, tente uma rede diferente ou use uma VPN.</string>
 </resources>

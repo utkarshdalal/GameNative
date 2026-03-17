@@ -25,6 +25,7 @@ public class SteamPipeServer {
     }
 
     public void start() {
+        stop();
         running = true;
         new Thread(() -> {
             try {
@@ -109,4 +110,3 @@ public class SteamPipeServer {
         }
     }
 }
-

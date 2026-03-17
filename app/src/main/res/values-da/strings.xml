@@ -143,6 +143,39 @@
     <string name="open_navigation_menu">Åbn navigationsmenu</string>
     <string name="quick_menu_title">Hurtig menu</string>
     <string name="quick_menu_back">Tilbage</string>
+    <string name="quick_menu_tab_general">Generelt</string>
+    <string name="quick_menu_tab_controller">Controller</string>
+    <string name="performance_hud">Ydelses-HUD</string>
+    <string name="performance_hud_description">Vis eller skjul overlayet i spillet.</string>
+    <string name="performance_hud_presets">Forudindstillinger</string>
+    <string name="performance_hud_presets_description">Skift hurtigt mellem almindelige HUD-layouts.</string>
+    <string name="performance_hud_preset_fps_only">1</string>
+    <string name="performance_hud_preset_essential">2</string>
+    <string name="performance_hud_preset_battery">3</string>
+    <string name="performance_hud_preset_full">4</string>
+    <string name="performance_hud_appearance">Udseende</string>
+    <string name="performance_hud_appearance_description">Juster HUD-størrelse og baggrundens opacitet.</string>
+    <string name="performance_hud_size">Størrelse</string>
+    <string name="performance_hud_size_small">S</string>
+    <string name="performance_hud_size_medium">M</string>
+    <string name="performance_hud_size_large">L</string>
+    <string name="performance_hud_background_opacity">Baggrundsopacitet</string>
+    <string name="performance_hud_percentage_value">%1$d%%</string>
+    <string name="performance_hud_metrics">Viste målinger</string>
+    <string name="performance_hud_metrics_description">Vælg hvilke statistikker der vises i overlayet.</string>
+    <string name="performance_hud_frame_rate">Billedhastighed</string>
+    <string name="performance_hud_frame_rate_graph">FPS-graf</string>
+    <string name="performance_hud_cpu_usage">CPU-forbrug</string>
+    <string name="performance_hud_cpu_usage_graph">CPU-graf</string>
+    <string name="performance_hud_gpu_usage">GPU-forbrug</string>
+    <string name="performance_hud_gpu_usage_graph">GPU-graf</string>
+    <string name="performance_hud_ram_usage">RAM-forbrug</string>
+    <string name="performance_hud_battery_level">Batteriniveau</string>
+    <string name="performance_hud_power_draw">Strømforbrug</string>
+    <string name="performance_hud_runtime_left">Resterende tid</string>
+    <string name="performance_hud_clock_time">Klokkeslæt</string>
+    <string name="performance_hud_cpu_temperature">CPU-temperatur</string>
+    <string name="performance_hud_gpu_temperature">GPU-temperatur</string>
     <string name="touchpad_help">Touchpad-hjælp</string>
     <string name="hide_controls_with_controller">Skjul on-screen-kontroller med controller</string>
     <string name="hide_controls_with_controller_description">Skjul automatisk on-screen-kontroller når en fysisk controller er tilsluttet</string>
@@ -368,6 +401,7 @@
     <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
     <string name="steam_offline_mode">Steam Offline-tilstand</string>
     <string name="steam_offline_mode_description">Start Steam-spil i offline-tilstand</string>
+    <string name="achievement_unlocked">Præstation låst op</string>
     <string name="launch_steam_client_description">Reducerer ydelse og gør opstart langsommere\nMuliggør online-spil og løser DRM- og controllerproblemer\nIkke alle spil virker</string>
     <string name="allow_steam_updates">Tillad Steam-opdateringer</string>
     <string name="allow_steam_updates_description">Opdaterer Steam til nyeste version. Reducerer ydelsen markant.</string>
@@ -800,6 +834,7 @@
     <string name="best_config_applied_successfully">Konfiguration anvendt med succes</string>
     <string name="best_config_known_config_invalid">Kendt konfiguration ugyldig</string>
     <string name="best_config_no_config_available">Ingen bedste konfiguration tilgængelig for dette spil</string>
+    <string name="best_config_fetch_failed">Kunne ikke hente konfiguration. Kontrollér din netværksforbindelse.</string>
     <string name="best_config_apply_failed">Kunne ikke anvende konfiguration: %s</string>
     <string name="best_config_missing_content">%s mangler</string>
     <string name="import_config">Importér konfiguration</string>
@@ -1085,4 +1120,15 @@
     <string name="manifest_content_untrusted">Indholdet er ikke betroet og blev ikke installeret.</string>
     <string name="manifest_type_mismatch">Downloadet indhold matcher ikke den forventede type.</string>
     <string name="manifest_glibc_not_supported">GLIBC-builds understøttes ikke.</string>
+
+    <!-- Library: source not logged in splash -->
+    <string name="library_source_not_logged_in_steam">Log ind for at få adgang til din Steam-bibliotek.</string>
+    <string name="library_source_not_logged_in_gog">Log ind for at få adgang til din GOG-bibliotek.</string>
+    <string name="library_source_not_logged_in_epic">Log ind for at få adgang til din Epic-bibliotek.</string>
+    <string name="library_source_not_logged_in_amazon">Log ind for at få adgang til din Amazon-bibliotek.</string>
+    <string name="library_source_no_custom_games">Du har ikke tilføjet nogen brugerdefinerede spil.</string>
+    <string name="download_failed_title">Download mislykkedes</string>
+    <string name="download_failed_message">En nødvendig fil kunne ikke downloades. Kontrollér din netværksforbindelse, og prøv igen.</string>
+    <string name="install_failed_title">Installation mislykkedes</string>
+    <string name="install_failed_message">Systemfiler kunne ikke installeres. Prøv igen. Hvis problemet fortsætter, prøv et andet netværk eller brug en VPN.</string>
 </resources>
