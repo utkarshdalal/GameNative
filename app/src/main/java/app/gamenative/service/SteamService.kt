@@ -260,7 +260,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     private val appTokens: ConcurrentHashMap<Int, Long> = ConcurrentHashMap()
 
-    // Connectivity management for Wi-Fi-only downloads
     private lateinit var connectivityManager: ConnectivityManager
     private lateinit var networkCallback: ConnectivityManager.NetworkCallback
 
@@ -312,11 +311,11 @@ class SteamService : Service(), IChallengeUrlChanged {
             cachedAchievementsAppId = null
         }
 
-        val isWifiConnected: Boolean get() = NetworkMonitor.isWifiConnected.value
+        val hasWifiOrEthernet: Boolean get() = NetworkMonitor.hasWifiOrEthernet.value
 
         /** @return true if download may proceed; false if blocked (notifies user) */
         private fun checkWifiOrNotify(): Boolean {
-            if (PrefManager.downloadOnWifiOnly && !isWifiConnected) {
+            if (PrefManager.downloadOnWifiOnly && !hasWifiOrEthernet) {
                 val svc = instance
                 if (svc != null) {
                     svc.notificationHelper.notify(svc.getString(R.string.download_no_wifi))
@@ -2891,14 +2890,29 @@ class SteamService : Service(), IChallengeUrlChanged {
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
         notificationHelper = NotificationHelper(applicationContext)
-        // pause downloads when WiFi/Ethernet is lost
+
+        // pause downloads when WiFi/Ethernet connectivity changes
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         networkCallback = object : ConnectivityManager.NetworkCallback() {
-            override fun onLost(network: Network) {
-                // only pause if no WiFi/LAN remains (avoids false pause on multi-network)
-                if (PrefManager.downloadOnWifiOnly && !isWifiConnected) {
+            override fun onLost(network: Network) = checkAndPauseDownloads()
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) = checkAndPauseDownloads()
+
+            // query ConnectivityManager directly (not NetworkMonitor) to avoid
+            // callback ordering race between our two separate registrations.
+            // no VPN exclusion needed here — activeNetwork is always fresh
+            // (stale-VPN guard is only needed in NetworkMonitor's multi-network tracking)
+            private fun hasActiveWifiOrEthernet(): Boolean {
+                val activeNet = connectivityManager.activeNetwork ?: return false
+                val caps = connectivityManager.getNetworkCapabilities(activeNet) ?: return false
+                return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+            }
+
+            // no transition guard needed — if WiFi already down, downloadJobs is empty (no-op)
+            private fun checkAndPauseDownloads() {
+                if (PrefManager.downloadOnWifiOnly && !hasActiveWifiOrEthernet()) {
                     for ((appId, info) in downloadJobs.entries.toList()) {
-                        Timber.d("Cancelling job")
+                        Timber.d("Pausing download for $appId — WiFi/Ethernet lost")
                         info.cancel()
                         PluviaApp.events.emit(AndroidEvent.DownloadPausedDueToConnectivity(appId))
                         removeDownloadJob(appId)
@@ -2908,8 +2922,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
         val networkRequest = NetworkRequest.Builder()
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
 
@@ -3022,7 +3035,6 @@ class SteamService : Service(), IChallengeUrlChanged {
         stopForeground(STOP_FOREGROUND_REMOVE)
         notificationHelper.cancel()
 
-        // Unregister Wi-Fi connectivity callback
         connectivityManager.unregisterNetworkCallback(networkCallback)
 
         scope.launch { stop() }
