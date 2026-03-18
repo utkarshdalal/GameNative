@@ -151,7 +151,15 @@ private fun resolveGameAppId(context: Context, appId: String): GameResolutionRes
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
     val isInstalled = when (gameSource) {
         GameSource.STEAM -> {
-            SteamService.isAppInstalled(gameId)
+            // isAppInstalled uses getAppInfoOf internally to derive the game dir name.
+            // if the service hasn't started yet (instance==null), getAppInfoOf returns
+            // null → empty dir name → marker check fails → false negative.
+            // skip the redundant DB query and fall back to container existence.
+            if (SteamService.getAppInfoOf(gameId) != null) {
+                SteamService.isAppInstalled(gameId)
+            } else {
+                ContainerUtils.hasContainer(context, appId)
+            }
         }
 
         GameSource.GOG -> {
