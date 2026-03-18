@@ -1098,18 +1098,15 @@ fun XServerScreen(
                             !isExternal) {
                             // Samsung DeX Touchpad app
                             hasInternalTouchpad = true
+                            if (!showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
+                                !hasUpdatedScreenGamepad) {
+                                hasUpdatedScreenGamepad = true
+                                hideInputControls()
+                                areControlsVisible = false
+                            }
                         }
                         tryCapturePointer()
                     }
-                }
-                if ((hasInternalTouchpad || hasPhysicalMouse || hasPhysicalKeyboard || isGamepad) &&
-                    !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
-                    !hasUpdatedScreenGamepad) {
-                    // Hide UI once, if the user wants to re-enable while having input devices on they can
-                    hasUpdatedScreenGamepad = true
-
-                    hideInputControls()
-                    areControlsVisible = false
                 }
                 handled
             }

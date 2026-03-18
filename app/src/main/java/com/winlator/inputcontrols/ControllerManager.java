@@ -137,8 +137,8 @@ public class ControllerManager {
         boolean isGamepad = (sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD;
         boolean isJoystick = (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
 
-        if (device.getKeyboardType() != InputDevice.KEYBOARD_TYPE_NONE) {
-            isJoystick = false;
+        if (device.getKeyboardType() == InputDevice.KEYBOARD_TYPE_ALPHABETIC) {
+            return false;
         }
 
         return isGamepad || isJoystick;
