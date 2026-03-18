@@ -1,0 +1,39 @@
+name: Issues Only For Contributors
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  close-non-contributors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const allowed = ["OWNER","MEMBER","COLLABORATOR","CONTRIBUTOR"];
+            const assoc = issue.author_association;
+
+            if (!allowed.includes(assoc)) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: issue.number,
+                body: "This repository only accepts issues from contributors. If you want to report a problem, do it in Discord."
+              });
+
+              await github.rest.issues.update({
+                ...context.repo,
+                issue_number: issue.number,
+                state: "closed"
+              });
+
+              await github.rest.issues.lock({
+                ...context.repo,
+                issue_number: issue.number,
+                lock_reason: "resolved"
+              });
+            }

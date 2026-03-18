@@ -42,7 +42,6 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.LocaleHelper
-import app.gamenative.ui.util.SnackbarManager
 import com.posthog.PostHog
 import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
@@ -53,10 +52,87 @@ import java.util.EnumSet
 import kotlin.math.abs
 import okio.Path.Companion.toOkioPath
 import timber.log.Timber
+import android.os.storage.StorageManager
+import android.os.storage.StorageVolume
+import androidx.appcompat.app.AppCompatActivity
+import java.io.File
+import android.net.Uri
+import android.os.Environment
+import android.provider.Settings
+import android.util.Log
+import android.widget.Toast
+import androidx.core.net.toUri
+
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+
+    // 1. Permission Launcher: Handles the return from System Settings
+    private val storagePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        // When user returns, try scanning again
+        runUsbDetection()
+    }
+
+    // 3. Logic to detect ANY USB storage and log/write files
+    private fun runUsbDetection() {
+        val storageManager = getSystemService(STORAGE_SERVICE) as StorageManager
+        val volumes = storageManager.storageVolumes
+        var foundAny = false
+
+        for (volume in volumes) {
+            // Filter for removable devices (USB/SD) that aren't internal storage
+            if (volume.isRemovable && !volume.isPrimary) {
+                val uuid = volume.uuid ?: continue
+                val path = "/storage/$uuid"
+                val usbRoot = File(path)
+
+                if (usbRoot.exists()) {
+                    foundAny = true
+                    val description = volume.getDescription(this)
+
+                    Timber.d("Found: $description at $path")
+                    Toast.makeText(this, "Connected: $description", Toast.LENGTH_LONG).show()
+
+                    // --- WRITE TEST ---
+                    try {
+                        val testFile = File(usbRoot, "hello_usb.txt")
+                        testFile.writeText("Success! App wrote to: $description")
+                        Timber.d("Successfully wrote to hello_usb.txt")
+                    } catch (e: Exception) {
+                        Timber.e("Write failed: ${e.message}")
+                    }
+
+                    // --- READ/LIST TEST ---
+                    val files = usbRoot.listFiles()
+                    files?.forEach { file ->
+                        Timber.d("File Found: ${file.name}")
+                    }
+                }
+            }
+        }
+
+        if (!foundAny) {
+            Timber.i("No USB storage found.")
+            Toast.makeText(this, "No USB detected", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 4. Permission helper for Android 11+ (API 30+)
+    private fun checkAndRequestPermission(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                Toast.makeText(this, "Please allow 'All Files Access' for USB", Toast.LENGTH_LONG).show()
+                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                intent.data = "package:$packageName".toUri()
+                storagePermissionLauncher.launch(intent)
+                return false
+            }
+        }
+        return true
+    }
     companion object {
         private var totalIndex = 0
 
@@ -80,7 +156,7 @@ class MainActivity : ComponentActivity() {
         // Atomically set a new pending launch request
         fun setPendingLaunchRequest(request: IntentLaunchManager.LaunchRequest) {
             synchronized(this) {
-                Timber.d("[IntentLaunch]: Setting pending launch request for app ${request?.appId}")
+                Timber.d("[IntentLaunch]: Setting pending launch request for app ${request.appId}")
                 pendingLaunchRequest = request
             }
         }
@@ -88,10 +164,11 @@ class MainActivity : ComponentActivity() {
         fun hasPendingLaunchRequest(): Boolean {
             return pendingLaunchRequest != null
         }
-        
+
         @Volatile
         var wasLaunchedViaExternalIntent: Boolean = false
     }
+
 
     private val onSetSystemUi: (AndroidEvent.SetSystemUIVisibility) -> Unit = {
         desiredSystemUiVisible = it.visible
@@ -138,6 +215,10 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
 
+        // 2. Start the process immediately
+        if (checkAndRequestPermission()) {
+            runUsbDetection()
+        }
         // Apply immersive mode based on user preference
         applyImmersiveMode()
 
@@ -192,7 +273,7 @@ class MainActivity : ComponentActivity() {
                     .diskCache(diskCache)
                     .components {
                         // serve cached images when device has no internet
-                        add(Interceptor { chain ->
+                        add { chain ->
                             val request = if (!NetworkMonitor.hasInternet.value) {
                                 chain.request.newBuilder()
                                     .networkCachePolicy(CachePolicy.DISABLED)
@@ -201,7 +282,7 @@ class MainActivity : ComponentActivity() {
                                 chain.request
                             }
                             chain.proceed(request)
-                        })
+                        }
                         add(IconDecoder.Factory())
                         add(AnimatedPngDecoder.Factory())
                     }
@@ -216,42 +297,43 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleLaunchIntent(intent, isNewIntent = true)
+        handleLaunchIntent(intent)
     }
-
-    private fun handleLaunchIntent(intent: Intent, isNewIntent: Boolean = false) {
-        // recents re-delivers the same intent with this flag — don't re-launch
-        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) {
-            Timber.d("[IntentLaunch]: Ignoring intent re-delivered from recents")
-            return
-        }
-        Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}, isNewIntent=$isNewIntent")
+    private fun handleLaunchIntent(intent: Intent) {
+        Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}")
         try {
             val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
             if (launchRequest != null) {
                 Timber.d("[IntentLaunch]: Received external launch intent for app ${launchRequest.appId}")
+                wasLaunchedViaExternalIntent = true
 
-                if (isNewIntent) {
-                    // supersedes any stale pending request
+                val gameSource = ContainerUtils.extractGameSourceFromContainerId(launchRequest.appId)
+                val runsWithoutSteam = gameSource == GameSource.STEAM &&
+                    ContainerUtils.hasContainer(this, launchRequest.appId) &&
+                    ContainerUtils.getContainer(this, launchRequest.appId).isSteamOfflineMode()
+
+                // only defer to pending for Steam games that need login;
+                // non-Steam games and Steam-offline-mode games can launch without Steam
+                if (gameSource == GameSource.STEAM && !SteamService.isLoggedIn && !runsWithoutSteam) {
+                    setPendingLaunchRequest(launchRequest)
+                    Timber.d("[IntentLaunch]: Steam game but not logged in, stored pending launch request for app ${launchRequest.appId}")
+                } else {
+                    // clear any stale pending request so it doesn't fire on later login
                     consumePendingLaunchRequest()
-                    // UI is already up — emit directly, ViewModel listener exists
+
                     Timber.d("[IntentLaunch]: Emitting ExternalGameLaunch event for app ${launchRequest.appId}")
-                    launchRequest.containerConfig?.let { config ->
-                        IntentLaunchManager.applyTemporaryConfigOverride(this, launchRequest.appId, config)
-                    }
                     lifecycleScope.launch {
                         PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId))
                     }
-                } else {
-                    // cold start — store as pending, PluviaMain consumes when UI is ready
-                    setPendingLaunchRequest(launchRequest)
-                    Timber.d("[IntentLaunch]: Stored pending launch request for app ${launchRequest.appId}")
+
+                    // Apply config override if present
+                    launchRequest.containerConfig?.let { config ->
+                        IntentLaunchManager.applyTemporaryConfigOverride(this, launchRequest.appId, config)
+                    }
                 }
-            } else if (intent.action == "${BuildConfig.APPLICATION_ID}.LAUNCH_GAME") {
-                // intent matched our action but failed to parse — tell the user
+            } else {
                 wasLaunchedViaExternalIntent = false
-                Timber.w("[IntentLaunch]: parseLaunchIntent returned null for LAUNCH_GAME intent")
-                SnackbarManager.show(getString(R.string.intent_launch_failed))
+                Timber.d("[IntentLaunch]: parseLaunchIntent returned null")
             }
         } catch (e: Exception) {
             Timber.e(e, "[IntentLaunch]: Failed to handle launch intent")

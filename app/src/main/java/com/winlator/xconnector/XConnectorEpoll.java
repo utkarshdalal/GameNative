@@ -9,7 +9,6 @@ import java.nio.ByteBuffer;
 public class XConnectorEpoll implements Runnable {
     private static final String TAG = "XConnectorEpoll";
 
-    private final String connectorLabel;
     private final ConnectionHandler connectionHandler;
     private final int epollFd;
     private Thread epollThread;
@@ -47,7 +46,6 @@ public class XConnectorEpoll implements Runnable {
     public XConnectorEpoll(UnixSocketConfig socketConfig, ConnectionHandler connectionHandler, RequestHandler requestHandler) {
         this.connectionHandler = connectionHandler;
         this.requestHandler = requestHandler;
-        this.connectorLabel = socketConfig.path + " [" + connectionHandler.getClass().getSimpleName() + "/" + requestHandler.getClass().getSimpleName() + "]";
         int createAFUnixSocket = createAFUnixSocket(socketConfig.path);
         this.serverFd = createAFUnixSocket;
         if (createAFUnixSocket < 0) {
@@ -72,25 +70,21 @@ public class XConnectorEpoll implements Runnable {
             closeFd(createEpollFd);
             throw new RuntimeException("Failed to add shutdown fd to epoll.");
         }
-        this.epollThread = new Thread(this, "XConnectorEpoll:" + this.connectorLabel);
-    }
-
-    private String logPrefix() {
-        return "[" + this.connectorLabel + "]";
+        this.epollThread = new Thread(this);
     }
 
     public synchronized void start() {
         Thread thread;
         if (!this.running && (thread = this.epollThread) != null) {
             this.running = true;
-            Log.d(TAG, logPrefix() + " Starting connector thread (epollFd=" + this.epollFd + ", serverFd=" + this.serverFd + ", shutdownFd=" + this.shutdownFd + ")");
+            Log.d(TAG, "Starting connector thread");
             thread.start();
         }
     }
 
     public synchronized void stop() {
         if (this.running && this.epollThread != null) {
-            Log.d(TAG, logPrefix() + " Stopping connector thread (connectedClients=" + this.connectedClients.size() + ")");
+            Log.d(TAG, "Stopping connector thread");
             this.running = false;
             requestShutdown();
             while (this.epollThread.isAlive()) {
@@ -108,7 +102,7 @@ public class XConnectorEpoll implements Runnable {
         while (this.running) {
             if (!doEpollIndefinitely(this.epollFd, this.serverFd, !this.multithreadedClients && this.monitorClients)) {
                 if (this.running) {
-                    Log.e(TAG, logPrefix() + " epoll loop exited unexpectedly; shutting down all X clients (epollFd=" + this.epollFd + ", serverFd=" + this.serverFd + ", shutdownFd=" + this.shutdownFd + ", connectedClients=" + this.connectedClients.size() + ", multithreadedClients=" + this.multithreadedClients + ", monitorClients=" + this.monitorClients + ")");
+                    Log.e(TAG, "epoll loop exited unexpectedly; shutting down all X clients");
                 }
                 break;
             }

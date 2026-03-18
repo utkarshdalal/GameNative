@@ -429,8 +429,6 @@
     <string name="game_feedback_issues_question">Выберите проблемы, которые вы встретили:</string>
     <string name="game_information">Информация об игре</string>
     <string name="game_not_installed_message">%s не установлена. Пожалуйста, установите игру перед запуском.</string>
-    <string name="intent_launch_failed">Не удалось запустить игру: недействительный ярлык запуска</string>
-    <string name="intent_launch_steam_login_required">Для запуска этой игры требуется вход в Steam</string>
     <string name="game_not_installed_title">Игра не установлена</string>
     <string name="game_options_cloud_saves">Облачные сохранения</string>
     <string name="game_options_container">Контейнер</string>
@@ -707,14 +705,6 @@ https://gamenative.app
     <string name="manifest_install_failed">Ошибка установки %1$s</string>
     <string name="manifest_install_success">%1$s установлен</string>
     <string name="manifest_type_mismatch">Загруженный контент не соответствует ожидаемому типу.</string>
-
-    <!-- Library: source not logged in splash -->
-    <string name="library_source_not_logged_in_steam">Войдите, чтобы получить доступ к библиотеке Steam.</string>
-    <string name="library_source_not_logged_in_gog">Войдите, чтобы получить доступ к библиотеке GOG.</string>
-    <string name="library_source_not_logged_in_epic">Войдите, чтобы получить доступ к библиотеке Epic.</string>
-    <string name="library_source_not_logged_in_amazon">Войдите, чтобы получить доступ к библиотеке Amazon.</string>
-    <string name="library_source_no_custom_games">Вы не добавили ни одной пользовательской игры.</string>
-
     <string name="material_clock_display_divider">:</string>
     <string name="material_clock_toggle_content_description">Выберите AM или PM</string>
     <string name="material_motion_easing_accelerated">cubic-bezier(0.4, 0.0, 1.0, 1.0)</string>
@@ -819,36 +809,6 @@ https://gamenative.app
     <string name="quick_menu_tab_general">Общие</string>
     <string name="quick_menu_tab_controller">Контроллер</string>
     <string name="performance_hud">HUD производительности</string>
-    <string name="performance_hud_description">Показывать или скрывать игровое наложение.</string>
-    <string name="performance_hud_presets">Предустановки</string>
-    <string name="performance_hud_presets_description">Быстро переключаться между типовыми макетами HUD.</string>
-    <string name="performance_hud_preset_fps_only">1</string>
-    <string name="performance_hud_preset_essential">2</string>
-    <string name="performance_hud_preset_battery">3</string>
-    <string name="performance_hud_preset_full">4</string>
-    <string name="performance_hud_appearance">Внешний вид</string>
-    <string name="performance_hud_appearance_description">Настройка размера HUD и прозрачности фона.</string>
-    <string name="performance_hud_size">Размер</string>
-    <string name="performance_hud_size_small">S</string>
-    <string name="performance_hud_size_medium">M</string>
-    <string name="performance_hud_size_large">L</string>
-    <string name="performance_hud_background_opacity">Прозрачность фона</string>
-    <string name="performance_hud_percentage_value">%1$d%%</string>
-    <string name="performance_hud_metrics">Отображаемые показатели</string>
-    <string name="performance_hud_metrics_description">Выберите, какие показатели показывать в наложении.</string>
-    <string name="performance_hud_frame_rate">Частота кадров</string>
-    <string name="performance_hud_frame_rate_graph">График FPS</string>
-    <string name="performance_hud_cpu_usage">Загрузка CPU</string>
-    <string name="performance_hud_cpu_usage_graph">График CPU</string>
-    <string name="performance_hud_gpu_usage">Загрузка GPU</string>
-    <string name="performance_hud_gpu_usage_graph">График GPU</string>
-    <string name="performance_hud_ram_usage">Использование ОЗУ</string>
-    <string name="performance_hud_battery_level">Уровень батареи</string>
-    <string name="performance_hud_power_draw">Потребление энергии</string>
-    <string name="performance_hud_runtime_left">Оставшееся время</string>
-    <string name="performance_hud_clock_time">Время</string>
-    <string name="performance_hud_cpu_temperature">Температура CPU</string>
-    <string name="performance_hud_gpu_temperature">Температура GPU</string>
     <string name="quick_presets">Быстрые предустановки</string>
     <string name="range_1_to_0">1 – 0</string>
     <string name="range_a_to_z">A – Z</string>
@@ -969,7 +929,7 @@ https://gamenative.app
     <string name="settings_interface_storage_volume_title">Том хранилища</string>
     <string name="settings_interface_title">Интерфейс</string>
     <string name="settings_interface_wifi_only_subtitle">Предотвратить загрузки по сотовым данным</string>
-    <string name="settings_interface_wifi_only_title">Загружать только через Wi-Fi/LAN</string>
+    <string name="settings_interface_wifi_only_title">Загружать только через Wi-Fi</string>
     <string name="settings_language">Язык</string>
     <string name="settings_language_changing">Изменение языка и перезагрузка...</string>
     <string name="settings_language_restart_confirm">Перезагрузить</string>

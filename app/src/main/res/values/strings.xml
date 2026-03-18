@@ -180,8 +180,6 @@
     <string name="content_info">Content Info</string>
     <string name="game_not_installed_title">Game Not Installed</string>
     <string name="game_not_installed_message">%s is not installed. Please install the game first before launching.</string>
-    <string name="intent_launch_failed">Could not launch game: invalid launch shortcut</string>
-    <string name="intent_launch_steam_login_required">Steam login required to launch this game</string>
     <string name="game_executable_not_found_title">Cannot Launch</string>
     <string name="game_executable_not_found">The executable could not be auto-selected. Please set the executable path in container settings.</string>
     <string name="save_container_settings_title">Save Container Configuration?</string>
@@ -235,36 +233,6 @@
     <string name="quick_menu_tab_general">General</string>
     <string name="quick_menu_tab_controller">Controller</string>
     <string name="performance_hud">Performance HUD</string>
-    <string name="performance_hud_description">Show or hide the in-game overlay.</string>
-    <string name="performance_hud_presets">Presets</string>
-    <string name="performance_hud_presets_description">Quickly switch between common HUD layouts.</string>
-    <string name="performance_hud_preset_fps_only">1</string>
-    <string name="performance_hud_preset_essential">2</string>
-    <string name="performance_hud_preset_battery">3</string>
-    <string name="performance_hud_preset_full">4</string>
-    <string name="performance_hud_appearance">Appearance</string>
-    <string name="performance_hud_appearance_description">Adjust HUD size and background opacity.</string>
-    <string name="performance_hud_size">Size</string>
-    <string name="performance_hud_size_small">S</string>
-    <string name="performance_hud_size_medium">M</string>
-    <string name="performance_hud_size_large">L</string>
-    <string name="performance_hud_background_opacity">Background opacity</string>
-    <string name="performance_hud_percentage_value">%1$d%%</string>
-    <string name="performance_hud_metrics">Shown metrics</string>
-    <string name="performance_hud_metrics_description">Choose which stats appear in the overlay.</string>
-    <string name="performance_hud_frame_rate">Frame rate</string>
-    <string name="performance_hud_frame_rate_graph">FPS graph</string>
-    <string name="performance_hud_cpu_usage">CPU usage</string>
-    <string name="performance_hud_cpu_usage_graph">CPU graph</string>
-    <string name="performance_hud_gpu_usage">GPU usage</string>
-    <string name="performance_hud_gpu_usage_graph">GPU graph</string>
-    <string name="performance_hud_ram_usage">RAM usage</string>
-    <string name="performance_hud_battery_level">Battery level</string>
-    <string name="performance_hud_power_draw">Power draw</string>
-    <string name="performance_hud_runtime_left">Runtime left</string>
-    <string name="performance_hud_clock_time">Clock time</string>
-    <string name="performance_hud_cpu_temperature">CPU temperature</string>
-    <string name="performance_hud_gpu_temperature">GPU temperature</string>
     <string name="touchpad_help">Touchpad Help</string>
     <string name="hide_controls_with_controller">Hide on-screen controls with controller</string>
     <string name="hide_controls_with_controller_description">Automatically hide on-screen controls when a physical controller is connected</string>
@@ -831,7 +799,7 @@
     <string name="settings_interface_hide_statusbar_title">Hide status bar when not in game</string>
     <string name="settings_interface_hide_statusbar_subtitle">Hide Android status bar in game list, settings, etc. App will restart when changed.</string>
     <string name="settings_interface_icon_style">Icon style</string>
-    <string name="settings_interface_wifi_only_title">Download only over Wi-Fi/LAN</string>
+    <string name="settings_interface_wifi_only_title">Download only over Wi-Fi</string>
     <string name="settings_interface_wifi_only_subtitle">Prevent downloads on cellular data</string>
     <string name="settings_interface_external_storage_title">Write to external storage</string>
     <string name="settings_interface_no_external_storage">No external storage detected</string>
@@ -1265,11 +1233,4 @@
     <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
     <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
     <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
-
-    <!-- Library: source not logged in splash -->
-    <string name="library_source_not_logged_in_steam">Sign in to access your Steam library.</string>
-    <string name="library_source_not_logged_in_gog">Sign in to access your GOG library.</string>
-    <string name="library_source_not_logged_in_epic">Sign in to access your Epic library.</string>
-    <string name="library_source_not_logged_in_amazon">Sign in to access your Amazon library.</string>
-    <string name="library_source_no_custom_games">You have not added any custom games.</string>
 </resources>

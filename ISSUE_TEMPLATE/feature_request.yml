@@ -1,0 +1,27 @@
+name: Feature Request
+description: Something you'd like to see in GameNative
+title: "[Request]: "
+labels: enhancement
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This template should only be used for feature requests you would like to see implemented in Pluvia.
+
+  - type: textarea
+    id: describe-the-request
+    attributes:
+      label: Feature Request
+      placeholder: It would be cool if...
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: request-already-searched
+    attributes:
+      label: New Feature
+      description: Is the request not already posted as an [Issue](https://github.com/oxters168/gamenative/issues?q=is%3Aissue%20state%3Aopen%20label%3Aenhancement) or in the [Project Board](https://github.com/users/oxters168/projects/1)
+      options:
+        - label: I have searched and did not find my request already listed.
+          required: true
