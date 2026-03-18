@@ -56,7 +56,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
-import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.util.AdaptivePadding
@@ -71,12 +70,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val CAROUSEL_TILT_ANGLE = 30.061367f
-private const val CAROUSEL_SPACING_RATIO = -0.13735926f
+private const val CAROUSEL_SPACING_RATIO = -0.11f
 private const val CAROUSEL_CAMERA_DISTANCE_DP = 6f
 private const val CAROUSEL_SIDE_OFFSET_RATIO = 0.028464798f
 private const val CAROUSEL_STEP_OFFSET_RATIO = 0.08f
 private const val CAROUSEL_ITEM_OVERSCAN_RATIO = 0.4f
 private const val CAROUSEL_CARD_ASPECT_RATIO = 2f / 3f
+private const val CAROUSEL_CARD_SIZE_MULTIPLIER = 1.22f
 private const val CAROUSEL_CARD_VERTICAL_OVERFLOW = 32f
 private const val CAROUSEL_BADGE_RESERVED_HEIGHT = 0f
 private val CAROUSEL_BACKDROP_BLUR_RADIUS = 12.dp
@@ -248,9 +248,9 @@ internal fun LibraryCarouselPane(
     val topOverlayClearance = if (state.isSearching) 116.dp else 104.dp
     val bottomOverlayClearance = if (showGamepadHints) 156.dp else 32.dp
     val baseCardWidth = when (configuration.screenWidthDp) {
-        in 0..700 -> 180.dp
-        in 701..1100 -> 220.dp
-        else -> 250.dp
+        in 0..700 -> 200.dp
+        in 701..1100 -> 240.dp
+        else -> 270.dp
     }
     val baseCardHeight = baseCardWidth / CAROUSEL_CARD_ASPECT_RATIO
     val cardVerticalOverflow = CAROUSEL_CARD_VERTICAL_OVERFLOW.dp
@@ -263,7 +263,7 @@ internal fun LibraryCarouselPane(
     val maxCardHeight =
         (availableCarouselHeight - cardTopOverflow - cardBottomOverflow)
             .coerceAtLeast(180.dp)
-    val cardHeight = minOf(baseCardHeight, maxCardHeight)
+    val cardHeight = minOf(baseCardHeight, maxCardHeight * CAROUSEL_CARD_SIZE_MULTIPLIER)
     val cardWidth = cardHeight * CAROUSEL_CARD_ASPECT_RATIO
     val itemContainerHeight = cardHeight + cardTopOverflow + cardBottomOverflow
     val cardWidthPx = with(density) { cardWidth.toPx() }
@@ -447,7 +447,6 @@ internal fun LibraryCarouselPane(
                                 farValue = 0.8f,
                             )
                             val alpha = 1f
-                            val showCenterChrome = isCentered
                             val rotationY = direction * tiltAngle
                             val translationX = if (direction == 0f) {
                                 0f
@@ -526,25 +525,9 @@ internal fun LibraryCarouselPane(
                                             paneType = PaneType.GRID_CAPSULE,
                                             imageRefreshCounter = state.imageRefreshCounter,
                                             compatibilityStatus = state.compatibilityMap[item.name],
-                                            chromeScale = 1f,
-                                            showCompatibilityBadgeInCard = false,
-                                            showGameSourceIcon = showCenterChrome,
-                                            showMetadataOverlay = showCenterChrome,
                                             showFocusGlow = false,
-                                            useGradientFocusBorder = true,
                                             enableFocusScale = false,
                                         )
-                                    }
-
-                                    if (showCenterChrome) {
-                                        state.compatibilityMap[item.name]?.let { status ->
-                                            CompatibilityBadge(
-                                                status = status,
-                                                modifier = Modifier
-                                                    .align(Alignment.TopStart)
-                                                    .padding(start = 10.dp, top = 8.dp),
-                                            )
-                                        }
                                     }
                                 }
                             }
