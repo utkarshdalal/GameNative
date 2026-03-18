@@ -3,7 +3,6 @@ package app.gamenative.ui.screen.library.components
 import android.view.KeyEvent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -79,8 +78,6 @@ private const val CAROUSEL_CARD_ASPECT_RATIO = 2f / 3f
 private const val CAROUSEL_CARD_SIZE_MULTIPLIER = 1.22f
 private const val CAROUSEL_CARD_VERTICAL_OVERFLOW = 32f
 private const val CAROUSEL_BADGE_RESERVED_HEIGHT = 0f
-private val CAROUSEL_BACKDROP_BLUR_RADIUS = 12.dp
-
 private fun interpolateByDistance(
     distanceInSteps: Float,
     centerValue: Float,
@@ -102,104 +99,6 @@ private fun interpolateByDistance(
             val farProgress = (clampedDistance - 2f).coerceIn(0f, 1f)
             secondStepValue + (farValue - secondStepValue) * farProgress
         }
-    }
-}
-
-@Composable
-private fun CarouselBackdrop(
-    appInfo: LibraryItem?,
-    imageRefreshCounter: Long,
-    modifier: Modifier = Modifier,
-) {
-    val context = LocalContext.current
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.Black),
-    ) {
-        if (appInfo != null) {
-            val imageUrls by produceState(
-                initialValue = GridImageUrls("", ""),
-                key1 = appInfo.appId,
-                key2 = imageRefreshCounter,
-            ) {
-                value = withContext(Dispatchers.IO) {
-                    getGridImageUrl(context, appInfo, PaneType.GRID_HERO)
-                }
-            }
-
-            var currentImageUrl by remember(
-                imageUrls.primary,
-                imageUrls.fallback,
-                appInfo.appId,
-                imageRefreshCounter,
-            ) {
-                mutableStateOf(imageUrls.primary.ifEmpty { imageUrls.fallback })
-            }
-
-            if (currentImageUrl.isNotEmpty()) {
-                CoilImage(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            scaleX = 1.06f
-                            scaleY = 1.06f
-                        }
-                        .blur(CAROUSEL_BACKDROP_BLUR_RADIUS),
-                    imageModel = { currentImageUrl },
-                    imageOptions = ImageOptions(
-                        contentScale = ContentScale.Crop,
-                        contentDescription = null,
-                    ),
-                    loading = {},
-                    failure = {
-                        if (imageUrls.fallback.isNotEmpty() && currentImageUrl == imageUrls.primary) {
-                            currentImageUrl = imageUrls.fallback
-                        }
-                    },
-                    previewPlaceholder = painterResource(R.drawable.ic_logo_color),
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.18f)),
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Black.copy(alpha = 0.74f),
-                            0.16f to Color.Black.copy(alpha = 0.52f),
-                            0.38f to Color.Black.copy(alpha = 0.24f),
-                            0.62f to Color.Black.copy(alpha = 0.34f),
-                            1.0f to Color.Black.copy(alpha = 0.72f),
-                        ),
-                    ),
-                ),
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.horizontalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Black.copy(alpha = 0.34f),
-                            0.14f to Color.Black.copy(alpha = 0.16f),
-                            0.5f to Color.Transparent,
-                            0.86f to Color.Black.copy(alpha = 0.16f),
-                            1.0f to Color.Black.copy(alpha = 0.34f),
-                        ),
-                    ),
-                ),
-        )
     }
 }
 
@@ -376,7 +275,7 @@ internal fun LibraryCarouselPane(
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
-                CarouselBackdrop(
+                LibraryDynamicBackdrop(
                     appInfo = selectedBackdropItem,
                     imageRefreshCounter = state.imageRefreshCounter,
                     modifier = Modifier.fillMaxSize(),

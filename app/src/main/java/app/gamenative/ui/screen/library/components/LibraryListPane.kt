@@ -26,6 +26,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -181,6 +182,16 @@ internal fun LibraryListPane(
     }
 
     var targetOfScroll by remember { mutableIntStateOf(-1) }
+    val backdropItem by remember(state.appInfoList, listState.firstVisibleItemIndex, targetOfScroll, currentLayout) {
+        derivedStateOf {
+            if (currentLayout == PaneType.LIST || state.appInfoList.isEmpty()) {
+                null
+            } else {
+                val preferredIndex = if (targetOfScroll >= 0) targetOfScroll else listState.firstVisibleItemIndex
+                state.appInfoList.getOrNull(preferredIndex.coerceIn(0, state.appInfoList.lastIndex))
+            }
+        }
+    }
     LaunchedEffect(targetOfScroll) {
         if (targetOfScroll != -1) {
             listState.animateScrollToItem(targetOfScroll, -100)
@@ -196,6 +207,13 @@ internal fun LibraryListPane(
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
+            if (currentLayout != PaneType.LIST) {
+                LibraryDynamicBackdrop(
+                    appInfo = backdropItem,
+                    imageRefreshCounter = state.imageRefreshCounter,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
             var shouldShowSkeletonOverlay by remember { mutableStateOf(true) }
 
             val skeletonAlpha by animateFloatAsState(
