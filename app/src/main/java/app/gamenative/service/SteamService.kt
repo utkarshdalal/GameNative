@@ -2519,7 +2519,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         private fun clearUserData(clearCloudSyncState: Boolean = false) {
-            PrefManager.clearPreferences()
+            PrefManager.clearSteamSessionPreferences()
 
             clearDatabase(clearCloudSyncState = clearCloudSyncState)
         }

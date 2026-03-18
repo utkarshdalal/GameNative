@@ -82,6 +82,30 @@ object PrefManager {
         }
     }
 
+    /**
+     * Clears only Steam account/session state while preserving app-wide settings.
+     *
+     * This is used during Steam logout so user-configured defaults (container
+     * settings, download preferences, tips, theme, etc.) are not wiped.
+     */
+    fun clearSteamSessionPreferences() {
+        scope.launch {
+            dataStore.edit { pref ->
+                pref.remove(USER_NAME)
+                pref.remove(ACCESS_TOKEN_ENC)
+                pref.remove(REFRESH_TOKEN_ENC)
+                pref.remove(CLIENT_ID)
+                pref.remove(PERSONA_STATE)
+                pref.remove(STEAM_USER_ACCOUNT_ID)
+                pref.remove(STEAM_USER_STEAM_ID_64)
+                pref.remove(STEAM_USER_AVATAR_HASH)
+                pref.remove(STEAM_USER_NAME)
+                pref.remove(LAST_PICS_CHANGE_NUMBER)
+                pref.remove(STEAM_GAMES_COUNT)
+            }
+        }
+    }
+
     fun getBoolean(key: String, defaultValue: Boolean): Boolean =
         getPref(booleanPreferencesKey(key), defaultValue)
 
