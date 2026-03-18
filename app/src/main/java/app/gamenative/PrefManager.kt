@@ -388,6 +388,13 @@ object PrefManager {
             setPref(PERFORMANCE_HUD_BACKGROUND_OPACITY, value.coerceIn(0f, 1f))
         }
 
+    private val PERFORMANCE_HUD_COLOR_INTENSITY = floatPreferencesKey("performance_hud_color_intensity")
+    var performanceHudColorIntensity: Float
+        get() = getPref(PERFORMANCE_HUD_COLOR_INTENSITY, 1f)
+        set(value) {
+            setPref(PERFORMANCE_HUD_COLOR_INTENSITY, value.coerceIn(0f, 1f))
+        }
+
     private val PERFORMANCE_HUD_SIZE = stringPreferencesKey("performance_hud_size")
     var performanceHudSize: String
         get() = getPref(PERFORMANCE_HUD_SIZE, "medium")

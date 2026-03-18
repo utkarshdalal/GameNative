@@ -389,6 +389,7 @@ fun XServerScreen(
             showCpuUsageGraph = PrefManager.performanceHudShowCpuUsageGraph,
             showGpuUsageGraph = PrefManager.performanceHudShowGpuUsageGraph,
             backgroundOpacity = PrefManager.performanceHudBackgroundOpacity,
+            colorIntensity = PrefManager.performanceHudColorIntensity,
             size = PerformanceHudSize.fromPrefValue(PrefManager.performanceHudSize),
         )
     }
@@ -419,6 +420,7 @@ fun XServerScreen(
         PrefManager.performanceHudShowCpuUsageGraph = config.showCpuUsageGraph
         PrefManager.performanceHudShowGpuUsageGraph = config.showGpuUsageGraph
         PrefManager.performanceHudBackgroundOpacity = config.backgroundOpacity
+        PrefManager.performanceHudColorIntensity = config.colorIntensity
         PrefManager.performanceHudSize = config.size.prefValue
     }
 
