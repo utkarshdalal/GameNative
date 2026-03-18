@@ -16,6 +16,6 @@ sealed interface SteamEvent<T> : Event<T> {
 
     // data object AppInfoReceived : SteamEvent<Unit>
     data object ForceCloseApp : SteamEvent<Unit>
-    data object Disconnected : SteamEvent<Unit>
+    data class Disconnected(val isTerminal: Boolean = false) : SteamEvent<Unit>
     data object RemotelyDisconnected : SteamEvent<Unit>
 }

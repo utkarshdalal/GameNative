@@ -62,6 +62,7 @@ class MainViewModel @Inject constructor(
         data object LaunchApp : MainUiEvent()
         data class ExternalGameLaunch(val appId: String) : MainUiEvent()
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
+        data class SteamDisconnected(val isTerminal: Boolean) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
         data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
     }
@@ -96,8 +97,8 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private val onSteamDisconnected: (SteamEvent.Disconnected) -> Unit = {
-        Timber.i("Received disconnected from Steam")
+    private val onSteamDisconnected: (SteamEvent.Disconnected) -> Unit = { event ->
+        Timber.i("Received disconnected from Steam (terminal=${event.isTerminal})")
         _state.update {
             it.copy(
                 isSteamConnected = false,
@@ -109,6 +110,7 @@ class MainViewModel @Inject constructor(
                 connectionMessage = null,
             )
         }
+        viewModelScope.launch { _uiEvent.send(MainUiEvent.SteamDisconnected(event.isTerminal)) }
     }
 
     private val onRemotelyDisconnected: (SteamEvent.RemotelyDisconnected) -> Unit = {
@@ -124,6 +126,7 @@ class MainViewModel @Inject constructor(
                 connectionMessage = null,
             )
         }
+        viewModelScope.launch { _uiEvent.send(MainUiEvent.SteamDisconnected(isTerminal = false)) }
     }
 
     private val onLoggingIn: (SteamEvent.LogonStarted) -> Unit = {

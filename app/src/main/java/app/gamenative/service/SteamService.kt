@@ -3152,7 +3152,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         isConnected = false
 
-        val event = SteamEvent.Disconnected
+        val event = SteamEvent.Disconnected(isTerminal = false)
         PluviaApp.events.emit(event)
 
         steamClient!!.disconnect()
@@ -3202,7 +3202,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 if (isRunning && !isStopping) connectToSteam()
             }
         } else {
-            val event = SteamEvent.Disconnected
+            // only terminal when retries exhausted, not when user/system stopped the service
+            val event = SteamEvent.Disconnected(isTerminal = !isStopping)
             PluviaApp.events.emit(event)
 
             clearValues()
