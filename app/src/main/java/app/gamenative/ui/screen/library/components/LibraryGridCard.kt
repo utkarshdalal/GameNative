@@ -44,8 +44,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -85,22 +83,15 @@ internal fun GridViewCard(
     imageAlpha: Float,
     onImageLoadFailed: () -> Unit,
     compatibilityStatus: GameCompatibilityStatus?,
-    chromeScale: Float,
-    showCompatibilityBadgeInCard: Boolean,
-    showGameSourceIcon: Boolean,
-    showMetadataOverlay: Boolean,
     showFocusGlow: Boolean,
-    useGradientFocusBorder: Boolean,
     context: Context,
 ) {
     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) 2f / 3f else 460f / 215f
     val isCapsule = paneType == PaneType.GRID_CAPSULE
-    val overlayScale = if (isCapsule) chromeScale.coerceIn(0.62f, 1f) else 1f
-    val overlayNeedsLayer = overlayScale != 1f
     val topOverlayPadding = if (isCapsule) 8.dp else 4.dp
     val cardContentBottomPadding = if (isCapsule) 12.dp else 8.dp
     val topIconPadding = if (isCapsule) 10.dp else 8.dp
-    val bottomGradientHeight = if (isCapsule) 80.dp * overlayScale else 56.dp
+    val bottomGradientHeight = if (isCapsule) 80.dp else 56.dp
     val glowColor = MaterialTheme.colorScheme.primary
     val focusHaloModifier = if (isFocused && showFocusGlow) {
         Modifier.drawWithCache {
@@ -123,16 +114,12 @@ internal fun GridViewCard(
     } else {
         Modifier
     }
-    val focusBorderBrush = if (useGradientFocusBorder) {
-        Brush.verticalGradient(
-            colors = listOf(
-                MaterialTheme.colorScheme.primary,
-                MaterialTheme.colorScheme.tertiary,
-            ),
-        )
-    } else {
-        SolidColor(MaterialTheme.colorScheme.primary)
-    }
+    val focusBorderBrush = Brush.verticalGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.tertiary,
+        ),
+    )
 
     Box(
         modifier = modifier
@@ -230,106 +217,67 @@ internal fun GridViewCard(
                     }
                 }
 
-                if (showMetadataOverlay) {
-                    // Gradient overlay at bottom for title
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .height(bottomGradientHeight)
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.Transparent,
-                                        Color.Black.copy(alpha = 0.85f),
-                                    ),
+                // Gradient overlay at bottom for title
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(bottomGradientHeight)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.85f),
                                 ),
                             ),
+                        ),
+                )
+
+                // Title and status icons at bottom
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = cardContentBottomPadding),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = appInfo.name,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            shadow = Shadow(
+                                color = Color.Black,
+                                offset = Offset(1f, 1f),
+                                blurRadius = 2f,
+                            ),
+                        ),
+                        color = Color.White,
+                        maxLines = if (paneType == PaneType.GRID_CAPSULE) 2 else 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
                     )
 
-                    // Title and status icons at bottom
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = cardContentBottomPadding)
-                            .then(
-                                if (overlayNeedsLayer) {
-                                    Modifier.graphicsLayer {
-                                        scaleX = overlayScale
-                                        scaleY = overlayScale
-                                        transformOrigin = TransformOrigin(0f, 1f)
-                                    }
-                                } else {
-                                    Modifier
-                                }
-                            ),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = appInfo.name,
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                shadow = Shadow(
-                                    color = Color.Black,
-                                    offset = Offset(1f, 1f),
-                                    blurRadius = 2f,
-                                ),
-                            ),
-                            color = Color.White,
-                            maxLines = if (paneType == PaneType.GRID_CAPSULE) 2 else 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
-                        )
-
-                        GridStatusIcons(appInfo = appInfo)
-                    }
+                    GridStatusIcons(appInfo = appInfo)
                 }
 
                 // Compatibility badge (top left, including UNKNOWN)
-                if (showCompatibilityBadgeInCard) {
-                    compatibilityStatus?.let { status ->
-                        CompatibilityBadge(
-                            status = status,
-                            showLabel = true,
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(top = topOverlayPadding, start = topOverlayPadding)
-                                .then(
-                                    if (overlayNeedsLayer) {
-                                        Modifier.graphicsLayer {
-                                            scaleX = overlayScale
-                                            scaleY = overlayScale
-                                            transformOrigin = TransformOrigin(0f, 0f)
-                                        }
-                                    } else {
-                                        Modifier
-                                    }
-                                ),
-                        )
-                    }
-                }
-
-                if (showGameSourceIcon) {
-                    GameSourceIcon(
-                        gameSource = appInfo.gameSource,
+                compatibilityStatus?.let { status ->
+                    CompatibilityBadge(
+                        status = status,
+                        showLabel = true,
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = topIconPadding, end = topIconPadding)
-                            .then(
-                                if (overlayNeedsLayer) {
-                                    Modifier.graphicsLayer {
-                                        scaleX = overlayScale
-                                        scaleY = overlayScale
-                                        transformOrigin = TransformOrigin(1f, 0f)
-                                    }
-                                } else {
-                                    Modifier
-                                }
-                            ),
-                        iconSize = if (isCapsule) 14 else 12,
+                            .align(Alignment.TopStart)
+                            .padding(top = topOverlayPadding, start = topOverlayPadding),
                     )
                 }
+
+                GameSourceIcon(
+                    gameSource = appInfo.gameSource,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = topIconPadding, end = topIconPadding),
+                    iconSize = if (isCapsule) 14 else 12,
+                )
             }
         }
     }

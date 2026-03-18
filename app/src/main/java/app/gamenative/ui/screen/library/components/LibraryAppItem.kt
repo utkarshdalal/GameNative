@@ -69,12 +69,7 @@ internal fun AppItem(
     isRefreshing: Boolean = false,
     imageRefreshCounter: Long = 0L,
     compatibilityStatus: GameCompatibilityStatus? = null,
-    chromeScale: Float = 1f,
-    showCompatibilityBadgeInCard: Boolean = true,
-    showGameSourceIcon: Boolean = true,
-    showMetadataOverlay: Boolean = true,
     showFocusGlow: Boolean = true,
-    useGradientFocusBorder: Boolean = true,
     enableFocusScale: Boolean = true,
 ) {
     val context = LocalContext.current
@@ -145,12 +140,7 @@ internal fun AppItem(
                 alpha = 0.1f
             },
             compatibilityStatus = compatibilityStatus,
-            chromeScale = chromeScale,
-            showCompatibilityBadgeInCard = showCompatibilityBadgeInCard,
-            showGameSourceIcon = showGameSourceIcon,
-            showMetadataOverlay = showMetadataOverlay,
             showFocusGlow = showFocusGlow,
-            useGradientFocusBorder = useGradientFocusBorder,
             context = context,
         )
     }
