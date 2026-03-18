@@ -152,8 +152,8 @@ private fun CompactLibraryTabBar(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.scrim.copy(alpha = 0.86f),
-                        MaterialTheme.colorScheme.scrim.copy(alpha = 0.58f),
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
                         Color.Transparent,
                     ),
                 ),
@@ -199,7 +199,7 @@ private fun CompactLibraryTabBar(
                     .weight(1f)
                     .horizontalScroll(scrollState)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
@@ -410,8 +410,8 @@ private fun ExpandedLibraryTabBar(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.scrim.copy(alpha = 0.9f),
-                        MaterialTheme.colorScheme.scrim.copy(alpha = 0.62f),
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
                         Color.Transparent,
                     ),
                 ),
@@ -460,9 +460,9 @@ private fun ExpandedLibraryTabBar(
                     .background(
                         brush = Brush.horizontalGradient(
                             colors = listOf(
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                             ),
                         ),
                     )

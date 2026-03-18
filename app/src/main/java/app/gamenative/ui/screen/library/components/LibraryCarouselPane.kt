@@ -540,7 +540,6 @@ internal fun LibraryCarouselPane(
                                         state.compatibilityMap[item.name]?.let { status ->
                                             CompatibilityBadge(
                                                 status = status,
-                                                compact = true,
                                                 modifier = Modifier
                                                     .align(Alignment.TopStart)
                                                     .padding(start = 10.dp, top = 8.dp),
