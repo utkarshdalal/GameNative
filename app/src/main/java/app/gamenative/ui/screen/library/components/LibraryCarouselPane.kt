@@ -135,7 +135,7 @@ private fun CarouselBackdrop(
                 appInfo.appId,
                 imageRefreshCounter,
             ) {
-                mutableStateOf(imageUrls.primary)
+                mutableStateOf(imageUrls.primary.ifEmpty { imageUrls.fallback })
             }
 
             if (currentImageUrl.isNotEmpty()) {
