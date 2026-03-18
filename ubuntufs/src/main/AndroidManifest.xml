@@ -4,8 +4,6 @@
 
     <application android:hasCode="false" />
 
-	<uses-feature android:name="android.hardware.usb.host" android:required="false" />
-	
     <dist:module
         dist:instant="false"
         dist:title="@string/title_ubuntufs">
