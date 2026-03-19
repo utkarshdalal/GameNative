@@ -4,6 +4,7 @@ import android.content.Context
 import app.gamenative.data.GameSource
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
+import com.winlator.container.Container
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -25,6 +26,7 @@ class GOGDependencyFix(
         gameId: String,
         installPath: String,
         installPathWindows: String,
+        container: Container,
     ): Boolean {
         if (isSatisfied(installPath)) return true
         val downloadManager = GOGService.getInstance()?.gogDownloadManager ?: return false

@@ -2548,7 +2548,7 @@ private fun setupXEnvironment(
 
     if (container != null) {
         try {
-            GameFixesRegistry.applyFor(context, appId)
+            GameFixesRegistry.applyFor(context, appId, container)
         } catch (e: Exception) {
             Timber.tag("GameFixes").w(e, "Game fixes failed before launch")
         }
