@@ -59,9 +59,9 @@ class SdCardDetectionTest {
     }
 
     @Test
-    fun `depot with nonzero size but 0-byte download is rejected`() {
+    fun `depot with nonzero size but 0-byte download is accepted`() {
         val d = depot(manifests = mapOf("public" to manifest(size = 1000L, download = 0L)))
-        assertFalse(SteamService.filterForDownloadableDepots(d, true, "english", null))
+        assertTrue(SteamService.filterForDownloadableDepots(d, true, "english", null))
     }
 
     @Test

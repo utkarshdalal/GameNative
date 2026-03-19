@@ -5,6 +5,7 @@ import android.content.Context
 import android.provider.Settings
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.ManifestInfo
 import app.gamenative.data.SteamApp
 import app.gamenative.enums.Marker
 import app.gamenative.enums.SpecialGameSaveMapping
@@ -38,6 +39,11 @@ import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 object SteamUtils {
+
+    fun getDownloadBytes(manifest: ManifestInfo?): Long {
+        if (manifest == null) return 0L
+        return if (manifest.download > 0L) manifest.download else manifest.size
+    }
 
     internal val http = Net.http.newBuilder()
         .readTimeout(5, TimeUnit.MINUTES)

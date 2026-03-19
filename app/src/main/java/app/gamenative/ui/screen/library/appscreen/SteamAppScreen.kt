@@ -1054,7 +1054,7 @@ class SteamAppScreen : BaseAppScreen() {
                     Timber.i("There are ${depots.size} depots belonging to ${libraryItem.appId}")
                     val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
                     val downloadBytes = depots.values.sumOf {
-                        it.manifests["public"]?.download ?: 0
+                        SteamUtils.getDownloadBytes(it.manifests["public"])
                     }
                     val installBytes = depots.values.sumOf { it.manifests["public"]?.size ?: 0 }
                     InstallSizeInfo(
