@@ -203,7 +203,13 @@ fun LibraryOptionsPanel(
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             AppFilter.entries.forEach { appFilter ->
-                                if (appFilter.code !in listOf(0x01, 0x20)) {
+                                if (appFilter in listOf(
+                                        AppFilter.GAME,
+                                        AppFilter.APPLICATION,
+                                        AppFilter.TOOL,
+                                        AppFilter.DEMO,
+                                    )
+                                ) {
                                     OptionListItem(
                                         text = appFilter.displayText,
                                         selected = selectedFilters.contains(appFilter),
@@ -226,7 +232,12 @@ fun LibraryOptionsPanel(
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             AppFilter.entries.forEach { appFilter ->
-                                if (appFilter.code in listOf(0x01, 0x20)) {
+                                if (appFilter in listOf(
+                                        AppFilter.INSTALLED,
+                                        AppFilter.SHARED,
+                                        AppFilter.COMPATIBLE,
+                                    )
+                                ) {
                                     OptionListItem(
                                         text = appFilter.displayText,
                                         selected = selectedFilters.contains(appFilter),
