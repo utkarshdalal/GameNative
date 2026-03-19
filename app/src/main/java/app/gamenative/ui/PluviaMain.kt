@@ -304,6 +304,9 @@ fun PluviaMain(
     // Track if connection banner was dismissed by user
     var connectionBannerDismissed by rememberSaveable { mutableStateOf(false) }
 
+    // suppress CONNECTING banner during first attempt; DISCONNECTED always shows
+    var initialConnectDone by rememberSaveable { mutableStateOf(SteamService.isConnected) }
+
     // Track previous connection state to detect actual changes (not just recomposition)
     val previousConnectionState = remember { mutableStateOf(state.connectionState) }
 
@@ -312,6 +315,10 @@ fun PluviaMain(
         if (previousConnectionState.value != state.connectionState) {
             connectionBannerDismissed = false
             previousConnectionState.value = state.connectionState
+        }
+        // first attempt resolved (connected or failed)
+        if (state.connectionState != ConnectionState.CONNECTING) {
+            initialConnectDone = true
         }
     }
 
@@ -1227,7 +1234,7 @@ fun PluviaMain(
             }
 
             // Connection status banner (overlay) - dismissible so users can access navigation
-            if (state.currentScreen != PluviaScreen.LoginUser && !connectionBannerDismissed && !SteamService.isConnected &&
+            if (state.currentScreen != PluviaScreen.LoginUser && !connectionBannerDismissed && initialConnectDone && !state.isSteamConnected &&
                 PrefManager.refreshToken.isNotEmpty() && PrefManager.username.isNotEmpty()) {
                 Box(modifier = Modifier.zIndex(5f)) {
                     ConnectionStatusBanner(
