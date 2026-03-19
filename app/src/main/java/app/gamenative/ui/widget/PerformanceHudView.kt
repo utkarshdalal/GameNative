@@ -231,11 +231,14 @@ class PerformanceHudView(
             textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.textSizeSp)
             textView.maxLines = 1
             textView.ellipsize = TextUtils.TruncateAt.END
-            textView.setShadowLayer(
-                appearance.textSizeSp * 0.28f,
-                0f,
-                0f,
-                Color.argb(224, 0, 0, 0),
+            textView.setOutline(
+                outlineWidthPx = if (config.showTextOutline) {
+                    (textView.textSize * HUD_TEXT_OUTLINE_WIDTH_RATIO)
+                        .coerceIn(MIN_HUD_TEXT_OUTLINE_WIDTH_PX, MAX_HUD_TEXT_OUTLINE_WIDTH_PX)
+                } else {
+                    0f
+                },
+                outlineColor = HUD_TEXT_OUTLINE_COLOR,
             )
         }
 
@@ -248,10 +251,22 @@ class PerformanceHudView(
 
     private fun applyMetricAppearance(metric: MetricViews) {
         val textColor = blendMetricColor(metric.baseTextColor)
+        val stackedOutlineInset = metric.stackedText.outlineInsetPx
+        val compactOutlineInset = metric.compactText.outlineInsetPx
         metric.stackedText.setTextColor(textColor)
         metric.compactText.setTextColor(textColor)
-        metric.stackedText.setPadding(0, appearance.rowVerticalPaddingDp.dp, 0, 0)
-        metric.compactText.setPadding(0, 0, 0, 0)
+        metric.stackedText.setPadding(
+            stackedOutlineInset,
+            appearance.rowVerticalPaddingDp.dp + stackedOutlineInset,
+            stackedOutlineInset,
+            stackedOutlineInset,
+        )
+        metric.compactText.setPadding(
+            compactOutlineInset,
+            compactOutlineInset,
+            compactOutlineInset,
+            compactOutlineInset,
+        )
         metric.stackedGraph?.setLineColor(blendMetricColor(metric.baseGraphColor ?: metric.baseTextColor))
         metric.compactGraph?.setLineColor(blendMetricColor(metric.baseGraphColor ?: metric.baseTextColor))
 
@@ -548,8 +563,8 @@ class PerformanceHudView(
         return Color.argb(alpha, blendedRed, blendedGreen, blendedBlue)
     }
 
-    private fun createTextView(color: Int): TextView {
-        return TextView(context).apply {
+    private fun createTextView(color: Int): OutlinedTextView {
+        return OutlinedTextView(context).apply {
             setTextColor(color)
             setTypeface(Typeface.MONOSPACE, Typeface.BOLD)
         }
@@ -741,8 +756,8 @@ class PerformanceHudView(
         val supportsGraph: Boolean,
         val baseTextColor: Int,
         val baseGraphColor: Int?,
-        val stackedText: TextView,
-        val compactText: TextView,
+        val stackedText: OutlinedTextView,
+        val compactText: OutlinedTextView,
         val stackedContainer: LinearLayout,
         val compactContainer: LinearLayout,
         val stackedGraph: MetricGraphView? = null,
@@ -845,6 +860,68 @@ class PerformanceHudView(
 
             canvas.drawPath(path, glowPaint)
             canvas.drawPath(path, linePaint)
+        }
+    }
+
+    private inner class OutlinedTextView(context: Context) : TextView(context) {
+        private var fillColor: Int = currentTextColor
+        private var outlineColor: Int = HUD_TEXT_OUTLINE_COLOR
+        private var outlineWidthPx: Float = 0f
+
+        val outlineInsetPx: Int
+            get() = (outlineWidthPx * 0.5f).roundToInt()
+
+        override fun setTextColor(color: Int) {
+            fillColor = color
+            super.setTextColor(color)
+        }
+
+        fun setOutline(outlineWidthPx: Float, outlineColor: Int) {
+            val width = outlineWidthPx.coerceAtLeast(0f)
+            if (this.outlineWidthPx == width && this.outlineColor == outlineColor) {
+                return
+            }
+
+            this.outlineWidthPx = width
+            this.outlineColor = outlineColor
+            invalidate()
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            val textLayout = layout
+            if (outlineWidthPx <= 0f || textLayout == null || text.isNullOrEmpty()) {
+                super.onDraw(canvas)
+                return
+            }
+
+            val paint = paint
+            val previousColor = paint.color
+            val previousStyle = paint.style
+            val previousStrokeWidth = paint.strokeWidth
+            val previousStrokeJoin = paint.strokeJoin
+            val previousStrokeMiter = paint.strokeMiter
+            val saveCount = canvas.save()
+
+            canvas.translate(compoundPaddingLeft.toFloat(), extendedPaddingTop.toFloat())
+
+            paint.style = Paint.Style.STROKE
+            paint.strokeJoin = Paint.Join.ROUND
+            paint.strokeMiter = 10f
+            paint.strokeWidth = outlineWidthPx
+            paint.color = outlineColor
+            textLayout.draw(canvas)
+
+            paint.style = Paint.Style.FILL
+            paint.strokeWidth = 0f
+            paint.color = fillColor
+            textLayout.draw(canvas)
+
+            canvas.restoreToCount(saveCount)
+            paint.color = previousColor
+            paint.style = previousStyle
+            paint.strokeWidth = previousStrokeWidth
+            paint.strokeJoin = previousStrokeJoin
+            paint.strokeMiter = previousStrokeMiter
         }
     }
 
@@ -958,5 +1035,9 @@ class PerformanceHudView(
         const val RUNTIME_SMOOTHING_NEW_WEIGHT = 0.35
         const val GRAPH_SAMPLE_COUNT = 30
         const val GRAPH_FPS_MIN_SCALE = 60f
+        const val HUD_TEXT_OUTLINE_WIDTH_RATIO = 0.06f
+        const val MIN_HUD_TEXT_OUTLINE_WIDTH_PX = 1.25f
+        const val MAX_HUD_TEXT_OUTLINE_WIDTH_PX = 2.5f
+        val HUD_TEXT_OUTLINE_COLOR: Int = Color.argb(240, 0, 0, 0)
     }
 }

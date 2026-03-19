@@ -395,6 +395,13 @@ object PrefManager {
             setPref(PERFORMANCE_HUD_COLOR_INTENSITY, value.coerceIn(0f, 1f))
         }
 
+    private val PERFORMANCE_HUD_SHOW_TEXT_OUTLINE = booleanPreferencesKey("performance_hud_show_text_outline")
+    var performanceHudShowTextOutline: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_TEXT_OUTLINE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_TEXT_OUTLINE, value)
+        }
+
     private val PERFORMANCE_HUD_SIZE = stringPreferencesKey("performance_hud_size")
     var performanceHudSize: String
         get() = getPref(PERFORMANCE_HUD_SIZE, "medium")

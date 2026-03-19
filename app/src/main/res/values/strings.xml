@@ -250,6 +250,7 @@
     <string name="performance_hud_size_large">L</string>
     <string name="performance_hud_background_opacity">Background opacity</string>
     <string name="performance_hud_color_intensity">Color intensity</string>
+    <string name="performance_hud_text_outline">Text outline</string>
     <string name="performance_hud_percentage_value">%1$d%%</string>
     <string name="performance_hud_metrics">Shown metrics</string>
     <string name="performance_hud_metrics_description">Choose which stats appear in the overlay.</string>

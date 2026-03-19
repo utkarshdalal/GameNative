@@ -622,6 +622,17 @@ private fun PerformanceHudQuickMenuTab(
             accentColor = accentColor,
         )
 
+        QuickMenuToggleRow(
+            title = stringResource(R.string.performance_hud_text_outline),
+            enabled = performanceHudConfig.showTextOutline,
+            onToggle = {
+                onPerformanceHudConfigChanged(
+                    performanceHudConfig.copy(showTextOutline = !performanceHudConfig.showTextOutline),
+                )
+            },
+            accentColor = accentColor,
+        )
+
         Spacer(modifier = Modifier.height(8.dp))
 
         QuickMenuSectionHeader(
