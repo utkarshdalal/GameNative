@@ -234,6 +234,8 @@
     <string name="performance_hud_size_medium">M</string>
     <string name="performance_hud_size_large">L</string>
     <string name="performance_hud_background_opacity">Opacité de l’arrière-plan</string>
+    <string name="performance_hud_color_intensity">Intensité des couleurs</string>
+    <string name="performance_hud_text_outline">Contour du texte</string>
     <string name="performance_hud_percentage_value">%1$d%%</string>
     <string name="performance_hud_metrics">Mesures affichées</string>
     <string name="performance_hud_metrics_description">Choisissez quelles statistiques apparaissent dans la surcouche.</string>

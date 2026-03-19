@@ -162,6 +162,8 @@
     <string name="performance_hud_size_medium">M</string>
     <string name="performance_hud_size_large">L</string>
     <string name="performance_hud_background_opacity">Baggrundsopacitet</string>
+    <string name="performance_hud_color_intensity">Farveintensitet</string>
+    <string name="performance_hud_text_outline">Tekstkontur</string>
     <string name="performance_hud_percentage_value">%1$d%%</string>
     <string name="performance_hud_metrics">Viste målinger</string>
     <string name="performance_hud_metrics_description">Vælg hvilke statistikker der vises i overlayet.</string>

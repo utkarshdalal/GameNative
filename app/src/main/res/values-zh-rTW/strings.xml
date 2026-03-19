@@ -233,6 +233,8 @@
     <string name="performance_hud_size_medium">M</string>
     <string name="performance_hud_size_large">L</string>
     <string name="performance_hud_background_opacity">背景不透明度</string>
+    <string name="performance_hud_color_intensity">顏色強度</string>
+    <string name="performance_hud_text_outline">文字描邊</string>
     <string name="performance_hud_percentage_value">%1$d%%</string>
     <string name="performance_hud_metrics">顯示的指標</string>
     <string name="performance_hud_metrics_description">選擇要在疊加層中顯示的統計資料。</string>

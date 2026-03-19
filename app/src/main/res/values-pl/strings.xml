@@ -246,6 +246,8 @@
     <string name="performance_hud_size_medium">M</string>
     <string name="performance_hud_size_large">L</string>
     <string name="performance_hud_background_opacity">Przezroczystość tła</string>
+    <string name="performance_hud_color_intensity">Intensywność kolorów</string>
+    <string name="performance_hud_text_outline">Obrys tekstu</string>
     <string name="performance_hud_percentage_value">%1$d%%</string>
     <string name="performance_hud_metrics">Wyświetlane wskaźniki</string>
     <string name="performance_hud_metrics_description">Wybierz, które statystyki mają pojawiać się w nakładce.</string>

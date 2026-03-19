@@ -227,6 +227,8 @@
     <string name="performance_hud_size_medium">M</string>
     <string name="performance_hud_size_large">L</string>
     <string name="performance_hud_background_opacity">Hintergrundtransparenz</string>
+    <string name="performance_hud_color_intensity">Farbintensität</string>
+    <string name="performance_hud_text_outline">Textumrandung</string>
     <string name="performance_hud_percentage_value">%1$d%%</string>
     <string name="performance_hud_metrics">Angezeigte Werte</string>
     <string name="performance_hud_metrics_description">Wählen Sie aus, welche Statistiken im Overlay angezeigt werden.</string>
