@@ -739,7 +739,11 @@ object SteamUtils {
         val (files, directories) = file.walkTopDown().maxDepth(1).partition { it.isFile }
 
         val steamApi = files.firstOrNull {
-            it.toPath().name.startsWith("steam_api", true) && it.toPath().name.endsWith(".dll", true)
+            it.toPath().name.startsWith("steam_api", true)
+            && (
+                it.toPath().name.endsWith(".dll", true)
+                || it.toPath().name.endsWith(".dll.orig", true)
+            )
         }
 
         if (steamApi != null)
