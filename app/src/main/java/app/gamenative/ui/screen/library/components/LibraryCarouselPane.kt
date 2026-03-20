@@ -2,6 +2,10 @@ package app.gamenative.ui.screen.library.components
 
 import android.view.KeyEvent
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,6 +49,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -63,6 +69,7 @@ import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -78,6 +85,37 @@ private const val CAROUSEL_CARD_ASPECT_RATIO = 2f / 3f
 private const val CAROUSEL_CARD_SIZE_MULTIPLIER = 1.22f
 private const val CAROUSEL_CARD_VERTICAL_OVERFLOW = 32f
 private const val CAROUSEL_BADGE_RESERVED_HEIGHT = 0f
+private const val CAROUSEL_MOUSE_WHEEL_SCROLL_MULTIPLIER = 72f
+
+private fun Modifier.carouselMouseInput(listState: LazyListState): Modifier =
+    pointerInput(listState) {
+        coroutineScope {
+            awaitPointerEventScope {
+                while (true) {
+                    val event = awaitPointerEvent()
+                    when (event.type) {
+                        PointerEventType.Scroll -> {
+                            val scrollDelta = event.changes.firstOrNull()?.scrollDelta
+                            if (scrollDelta != null) {
+                                val dominantDelta =
+                                    if (abs(scrollDelta.x) > abs(scrollDelta.y)) scrollDelta.x else scrollDelta.y
+                                if (dominantDelta != 0f) {
+                                    launch {
+                                        listState.scrollBy(
+                                            dominantDelta * CAROUSEL_MOUSE_WHEEL_SCROLL_MULTIPLIER,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        else -> Unit
+                    }
+                }
+            }
+        }
+    }
+
 private fun interpolateByDistance(
     distanceInSteps: Float,
     centerValue: Float,
@@ -284,9 +322,19 @@ internal fun LibraryCarouselPane(
                 if (state.appInfoList.isNotEmpty()) {
                     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
+                    val mouseDragState = rememberDraggableState { delta ->
+                        listState.dispatchRawDelta(-delta)
+                    }
+
                     LazyRow(
                         state = listState,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .carouselMouseInput(listState)
+                            .draggable(
+                                state = mouseDragState,
+                                orientation = Orientation.Horizontal,
+                            ),
                         flingBehavior = flingBehavior,
                         horizontalArrangement = Arrangement.spacedBy(carouselItemSpacing),
                         verticalAlignment = Alignment.CenterVertically,
