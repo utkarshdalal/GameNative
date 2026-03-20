@@ -189,8 +189,14 @@ private fun resolveGameAppId(context: Context, appId: String): GameResolutionRes
     )
 }
 
-private fun resolveNotInstalledGameName(appId: String): String {
-    return ContainerUtils.resolveGameName(appId)
+
+/** Steam game that needs login before launch (excludes offline-mode games) */
+private fun needsSteamLogin(context: Context, appId: String): Boolean {
+    val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+    if (gameSource != GameSource.STEAM || SteamService.isLoggedIn) return false
+    // offline-mode games can launch without Steam
+    return !ContainerUtils.hasContainer(context, appId) ||
+        !ContainerUtils.getContainer(context, appId).isSteamOfflineMode()
 }
 
 private fun trackGameLaunched(appId: String) {
@@ -267,6 +273,54 @@ fun PluviaMain(
         }
     }
 
+    // process pending launch request from cold start (event bus has no replay)
+    LaunchedEffect(Unit) {
+        MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
+            Timber.i("[PluviaMain]: Processing pending launch request for app ${launchRequest.appId}")
+            // Steam games needing login will be handled by OnLogonEnded
+            if (needsSteamLogin(context, launchRequest.appId)) {
+                MainActivity.setPendingLaunchRequest(launchRequest)
+                SnackbarManager.show(context.getString(R.string.intent_launch_steam_login_required))
+            } else {
+                when (val resolution = resolveGameAppId(context, launchRequest.appId)) {
+                    is GameResolutionResult.Success -> {
+                        if (launchRequest.containerConfig != null) {
+                            IntentLaunchManager.applyTemporaryConfigOverride(
+                                context, launchRequest.appId, launchRequest.containerConfig,
+                            )
+                        }
+                        MainActivity.wasLaunchedViaExternalIntent = true
+                        trackGameLaunched(resolution.finalAppId)
+                        viewModel.setLaunchedAppId(resolution.finalAppId)
+                        viewModel.setBootToContainer(false)
+                        preLaunchApp(
+                            context = context,
+                            appId = resolution.finalAppId,
+                            useTemporaryOverride = launchRequest.containerConfig != null,
+                            setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                            setLoadingProgress = viewModel::setLoadingDialogProgress,
+                            setLoadingMessage = viewModel::setLoadingDialogMessage,
+                            setMessageDialogState = setMessageDialogState,
+                            onSuccess = viewModel::launchApp,
+                        )
+                    }
+
+                    is GameResolutionResult.NotFound -> {
+                        val appName = ContainerUtils.resolveGameName(resolution.originalAppId)
+                        Timber.w("[PluviaMain]: Game not installed: $appName (${launchRequest.appId})")
+                        msgDialogState = MessageDialogState(
+                            visible = true,
+                            type = DialogType.SYNC_FAIL,
+                            title = context.getString(R.string.game_not_installed_title),
+                            message = context.getString(R.string.game_not_installed_message, appName),
+                            dismissBtnText = context.getString(R.string.ok),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
             when (event) {
@@ -277,16 +331,31 @@ fun PluviaMain(
                 is MainViewModel.MainUiEvent.ExternalGameLaunch -> {
                     Timber.i("[PluviaMain]: Received ExternalGameLaunch UI event for app ${event.appId}")
 
+                    // Steam games need login before launch (cloud sync uses userSteamId)
+                    if (needsSteamLogin(context, event.appId)) {
+                        // preserve any container config override already applied by handleLaunchIntent
+                        MainActivity.setPendingLaunchRequest(
+                            IntentLaunchManager.LaunchRequest(
+                                appId = event.appId,
+                                containerConfig = IntentLaunchManager.getTemporaryOverride(event.appId),
+                            )
+                        )
+                        SnackbarManager.show(context.getString(R.string.intent_launch_steam_login_required))
+                        return@collect
+                    }
+
                     when (val resolution = resolveGameAppId(context, event.appId)) {
                         is GameResolutionResult.Success -> {
                             Timber.i("[PluviaMain]: Using appId: ${resolution.finalAppId} (original: ${event.appId}, isSteamInstalled: ${resolution.isSteamInstalled}, isCustomGame: ${resolution.isCustomGame})")
 
+                            MainActivity.wasLaunchedViaExternalIntent = true
                             trackGameLaunched(resolution.finalAppId)
                             viewModel.setLaunchedAppId(resolution.finalAppId)
                             viewModel.setBootToContainer(false)
                             preLaunchApp(
                                 context = context,
                                 appId = resolution.finalAppId,
+                                useTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(resolution.finalAppId),
                                 setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                                 setLoadingProgress = viewModel::setLoadingDialogProgress,
                                 setLoadingMessage = viewModel::setLoadingDialogMessage,
@@ -296,7 +365,7 @@ fun PluviaMain(
                         }
 
                         is GameResolutionResult.NotFound -> {
-                            val appName = resolveNotInstalledGameName(resolution.originalAppId)
+                            val appName = ContainerUtils.resolveGameName(resolution.originalAppId)
                             Timber.w("[PluviaMain]: Game not installed: $appName (${event.appId})")
                             msgDialogState = MessageDialogState(
                                 visible = true,
@@ -340,7 +409,7 @@ fun PluviaMain(
                                         .i("Processing pending launch request for app ${launchRequest.appId} (user is now logged in)")
                                     when (val resolution = resolveGameAppId(context, launchRequest.appId)) {
                                         is GameResolutionResult.NotFound -> {
-                                            val appName = resolveNotInstalledGameName(resolution.originalAppId)
+                                            val appName = ContainerUtils.resolveGameName(resolution.originalAppId)
                                             Timber.tag("IntentLaunch").w("Game not installed: $appName (${launchRequest.appId})")
                                             msgDialogState = MessageDialogState(
                                                 visible = true,
@@ -372,12 +441,14 @@ fun PluviaMain(
                                                 }
                                             }
 
+                                            MainActivity.wasLaunchedViaExternalIntent = true
                                             trackGameLaunched(launchRequest.appId)
                                             viewModel.setLaunchedAppId(launchRequest.appId)
                                             viewModel.setBootToContainer(false)
                                             preLaunchApp(
                                                 context = context,
                                                 appId = launchRequest.appId,
+                                                useTemporaryOverride = launchRequest.containerConfig != null,
                                                 setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                                                 setLoadingProgress = viewModel::setLoadingDialogProgress,
                                                 setLoadingMessage = viewModel::setLoadingDialogMessage,

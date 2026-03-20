@@ -158,6 +158,8 @@
     <string name="content_info">Inhaltsinfo</string>
     <string name="game_not_installed_title">Spiel nicht installiert</string>
     <string name="game_not_installed_message">%s ist nicht installiert. Bitte installiere das Spiel, bevor du es startest.</string>
+    <string name="intent_launch_failed">Spiel konnte nicht gestartet werden: ungültige Startverknüpfung</string>
+    <string name="intent_launch_steam_login_required">Steam-Anmeldung erforderlich, um dieses Spiel zu starten</string>
     <string name="game_executable_not_found_title">Start nicht möglich</string>
     <string name="game_executable_not_found">Die ausführbare Datei konnte nicht automatisch ausgewählt werden. Bitte lege den Pfad in den Containereinstellungen fest.</string>
     <string name="save_container_settings_title">Container-Konfiguration speichern?</string>
@@ -779,7 +781,7 @@
     <string name="settings_interface_hide_statusbar_title">Statusleiste außerhalb der Spiele verbergen</string>
     <string name="settings_interface_hide_statusbar_subtitle">Android-Statusleiste in Spieleliste, Einstellungen etc. ausblenden (Neustart nötig).</string>
     <string name="settings_interface_icon_style">Iconstil</string>
-    <string name="settings_interface_wifi_only_title">Nur über WLAN herunterladen</string>
+    <string name="settings_interface_wifi_only_title">Nur über WLAN/LAN herunterladen</string>
     <string name="settings_interface_wifi_only_subtitle">Verhindert Downloads über mobile Daten</string>
     <string name="settings_interface_external_storage_title">Auf externen Speicher schreiben</string>
     <string name="settings_interface_no_external_storage">Kein externer Speicher erkannt</string>

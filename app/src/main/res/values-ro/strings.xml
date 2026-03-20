@@ -167,6 +167,8 @@
     <string name="content_info">Informații conținut</string>
     <string name="game_not_installed_title">Joc neinstalat</string>
     <string name="game_not_installed_message">%s nu este instalat. Instalează jocul înainte de a-l porni.</string>
+    <string name="intent_launch_failed">Nu s-a putut lansa jocul: comandă rapidă de lansare invalidă</string>
+    <string name="intent_launch_steam_login_required">Autentificare Steam necesară pentru a lansa acest joc</string>
     <string name="game_executable_not_found_title">Nu se poate porni</string>
     <string name="game_executable_not_found">Executabilul nu a putut fi selectat automat. Setează calea executabilului în setările containerului.</string>
     <string name="save_container_settings_title">Salvezi configurația containerului?</string>
@@ -820,7 +822,7 @@
 	<string name="settings_interface_hide_statusbar_title">Ascunde bara de stare în afara jocului</string>
 	<string name="settings_interface_hide_statusbar_subtitle">Ascunde bara de stare Android în lista de jocuri, setări etc. Aplicația se va reporni după modificare.</string>
 	<string name="settings_interface_icon_style">Stil iconițe</string>
-	<string name="settings_interface_wifi_only_title">Descarcă doar prin Wi‑Fi</string>
+	<string name="settings_interface_wifi_only_title">Descarcă doar prin Wi‑Fi/LAN</string>
 	<string name="settings_interface_wifi_only_subtitle">Previne descărcările pe date mobile</string>
 	<string name="settings_interface_external_storage_title">Scrie pe stocare externă</string>
 	<string name="settings_interface_no_external_storage">Nu a fost detectată stocare externă</string>

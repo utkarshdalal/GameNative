@@ -583,14 +583,6 @@ class EpicAppScreen : BaseAppScreen() {
         )
     }
 
-    /**
-     * Epic games don't need special image fetching logic like Custom Games
-     * Images come from Epic CDN
-     */
-    override fun getGameFolderPathForImageFetch(context: Context, libraryItem: LibraryItem): String? {
-        return null // Epic uses CDN images, not local files
-    }
-
     override fun observeGameState(
         context: Context,
         libraryItem: LibraryItem,

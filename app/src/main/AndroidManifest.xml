@@ -44,7 +44,7 @@
             android:exported="true"
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize"
-            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
             android:theme="@style/Theme.Pluvia">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

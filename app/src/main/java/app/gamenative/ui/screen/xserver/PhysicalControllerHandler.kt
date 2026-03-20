@@ -10,9 +10,7 @@ import com.winlator.inputcontrols.ControlElement
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.ExternalControllerBinding
-import com.winlator.inputcontrols.GamepadState
 import com.winlator.math.Mathf
-import com.winlator.winhandler.WinHandler
 import com.winlator.xserver.XServer
 import java.util.Timer
 import java.util.TimerTask
@@ -229,7 +227,8 @@ class PhysicalControllerHandler(
                         }
                         else -> state.setPressed(buttonIdx, isActionDown)
                     }
-                } else {
+                }
+                else {
                     when (binding) {
                         Binding.GAMEPAD_LEFT_THUMB_UP, Binding.GAMEPAD_LEFT_THUMB_DOWN -> {
                             state.thumbLY = if (isActionDown) offset else 0f
@@ -243,9 +242,29 @@ class PhysicalControllerHandler(
                         Binding.GAMEPAD_RIGHT_THUMB_LEFT, Binding.GAMEPAD_RIGHT_THUMB_RIGHT -> {
                             state.thumbRX = if (isActionDown) offset else 0f
                         }
-                        Binding.GAMEPAD_DPAD_UP, Binding.GAMEPAD_DPAD_RIGHT,
-                        Binding.GAMEPAD_DPAD_DOWN, Binding.GAMEPAD_DPAD_LEFT -> {
+                        Binding.GAMEPAD_DPAD_UP  -> {
+                            state.dpad[0] = isActionDown
+                            if(isActionDown) {
+                                state.dpad[Binding.GAMEPAD_DPAD_DOWN.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal ] = false
+                            }
+                        }
+                        Binding.GAMEPAD_DPAD_DOWN -> {
                             state.dpad[binding.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal] = isActionDown
+                            if(isActionDown) {
+                                state.dpad[0] = false
+                            }
+                        }
+                       Binding.GAMEPAD_DPAD_LEFT -> {
+                            state.dpad[binding.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal] = isActionDown
+                            if(isActionDown) {
+                              state.dpad[Binding.GAMEPAD_DPAD_RIGHT.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal ] = false
+                          }
+                        }
+                        Binding.GAMEPAD_DPAD_RIGHT -> {
+                            state.dpad[binding.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal] = isActionDown
+                            if(isActionDown) {
+                                state.dpad[Binding.GAMEPAD_DPAD_LEFT.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal ] = false
+                            }
                         }
                         else -> {}
                     }
