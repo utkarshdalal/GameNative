@@ -42,16 +42,7 @@ object ContainerUtils {
     fun resolveScreenSize(screenSize: String, portraitMode: Boolean): String {
         if (!portraitMode) return screenSize
         if (screenSize == Container.DEFAULT_SCREEN_SIZE) return Container.DEFAULT_PORTRAIT_SCREEN_SIZE
-
-        val parts = screenSize.split("x")
-        val width = parts.getOrNull(0)?.toIntOrNull()
-        val height = parts.getOrNull(1)?.toIntOrNull()
-
-        return if (width != null && height != null && width > height) {
-            "${height}x${width}"
-        } else {
-            screenSize
-        }
+        return screenSize
     }
 
     fun setContainerDefaults(context: Context) {

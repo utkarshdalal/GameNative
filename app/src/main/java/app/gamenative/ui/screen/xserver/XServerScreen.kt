@@ -701,15 +701,16 @@ fun XServerScreen(
                 // Use current profile (custom or Profile 0)
                 val profileIdStr = container.getExtra("profileId", "0")
                 val profileId = profileIdStr.toIntOrNull() ?: 0
-                val targetProfile = if (profileId != 0) {
-                    manager?.getProfile(profileId)
-                } else {
-                    null
-                } ?: manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
+                val targetProfile = resolveOnScreenControlsProfile(
+                    manager = manager,
+                    profiles = profiles,
+                    container = container,
+                    gameName = currentAppInfo?.name ?: container.name,
+                )
 
                 if (!showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode) {
                     Timber.d("No external devices attached, showing on-screen controls")
-                    if (!areControlsVisible) {
+                    if (!areControlsVisible && targetProfile != null) {
                         showInputControls(targetProfile, xServerView!!.getxServer().winHandler, container)
                         areControlsVisible = true
                     }
@@ -828,13 +829,16 @@ fun XServerScreen(
                         // Use current profile (custom or Profile 0)
                         val profileIdStr = container.getExtra("profileId", "0")
                         val profileId = profileIdStr.toIntOrNull() ?: 0
-                        val targetProfile = if (profileId != 0) {
-                            manager?.getProfile(profileId)
-                        } else {
-                            null
-                        } ?: manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
+                        val targetProfile = resolveOnScreenControlsProfile(
+                            manager = manager,
+                            profiles = profiles,
+                            container = container,
+                            gameName = currentAppInfo?.name ?: container.name,
+                        )
 
-                        showInputControls(targetProfile, xServerView!!.getxServer().winHandler, container)
+                        if (targetProfile != null) {
+                            showInputControls(targetProfile, xServerView!!.getxServer().winHandler, container)
+                        }
                     }
                 }
                 areControlsVisible = !areControlsVisible
@@ -859,9 +863,11 @@ fun XServerScreen(
 
                 // If no custom profile exists, create one automatically
                 if (activeProfile == null) {
-                    val sourceProfile = manager.getProfile(0)
-                        ?: allProfiles.firstOrNull { it.id == 2 }
-                        ?: allProfiles.firstOrNull()
+                    val sourceProfile = getDefaultOnScreenControlsProfile(
+                        manager = manager,
+                        profiles = allProfiles,
+                        isPortrait = container.isPortraitMode,
+                    )
 
                     if (sourceProfile != null) {
                         try {
@@ -1654,32 +1660,37 @@ fun XServerScreen(
 
                     val customProfile = if (profileId != 0) manager?.getProfile(profileId) else null
 
-                    val targetProfile = if (customProfile != null) {
-                        // Use the custom profile associated with this container
+                    val targetProfile = resolveOnScreenControlsProfile(
+                        manager = manager,
+                        profiles = profiles,
+                        container = container,
+                        gameName = currentAppInfo?.name ?: container.name,
+                    )
+
+                    if (customProfile != null && targetProfile?.id == customProfile.id) {
                         Timber.d("Using CUSTOM profile: ${customProfile.name} (ID: ${customProfile.id})")
-                        customProfile
-                    } else {
-                        // Use Profile 0 (Physical Controller Default) as fallback
-                        val fallback = manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
-                        Timber.d("Using DEFAULT profile: ${fallback.name} (ID: ${fallback.id})")
-                        fallback
-                    }
-                    Timber.d("Profile loaded successfully: ${targetProfile.name}")
-
-                    // Load controllers for this profile
-                    val controllers = targetProfile.loadControllers()
-                    Timber.d("Controllers loaded: ${controllers.size} controller(s)")
-                    controllers.forEachIndexed { index, controller ->
-                        Timber.d("  [$index] ID: ${controller.id}, Name: ${controller.name}, Bindings: ${controller.controllerBindingCount}")
+                    } else if (targetProfile != null) {
+                        Timber.d("Using DEFAULT profile: ${targetProfile.name} (ID: ${targetProfile.id})")
                     }
 
-                    Timber.d("=== Profile Loading Complete ===")
-                    setProfile(targetProfile)
+                    if (targetProfile != null) {
+                        Timber.d("Profile loaded successfully: ${targetProfile.name}")
 
-                    physicalControllerHandler = PhysicalControllerHandler(targetProfile, xServerView.getxServer(), gameBack)
+                        // Load controllers for this profile
+                        val controllers = targetProfile.loadControllers()
+                        Timber.d("Controllers loaded: ${controllers.size} controller(s)")
+                        controllers.forEachIndexed { index, controller ->
+                            Timber.d("  [$index] ID: ${controller.id}, Name: ${controller.name}, Bindings: ${controller.controllerBindingCount}")
+                        }
 
-                    // Store profile for auto-show logic
-                    loadedProfile = targetProfile
+                        Timber.d("=== Profile Loading Complete ===")
+                        setProfile(targetProfile)
+
+                        physicalControllerHandler = PhysicalControllerHandler(targetProfile, xServerView.getxServer(), gameBack)
+
+                        // Store profile for auto-show logic
+                        loadedProfile = targetProfile
+                    }
                 }
 
                 // Set overlay opacity from preferences if needed
@@ -2243,6 +2254,65 @@ private fun EditModeToolbar(
             }
         }
     }
+}
+
+private const val DREAMS_OF_AETHER_PORTRAIT_RESET_KEY = "dreamsOfAetherPortraitControlsReset"
+private const val DEFAULT_ON_SCREEN_PROFILE_ID = 0
+private const val DEFAULT_ON_SCREEN_PROFILE_ID_PORTRAIT = 6
+private const val VIRTUAL_GAMEPAD_PROFILE_ID = 3
+private const val VIRTUAL_GAMEPAD_PROFILE_ID_PORTRAIT = 7
+
+private fun getDefaultOnScreenControlsProfile(
+    manager: InputControlsManager?,
+    profiles: List<ControlsProfile>,
+    isPortrait: Boolean,
+): ControlsProfile? {
+    val preferredId = if (isPortrait) DEFAULT_ON_SCREEN_PROFILE_ID_PORTRAIT else DEFAULT_ON_SCREEN_PROFILE_ID
+    val fallbackId = if (isPortrait) VIRTUAL_GAMEPAD_PROFILE_ID_PORTRAIT else VIRTUAL_GAMEPAD_PROFILE_ID
+    return manager?.getProfile(preferredId)
+        ?: manager?.getProfile(fallbackId)
+        ?: manager?.getProfile(DEFAULT_ON_SCREEN_PROFILE_ID)
+        ?: manager?.getProfile(VIRTUAL_GAMEPAD_PROFILE_ID)
+        ?: profiles.getOrNull(2)
+        ?: profiles.firstOrNull()
+}
+
+private fun resolveOnScreenControlsProfile(
+    manager: InputControlsManager?,
+    profiles: List<ControlsProfile>,
+    container: Container,
+    gameName: String,
+): ControlsProfile? {
+    val defaultProfile = getDefaultOnScreenControlsProfile(
+        manager = manager,
+        profiles = profiles,
+        isPortrait = container.isPortraitMode,
+    )
+    val profileId = container.getExtra("profileId", "0").toIntOrNull() ?: 0
+    var customProfile = if (profileId != 0) manager?.getProfile(profileId) else null
+
+    if (shouldResetDreamsOfAetherPortraitProfile(container, customProfile, gameName)) {
+        Timber.i("Resetting stale portrait controls profile for %s", gameName)
+        container.putExtra("profileId", "0")
+        container.putExtra(DREAMS_OF_AETHER_PORTRAIT_RESET_KEY, "true")
+        container.saveData()
+        customProfile = null
+    }
+
+    return customProfile ?: defaultProfile
+}
+
+private fun shouldResetDreamsOfAetherPortraitProfile(
+    container: Container,
+    customProfile: ControlsProfile?,
+    gameName: String,
+): Boolean {
+    if (!container.isPortraitMode || customProfile == null) return false
+    if (container.getExtra(DREAMS_OF_AETHER_PORTRAIT_RESET_KEY, "false").toBoolean()) return false
+    if (!gameName.contains("Dreams of Aether", ignoreCase = true)) return false
+
+    val expectedAutoProfileName = "$gameName - Controls"
+    return customProfile.name == expectedAutoProfileName
 }
 
 private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, container: Container) {

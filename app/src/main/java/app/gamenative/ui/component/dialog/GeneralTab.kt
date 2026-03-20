@@ -307,16 +307,7 @@ fun GeneralTabContent(
                     enabled && config.screenSize == Container.DEFAULT_SCREEN_SIZE -> Container.DEFAULT_PORTRAIT_SCREEN_SIZE
                     !enabled && config.screenSize == Container.DEFAULT_PORTRAIT_SCREEN_SIZE -> Container.DEFAULT_SCREEN_SIZE
                     enabled -> ContainerUtils.resolveScreenSize(config.screenSize, true)
-                    else -> {
-                        val parts = config.screenSize.split("x")
-                        val width = parts.getOrNull(0)?.toIntOrNull()
-                        val height = parts.getOrNull(1)?.toIntOrNull()
-                        if (width != null && height != null && width < height) {
-                            "${height}x${width}"
-                        } else {
-                            config.screenSize
-                        }
-                    }
+                    else -> config.screenSize
                 }
                 state.config.value = config.copy(
                     portraitMode = enabled,
