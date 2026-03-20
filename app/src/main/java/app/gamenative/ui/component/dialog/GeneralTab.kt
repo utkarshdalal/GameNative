@@ -30,6 +30,7 @@ import com.alorma.compose.settings.ui.SettingsSwitch
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
+import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.core.DefaultVersion
@@ -301,7 +302,35 @@ fun GeneralTabContent(
             title = { Text(text = stringResource(R.string.portrait_mode)) },
             subtitle = { Text(text = stringResource(R.string.portrait_mode_description)) },
             state = config.portraitMode,
-            onCheckedChange = { state.config.value = config.copy(portraitMode = it) },
+            onCheckedChange = { enabled ->
+                val updatedScreenSize = when {
+                    enabled && config.screenSize == Container.DEFAULT_SCREEN_SIZE -> Container.DEFAULT_PORTRAIT_SCREEN_SIZE
+                    !enabled && config.screenSize == Container.DEFAULT_PORTRAIT_SCREEN_SIZE -> Container.DEFAULT_SCREEN_SIZE
+                    enabled -> ContainerUtils.resolveScreenSize(config.screenSize, true)
+                    else -> {
+                        val parts = config.screenSize.split("x")
+                        val width = parts.getOrNull(0)?.toIntOrNull()
+                        val height = parts.getOrNull(1)?.toIntOrNull()
+                        if (width != null && height != null && width < height) {
+                            "${height}x${width}"
+                        } else {
+                            config.screenSize
+                        }
+                    }
+                }
+                state.config.value = config.copy(
+                    portraitMode = enabled,
+                    screenSize = updatedScreenSize,
+                )
+
+                val newIndex = state.screenSizes.indexOfFirst { it.contains(updatedScreenSize) }
+                state.screenSizeIndex.value = if (newIndex > 0) newIndex else 0
+                if (newIndex <= 0) {
+                    val parts = updatedScreenSize.split("x")
+                    state.customScreenWidth.value = parts.getOrElse(0) { "1280" }
+                    state.customScreenHeight.value = parts.getOrElse(1) { "720" }
+                }
+            },
         )
         SettingsListDropdown(
             colors = settingsTileColors(),

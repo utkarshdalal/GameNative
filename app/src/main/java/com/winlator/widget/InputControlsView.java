@@ -177,8 +177,6 @@ public class InputControlsView extends View {
     private void drawGrid(Canvas canvas) {
         paint.setStyle(Paint.Style.FILL);
         paint.setStrokeWidth(snappingSize * 0.0625f);
-        paint.setColor(0xff000000);
-        canvas.drawColor(Color.BLACK);
 
         paint.setAntiAlias(false);
         paint.setColor(0xff303030);
@@ -341,6 +339,23 @@ public class InputControlsView extends View {
 
     public int getMaxHeight() {
         return (int)Mathf.roundTo(getHeight(), snappingSize);
+    }
+
+    public void clampElementToBounds(ControlElement element) {
+        if (element == null || getMaxWidth() <= 0 || getMaxHeight() <= 0) return;
+
+        android.graphics.Rect bounds = element.getBoundingBox();
+        int dx = 0;
+        int dy = 0;
+
+        if (bounds.left < 0) dx = -bounds.left;
+        else if (bounds.right > getMaxWidth()) dx = getMaxWidth() - bounds.right;
+
+        if (bounds.top < 0) dy = -bounds.top;
+        else if (bounds.bottom > getMaxHeight()) dy = getMaxHeight() - bounds.bottom;
+
+        if (dx != 0) element.setX(element.getX() + dx);
+        if (dy != 0) element.setY(element.getY() + dy);
     }
 
     private void createMouseMoveTimer() {
@@ -816,6 +831,7 @@ public class InputControlsView extends View {
                     if (selectedElement != null) {
                         selectedElement.setX((int)Mathf.roundTo(event.getX() - offsetX, snappingSize));
                         selectedElement.setY((int)Mathf.roundTo(event.getY() - offsetY, snappingSize));
+                        clampElementToBounds(selectedElement);
                         invalidate();
                     }
                     break;

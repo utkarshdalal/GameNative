@@ -94,6 +94,8 @@ import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.ui.theme.DarkColors
+import androidx.compose.ui.graphics.toArgb
 import app.gamenative.utils.ExecutableSelectionUtils
 import app.gamenative.utils.PreInstallSteps
 import app.gamenative.utils.SteamTokenLogin
@@ -301,18 +303,7 @@ fun XServerScreen(
     )
 
     val effectiveScreenSize = remember(container.screenSize, container.isPortraitMode) {
-        if (!container.isPortraitMode) {
-            container.screenSize
-        } else {
-            val parts = container.screenSize.split("x")
-            val width = parts.getOrNull(0)?.toIntOrNull()
-            val height = parts.getOrNull(1)?.toIntOrNull()
-            if (width != null && height != null && width > height) {
-                "${height}x${width}"
-            } else {
-                container.screenSize
-            }
-        }
+        ContainerUtils.resolveScreenSize(container.screenSize, container.isPortraitMode)
     }
 
     val xServerState = rememberSaveable(container.id, effectiveScreenSize, stateSaver = XServerState.Saver) {
@@ -1310,7 +1301,22 @@ fun XServerScreen(
             Timber.i("Creating XServerView and XServer")
             val dm = context.resources.displayMetrics
             val screenWidth = if (isPortrait) minOf(dm.widthPixels, dm.heightPixels) else dm.widthPixels
-            val controlsHeightPortrait = (screenWidth * 2f / 3f).toInt()
+            val screenHeight = if (isPortrait) maxOf(dm.widthPixels, dm.heightPixels) else dm.heightPixels
+            val minControlsHeightPortrait = (screenWidth * 2f / 3f).toInt()
+            val controlsHeightPortrait = if (isPortrait) {
+                val screenInfo = ScreenInfo(xServerState.value.screenSize)
+                val desiredGameHeight = (screenWidth.toFloat() * screenInfo.height / screenInfo.width)
+                    .toInt()
+                    .coerceAtMost(screenHeight)
+                maxOf(minControlsHeightPortrait, screenHeight - desiredGameHeight)
+            } else {
+                0
+            }
+            val gameAreaHeightPortrait = if (isPortrait) {
+                (screenHeight - controlsHeightPortrait).coerceAtLeast(1)
+            } else {
+                0
+            }
             val mainRoot = if (isPortrait) {
                 LinearLayout(context).apply {
                     orientation = LinearLayout.VERTICAL
@@ -1321,7 +1327,13 @@ fun XServerScreen(
             }
             val frameLayout = if (isPortrait) {
                 val top = FrameLayout(context)
-                mainRoot.addView(top, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+                mainRoot.addView(
+                    top,
+                    LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        gameAreaHeightPortrait,
+                    ),
+                )
                 top
             } else {
                 mainRoot as FrameLayout
@@ -1686,7 +1698,7 @@ fun XServerScreen(
             // Add InputControlsView (portrait: inside fixed-height container at bottom; landscape: overlay)
             if (isPortrait) {
                 val controlsContainer = FrameLayout(context).apply {
-                    setBackgroundColor(Color.BLACK)
+                    setBackgroundColor(DarkColors.surfacePanel.toArgb())
                 }
                 mainRoot.addView(controlsContainer, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, controlsHeightPortrait))
                 controlsContainer.addView(icView)

@@ -287,6 +287,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     if (!binding.isGamepad()) hasGamepadBinding = false;
                 }
 
+                inputControlsView.clampElementToBounds(element);
                 if (!virtualGamepad && hasGamepadBinding) virtualGamepad = true;
                 elements.add(element);
             }
