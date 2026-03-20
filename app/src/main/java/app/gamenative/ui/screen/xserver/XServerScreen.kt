@@ -300,7 +300,22 @@ fun XServerScreen(
         ),
     )
 
-    val xServerState = rememberSaveable(stateSaver = XServerState.Saver) {
+    val effectiveScreenSize = remember(container.screenSize, container.isPortraitMode) {
+        if (!container.isPortraitMode) {
+            container.screenSize
+        } else {
+            val parts = container.screenSize.split("x")
+            val width = parts.getOrNull(0)?.toIntOrNull()
+            val height = parts.getOrNull(1)?.toIntOrNull()
+            if (width != null && height != null && width > height) {
+                "${height}x${width}"
+            } else {
+                container.screenSize
+            }
+        }
+    }
+
+    val xServerState = rememberSaveable(container.id, effectiveScreenSize, stateSaver = XServerState.Saver) {
         mutableStateOf(
             XServerState(
                 graphicsDriver = container.graphicsDriver,
@@ -308,7 +323,7 @@ fun XServerScreen(
                 audioDriver = container.audioDriver,
                 dxwrapper = container.dxWrapper,
                 dxwrapperConfig = DXVKHelper.parseConfig(container.dxWrapperConfig),
-                screenSize = container.screenSize,
+                screenSize = effectiveScreenSize,
             ),
         )
     }
@@ -1295,7 +1310,7 @@ fun XServerScreen(
             Timber.i("Creating XServerView and XServer")
             val dm = context.resources.displayMetrics
             val screenWidth = if (isPortrait) minOf(dm.widthPixels, dm.heightPixels) else dm.widthPixels
-            val controlsHeightPortrait = screenWidth * 9 / 16
+            val controlsHeightPortrait = (screenWidth * 2f / 3f).toInt()
             val mainRoot = if (isPortrait) {
                 LinearLayout(context).apply {
                     orientation = LinearLayout.VERTICAL
@@ -1543,6 +1558,14 @@ fun XServerScreen(
                             )
                             changeWineAudioDriver(xServerState.value.audioDriver, container, ImageFs.find(context))
                             setImagefsContainerVariant(context, container)
+                            PluviaApp.xEnvironment?.let { existingEnvironment ->
+                                try {
+                                    existingEnvironment.stopEnvironmentComponents()
+                                } catch (cleanupEx: Exception) {
+                                    Timber.w(cleanupEx, "Failed to stop previous environment before setup")
+                                }
+                                PluviaApp.xEnvironment = null
+                            }
                             PluviaApp.xEnvironment = setupXEnvironment(
                                 context,
                                 appId,
@@ -2749,6 +2772,7 @@ private fun setupXEnvironment(
         Timber.i("ID: ${container.id}")
         Timber.i("Name: ${container.name}")
         Timber.i("Screen Size: ${container.screenSize}")
+        Timber.i("Effective Screen Size: ${xServerState.value.screenSize}")
         Timber.i("Graphics Driver: ${container.graphicsDriver}")
         Timber.i("DX Wrapper: ${container.dxWrapper} (Config: '${container.dxWrapperConfig}')")
         Timber.i("Audio Driver: ${container.audioDriver}")
