@@ -669,7 +669,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             // 1. Has something to download (0-byte manifests = stale PICS data from interrupted fetch)
             if (depot.manifests.isEmpty() && !depot.sharedInstall)
                 return false
-            if (depot.manifests.isNotEmpty() && depot.manifests.values.all { it.size == 0L || it.download == 0L })
+            if (depot.manifests.isNotEmpty() && depot.manifests.values.all { it.size == 0L && it.download == 0L })
                 return false
             // 2. Supported OS
             if (!(depot.osList.contains(OS.windows) ||
