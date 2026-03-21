@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.data.EpicGame
 import app.gamenative.data.LibraryItem
+import app.gamenative.service.DownloadService
 import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.service.epic.EpicConstants
 import app.gamenative.service.epic.EpicService
@@ -465,6 +466,7 @@ class EpicAppScreen : BaseAppScreen() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val result = EpicService.deleteGame(context, libraryItem.gameId)
+                DownloadService.invalidateCache()
 
                 if (result.isSuccess) {
                     Timber.tag(TAG).i("Epic game uninstalled successfully: ${libraryItem.appId}")
@@ -760,6 +762,7 @@ class EpicAppScreen : BaseAppScreen() {
                             downloadInfo?.awaitCompletion()
                             EpicService.cleanupDownload(context, gameId)
                             EpicService.deleteGame(context, gameId)
+                            DownloadService.invalidateCache()
                             withContext(Dispatchers.Main) {
                                 BaseAppScreen.hideInstallDialog(appId)
                                 app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false))

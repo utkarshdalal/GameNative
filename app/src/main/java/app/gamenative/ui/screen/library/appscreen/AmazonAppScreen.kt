@@ -22,6 +22,7 @@ import app.gamenative.R
 import app.gamenative.data.AmazonGame
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
+import app.gamenative.service.DownloadService
 import app.gamenative.service.amazon.AmazonConstants
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.ui.component.dialog.AmazonInstallDialog
@@ -345,6 +346,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
         Timber.tag(TAG).i("performUninstall: deleting game $productId")
         CoroutineScope(Dispatchers.IO).launch {
             val result = AmazonService.deleteGame(context, productId)
+            DownloadService.invalidateCache()
             if (result.isSuccess) {
                 Timber.tag(TAG).i("Uninstall succeeded for $productId")
             } else {
@@ -633,6 +635,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                         scope.launch {
                             downloadInfo?.awaitCompletion()
                             AmazonService.deleteGame(context, productId)
+                            DownloadService.invalidateCache()
                             withContext(Dispatchers.Main) {
                                 BaseAppScreen.hideInstallDialog(appId)
                                 val gameId = libraryItem.gameId

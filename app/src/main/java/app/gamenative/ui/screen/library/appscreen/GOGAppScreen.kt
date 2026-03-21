@@ -17,6 +17,8 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.data.GOGGame
 import app.gamenative.data.LibraryItem
+import app.gamenative.enums.Marker
+import app.gamenative.service.DownloadService
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.MarkerUtils
@@ -353,6 +355,7 @@ class GOGAppScreen : BaseAppScreen() {
             try {
                 // Delegate to GOGService which calls GOGManager.deleteGame
                 val result = GOGService.deleteGame(context, libraryItem)
+                DownloadService.invalidateCache()
 
                 if (result.isSuccess) {
                     Timber.i("Successfully uninstalled GOG game: ${libraryItem.appId}")
@@ -626,6 +629,7 @@ class GOGAppScreen : BaseAppScreen() {
                             }
 
                             val result = GOGService.deleteGame(context, libraryItem)
+                            DownloadService.invalidateCache()
                             if (wasDownloading && !isInstalledAfterCancel) {
                                 SnackbarManager.show("Download cancelled")
                             }
