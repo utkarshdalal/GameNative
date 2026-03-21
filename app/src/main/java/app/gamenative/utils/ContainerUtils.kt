@@ -136,6 +136,7 @@ object ContainerUtils {
 			enableDInput = PrefManager.dinputEnabled,
 			dinputMapperType = PrefManager.dinputMapperType.toByte(),
             disableMouseInput = PrefManager.disableMouseInput,
+            touchscreenHaptics = PrefManager.touchscreenHaptics,
             portraitMode = PrefManager.portraitMode,
             externalDisplayMode = PrefManager.externalDisplayInputMode,
             externalDisplaySwap = PrefManager.externalDisplaySwap,
@@ -175,6 +176,7 @@ object ContainerUtils {
         PrefManager.mouseWarpOverride = containerData.mouseWarpOverride
         PrefManager.useDRI3 = containerData.useDRI3
         PrefManager.disableMouseInput = containerData.disableMouseInput
+        PrefManager.touchscreenHaptics = containerData.touchscreenHaptics
         PrefManager.externalDisplayInputMode = containerData.externalDisplayMode
         PrefManager.externalDisplaySwap = containerData.externalDisplaySwap
         PrefManager.containerLanguage = containerData.language
@@ -247,6 +249,8 @@ object ContainerUtils {
         val disableMouse = container.isDisableMouseInput()
         // Read touchscreen-mode flag from container
         val touchscreenMode = container.isTouchscreenMode()
+        // Read touchscreen-haptics flag from container
+        val touchscreenHaptics = container.isTouchscreenHaptics
         // Read shooter-mode flag from container
         val shooterMode = container.isShooterMode()
         // Read gesture configuration JSON
@@ -300,6 +304,7 @@ object ContainerUtils {
             dinputMapperType = mapperType,
             disableMouseInput = disableMouse,
             touchscreenMode = touchscreenMode,
+            touchscreenHaptics = touchscreenHaptics,
             shooterMode = shooterMode,
             gestureConfig = gestureConfig,
             externalDisplayMode = externalDisplayMode,
@@ -463,6 +468,7 @@ object ContainerUtils {
         container.setFEXCorePreset(containerData.fexcorePreset)
         container.setDisableMouseInput(containerData.disableMouseInput)
         container.setTouchscreenMode(containerData.touchscreenMode)
+        container.setTouchscreenHaptics(containerData.touchscreenHaptics)
         container.setShooterMode(containerData.shooterMode)
         container.setGestureConfig(containerData.gestureConfig)
         container.setExternalDisplayMode(containerData.externalDisplayMode)
@@ -836,6 +842,7 @@ object ContainerUtils {
                 enableDInput = PrefManager.dinputEnabled,
                 dinputMapperType = PrefManager.dinputMapperType.toByte(),
                 disableMouseInput = PrefManager.disableMouseInput,
+                touchscreenHaptics = PrefManager.touchscreenHaptics,
                 forceDlc = PrefManager.forceDlc,
                 steamOfflineMode = PrefManager.steamOfflineMode,
                 useLegacyDRM = PrefManager.useLegacyDRM,

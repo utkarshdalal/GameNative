@@ -126,6 +126,8 @@ public class Container {
     private boolean disableMouseInput = false;
     // Touchscreen mode
     private boolean touchscreenMode = false;
+    // Touchscreen haptic feedback for on-screen controls
+    private boolean touchscreenHaptics = true;
     // Shooter mode
     private boolean shooterMode = true;
     // Serialised JSON gesture configuration (used when touchscreenMode is true)
@@ -676,6 +678,8 @@ public class Container {
             data.put("disableMouseInput", disableMouseInput);
             // Touchscreen mode flag
             data.put("touchscreenMode", touchscreenMode);
+            // Touchscreen haptics flag
+            data.put("touchscreenHaptics", touchscreenHaptics);
             // Shooter mode flag
             data.put("shooterMode", shooterMode);
             // Gesture configuration JSON
@@ -863,6 +867,9 @@ public class Container {
                     break;
                 case "touchscreenMode" :
                     setTouchscreenMode(data.getBoolean(key));
+                    break;
+                case "touchscreenHaptics" :
+                    setTouchscreenHaptics(data.getBoolean(key));
                     break;
                 case "shooterMode" :
                     setShooterMode(data.getBoolean(key));
@@ -1058,6 +1065,15 @@ public class Container {
 
     public void setTouchscreenMode(boolean touchscreenMode) {
         this.touchscreenMode = touchscreenMode;
+    }
+
+    // Touchscreen haptics
+    public boolean isTouchscreenHaptics() {
+        return touchscreenHaptics;
+    }
+
+    public void setTouchscreenHaptics(boolean touchscreenHaptics) {
+        this.touchscreenHaptics = touchscreenHaptics;
     }
 
     // Shooter mode

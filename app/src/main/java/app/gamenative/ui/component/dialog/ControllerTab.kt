@@ -93,6 +93,13 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.touchscreen_haptics)) },
+            subtitle = { Text(text = stringResource(R.string.touchscreen_haptics_description)) },
+            state = config.touchscreenHaptics,
+            onCheckedChange = { state.config.value = config.copy(touchscreenHaptics = it) },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.shooter_mode_toggle)) },
             subtitle = { Text(text = stringResource(R.string.shooter_mode_toggle_description)) },
             state = config.shooterMode,

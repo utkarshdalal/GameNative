@@ -13,8 +13,6 @@ import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
-import android.os.VibrationEffect;
-import android.os.Vibrator;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -65,6 +63,7 @@ public class InputControlsView extends View {
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
     private boolean showTouchscreenControls = true;
+    private boolean touchscreenHapticsEnabled = true;
 
     // Shooter mode state
     private boolean shooterModeActive = false;
@@ -282,6 +281,10 @@ public class InputControlsView extends View {
         this.showTouchscreenControls = showTouchscreenControls;
     }
 
+    public void setTouchscreenHapticsEnabled(boolean touchscreenHapticsEnabled) {
+        this.touchscreenHapticsEnabled = touchscreenHapticsEnabled;
+    }
+
     public int getPrimaryColor() {
         return Color.argb((int)(overlayOpacity * 255), 255, 255, 255);
     }
@@ -418,6 +421,13 @@ public class InputControlsView extends View {
         if (element.getType() != ControlElement.Type.BUTTON) return false;
         Binding binding = element.getBindingAt(0);
         return binding == Binding.MOUSE_LEFT_BUTTON || binding == Binding.MOUSE_RIGHT_BUTTON;
+    }
+
+    private void performTouchscreenHapticFeedback() {
+        if (!touchscreenHapticsEnabled) return;
+        if (!performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)) {
+            performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+        }
     }
 
     private Binding[] getJoystickBindings(String movementType) {
@@ -657,7 +667,7 @@ public class InputControlsView extends View {
                     releaseShooterJoystick();
                     releaseRightJoystick();
                 }
-                performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
+                performTouchscreenHapticFeedback();
                 invalidate();
                 return true;
             }
@@ -672,7 +682,7 @@ public class InputControlsView extends View {
             // Skip hidden sticks in container shooter mode
             if (isStickHiddenByShooterMode(element)) continue;
             if (element.handleTouchDown(pointerId, x, y)) {
-                performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
+                performTouchscreenHapticFeedback();
                 handled = true;
                 // Also track this pointer for look-around so the user can
                 // press any button and still look/aim with the same finger.
@@ -850,7 +860,7 @@ public class InputControlsView extends View {
                     touchpadView.setPointerButtonLeftEnabled(true);
                     for (ControlElement element : profile.getElements()) {
                         if (element.handleTouchDown(pointerId, x, y)) {
-                            performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
+                            performTouchscreenHapticFeedback();
                             handled = true;
                         }
                         if (element.getBindingAt(0) == Binding.MOUSE_LEFT_BUTTON) {

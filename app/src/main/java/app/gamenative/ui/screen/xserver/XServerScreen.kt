@@ -1654,6 +1654,7 @@ fun XServerScreen(
                 // Set overlay opacity from preferences if needed
                 val opacity = PrefManager.getFloat("controls_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY)
                 setOverlayOpacity(opacity)
+                setTouchscreenHapticsEnabled(container.isTouchscreenHaptics)
 
                 // Set container-level shooter mode
                 setContainerShooterMode(container.isShooterMode)

@@ -235,6 +235,7 @@ object IntentLaunchManager {
                 1.toByte()
             },
             disableMouseInput = if (json.has("disableMouseInput")) json.getBoolean("disableMouseInput") else false,
+            touchscreenHaptics = if (json.has("touchscreenHaptics")) json.getBoolean("touchscreenHaptics") else true,
             suspendPolicy = if (json.has("suspendPolicy")) {
                 Container.normalizeSuspendPolicy(json.getString("suspendPolicy"))
             } else {
@@ -321,6 +322,7 @@ object IntentLaunchManager {
             enableDInput = if (override.enableDInput != true) override.enableDInput else base.enableDInput,
             dinputMapperType = if (override.dinputMapperType != 1.toByte()) override.dinputMapperType else base.dinputMapperType,
             disableMouseInput = if (override.disableMouseInput != false) override.disableMouseInput else base.disableMouseInput,
+            touchscreenHaptics = if (override.touchscreenHaptics != true) override.touchscreenHaptics else base.touchscreenHaptics,
             suspendPolicy = base.suspendPolicy,
             shaderBackend = if (override.shaderBackend != "glsl") override.shaderBackend else base.shaderBackend,
             useGLSL = if (override.useGLSL != "enabled") override.useGLSL else base.useGLSL,

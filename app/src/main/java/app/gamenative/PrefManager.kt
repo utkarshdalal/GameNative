@@ -649,6 +649,13 @@ object PrefManager {
             setPref(DISABLE_MOUSE_INPUT, value)
         }
 
+    private val TOUCHSCREEN_HAPTICS = booleanPreferencesKey("touchscreen_haptics")
+    var touchscreenHaptics: Boolean
+        get() = getPref(TOUCHSCREEN_HAPTICS, true)
+        set(value) {
+            setPref(TOUCHSCREEN_HAPTICS, value)
+        }
+
     private val PORTRAIT_MODE = booleanPreferencesKey("portrait_mode")
     var portraitMode: Boolean
         get() = getPref(PORTRAIT_MODE, false)
