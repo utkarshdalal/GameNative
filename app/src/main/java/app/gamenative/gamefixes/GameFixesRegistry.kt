@@ -25,6 +25,7 @@ object GameFixesRegistry {
         STEAM_Fix_22300,
         STEAM_Fix_22380,
         STEAM_Fix_22330,
+        STEAM_Fix_35140,
         EPIC_Fix_b1b4e0b67a044575820cb5e63028dcae,
         EPIC_Fix_dabb52e328834da7bbe99691e374cb84,
         EPIC_Fix_59a0c86d02da42e8ba6444cb171e61bf,

@@ -9,6 +9,7 @@ enum class Marker(val fileName: String ) {
     VCREDIST_INSTALLED(".vcredist_installed"),
     GOG_SCRIPT_INSTALLED(".gog_script_installed"),
     PHYSX_INSTALLED(".physx_installed"),
+    DIRECTX_INSTALLED(".directx_installed"),
     OPENAL_INSTALLED(".openal_installed"),
     XNA_INSTALLED(".xna_installed"),
 }
