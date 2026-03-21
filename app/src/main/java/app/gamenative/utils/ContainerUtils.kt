@@ -1023,7 +1023,7 @@ object ContainerUtils {
                 null
             }
 
-            createNewContainer(context, appId, appId, containerManager, overrideConfig)
+            createNewContainer(context, appId, appId, containerManager, overrideConfig?.config)
         }
     }
 
