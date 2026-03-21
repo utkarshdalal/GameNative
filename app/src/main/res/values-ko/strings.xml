@@ -178,6 +178,8 @@
     <string name="content_info">콘텐츠 정보</string>
     <string name="game_not_installed_title">게임이 설치되지 않음</string>
     <string name="game_not_installed_message">%s이(가) 설치되지 않았습니다. 실행하기 전에 먼저 게임을 설치하세요.</string>
+    <string name="intent_launch_failed">게임을 실행할 수 없습니다: 잘못된 실행 바로가기</string>
+    <string name="intent_launch_steam_login_required">이 게임을 실행하려면 Steam 로그인이 필요합니다</string>
     <string name="game_executable_not_found_title">실행할 수 없음</string>
     <string name="game_executable_not_found">실행 파일을 자동으로 선택할 수 없습니다. 컨테이너 설정에서 실행 파일 경로를 지정하세요.</string>
     <string name="save_container_settings_title">컨테이너 구성을 저장하시겠습니까?</string>
@@ -245,6 +247,8 @@
     <string name="performance_hud_size_medium">M</string>
     <string name="performance_hud_size_large">L</string>
     <string name="performance_hud_background_opacity">배경 불투명도</string>
+    <string name="performance_hud_color_intensity">색상 강도</string>
+    <string name="performance_hud_text_outline">텍스트 윤곽선</string>
     <string name="performance_hud_percentage_value">%1$d%%</string>
     <string name="performance_hud_metrics">표시할 지표</string>
     <string name="performance_hud_metrics_description">오버레이에 표시할 통계를 선택합니다.</string>
@@ -829,7 +833,7 @@
     <string name="settings_interface_hide_statusbar_title">게임이 아닐 때 상태 표시줄 숨기기</string>
     <string name="settings_interface_hide_statusbar_subtitle">게임 목록, 설정 등에서 Android 상태 표시줄을 숨깁니다. 변경 시 앱이 재시작됩니다.</string>
     <string name="settings_interface_icon_style">아이콘 스타일</string>
-    <string name="settings_interface_wifi_only_title">Wi-Fi로만 다운로드</string>
+    <string name="settings_interface_wifi_only_title">Wi-Fi/LAN으로만 다운로드</string>
     <string name="settings_interface_wifi_only_subtitle">셀룰러 데이터로 다운로드 방지</string>
     <string name="settings_interface_external_storage_title">외부 저장소에 쓰기</string>
     <string name="settings_interface_no_external_storage">외부 저장소가 감지되지 않음</string>

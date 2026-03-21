@@ -5,7 +5,7 @@
     "driver": [
       {
         "id": "Turnip-Gen8-V23",
-        "name": "Turnip_Gen8_V23",
+        "name": "Turnip-Gen8-V23",
         "url": "https://downloads.gamenative.app/drivers/Turnip_Gen8_V23.zip",
         "variant": "bionic"
       },

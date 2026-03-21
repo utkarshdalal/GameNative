@@ -42,6 +42,7 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.LocaleHelper
+import app.gamenative.ui.util.SnackbarManager
 import com.posthog.PostHog
 import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
@@ -215,43 +216,42 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleLaunchIntent(intent)
+        handleLaunchIntent(intent, isNewIntent = true)
     }
-    private fun handleLaunchIntent(intent: Intent) {
-        Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}")
+
+    private fun handleLaunchIntent(intent: Intent, isNewIntent: Boolean = false) {
+        // recents re-delivers the same intent with this flag — don't re-launch
+        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) {
+            Timber.d("[IntentLaunch]: Ignoring intent re-delivered from recents")
+            return
+        }
+        Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}, isNewIntent=$isNewIntent")
         try {
             val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
             if (launchRequest != null) {
                 Timber.d("[IntentLaunch]: Received external launch intent for app ${launchRequest.appId}")
-                wasLaunchedViaExternalIntent = true
 
-                val gameSource = ContainerUtils.extractGameSourceFromContainerId(launchRequest.appId)
-                val runsWithoutSteam = gameSource == GameSource.STEAM &&
-                    ContainerUtils.hasContainer(this, launchRequest.appId) &&
-                    ContainerUtils.getContainer(this, launchRequest.appId).isSteamOfflineMode()
-
-                // only defer to pending for Steam games that need login;
-                // non-Steam games and Steam-offline-mode games can launch without Steam
-                if (gameSource == GameSource.STEAM && !SteamService.isLoggedIn && !runsWithoutSteam) {
-                    setPendingLaunchRequest(launchRequest)
-                    Timber.d("[IntentLaunch]: Steam game but not logged in, stored pending launch request for app ${launchRequest.appId}")
-                } else {
-                    // clear any stale pending request so it doesn't fire on later login
+                if (isNewIntent) {
+                    // supersedes any stale pending request
                     consumePendingLaunchRequest()
-
+                    // UI is already up — emit directly, ViewModel listener exists
                     Timber.d("[IntentLaunch]: Emitting ExternalGameLaunch event for app ${launchRequest.appId}")
-                    lifecycleScope.launch {
-                        PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId))
-                    }
-
-                    // Apply config override if present
                     launchRequest.containerConfig?.let { config ->
                         IntentLaunchManager.applyTemporaryConfigOverride(this, launchRequest.appId, config)
                     }
+                    lifecycleScope.launch {
+                        PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId))
+                    }
+                } else {
+                    // cold start — store as pending, PluviaMain consumes when UI is ready
+                    setPendingLaunchRequest(launchRequest)
+                    Timber.d("[IntentLaunch]: Stored pending launch request for app ${launchRequest.appId}")
                 }
-            } else {
+            } else if (intent.action == "${BuildConfig.APPLICATION_ID}.LAUNCH_GAME") {
+                // intent matched our action but failed to parse — tell the user
                 wasLaunchedViaExternalIntent = false
-                Timber.d("[IntentLaunch]: parseLaunchIntent returned null")
+                Timber.w("[IntentLaunch]: parseLaunchIntent returned null for LAUNCH_GAME intent")
+                SnackbarManager.show(getString(R.string.intent_launch_failed))
             }
         } catch (e: Exception) {
             Timber.e(e, "[IntentLaunch]: Failed to handle launch intent")

@@ -93,6 +93,8 @@
     <string name="content_info">Indholdsinfo</string>
     <string name="game_not_installed_title">Spillet er ikke installeret</string>
     <string name="game_not_installed_message">%s er ikke installeret. Installér spillet før du starter det.</string>
+    <string name="intent_launch_failed">Kunne ikke starte spillet: ugyldig startgenvej</string>
+    <string name="intent_launch_steam_login_required">Steam-login er påkrævet for at starte dette spil</string>
     <string name="game_executable_not_found_title">Kan ikke starte</string>
     <string name="game_executable_not_found">Den eksekverbare fil kunne ikke vælges automatisk. Angiv stien til den eksekverbare fil i containerindstillinger.</string>
     <string name="save_container_settings_title">Gem containerkonfiguration?</string>
@@ -160,6 +162,8 @@
     <string name="performance_hud_size_medium">M</string>
     <string name="performance_hud_size_large">L</string>
     <string name="performance_hud_background_opacity">Baggrundsopacitet</string>
+    <string name="performance_hud_color_intensity">Farveintensitet</string>
+    <string name="performance_hud_text_outline">Tekstkontur</string>
     <string name="performance_hud_percentage_value">%1$d%%</string>
     <string name="performance_hud_metrics">Viste målinger</string>
     <string name="performance_hud_metrics_description">Vælg hvilke statistikker der vises i overlayet.</string>
@@ -637,7 +641,7 @@
     <string name="settings_interface_hide_statusbar_title">Skjul statuslinje når ikke i spillet</string>
     <string name="settings_interface_hide_statusbar_subtitle">Skjul Android-statuslinje i spilliste, indstillinger osv. Appen genstarter når den ændres.</string>
     <string name="settings_interface_icon_style">Ikonstil</string>
-    <string name="settings_interface_wifi_only_title">Download kun via Wi-Fi</string>
+    <string name="settings_interface_wifi_only_title">Download kun via Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Forhindrer downloads på mobildata</string>
     <string name="settings_interface_external_storage_title">Skriv til ekstern lager</string>
     <string name="settings_interface_no_external_storage">Ingen ekstern lager fundet</string>

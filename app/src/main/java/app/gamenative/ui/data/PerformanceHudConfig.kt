@@ -34,9 +34,13 @@ data class PerformanceHudConfig(
     val showCpuUsageGraph: Boolean = false,
     val showGpuUsageGraph: Boolean = false,
     val backgroundOpacity: Float = DEFAULT_BACKGROUND_OPACITY,
+    val colorIntensity: Float = DEFAULT_COLOR_INTENSITY,
+    val showTextOutline: Boolean = DEFAULT_SHOW_TEXT_OUTLINE,
     val size: PerformanceHudSize = PerformanceHudSize.MEDIUM,
 ) {
     companion object {
         const val DEFAULT_BACKGROUND_OPACITY = 0.72f
+        const val DEFAULT_COLOR_INTENSITY = 1f
+        const val DEFAULT_SHOW_TEXT_OUTLINE = true
     }
 }

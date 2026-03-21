@@ -360,9 +360,16 @@ class LibraryViewModel @Inject constructor(
             val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
             val downloadDirectorySet = downloadDirectoryApps.toHashSet()
 
-            // Filter Steam apps first (no pagination yet)
-            // Note: Don't sort individual lists - we'll sort the combined list for consistent ordering
-            val filteredSteamApps: List<SteamApp> = appList
+            fun passesCompatibleFilter(gameName: String): Boolean {
+                if (!currentState.appInfoSortType.contains(AppFilter.COMPATIBLE)) {
+                    return true
+                }
+                val cached = GameCompatibilityCache.getCached(gameName) ?: return true
+                val status = compatibilityStatusFor(cached)
+                return status == GameCompatibilityStatus.COMPATIBLE || status == GameCompatibilityStatus.GPU_COMPATIBLE
+            }
+
+            val steamFilteredBeforeCompatibility: List<SteamApp> = appList
                 .asSequence()
                 .filter { item ->
                     SteamService.familyMembers.ifEmpty {
@@ -404,6 +411,13 @@ class LibraryViewModel @Inject constructor(
                         true
                     }
                 }
+                .toList()
+
+            // Filter Steam apps first (no pagination yet)
+            // Note: Don't sort individual lists - we'll sort the combined list for consistent ordering
+            val filteredSteamApps: List<SteamApp> = steamFilteredBeforeCompatibility
+                .asSequence()
+                .filter { item -> passesCompatibleFilter(item.name) }
                 .sortedWith(
                     compareByDescending<SteamApp> {
                         downloadDirectorySet.contains(SteamService.getAppDirName(it))
@@ -444,7 +458,9 @@ class LibraryViewModel @Inject constructor(
             } else {
                 emptyList()
             }
-            val customEntries = customGameItems.map { LibraryEntry(it, true) }
+            val customEntries = customGameItems
+                .filter { passesCompatibleFilter(it.name) }
+                .map { LibraryEntry(it, true) }
 
             // Filter GOG games
             val filteredGOGGames = gogGameList
@@ -467,13 +483,18 @@ class LibraryViewModel @Inject constructor(
                 }
                 .toList()
 
-            val gogEntries = filteredGOGGames.map { game ->
+            val gogEntries = filteredGOGGames
+                .filter { passesCompatibleFilter(it.title) }
+                .map { game ->
                 LibraryEntry(
                     item = LibraryItem(
                         index = 0,
                         appId = "${GameSource.GOG.name}_${game.id}",
                         name = game.title,
-                        iconHash = game.imageUrl.ifEmpty { game.iconUrl },
+                        iconHash = game.iconUrl.ifEmpty { game.imageUrl },
+                        capsuleImageUrl = game.iconUrl.ifEmpty { game.imageUrl },
+                        headerImageUrl = game.imageUrl.ifEmpty { game.iconUrl },
+                        heroImageUrl = game.imageUrl.ifEmpty { game.iconUrl },
                         isShared = false,
                         gameSource = GameSource.GOG,
                     ),
@@ -502,13 +523,18 @@ class LibraryViewModel @Inject constructor(
                 }
                 .toList()
 
-            val epicEntries = filteredEpicGames.map { game ->
+            val epicEntries = filteredEpicGames
+                .filter { passesCompatibleFilter(it.title) }
+                .map { game ->
                 LibraryEntry(
                     item = LibraryItem(
                         index = 0,
                         appId = "${GameSource.EPIC.name}_${game.id}",
                         name = game.title,
-                        iconHash = game.artCover,
+                        iconHash = game.artSquare.ifEmpty { game.artCover },
+                        capsuleImageUrl = game.artCover.ifEmpty { game.artSquare },
+                        headerImageUrl = game.artPortrait.ifEmpty { game.artSquare.ifEmpty { game.artCover } },
+                        heroImageUrl = game.artPortrait.ifEmpty { game.artSquare.ifEmpty { game.artCover } },
                         isShared = false,
                         gameSource = GameSource.EPIC,
                     ),
@@ -537,13 +563,18 @@ class LibraryViewModel @Inject constructor(
                 }
                 .toList()
 
-            val amazonEntries = filteredAmazonGames.map { game ->
+            val amazonEntries = filteredAmazonGames
+                .filter { passesCompatibleFilter(it.title) }
+                .map { game ->
                 LibraryEntry(
                     item = LibraryItem(
                         index = 0,
                         appId = "AMAZON_${game.appId}",
                         name = game.title,
                         iconHash = game.artUrl,
+                        capsuleImageUrl = game.artUrl,
+                        headerImageUrl = game.heroUrl.ifEmpty { game.artUrl },
+                        heroImageUrl = game.heroUrl.ifEmpty { game.artUrl },
                         isShared = false,
                         gameSource = GameSource.AMAZON,
                     ),
@@ -559,13 +590,13 @@ class LibraryViewModel @Inject constructor(
             // This needs to happen before filtering by source, so we save the total counts
             if (currentState.searchQuery.isEmpty()) {
                 PrefManager.customGamesCount = customGameItems.size
-                PrefManager.steamGamesCount = filteredSteamApps.size
+                PrefManager.steamGamesCount = steamFilteredBeforeCompatibility.size
                 PrefManager.gogGamesCount = filteredGOGGames.size
                 PrefManager.gogInstalledGamesCount = gogInstalledCount
                 PrefManager.epicGamesCount = filteredEpicGames.size
                 PrefManager.epicInstalledGamesCount = epicInstalledCount
                 PrefManager.amazonInstalledGamesCount = amazonInstalledCount
-                Timber.tag("LibraryViewModel").d("Saved counts - Custom: ${customGameItems.size}, Steam: ${filteredSteamApps.size}, GOG: ${filteredGOGGames.size}, GOG installed: $gogInstalledCount, Epic: ${filteredEpicGames.size}, Epic installed: $epicInstalledCount, Amazon installed: $amazonInstalledCount")
+                Timber.tag("LibraryViewModel").d("Saved counts - Custom: ${customGameItems.size}, Steam: ${steamFilteredBeforeCompatibility.size}, GOG: ${filteredGOGGames.size}, GOG installed: $gogInstalledCount, Epic: ${filteredEpicGames.size}, Epic installed: $epicInstalledCount, Amazon installed: $amazonInstalledCount")
             }
 
             // Compute effective source filters based on current tab
@@ -754,6 +785,10 @@ class LibraryViewModel @Inject constructor(
                 // Update state with newly fetched results
                 if (fetchedResults.isNotEmpty()) {
                     updateCompatibilityState(fetchedResults)
+                    // Re-apply list filtering once new compatibility data is available
+                    if (_state.value.appInfoSortType.contains(AppFilter.COMPATIBLE)) {
+                        onFilterApps(paginationCurrentPage)
+                    }
                 }
             } catch (e: Exception) {
                 Timber.tag("LibraryViewModel").e(e, "Error fetching compatibility data: ${e.message}")
@@ -769,14 +804,7 @@ class LibraryViewModel @Inject constructor(
         results: Map<String, GameCompatibilityService.GameCompatibilityResponse>
     ) {
         val compatibilityMap = results.mapValues { (gameName, response) ->
-            val status = when {
-                response.isNotWorking -> GameCompatibilityStatus.NOT_COMPATIBLE
-                !response.hasBeenTried -> GameCompatibilityStatus.UNKNOWN
-                response.gpuPlayableCount > 0 -> GameCompatibilityStatus.GPU_COMPATIBLE
-                response.totalPlayableCount > 0 -> GameCompatibilityStatus.COMPATIBLE
-                else -> GameCompatibilityStatus.UNKNOWN
-            }
-            status
+            compatibilityStatusFor(response)
         }
 
         // Update state with compatibility map (merge with existing)
@@ -785,6 +813,18 @@ class LibraryViewModel @Inject constructor(
             mergedMap.putAll(compatibilityMap)
             Timber.tag("LibraryViewModel").d("Updated state with ${compatibilityMap.size} compatibility entries, total: ${mergedMap.size}")
             currentState.copy(compatibilityMap = mergedMap)
+        }
+    }
+
+    private fun compatibilityStatusFor(
+        response: GameCompatibilityService.GameCompatibilityResponse,
+    ): GameCompatibilityStatus {
+        return when {
+            response.isNotWorking -> GameCompatibilityStatus.NOT_COMPATIBLE
+            !response.hasBeenTried -> GameCompatibilityStatus.UNKNOWN
+            response.gpuPlayableCount > 0 -> GameCompatibilityStatus.GPU_COMPATIBLE
+            response.totalPlayableCount > 0 -> GameCompatibilityStatus.COMPATIBLE
+            else -> GameCompatibilityStatus.UNKNOWN
         }
     }
 }

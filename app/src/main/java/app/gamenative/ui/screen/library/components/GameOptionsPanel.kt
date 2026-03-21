@@ -332,6 +332,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.MoveToExternalStorage -> Icons.Default.SdStorage
         AppOptionMenuType.MoveToInternalStorage -> Icons.Default.Storage
         AppOptionMenuType.ForceCloudSync -> Icons.Default.Sync
+        AppOptionMenuType.BrowseOnlineSaves -> Icons.AutoMirrored.Filled.OpenInNew
         AppOptionMenuType.ForceDownloadRemote -> Icons.Default.CloudDownload
         AppOptionMenuType.ForceUploadLocal -> Icons.Default.CloudUpload
         AppOptionMenuType.FetchSteamGridDBImages -> Icons.Default.Image
@@ -376,6 +377,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
 
             // Cloud Saves
             AppOptionMenuType.ForceCloudSync,
+            AppOptionMenuType.BrowseOnlineSaves,
             AppOptionMenuType.ForceDownloadRemote,
             AppOptionMenuType.ForceUploadLocal,
             -> cloudSaves.add(option)

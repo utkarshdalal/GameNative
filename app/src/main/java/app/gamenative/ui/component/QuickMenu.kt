@@ -598,6 +598,41 @@ private fun PerformanceHudQuickMenuTab(
             accentColor = accentColor,
         )
 
+        QuickMenuAdjustmentRow(
+            title = stringResource(R.string.performance_hud_color_intensity),
+            valueText = stringResource(
+                R.string.performance_hud_percentage_value,
+                (performanceHudConfig.colorIntensity * 100f).roundToInt(),
+            ),
+            progress = normalizedProgress(performanceHudConfig.colorIntensity, 0f, 1f),
+            onDecrease = {
+                onPerformanceHudConfigChanged(
+                    performanceHudConfig.copy(
+                        colorIntensity = (performanceHudConfig.colorIntensity - 0.05f).coerceIn(0f, 1f),
+                    ),
+                )
+            },
+            onIncrease = {
+                onPerformanceHudConfigChanged(
+                    performanceHudConfig.copy(
+                        colorIntensity = (performanceHudConfig.colorIntensity + 0.05f).coerceIn(0f, 1f),
+                    ),
+                )
+            },
+            accentColor = accentColor,
+        )
+
+        QuickMenuToggleRow(
+            title = stringResource(R.string.performance_hud_text_outline),
+            enabled = performanceHudConfig.showTextOutline,
+            onToggle = {
+                onPerformanceHudConfigChanged(
+                    performanceHudConfig.copy(showTextOutline = !performanceHudConfig.showTextOutline),
+                )
+            },
+            accentColor = accentColor,
+        )
+
         Spacer(modifier = Modifier.height(8.dp))
 
         QuickMenuSectionHeader(

@@ -164,6 +164,8 @@
     <string name="content_info">内容信息</string>
     <string name="game_not_installed_title">游戏未安装</string>
     <string name="game_not_installed_message">%s 未安装，请在启动前先安装游戏</string>
+    <string name="intent_launch_failed">无法启动游戏：启动快捷方式无效</string>
+    <string name="intent_launch_steam_login_required">启动此游戏需要登录 Steam</string>
     <string name="game_executable_not_found_title">无法启动</string>
     <string name="game_executable_not_found">无法自动选择可执行文件。请在容器设置中指定可执行文件路径。</string>
     <string name="save_container_settings_title">保存容器配置？</string>
@@ -231,6 +233,8 @@
     <string name="performance_hud_size_medium">M</string>
     <string name="performance_hud_size_large">L</string>
     <string name="performance_hud_background_opacity">背景不透明度</string>
+    <string name="performance_hud_color_intensity">颜色强度</string>
+    <string name="performance_hud_text_outline">文字描边</string>
     <string name="performance_hud_percentage_value">%1$d%%</string>
     <string name="performance_hud_metrics">显示的指标</string>
     <string name="performance_hud_metrics_description">选择要在叠加层中显示的统计信息。</string>
@@ -810,7 +814,7 @@
     <string name="settings_interface_external_links_subtitle">链接将以您的主要网页浏览器打开</string>
     <string name="settings_interface_hide_statusbar_title">在非游戏状态时隐藏状态栏</string>
     <string name="settings_interface_hide_statusbar_subtitle">在游戏列表、设置等界面隐藏 Android 状态栏。更改后应用程序将重新启动。</string>
-    <string name="settings_interface_wifi_only_title">仅限通过 Wi-Fi 下载</string>
+    <string name="settings_interface_wifi_only_title">仅限通过 Wi-Fi/LAN 下载</string>
     <string name="settings_interface_wifi_only_subtitle">禁止使用移动数据下载</string>
     <string name="settings_interface_external_storage_title">写入外部存储设备</string>
     <string name="settings_interface_no_external_storage">未检测到外部存储设备</string>

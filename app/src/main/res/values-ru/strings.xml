@@ -429,6 +429,8 @@
     <string name="game_feedback_issues_question">Выберите проблемы, которые вы встретили:</string>
     <string name="game_information">Информация об игре</string>
     <string name="game_not_installed_message">%s не установлена. Пожалуйста, установите игру перед запуском.</string>
+    <string name="intent_launch_failed">Не удалось запустить игру: недействительный ярлык запуска</string>
+    <string name="intent_launch_steam_login_required">Для запуска этой игры требуется вход в Steam</string>
     <string name="game_not_installed_title">Игра не установлена</string>
     <string name="game_options_cloud_saves">Облачные сохранения</string>
     <string name="game_options_container">Контейнер</string>
@@ -831,6 +833,8 @@ https://gamenative.app
     <string name="performance_hud_size_medium">M</string>
     <string name="performance_hud_size_large">L</string>
     <string name="performance_hud_background_opacity">Прозрачность фона</string>
+    <string name="performance_hud_color_intensity">Интенсивность цвета</string>
+    <string name="performance_hud_text_outline">Обводка текста</string>
     <string name="performance_hud_percentage_value">%1$d%%</string>
     <string name="performance_hud_metrics">Отображаемые показатели</string>
     <string name="performance_hud_metrics_description">Выберите, какие показатели показывать в наложении.</string>
@@ -967,7 +971,7 @@ https://gamenative.app
     <string name="settings_interface_storage_volume_title">Том хранилища</string>
     <string name="settings_interface_title">Интерфейс</string>
     <string name="settings_interface_wifi_only_subtitle">Предотвратить загрузки по сотовым данным</string>
-    <string name="settings_interface_wifi_only_title">Загружать только через Wi-Fi</string>
+    <string name="settings_interface_wifi_only_title">Загружать только через Wi-Fi/LAN</string>
     <string name="settings_language">Язык</string>
     <string name="settings_language_changing">Изменение языка и перезагрузка...</string>
     <string name="settings_language_restart_confirm">Перезагрузить</string>

@@ -180,6 +180,8 @@
     <string name="content_info">Content Info</string>
     <string name="game_not_installed_title">Game Not Installed</string>
     <string name="game_not_installed_message">%s is not installed. Please install the game first before launching.</string>
+    <string name="intent_launch_failed">Could not launch game: invalid launch shortcut</string>
+    <string name="intent_launch_steam_login_required">Steam login required to launch this game</string>
     <string name="game_executable_not_found_title">Cannot Launch</string>
     <string name="game_executable_not_found">The executable could not be auto-selected. Please set the executable path in container settings.</string>
     <string name="save_container_settings_title">Save Container Configuration?</string>
@@ -247,6 +249,8 @@
     <string name="performance_hud_size_medium">M</string>
     <string name="performance_hud_size_large">L</string>
     <string name="performance_hud_background_opacity">Background opacity</string>
+    <string name="performance_hud_color_intensity">Color intensity</string>
+    <string name="performance_hud_text_outline">Text outline</string>
     <string name="performance_hud_percentage_value">%1$d%%</string>
     <string name="performance_hud_metrics">Shown metrics</string>
     <string name="performance_hud_metrics_description">Choose which stats appear in the overlay.</string>
@@ -829,7 +833,7 @@
     <string name="settings_interface_hide_statusbar_title">Hide status bar when not in game</string>
     <string name="settings_interface_hide_statusbar_subtitle">Hide Android status bar in game list, settings, etc. App will restart when changed.</string>
     <string name="settings_interface_icon_style">Icon style</string>
-    <string name="settings_interface_wifi_only_title">Download only over Wi-Fi</string>
+    <string name="settings_interface_wifi_only_title">Download only over Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Prevent downloads on cellular data</string>
     <string name="settings_interface_external_storage_title">Write to external storage</string>
     <string name="settings_interface_no_external_storage">No external storage detected</string>

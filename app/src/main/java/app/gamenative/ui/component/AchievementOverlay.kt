@@ -75,7 +75,7 @@ fun BoxScope.AchievementOverlay() {
 private fun AchievementNotificationContent(notification: AchievementNotification) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         shadowElevation = 6.dp,
         tonalElevation = 2.dp,
     ) {
@@ -99,9 +99,8 @@ private fun AchievementNotificationContent(notification: AchievementNotification
             Column {
                 Text(
                     text = stringResource(R.string.achievement_unlocked),
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = notification.name,
