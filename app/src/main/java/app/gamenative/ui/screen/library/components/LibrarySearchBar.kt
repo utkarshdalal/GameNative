@@ -23,8 +23,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,7 +67,7 @@ fun LibrarySearchBar(
     isVisible: Boolean,
     searchQuery: String,
     resultCount: Int,
-    listState: LazyGridState,
+    onScrollToTop: suspend () -> Unit,
     onSearchQuery: (String) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -111,7 +110,7 @@ fun LibrarySearchBar(
             ) {
                 SearchBarInput(
                     searchQuery = searchQuery,
-                    listState = listState,
+                    onScrollToTop = onScrollToTop,
                     onSearchQuery = onSearchQuery,
                     onDismiss = onDismiss,
                 )
@@ -137,13 +136,15 @@ fun LibrarySearchBar(
 @Composable
 private fun SearchBarInput(
     searchQuery: String,
-    listState: LazyGridState,
+    onScrollToTop: suspend () -> Unit,
     onSearchQuery: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
+    val currentOnSearchQuery = rememberUpdatedState(onSearchQuery)
+    val currentOnScrollToTop = rememberUpdatedState(onScrollToTop)
     var editTextRef by remember { mutableStateOf<EditText?>(null) }
     var isFocused by remember { mutableStateOf(false) }
 
@@ -153,9 +154,9 @@ private fun SearchBarInput(
     }
 
     val onSearchText: (String) -> Unit = { newText ->
-        onSearchQuery(newText)
+        currentOnSearchQuery.value(newText)
         scope.launch {
-            listState.scrollToItem(0)
+            currentOnScrollToTop.value()
         }
     }
 
@@ -333,7 +334,7 @@ private fun Preview_LibrarySearchBar() {
                 isVisible = true,
                 searchQuery = "Balatro",
                 resultCount = 5,
-                listState = rememberLazyGridState(),
+                onScrollToTop = { },
                 onSearchQuery = { },
                 onDismiss = { },
             )
@@ -352,7 +353,7 @@ private fun Preview_LibrarySearchBar_Empty() {
                 isVisible = true,
                 searchQuery = "",
                 resultCount = 0,
-                listState = rememberLazyGridState(),
+                onScrollToTop = { },
                 onSearchQuery = { },
                 onDismiss = { },
             )

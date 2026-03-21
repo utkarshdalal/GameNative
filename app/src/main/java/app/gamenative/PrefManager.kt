@@ -82,6 +82,30 @@ object PrefManager {
         }
     }
 
+    /**
+     * Clears only Steam account/session state while preserving app-wide settings.
+     *
+     * This is used during Steam logout so user-configured defaults (container
+     * settings, download preferences, tips, theme, etc.) are not wiped.
+     */
+    fun clearSteamSessionPreferences() {
+        scope.launch {
+            dataStore.edit { pref ->
+                pref.remove(USER_NAME)
+                pref.remove(ACCESS_TOKEN_ENC)
+                pref.remove(REFRESH_TOKEN_ENC)
+                pref.remove(CLIENT_ID)
+                pref.remove(PERSONA_STATE)
+                pref.remove(STEAM_USER_ACCOUNT_ID)
+                pref.remove(STEAM_USER_STEAM_ID_64)
+                pref.remove(STEAM_USER_AVATAR_HASH)
+                pref.remove(STEAM_USER_NAME)
+                pref.remove(LAST_PICS_CHANGE_NUMBER)
+                pref.remove(STEAM_GAMES_COUNT)
+            }
+        }
+    }
+
     fun getBoolean(key: String, defaultValue: Boolean): Boolean =
         getPref(booleanPreferencesKey(key), defaultValue)
 
@@ -386,6 +410,20 @@ object PrefManager {
         get() = getPref(PERFORMANCE_HUD_BACKGROUND_OPACITY, 0.72f)
         set(value) {
             setPref(PERFORMANCE_HUD_BACKGROUND_OPACITY, value.coerceIn(0f, 1f))
+        }
+
+    private val PERFORMANCE_HUD_COLOR_INTENSITY = floatPreferencesKey("performance_hud_color_intensity")
+    var performanceHudColorIntensity: Float
+        get() = getPref(PERFORMANCE_HUD_COLOR_INTENSITY, 1f)
+        set(value) {
+            setPref(PERFORMANCE_HUD_COLOR_INTENSITY, value.coerceIn(0f, 1f))
+        }
+
+    private val PERFORMANCE_HUD_SHOW_TEXT_OUTLINE = booleanPreferencesKey("performance_hud_show_text_outline")
+    var performanceHudShowTextOutline: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_TEXT_OUTLINE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_TEXT_OUTLINE, value)
         }
 
     private val PERFORMANCE_HUD_SIZE = stringPreferencesKey("performance_hud_size")

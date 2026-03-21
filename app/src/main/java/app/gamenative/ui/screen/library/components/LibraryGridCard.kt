@@ -35,13 +35,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -56,6 +59,8 @@ import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
+import com.skydoves.landscapist.ImageOptions
+import com.skydoves.landscapist.coil.CoilImage
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -78,34 +83,49 @@ internal fun GridViewCard(
     imageAlpha: Float,
     onImageLoadFailed: () -> Unit,
     compatibilityStatus: GameCompatibilityStatus?,
+    showFocusGlow: Boolean,
     context: Context,
 ) {
     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) 2f / 3f else 460f / 215f
+    val isCapsule = paneType == PaneType.GRID_CAPSULE
+    val topOverlayPadding = if (isCapsule) 8.dp else 4.dp
+    val cardContentBottomPadding = if (isCapsule) 12.dp else 8.dp
+    val topIconPadding = if (isCapsule) 10.dp else 8.dp
+    val bottomGradientHeight = if (isCapsule) 80.dp else 56.dp
     val glowColor = MaterialTheme.colorScheme.primary
+    val focusHaloModifier = if (isFocused && showFocusGlow) {
+        Modifier.drawWithCache {
+            val glowBrush = Brush.radialGradient(
+                colors = listOf(
+                    glowColor.copy(alpha = 0.3f),
+                    Color.Transparent,
+                ),
+                radius = size.maxDimension * 0.7f,
+            )
+            val glowRadius = size.maxDimension * 0.6f
+            onDrawBehind {
+                drawCircle(
+                    brush = glowBrush,
+                    radius = glowRadius,
+                    center = center,
+                )
+            }
+        }
+    } else {
+        Modifier
+    }
+    val focusBorderBrush = Brush.verticalGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.tertiary,
+        ),
+    )
 
     Box(
         modifier = modifier
             .padding(vertical = 4.dp)
             .scale(scale)
-            .then(
-                if (isFocused) {
-                    Modifier.drawBehind {
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    glowColor.copy(alpha = 0.3f),
-                                    Color.Transparent,
-                                ),
-                                radius = size.maxDimension * 0.7f,
-                            ),
-                            radius = size.maxDimension * 0.6f,
-                            center = center,
-                        )
-                    }
-                } else {
-                    Modifier
-                },
-            ),
+            .then(focusHaloModifier),
     ) {
         val interactionSource = remember { MutableInteractionSource() }
         val isItemFocused by interactionSource.collectIsFocusedAsState()
@@ -129,15 +149,7 @@ internal fun GridViewCard(
                 containerColor = Color.Transparent,
             ),
             border = if (isFocused) {
-                BorderStroke(
-                    2.dp,
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary,
-                            MaterialTheme.colorScheme.tertiary,
-                        ),
-                    ),
-                )
+                BorderStroke(2.dp, focusBorderBrush)
             } else {
                 null
             },
@@ -162,6 +174,13 @@ internal fun GridViewCard(
                     imageRefreshCounter,
                 ) {
                     mutableStateOf(imageUrls.primary)
+                }
+
+                if (isCapsule && currentImageUrl.isNotEmpty()) {
+                    CapsuleFallbackBackdrop(
+                        imageUrl = currentImageUrl,
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
 
                 ListItemImage(
@@ -203,7 +222,7 @@ internal fun GridViewCard(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .height(if (paneType == PaneType.GRID_CAPSULE) 80.dp else 56.dp)
+                        .height(bottomGradientHeight)
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
@@ -219,7 +238,7 @@ internal fun GridViewCard(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                        .padding(horizontal = 10.dp, vertical = cardContentBottomPadding),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -248,20 +267,58 @@ internal fun GridViewCard(
                         showLabel = true,
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .padding(4.dp),
+                            .padding(top = topOverlayPadding, start = topOverlayPadding),
                     )
                 }
 
-                // Game source icon (top right)
                 GameSourceIcon(
                     gameSource = appInfo.gameSource,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp),
-                    iconSize = 12,
+                        .padding(top = topIconPadding, end = topIconPadding),
+                    iconSize = if (isCapsule) 14 else 12,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CapsuleFallbackBackdrop(
+    imageUrl: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier) {
+        CoilImage(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = 1.08f
+                    scaleY = 1.08f
+                }
+                .blur(14.dp),
+            imageModel = { imageUrl },
+            imageOptions = ImageOptions(
+                contentScale = ContentScale.Crop,
+                contentDescription = null,
+            ),
+            loading = {},
+            failure = {},
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Black.copy(alpha = 0.28f),
+                            0.45f to Color.Black.copy(alpha = 0.12f),
+                            1.0f to Color.Black.copy(alpha = 0.34f),
+                        ),
+                    ),
+                ),
+        )
     }
 }
 
@@ -372,8 +429,24 @@ internal fun getGridImageUrl(
             GridImageUrls(primary = primary)
         }
 
-        GameSource.GOG, GameSource.EPIC, GameSource.AMAZON ->
-            GridImageUrls(primary = appInfo.iconHash)
+        GameSource.GOG, GameSource.EPIC, GameSource.AMAZON -> {
+            val primary = when (paneType) {
+                PaneType.GRID_CAPSULE -> appInfo.capsuleImageUrl.ifEmpty { appInfo.iconHash }
+                else -> appInfo.headerImageUrl.ifEmpty {
+                    appInfo.heroImageUrl.ifEmpty { appInfo.iconHash }
+                }
+            }
+            val fallback = when {
+                paneType == PaneType.GRID_CAPSULE ->
+                    appInfo.iconHash.takeIf { it.isNotEmpty() && it != primary } ?: ""
+                appInfo.heroImageUrl.isNotEmpty() && appInfo.heroImageUrl != primary ->
+                    appInfo.heroImageUrl
+                appInfo.iconHash.isNotEmpty() && appInfo.iconHash != primary ->
+                    appInfo.iconHash
+                else -> ""
+            }
+            GridImageUrls(primary = primary, fallback = fallback)
+        }
 
         GameSource.STEAM -> when (paneType) {
             PaneType.GRID_CAPSULE ->

@@ -250,6 +250,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     )
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var reconnectJob: Job? = null
 
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = {
         Companion.stop()
@@ -260,7 +261,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     private val appTokens: ConcurrentHashMap<Int, Long> = ConcurrentHashMap()
 
-    // Connectivity management for Wi-Fi-only downloads
     private lateinit var connectivityManager: ConnectivityManager
     private lateinit var networkCallback: ConnectivityManager.NetworkCallback
 
@@ -312,11 +312,11 @@ class SteamService : Service(), IChallengeUrlChanged {
             cachedAchievementsAppId = null
         }
 
-        val isWifiConnected: Boolean get() = NetworkMonitor.isWifiConnected.value
+        val hasWifiOrEthernet: Boolean get() = NetworkMonitor.hasWifiOrEthernet.value
 
         /** @return true if download may proceed; false if blocked (notifies user) */
         private fun checkWifiOrNotify(): Boolean {
-            if (PrefManager.downloadOnWifiOnly && !isWifiConnected) {
+            if (PrefManager.downloadOnWifiOnly && !hasWifiOrEthernet) {
                 val svc = instance
                 if (svc != null) {
                     svc.notificationHelper.notify(svc.getString(R.string.download_no_wifi))
@@ -666,8 +666,10 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun filterForDownloadableDepots(depot: DepotInfo, has64Bit: Boolean, preferredLanguage: String, ownedDlc: Map<Int, DepotInfo>?): Boolean {
             if (depot.manifests.isEmpty() && depot.encryptedManifests.isNotEmpty())
                 return false
-            // 1. Has something to download
+            // 1. Has something to download (0-byte manifests = stale PICS data from interrupted fetch)
             if (depot.manifests.isEmpty() && !depot.sharedInstall)
+                return false
+            if (depot.manifests.isNotEmpty() && depot.manifests.values.all { it.size == 0L && it.download == 0L })
                 return false
             // 2. Supported OS
             if (!(depot.osList.contains(OS.windows) ||
@@ -772,20 +774,36 @@ class SteamService : Service(), IChallengeUrlChanged {
             return appName
         }
 
+        /**
+         * Resolve best matching directory: completed install > partial > null.
+         * Extracted for testability — called by [getAppDirPath].
+         */
+        fun resolveExistingAppDir(installPaths: List<String>, names: List<String>): String? {
+            var firstExisting: String? = null
+            for (basePath in installPaths) {
+                for (name in names) {
+                    if (name.isEmpty()) continue
+                    val path = Paths.get(basePath, name)
+                    if (Files.isDirectory(path)) {
+                        if (MarkerUtils.hasMarker(path.pathString, Marker.DOWNLOAD_COMPLETE_MARKER)) {
+                            return path.pathString
+                        }
+                        if (firstExisting == null) firstExisting = path.pathString
+                    }
+                }
+            }
+            return firstExisting
+        }
+
         fun getAppDirPath(gameId: Int): String {
             val info = getAppInfoOf(gameId)
             val appName = getAppDirName(info)
             val oldName = info?.name.orEmpty()
+            val names = if (oldName.isNotEmpty() && oldName != appName) listOf(appName, oldName) else listOf(appName)
 
-            // search internal, configured external, and all mounted volumes
-            for (basePath in allInstallPaths) {
-                val path = Paths.get(basePath, appName)
-                if (Files.exists(path)) return path.pathString
-                if (oldName.isNotEmpty()) {
-                    val oldPath = Paths.get(basePath, oldName)
-                    if (Files.exists(oldPath)) return oldPath.pathString
-                }
-            }
+            // prefer completed installs over partial/stale directories
+            val resolved = resolveExistingAppDir(allInstallPaths, names)
+            if (resolved != null) return resolved
 
             // nothing on disk yet — default to preferred install location
             if (PrefManager.useExternalStorage) {
@@ -1010,8 +1028,9 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         fun deleteApp(appId: Int): Boolean {
-            // Remove any download-complete marker
-            MarkerUtils.removeMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
+            // snapshot path before marker removal (removing the marker changes resolution)
+            val appDirPath = getAppDirPath(appId)
+            MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
             // Remove from DB
             with(instance!!) {
                 scope.launch {
@@ -1030,8 +1049,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
             }
-
-            val appDirPath = getAppDirPath(appId)
 
             return File(appDirPath).deleteRecursively()
         }
@@ -2502,7 +2519,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         private fun clearUserData(clearCloudSyncState: Boolean = false) {
-            PrefManager.clearPreferences()
+            PrefManager.clearSteamSessionPreferences()
 
             clearDatabase(clearCloudSyncState = clearCloudSyncState)
         }
@@ -2890,15 +2907,39 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
+        // clear stale download records (completed games) but keep interrupted ones (preserves DLC selection)
+        scope.launch {
+            for (record in downloadingAppInfoDao.getAll()) {
+                if (isAppInstalled(record.appId)) {
+                    downloadingAppInfoDao.deleteApp(record.appId)
+                }
+            }
+        }
+
         notificationHelper = NotificationHelper(applicationContext)
-        // pause downloads when WiFi/Ethernet is lost
+
+        // pause downloads when WiFi/Ethernet connectivity changes
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         networkCallback = object : ConnectivityManager.NetworkCallback() {
-            override fun onLost(network: Network) {
-                // only pause if no WiFi/LAN remains (avoids false pause on multi-network)
-                if (PrefManager.downloadOnWifiOnly && !isWifiConnected) {
+            override fun onLost(network: Network) = checkAndPauseDownloads()
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) = checkAndPauseDownloads()
+
+            // query ConnectivityManager directly (not NetworkMonitor) to avoid
+            // callback ordering race between our two separate registrations.
+            // no VPN exclusion needed here — activeNetwork is always fresh
+            // (stale-VPN guard is only needed in NetworkMonitor's multi-network tracking)
+            private fun hasActiveWifiOrEthernet(): Boolean {
+                val activeNet = connectivityManager.activeNetwork ?: return false
+                val caps = connectivityManager.getNetworkCapabilities(activeNet) ?: return false
+                return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+            }
+
+            // no transition guard needed — if WiFi already down, downloadJobs is empty (no-op)
+            private fun checkAndPauseDownloads() {
+                if (PrefManager.downloadOnWifiOnly && !hasActiveWifiOrEthernet()) {
                     for ((appId, info) in downloadJobs.entries.toList()) {
-                        Timber.d("Cancelling job")
+                        Timber.d("Pausing download for $appId — WiFi/Ethernet lost")
                         info.cancel()
                         PluviaApp.events.emit(AndroidEvent.DownloadPausedDueToConnectivity(appId))
                         removeDownloadJob(appId)
@@ -2908,8 +2949,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
         val networkRequest = NetworkRequest.Builder()
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
 
@@ -2940,9 +2980,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                 it.withConnectionTimeout(60000L)
                 it.withHttpClient(
                     OkHttpClient.Builder()
-                        .connectTimeout(10, TimeUnit.SECONDS) // Time to establish connection
-                        .readTimeout(60, TimeUnit.SECONDS) // Max inactivity between reads
-                        .writeTimeout(30, TimeUnit.SECONDS) // Time for writes
+                        .connectTimeout(10, TimeUnit.SECONDS)
+                        .readTimeout(60, TimeUnit.SECONDS)
+                        .writeTimeout(30, TimeUnit.SECONDS)
+                        .pingInterval(15, TimeUnit.SECONDS) // keep WebSocket alive during idle
                         .build(),
                 )
             }
@@ -3022,7 +3063,6 @@ class SteamService : Service(), IChallengeUrlChanged {
         stopForeground(STOP_FOREGROUND_REMOVE)
         notificationHelper.cancel()
 
-        // Unregister Wi-Fi connectivity callback
         connectivityManager.unregisterNetworkCallback(networkCallback)
 
         scope.launch { stop() }
@@ -3097,6 +3137,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         _unifiedFriends?.close()
         _unifiedFriends = null
 
+        reconnectJob?.cancel()
         isStopping = false
         retryAttempt = 0
 
@@ -3122,6 +3163,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     private fun onConnected(callback: ConnectedCallback) {
         Timber.i("Connected to Steam")
 
+        reconnectJob?.cancel()
         retryAttempt = 0
         isConnected = true
 
@@ -3148,14 +3190,17 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         if (!isStopping && retryAttempt < MAX_RETRY_ATTEMPTS) {
             retryAttempt++
+            val backoffMs = (1000L * minOf(1 shl (retryAttempt - 1), 60)).coerceAtMost(60_000L)
 
-            Timber.w("Attempting to reconnect (retry $retryAttempt)")
+            Timber.w("Attempting to reconnect (retry $retryAttempt) after ${backoffMs}ms")
 
-            // isLoggingOut = false
             val event = SteamEvent.RemotelyDisconnected
             PluviaApp.events.emit(event)
 
-            connectToSteam()
+            reconnectJob = scope.launch {
+                delay(backoffMs)
+                if (isRunning && !isStopping) connectToSteam()
+            }
         } else {
             val event = SteamEvent.Disconnected
             PluviaApp.events.emit(event)

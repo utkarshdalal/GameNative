@@ -164,6 +164,8 @@
     <string name="content_info">內容信息</string>
     <string name="game_not_installed_title">遊戲未安裝</string>
     <string name="game_not_installed_message">%s 未安裝, 請在啟動前先安裝遊戲</string>
+    <string name="intent_launch_failed">無法啟動遊戲：啟動捷徑無效</string>
+    <string name="intent_launch_steam_login_required">啟動此遊戲需要登入 Steam</string>
     <string name="game_executable_not_found_title">無法啟動</string>
     <string name="game_executable_not_found">無法自動選擇可執行檔。請在容器配置中指定可執行檔路徑。</string>
     <string name="save_container_settings_title">保存容器配置?</string>
@@ -248,6 +250,8 @@
     <string name="performance_hud_size_medium">M</string>
     <string name="performance_hud_size_large">L</string>
     <string name="performance_hud_background_opacity">背景不透明度</string>
+    <string name="performance_hud_color_intensity">顏色強度</string>
+    <string name="performance_hud_text_outline">文字描邊</string>
     <string name="performance_hud_percentage_value">%1$d%%</string>
     <string name="performance_hud_metrics">顯示的指標</string>
     <string name="performance_hud_metrics_description">選擇要在疊加層中顯示的統計資料。</string>
@@ -829,7 +833,7 @@
     <string name="settings_interface_external_links_subtitle">連結將以您的主要網頁瀏覽器開啟</string>
     <string name="settings_interface_hide_statusbar_title">在非遊戲狀態時隱藏狀態列</string>
     <string name="settings_interface_hide_statusbar_subtitle">在遊戲清單、設定等介面隱藏 Android 狀態列。變更後應用程式將重新啟動。</string>
-    <string name="settings_interface_wifi_only_title">僅限透過 Wi-Fi 下載</string>
+    <string name="settings_interface_wifi_only_title">僅限透過 Wi-Fi/LAN 下載</string>
     <string name="settings_interface_wifi_only_subtitle">禁止使用行動數據下載</string>
     <string name="settings_interface_external_storage_title">寫入外部儲存裝置</string>
     <string name="settings_interface_no_external_storage">未偵測到外部儲存裝置</string>
@@ -1264,6 +1268,13 @@
     <string name="manifest_content_untrusted">內容不受信任，未安裝。</string>
     <string name="manifest_type_mismatch">下載的內容與預期類型不符。</string>
     <string name="manifest_glibc_not_supported">不支援 GLIBC 版本。</string>
+
+    <!-- Library: source not logged in splash -->
+    <string name="library_source_not_logged_in_steam">登入以存取您的 Steam 遊戲庫。</string>
+    <string name="library_source_not_logged_in_gog">登入以存取您的 GOG 遊戲庫。</string>
+    <string name="library_source_not_logged_in_epic">登入以存取您的 Epic 遊戲庫。</string>
+    <string name="library_source_not_logged_in_amazon">登入以存取您的 Amazon 遊戲庫。</string>
+    <string name="library_source_no_custom_games">您尚未新增任何自訂遊戲。</string>
     <string name="download_failed_title">下載失敗</string>
     <string name="download_failed_message">無法下載必要的檔案。請檢查您的網路連線後重試。</string>
     <string name="install_failed_title">安裝失敗</string>

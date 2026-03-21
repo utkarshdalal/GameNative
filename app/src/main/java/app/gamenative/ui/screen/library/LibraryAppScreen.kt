@@ -492,8 +492,8 @@ internal fun AppScreenContent(
     val context = LocalContext.current
     // reactive — recomposes when network state changes
     val hasInternet by NetworkMonitor.hasInternet.collectAsState()
-    val wifiConnected by NetworkMonitor.isWifiConnected.collectAsState()
-    val wifiAllowed = !PrefManager.downloadOnWifiOnly || wifiConnected
+    val hasWifiOrEthernet by NetworkMonitor.hasWifiOrEthernet.collectAsState()
+    val downloadAllowed = !PrefManager.downloadOnWifiOnly || hasWifiOrEthernet
     val scrollState = rememberScrollState()
 
     var optionsMenuVisible by remember { mutableStateOf(false) }
@@ -514,9 +514,9 @@ internal fun AppScreenContent(
 
     // Button state calculations (needed by key event handler)
     val isResume = !isDownloading && hasPartialDownload
-    val pauseResumeEnabled = if (isResume) wifiAllowed else true
+    val pauseResumeEnabled = if (isResume) downloadAllowed else true
     val isInstall = !isInstalled
-    val installEnabled = if (isInstall) wifiAllowed && hasInternet else true
+    val installEnabled = if (isInstall) downloadAllowed && hasInternet else true
     val buttonEnabled = if (isInstalled) {
         installEnabled
     } else {
@@ -781,7 +781,7 @@ internal fun AppScreenContent(
                             val text = when {
                                 isInstalled -> stringResource(R.string.run_app)
                                 !hasInternet -> stringResource(R.string.library_need_internet)
-                                !wifiConnected && PrefManager.downloadOnWifiOnly -> stringResource(R.string.library_wifi_only_enabled)
+                                !hasWifiOrEthernet && PrefManager.downloadOnWifiOnly -> stringResource(R.string.library_wifi_only_enabled)
                                 else -> stringResource(R.string.install_app)
                             }
                             PrimaryActionButton(

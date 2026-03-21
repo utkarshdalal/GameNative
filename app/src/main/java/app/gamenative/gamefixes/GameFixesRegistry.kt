@@ -16,6 +16,7 @@ object GameFixesRegistry {
     private const val GAME_DRIVE_LETTER = "A"
 
     private val fixes: Map<Pair<GameSource, String>, GameFix> = listOf(
+        GOG_Fix_1141086411,
         GOG_Fix_1454315831,
         GOG_Fix_1454587428,
         GOG_Fix_1458058109,

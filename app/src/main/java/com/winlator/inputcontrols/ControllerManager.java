@@ -130,9 +130,18 @@ public class ControllerManager {
      * @return True if the device is a game controller.
      */
     public static boolean isGameController(InputDevice device) {
+        if (device == null) return false;
+
         int sources = device.getSources();
-        return ((sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK) ||
-                ((sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD);
+
+        boolean isGamepad = (sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD;
+        boolean isJoystick = (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
+
+        if (device.getKeyboardType() == InputDevice.KEYBOARD_TYPE_ALPHABETIC) {
+            return false;
+        }
+
+        return isGamepad || isJoystick;
     }
 
     /**

@@ -34,8 +34,6 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.utils.ContainerUtils
-import app.gamenative.utils.GameMetadataManager
-import app.gamenative.utils.SteamGridDB
 import app.gamenative.utils.createPinnedShortcut
 import com.winlator.container.ContainerData
 import java.io.File
@@ -388,41 +386,6 @@ abstract class BaseAppScreen {
     }
 
     @Composable
-    private fun getFetchImagesOption(context: Context, libraryItem: LibraryItem): AppMenuOption {
-        return AppMenuOption(
-            optionType = AppOptionMenuType.FetchSteamGridDBImages,
-            onClick = {
-                CoroutineScope(Dispatchers.IO).launch {
-                    try {
-                        val gameName = libraryItem.name
-                        val gameFolderPath = getGameFolderPathForImageFetch(context, libraryItem)
-
-                        if (gameFolderPath != null) {
-                            val folder = File(gameFolderPath)
-                            val appId = libraryItem.gameId
-                            GameMetadataManager.update(
-                                folder = folder,
-                                appId = appId,
-                                steamgriddbFetched = false,
-                            )
-
-                            SteamGridDB.fetchGameImages(gameName, gameFolderPath)
-                            PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
-                            onAfterFetchImages(context, libraryItem, gameFolderPath)
-
-                            SnackbarManager.show(context.getString(R.string.base_app_images_fetched))
-                        } else {
-                            SnackbarManager.show(context.getString(R.string.base_app_game_folder_not_found))
-                        }
-                    } catch (e: Exception) {
-                        SnackbarManager.show(context.getString(R.string.base_app_images_fetch_failed, e.message ?: ""))
-                    }
-                }
-            },
-        )
-    }
-
-    @Composable
     private fun getGetSupportOption(context: Context): AppMenuOption {
         return AppMenuOption(
             optionType = AppOptionMenuType.GetSupport,
@@ -544,7 +507,6 @@ abstract class BaseAppScreen {
 
         // Always available options
         menuOptions.add(getSubmitFeedbackOption(context, libraryItem))
-        menuOptions.add(getFetchImagesOption(context, libraryItem))
         menuOptions.add(getGetSupportOption(context))
 
         // Add any source-specific options

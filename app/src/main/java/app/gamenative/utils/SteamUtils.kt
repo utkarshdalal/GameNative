@@ -5,6 +5,7 @@ import android.content.Context
 import android.provider.Settings
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.ManifestInfo
 import app.gamenative.data.SteamApp
 import app.gamenative.enums.Marker
 import app.gamenative.enums.SpecialGameSaveMapping
@@ -38,6 +39,11 @@ import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 object SteamUtils {
+
+    fun getDownloadBytes(manifest: ManifestInfo?): Long {
+        if (manifest == null) return 0L
+        return if (manifest.download > 0L) manifest.download else manifest.size
+    }
 
     internal val http = Net.http.newBuilder()
         .readTimeout(5, TimeUnit.MINUTES)
@@ -734,10 +740,35 @@ object SteamUtils {
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
     }
 
+    fun findSteamApiDllRootFile(file: File, depth: Int): File? {
+        if (depth < 0) return null
+        val (files, directories) = file.walkTopDown().maxDepth(1).partition { it.isFile }
+
+        val steamApi = files.firstOrNull {
+            it.toPath().name.startsWith("steam_api", true)
+            && (
+                it.toPath().name.endsWith(".dll", true)
+                || it.toPath().name.endsWith(".dll.orig", true)
+            )
+        }
+
+        if (steamApi != null)
+            return steamApi.parentFile
+
+        return directories.filter { it != file }.firstNotNullOfOrNull { findSteamApiDllRootFile(it, depth - 1) }
+    }
+
     fun putBackSteamDlls(appDirPath: String) {
         val rootPath = Paths.get(appDirPath)
 
-        rootPath.toFile().walkTopDown().maxDepth(10).forEach { file ->
+        val dllRootFile = findSteamApiDllRootFile(rootPath.toFile(), 10)
+
+        if (dllRootFile == null) {
+            Timber.w("Failed to find steam_api.dll/steam_api64.dll on a Steam game")
+            return
+        }
+
+        dllRootFile.walkTopDown().maxDepth(1).forEach { file ->
             val path = file.toPath()
             if (!file.isFile || !path.name.startsWith("steam_api", ignoreCase = true) || !path.name.endsWith(".orig", ignoreCase = true)) return@forEach
 

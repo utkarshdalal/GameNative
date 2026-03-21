@@ -231,6 +231,17 @@ class PerformanceHudView(
             textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.textSizeSp)
             textView.maxLines = 1
             textView.ellipsize = TextUtils.TruncateAt.END
+            textView.setShadowLayer(
+                if (config.showTextOutline) {
+                    (textView.textSize * HUD_TEXT_SHADOW_RADIUS_RATIO)
+                        .coerceIn(MIN_HUD_TEXT_SHADOW_RADIUS_PX, MAX_HUD_TEXT_SHADOW_RADIUS_PX)
+                } else {
+                    0f
+                },
+                0f,
+                0f,
+                HUD_TEXT_SHADOW_COLOR,
+            )
         }
 
         allMetrics.forEach(::applyMetricAppearance)
@@ -241,8 +252,13 @@ class PerformanceHudView(
     }
 
     private fun applyMetricAppearance(metric: MetricViews) {
+        val textColor = blendMetricColor(metric.baseTextColor)
+        metric.stackedText.setTextColor(textColor)
+        metric.compactText.setTextColor(textColor)
         metric.stackedText.setPadding(0, appearance.rowVerticalPaddingDp.dp, 0, 0)
         metric.compactText.setPadding(0, 0, 0, 0)
+        metric.stackedGraph?.setLineColor(blendMetricColor(metric.baseGraphColor ?: metric.baseTextColor))
+        metric.compactGraph?.setLineColor(blendMetricColor(metric.baseGraphColor ?: metric.baseTextColor))
 
         (metric.stackedGraph?.layoutParams as? LinearLayout.LayoutParams)?.let { params ->
             params.width = appearance.stackedGraphWidthDp.dp
@@ -511,6 +527,8 @@ class PerformanceHudView(
         return MetricViews(
             id = id,
             supportsGraph = stackedGraph != null && compactGraph != null,
+            baseTextColor = textColor,
+            baseGraphColor = graphColor,
             stackedText = stackedText,
             compactText = compactText,
             stackedContainer = stackedContainer,
@@ -518,6 +536,16 @@ class PerformanceHudView(
             stackedGraph = stackedGraph,
             compactGraph = compactGraph,
         )
+    }
+
+    private fun blendMetricColor(color: Int): Int {
+        val intensity = config.colorIntensity.coerceIn(0f, 1f)
+        if (intensity >= 0.999f) return color
+
+        val hsv = FloatArray(3)
+        Color.colorToHSV(color, hsv)
+        hsv[1] *= intensity
+        return Color.HSVToColor(Color.alpha(color), hsv)
     }
 
     private fun createTextView(color: Int): TextView {
@@ -711,6 +739,8 @@ class PerformanceHudView(
     private data class MetricViews(
         val id: MetricId,
         val supportsGraph: Boolean,
+        val baseTextColor: Int,
+        val baseGraphColor: Int?,
         val stackedText: TextView,
         val compactText: TextView,
         val stackedContainer: LinearLayout,
@@ -746,6 +776,12 @@ class PerformanceHudView(
             strokeJoin = Paint.Join.ROUND
         }
         private val path = Path()
+
+        fun setLineColor(color: Int) {
+            linePaint.color = color
+            glowPaint.color = Color.argb(102, Color.red(color), Color.green(color), Color.blue(color))
+            invalidate()
+        }
 
         fun applyAppearance(appearance: HudAppearance) {
             linePaint.strokeWidth = when (appearance.textSizeSp) {
@@ -922,5 +958,9 @@ class PerformanceHudView(
         const val RUNTIME_SMOOTHING_NEW_WEIGHT = 0.35
         const val GRAPH_SAMPLE_COUNT = 30
         const val GRAPH_FPS_MIN_SCALE = 60f
+        const val HUD_TEXT_SHADOW_RADIUS_RATIO = 0.18f
+        const val MIN_HUD_TEXT_SHADOW_RADIUS_PX = 1.5f
+        const val MAX_HUD_TEXT_SHADOW_RADIUS_PX = 4f
+        val HUD_TEXT_SHADOW_COLOR: Int = Color.argb(220, 0, 0, 0)
     }
 }

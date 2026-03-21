@@ -165,6 +165,8 @@
     <string name="content_info">Informations sur le contenu</string>
     <string name="game_not_installed_title">Jeu non installé</string>
     <string name="game_not_installed_message">%s n\'est pas installé. Veuillez installer le jeu avant de le lancer.</string>
+    <string name="intent_launch_failed">Impossible de lancer le jeu : raccourci de lancement invalide</string>
+    <string name="intent_launch_steam_login_required">Connexion Steam requise pour lancer ce jeu</string>
     <string name="game_executable_not_found_title">Impossible de lancer</string>
     <string name="game_executable_not_found">L\'exécutable n\'a pas pu être sélectionné automatiquement. Veuillez définir le chemin de l\'exécutable dans les paramètres du conteneur.</string>
     <string name="save_container_settings_title">Enregistrer la configuration du conteneur ?</string>
@@ -249,6 +251,8 @@
     <string name="performance_hud_size_medium">M</string>
     <string name="performance_hud_size_large">L</string>
     <string name="performance_hud_background_opacity">Opacité de l’arrière-plan</string>
+    <string name="performance_hud_color_intensity">Intensité des couleurs</string>
+    <string name="performance_hud_text_outline">Contour du texte</string>
     <string name="performance_hud_percentage_value">%1$d%%</string>
     <string name="performance_hud_metrics">Mesures affichées</string>
     <string name="performance_hud_metrics_description">Choisissez quelles statistiques apparaissent dans la surcouche.</string>
@@ -832,7 +836,7 @@
     <string name="settings_interface_hide_statusbar_title">Masquer la barre d\'état hors jeu</string>
     <string name="settings_interface_hide_statusbar_subtitle">Masquer la barre d\'état Android dans la liste de jeux, les paramètres, etc. L\'application redémarrera lors du changement.</string>
     <string name="settings_interface_icon_style">Style d\'icône</string>
-    <string name="settings_interface_wifi_only_title">Télécharger uniquement via Wi-Fi</string>
+    <string name="settings_interface_wifi_only_title">Télécharger uniquement via Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Empêcher les téléchargements sur données cellulaires</string>
     <string name="settings_interface_external_storage_title">Écrire sur le stockage externe</string>
     <string name="settings_interface_no_external_storage">Aucun stockage externe détecté</string>
@@ -1267,6 +1271,13 @@
     <string name="manifest_content_untrusted">Le contenu n’est pas fiable et n’a pas été installé.</string>
     <string name="manifest_type_mismatch">Le contenu téléchargé ne correspond pas au type attendu.</string>
     <string name="manifest_glibc_not_supported">Les builds GLIBC ne sont pas pris en charge.</string>
+
+    <!-- Library: source not logged in splash -->
+    <string name="library_source_not_logged_in_steam">Connectez-vous pour accéder à votre bibliothèque Steam.</string>
+    <string name="library_source_not_logged_in_gog">Connectez-vous pour accéder à votre bibliothèque GOG.</string>
+    <string name="library_source_not_logged_in_epic">Connectez-vous pour accéder à votre bibliothèque Epic.</string>
+    <string name="library_source_not_logged_in_amazon">Connectez-vous pour accéder à votre bibliothèque Amazon.</string>
+    <string name="library_source_no_custom_games">Vous n\'avez ajouté aucun jeu personnalisé.</string>
     <string name="download_failed_title">Échec du téléchargement</string>
     <string name="download_failed_message">Un fichier requis n\'a pas pu être téléchargé. Veuillez vérifier votre connexion réseau et réessayer.</string>
     <string name="install_failed_title">Échec de l\'installation</string>
