@@ -22,14 +22,10 @@ object IntentLaunchManager {
     private const val ACTION_LAUNCH_GAME = "app.gamenative.LAUNCH_GAME"
     private const val MAX_CONFIG_JSON_SIZE = 50000 // 50KB limit to prevent memory exhaustion
 
-    data class ContainerConfigOverride(
-        val config: ContainerData,
-        val providedKeys: Set<String> = emptySet(),
-    )
-
     data class LaunchRequest(
         val appId: String,
-        val containerConfig: ContainerConfigOverride? = null,
+        val containerConfig: ContainerData? = null,
+        val hasTouchscreenHapticsOverride: Boolean = false,
     )
 
     fun parseLaunchIntent(intent: Intent): LaunchRequest? {
@@ -59,7 +55,7 @@ object IntentLaunchManager {
         Timber.d("[IntentLaunchManager]: Converted to appId: $appId")
 
         val containerConfigJson = intent.getStringExtra(EXTRA_CONTAINER_CONFIG)
-        val containerConfig = if (containerConfigJson != null) {
+        val parsedContainerConfig = if (containerConfigJson != null) {
             try {
                 parseContainerConfig(containerConfigJson)
             } catch (e: Exception) {
@@ -70,12 +66,21 @@ object IntentLaunchManager {
             null
         }
 
-        return LaunchRequest(appId, containerConfig)
+        return LaunchRequest(
+            appId = appId,
+            containerConfig = parsedContainerConfig?.first,
+            hasTouchscreenHapticsOverride = parsedContainerConfig?.second == true,
+        )
     }
 
-    fun applyTemporaryConfigOverride(context: Context, appId: String, configOverride: ContainerConfigOverride) {
+    fun applyTemporaryConfigOverride(
+        context: Context,
+        appId: String,
+        configOverride: ContainerData,
+        hasTouchscreenHapticsOverride: Boolean = false,
+    ) {
         try {
-            TemporaryConfigStore.setOverride(appId, configOverride)
+            TemporaryConfigStore.setOverride(appId, configOverride, hasTouchscreenHapticsOverride)
 
             if (ContainerUtils.hasContainer(context, appId)) {
                 val container = ContainerUtils.getContainer(context, appId)
@@ -111,10 +116,11 @@ object IntentLaunchManager {
             }
 
             val override = TemporaryConfigStore.getOverride(appId)
+            val hasTouchscreenHapticsOverride = TemporaryConfigStore.hasTouchscreenHapticsOverride(appId)
 
             when {
-                override != null && baseConfig != null -> mergeConfigurations(baseConfig, override)
-                override != null -> override.config
+                override != null && baseConfig != null -> mergeConfigurations(baseConfig, override, hasTouchscreenHapticsOverride)
+                override != null -> override
                 else -> baseConfig
             }
         } catch (e: Exception) {
@@ -150,8 +156,12 @@ object IntentLaunchManager {
         return TemporaryConfigStore.hasOverride(appId)
     }
 
-    fun getTemporaryOverride(appId: String): ContainerConfigOverride? {
+    fun getTemporaryOverride(appId: String): ContainerData? {
         return TemporaryConfigStore.getOverride(appId)
+    }
+
+    fun hasTemporaryTouchscreenHapticsOverride(appId: String): Boolean {
+        return TemporaryConfigStore.hasTouchscreenHapticsOverride(appId)
     }
 
     fun getOriginalConfig(appId: String): ContainerData? {
@@ -184,17 +194,13 @@ object IntentLaunchManager {
         return issues
     }
 
-    private fun parseContainerConfig(jsonString: String): ContainerConfigOverride {
+    private fun parseContainerConfig(jsonString: String): Pair<ContainerData, Boolean> {
         if (jsonString.length > MAX_CONFIG_JSON_SIZE) {
             throw IllegalArgumentException("Container configuration JSON too large (max ${MAX_CONFIG_JSON_SIZE / 1000}KB)")
         }
 
         val json = JSONObject(jsonString)
-        val providedKeys = mutableSetOf<String>()
-        val keys = json.keys()
-        while (keys.hasNext()) {
-            providedKeys.add(keys.next())
-        }
+        val hasTouchscreenHapticsOverride = json.has("touchscreenHaptics")
 
         // Only include non-default values to avoid overriding existing container settings
         val config = ContainerData(
@@ -260,103 +266,112 @@ object IntentLaunchManager {
             Timber.w("[IntentLaunchManager]: Container configuration validation issues: ${validationIssues.joinToString("; ")}")
         }
 
-        return ContainerConfigOverride(config, providedKeys)
+        return config to hasTouchscreenHapticsOverride
     }
 
-    private fun mergeConfigurations(base: ContainerData, override: ContainerConfigOverride): ContainerData {
-        val overrideConfig = override.config
-
+    private fun mergeConfigurations(
+        base: ContainerData,
+        override: ContainerData,
+        hasTouchscreenHapticsOverride: Boolean,
+    ): ContainerData {
         // Quick return if no actual overrides
-        if (overrideConfig == base) return base
+        if (override == base) return base
 
         return ContainerData(
-            name = overrideConfig.name.ifEmpty { base.name },
-            screenSize = if (overrideConfig.screenSize != Container.DEFAULT_SCREEN_SIZE) {
-                overrideConfig.screenSize
+            name = override.name.ifEmpty { base.name },
+            screenSize = if (override.screenSize != Container.DEFAULT_SCREEN_SIZE) {
+                override.screenSize
             } else {
                 base.screenSize
             },
-            envVars = if (overrideConfig.envVars != Container.DEFAULT_ENV_VARS) overrideConfig.envVars else base.envVars,
-            graphicsDriver = if (overrideConfig.graphicsDriver != Container.DEFAULT_GRAPHICS_DRIVER) {
-                overrideConfig.graphicsDriver
+            envVars = if (override.envVars != Container.DEFAULT_ENV_VARS) override.envVars else base.envVars,
+            graphicsDriver = if (override.graphicsDriver != Container.DEFAULT_GRAPHICS_DRIVER) {
+                override.graphicsDriver
             } else {
                 base.graphicsDriver
             },
-            graphicsDriverVersion = overrideConfig.graphicsDriverVersion.ifEmpty { base.graphicsDriverVersion },
-            dxwrapper = if (overrideConfig.dxwrapper != Container.DEFAULT_DXWRAPPER) overrideConfig.dxwrapper else base.dxwrapper,
+            graphicsDriverVersion = override.graphicsDriverVersion.ifEmpty { base.graphicsDriverVersion },
+            dxwrapper = if (override.dxwrapper != Container.DEFAULT_DXWRAPPER) override.dxwrapper else base.dxwrapper,
             dxwrapperConfig = when {
-                overrideConfig.dxwrapperConfig.isNotEmpty() -> overrideConfig.dxwrapperConfig
+                override.dxwrapperConfig.isNotEmpty() -> override.dxwrapperConfig
                 base.dxwrapperConfig.isNotEmpty() -> base.dxwrapperConfig
                 else -> DXVKHelper.DEFAULT_CONFIG
             },
-            audioDriver = if (overrideConfig.audioDriver != Container.DEFAULT_AUDIO_DRIVER) overrideConfig.audioDriver else base.audioDriver,
-            wincomponents = if (overrideConfig.wincomponents != Container.DEFAULT_WINCOMPONENTS) {
-                overrideConfig.wincomponents
+            audioDriver = if (override.audioDriver != Container.DEFAULT_AUDIO_DRIVER) override.audioDriver else base.audioDriver,
+            wincomponents = if (override.wincomponents != Container.DEFAULT_WINCOMPONENTS) {
+                override.wincomponents
             } else {
                 base.wincomponents
             },
-            drives = if (overrideConfig.drives != Container.DEFAULT_DRIVES) overrideConfig.drives else base.drives,
-            execArgs = overrideConfig.execArgs.ifEmpty { base.execArgs },
-            executablePath = overrideConfig.executablePath.ifEmpty { base.executablePath },
-            installPath = overrideConfig.installPath.ifEmpty { base.installPath },
+            drives = if (override.drives != Container.DEFAULT_DRIVES) override.drives else base.drives,
+            execArgs = override.execArgs.ifEmpty { base.execArgs },
+            executablePath = override.executablePath.ifEmpty { base.executablePath },
+            installPath = override.installPath.ifEmpty { base.installPath },
             // Boolean fields: only override if different from parsing defaults
-            showFPS = if (overrideConfig.showFPS != false) overrideConfig.showFPS else base.showFPS,
-            launchRealSteam = if (overrideConfig.launchRealSteam != false) overrideConfig.launchRealSteam else base.launchRealSteam,
-            cpuList = if (overrideConfig.cpuList != Container.getFallbackCPUList()) overrideConfig.cpuList else base.cpuList,
-            cpuListWoW64 = if (overrideConfig.cpuListWoW64 != Container.getFallbackCPUListWoW64()) {
-                overrideConfig.cpuListWoW64
+            showFPS = if (override.showFPS != false) override.showFPS else base.showFPS,
+            launchRealSteam = if (override.launchRealSteam != false) override.launchRealSteam else base.launchRealSteam,
+            cpuList = if (override.cpuList != Container.getFallbackCPUList()) override.cpuList else base.cpuList,
+            cpuListWoW64 = if (override.cpuListWoW64 != Container.getFallbackCPUListWoW64()) {
+                override.cpuListWoW64
             } else {
                 base.cpuListWoW64
             },
-            wow64Mode = if (overrideConfig.wow64Mode != true) overrideConfig.wow64Mode else base.wow64Mode,
-            startupSelection = if (overrideConfig.startupSelection != Container.STARTUP_SELECTION_ESSENTIAL.toInt().toByte()) {
-                overrideConfig.startupSelection
+            wow64Mode = if (override.wow64Mode != true) override.wow64Mode else base.wow64Mode,
+            startupSelection = if (override.startupSelection != Container.STARTUP_SELECTION_ESSENTIAL.toInt().toByte()) {
+                override.startupSelection
             } else {
                 base.startupSelection
             },
-            box86Version = overrideConfig.box86Version.ifEmpty { base.box86Version },
-            box64Version = overrideConfig.box64Version.ifEmpty { base.box64Version },
-            box86Preset = overrideConfig.box86Preset.ifEmpty { base.box86Preset },
-            box64Preset = overrideConfig.box64Preset.ifEmpty { base.box64Preset },
-            desktopTheme = overrideConfig.desktopTheme.ifEmpty { base.desktopTheme },
-            csmt = if (overrideConfig.csmt != true) overrideConfig.csmt else base.csmt,
-            videoPciDeviceID = if (overrideConfig.videoPciDeviceID != 1728) overrideConfig.videoPciDeviceID else base.videoPciDeviceID,
-            offScreenRenderingMode = if (overrideConfig.offScreenRenderingMode != "fbo") {
-                overrideConfig.offScreenRenderingMode
+            box86Version = override.box86Version.ifEmpty { base.box86Version },
+            box64Version = override.box64Version.ifEmpty { base.box64Version },
+            box86Preset = override.box86Preset.ifEmpty { base.box86Preset },
+            box64Preset = override.box64Preset.ifEmpty { base.box64Preset },
+            desktopTheme = override.desktopTheme.ifEmpty { base.desktopTheme },
+            csmt = if (override.csmt != true) override.csmt else base.csmt,
+            videoPciDeviceID = if (override.videoPciDeviceID != 1728) override.videoPciDeviceID else base.videoPciDeviceID,
+            offScreenRenderingMode = if (override.offScreenRenderingMode != "fbo") {
+                override.offScreenRenderingMode
             } else {
                 base.offScreenRenderingMode
             },
-            strictShaderMath = if (overrideConfig.strictShaderMath != true) overrideConfig.strictShaderMath else base.strictShaderMath,
-            videoMemorySize = if (overrideConfig.videoMemorySize != "2048") overrideConfig.videoMemorySize else base.videoMemorySize,
-            mouseWarpOverride = if (overrideConfig.mouseWarpOverride != "disable") overrideConfig.mouseWarpOverride else base.mouseWarpOverride,
-            sdlControllerAPI = if (overrideConfig.sdlControllerAPI != true) overrideConfig.sdlControllerAPI else base.sdlControllerAPI,
-            enableXInput = if (overrideConfig.enableXInput != true) overrideConfig.enableXInput else base.enableXInput,
-            enableDInput = if (overrideConfig.enableDInput != true) overrideConfig.enableDInput else base.enableDInput,
-            dinputMapperType = if (overrideConfig.dinputMapperType != 1.toByte()) overrideConfig.dinputMapperType else base.dinputMapperType,
-            disableMouseInput = if (overrideConfig.disableMouseInput != false) overrideConfig.disableMouseInput else base.disableMouseInput,
-            touchscreenHaptics = if (override.providedKeys.contains("touchscreenHaptics")) overrideConfig.touchscreenHaptics else base.touchscreenHaptics,
+            strictShaderMath = if (override.strictShaderMath != true) override.strictShaderMath else base.strictShaderMath,
+            videoMemorySize = if (override.videoMemorySize != "2048") override.videoMemorySize else base.videoMemorySize,
+            mouseWarpOverride = if (override.mouseWarpOverride != "disable") override.mouseWarpOverride else base.mouseWarpOverride,
+            sdlControllerAPI = if (override.sdlControllerAPI != true) override.sdlControllerAPI else base.sdlControllerAPI,
+            enableXInput = if (override.enableXInput != true) override.enableXInput else base.enableXInput,
+            enableDInput = if (override.enableDInput != true) override.enableDInput else base.enableDInput,
+            dinputMapperType = if (override.dinputMapperType != 1.toByte()) override.dinputMapperType else base.dinputMapperType,
+            disableMouseInput = if (override.disableMouseInput != false) override.disableMouseInput else base.disableMouseInput,
+            touchscreenHaptics = if (hasTouchscreenHapticsOverride) override.touchscreenHaptics else base.touchscreenHaptics,
             suspendPolicy = base.suspendPolicy,
-            shaderBackend = if (overrideConfig.shaderBackend != "glsl") overrideConfig.shaderBackend else base.shaderBackend,
-            useGLSL = if (overrideConfig.useGLSL != "enabled") overrideConfig.useGLSL else base.useGLSL,
+            shaderBackend = if (override.shaderBackend != "glsl") override.shaderBackend else base.shaderBackend,
+            useGLSL = if (override.useGLSL != "enabled") override.useGLSL else base.useGLSL,
         )
     }
 }
 
 private object TemporaryConfigStore {
-    private val overrides = mutableMapOf<String, IntentLaunchManager.ContainerConfigOverride>()
+    private val overrides = mutableMapOf<String, ContainerData>()
+    private val touchscreenHapticsOverrides = mutableMapOf<String, Boolean>()
     private val originalConfigs = mutableMapOf<String, ContainerData>()
     private val lock = Any()
 
-    fun setOverride(appId: String, config: IntentLaunchManager.ContainerConfigOverride) = synchronized(lock) {
+    fun setOverride(appId: String, config: ContainerData, hasTouchscreenHapticsOverride: Boolean = false) = synchronized(lock) {
         overrides[appId] = config
+        touchscreenHapticsOverrides[appId] = hasTouchscreenHapticsOverride
     }
 
-    fun getOverride(appId: String): IntentLaunchManager.ContainerConfigOverride? = synchronized(lock) {
+    fun getOverride(appId: String): ContainerData? = synchronized(lock) {
         overrides[appId]
+    }
+
+    fun hasTouchscreenHapticsOverride(appId: String): Boolean = synchronized(lock) {
+        touchscreenHapticsOverrides[appId] == true
     }
 
     fun clearOverride(appId: String) = synchronized(lock) {
         overrides.remove(appId)
+        touchscreenHapticsOverrides.remove(appId)
         originalConfigs.remove(appId)
     }
 
@@ -374,6 +389,7 @@ private object TemporaryConfigStore {
 
     fun clearAll() = synchronized(lock) {
         overrides.clear()
+        touchscreenHapticsOverrides.clear()
         originalConfigs.clear()
     }
 }

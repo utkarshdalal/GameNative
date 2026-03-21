@@ -314,7 +314,10 @@ fun PluviaMain(
                 is GameResolutionResult.Success -> {
                     if (launchRequest.containerConfig != null) {
                         IntentLaunchManager.applyTemporaryConfigOverride(
-                            context, launchRequest.appId, launchRequest.containerConfig,
+                            context,
+                            launchRequest.appId,
+                            launchRequest.containerConfig,
+                            launchRequest.hasTouchscreenHapticsOverride,
                         )
                     }
                     MainActivity.wasLaunchedViaExternalIntent = true
@@ -365,6 +368,7 @@ fun PluviaMain(
                             IntentLaunchManager.LaunchRequest(
                                 appId = event.appId,
                                 containerConfig = IntentLaunchManager.getTemporaryOverride(event.appId),
+                                hasTouchscreenHapticsOverride = IntentLaunchManager.hasTemporaryTouchscreenHapticsOverride(event.appId),
                             )
                         )
                         shownPendingLaunchSnackbar = false
@@ -458,6 +462,7 @@ fun PluviaMain(
                                                     context,
                                                     launchRequest.appId,
                                                     launchRequest.containerConfig,
+                                                    launchRequest.hasTouchscreenHapticsOverride,
                                                 )
                                                 Timber.tag("IntentLaunch")
                                                     .i("Applied container config override for app ${launchRequest.appId}")

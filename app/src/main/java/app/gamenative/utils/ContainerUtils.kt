@@ -1016,14 +1016,31 @@ object ContainerUtils {
 
             container
         } else {
-            // Create new container with override config if present
+            // Create new container using normal defaults/best-config flow first.
+            // If a temporary override exists, apply it in-memory afterward so sparse
+            // intent overrides do not get treated as a full custom config during creation.
             val overrideConfig = if (IntentLaunchManager.hasTemporaryOverride(appId)) {
                 IntentLaunchManager.getTemporaryOverride(appId)
             } else {
                 null
             }
 
-            createNewContainer(context, appId, appId, containerManager, overrideConfig?.config)
+            val container = createNewContainer(context, appId, appId, containerManager)
+
+            if (overrideConfig != null) {
+                if (IntentLaunchManager.getOriginalConfig(appId) == null) {
+                    val originalConfig = toContainerData(container)
+                    IntentLaunchManager.setOriginalConfig(appId, originalConfig)
+                }
+
+                val effectiveConfig = IntentLaunchManager.getEffectiveContainerConfig(context, appId)
+                if (effectiveConfig != null) {
+                    applyToContainer(context, container, effectiveConfig, saveToDisk = false)
+                    Timber.i("Applied temporary config override to new container for app $appId (in-memory only)")
+                }
+            }
+
+            container
         }
     }
 
