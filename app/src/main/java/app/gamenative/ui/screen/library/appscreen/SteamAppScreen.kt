@@ -409,7 +409,7 @@ class SteamAppScreen : BaseAppScreen() {
         // Get playtime text
         var playtimeText by remember { mutableStateOf("0 hrs") }
         LaunchedEffect(gameId) {
-            val steamID = SteamService.userSteamId?.accountID?.toLong()
+            val steamID = SteamService.userSteamId?.convertToUInt64()
             if (steamID != null) {
                 val games = SteamService.getOwnedGames(steamID)
                 val game = games.firstOrNull { it.appId == gameId }
