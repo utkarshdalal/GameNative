@@ -225,18 +225,20 @@ class WorkshopSymlinker {
         val errors = mutableMapOf<String, String>()
         var created = 0; var skipped = 0; var removed = 0
 
-        // Collect all files from active workshop items
+        // Collect all files from active workshop items.
+        // Sort by item ID so the lowest ID consistently wins on filename collisions.
         val expectedFiles = linkedMapOf<String, File>() // filename → source file
-        for ((id, sourceDir) in activeItemDirs) {
+        for ((id, sourceDir) in activeItemDirs.entries.sortedBy { it.key }) {
             sourceDir.listFiles()
                 ?.filter { it.isFile && !it.name.startsWith(".") }
                 ?.forEach { f ->
-                    val prev = expectedFiles.put(f.name, f)
-                    if (prev != null) {
+                    if (f.name in expectedFiles) {
                         Timber.tag(TAG).w(
-                            "Flat-file collision: '%s' from item %d overwrites file from %s",
-                            f.name, id, prev.parentFile?.name ?: "unknown"
+                            "Flat-file collision: '%s' from item %d skipped, already provided by %s",
+                            f.name, id, expectedFiles[f.name]?.parentFile?.name ?: "unknown"
                         )
+                    } else {
+                        expectedFiles[f.name] = f
                     }
                 }
         }
