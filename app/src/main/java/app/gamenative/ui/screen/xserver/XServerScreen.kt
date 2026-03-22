@@ -3686,9 +3686,11 @@ private fun setupWineSystemFiles(
 
     if (xServerState.value.dxwrapper == "d7vk") {
         Timber.d("Setting D7VK")
-        // Set version for d7vk or use default if not found.
-        var version = xServerState.value.dxwrapperConfig?.get("version")
-        if (version == null || (version is String && version.isBlank())) {
+        // Validate the stored version is a proper D7VK version (X.Y format).
+        // A stale DXVK version (e.g. "2.4.1") or async string would produce a
+        // non-existent asset path, so fall back to DefaultVersion.D7VK in that case.
+        var version = xServerState.value.dxwrapperConfig?.get("version")?.toString().orEmpty()
+        if (version.isBlank() || !version.matches(Regex("^\\d+\\.\\d+$"))) {
             version = DefaultVersion.D7VK
             xServerState.value.dxwrapperConfig?.put("version", version)
         }
@@ -3883,8 +3885,22 @@ private fun extractDXWrapperFiles(
 
             val profile: ContentProfile? = contentsManager.getProfileByEntryName(dxwrapper)
             if (profile != null) {
-                Timber.d("Applying user-defined D7VK content profile: " + dxwrapper)
-                contentsManager.applyContent(profile);
+                // Stage DLLs into d7vkStagingDir (mirroring the tar-extract layout) so that
+                // copyD7vkToGameDirectory() can pick them up at launch time.
+                Timber.d("Staging user-defined D7VK content profile into cache: $dxwrapper")
+                val installDir = ContentsManager.getInstallDir(context, profile)
+                for (contentFile in profile.fileList) {
+                    val srcFile = File(installDir, contentFile.source)
+                    if (!srcFile.exists()) continue
+                    val subDir = when {
+                        contentFile.target.startsWith("\${syswow64}") -> "syswow64"
+                        contentFile.target.startsWith("\${system32}") -> "system32"
+                        else -> continue
+                    }
+                    val destFile = File(d7vkStagingDir, "$subDir/${srcFile.name}")
+                    destFile.parentFile?.mkdirs()
+                    FileUtils.copy(srcFile, destFile)
+                }
             } else {
                 // Extract to staging directory (will be copied to game dir at launch time)
                 TarCompressorUtils.extract(
