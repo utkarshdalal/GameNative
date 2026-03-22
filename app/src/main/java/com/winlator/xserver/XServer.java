@@ -5,6 +5,7 @@ import android.util.SparseArray;
 
 import com.winlator.core.CursorLocker;
 import com.winlator.renderer.GLRenderer;
+import com.winlator.winhandler.MouseEventFlags;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xserver.extensions.BigReqExtension;
 import com.winlator.xserver.extensions.DRI3Extension;
@@ -42,7 +43,8 @@ public class XServer {
     private GLRenderer renderer;
     private WinHandler winHandler;
     private final EnumMap<Lockable, ReentrantLock> locks = new EnumMap<>(Lockable.class);
-    private boolean relativeMouseMovement = false;
+    private volatile boolean relativeMouseMovement = false;
+    private volatile boolean suppressCursorWarp = false;
     private boolean simulateTouchScreen = false;
 
     public XServer(ScreenInfo screenInfo) {
@@ -68,8 +70,17 @@ public class XServer {
     }
 
     public void setRelativeMouseMovement(boolean relativeMouseMovement) {
-        cursorLocker.setEnabled(!relativeMouseMovement);
         this.relativeMouseMovement = relativeMouseMovement;
+        cursorLocker.setEnabled(!(relativeMouseMovement || suppressCursorWarp));
+    }
+
+    public boolean isSuppressCursorWarp() {
+        return suppressCursorWarp;
+    }
+
+    public void setSuppressCursorWarp(boolean suppressCursorWarp) {
+        this.suppressCursorWarp = suppressCursorWarp;
+        cursorLocker.setEnabled(!(relativeMouseMovement || suppressCursorWarp));
     }
 
     public boolean isSimulateTouchScreen() { return simulateTouchScreen; }
@@ -159,8 +170,12 @@ public class XServer {
     }
 
     public void injectPointerMoveDelta(int dx, int dy) {
-        try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
-            pointer.setPosition(pointer.getX() + dx, pointer.getY() + dy);
+        if (suppressCursorWarp && winHandler != null) {
+            winHandler.mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
+        } else {
+            try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+                pointer.setPosition(pointer.getX() + dx, pointer.getY() + dy);
+            }
         }
     }
 

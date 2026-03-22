@@ -1657,6 +1657,14 @@ fun XServerScreen(
 
                 // Set container-level shooter mode
                 setContainerShooterMode(container.isShooterMode)
+
+                // Enable relative mouse movement for FPS-style games.
+                // Uses suppressCursorWarp flag which:
+                // 1) Disables CursorLocker (no edge-damping)
+                // 2) Skips WarpPointer (game's SetCursorPos is a no-op)
+                // 3) Routes touchpad deltas via WinHandler UDP as true
+                //    relative mouse_event calls to Wine
+                xServerView.getxServer().setSuppressCursorWarp(container.isRelativeMouseMovement)
             }
             PluviaApp.inputControlsView = icView
 

@@ -249,6 +249,8 @@ object ContainerUtils {
         val touchscreenMode = container.isTouchscreenMode()
         // Read shooter-mode flag from container
         val shooterMode = container.isShooterMode()
+        // Read relative mouse movement flag from container
+        val relativeMouseMovement = container.isRelativeMouseMovement()
         // Read gesture configuration JSON
         val gestureConfig = container.getGestureConfig()
         val externalDisplayMode = container.getExternalDisplayMode()
@@ -301,6 +303,7 @@ object ContainerUtils {
             disableMouseInput = disableMouse,
             touchscreenMode = touchscreenMode,
             shooterMode = shooterMode,
+            relativeMouseMovement = relativeMouseMovement,
             gestureConfig = gestureConfig,
             externalDisplayMode = externalDisplayMode,
             externalDisplaySwap = externalDisplaySwap,
@@ -464,6 +467,7 @@ object ContainerUtils {
         container.setDisableMouseInput(containerData.disableMouseInput)
         container.setTouchscreenMode(containerData.touchscreenMode)
         container.setShooterMode(containerData.shooterMode)
+        container.setRelativeMouseMovement(containerData.relativeMouseMovement)
         container.setGestureConfig(containerData.gestureConfig)
         container.setExternalDisplayMode(containerData.externalDisplayMode)
         container.setExternalDisplaySwap(containerData.externalDisplaySwap)

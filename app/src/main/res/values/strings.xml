@@ -673,6 +673,8 @@
     <string name="touchscreen_mode_description">For visual novels and RTS games</string>
     <string name="shooter_mode_toggle">Shooter Mode</string>
     <string name="shooter_mode_toggle_description">Auto-replace stick elements with dynamic joysticks</string>
+    <string name="relative_mouse_movement">Relative Mouse Movement</string>
+    <string name="relative_mouse_movement_description">Bypass X11 pointer tracking and send raw deltas to the game</string>
     <string name="shooter_mode_on">Enable Mouse</string>
     <string name="shooter_mode_off">Enable Sticks</string>
 

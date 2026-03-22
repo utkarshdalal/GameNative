@@ -128,6 +128,8 @@ public class Container {
     private boolean touchscreenMode = false;
     // Shooter mode
     private boolean shooterMode = true;
+    // Relative mouse movement (bypasses X11 pointer, sends deltas via WinHandler)
+    private boolean relativeMouseMovement = false;
     // Serialised JSON gesture configuration (used when touchscreenMode is true)
     private String gestureConfig = "";
     // External display input handling
@@ -678,6 +680,7 @@ public class Container {
             data.put("touchscreenMode", touchscreenMode);
             // Shooter mode flag
             data.put("shooterMode", shooterMode);
+            data.put("relativeMouseMovement", relativeMouseMovement);
             // Gesture configuration JSON
             if (gestureConfig != null && !gestureConfig.isEmpty()) {
                 data.put("gestureConfig", gestureConfig);
@@ -866,6 +869,9 @@ public class Container {
                     break;
                 case "shooterMode" :
                     setShooterMode(data.getBoolean(key));
+                    break;
+                case "relativeMouseMovement" :
+                    setRelativeMouseMovement(data.getBoolean(key));
                     break;
                 case "gestureConfig" :
                     setGestureConfig(data.optString(key, ""));
@@ -1067,6 +1073,15 @@ public class Container {
 
     public void setShooterMode(boolean shooterMode) {
         this.shooterMode = shooterMode;
+    }
+
+    // Relative mouse movement
+    public boolean isRelativeMouseMovement() {
+        return relativeMouseMovement;
+    }
+
+    public void setRelativeMouseMovement(boolean relativeMouseMovement) {
+        this.relativeMouseMovement = relativeMouseMovement;
     }
 
     // Gesture configuration JSON
