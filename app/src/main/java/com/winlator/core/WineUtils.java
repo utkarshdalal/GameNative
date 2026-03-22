@@ -235,7 +235,7 @@ public abstract class WineUtils {
                 else registryEditor.removeValue(dllOverridesKey, dlname);
             }
         } catch (JSONException e) {
-            // Handle or ignore, as caller handles JSONException
+            Log.e("WineUtils", "Failed to apply DLL overrides for identifier: " + identifier, e);
         }
     }
 

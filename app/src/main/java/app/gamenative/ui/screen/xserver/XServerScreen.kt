@@ -3591,14 +3591,16 @@ private fun extractWinComponentFiles(
             dlls.clear()
         }
 
-        val oldWinComponents = KeyValueSet(container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS)).associate { it[0] to it[1] }
+        val oldWinComponentsIter = KeyValueSet(container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS)).iterator()
 
         for (wincomponent in KeyValueSet(wincomponents)) {
+            try {
+                if (wincomponent[1].equals(oldWinComponentsIter.next()[1]) && !firstTimeBoot) continue
+            } catch (e: StringIndexOutOfBoundsException) {
+                    Timber.d("Wincomponent ${wincomponent[0]} does not exist in oldwincomponents, skipping")
+            }
             val identifier = wincomponent[0]
-            val value = wincomponent[1]
-            val oldValue = oldWinComponents[identifier]
-            if (oldValue == value && !firstTimeBoot) continue
-            val useNative = value == "1"
+            val useNative = wincomponent[1].equals("1")
 
             if (!container.wineVersion.contains("arm64ec") && identifier.contains("opengl") && useNative) continue
 
