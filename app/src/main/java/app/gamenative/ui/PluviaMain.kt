@@ -1786,7 +1786,10 @@ fun preLaunchApp(
                             // Use 2x safety margin to account for LZMA decompression
                             // and CKM extraction creating temp files alongside originals
                             val requiredBytes = itemsToSync.sumOf { it.fileSizeBytes } * 2
-                            val availableBytes = workshopContentDir.usableSpace
+                            // usableSpace returns 0 for non-existent dirs; walk up to an existing ancestor
+                            val spaceDir = generateSequence(workshopContentDir) { it.parentFile }
+                                .firstOrNull { it.exists() }
+                            val availableBytes = spaceDir?.usableSpace ?: 0L
                             if (requiredBytes > 0 && availableBytes > 0 && requiredBytes > availableBytes) {
                                 val reqMB = String.format(Locale.US, "%.0f", requiredBytes / 1_048_576.0)
                                 val avlMB = String.format(Locale.US, "%.0f", availableBytes / 1_048_576.0)

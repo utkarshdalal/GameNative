@@ -227,10 +227,18 @@ class WorkshopSymlinker {
 
         // Collect all files from active workshop items
         val expectedFiles = linkedMapOf<String, File>() // filename → source file
-        for ((_, sourceDir) in activeItemDirs) {
+        for ((id, sourceDir) in activeItemDirs) {
             sourceDir.listFiles()
                 ?.filter { it.isFile && !it.name.startsWith(".") }
-                ?.forEach { f -> expectedFiles[f.name] = f }
+                ?.forEach { f ->
+                    val prev = expectedFiles.put(f.name, f)
+                    if (prev != null) {
+                        Timber.tag(TAG).w(
+                            "Flat-file collision: '%s' from item %d overwrites file from %s",
+                            f.name, id, prev.parentFile?.name ?: "unknown"
+                        )
+                    }
+                }
         }
 
         // Remove stale file symlinks that we created (point into workshopContentBase)
