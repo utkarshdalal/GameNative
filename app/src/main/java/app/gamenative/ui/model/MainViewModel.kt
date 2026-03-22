@@ -573,9 +573,15 @@ class MainViewModel @Inject constructor(
         }
 
         if (gameSource == GameSource.STEAM) {
-            SteamService.closeApp(context, gameId, isOffline.value) { prefix ->
-                PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
-            }.await()
+            try {
+                SteamService.closeApp(context, gameId, isOffline.value) { prefix ->
+                    PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+                }.await()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                Timber.tag("Steam").e(t, "[Cloud Saves] Exception during close app sync for $gameId")
+            }
         }
     }
 

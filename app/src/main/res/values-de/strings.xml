@@ -1190,8 +1190,6 @@
     <string name="manifest_content_untrusted">Inhalt ist nicht vertrauenswürdig und wurde nicht installiert.</string>
     <string name="manifest_type_mismatch">Heruntergeladener Inhalt entspricht nicht dem erwarteten Typ.</string>
     <string name="manifest_glibc_not_supported">GLIBC-Builds werden nicht unterstützt.</string>
-    <string name="steam_client_sync_warning_title">Warnung zur Steam-Client-Synchronisierung</string>
-    <string name="steam_client_sync_warning_message">Nur lokale Speicherstände sind aktiviert, aber der Steam-Client ist so eingestellt, dass er startet. Der Steam-Client kann weiterhin Cloud-Speicherstände synchronisieren, sofern du Steam Cloud im Client nicht deaktivierst.</string>
     <!-- Library: source not logged in splash -->
     <string name="library_source_not_logged_in_steam">Melde dich an, um auf deine Steam-Bibliothek zuzugreifen.</string>
     <string name="library_source_not_logged_in_gog">Melde dich an, um auf deine GOG-Bibliothek zuzugreifen.</string>

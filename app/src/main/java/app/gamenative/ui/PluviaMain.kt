@@ -707,16 +707,13 @@ fun PluviaMain(
             onConfirmClick = null
         }
 
-        DialogType.PENDING_UPLOAD,
-        DialogType.STEAM_CLIENT_SYNC_WARNING -> {
+        DialogType.PENDING_UPLOAD -> {
             onConfirmClick = {
-                val dialogType = msgDialogState.type
                 setMessageDialogState(MessageDialogState(false))
                 preLaunchApp(
                     context = context,
                     appId = state.launchedAppId,
-                    ignorePendingOperations = dialogType == DialogType.PENDING_UPLOAD,
-                    ignoreSteamClientLocalSavesWarning = dialogType == DialogType.STEAM_CLIENT_SYNC_WARNING,
+                    ignorePendingOperations = true,
                     setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                     setLoadingProgress = viewModel::setLoadingDialogProgress,
                     setLoadingMessage = viewModel::setLoadingDialogMessage,
@@ -1325,7 +1322,6 @@ fun preLaunchApp(
     preferredSave: SaveLocation = SaveLocation.None,
     useTemporaryOverride: Boolean = false,
     skipCloudSync: Boolean = false,
-    ignoreSteamClientLocalSavesWarning: Boolean = false,
     setLoadingDialogVisible: (Boolean) -> Unit,
     setLoadingProgress: (Float) -> Unit,
     setLoadingMessage: (String) -> Unit,
@@ -1382,29 +1378,6 @@ fun preLaunchApp(
                 )
                 return@launch
             }
-        }
-
-        if (!bootToContainer &&
-            !ignoreSteamClientLocalSavesWarning &&
-            gameSource == GameSource.STEAM &&
-            isLocalSavesOnly &&
-            container.isLaunchRealSteam
-        ) {
-            Timber.tag("preLaunchApp").w(
-                "Local saves only is enabled but Steam client launch is on for $appId — warning user",
-            )
-            setLoadingDialogVisible(false)
-            setMessageDialogState(
-                MessageDialogState(
-                    visible = true,
-                    type = DialogType.STEAM_CLIENT_SYNC_WARNING,
-                    title = context.getString(R.string.steam_client_sync_warning_title),
-                    message = context.getString(R.string.steam_client_sync_warning_message),
-                    confirmBtnText = context.getString(R.string.main_play_anyway),
-                    dismissBtnText = context.getString(R.string.cancel),
-                ),
-            )
-            return@launch
         }
 
         // download any manifest components (wine/proton, dxvk, etc.) missing from config
