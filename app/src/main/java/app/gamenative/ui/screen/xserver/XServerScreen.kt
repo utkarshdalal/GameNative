@@ -3597,7 +3597,7 @@ private fun extractWinComponentFiles(
             try {
                 if (wincomponent[1].equals(oldWinComponentsIter.next()[1]) && !firstTimeBoot) continue
             } catch (e: StringIndexOutOfBoundsException) {
-                    Timber.d("Wincomponent ${wincomponent[0]} does not exist in oldwincomponents, skipping")
+                Timber.d("Wincomponent ${wincomponent[0]} does not exist in oldwincomponents, skipping")
             }
             val identifier = wincomponent[0]
             val useNative = wincomponent[1].equals("1")
