@@ -1048,7 +1048,8 @@ fun PluviaMain(
                                     }
                                     SnackbarManager.show("Workshop mods deleted")
                                 } catch (e: Exception) {
-                                    SnackbarManager.show("Failed to delete workshop mods: ${e.message}")
+                                    Timber.e(e, "Failed to delete workshop mods")
+                                    SnackbarManager.show("Failed to delete workshop mods")
                                 }
                             }
                         },
@@ -1887,21 +1888,16 @@ fun preLaunchApp(
                         }
                     } else {
                         Timber.tag("Workshop").d("No subscribed workshop items for appId=$gameId")
-                        // Clean up any previously downloaded mods and remove stale symlinks
-                        val workshopContentDir = WorkshopManager.getWorkshopContentDir(winePrefix, gameId)
-                        if (workshopContentDir.exists()) {
-                            workshopContentDir.deleteRecursively()
-                            Timber.tag("Workshop").i("Deleted workshop content for appId=$gameId")
-                        }
+                        // Clean up previously downloaded mods and installed symlinks/copies
                         val gameRootDir = File(SteamService.getAppDirPath(gameId))
                         val gameName = SteamService.getAppInfoOf(gameId)?.name ?: ""
-                        WorkshopManager.configureModSymlinks(
+                        WorkshopManager.deleteWorkshopMods(
+                            context = context,
+                            containerId = gameId.toString(),
                             gameRootDir = gameRootDir,
-                            workshopContentDir = workshopContentDir,
-                            items = emptyList(),
-                            winePrefix = winePrefix,
                             gameName = gameName,
                         )
+                        Timber.tag("Workshop").i("Cleaned up workshop content for appId=$gameId")
                     }
                 } else {
                     Timber.tag("Workshop").w("Steam client or Steam ID not available, skipping workshop sync")

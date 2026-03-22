@@ -134,15 +134,22 @@ class WorkshopSymlinker {
         val errors = mutableMapOf<String, String>()
         var created = 0; var skipped = 0; var removed = 0
 
-        // Build map of expected entry names (titled or numeric ID)
-        val rawEntryNameForId = activeItemDirs.keys.associateWith { id ->
+        // Build map of expected entry names (titled or numeric ID),
+        // ensuring globally unique names even with secondary collisions.
+        val usedNames = mutableSetOf<String>()
+        val entryNameForId = mutableMapOf<Long, String>()
+        for (id in activeItemDirs.keys) {
             val title = itemTitles[id]
-            if (!title.isNullOrBlank()) sanitizeFileName(title) else id.toString()
-        }
-        // Detect title collisions and disambiguate by appending the item ID
-        val nameCount = rawEntryNameForId.values.groupingBy { it }.eachCount()
-        val entryNameForId = rawEntryNameForId.mapValues { (id, name) ->
-            if ((nameCount[name] ?: 0) > 1) "${name}_$id" else name
+            val baseName = if (!title.isNullOrBlank()) sanitizeFileName(title) else id.toString()
+            var candidate = baseName
+            if (candidate in usedNames) candidate = "${baseName}_$id"
+            var counter = 1
+            while (candidate in usedNames) {
+                candidate = "${baseName}_${id}_$counter"
+                counter++
+            }
+            entryNameForId[id] = candidate
+            usedNames.add(candidate)
         }
         val expectedNames = entryNameForId.values.toSet()
 

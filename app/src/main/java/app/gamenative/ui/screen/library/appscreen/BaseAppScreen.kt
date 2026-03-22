@@ -40,6 +40,7 @@ import com.winlator.container.ContainerData
 import java.io.File
 import kotlin.text.Charsets
 import kotlinx.coroutines.CoroutineScope
+import timber.log.Timber
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -791,11 +792,21 @@ abstract class BaseAppScreen {
                         uiScope.launch {
                             try {
                                 withContext(Dispatchers.IO) {
-                                    WorkshopManager.deleteWorkshopMods(context, libraryItem.appId)
+                                    val gameRootDir = File(
+                                        app.gamenative.service.SteamService.getAppDirPath(
+                                            displayInfo.gameId
+                                        )
+                                    )
+                                    val gameName = displayInfo.name
+                                    WorkshopManager.deleteWorkshopMods(
+                                        context, libraryItem.appId,
+                                        gameRootDir, gameName,
+                                    )
                                 }
                                 SnackbarManager.show("Workshop mods deleted")
                             } catch (e: Exception) {
-                                SnackbarManager.show("Failed to delete workshop mods: ${e.message}")
+                                Timber.e(e, "Failed to delete workshop mods")
+                                SnackbarManager.show("Failed to delete workshop mods")
                             }
                         }
                     }

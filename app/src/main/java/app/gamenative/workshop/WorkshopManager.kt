@@ -1050,16 +1050,107 @@ object WorkshopManager {
     }
 
     /**
-     * Deletes all downloaded workshop mods for the given container.
+     * Deletes all downloaded workshop mods for the given container and
+     * cleans up any symlinks/copies installed into the game tree.
      *
      * @param context Android context for resolving the wine prefix
      * @param containerId The container ID string (e.g. "STEAM_123456")
+     * @param gameRootDir Optional game install dir; when provided, gbe_fork
+     *   mods symlinks and strategy-detected entries are cleaned up too.
+     * @param gameName Optional game name for strategy detection.
      */
-    fun deleteWorkshopMods(context: Context, containerId: String) {
+    fun deleteWorkshopMods(
+        context: Context,
+        containerId: String,
+        gameRootDir: File? = null,
+        gameName: String = "",
+    ) {
         val gameId = ContainerUtils.extractGameIdFromContainerId(containerId)
-        val workshopDir = getWorkshopContentDir(ImageFs.find(context).wineprefix, gameId)
+        val winePrefix = ImageFs.find(context).wineprefix
+        val workshopDir = getWorkshopContentDir(winePrefix, gameId)
+
+        // Clean up installed mod entries (symlinks/copies) in the game tree
+        // before deleting the content dir, so isOurSymlink checks still work.
+        if (gameRootDir != null) {
+            cleanupInstalledModEntries(gameRootDir, workshopDir, winePrefix, gameName)
+        }
+
         if (workshopDir.exists()) {
             workshopDir.deleteRecursively()
+        }
+    }
+
+    /**
+     * Removes workshop-owned symlinks and copies from the game tree.
+     * Handles gbe_fork steam_settings/mods/ dirs and strategy-detected
+     * game mod directories.
+     */
+    private fun cleanupInstalledModEntries(
+        gameRootDir: File,
+        workshopContentDir: File,
+        winePrefix: String,
+        gameName: String,
+    ) {
+        val workshopBase = workshopContentDir.parentFile ?: workshopContentDir
+
+        // Phase 1: Clean gbe_fork steam_settings/mods/ symlinks
+        val dllNames = setOf(
+            "steam_api.dll", "steam_api64.dll",
+            "steamclient.dll", "steamclient64.dll",
+        )
+        gameRootDir.walkTopDown().maxDepth(10).forEach { file ->
+            if (!file.isFile || file.name.lowercase() !in dllNames) return@forEach
+            val modsDir = file.parentFile?.let { File(File(it, "steam_settings"), "mods") }
+                ?: return@forEach
+            if (modsDir.isDirectory) {
+                modsDir.listFiles()?.forEach { entry ->
+                    if (Files.isSymbolicLink(entry.toPath())) {
+                        Files.deleteIfExists(entry.toPath())
+                    }
+                }
+                Timber.tag(TAG).d("Cleared gbe_fork mods at ${modsDir.absolutePath}")
+            }
+            val modsJson = File(modsDir.parentFile, "mods.json")
+            if (modsJson.isFile) modsJson.writeText("{}")
+        }
+
+        // Phase 2: Clean strategy-detected game mod directories
+        if (winePrefix.isNotEmpty()) {
+            try {
+                val detection = getOrDetectStrategy(gameRootDir, winePrefix, gameName)
+                val strategy = detection.strategy
+                if (strategy is WorkshopModPathStrategy.SymlinkIntoDir ||
+                    strategy is WorkshopModPathStrategy.CopyIntoDir
+                ) {
+                    val targetDirs = when (strategy) {
+                        is WorkshopModPathStrategy.SymlinkIntoDir -> strategy.effectiveDirs
+                        is WorkshopModPathStrategy.CopyIntoDir -> strategy.effectiveDirs
+                        else -> emptyList()
+                    }
+                    val symlinker = WorkshopSymlinker()
+                    symlinker.sync(strategy, emptyMap(), workshopBase)
+                    Timber.tag(TAG).d(
+                        "Cleaned mod entries from ${targetDirs.size} game dir(s)"
+                    )
+                }
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Strategy-based cleanup failed")
+            }
+
+            // Phase 3: Clean Unity AppData targets
+            try {
+                val unityTargets = detectUnityModTargets(gameRootDir, winePrefix)
+                if (unityTargets.isNotEmpty()) {
+                    val symlinker = WorkshopSymlinker()
+                    symlinker.sync(
+                        WorkshopModPathStrategy.SymlinkIntoDir(unityTargets),
+                        emptyMap(), workshopBase,
+                    )
+                    Timber.tag(TAG).d("Cleaned Unity AppData mod entries")
+                }
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Unity AppData cleanup failed")
+            }
         }
     }
 
