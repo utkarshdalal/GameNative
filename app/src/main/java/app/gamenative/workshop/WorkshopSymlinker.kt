@@ -24,11 +24,7 @@ class WorkshopSymlinker {
         private const val COPY_SENTINEL = ".gamenative_workshop"
 
         /** Directory names that always expect one subdirectory per mod item. */
-        private val MOD_CONTAINER_NAMES = setOf(
-            "mods", "mod", "addons", "addon", "plugins", "plugin",
-            "workshop_mods", "usermods", "user_mods",
-            "modules", "module", "ugc",
-        )
+        private val MOD_CONTAINER_NAMES get() = WorkshopModPathDetector.HIGH_CONFIDENCE_NAMES
     }
 
     data class SyncResult(
@@ -187,8 +183,8 @@ class WorkshopSymlinker {
             }
 
             try {
-                val result = if (useSymlinks) ensureSymlink(entryPath, sourceDir)
-                else ensureCopy(entryPath, sourceDir)
+                val result = if (useSymlinks) ensureSymlink(entryPath, sourceDir, workshopContentBase)
+                else ensureCopy(entryPath, sourceDir, workshopContentBase)
                 if (result == LinkResult.CREATED) created++ else skipped++
             } catch (e: Exception) {
                 val msg = "${e::class.simpleName}: ${e.message}"
@@ -324,7 +320,7 @@ class WorkshopSymlinker {
 
     private enum class LinkResult { CREATED, ALREADY_OK }
 
-    private fun ensureSymlink(link: File, target: File): LinkResult {
+    private fun ensureSymlink(link: File, target: File, workshopContentBase: File): LinkResult {
         val linkPath = link.toPath()
         val targetPath = target.toPath().toAbsolutePath().normalize()
 
@@ -336,6 +332,11 @@ class WorkshopSymlinker {
             }.getOrNull()
 
             if (currentTarget == targetPath) {
+                return LinkResult.ALREADY_OK
+            }
+            // Only replace symlinks we created (pointing into workshopContentBase)
+            if (!isOurSymlink(link, workshopContentBase)) {
+                Timber.tag(TAG).w("  Skipping ${link.name}: foreign symlink (not ours)")
                 return LinkResult.ALREADY_OK
             }
             Timber.tag(TAG).d("  Stale symlink ${link.name}: $currentTarget -> $targetPath, recreating")
@@ -364,10 +365,19 @@ class WorkshopSymlinker {
             }
     }
 
-    private fun ensureCopy(dest: File, source: File): LinkResult {
+    private fun ensureCopy(dest: File, source: File, workshopContentBase: File): LinkResult {
         if (Files.isSymbolicLink(dest.toPath())) {
+            // Only remove symlinks we created
+            if (!isOurSymlink(dest, workshopContentBase)) {
+                Timber.tag(TAG).w("  Skipping ${dest.name}: foreign symlink (not ours)")
+                return LinkResult.ALREADY_OK
+            }
             Files.delete(dest.toPath())
         } else if (dest.isDirectory) {
+            if (!hasCopySentinel(dest)) {
+                Timber.tag(TAG).w("  Skipping ${dest.name}: foreign directory (no sentinel)")
+                return LinkResult.ALREADY_OK
+            }
             if (fingerprint(dest) == fingerprint(source)) {
                 return LinkResult.ALREADY_OK
             }

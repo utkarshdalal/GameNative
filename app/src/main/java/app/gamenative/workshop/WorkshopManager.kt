@@ -90,6 +90,7 @@ object WorkshopManager {
 
         val allItems = mutableListOf<WorkshopItem>()
         var fetchedAtLeastOnePage = false
+        var allPagesSucceeded = false
         var page = 1
 
         while (page <= MAX_PAGES) {
@@ -110,12 +111,15 @@ object WorkshopManager {
                 "total=${result.totalResults} [appId=$appId]"
             )
 
-            if (result.items.isEmpty() || allItems.size >= result.totalResults) break
+            if (result.items.isEmpty() || allItems.size >= result.totalResults) {
+                allPagesSucceeded = true
+                break
+            }
             page++
         }
 
-        Timber.tag(TAG).i("Total subscribed Workshop items: ${allItems.size} for appId=$appId (succeeded=$fetchedAtLeastOnePage)")
-        return WorkshopFetchResult(allItems, succeeded = fetchedAtLeastOnePage)
+        Timber.tag(TAG).i("Total subscribed Workshop items: ${allItems.size} for appId=$appId (succeeded=$fetchedAtLeastOnePage, complete=$allPagesSucceeded)")
+        return WorkshopFetchResult(allItems, succeeded = fetchedAtLeastOnePage, isComplete = allPagesSucceeded)
     }
 
     private data class SubscribedFilesPage(

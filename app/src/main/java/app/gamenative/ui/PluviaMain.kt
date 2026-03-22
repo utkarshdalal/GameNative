@@ -1045,7 +1045,14 @@ fun PluviaMain(
                             scope.launch {
                                 try {
                                     withContext(Dispatchers.IO) {
-                                        WorkshopManager.deleteWorkshopMods(context, appId)
+                                        val appIdInt = appId.toIntOrNull()
+                                        val gameRootDir = appIdInt?.let { SteamService.getAppDirPath(it) }
+                                            ?.let { File(it) }
+                                        val gameName = appIdInt?.let { SteamService.getAppInfoOf(it)?.name } ?: ""
+                                        WorkshopManager.deleteWorkshopMods(
+                                            context, appId,
+                                            gameRootDir, gameName,
+                                        )
                                     }
                                     SnackbarManager.show("Workshop mods deleted")
                                 } catch (e: Exception) {
@@ -1772,7 +1779,7 @@ fun preLaunchApp(
                         Timber.tag("Workshop").i("Found ${items.size} subscribed workshop items for appId=$gameId")
                         val workshopContentDir = WorkshopManager.getWorkshopContentDir(winePrefix, gameId)
 
-                        if (fetchResult.succeeded) {
+                        if (fetchResult.isComplete) {
                             WorkshopManager.cleanupUnsubscribedItems(items, workshopContentDir)
                         } else {
                             Timber.tag("Workshop").w(
@@ -1786,11 +1793,12 @@ fun preLaunchApp(
                             // Use 2x safety margin to account for LZMA decompression
                             // and CKM extraction creating temp files alongside originals
                             val requiredBytes = itemsToSync.sumOf { it.fileSizeBytes } * 2
-                            // usableSpace returns 0 for non-existent dirs; walk up to an existing ancestor
+                            // usableSpace returns 0 for non-existent dirs; walk up to an existing ancestor.
+                            // Use -1L sentinel so a truly-full volume (0 bytes) still triggers the guard.
                             val spaceDir = generateSequence(workshopContentDir) { it.parentFile }
                                 .firstOrNull { it.exists() }
-                            val availableBytes = spaceDir?.usableSpace ?: 0L
-                            if (requiredBytes > 0 && availableBytes > 0 && requiredBytes > availableBytes) {
+                            val availableBytes = spaceDir?.usableSpace ?: -1L
+                            if (requiredBytes > 0 && availableBytes >= 0 && requiredBytes > availableBytes) {
                                 val reqMB = String.format(Locale.US, "%.0f", requiredBytes / 1_048_576.0)
                                 val avlMB = String.format(Locale.US, "%.0f", availableBytes / 1_048_576.0)
                                 Timber.tag("Workshop").e(

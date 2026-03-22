@@ -27,7 +27,7 @@ class WorkshopModPathDetector {
         val reason: String,
     )
 
-    private companion object {
+    companion object {
         const val TAG = "WorkshopModPathDetector"
         const val MAX_BINARY_SCAN_BYTES = 64L * 1024 * 1024
         const val MIN_STRING_LEN = 5

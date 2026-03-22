@@ -24,4 +24,6 @@ data class WorkshopItem(
 data class WorkshopFetchResult(
     val items: List<WorkshopItem>,
     val succeeded: Boolean,
+    /** True only when every page was fetched without error. */
+    val isComplete: Boolean = false,
 )
