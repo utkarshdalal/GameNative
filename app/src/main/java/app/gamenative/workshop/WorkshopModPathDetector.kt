@@ -449,6 +449,19 @@ class WorkshopModPathDetector {
                         Timber.tag(TAG).i("H4 hit: $label\\${modDir.name} [$conf]")
                     }
                 } else {
+                    // Game data directory matched by name but has no existing
+                    // mod subdirectories. Add a synthetic Mods/ candidate —
+                    // many games (e.g. Going Medieval at Documents/Foxy Voxel/
+                    // Going Medieval/Mods/) expect mods here but don't create
+                    // the directory until first use. The symlinker will create
+                    // it on demand. Require depth > 0 to avoid false positives
+                    // at AppData roots (e.g. AppData/Roaming/GameName/).
+                    if (depth > 0) {
+                        val syntheticMods = File(child, "Mods")
+                        val label = "${adRoot.envToken}\\${child.name}"
+                        results.add(CandidateDir(syntheticMods, Confidence.MEDIUM, "appdata-fuzzy-synthetic:$label"))
+                        Timber.tag(TAG).i("H4 synthetic: $label\\Mods [MEDIUM]")
+                    }
                     walkAppDataForGame(
                         AppDataRoot(child, "${adRoot.envToken}\\${child.name}"),
                         tokens, depth + 1, results,

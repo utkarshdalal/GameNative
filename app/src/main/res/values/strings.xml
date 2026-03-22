@@ -92,6 +92,7 @@
     <string name="not_enough_space">Not Enough Space</string>
     <string name="proceed">Proceed</string>
     <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
     <string name="untitled">Untitled</string>
     <string name="confirm_delete">Confirm Deletion</string>
     <string name="destination_library">Library</string>
@@ -167,7 +168,6 @@
     <string name="edit">Edit</string>
     <string name="remove">Remove</string>
     <string name="add">Add</string>
-    <string name="delete">Delete</string>
     <string name="copy_from">Copy From</string>
     <string name="ok">Ok</string>
     <string name="container_config_custom_resolution_title">Set Custom Resolution</string>
@@ -612,6 +612,10 @@
     <string name="use_legacy_drm">Use Legacy DRM</string>
     <string name="unpack_files">Unpack Files</string>
     <string name="unpack_files_description">Only use if you get \'Application Load Error 3:0000065432\'.</string>
+    <string name="workshop_mods">Enable Workshop Mods</string>
+    <string name="workshop_mods_description">Download and configure subscribed Steam Workshop mods before game launch</string>
+    <string name="delete_workshop_mods">Delete Workshop Mods</string>
+    <string name="delete_workshop_mods_confirm">This will delete all downloaded workshop mods and their symlinks for this game. You will need to re-download them if you enable workshop mods again. Continue?</string>
     <string name="force_dlc">Force DLC</string>
     <string name="force_dlc_description">Only enable if DLCs are not detected or saves with DLC are not working</string>
     <string name="launch_steam_client_beta">Launch Steam Client (Beta)</string>
@@ -675,6 +679,8 @@
     <string name="shooter_mode_toggle_description">Auto-replace stick elements with dynamic joysticks</string>
     <string name="shooter_mode_on">Enable Mouse</string>
     <string name="shooter_mode_off">Enable Sticks</string>
+    <string name="relative_mouse_movement">Relative Mouse Movement</string>
+    <string name="relative_mouse_movement_description">Use raw mouse deltas for FPS camera look (fixes games like Half-Life)</string>
 
     <!-- Gesture Settings Dialog -->
     <string name="gesture_settings">Gesture Settings</string>
@@ -1059,6 +1065,11 @@
     <string name="library_source_steam">Steam</string>
     <string name="library_source_custom">Custom Games</string>
     <string name="library_source_title">Source</string>
+    <string name="library_source_not_logged_in_steam">Sign in to Steam to see your library</string>
+    <string name="library_source_not_logged_in_gog">Sign in to GOG to see your library</string>
+    <string name="library_source_not_logged_in_epic">Sign in to Epic to see your library</string>
+    <string name="library_source_not_logged_in_amazon">Sign in to Amazon to see your library</string>
+    <string name="library_source_no_custom_games">No custom games added yet</string>
     <string name="library_layout_title">Layout</string>
     <string name="library_options">Options</string>
     <string name="back">Back</string>
@@ -1267,11 +1278,4 @@
     <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
     <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
     <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
-
-    <!-- Library: source not logged in splash -->
-    <string name="library_source_not_logged_in_steam">Sign in to access your Steam library.</string>
-    <string name="library_source_not_logged_in_gog">Sign in to access your GOG library.</string>
-    <string name="library_source_not_logged_in_epic">Sign in to access your Epic library.</string>
-    <string name="library_source_not_logged_in_amazon">Sign in to access your Amazon library.</string>
-    <string name="library_source_no_custom_games">You have not added any custom games.</string>
 </resources>

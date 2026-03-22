@@ -76,6 +76,8 @@ data class ContainerData(
     val touchscreenMode: Boolean = false,
     /** Shooter mode (auto-replace sticks with dynamic joysticks) **/
     val shooterMode: Boolean = true,
+    /** Relative mouse movement (bypasses X11 pointer, sends deltas via WinHandler) **/
+    val relativeMouseMovement: Boolean = false,
     /** Serialised JSON gesture configuration (used when touchscreenMode is true) **/
     val gestureConfig: String = "",
     /** External display input handling: off|touchpad|keyboard|hybrid **/
@@ -88,6 +90,7 @@ data class ContainerData(
     val steamOfflineMode: Boolean = false,
     val useLegacyDRM: Boolean = false,
     val unpackFiles: Boolean = false,
+    val workshopMods: Boolean = false,
     val suspendPolicy: String = Container.SUSPEND_POLICY_MANUAL,
     val portraitMode: Boolean = false,
     val sharpnessEffect: String = "None",
@@ -141,6 +144,7 @@ data class ContainerData(
                     "disableMouseInput" to state.disableMouseInput,
                     "touchscreenMode" to state.touchscreenMode,
                     "shooterMode" to state.shooterMode,
+                    "relativeMouseMovement" to state.relativeMouseMovement,
                     "gestureConfig" to state.gestureConfig,
                     "externalDisplayMode" to state.externalDisplayMode,
                     "externalDisplaySwap" to state.externalDisplaySwap,
@@ -150,6 +154,7 @@ data class ContainerData(
                     "steamOfflineMode" to state.steamOfflineMode,
                     "useLegacyDRM" to state.useLegacyDRM,
                     "unpackFiles" to state.unpackFiles,
+                    "workshopMods" to state.workshopMods,
                     "suspendPolicy" to state.suspendPolicy,
                     "portraitMode" to state.portraitMode,
                     "sharpnessEffect" to state.sharpnessEffect,
@@ -202,6 +207,7 @@ data class ContainerData(
                     disableMouseInput = savedMap["disableMouseInput"] as Boolean,
                     touchscreenMode = savedMap["touchscreenMode"] as Boolean,
                     shooterMode = (savedMap["shooterMode"] as? Boolean) ?: true,
+                    relativeMouseMovement = (savedMap["relativeMouseMovement"] as? Boolean) ?: false,
                     gestureConfig = (savedMap["gestureConfig"] as? String) ?: "",
                     externalDisplayMode = (savedMap["externalDisplayMode"] as? String) ?: Container.DEFAULT_EXTERNAL_DISPLAY_MODE,
                     externalDisplaySwap = (savedMap["externalDisplaySwap"] as? Boolean) ?: false,
@@ -211,6 +217,7 @@ data class ContainerData(
                     steamOfflineMode = (savedMap["steamOfflineMode"] as? Boolean) ?: false,
                     useLegacyDRM = (savedMap["useLegacyDRM"] as? Boolean) ?: false,
                     unpackFiles = (savedMap["unpackFiles"] as? Boolean) ?: false,
+                    workshopMods = (savedMap["workshopMods"] as? Boolean) ?: false,
                     suspendPolicy = (savedMap["suspendPolicy"] as? String) ?: Container.SUSPEND_POLICY_MANUAL,
                     portraitMode = (savedMap["portraitMode"] as? Boolean) ?: false,
                     sharpnessEffect = (savedMap["sharpnessEffect"] as? String) ?: "None",

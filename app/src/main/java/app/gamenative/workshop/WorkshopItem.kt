@@ -12,4 +12,16 @@ data class WorkshopItem(
     val timeUpdated: Long,
     val fileUrl: String = "",
     val fileName: String = "",
+    val previewUrl: String = "",
+)
+
+/**
+ * Wraps a subscription fetch result so callers can distinguish
+ * "user has no subscriptions" from "the fetch failed (network error, timeout)".
+ * When [succeeded] is false, callers should preserve existing on-disk mods
+ * instead of cleaning up based on an unreliable empty list.
+ */
+data class WorkshopFetchResult(
+    val items: List<WorkshopItem>,
+    val succeeded: Boolean,
 )

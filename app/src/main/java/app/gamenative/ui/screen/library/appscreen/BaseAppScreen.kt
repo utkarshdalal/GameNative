@@ -35,6 +35,7 @@ import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.createPinnedShortcut
+import app.gamenative.workshop.WorkshopManager
 import com.winlator.container.ContainerData
 import java.io.File
 import kotlin.text.Charsets
@@ -784,6 +785,13 @@ abstract class BaseAppScreen {
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
+                },
+                onDeleteWorkshopMods = {
+                    uiScope.launch {
+                        withContext(Dispatchers.IO) {
+                            WorkshopManager.deleteWorkshopMods(context, libraryItem.appId)
+                        }
+                    }
                 },
             )
         }

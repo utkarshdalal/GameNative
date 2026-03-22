@@ -98,6 +98,13 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
             state = config.shooterMode,
             onCheckedChange = { state.config.value = config.copy(shooterMode = it) },
         )
+        SettingsSwitch(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.relative_mouse_movement)) },
+            subtitle = { Text(text = stringResource(R.string.relative_mouse_movement_description)) },
+            state = config.relativeMouseMovement,
+            onCheckedChange = { state.config.value = config.copy(relativeMouseMovement = it) },
+        )
         SettingsListDropdown(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.external_display_input)) },
