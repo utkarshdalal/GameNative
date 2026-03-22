@@ -419,7 +419,7 @@ class WorkshopModPathDetector {
             val w = c.split(Regex("\\s+")).filter { it.length >= 3 }
             return buildSet { add(c.replace(" ", "")); addAll(w); w.firstOrNull()?.let { add(it) } }
         }
-        return tok(gameName) + tok(developerName)
+        return (tok(gameName) + tok(developerName)).filter { it.isNotEmpty() }.toSet()
     }
 
     private fun walkAppDataForGame(

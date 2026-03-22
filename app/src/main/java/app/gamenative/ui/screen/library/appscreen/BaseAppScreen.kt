@@ -786,12 +786,21 @@ abstract class BaseAppScreen {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
                 },
-                onDeleteWorkshopMods = {
-                    uiScope.launch {
-                        withContext(Dispatchers.IO) {
-                            WorkshopManager.deleteWorkshopMods(context, libraryItem.appId)
+                onDeleteWorkshopMods = if (libraryItem.gameSource == GameSource.STEAM) {
+                    {
+                        uiScope.launch {
+                            try {
+                                withContext(Dispatchers.IO) {
+                                    WorkshopManager.deleteWorkshopMods(context, libraryItem.appId)
+                                }
+                                SnackbarManager.show("Workshop mods deleted")
+                            } catch (e: Exception) {
+                                SnackbarManager.show("Failed to delete workshop mods: ${e.message}")
+                            }
                         }
                     }
+                } else {
+                    null
                 },
             )
         }

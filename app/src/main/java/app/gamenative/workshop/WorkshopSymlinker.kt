@@ -135,9 +135,14 @@ class WorkshopSymlinker {
         var created = 0; var skipped = 0; var removed = 0
 
         // Build map of expected entry names (titled or numeric ID)
-        val entryNameForId = activeItemDirs.keys.associateWith { id ->
+        val rawEntryNameForId = activeItemDirs.keys.associateWith { id ->
             val title = itemTitles[id]
             if (!title.isNullOrBlank()) sanitizeFileName(title) else id.toString()
+        }
+        // Detect title collisions and disambiguate by appending the item ID
+        val nameCount = rawEntryNameForId.values.groupingBy { it }.eachCount()
+        val entryNameForId = rawEntryNameForId.mapValues { (id, name) ->
+            if ((nameCount[name] ?: 0) > 1) "${name}_$id" else name
         }
         val expectedNames = entryNameForId.values.toSet()
 
@@ -342,7 +347,9 @@ class WorkshopSymlinker {
     }
 
     private fun ensureCopy(dest: File, source: File): LinkResult {
-        if (dest.isDirectory) {
+        if (Files.isSymbolicLink(dest.toPath())) {
+            Files.delete(dest.toPath())
+        } else if (dest.isDirectory) {
             if (fingerprint(dest) == fingerprint(source)) {
                 return LinkResult.ALREADY_OK
             }
