@@ -302,7 +302,6 @@ object ContainerUtils {
             disableMouseInput = disableMouse,
             touchscreenMode = touchscreenMode,
             shooterMode = shooterMode,
-            relativeMouseMovement = container.isRelativeMouseMovement,
             gestureConfig = gestureConfig,
             externalDisplayMode = externalDisplayMode,
             externalDisplaySwap = externalDisplaySwap,
@@ -467,7 +466,6 @@ object ContainerUtils {
         container.setDisableMouseInput(containerData.disableMouseInput)
         container.setTouchscreenMode(containerData.touchscreenMode)
         container.setShooterMode(containerData.shooterMode)
-        container.setRelativeMouseMovement(containerData.relativeMouseMovement)
         container.setGestureConfig(containerData.gestureConfig)
         container.setExternalDisplayMode(containerData.externalDisplayMode)
         container.setExternalDisplaySwap(containerData.externalDisplaySwap)

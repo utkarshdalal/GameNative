@@ -679,8 +679,6 @@
     <string name="shooter_mode_toggle_description">Auto-replace stick elements with dynamic joysticks</string>
     <string name="shooter_mode_on">Enable Mouse</string>
     <string name="shooter_mode_off">Enable Sticks</string>
-    <string name="relative_mouse_movement">Relative Mouse Movement</string>
-    <string name="relative_mouse_movement_description">Use raw mouse deltas for FPS camera look (fixes games like Half-Life)</string>
 
     <!-- Gesture Settings Dialog -->
     <string name="gesture_settings">Gesture Settings</string>

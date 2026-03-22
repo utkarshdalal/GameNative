@@ -1657,9 +1657,6 @@ fun XServerScreen(
 
                 // Set container-level shooter mode
                 setContainerShooterMode(container.isShooterMode)
-
-                // Set relative mouse movement from container setting
-                xServerView.getxServer().setRelativeMouseMovement(container.isRelativeMouseMovement)
             }
             PluviaApp.inputControlsView = icView
 
