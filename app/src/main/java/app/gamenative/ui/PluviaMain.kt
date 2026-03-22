@@ -1045,10 +1045,12 @@ fun PluviaMain(
                             scope.launch {
                                 try {
                                     withContext(Dispatchers.IO) {
-                                        val appIdInt = appId.toIntOrNull()
-                                        val gameRootDir = appIdInt?.let { SteamService.getAppDirPath(it) }
+                                        val gameId = runCatching {
+                                            ContainerUtils.extractGameIdFromContainerId(appId)
+                                        }.getOrNull()
+                                        val gameRootDir = gameId?.let { SteamService.getAppDirPath(it) }
                                             ?.let { File(it) }
-                                        val gameName = appIdInt?.let { SteamService.getAppInfoOf(it)?.name } ?: ""
+                                        val gameName = gameId?.let { SteamService.getAppInfoOf(it)?.name } ?: ""
                                         WorkshopManager.deleteWorkshopMods(
                                             context, appId,
                                             gameRootDir, gameName,
