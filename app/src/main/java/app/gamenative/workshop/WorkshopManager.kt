@@ -1139,7 +1139,20 @@ object WorkshopManager {
 
             // Phase 3: Clean Unity AppData targets
             try {
-                val unityTargets = detectUnityModTargets(gameRootDir, winePrefix)
+                val unityTargets = detectUnityModTargets(gameRootDir, winePrefix).toMutableList()
+                // Also include auto-created peer dirs (e.g. "Dreams/") that
+                // routeItemsToUnityTargets may have created alongside "Models/".
+                val autoCreatedPeers = listOf("Dreams")
+                unityTargets.toList().forEach { target ->
+                    if (target.name.equals("Models", ignoreCase = true)) {
+                        autoCreatedPeers.forEach { peerName ->
+                            val peer = File(target.parentFile, peerName)
+                            if (peer.isDirectory && peer !in unityTargets) {
+                                unityTargets.add(peer)
+                            }
+                        }
+                    }
+                }
                 if (unityTargets.isNotEmpty()) {
                     val symlinker = WorkshopSymlinker()
                     symlinker.sync(

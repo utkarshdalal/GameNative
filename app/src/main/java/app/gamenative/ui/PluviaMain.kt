@@ -107,6 +107,7 @@ import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.ImageFsInstaller
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
 import java.io.File
+import java.util.Locale
 import java.util.Date
 import java.util.EnumSet
 import kotlin.reflect.KFunction2
@@ -1787,8 +1788,8 @@ fun preLaunchApp(
                             val requiredBytes = itemsToSync.sumOf { it.fileSizeBytes } * 2
                             val availableBytes = workshopContentDir.usableSpace
                             if (requiredBytes > 0 && availableBytes > 0 && requiredBytes > availableBytes) {
-                                val reqMB = String.format("%.0f", requiredBytes / 1_048_576.0)
-                                val avlMB = String.format("%.0f", availableBytes / 1_048_576.0)
+                                val reqMB = String.format(Locale.US, "%.0f", requiredBytes / 1_048_576.0)
+                                val avlMB = String.format(Locale.US, "%.0f", availableBytes / 1_048_576.0)
                                 Timber.tag("Workshop").e(
                                     "Insufficient disk space: need ${reqMB}MB, have ${avlMB}MB"
                                 )
@@ -1818,8 +1819,8 @@ fun preLaunchApp(
                                     onBytesProgress = { downloaded, total ->
                                         if (total > 0) {
                                             setLoadingProgress(downloaded.toFloat() / total.toFloat())
-                                            val dlMB = String.format("%.1f", downloaded / 1_048_576.0)
-                                            val totalMB = String.format("%.1f", total / 1_048_576.0)
+                                            val dlMB = String.format(Locale.US, "%.1f", downloaded / 1_048_576.0)
+                                            val totalMB = String.format(Locale.US, "%.1f", total / 1_048_576.0)
                                             setLoadingMessage(
                                                 "Downloading Workshop Mods ($currentCompleted/${itemsToSync.size})\n" +
                                                     "$currentTitle\n" +

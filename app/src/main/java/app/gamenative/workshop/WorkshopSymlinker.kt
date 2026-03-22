@@ -136,9 +136,10 @@ class WorkshopSymlinker {
 
         // Build map of expected entry names (titled or numeric ID),
         // ensuring globally unique names even with secondary collisions.
+        // Sort keys so the lowest ID consistently gets the unsuffixed base name.
         val usedNames = mutableSetOf<String>()
         val entryNameForId = mutableMapOf<Long, String>()
-        for (id in activeItemDirs.keys) {
+        for (id in activeItemDirs.keys.sorted()) {
             val title = itemTitles[id]
             val baseName = if (!title.isNullOrBlank()) sanitizeFileName(title) else id.toString()
             var candidate = baseName
