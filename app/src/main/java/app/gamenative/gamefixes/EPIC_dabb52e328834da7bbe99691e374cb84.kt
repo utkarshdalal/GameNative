@@ -2,6 +2,9 @@ package app.gamenative.gamefixes
 
 import app.gamenative.data.GameSource
 
+/**
+ * Fallout: New Vegas (Epic)
+ */
 val EPIC_Fix_dabb52e328834da7bbe99691e374cb84: KeyedGameFix = KeyedRegistryKeyFix(
     gameSource = GameSource.EPIC,
     gameId = "dabb52e328834da7bbe99691e374cb84",

@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.PhotoSizeSelectActual
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -203,7 +204,13 @@ fun LibraryOptionsPanel(
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             AppFilter.entries.forEach { appFilter ->
-                                if (appFilter.code !in listOf(0x01, 0x20)) {
+                                if (appFilter in listOf(
+                                        AppFilter.GAME,
+                                        AppFilter.APPLICATION,
+                                        AppFilter.TOOL,
+                                        AppFilter.DEMO,
+                                    )
+                                ) {
                                     OptionListItem(
                                         text = appFilter.displayText,
                                         selected = selectedFilters.contains(appFilter),
@@ -226,7 +233,12 @@ fun LibraryOptionsPanel(
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             AppFilter.entries.forEach { appFilter ->
-                                if (appFilter.code in listOf(0x01, 0x20)) {
+                                if (appFilter in listOf(
+                                        AppFilter.INSTALLED,
+                                        AppFilter.SHARED,
+                                        AppFilter.COMPATIBLE,
+                                    )
+                                ) {
                                     OptionListItem(
                                         text = appFilter.displayText,
                                         selected = selectedFilters.contains(appFilter),
@@ -267,6 +279,13 @@ fun LibraryOptionsPanel(
                                 selected = currentView == PaneType.GRID_HERO,
                                 onClick = { onViewChanged(PaneType.GRID_HERO) },
                                 icon = Icons.Default.PhotoSizeSelectActual,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OptionRadioItem(
+                                text = stringResource(R.string.library_layout_carousel),
+                                selected = currentView == PaneType.CAROUSEL,
+                                onClick = { onViewChanged(PaneType.CAROUSEL) },
+                                icon = Icons.Default.ViewCarousel,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }

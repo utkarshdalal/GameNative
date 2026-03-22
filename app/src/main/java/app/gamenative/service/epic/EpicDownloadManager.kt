@@ -7,6 +7,7 @@ import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.data.EpicGame
 import app.gamenative.service.epic.manifest.EpicManifest
+import app.gamenative.service.epic.manifest.ManifestUtils
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.nio.ByteBuffer
@@ -61,6 +62,9 @@ class EpicDownloadManager @Inject constructor(
      * @param game Epic game to download
      * @param installPath Directory where game will be installed
      * @param downloadInfo Progress tracker
+     * @param containerLanguage Container language (e.g. "english", "german"). Same as GOG/Steam; used to select install tags so the correct language files are downloaded.
+     * @param dlcIds Optional DLC game IDs to include
+     * @param commonRedistDir Optional directory for common redistributables
      * @return Result indicating success or failure
      */
     suspend fun downloadGame(
@@ -68,7 +72,7 @@ class EpicDownloadManager @Inject constructor(
         game: EpicGame,
         installPath: String,
         downloadInfo: DownloadInfo,
-        language: String = "en-US",
+        containerLanguage: String = EpicConstants.EPIC_FALLBACK_CONTAINER_LANGUAGE,
         dlcIds: List<Int>,
         commonRedistDir: File? = null,
     ): Result<Unit> = withContext(Dispatchers.IO) {
@@ -127,17 +131,30 @@ class EpicDownloadManager @Inject constructor(
             // Parse manifest binary to get chunks and files
             val manifest = EpicManifest.readAll(manifestData.manifestBytes)
 
-            // Extract chunk and file data from parsed manifest
-            val chunkDataList = manifest.chunkDataList
-                ?: return@withContext Result.failure(Exception("No chunk data in manifest"))
-            val fileManifestList = manifest.fileManifestList
-                ?: return@withContext Result.failure(Exception("No file manifest in manifest"))
+            // Use container language (same as GOG) to select install tags: required + optional language files.
+            val selectedTags = EpicConstants.containerLanguageToEpicInstallTags(containerLanguage)
+            val files = ManifestUtils.getFilesForSelectedInstallTags(manifest, selectedTags)
+            val chunks = ManifestUtils.getRequiredChunksForFileList(manifest, files)
 
-            val chunks = chunkDataList.elements
-            val files = fileManifestList.elements
+            if (selectedTags.isNotEmpty()) {
+                Timber.tag("Epic").i("Container language '$containerLanguage' -> install tags: ${selectedTags.joinToString()}")
+            }
+
             val chunkDir = manifest.getChunkDir()
 
-            // Calculate total download size including DLCs (use compressed size for download tracking)
+            if (chunks.isEmpty()) {
+                return@withContext Result.failure(Exception("No chunk data in manifest"))
+            }
+            if (files.isEmpty()) {
+                val msg = if (selectedTags.isNotEmpty()) {
+                    "No files found for the selected language. This game may not support this language."
+                } else {
+                    "No file manifest in manifest"
+                }
+                return@withContext Result.failure(Exception(msg))
+            }
+
+            // Calculate total download size including DLCs
             var totalDownloadSize = chunks.sumOf { it.fileSize }
             var totalInstalledSize = chunks.sumOf { it.windowSize.toLong() }
             val baseGameSize = totalDownloadSize

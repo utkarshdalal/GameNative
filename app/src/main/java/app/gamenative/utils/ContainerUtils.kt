@@ -56,7 +56,7 @@ object ContainerUtils {
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
-            DefaultVersion.WRAPPER = "Turnip_Gen8_V23"
+            DefaultVersion.WRAPPER = "Turnip_Gen8_V25"
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
             DefaultVersion.ASYNC_CACHE = "1"
         } else {
@@ -98,7 +98,7 @@ object ContainerUtils {
             wincomponents = PrefManager.winComponents,
             drives = PrefManager.drives,
             execArgs = PrefManager.execArgs,
-            showFPS = PrefManager.showFps,
+            showFPS = false,
             launchRealSteam = PrefManager.launchRealSteam,
             cpuList = PrefManager.cpuList,
             cpuListWoW64 = PrefManager.cpuListWoW64,
@@ -115,6 +115,7 @@ object ContainerUtils {
             steamOfflineMode = PrefManager.steamOfflineMode,
             useLegacyDRM = PrefManager.useLegacyDRM,
             unpackFiles = PrefManager.unpackFiles,
+            suspendPolicy = PrefManager.suspendPolicy,
             wineVersion = PrefManager.wineVersion,
             emulator = PrefManager.emulator,
             fexcoreVersion = PrefManager.fexcoreVersion,
@@ -156,7 +157,6 @@ object ContainerUtils {
         PrefManager.winComponents = containerData.wincomponents
         PrefManager.drives = containerData.drives
         PrefManager.execArgs = containerData.execArgs
-        PrefManager.showFps = containerData.showFPS
         PrefManager.launchRealSteam = containerData.launchRealSteam
         PrefManager.cpuList = containerData.cpuList
         PrefManager.cpuListWoW64 = containerData.cpuListWoW64
@@ -197,6 +197,7 @@ object ContainerUtils {
         PrefManager.steamOfflineMode = containerData.steamOfflineMode
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
         PrefManager.unpackFiles = containerData.unpackFiles
+        PrefManager.suspendPolicy = containerData.suspendPolicy
         PrefManager.portraitMode = containerData.portraitMode
         PrefManager.sharpnessEffect = containerData.sharpnessEffect
         PrefManager.sharpnessLevel = containerData.sharpnessLevel
@@ -267,7 +268,7 @@ object ContainerUtils {
             drives = container.drives,
             execArgs = container.execArgs,
             executablePath = container.executablePath,
-            showFPS = container.isShowFPS,
+            showFPS = false,
             launchRealSteam = container.isLaunchRealSteam,
             allowSteamUpdates = container.isAllowSteamUpdates,
             steamType = container.getSteamType(),
@@ -292,6 +293,7 @@ object ContainerUtils {
             steamOfflineMode = container.isSteamOfflineMode(),
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
+            suspendPolicy = container.suspendPolicy,
             portraitMode = container.isPortraitMode,
             enableXInput = enableX,
             enableDInput = enableD,
@@ -376,6 +378,7 @@ object ContainerUtils {
                 "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
                 "steamOfflineMode" -> value?.let { updatedData.copy(steamOfflineMode = it as? Boolean ?: updatedData.steamOfflineMode) } ?: updatedData
                 "unpackFiles" -> value?.let { updatedData.copy(unpackFiles = it as? Boolean ?: updatedData.unpackFiles) } ?: updatedData
+                "suspendPolicy" -> value?.let { updatedData.copy(suspendPolicy = it as? String ?: updatedData.suspendPolicy) } ?: updatedData
                 "envVars" -> value?.let { updatedData.copy(envVars = it as? String ?: updatedData.envVars) } ?: updatedData
                 "cpuList" -> value?.let { updatedData.copy(cpuList = it as? String ?: updatedData.cpuList) } ?: updatedData
                 "cpuListWoW64" -> value?.let { updatedData.copy(cpuListWoW64 = it as? String ?: updatedData.cpuListWoW64) } ?: updatedData
@@ -437,7 +440,7 @@ object ContainerUtils {
             container.setNeedsUnpacking(true)
         }
         container.executablePath = containerData.executablePath
-        container.isShowFPS = containerData.showFPS
+        container.isShowFPS = false
         container.isLaunchRealSteam = containerData.launchRealSteam
         container.isAllowSteamUpdates = containerData.allowSteamUpdates
         container.setSteamType(containerData.steamType)
@@ -468,6 +471,7 @@ object ContainerUtils {
         container.setSteamOfflineMode(containerData.steamOfflineMode)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
+        container.setSuspendPolicy(containerData.suspendPolicy)
         container.setPortraitMode(containerData.portraitMode)
         if (previousUnpackFiles != containerData.unpackFiles && containerData.unpackFiles) {
             container.setNeedsUnpacking(true)
@@ -802,7 +806,7 @@ object ContainerUtils {
                 wincomponents = PrefManager.winComponents,
                 drives = drives,
                 execArgs = PrefManager.execArgs,
-                showFPS = PrefManager.showFps,
+                showFPS = false,
                 launchRealSteam = PrefManager.launchRealSteam,
                 wow64Mode = PrefManager.wow64Mode,
                 startupSelection = PrefManager.startupSelection.toByte(),
@@ -836,6 +840,8 @@ object ContainerUtils {
                 steamOfflineMode = PrefManager.steamOfflineMode,
                 useLegacyDRM = PrefManager.useLegacyDRM,
                 unpackFiles = PrefManager.unpackFiles,
+                suspendPolicy = PrefManager.suspendPolicy,
+                portraitMode = PrefManager.portraitMode,
                 externalDisplayMode = PrefManager.externalDisplayInputMode,
                 externalDisplaySwap = PrefManager.externalDisplaySwap,
             )
@@ -1018,13 +1024,37 @@ object ContainerUtils {
      * Deletes the container associated with the given appId, if it exists.
      */
     fun deleteContainer(context: Context, appId: String) {
+        Timber.i("[ContainerDeletion] Attempting to delete container for appId=$appId")
         val manager = ContainerManager(context)
-        if (manager.hasContainer(appId)) {
+        val hasContainer = manager.hasContainer(appId)
+        Timber.i("[ContainerDeletion] hasContainer($appId) = $hasContainer")
+        if (hasContainer) {
             // Remove the container directory asynchronously
             manager.removeContainerAsync(
                 manager.getContainerById(appId),
             ) {
-                Timber.i("Deleted container for appId=$appId")
+                Timber.i("[ContainerDeletion] Successfully deleted container for appId=$appId")
+            }
+        } else {
+            Timber.w("[ContainerDeletion] No container found for appId=$appId — deletion aborted.")
+
+            // Containers successfully parsed by ContainerManager (config file was readable)
+            val loadedIds = manager.containers.map { it.id }
+            Timber.w("[ContainerDeletion] Loaded containers (${loadedIds.size}): $loadedIds")
+
+            // Raw filesystem scan — catches directories whose config file was empty/corrupt and
+            // were silently skipped by ContainerManager. These are potential orphans.
+            // Directory layout: <filesDir>/imagefs/home/xuser-<containerId>
+            val homeDir = java.io.File(context.filesDir, "imagefs/home")
+            val prefix = "${com.winlator.xenvironment.ImageFs.USER}-"
+            val rawIds = homeDir.listFiles()
+                ?.filter { it.isDirectory && it.name.startsWith(prefix) }
+                ?.map { it.name.removePrefix(prefix) }
+                ?: emptyList()
+            val unloadedIds = rawIds - loadedIds.toSet()
+            Timber.w("[ContainerDeletion] Raw filesystem dirs (${rawIds.size}): $rawIds")
+            if (unloadedIds.isNotEmpty()) {
+                Timber.w("[ContainerDeletion] Dirs present on disk but NOT loaded by ContainerManager (corrupt/empty config): $unloadedIds")
             }
         }
     }
@@ -1129,12 +1159,14 @@ object ContainerUtils {
 
             Timber.d("Scanning for executables in A: drive: $aDrivePath")
 
-            // Recursively scan for .exe files using listFiles with depth limit
+            // Recursively scan for .exe files using listFiles with depth limit.
+            // Symlinked directories are skipped to avoid cycles (e.g. GOG ISI rootdir -> game root).
             fun scanRecursive(dir: File, baseDir: File, depth: Int = 0, maxDepth: Int = 10) {
                 if (depth > maxDepth) return
 
                 dir.listFiles()?.forEach { file ->
                     if (file.isDirectory) {
+                        if (FileUtils.isSymlink(file)) return@forEach
                         scanRecursive(file, baseDir, depth + 1, maxDepth)
                     } else if (file.isFile && file.name.lowercase().endsWith(".exe")) {
                         // Convert to relative Windows path format

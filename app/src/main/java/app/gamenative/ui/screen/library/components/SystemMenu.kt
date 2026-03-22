@@ -592,7 +592,7 @@ fun SystemMenu(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        if (isOffline) {
+                        if (isOffline || !SteamService.isLoggedIn) {
                             val goOnlineLabelRes = if (!SteamService.isLoggedIn) {
                                 R.string.steam_sign_in
                             } else {

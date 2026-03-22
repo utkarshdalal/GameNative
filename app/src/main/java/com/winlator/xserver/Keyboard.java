@@ -36,6 +36,8 @@ public class Keyboard {
         return modifiersMask;
     }
 
+    public ArraySet<Byte> getPressedKeys() { return pressedKeys; }
+
     public void setKeysyms(byte keycode, int minKeysym, int majKeysym) {
         int index = keycode - 8;
         keysyms[index*KEYSYMS_PER_KEYCODE+0] = minKeysym;
@@ -48,27 +50,13 @@ public class Keyboard {
     }
 
     public void setKeyPress(byte keycode, int keysym) {
-        if (isModifierSticky(keycode)) {
-            if (pressedKeys.contains(keycode)) {
-                pressedKeys.remove(keycode);
-                modifiersMask.unset(getModifierFlag(keycode));
-                triggerOnKeyRelease(keycode);
-            }
-            else {
-                pressedKeys.add(keycode);
-                modifiersMask.set(getModifierFlag(keycode));
-                triggerOnKeyPress(keycode, keysym);
-            }
-        }
-        else if (!pressedKeys.contains(keycode)) {
-            pressedKeys.add(keycode);
-            if (isModifier(keycode)) modifiersMask.set(getModifierFlag(keycode));
-            triggerOnKeyPress(keycode, keysym);
-        }
+        triggerOnKeyPress(keycode, keysym);
+        pressedKeys.add(keycode);
+        if (isModifier(keycode)) modifiersMask.set(getModifierFlag(keycode));
     }
 
     public void setKeyRelease(byte keycode) {
-        if (!isModifierSticky(keycode) && pressedKeys.contains(keycode)) {
+        if (pressedKeys.contains(keycode)) {
             pressedKeys.remove(keycode);
             if (isModifier(keycode)) modifiersMask.unset(getModifierFlag(keycode));
             triggerOnKeyRelease(keycode);
@@ -97,29 +85,28 @@ public class Keyboard {
 
     public static boolean isKeyboardDevice(InputDevice device) {
         if (device == null) return false;
-        int sources = device.getSources();
-        return (sources & InputDevice.SOURCE_KEYBOARD) == InputDevice.SOURCE_KEYBOARD;
+        return device.supportsSource(InputDevice.SOURCE_KEYBOARD) &&
+                device.getKeyboardType() == InputDevice.KEYBOARD_TYPE_ALPHABETIC;
     }
 
     public boolean onKeyEvent(KeyEvent event) {
-        // if (ExternalController.isGameController(event.getDevice())) return false;
 
         int action = event.getAction();
-        if (action == KeyEvent.ACTION_DOWN || action == KeyEvent.ACTION_UP) {
-            int keyCode = event.getKeyCode();
-            XKeycode xKeycode = keycodeMap[keyCode];
-            if (xKeycode == null) return false;
+        int keyCode = event.getKeyCode();
 
-            if (action == KeyEvent.ACTION_DOWN) {
-                boolean shiftPressed = event.isShiftPressed() || keyCode == KeyEvent.KEYCODE_AT || keyCode == KeyEvent.KEYCODE_STAR || keyCode == KeyEvent.KEYCODE_POUND || keyCode == KeyEvent.KEYCODE_PLUS;
-                if (shiftPressed) xServer.injectKeyPress(XKeycode.KEY_SHIFT_L);
-                xServer.injectKeyPress(xKeycode, xKeycode != XKeycode.KEY_ENTER ? event.getUnicodeChar() : 0);
-            }
-            else if (action == KeyEvent.ACTION_UP) {
-                xServer.injectKeyRelease(XKeycode.KEY_SHIFT_L);
-                xServer.injectKeyRelease(xKeycode);
-            }
+        if (keyCode >= keycodeMap.length)
+            return false;
+
+        XKeycode xKeycode = keycodeMap[keyCode];
+        if (xKeycode == null)
+            return false;
+
+        if (action == KeyEvent.ACTION_DOWN) {
+            xServer.injectKeyPress(xKeycode);
+        } else if (action == KeyEvent.ACTION_UP) {
+            xServer.injectKeyRelease(xKeycode);
         }
+
         return true;
     }
 
@@ -359,9 +346,5 @@ public class Keyboard {
             return 16;
         }
         return 0;
-    }
-
-    public static boolean isModifierSticky(byte keycode) {
-        return keycode == XKeycode.KEY_CAPS_LOCK.getId() || keycode == XKeycode.KEY_NUM_LOCK.getId();
     }
 }

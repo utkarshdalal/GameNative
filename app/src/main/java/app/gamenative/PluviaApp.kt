@@ -1,6 +1,9 @@
 package app.gamenative
 
 import android.os.StrictMode
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.GOGGameDao
@@ -19,6 +22,7 @@ import com.posthog.PersonProfiles
 // Add PostHog imports
 import com.posthog.android.PostHogAndroid
 import com.posthog.android.PostHogAndroidConfig
+import com.winlator.container.Container
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
@@ -58,6 +62,8 @@ class PluviaApp : SplitCompatApplication() {
         } else {
             Timber.plant(ReleaseTree())
         }
+
+        NetworkMonitor.init(this)
 
         // Init our custom crash handler.
         CrashHandler.initialize(this)
@@ -178,9 +184,33 @@ class PluviaApp : SplitCompatApplication() {
         var inputControlsView: InputControlsView? = null
         var inputControlsManager: InputControlsManager? = null
         var touchpadView: TouchpadView? = null
+        var achievementWatcher: app.gamenative.service.AchievementWatcher? = null
 
-        @JvmField
-        var isOverlayPaused: Boolean = false
+        var isOverlayPaused by mutableStateOf(false)
+        @Volatile
+        var isActivityInForeground: Boolean = true
+
+        // Active runtime suspend policy for the current in-game session.
+        var activeSuspendPolicy: String = Container.SUSPEND_POLICY_MANUAL
+            private set
+        private var hasInitializedSuspendPolicyState: Boolean = false
+
+        fun setActiveSuspendPolicy(policy: String) {
+            activeSuspendPolicy = Container.normalizeSuspendPolicy(policy)
+            hasInitializedSuspendPolicyState = true
+        }
+
+        fun clearActiveSuspendState() {
+            activeSuspendPolicy = Container.SUSPEND_POLICY_MANUAL
+            isOverlayPaused = false
+            hasInitializedSuspendPolicyState = false
+        }
+
+        fun hasValidSuspendPolicyState(): Boolean = hasInitializedSuspendPolicyState
+
+        fun isNeverSuspendMode(): Boolean = activeSuspendPolicy.equals(Container.SUSPEND_POLICY_NEVER, ignoreCase = true)
+
+        fun isManualSuspendMode(): Boolean = activeSuspendPolicy.equals(Container.SUSPEND_POLICY_MANUAL, ignoreCase = true)
 
     }
 }

@@ -16,19 +16,21 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.GameMetadataManager
+import app.gamenative.utils.SteamGridDB
 import app.gamenative.utils.StorageUtils
 import com.winlator.container.ContainerData
-import com.winlator.container.ContainerManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 import android.net.Uri
-import app.gamenative.ui.enums.AppOptionMenuType
-import app.gamenative.ui.util.SnackbarManager
+import kotlinx.coroutines.CoroutineScope
+import java.io.File
 import timber.log.Timber
 
 /**
@@ -361,8 +363,8 @@ class CustomGameAppScreen : BaseAppScreen() {
         )
     }
 
-    /**
-     * Custom games don't have source-specific menu options beyond what's inherited
+   /**
+     * Custom Game-specific menu options
      */
     @Composable
     override fun getSourceSpecificMenuOptions(
@@ -373,7 +375,47 @@ class CustomGameAppScreen : BaseAppScreen() {
         onClickPlay: (Boolean) -> Unit,
         isInstalled: Boolean
     ): List<AppMenuOption> {
-        return emptyList()
+        val options = mutableListOf<AppMenuOption>()
+
+        // Fetch images from SteamGridDB for Custom Games
+        options.add(getFetchImagesOption(context, libraryItem))
+
+        return options
+    }
+
+    @Composable
+    private fun getFetchImagesOption(context: Context, libraryItem: LibraryItem): AppMenuOption {
+        return AppMenuOption(
+            optionType = AppOptionMenuType.FetchSteamGridDBImages,
+            onClick = {
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val gameName = libraryItem.name
+                        val gameFolderPath = getGameFolderPathForImageFetch(context, libraryItem)
+
+                        if (gameFolderPath != null) {
+                            val folder = File(gameFolderPath)
+                            val appId = libraryItem.gameId
+                            GameMetadataManager.update(
+                                folder = folder,
+                                appId = appId,
+                                steamgriddbFetched = false,
+                            )
+
+                            SteamGridDB.fetchGameImages(gameName, gameFolderPath)
+                            PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
+                            onAfterFetchImages(context, libraryItem, gameFolderPath)
+
+                            SnackbarManager.show(context.getString(R.string.base_app_images_fetched))
+                        } else {
+                            SnackbarManager.show(context.getString(R.string.base_app_game_folder_not_found))
+                        }
+                    } catch (e: Exception) {
+                        SnackbarManager.show(context.getString(R.string.base_app_images_fetch_failed, e.message ?: ""))
+                    }
+                }
+            },
+        )
     }
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {

@@ -82,6 +82,30 @@ object PrefManager {
         }
     }
 
+    /**
+     * Clears only Steam account/session state while preserving app-wide settings.
+     *
+     * This is used during Steam logout so user-configured defaults (container
+     * settings, download preferences, tips, theme, etc.) are not wiped.
+     */
+    fun clearSteamSessionPreferences() {
+        scope.launch {
+            dataStore.edit { pref ->
+                pref.remove(USER_NAME)
+                pref.remove(ACCESS_TOKEN_ENC)
+                pref.remove(REFRESH_TOKEN_ENC)
+                pref.remove(CLIENT_ID)
+                pref.remove(PERSONA_STATE)
+                pref.remove(STEAM_USER_ACCOUNT_ID)
+                pref.remove(STEAM_USER_STEAM_ID_64)
+                pref.remove(STEAM_USER_AVATAR_HASH)
+                pref.remove(STEAM_USER_NAME)
+                pref.remove(LAST_PICS_CHANGE_NUMBER)
+                pref.remove(STEAM_GAMES_COUNT)
+            }
+        }
+    }
+
     fun getBoolean(key: String, defaultValue: Boolean): Boolean =
         getPref(booleanPreferencesKey(key), defaultValue)
 
@@ -283,6 +307,146 @@ object PrefManager {
             setPref(SHOW_FPS, value)
         }
 
+    private val PERFORMANCE_HUD_COMPACT_MODE = booleanPreferencesKey("performance_hud_compact_mode")
+    var performanceHudCompactMode: Boolean
+        get() = getPref(PERFORMANCE_HUD_COMPACT_MODE, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_COMPACT_MODE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_FRAME_RATE = booleanPreferencesKey("performance_hud_show_frame_rate")
+    var performanceHudShowFrameRate: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_FRAME_RATE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_FRAME_RATE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_CPU_USAGE = booleanPreferencesKey("performance_hud_show_cpu_usage")
+    var performanceHudShowCpuUsage: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_CPU_USAGE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_CPU_USAGE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_GPU_USAGE = booleanPreferencesKey("performance_hud_show_gpu_usage")
+    var performanceHudShowGpuUsage: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_GPU_USAGE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_GPU_USAGE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_RAM_USAGE = booleanPreferencesKey("performance_hud_show_ram_usage")
+    var performanceHudShowRamUsage: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_RAM_USAGE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_RAM_USAGE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_BATTERY_LEVEL = booleanPreferencesKey("performance_hud_show_battery_level")
+    var performanceHudShowBatteryLevel: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_BATTERY_LEVEL, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_BATTERY_LEVEL, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_POWER_DRAW = booleanPreferencesKey("performance_hud_show_power_draw")
+    var performanceHudShowPowerDraw: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_POWER_DRAW, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_POWER_DRAW, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_BATTERY_RUNTIME = booleanPreferencesKey("performance_hud_show_battery_runtime")
+    var performanceHudShowBatteryRuntime: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_BATTERY_RUNTIME, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_BATTERY_RUNTIME, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_CLOCK_TIME = booleanPreferencesKey("performance_hud_show_clock_time")
+    var performanceHudShowClockTime: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_CLOCK_TIME, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_CLOCK_TIME, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_CPU_TEMPERATURE = booleanPreferencesKey("performance_hud_show_cpu_temperature")
+    var performanceHudShowCpuTemperature: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_CPU_TEMPERATURE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_CPU_TEMPERATURE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE = booleanPreferencesKey("performance_hud_show_gpu_temperature")
+    var performanceHudShowGpuTemperature: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_FRAME_RATE_GRAPH = booleanPreferencesKey("performance_hud_show_frame_rate_graph")
+    var performanceHudShowFrameRateGraph: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_FRAME_RATE_GRAPH, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_FRAME_RATE_GRAPH, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_CPU_USAGE_GRAPH = booleanPreferencesKey("performance_hud_show_cpu_usage_graph")
+    var performanceHudShowCpuUsageGraph: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_CPU_USAGE_GRAPH, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_CPU_USAGE_GRAPH, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_GPU_USAGE_GRAPH = booleanPreferencesKey("performance_hud_show_gpu_usage_graph")
+    var performanceHudShowGpuUsageGraph: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_GPU_USAGE_GRAPH, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_GPU_USAGE_GRAPH, value)
+        }
+
+    private val PERFORMANCE_HUD_BACKGROUND_OPACITY = floatPreferencesKey("performance_hud_background_opacity")
+    var performanceHudBackgroundOpacity: Float
+        get() = getPref(PERFORMANCE_HUD_BACKGROUND_OPACITY, 0.72f)
+        set(value) {
+            setPref(PERFORMANCE_HUD_BACKGROUND_OPACITY, value.coerceIn(0f, 1f))
+        }
+
+    private val PERFORMANCE_HUD_COLOR_INTENSITY = floatPreferencesKey("performance_hud_color_intensity")
+    var performanceHudColorIntensity: Float
+        get() = getPref(PERFORMANCE_HUD_COLOR_INTENSITY, 1f)
+        set(value) {
+            setPref(PERFORMANCE_HUD_COLOR_INTENSITY, value.coerceIn(0f, 1f))
+        }
+
+    private val PERFORMANCE_HUD_SHOW_TEXT_OUTLINE = booleanPreferencesKey("performance_hud_show_text_outline")
+    var performanceHudShowTextOutline: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_TEXT_OUTLINE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_TEXT_OUTLINE, value)
+        }
+
+    private val PERFORMANCE_HUD_SIZE = stringPreferencesKey("performance_hud_size")
+    var performanceHudSize: String
+        get() = getPref(PERFORMANCE_HUD_SIZE, "medium")
+        set(value) {
+            setPref(PERFORMANCE_HUD_SIZE, value)
+        }
+
+    private val PERFORMANCE_HUD_X_FRACTION = floatPreferencesKey("performance_hud_x_fraction")
+    var performanceHudXFraction: Float
+        get() = getPref(PERFORMANCE_HUD_X_FRACTION, -1f)
+        set(value) {
+            setPref(PERFORMANCE_HUD_X_FRACTION, value.coerceIn(-1f, 1f))
+        }
+
+    private val PERFORMANCE_HUD_Y_FRACTION = floatPreferencesKey("performance_hud_y_fraction")
+    var performanceHudYFraction: Float
+        get() = getPref(PERFORMANCE_HUD_Y_FRACTION, -1f)
+        set(value) {
+            setPref(PERFORMANCE_HUD_Y_FRACTION, value.coerceIn(-1f, 1f))
+        }
+
     private val LAUNCH_REAL_STEAM = booleanPreferencesKey("launch_real_steam")
     var launchRealSteam: Boolean
         get() = getPref(LAUNCH_REAL_STEAM, false)
@@ -316,6 +480,13 @@ object PrefManager {
         get() = getPref(UNPACK_FILES, false)
         set(value) {
             setPref(UNPACK_FILES, value)
+        }
+
+    private val SUSPEND_POLICY = stringPreferencesKey("suspend_policy")
+    var suspendPolicy: String
+        get() = Container.normalizeSuspendPolicy(getPref(SUSPEND_POLICY, Container.SUSPEND_POLICY_MANUAL))
+        set(value) {
+            setPref(SUSPEND_POLICY, Container.normalizeSuspendPolicy(value))
         }
 
     private val CPU_LIST = stringPreferencesKey("cpu_list")

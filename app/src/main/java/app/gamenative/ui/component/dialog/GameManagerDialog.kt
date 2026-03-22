@@ -55,6 +55,7 @@ import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.StorageUtils
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
@@ -141,7 +142,8 @@ fun GameManagerDialog(
         allDownloadableApps.sortBy { it.first }
 
         // Add Base Game
-        allDownloadableApps.add(0, Pair(gameId, downloadableDepots.toSortedMap().values.first()))
+        val baseDepot = downloadableDepots.values.firstOrNull { it.dlcAppId == INVALID_APP_ID } ?: return@LaunchedEffect
+        allDownloadableApps.add(0, Pair(gameId, baseDepot))
         selectedAppIds[gameId] = true
         enabledAppIds[gameId] = false
     }
@@ -170,7 +172,7 @@ fun GameManagerDialog(
                 it.manifests["public"]?.size ?: 0
             }
             val downloadBytes = depotsForBaseGame.values.sumOf {
-                it.manifests["public"]?.download ?: 0
+                SteamUtils.getDownloadBytes(it.manifests["public"])
             }
 
             return Pair(
@@ -188,7 +190,7 @@ fun GameManagerDialog(
             it.manifests["public"]?.size ?: 0
         }
         val downloadBytes = depotsForDlc.values.sumOf {
-            it.manifests["public"]?.download ?: 0
+            SteamUtils.getDownloadBytes(it.manifests["public"])
         }
 
         return Pair(
@@ -214,7 +216,9 @@ fun GameManagerDialog(
             downloadableDepots
                 .filter { (_, depot) ->
                     depot.dlcAppId == INVALID_APP_ID
-                }.values.sumOf { it.manifests["public"]?.download ?: 0 }
+                }.values.sumOf {
+                    SteamUtils.getDownloadBytes(it.manifests["public"])
+                }
         } else {
             0L
         }
@@ -230,7 +234,9 @@ fun GameManagerDialog(
             .filter { (_, depot) ->
                 selectedAppIds[depot.dlcAppId] == true && enabledAppIds[depot.dlcAppId] == true
             }
-            .values.sumOf { it.manifests["public"]?.download ?: 0 }
+            .values.sumOf {
+                SteamUtils.getDownloadBytes(it.manifests["public"])
+            }
 
         return InstallSizeInfo(
             downloadSize = StorageUtils.formatBinarySize(baseGameDownloadBytes + selectedDownloadBytes),

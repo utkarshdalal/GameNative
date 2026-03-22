@@ -22,12 +22,20 @@ interface SteamAppDao {
     suspend fun update(app: SteamApp)
 
     @Query(
-        "SELECT * FROM steam_app " +
-            "WHERE id != 480 " + // Actively filter out Spacewar
+        "SELECT * FROM steam_app AS app " +
+            "WHERE app.id != 480 " + // Actively filter out Spacewar
             // "AND (owner_account_id IN (:ownerIds) OR license_flags & :borrowedCode = :borrowedCode) " +
-            "AND package_id != :invalidPkgId " +
-            "AND type != 0 " +
-            "ORDER BY LOWER(name)",
+            "AND app.package_id != :invalidPkgId " +
+            "AND app.type != 0 " +
+            "AND EXISTS (" +
+            "  SELECT 1 FROM steam_license AS license " +
+            "  WHERE (license.license_flags & 8 = 0) " + // exclude Expired licenses (e.g. free weekends)
+            "  AND (" +
+            "    (license.packageId = app.package_id AND license.app_ids = '[]') " + // this app's package PICS not yet fetched — allow provisionally
+            "    OR REPLACE(REPLACE(license.app_ids, '[', ','), ']', ',') LIKE ('%,' || app.id || ',%')" + // any non-expired license lists this appId
+            "  )" +
+            ") " +
+            "ORDER BY LOWER(app.name)",
     )
     fun getAllOwnedApps(
         // ownerIds: List<Int>,

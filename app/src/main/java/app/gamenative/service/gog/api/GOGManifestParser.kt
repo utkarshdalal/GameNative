@@ -72,7 +72,7 @@ class GOGManifestParser @Inject constructor() {
         val requestedCodes = GOGConstants.containerLanguageToGogCodes(containerLanguage)
         val englishCodes = GOGConstants.CONTAINER_LANGUAGE_TO_GOG_CODES.getValue(GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE)
 
-        // Try all requested language codes first (e.g. de-DE, then de)
+        // Try all requested language codes first (e.g. german, de-DE, then de)
         for (lang in requestedCodes) {
             val matched = filter(lang)
             if (matched.isNotEmpty()) {

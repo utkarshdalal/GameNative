@@ -128,6 +128,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         setBackground(createTransparentBackground());
         setClickable(true);
         setFocusable(true);
+        setDefaultFocusHighlightEnabled(false);
         int screenWidth = AppUtils.getScreenWidth();
         int screenHeight = AppUtils.getScreenHeight();
         ScreenInfo screenInfo = xServer.screenInfo;
@@ -1142,15 +1143,6 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     public boolean onExternalMouseEvent(MotionEvent event) {
-        // one-shot: capture external mouse on first event, don't re-capture after user release
-        if (capturePointerOnExternalMouse && !pointerCaptureRequested) {
-            pointerCaptureRequested = true;
-            if (!hasFocus() && !requestFocus()) {
-                Log.w("TouchpadView", "requestFocus() failed, skipping pointer capture");
-            } else {
-                requestPointerCapture();
-            }
-        }
         boolean handled = false;
         if (event.isFromSource(InputDevice.SOURCE_MOUSE)) {
             int actionButton = event.getActionButton();
@@ -1193,15 +1185,6 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                     }
                     handled = true;
                     break;
-                case MotionEvent.ACTION_MOVE:
-                case MotionEvent.ACTION_HOVER_MOVE:
-                    float[] transformedPoint = XForm.transformPoint(xform, event.getX(), event.getY());
-                    if (xServer.isRelativeMouseMovement())
-                        xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, (int)transformedPoint[0], (int)transformedPoint[1], 0);
-                    else
-                        xServer.injectPointerMove((int)transformedPoint[0], (int)transformedPoint[1]);
-                    handled = true;
-                    break;
                 case MotionEvent.ACTION_SCROLL:
                     float scrollY = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
                     if (scrollY <= -1.0f) {
@@ -1241,18 +1224,22 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     @Override // android.view.View.OnCapturedPointerListener
     public boolean onCapturedPointer(View view, MotionEvent event) {
-        if (event.getAction() == MotionEvent.ACTION_MOVE) {
+        if (event.isFromSource(InputDevice.SOURCE_TOUCHPAD)) {
+            return handleTouchpadEvent(event);
+        }
+        if (event.getAction() == MotionEvent.ACTION_MOVE ||
+            event.getAction() == MotionEvent.ACTION_HOVER_MOVE) {
             float dx = 0f;
             float dy = 0f;
 
             int historySize = event.getHistorySize();
             for (int i = 0; i < historySize; i++) {
-                dx += event.getHistoricalX(i);
-                dy += event.getHistoricalY(i);
+                dx += event.getHistoricalAxisValue(MotionEvent.AXIS_RELATIVE_X, i);
+                dy += event.getHistoricalAxisValue(MotionEvent.AXIS_RELATIVE_Y, i);
             }
 
-            dx += event.getX();
-            dy += event.getY();
+            dx += event.getAxisValue(MotionEvent.AXIS_RELATIVE_X);
+            dy += event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y);
             this.xServer.injectPointerMoveDelta(Mathf.roundPoint(dx), Mathf.roundPoint(dy));
             return true;
         }

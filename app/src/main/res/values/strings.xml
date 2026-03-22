@@ -181,6 +181,9 @@
     <string name="content_info">Content Info</string>
     <string name="game_not_installed_title">Game Not Installed</string>
     <string name="game_not_installed_message">%s is not installed. Please install the game first before launching.</string>
+    <string name="intent_launch_failed">Could not launch game: invalid launch shortcut</string>
+    <string name="intent_launch_steam_pending">Game will launch when Steam connects</string>
+    <string name="intent_launch_steam_login_failed">Steam login failed — game launch cancelled</string>
     <string name="game_executable_not_found_title">Cannot Launch</string>
     <string name="game_executable_not_found">The executable could not be auto-selected. Please set the executable path in container settings.</string>
     <string name="save_container_settings_title">Save Container Configuration?</string>
@@ -208,6 +211,7 @@
     <string name="exit_game">Exit</string>
     <string name="exit">Exit Game</string>
     <string name="keyboard">Keyboard</string>
+    <string name="resume_game">Resume Game</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Clear Search</string>
     <string name="buttons">Buttons</string>
@@ -230,6 +234,58 @@
     <string name="open_navigation_menu">Open Navigation Menu</string>
     <string name="quick_menu_title">Quick Menu</string>
     <string name="quick_menu_back">Back</string>
+    <string name="screen_effects">Screen Effects</string>
+    <string name="screen_effects_live_preview">Changes apply instantly to the current game.</string>
+    <string name="screen_effects_color_adjustments">Color adjustments</string>
+    <string name="screen_effects_shader_toggles">Shader effects</string>
+    <string name="screen_effects_brightness">Brightness</string>
+    <string name="screen_effects_contrast">Contrast</string>
+    <string name="screen_effects_gamma">Gamma</string>
+    <string name="screen_effects_toon">Toon outline</string>
+    <string name="screen_effects_toon_description">Adds dark outlines for a cel-shaded look.</string>
+    <string name="screen_effects_fxaa">FXAA</string>
+    <string name="screen_effects_fxaa_description">Smooths jagged edges with a light post-process anti-aliasing pass.</string>
+    <string name="screen_effects_crt">CRT</string>
+    <string name="screen_effects_crt_description">Adds scanlines and subtle chromatic aberration.</string>
+    <string name="screen_effects_ntsc">NTSC</string>
+    <string name="screen_effects_ntsc_description">Adds retro composite TV warping, bleed, and scanlines.</string>
+    <string name="screen_effects_reset">Reset</string>
+    <string name="screen_effects_close">Close</string>
+    <string name="quick_menu_tab_general">General</string>
+    <string name="quick_menu_tab_controller">Controller</string>
+    <string name="performance_hud">Performance HUD</string>
+    <string name="performance_hud_description">Show or hide the in-game overlay.</string>
+    <string name="performance_hud_presets">Presets</string>
+    <string name="performance_hud_presets_description">Quickly switch between common HUD layouts.</string>
+    <string name="performance_hud_preset_fps_only">1</string>
+    <string name="performance_hud_preset_essential">2</string>
+    <string name="performance_hud_preset_battery">3</string>
+    <string name="performance_hud_preset_full">4</string>
+    <string name="performance_hud_appearance">Appearance</string>
+    <string name="performance_hud_appearance_description">Adjust HUD size and background opacity.</string>
+    <string name="performance_hud_size">Size</string>
+    <string name="performance_hud_size_small">S</string>
+    <string name="performance_hud_size_medium">M</string>
+    <string name="performance_hud_size_large">L</string>
+    <string name="performance_hud_background_opacity">Background opacity</string>
+    <string name="performance_hud_color_intensity">Color intensity</string>
+    <string name="performance_hud_text_outline">Text outline</string>
+    <string name="performance_hud_percentage_value">%1$d%%</string>
+    <string name="performance_hud_metrics">Shown metrics</string>
+    <string name="performance_hud_metrics_description">Choose which stats appear in the overlay.</string>
+    <string name="performance_hud_frame_rate">Frame rate</string>
+    <string name="performance_hud_frame_rate_graph">FPS graph</string>
+    <string name="performance_hud_cpu_usage">CPU usage</string>
+    <string name="performance_hud_cpu_usage_graph">CPU graph</string>
+    <string name="performance_hud_gpu_usage">GPU usage</string>
+    <string name="performance_hud_gpu_usage_graph">GPU graph</string>
+    <string name="performance_hud_ram_usage">RAM usage</string>
+    <string name="performance_hud_battery_level">Battery level</string>
+    <string name="performance_hud_power_draw">Power draw</string>
+    <string name="performance_hud_runtime_left">Runtime left</string>
+    <string name="performance_hud_clock_time">Clock time</string>
+    <string name="performance_hud_cpu_temperature">CPU temperature</string>
+    <string name="performance_hud_gpu_temperature">GPU temperature</string>
     <string name="touchpad_help">Touchpad Help</string>
     <string name="hide_controls_with_controller">Hide on-screen controls with controller</string>
     <string name="hide_controls_with_controller_description">Automatically hide on-screen controls when a physical controller is connected</string>
@@ -581,6 +637,7 @@
     <string name="launch_steam_client_description">Reduces performance and slows down launch\nAllows online play and fixes DRM and controller issues\nNot all games work</string>
     <string name="steam_offline_mode">Steam Offline Mode</string>
     <string name="steam_offline_mode_description">Launch Steam games in offline mode</string>
+    <string name="achievement_unlocked">Achievement Unlocked</string>
     <string name="allow_steam_updates">Allow Steam updates</string>
     <string name="allow_steam_updates_description">Updates Steam to the latest version. Significantly reduces performance.</string>
     <string name="steam_type">Steam Type</string>
@@ -695,6 +752,10 @@
     <string name="drive_letter">Drive letter</string>
     <string name="no_available_drive_letters">No available drive letters</string>
     <string name="startup_selection">Startup Selection</string>
+    <string name="suspend_behavior">Suspend Behavior</string>
+    <string name="suspend_behavior_auto">Suspend and auto-resume</string>
+    <string name="suspend_behavior_never">Never suspend</string>
+    <string name="suspend_behavior_manual">Suspend until Resume button (Default)</string>
     <string name="processor_affinity_32bit">Processor Affinity (32-bit apps)</string>
     <string name="executable_path">Executable Path</string>
     <string name="executable_path_placeholder">e.g., path\\to\\exe</string>
@@ -791,7 +852,7 @@
     <string name="settings_interface_hide_statusbar_title">Hide status bar when not in game</string>
     <string name="settings_interface_hide_statusbar_subtitle">Hide Android status bar in game list, settings, etc. App will restart when changed.</string>
     <string name="settings_interface_icon_style">Icon style</string>
-    <string name="settings_interface_wifi_only_title">Download only over Wi-Fi</string>
+    <string name="settings_interface_wifi_only_title">Download only over Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Prevent downloads on cellular data</string>
     <string name="settings_interface_external_storage_title">Write to external storage</string>
     <string name="settings_interface_no_external_storage">No external storage detected</string>
@@ -867,6 +928,10 @@
     <string name="library_wifi_only_enabled">Install over Wi-Fi/LAN only enabled</string>
     <string name="library_file_count">File %1$d of %2$d</string>
 
+    <!-- SteamService: Download Notifications -->
+    <string name="download_no_wifi">Not connected to Wi-Fi/LAN</string>
+    <string name="download_paused_wifi">Download paused – waiting for Wi-Fi/LAN</string>
+
     <!-- PluviaMain: Update & App Info -->
     <string name="main_update_available_title">Update Available</string>
     <string name="main_update_available_message">A new version (%1$s) is available!%2$s</string>
@@ -896,6 +961,10 @@
     <string name="main_installing_glibc">Installing glibc components...</string>
     <string name="main_installing_bionic">Installing Bionic components...</string>
     <string name="main_loading">Loading...</string>
+    <string name="download_failed_title">Download Failed</string>
+    <string name="download_failed_message">A required file could not be downloaded. Please check your network connection and try again.</string>
+    <string name="install_failed_title">Installation Failed</string>
+    <string name="install_failed_message">System files could not be installed. Please try again. If the problem persists, try a different network or use a VPN.</string>
 
     <!-- PluviaMain: Session Conflicts -->
     <string name="main_app_running_title">App Running</string>
@@ -988,6 +1057,7 @@
     <string name="best_config_applied_successfully">Config applied successfully</string>
     <string name="best_config_known_config_invalid">Known config invalid</string>
     <string name="best_config_no_config_available">No best config available for this game</string>
+    <string name="best_config_fetch_failed">Failed to fetch config. Please check your network connection.</string>
     <string name="best_config_apply_failed">Failed to apply config: %s</string>
     <string name="best_config_missing_content">%s missing</string>
     <string name="import_config">Import config</string>
@@ -1216,4 +1286,11 @@
     <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
     <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
     <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
+
+    <!-- Library: source not logged in splash -->
+    <string name="library_source_not_logged_in_steam">Sign in to access your Steam library.</string>
+    <string name="library_source_not_logged_in_gog">Sign in to access your GOG library.</string>
+    <string name="library_source_not_logged_in_epic">Sign in to access your Epic library.</string>
+    <string name="library_source_not_logged_in_amazon">Sign in to access your Amazon library.</string>
+    <string name="library_source_no_custom_games">You have not added any custom games.</string>
 </resources>

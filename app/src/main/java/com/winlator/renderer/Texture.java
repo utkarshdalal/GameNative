@@ -14,7 +14,7 @@ public class Texture {
     private int wrapT = GLES20.GL_CLAMP_TO_EDGE;
     private int magFilter = GLES20.GL_LINEAR;
     private int minFilter = GLES20.GL_LINEAR;
-    private int format = GLES11Ext.GL_BGRA;
+    protected int format = GLES11Ext.GL_BGRA;
     protected byte unpackAlignment = 4;
     protected boolean needsUpdate = true;
 

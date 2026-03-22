@@ -39,7 +39,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -100,7 +99,6 @@ import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.screen.library.components.GameOptionsPanel
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.ui.util.AdaptiveHeroHeight
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
@@ -113,6 +111,17 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import app.gamenative.enums.PathType
+import com.winlator.container.ContainerManager
+import app.gamenative.enums.SyncResult
+import app.gamenative.enums.Marker
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import app.gamenative.NetworkMonitor
+import app.gamenative.events.AndroidEvent
+import app.gamenative.utils.MarkerUtils
+import app.gamenative.utils.createPinnedShortcut
+import kotlinx.coroutines.withContext
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -480,16 +489,11 @@ internal fun AppScreenContent(
     onBack: () -> Unit = {},
     vararg optionsMenu: AppMenuOption,
 ) {
-    // Determine Wi-Fi connectivity for 'Wi-Fi only' preference
     val context = LocalContext.current
-    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
-    val hasInternet = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-    val wifiConnected = capabilities?.run {
-        hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-            hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
-    } == true
-    val wifiAllowed = !PrefManager.downloadOnWifiOnly || wifiConnected
+    // reactive — recomposes when network state changes
+    val hasInternet by NetworkMonitor.hasInternet.collectAsState()
+    val hasWifiOrEthernet by NetworkMonitor.hasWifiOrEthernet.collectAsState()
+    val downloadAllowed = !PrefManager.downloadOnWifiOnly || hasWifiOrEthernet
     val scrollState = rememberScrollState()
 
     var optionsMenuVisible by remember { mutableStateOf(false) }
@@ -510,9 +514,9 @@ internal fun AppScreenContent(
 
     // Button state calculations (needed by key event handler)
     val isResume = !isDownloading && hasPartialDownload
-    val pauseResumeEnabled = if (isResume) wifiAllowed else true
+    val pauseResumeEnabled = if (isResume) downloadAllowed else true
     val isInstall = !isInstalled
-    val installEnabled = if (isInstall) wifiAllowed && hasInternet else true
+    val installEnabled = if (isInstall) downloadAllowed && hasInternet else true
     val buttonEnabled = if (isInstalled) {
         installEnabled
     } else {
@@ -538,13 +542,15 @@ internal fun AppScreenContent(
             ?: remember { mutableStateOf<String?>(null) }
     )
     val downloadingLabel = stringResource(R.string.downloading)
-    val downloadTimeLeftText = remember(displayInfo.appId, downloadProgress, downloadInfo, downloadStatusMessage) {
+    val downloadTimeLeftText = remember(displayInfo.appId, downloadProgress, downloadInfo, isDownloading, downloadStatusMessage) {
         val etaMs = downloadInfo?.getEstimatedTimeRemaining()
         if (etaMs != null && etaMs > 0L) {
             val totalSeconds = etaMs / 1000
             val minutesLeft = totalSeconds / 60
             val secondsPart = totalSeconds % 60
             "${minutesLeft}m ${secondsPart}s left"
+        } else if (isDownloading && downloadProgress >= 1f) {
+            "Unpacking..."
         } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
             downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
         } else {
@@ -615,13 +621,12 @@ internal fun AppScreenContent(
             // Hero Section (Parallax)
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(AdaptiveHeroHeight.get()),
+                    .fillMaxWidth(),
             ) {
                 // Hero background image
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .matchParentSize()
                         .graphicsLayer {
                             translationY = parallaxOffset
                         },
@@ -664,16 +669,35 @@ internal fun AppScreenContent(
                     }
                 }
 
-                // Gradient overlay
+                // Gradient overlay (bottom, for title/action bar)
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .matchParentSize()
                         .background(
                             brush = Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
                                     Color.Black.copy(alpha = 0.3f),
                                     Color.Black.copy(alpha = 0.85f),
+                                ),
+                                startY = 0f,
+                                endY = Float.POSITIVE_INFINITY,
+                            ),
+                        ),
+                )
+
+                // Top gradient overlay (so back button is visible on light/white images)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .align(Alignment.TopCenter)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.5f),
+                                    Color.Black.copy(alpha = 0.15f),
+                                    Color.Transparent,
                                 ),
                                 startY = 0f,
                                 endY = Float.POSITIVE_INFINITY,
@@ -692,9 +716,8 @@ internal fun AppScreenContent(
                 // Bottom overlay with title and action bar
                 Column(
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .padding(top = 128.dp, start = 20.dp, end = 20.dp, bottom = 16.dp),
                 ) {
                     // Game title
                     Text(
@@ -758,7 +781,7 @@ internal fun AppScreenContent(
                             val text = when {
                                 isInstalled -> stringResource(R.string.run_app)
                                 !hasInternet -> stringResource(R.string.library_need_internet)
-                                !wifiConnected && PrefManager.downloadOnWifiOnly -> stringResource(R.string.library_wifi_only_enabled)
+                                !hasWifiOrEthernet && PrefManager.downloadOnWifiOnly -> stringResource(R.string.library_wifi_only_enabled)
                                 else -> stringResource(R.string.install_app)
                             }
                             PrimaryActionButton(
@@ -808,16 +831,6 @@ internal fun AppScreenContent(
                             contentDescription = stringResource(R.string.options),
                             onClick = { optionsMenuVisible = true },
                         )
-
-                        if (isInstalled) {
-                            ActionIconButton(
-                                icon = Icons.Default.Cloud,
-                                contentDescription = stringResource(R.string.cloud),
-                                onClick = {
-                                    optionsMenu.find { it.optionType == AppOptionMenuType.ForceCloudSync }?.onClick?.invoke()
-                                },
-                            )
-                        }
 
                         if (isInstalled || hasPartialDownload) {
                             ActionIconButton(

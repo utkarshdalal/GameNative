@@ -165,6 +165,9 @@
     <string name="content_info">Informations sur le contenu</string>
     <string name="game_not_installed_title">Jeu non installé</string>
     <string name="game_not_installed_message">%s n\'est pas installé. Veuillez installer le jeu avant de le lancer.</string>
+    <string name="intent_launch_failed">Impossible de lancer le jeu : raccourci de lancement invalide</string>
+    <string name="intent_launch_steam_pending">Le jeu se lancera une fois Steam connecté</string>
+    <string name="intent_launch_steam_login_failed">Échec de la connexion Steam — lancement du jeu annulé</string>
     <string name="game_executable_not_found_title">Impossible de lancer</string>
     <string name="game_executable_not_found">L\'exécutable n\'a pas pu être sélectionné automatiquement. Veuillez définir le chemin de l\'exécutable dans les paramètres du conteneur.</string>
     <string name="save_container_settings_title">Enregistrer la configuration du conteneur ?</string>
@@ -192,6 +195,7 @@
     <string name="exit_game">Quitter</string>
     <string name="exit">Quitter le jeu</string>
     <string name="keyboard">Clavier</string>
+    <string name="resume_game">Reprendre le jeu</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Effacer la recherche</string>
     <string name="buttons">Boutons</string>
@@ -214,6 +218,58 @@
     <string name="open_navigation_menu">Ouvrir le menu de navigation</string>
     <string name="quick_menu_title">Menu rapide</string>
     <string name="quick_menu_back">Retour</string>
+    <string name="screen_effects">Effets d’écran</string>
+    <string name="screen_effects_live_preview">Les modifications s’appliquent instantanément au jeu en cours.</string>
+    <string name="screen_effects_color_adjustments">Réglages des couleurs</string>
+    <string name="screen_effects_shader_toggles">Effets de shader</string>
+    <string name="screen_effects_brightness">Luminosité</string>
+    <string name="screen_effects_contrast">Contraste</string>
+    <string name="screen_effects_gamma">Gamma</string>
+    <string name="screen_effects_toon">Contour toon</string>
+    <string name="screen_effects_toon_description">Ajoute des contours sombres pour un rendu cel-shading.</string>
+    <string name="screen_effects_fxaa">FXAA</string>
+    <string name="screen_effects_fxaa_description">Lisse les bords irréguliers avec un léger anti-aliasing en post-traitement.</string>
+    <string name="screen_effects_crt">CRT</string>
+    <string name="screen_effects_crt_description">Ajoute des lignes de balayage et une subtile aberration chromatique.</string>
+    <string name="screen_effects_ntsc">NTSC</string>
+    <string name="screen_effects_ntsc_description">Ajoute une distorsion rétro de TV composite, du débordement des couleurs et des lignes de balayage.</string>
+    <string name="screen_effects_reset">Réinitialiser</string>
+    <string name="screen_effects_close">Fermer</string>
+    <string name="quick_menu_tab_general">Général</string>
+    <string name="quick_menu_tab_controller">Contrôles</string>
+    <string name="performance_hud">HUD de performance</string>
+    <string name="performance_hud_description">Afficher ou masquer la surcouche en jeu.</string>
+    <string name="performance_hud_presets">Préréglages</string>
+    <string name="performance_hud_presets_description">Basculer rapidement entre des dispositions HUD courantes.</string>
+    <string name="performance_hud_preset_fps_only">1</string>
+    <string name="performance_hud_preset_essential">2</string>
+    <string name="performance_hud_preset_battery">3</string>
+    <string name="performance_hud_preset_full">4</string>
+    <string name="performance_hud_appearance">Apparence</string>
+    <string name="performance_hud_appearance_description">Ajuster la taille du HUD et l’opacité de l’arrière-plan.</string>
+    <string name="performance_hud_size">Taille</string>
+    <string name="performance_hud_size_small">S</string>
+    <string name="performance_hud_size_medium">M</string>
+    <string name="performance_hud_size_large">L</string>
+    <string name="performance_hud_background_opacity">Opacité de l’arrière-plan</string>
+    <string name="performance_hud_color_intensity">Intensité des couleurs</string>
+    <string name="performance_hud_text_outline">Contour du texte</string>
+    <string name="performance_hud_percentage_value">%1$d%%</string>
+    <string name="performance_hud_metrics">Mesures affichées</string>
+    <string name="performance_hud_metrics_description">Choisissez quelles statistiques apparaissent dans la surcouche.</string>
+    <string name="performance_hud_frame_rate">Fréquence d’images</string>
+    <string name="performance_hud_frame_rate_graph">Graphique FPS</string>
+    <string name="performance_hud_cpu_usage">Utilisation CPU</string>
+    <string name="performance_hud_cpu_usage_graph">Graphique CPU</string>
+    <string name="performance_hud_gpu_usage">Utilisation GPU</string>
+    <string name="performance_hud_gpu_usage_graph">Graphique GPU</string>
+    <string name="performance_hud_ram_usage">Utilisation RAM</string>
+    <string name="performance_hud_battery_level">Niveau de batterie</string>
+    <string name="performance_hud_power_draw">Consommation d’énergie</string>
+    <string name="performance_hud_runtime_left">Autonomie restante</string>
+    <string name="performance_hud_clock_time">Heure</string>
+    <string name="performance_hud_cpu_temperature">Température CPU</string>
+    <string name="performance_hud_gpu_temperature">Température GPU</string>
     <string name="touchpad_help">Aide du pavé tactile</string>
     <string name="hide_controls_with_controller">Masquer les contrôles à l\'écran avec manette</string>
     <string name="hide_controls_with_controller_description">Masquer automatiquement les contrôles à l\'écran lorsqu\'un contrôleur physique est connecté</string>
@@ -530,6 +586,7 @@
     <string name="launch_steam_client_beta">Lancer le client Steam (Bêta)</string>
     <string name="steam_offline_mode">Mode Hors Ligne Steam</string>
     <string name="steam_offline_mode_description">Lancer les jeux Steam en mode hors ligne</string>
+    <string name="achievement_unlocked">Succès débloqué</string>
     <string name="launch_steam_client_description">Réduit les performances et ralentit le lancement\nPermet le jeu en ligne et corrige les problèmes de DRM et de contrôleur\nTous les jeux ne fonctionnent pas</string>
     <string name="allow_steam_updates">Autoriser les mises à jour Steam</string>
     <string name="allow_steam_updates_description">Met à jour Steam vers la dernière version. Réduit considérablement les performances.</string>
@@ -682,6 +739,10 @@
     <string name="drive_letter">Lettre de lecteur</string>
     <string name="no_available_drive_letters">Aucune lettre de lecteur disponible</string>
     <string name="startup_selection">Sélection de démarrage</string>
+    <string name="suspend_behavior">Comportement de suspension</string>
+    <string name="suspend_behavior_auto">Suspendre et reprendre automatiquement</string>
+    <string name="suspend_behavior_never">Ne jamais suspendre</string>
+    <string name="suspend_behavior_manual">Suspendre jusqu\'à l\'appui sur le bouton Reprendre (par défaut)</string>
     <string name="processor_affinity_32bit">Affinité du processeur (apps 32 bits)</string>
     <string name="executable_path">Chemin de l\'exécutable</string>
     <string name="executable_path_placeholder">ex. : chemin\\vers\\exe</string>
@@ -776,7 +837,7 @@
     <string name="settings_interface_hide_statusbar_title">Masquer la barre d\'état hors jeu</string>
     <string name="settings_interface_hide_statusbar_subtitle">Masquer la barre d\'état Android dans la liste de jeux, les paramètres, etc. L\'application redémarrera lors du changement.</string>
     <string name="settings_interface_icon_style">Style d\'icône</string>
-    <string name="settings_interface_wifi_only_title">Télécharger uniquement via Wi-Fi</string>
+    <string name="settings_interface_wifi_only_title">Télécharger uniquement via Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Empêcher les téléchargements sur données cellulaires</string>
     <string name="settings_interface_external_storage_title">Écrire sur le stockage externe</string>
     <string name="settings_interface_no_external_storage">Aucun stockage externe détecté</string>
@@ -971,6 +1032,7 @@
     <string name="best_config_applied_successfully">Configuration appliquée avec succès</string>
     <string name="best_config_known_config_invalid">Configuration connue invalide</string>
     <string name="best_config_no_config_available">Aucune meilleure configuration disponible pour ce jeu</string>
+    <string name="best_config_fetch_failed">Échec de la récupération de la configuration. Vérifiez votre connexion réseau.</string>
     <string name="best_config_apply_failed">Échec de l\'application de la configuration : %s</string>
     <string name="best_config_missing_content">%s manquant</string>
     <string name="import_config">Importer la configuration</string>
@@ -1210,6 +1272,17 @@
     <string name="manifest_content_untrusted">Le contenu n’est pas fiable et n’a pas été installé.</string>
     <string name="manifest_type_mismatch">Le contenu téléchargé ne correspond pas au type attendu.</string>
     <string name="manifest_glibc_not_supported">Les builds GLIBC ne sont pas pris en charge.</string>
+
+    <!-- Library: source not logged in splash -->
+    <string name="library_source_not_logged_in_steam">Connectez-vous pour accéder à votre bibliothèque Steam.</string>
+    <string name="library_source_not_logged_in_gog">Connectez-vous pour accéder à votre bibliothèque GOG.</string>
+    <string name="library_source_not_logged_in_epic">Connectez-vous pour accéder à votre bibliothèque Epic.</string>
+    <string name="library_source_not_logged_in_amazon">Connectez-vous pour accéder à votre bibliothèque Amazon.</string>
+    <string name="library_source_no_custom_games">Vous n\'avez ajouté aucun jeu personnalisé.</string>
+    <string name="download_failed_title">Échec du téléchargement</string>
+    <string name="download_failed_message">Un fichier requis n\'a pas pu être téléchargé. Veuillez vérifier votre connexion réseau et réessayer.</string>
+    <string name="install_failed_title">Échec de l\'installation</string>
+    <string name="install_failed_message">Les fichiers système n\'ont pas pu être installés. Veuillez réessayer. Si le problème persiste, essayez un autre réseau ou utilisez un VPN.</string>
 </resources>
 
 

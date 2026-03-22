@@ -52,8 +52,8 @@ android {
         minSdk = 26
         targetSdk = 28
 
-        versionCode = 12
-        versionName = "0.8.0"
+        versionCode = 13
+        versionName = "0.8.1"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -90,6 +90,8 @@ android {
             "it",      // Italian
             "ro",      // Română
             "pl",      // Polish
+            "ru",      // Russian
+            "ko",      // Korean
             // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
         )
 
@@ -210,8 +212,8 @@ dependencies {
     // JavaSteam
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
-        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-11-SNAPSHOT.jar"))
-        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0-11-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-12-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0-12-SNAPSHOT.jar"))
         implementation(libs.bundles.javasteam.dev)
     } else {
         implementation(libs.javasteam) {
@@ -222,6 +224,7 @@ dependencies {
         }
     }
     implementation(libs.spongycastle)
+    implementation(libs.okhttp.dnsoverhttps)
 
     // Split Modules
     implementation(libs.bundles.google)
