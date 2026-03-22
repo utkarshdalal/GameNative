@@ -4373,10 +4373,10 @@ private fun changeWineAudioDriver(audioDriver: String, container: Container, ima
         val rootDir = imageFs.rootDir
         val userRegFile = File(rootDir, ImageFs.WINEPREFIX + "/user.reg")
         WineRegistryEditor(userRegFile).use { registryEditor ->
-            if (audioDriver == "alsa") {
-                registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "alsa")
-            } else if (audioDriver == "pulseaudio") {
-                registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse")
+            when (audioDriver) {
+                "alsa" -> registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "alsa")
+                "pulseaudio" -> registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse")
+                "none" -> registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "")
             }
         }
         container.putExtra("audioDriver", audioDriver)
