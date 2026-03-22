@@ -517,6 +517,11 @@ fun QuickMenu(
     LaunchedEffect(isVisible) {
         if (isVisible) {
             selectedTab = QuickMenuTab.HUD
+        }
+    }
+
+    LaunchedEffect(isVisible, selectedTab) {
+        if (isVisible && selectedTab == QuickMenuTab.HUD) {
             repeat(3) {
                 try {
                     hudTabFocusRequester.requestFocus()
