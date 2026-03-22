@@ -462,7 +462,13 @@ private fun DxWrapperSection(state: ContainerConfigState) {
         val isD7VK = StringUtils.parseIdentifier(state.dxWrappers.getOrNull(state.dxWrapperIndex.value).orEmpty()) == "d7vk"
         if (isD7VK) {
             val availableVersions = state.d7vkVersionsAll.value
-            val selectedVersion = KeyValueSet(config.dxwrapperConfig).get("version").ifEmpty { DefaultVersion.D7VK }
+            val storedVersion = KeyValueSet(config.dxwrapperConfig).get("version")
+            if (availableVersions.isNotEmpty() && !availableVersions.contains(storedVersion)) {
+                val currentConfig = KeyValueSet(config.dxwrapperConfig)
+                currentConfig.put("version", DefaultVersion.D7VK)
+                state.config.value = config.copy(dxwrapperConfig = currentConfig.toString())
+            }
+            val selectedVersion = storedVersion.ifEmpty { DefaultVersion.D7VK }
             val selectedIndex = availableVersions.indexOf(selectedVersion).coerceAtLeast(0)
 
             SettingsListDropdown(
