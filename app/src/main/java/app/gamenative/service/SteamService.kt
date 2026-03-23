@@ -1958,7 +1958,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             return getAppInfoOf(appId)?.let { appInfo ->
                 appInfo.config.launch.filter { launchInfo ->
                     // since configOS was unreliable and configArch was even more unreliable
-                    launchInfo.executable.endsWith(".exe")
+                    launchInfo.executable.endsWith(".exe", ignoreCase = true)
                 }
             }.orEmpty()
         }
