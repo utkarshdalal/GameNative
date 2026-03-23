@@ -101,6 +101,7 @@ class PerformanceHudView(
     private val batteryMetric = createMetricViews(MetricId.BATTERY, 0xFFFFFFFF.toInt())
     private val powerMetric = createMetricViews(MetricId.POWER, 0xFF4DD0E1.toInt())
     private val runtimeMetric = createMetricViews(MetricId.RUNTIME, 0xFFA5D6A7.toInt())
+    private val batteryTempMetric = createMetricViews(MetricId.BATTERY_TEMP, 0xFFFFB74D.toInt())
     private val clockMetric = createMetricViews(MetricId.CLOCK, 0xFFFFCC80.toInt())
     private val cpuTempMetric = createMetricViews(MetricId.CPU_TEMP, 0xFFBDBDBD.toInt())
     private val gpuTempMetric = createMetricViews(MetricId.GPU_TEMP, 0xFFBDBDBD.toInt())
@@ -113,6 +114,7 @@ class PerformanceHudView(
         batteryMetric,
         powerMetric,
         runtimeMetric,
+        batteryTempMetric,
         clockMetric,
         cpuTempMetric,
         gpuTempMetric,
@@ -293,6 +295,7 @@ class PerformanceHudView(
                 String.format(Locale.US, "PWR %.1fW", watts)
             },
             runtime = batterySnapshot.runtimeText,
+            batteryTemp = batterySnapshot.temperatureC?.let { "BAT TEMP ${it}°C" },
             clock = readClockText(),
             cpuTemp = readCpuTempC()?.let { "CPU TEMP ${it}°C" },
             gpuTemp = readGpuTempC()?.let { "GPU TEMP ${it}°C" },
@@ -314,6 +317,10 @@ class PerformanceHudView(
         val currentMicroAmps = abs(batteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW))
         val chargeCounterMicroAmpHours = batteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
         val voltageMilliVolts = statusIntent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0)
+        val temperatureC = statusIntent
+            .getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0)
+            .takeIf { it > 0 }
+            ?.let { (it / 10f).roundToInt() }
 
         val powerWatts = if (currentMicroAmps > 0L && voltageMilliVolts > 0) {
             (currentMicroAmps.toDouble() * voltageMilliVolts.toDouble()) / 1_000_000_000.0
@@ -346,6 +353,7 @@ class PerformanceHudView(
             percent = percent,
             powerWatts = powerWatts,
             runtimeText = runtimeText,
+            temperatureC = temperatureC,
         )
     }
 
@@ -377,6 +385,7 @@ class PerformanceHudView(
         updateMetricText(batteryMetric, snapshot.battery)
         updateMetricText(powerMetric, snapshot.power)
         updateMetricText(runtimeMetric, snapshot.runtime)
+        updateMetricText(batteryTempMetric, snapshot.batteryTemp)
         updateMetricText(clockMetric, snapshot.clock)
         updateMetricText(cpuTempMetric, snapshot.cpuTemp)
         updateMetricText(gpuTempMetric, snapshot.gpuTemp)
@@ -397,6 +406,7 @@ class PerformanceHudView(
             addMetricIfVisible(batteryMetric, config.showBatteryLevel)
             addMetricIfVisible(powerMetric, config.showPowerDraw)
             addMetricIfVisible(runtimeMetric, config.showBatteryRuntime)
+            addMetricIfVisible(batteryTempMetric, config.showBatteryTemperature)
             addMetricIfVisible(clockMetric, config.showClockTime)
             addMetricIfVisible(cpuTempMetric, config.showCpuTemperature)
             addMetricIfVisible(gpuTempMetric, config.showGpuTemperature)

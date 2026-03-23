@@ -363,6 +363,13 @@ object PrefManager {
             setPref(PERFORMANCE_HUD_SHOW_BATTERY_RUNTIME, value)
         }
 
+    private val PERFORMANCE_HUD_SHOW_BATTERY_TEMPERATURE = booleanPreferencesKey("performance_hud_show_battery_temperature")
+    var performanceHudShowBatteryTemperature: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_BATTERY_TEMPERATURE, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_BATTERY_TEMPERATURE, value)
+        }
+
     private val PERFORMANCE_HUD_SHOW_CLOCK_TIME = booleanPreferencesKey("performance_hud_show_clock_time")
     var performanceHudShowClockTime: Boolean
         get() = getPref(PERFORMANCE_HUD_SHOW_CLOCK_TIME, false)

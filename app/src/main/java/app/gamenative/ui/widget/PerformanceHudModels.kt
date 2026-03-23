@@ -8,6 +8,7 @@ internal enum class MetricId {
     BATTERY,
     POWER,
     RUNTIME,
+    BATTERY_TEMP,
     CLOCK,
     CPU_TEMP,
     GPU_TEMP,
@@ -22,6 +23,7 @@ internal data class BatterySnapshot(
     val percent: Int? = null,
     val powerWatts: Double? = null,
     val runtimeText: String? = null,
+    val temperatureC: Int? = null,
 )
 
 internal data class HudSnapshot(
@@ -35,6 +37,7 @@ internal data class HudSnapshot(
     val battery: String?,
     val power: String?,
     val runtime: String?,
+    val batteryTemp: String?,
     val clock: String,
     val cpuTemp: String?,
     val gpuTemp: String?,

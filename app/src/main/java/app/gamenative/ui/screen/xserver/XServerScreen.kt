@@ -388,6 +388,7 @@ fun XServerScreen(
             showBatteryLevel = PrefManager.performanceHudShowBatteryLevel,
             showPowerDraw = PrefManager.performanceHudShowPowerDraw,
             showBatteryRuntime = PrefManager.performanceHudShowBatteryRuntime,
+            showBatteryTemperature = PrefManager.performanceHudShowBatteryTemperature,
             showClockTime = PrefManager.performanceHudShowClockTime,
             showCpuTemperature = PrefManager.performanceHudShowCpuTemperature,
             showGpuTemperature = PrefManager.performanceHudShowGpuTemperature,
@@ -420,6 +421,7 @@ fun XServerScreen(
         PrefManager.performanceHudShowBatteryLevel = config.showBatteryLevel
         PrefManager.performanceHudShowPowerDraw = config.showPowerDraw
         PrefManager.performanceHudShowBatteryRuntime = config.showBatteryRuntime
+        PrefManager.performanceHudShowBatteryTemperature = config.showBatteryTemperature
         PrefManager.performanceHudShowClockTime = config.showClockTime
         PrefManager.performanceHudShowCpuTemperature = config.showCpuTemperature
         PrefManager.performanceHudShowGpuTemperature = config.showGpuTemperature

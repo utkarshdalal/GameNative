@@ -282,6 +282,7 @@
     <string name="performance_hud_battery_level">Battery level</string>
     <string name="performance_hud_power_draw">Power draw</string>
     <string name="performance_hud_runtime_left">Runtime left</string>
+    <string name="performance_hud_battery_temperature">Battery temperature</string>
     <string name="performance_hud_clock_time">Clock time</string>
     <string name="performance_hud_cpu_temperature">CPU temperature</string>
     <string name="performance_hud_gpu_temperature">GPU temperature</string>
