@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -83,6 +84,7 @@ fun ScreenEffectsTabContent(
     renderer: GLRenderer,
     modifier: Modifier = Modifier,
     firstItemFocusRequester: FocusRequester? = null,
+    scrollState: ScrollState = rememberScrollState(),
 ) {
     val composer = renderer.effectComposer
     val initialColorEffect = composer.getEffect(ColorEffect::class.java)
@@ -148,7 +150,7 @@ fun ScreenEffectsTabContent(
 
     Column(
         modifier = modifier
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .focusGroup()
             .padding(vertical = 12.dp),
     ) {

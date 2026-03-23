@@ -269,6 +269,7 @@ fun QuickMenu(
     }
 
     val hudScrollState = rememberScrollState()
+    val effectsScrollState = rememberScrollState()
     val effectsTabFocusRequester = remember { FocusRequester() }
     val controllerScrollState = rememberScrollState()
     val hudTabFocusRequester = remember { FocusRequester() }
@@ -467,6 +468,7 @@ fun QuickMenu(
                                                 renderer = renderer,
                                                 modifier = Modifier.fillMaxSize(),
                                                 firstItemFocusRequester = effectsItemFocusRequester,
+                                                scrollState = effectsScrollState,
                                             )
                                         } else {
                                             Box(
