@@ -457,7 +457,7 @@
     <string name="fexcore_env_var_help__multiblock">Active la compilation de code multibloc. Peut causer une compilation JIT plus longue et des saccades.</string>
     <string name="fexcore_env_var_help__hostfeatures">Contrôle le forçage des fonctionnalités CPU.</string>
     <string name="fexcore_env_var_help__smalltscscale">Met à l\'échelle TSC sur les systèmes à basse fréquence.</string>
-    <string name="fexcore_env_var_help__smc_checks">Vérifications de code auto-modifiable.</string>
+    <string name="fexcore_env_var_help__smcchecks">Vérifications de code auto-modifiable.</string>
     <string name="fexcore_env_var_help__volatilemetadata">Utilise les métadonnées volatiles des fichiers PE pour TSO lorsqu\'elles sont disponibles.</string>
     <string name="fexcore_env_var_help__monohacks">Hacks spéciaux SMC + bloc JIT pour la détection Mono.</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">Masque le bit hyperviseur CPUID (utile pour les applications qui plantent avec).</string>

@@ -470,7 +470,7 @@
     <string name="fexcore_env_var_help__multiblock">멀티블록 코드 컴파일을 활성화합니다. JIT 컴파일 시간이 길어지고 끊김이 발생할 수 있습니다.</string>
     <string name="fexcore_env_var_help__hostfeatures">CPU 기능 강제를 제어합니다.</string>
     <string name="fexcore_env_var_help__smalltscscale">저주파수 시스템에서 TSC를 스케일링합니다.</string>
-    <string name="fexcore_env_var_help__smc_checks">자체 수정 코드 검사.</string>
+    <string name="fexcore_env_var_help__smcchecks">자체 수정 코드 검사.</string>
     <string name="fexcore_env_var_help__volatilemetadata">가능한 경우 TSO에 대한 PE 파일의 휘발성 메타데이터를 사용합니다.</string>
     <string name="fexcore_env_var_help__monohacks">Mono 감지를 위한 특수 SMC + JIT 블록 해킹.</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">CPUID 하이퍼바이저 비트를 숨깁니다(이것으로 충돌하는 앱에 유용).</string>

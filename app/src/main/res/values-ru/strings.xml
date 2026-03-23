@@ -411,7 +411,7 @@
     <string name="fexcore_env_var_help__monohacks">Специальные хаки SMC + JIT блока для определения Mono.</string>
     <string name="fexcore_env_var_help__multiblock">Включает многоблочную компиляцию кода. Может вызвать более длительную компиляцию JIT и заикание.</string>
     <string name="fexcore_env_var_help__smalltscscale">Масштабирует TSC на низкочастотных системах.</string>
-    <string name="fexcore_env_var_help__smc_checks">Проверки самомодифицирующегося кода.</string>
+    <string name="fexcore_env_var_help__smcchecks">Проверки самомодифицирующегося кода.</string>
     <string name="fexcore_env_var_help__tsoenabled">Включает операции TSO IR (требуется для многопоточных приложений).</string>
     <string name="fexcore_env_var_help__vectortsoenabled">Делает загрузки/сохранения векторов атомарными при включённом TSO.</string>
     <string name="fexcore_env_var_help__volatilemetadata">Использует летучие метаданные из PE файлов для TSO, когда они доступны.</string>

@@ -463,7 +463,7 @@
     <string name="fexcore_env_var_help__multiblock">Activează compilarea multiblock (poate cauza stutter)</string>
     <string name="fexcore_env_var_help__hostfeatures">Controlează forțarea capabilităților CPU</string>
     <string name="fexcore_env_var_help__smalltscscale">Scalează TSC pe sisteme cu frecvență redusă</string>
-    <string name="fexcore_env_var_help__smc_checks">Verificări pentru Self‑Modifying Code</string>
+    <string name="fexcore_env_var_help__smcchecks">Verificări pentru Self‑Modifying Code</string>
     <string name="fexcore_env_var_help__volatilemetadata">Folosește metadata volatilă din fișiere PE pentru TSO</string>
     <string name="fexcore_env_var_help__monohacks">Hack‑uri speciale SMC + JIT pentru detectarea Mono</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">Ascunde bitul CPUID hypervisor (util pentru aplicații care crash‑uiesc cu el)</string>

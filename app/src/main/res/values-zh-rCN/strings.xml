@@ -456,7 +456,7 @@
     <string name="fexcore_env_var_help__multiblock">启用多区块代码编译，可能导致JIT编译时间延长及画面卡顿</string>
     <string name="fexcore_env_var_help__hostfeatures">控制 CPU 功能强制执行</string>
     <string name="fexcore_env_var_help__smalltscscale">调整低频系统中TSC的系数</string>
-    <string name="fexcore_env_var_help__smc_checks">自我修改代码检查</string>
+    <string name="fexcore_env_var_help__smcchecks">自我修改代码检查</string>
     <string name="fexcore_env_var_help__volatilemetadata">在可用的情况下，使用PE文件中的易失性元数据进行TSO作业</string>
     <string name="fexcore_env_var_help__monohacks">针对 Mono 应用程序检测的特殊处理（SMC + JIT block hacks）</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">隐藏 CPUID 虚拟机管理器位（适用于因该位导致崩溃的应用程序）</string>
