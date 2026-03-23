@@ -356,8 +356,12 @@ class LibraryViewModel @Inject constructor(
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
 
+            // On cold start, render cached Steam rows first and defer the install-directory scan
+            // so the library can appear immediately while Steam reconnects.
+            val deferSteamInstallScan = isFirstLoad && !SteamService.isLoggedIn && appList.isNotEmpty()
+
             // Fetch download directory apps once on IO thread and cache as a HashSet for O(1) lookups
-            val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
+            val downloadDirectoryApps = if (deferSteamInstallScan) emptyList() else DownloadService.getDownloadDirectoryApps()
             val downloadDirectorySet = downloadDirectoryApps.toHashSet()
 
             fun passesCompatibleFilter(gameName: String): Boolean {
@@ -447,6 +451,66 @@ class LibraryViewModel @Inject constructor(
                     ),
                     isInstalled = isInstalled,
                 )
+            }
+
+            // Fast path: on cold start in the Steam tab, render cached Steam rows immediately
+            // and defer the rest of the multi-source library work to a follow-up pass.
+            if (deferSteamInstallScan && currentState.currentTab == LibraryTab.STEAM) {
+                val steamOnlyComparator: Comparator<LibraryEntry> = when (currentState.currentSortOption) {
+                    SortOption.INSTALLED_FIRST -> compareBy<LibraryEntry> { entry ->
+                        if (entry.isInstalled) 0 else 1
+                    }.thenBy { it.item.name.lowercase() }
+
+                    SortOption.NAME_ASC -> compareBy { it.item.name.lowercase() }
+
+                    SortOption.NAME_DESC -> compareByDescending { it.item.name.lowercase() }
+
+                    SortOption.RECENTLY_PLAYED -> compareBy<LibraryEntry> { entry ->
+                        if (entry.isInstalled) 0 else 1
+                    }.thenBy { it.item.name.lowercase() }
+
+                    SortOption.SIZE_SMALLEST -> compareBy<LibraryEntry> { it.item.sizeBytes }
+                        .thenBy { it.item.name.lowercase() }
+
+                    SortOption.SIZE_LARGEST -> compareByDescending<LibraryEntry> { it.item.sizeBytes }
+                        .thenBy { it.item.name.lowercase() }
+                }
+
+                val steamOnlyCombined = steamEntries
+                    .sortedWith(steamOnlyComparator)
+                    .mapIndexed { idx, entry ->
+                        entry.item.copy(index = idx, isInstalled = entry.isInstalled)
+                    }
+
+                val totalFound = steamOnlyCombined.size
+                val pageSize = PrefManager.itemsPerPage
+                paginationCurrentPage = paginationPage
+                lastPageInCurrentFilter = if (totalFound == 0) 0 else (totalFound - 1) / pageSize
+                val endIndex = min((paginationPage + 1) * pageSize, totalFound)
+                val pagedList = steamOnlyCombined.take(endIndex)
+
+                PrefManager.steamGamesCount = steamFilteredBeforeCompatibility.size
+                if (isFirstLoad) {
+                    isFirstLoad = false
+                }
+
+                fetchCompatibilityForPage(pagedList.map { it.name })
+
+                _state.update {
+                    it.copy(
+                        appInfoList = pagedList,
+                        currentPaginationPage = paginationPage + 1,
+                        lastPaginationPage = lastPageInCurrentFilter + 1,
+                        totalAppsInFilter = totalFound,
+                        isLoading = false,
+                        steamCount = steamEntries.size,
+                    )
+                }
+
+                viewModelScope.launch(Dispatchers.IO) {
+                    onFilterApps(paginationPage).join()
+                }
+                return@launch
             }
 
             // Scan Custom Games roots and create UI items (filtered by search query inside scanner)
@@ -704,6 +768,13 @@ class LibraryViewModel @Inject constructor(
                     amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
                     localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
                 )
+            }
+
+            // Follow up with a full pass once the initial cached render is on screen.
+            if (deferSteamInstallScan) {
+                viewModelScope.launch(Dispatchers.IO) {
+                    onFilterApps(paginationPage).join()
+                }
             }
         }
     }
