@@ -272,6 +272,10 @@ object SteamAutoCloud {
             }
         }
 
+        val normalizeCloudPlaceholderPath: (String) -> String = { path ->
+            path.replace(Regex("^(%\\w+%)[/\\\\]+"), "$1")
+        }
+
         val fileChangeListToUserFiles: (AppFileChangeList) -> List<UserFileInfo> = { appFileListChange ->
             val pathTypePairs = getPathTypePairs(appFileListChange)
 
@@ -283,13 +287,38 @@ object SteamAutoCloud {
                         PathType.GameInstall
                     },
                     path = if (it.pathPrefixIndex < pathTypePairs.size) {
-                        appFileListChange.pathPrefixes[it.pathPrefixIndex]
+                        val rawPrefix = appFileListChange.pathPrefixes[it.pathPrefixIndex]
+                        val rootPlaceholder = pathTypePairs[it.pathPrefixIndex].first
+                        normalizeCloudPlaceholderPath(rawPrefix.removePrefix(rootPlaceholder)).trimStart('/', '\\')
                     } else {
                         ""
                     },
                     filename = it.filename,
                     timestamp = it.timestamp.time,
                     sha = it.shaFile,
+                )
+            }
+        }
+
+        val fileChangeListToComparableUserFiles: (AppFileChangeList) -> List<UserFileInfo> = { appFileListChange ->
+            appFileListChange.files.map { file ->
+                val normalizedPrefix = normalizeCloudPlaceholderPath(getFilePrefix(file, appFileListChange))
+                val rootPlaceholder = findPlaceholderWithin(normalizedPrefix).firstOrNull()?.value
+
+                UserFileInfo(
+                    root = if (rootPlaceholder != null) {
+                        PathType.from(rootPlaceholder)
+                    } else {
+                        PathType.GameInstall
+                    },
+                    path = if (rootPlaceholder != null) {
+                        normalizedPrefix.removePrefix(rootPlaceholder).trimStart('/', '\\')
+                    } else {
+                        ""
+                    },
+                    filename = file.filename,
+                    timestamp = file.timestamp.time,
+                    sha = file.shaFile,
                 )
             }
         }
@@ -658,11 +687,11 @@ object SteamAutoCloud {
                 allLocalUserFiles = localUserFilesMap.map { it.value }.flatten()
             }.inWholeMicroseconds
 
-            val downloadUserFiles: (CoroutineScope) -> Deferred<PostSyncInfo?> = { parentScope ->
+            val downloadUserFiles: (AppFileChangeList, CoroutineScope) -> Deferred<PostSyncInfo?> = { fileList, parentScope ->
                 parentScope.async {
                     Timber.i("Downloading cloud user files")
 
-                    val remoteUserFiles = fileChangeListToUserFiles(appFileListChange)
+                    val remoteUserFiles = fileChangeListToUserFiles(fileList)
                     val filesDiff = getFilesDiff(remoteUserFiles, allLocalUserFiles).second
                     microsecDeleteFiles = measureTime {
                         var totalFilesDeleted = 0
@@ -676,7 +705,7 @@ object SteamAutoCloud {
                     }.inWholeMicroseconds
 
                     microsecDownloadFiles = measureTime {
-                        val downloadInfo = downloadFiles(appFileListChange, parentScope).await()
+                        val downloadInfo = downloadFiles(fileList, parentScope).await()
                         filesDownloaded = downloadInfo.filesDownloaded
                         bytesDownloaded = downloadInfo.bytesDownloaded
                     }.inWholeMicroseconds
@@ -685,7 +714,7 @@ object SteamAutoCloud {
                     val hasLocalChanges: Boolean
                     microsecValidateState = measureTime {
                         updatedLocalFiles = getLocalUserFilesAsPrefixMap()
-                        hasLocalChanges = hasHashConflicts(updatedLocalFiles, appFileListChange)
+                        hasLocalChanges = hasHashConflicts(updatedLocalFiles, fileList)
                         filesManaged = updatedLocalFiles.size
                     }.inWholeMicroseconds
 
@@ -710,7 +739,7 @@ object SteamAutoCloud {
                     with(steamInstance) {
                         db.withTransaction {
                             fileChangeListsDao.insert(appInfo.id, updatedLocalFiles.map { it.value }.flatten())
-                            changeNumbersDao.insert(appInfo.id, cloudAppChangeNumber)
+                            changeNumbersDao.insert(appInfo.id, fileList.currentChangeNumber)
                         }
                     }
 
@@ -718,15 +747,9 @@ object SteamAutoCloud {
                 }
             }
 
-            val uploadUserFiles: (CoroutineScope) -> Deferred<Unit> = { parentScope ->
+            val uploadUserFiles: (CoroutineScope, FileChanges) -> Deferred<Unit> = { parentScope, fileChanges ->
                 parentScope.async {
                     Timber.i("Uploading local user files")
-
-                    val fileChanges = steamInstance.fileChangeListsDao.getByAppId(appInfo.id)!!.let {
-                        val result = getFilesDiff(allLocalUserFiles, it.userFileInfo)
-
-                        result.second
-                    }
 
                     uploadsRequired = fileChanges.filesCreated.isNotEmpty() || fileChanges.filesModified.isNotEmpty()
 
@@ -762,10 +785,13 @@ object SteamAutoCloud {
                 // on a separate device and they must choose between the two
                 microsecAcLaunch = measureTime {
                     var hasLocalChanges: Boolean
+                    var localFileChangesAgainstCache: FileChanges? = null
 
                     microsecAcPrepUserFiles = measureTime {
                         hasLocalChanges = steamInstance.fileChangeListsDao.getByAppId(appInfo.id)?.let {
-                            getFilesDiff(allLocalUserFiles, it.userFileInfo).first
+                            val result = getFilesDiff(allLocalUserFiles, it.userFileInfo)
+                            localFileChangesAgainstCache = result.second
+                            result.first
                         } == true
                     }.inWholeMicroseconds
 
@@ -777,7 +803,7 @@ object SteamAutoCloud {
 
                         Timber.i("No local changes but new cloud user files")
 
-                        downloadUserFiles(parentScope).await()?.let {
+                        downloadUserFiles(appFileListChange, parentScope).await()?.let {
                             return@async it
                         }
                     } else {
@@ -786,12 +812,15 @@ object SteamAutoCloud {
                         when (preferredSave) {
                             SaveLocation.Local -> {
                                 // overwrite remote save with the local one
-                                uploadUserFiles(parentScope).await()
+                                uploadUserFiles(
+                                    parentScope,
+                                    localFileChangesAgainstCache ?: FileChanges(emptyList(), emptyList(), emptyList()),
+                                ).await()
                             }
 
                             SaveLocation.Remote -> {
                                 // overwrite local save with the remote one
-                                downloadUserFiles(parentScope).await()?.let {
+                                downloadUserFiles(appFileListChange, parentScope).await()?.let {
                                     return@async it
                                 }
                             }
@@ -809,19 +838,17 @@ object SteamAutoCloud {
                 // if they do not then that means we have new user files locally that
                 // need uploading
                 microsecAcExit = measureTime {
-                    // var fileChanges: FileChanges? = null
-
-                    val hasLocalChanges = steamInstance.fileChangeListsDao.getByAppId(appInfo.id)
+                    val localFileChangesAgainstCache = steamInstance.fileChangeListsDao.getByAppId(appInfo.id)
                         ?.let {
-                            val result = getFilesDiff(allLocalUserFiles, it.userFileInfo)
-                            // fileChanges = result.second
-                            result.first
-                        } == true
+                            getFilesDiff(allLocalUserFiles, it.userFileInfo)
+                        }
+
+                    val hasLocalChanges = localFileChangesAgainstCache?.first == true
 
                     if (hasLocalChanges) {
                         Timber.i("Found local changes and no new cloud user files")
 
-                        uploadUserFiles(parentScope).await()
+                        uploadUserFiles(parentScope, localFileChangesAgainstCache!!.second).await()
                     } else {
                         Timber.i("No local changes and no new cloud user files, doing nothing...")
 
@@ -829,14 +856,50 @@ object SteamAutoCloud {
                     }
                 }.inWholeMicroseconds
             } else {
-                // our last scenario is if the change number we have is greater than
-                // the change number from the cloud. This scenario should not happen, I
-                // believe, since we get the new app change number after having downloaded
-                // or uploaded from/to the cloud, so we should always be either behind or
-                // on par with the cloud change number, never ahead
-                Timber.e("Local change number greater than cloud $localAppChangeNumber > $cloudAppChangeNumber")
+                Timber.w(
+                    "Local change number greater than cloud $localAppChangeNumber > $cloudAppChangeNumber. " +
+                        "Recovering against the latest full cloud state instead of failing.",
+                )
 
-                syncResult = SyncResult.UnknownFail
+                val recoveredAppFileChangeList = steamCloud.getAppFileListChange(appInfo.id, 0).await()
+                val recoveredCloudAppChangeNumber = recoveredAppFileChangeList.currentChangeNumber
+                recoveredAppFileChangeList.printFileChangeList(appInfo)
+
+                val remoteUserFiles = fileChangeListToComparableUserFiles(recoveredAppFileChangeList)
+                val localVsCloud = getFilesDiff(allLocalUserFiles, remoteUserFiles)
+
+                if (!localVsCloud.first) {
+                    Timber.i("Recovered cloud state matches local files; repairing cached sync metadata")
+
+                    with(steamInstance) {
+                        db.withTransaction {
+                            fileChangeListsDao.insert(appInfo.id, allLocalUserFiles)
+                            changeNumbersDao.insert(appInfo.id, recoveredCloudAppChangeNumber)
+                        }
+                    }
+
+                    syncResult = SyncResult.UpToDate
+                } else {
+                    Timber.i("Recovered cloud state differs from local files after local-ahead detection")
+
+                    when (preferredSave) {
+                        SaveLocation.Local -> {
+                            uploadUserFiles(parentScope, localVsCloud.second).await()
+                        }
+
+                        SaveLocation.Remote -> {
+                            downloadUserFiles(recoveredAppFileChangeList, parentScope).await()?.let {
+                                return@async it
+                            }
+                        }
+
+                        SaveLocation.None -> {
+                            syncResult = SyncResult.Conflict
+                            remoteTimestamp = recoveredAppFileChangeList.files.map { it.timestamp.time }.maxOrNull() ?: 0L
+                            localTimestamp = allLocalUserFiles.map { it.timestamp }.maxOrNull() ?: 0L
+                        }
+                    }
+                }
             }
         }.inWholeMicroseconds
 

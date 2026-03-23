@@ -40,6 +40,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.test.runBlockingTest
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -629,6 +630,207 @@ class SteamAutoCloudTest {
     }
 
     @Test
+    fun testRecoversWhenLocalChangeNumberAheadAndLocalMatchesCloud() = runBlocking {
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        saveFilesDir.listFiles()?.forEach { it.delete() }
+
+        val sharedContent = "matching save data".toByteArray()
+        val localFile = File(saveFilesDir, "SaveData_0.sav")
+        localFile.writeBytes(sharedContent)
+        val localSha = CryptoHelper.shaHash(sharedContent)
+
+        runBlocking {
+            db.appChangeNumbersDao().deleteByAppId(steamAppId)
+            db.appFileChangeListsDao().deleteByAppId(steamAppId)
+            db.appChangeNumbersDao().insert(app.gamenative.data.ChangeNumbers(steamAppId, 10))
+            db.appFileChangeListsDao().insert(
+                steamAppId,
+                listOf(
+                    app.gamenative.data.UserFileInfo(
+                        root = PathType.WinMyDocuments,
+                        path = "My Games/TestGame/Steam/76561198025127569",
+                        filename = "SaveGames/SaveData_0.sav",
+                        timestamp = localFile.lastModified(),
+                        sha = localSha,
+                    ),
+                ),
+            )
+        }
+
+        val pathPrefixes = listOf("%WinMyDocuments%My Games/TestGame/Steam/76561198025127569")
+        val cloudFile = mockCloudFileInfo("SaveGames/SaveData_0.sav", sharedContent, timestamp = Date(localFile.lastModified()))
+        val recoveredFileList = mockAppFileChangeList(5, pathPrefixes, listOf(cloudFile))
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } answers {
+            CompletableFuture.completedFuture(recoveredFileList)
+        }
+
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = winMyDocumentsPrefixToPath(),
+        ).await()
+
+        assertNotNull("Result should not be null", result)
+        assertEquals("Matching local/cloud files should repair to UpToDate", SyncResult.UpToDate, result!!.syncResult)
+
+        val repairedChangeNumber = db.appChangeNumbersDao().getByAppId(steamAppId)
+        assertNotNull("Change number should exist", repairedChangeNumber)
+        assertEquals("Change number should be repaired to cloud", 5L, repairedChangeNumber!!.changeNumber)
+
+        val storedFiles = db.appFileChangeListsDao().getByAppId(steamAppId)?.userFileInfo ?: emptyList()
+        assertEquals("Recovered file list should be persisted", 1, storedFiles.size)
+        assertEquals("Recovered file should be cached", "SaveGames/SaveData_0.sav", storedFiles.first().filename)
+
+        verify(exactly = 1) { mockSteamCloud.getAppFileListChange(steamAppId, 10L, any()) }
+        verify(exactly = 1) { mockSteamCloud.getAppFileListChange(steamAppId, 0L, any()) }
+    }
+
+    @Test
+    fun testLocalChangeNumberAheadReturnsConflictWhenLocalDiffersFromRecoveredCloud() = runBlocking {
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        saveFilesDir.listFiles()?.forEach { it.delete() }
+
+        val localContent = "new local save".toByteArray()
+        val localFile = File(saveFilesDir, "SaveData_0.sav")
+        localFile.writeBytes(localContent)
+        val localSha = CryptoHelper.shaHash(localContent)
+
+        runBlocking {
+            db.appChangeNumbersDao().deleteByAppId(steamAppId)
+            db.appFileChangeListsDao().deleteByAppId(steamAppId)
+            db.appChangeNumbersDao().insert(app.gamenative.data.ChangeNumbers(steamAppId, 10))
+            db.appFileChangeListsDao().insert(
+                steamAppId,
+                listOf(
+                    app.gamenative.data.UserFileInfo(
+                        root = PathType.WinMyDocuments,
+                        path = "My Games/TestGame/Steam/76561198025127569",
+                        filename = "SaveGames/SaveData_0.sav",
+                        timestamp = localFile.lastModified(),
+                        sha = localSha,
+                    ),
+                ),
+            )
+        }
+
+        val remoteContent = "older remote save".toByteArray()
+        val pathPrefixes = listOf("%WinMyDocuments%My Games/TestGame/Steam/76561198025127569")
+        val cloudFile = mockCloudFileInfo("SaveGames/SaveData_0.sav", remoteContent, timestamp = Date(System.currentTimeMillis() - 60_000))
+        val recoveredFileList = mockAppFileChangeList(5, pathPrefixes, listOf(cloudFile))
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } answers {
+            CompletableFuture.completedFuture(recoveredFileList)
+        }
+
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = winMyDocumentsPrefixToPath(),
+        ).await()
+
+        assertNotNull("Result should not be null", result)
+        assertEquals("Diverged local/cloud files should return Conflict", SyncResult.Conflict, result!!.syncResult)
+        assertTrue("Local timestamp should be populated", result.localTimestamp > 0)
+        assertTrue("Remote timestamp should be populated", result.remoteTimestamp > 0)
+    }
+
+    @Test
+    fun testLocalChangeNumberAheadCanUploadLocalSaveAgainstRecoveredCloudState() = runBlocking {
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        saveFilesDir.listFiles()?.forEach { it.delete() }
+
+        val localContent = "new local save".toByteArray()
+        val localFile = File(saveFilesDir, "SaveData_0.sav")
+        localFile.writeBytes(localContent)
+        val localSha = CryptoHelper.shaHash(localContent)
+
+        runBlocking {
+            db.appChangeNumbersDao().deleteByAppId(steamAppId)
+            db.appFileChangeListsDao().deleteByAppId(steamAppId)
+            db.appChangeNumbersDao().insert(app.gamenative.data.ChangeNumbers(steamAppId, 10))
+            db.appFileChangeListsDao().insert(
+                steamAppId,
+                listOf(
+                    app.gamenative.data.UserFileInfo(
+                        root = PathType.WinMyDocuments,
+                        path = "My Games/TestGame/Steam/76561198025127569",
+                        filename = "SaveGames/SaveData_0.sav",
+                        timestamp = localFile.lastModified(),
+                        sha = localSha,
+                    ),
+                ),
+            )
+        }
+
+        val remoteContent = "older remote save".toByteArray()
+        val pathPrefixes = listOf("%WinMyDocuments%My Games/TestGame/Steam/76561198025127569")
+        val cloudFile = mockCloudFileInfo("SaveGames/SaveData_0.sav", remoteContent)
+        val recoveredFileList = mockAppFileChangeList(5, pathPrefixes, listOf(cloudFile))
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } answers {
+            CompletableFuture.completedFuture(recoveredFileList)
+        }
+
+        val mockUploadBatchResponse = mock<`in`.dragonbra.javasteam.steam.handlers.steamcloud.AppUploadBatchResponse>()
+        whenever(mockUploadBatchResponse.batchID).thenReturn(99)
+        whenever(mockUploadBatchResponse.appChangeNumber).thenReturn(6)
+
+        val capturedFilesToUpload = mutableListOf<List<String>>()
+        every {
+            mockSteamCloud.beginAppUploadBatch(any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            for (arg in args) {
+                if (arg is List<*> && arg.all { it is String }) {
+                    @Suppress("UNCHECKED_CAST")
+                    capturedFilesToUpload.add(arg as List<String>)
+                }
+            }
+            CompletableFuture.completedFuture(mockUploadBatchResponse)
+        }
+
+        val mockFileUploadInfo = mock<`in`.dragonbra.javasteam.steam.handlers.steamcloud.FileUploadInfo>()
+        whenever(mockFileUploadInfo.blockRequests).thenReturn(emptyList())
+        every { mockSteamCloud.beginFileUpload(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
+            CompletableFuture.completedFuture(mockFileUploadInfo)
+        every { mockSteamCloud.commitFileUpload(any(), any(), any(), any(), any()) } returns
+            CompletableFuture.completedFuture(true)
+        every { mockSteamCloud.completeAppUploadBatch(any(), any(), any(), any()) } returns
+            CompletableFuture.completedFuture(Unit)
+
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.Local,
+            prefixToPath = winMyDocumentsPrefixToPath(),
+        ).await()
+
+        assertNotNull("Result should not be null", result)
+        assertEquals("Choosing local should upload instead of failing", SyncResult.Success, result!!.syncResult)
+        assertTrue("Uploads should be required", result.uploadsRequired)
+        assertTrue("Uploads should complete", result.uploadsCompleted)
+        assertEquals("Only the modified file should upload", 1, result.filesUploaded)
+
+        val repairedChangeNumber = db.appChangeNumbersDao().getByAppId(steamAppId)
+        assertNotNull("Change number should exist", repairedChangeNumber)
+        assertEquals("Upload should advance change number", 6L, repairedChangeNumber!!.changeNumber)
+
+        val uploadedFiles = capturedFilesToUpload.flatten()
+        assertTrue(
+            "Recovered upload path should include SaveData_0.sav",
+            uploadedFiles.any { it.contains("SaveData_0.sav") },
+        )
+    }
+
+    @Test
     fun testPrefixResolution() = runBlocking {
         val testApp = db.steamAppDao().findApp(steamAppId)!!
 
@@ -1155,5 +1357,52 @@ class SteamAutoCloudTest {
         assertNotNull("Change number should exist", changeNumber)
         assertEquals("Change number should be updated", (matchingChangeNumber + 1).toLong(), changeNumber!!.changeNumber)
     }
+
+    private fun winMyDocumentsPrefixToPath(): (String) -> String = { prefix ->
+        when {
+            prefix == "WinMyDocuments" -> {
+                val imageFs = ImageFs.find(context)
+                val wineprefix = File(imageFs.wineprefix)
+                val dosDevices = File(wineprefix, "dosdevices")
+                val cDrive = File(dosDevices, "c:")
+                val users = File(cDrive, "users")
+                val xuser = File(users, "xuser")
+                val documents = File(xuser, "Documents")
+                documents.absolutePath
+            }
+            else -> tempDir.absolutePath
+        }
+    }
+
+    private fun mockCloudFileInfo(
+        filename: String,
+        content: ByteArray,
+        pathPrefixIndex: Int = 0,
+        timestamp: Date = Date(),
+    ): AppFileInfo {
+        val cloudFile = mock<AppFileInfo>()
+        whenever(cloudFile.filename).thenReturn(filename)
+        whenever(cloudFile.shaFile).thenReturn(CryptoHelper.shaHash(content))
+        whenever(cloudFile.pathPrefixIndex).thenReturn(pathPrefixIndex)
+        whenever(cloudFile.timestamp).thenReturn(timestamp)
+        whenever(cloudFile.rawFileSize).thenReturn(content.size)
+        return cloudFile
+    }
+
+    private fun mockAppFileChangeList(
+        currentChangeNumber: Long,
+        pathPrefixes: List<String>,
+        files: List<AppFileInfo>,
+    ): AppFileChangeList {
+        val fileChangeList = mock<AppFileChangeList>()
+        whenever(fileChangeList.currentChangeNumber).thenReturn(currentChangeNumber)
+        whenever(fileChangeList.isOnlyDelta).thenReturn(false)
+        whenever(fileChangeList.appBuildIDHwm).thenReturn(0)
+        whenever(fileChangeList.pathPrefixes).thenReturn(pathPrefixes)
+        whenever(fileChangeList.machineNames).thenReturn(emptyList())
+        whenever(fileChangeList.files).thenReturn(files)
+        return fileChangeList
+    }
 }
+
 
