@@ -553,6 +553,7 @@ class GOGService : Service() {
         // Initialize notification helper for foreground service
         notificationHelper = NotificationHelper(applicationContext)
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
+        PluviaApp.events.emit(AndroidEvent.ServiceReady)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

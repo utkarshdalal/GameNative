@@ -182,7 +182,9 @@
     <string name="game_not_installed_message">%s no está instalado. Instala el juego antes de iniciarlo.</string>
     <string name="intent_launch_failed">No se pudo iniciar el juego: acceso directo de inicio no válido</string>
     <string name="intent_launch_steam_pending">El juego se iniciará cuando Steam se conecte</string>
+    <string name="intent_launch_service_pending">El juego se iniciará cuando el servicio esté listo</string>
     <string name="intent_launch_steam_login_failed">Error de inicio de sesión en Steam — lanzamiento del juego cancelado</string>
+    <string name="intent_launch_service_timeout">El servicio del juego no pudo iniciarse — lanzamiento del juego cancelado</string>
     <string name="game_executable_not_found_title">No se puede iniciar</string>
     <string name="game_executable_not_found">No se pudo seleccionar automáticamente el ejecutable. Establece la ruta en los ajustes del contenedor.</string>
     <string name="save_container_settings_title">Guardar configuración del contenedor</string>

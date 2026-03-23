@@ -65,6 +65,7 @@ class MainViewModel @Inject constructor(
         data class SteamDisconnected(val isTerminal: Boolean) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
         data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
+        data object ServiceReady : MainUiEvent()
     }
 
     private val _state = MutableStateFlow(MainState())
@@ -198,6 +199,12 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    private val onServiceReady: (AndroidEvent.ServiceReady) -> Unit = {
+        viewModelScope.launch {
+            _uiEvent.send(MainUiEvent.ServiceReady)
+        }
+    }
+
     private val onSetBootingSplashText: (AndroidEvent.SetBootingSplashText) -> Unit = {
         setBootingSplashText(it.text)
         setShowBootingSplash(true)
@@ -243,6 +250,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.on<SteamEvent.LogonStarted, Unit>(onLoggingIn)
         PluviaApp.events.on<SteamEvent.LogonEnded, Unit>(onLogonEnded)
         PluviaApp.events.on<SteamEvent.LoggedOut, Unit>(onLoggedOut)
+        PluviaApp.events.on<AndroidEvent.ServiceReady, Unit>(onServiceReady)
 
         // Collect theme preferences
         viewModelScope.launch {
@@ -268,6 +276,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.off<SteamEvent.LogonStarted, Unit>(onLoggingIn)
         PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogonEnded)
         PluviaApp.events.off<SteamEvent.LoggedOut, Unit>(onLoggedOut)
+        PluviaApp.events.off<AndroidEvent.ServiceReady, Unit>(onServiceReady)
         connectionTimeoutJob?.cancel()
     }
 

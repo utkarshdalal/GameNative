@@ -182,7 +182,9 @@
     <string name="game_not_installed_message">%s is not installed. Please install the game first before launching.</string>
     <string name="intent_launch_failed">Could not launch game: invalid launch shortcut</string>
     <string name="intent_launch_steam_pending">Game will launch when Steam connects</string>
+    <string name="intent_launch_service_pending">Game will launch when service is ready</string>
     <string name="intent_launch_steam_login_failed">Steam login failed — game launch cancelled</string>
+    <string name="intent_launch_service_timeout">Game service failed to start — game launch cancelled</string>
     <string name="game_executable_not_found_title">Cannot Launch</string>
     <string name="game_executable_not_found">The executable could not be auto-selected. Please set the executable path in container settings.</string>
     <string name="save_container_settings_title">Save Container Configuration?</string>

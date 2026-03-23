@@ -163,7 +163,9 @@
     <string name="game_not_installed_message">Гра %s не інстальована. Будь ласка, інсталюйте гру перед запуском.</string>
     <string name="intent_launch_failed">Не вдалося запустити гру: недійсний ярлик запуску</string>
     <string name="intent_launch_steam_pending">Гра запуститься після підключення до Steam</string>
+    <string name="intent_launch_service_pending">Гра запуститься після запуску сервісу</string>
     <string name="intent_launch_steam_login_failed">Помилка входу в Steam — запуск гри скасовано</string>
+    <string name="intent_launch_service_timeout">Не вдалося запустити ігровий сервіс — запуск гри скасовано</string>
     <string name="game_executable_not_found_title">Неможливо запустити</string>
     <string name="game_executable_not_found">Виконуваний файл не вдалося вибрати автоматично. Вкажіть шлях до виконуваного файлу в налаштуваннях контейнера.</string>
     <string name="save_container_settings_title">Зберегти налаштування контейнера?</string>

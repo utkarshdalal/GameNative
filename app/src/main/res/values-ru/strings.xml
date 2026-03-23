@@ -431,7 +431,9 @@
     <string name="game_not_installed_message">%s не установлена. Пожалуйста, установите игру перед запуском.</string>
     <string name="intent_launch_failed">Не удалось запустить игру: недействительный ярлык запуска</string>
     <string name="intent_launch_steam_pending">Игра запустится после подключения к Steam</string>
+    <string name="intent_launch_service_pending">Игра запустится после запуска сервиса</string>
     <string name="intent_launch_steam_login_failed">Ошибка входа в Steam — запуск игры отменён</string>
+    <string name="intent_launch_service_timeout">Не удалось запустить игровой сервис — запуск игры отменён</string>
     <string name="game_not_installed_title">Игра не установлена</string>
     <string name="game_options_cloud_saves">Облачные сохранения</string>
     <string name="game_options_container">Контейнер</string>

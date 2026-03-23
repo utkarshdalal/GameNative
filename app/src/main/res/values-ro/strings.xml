@@ -169,7 +169,9 @@
     <string name="game_not_installed_message">%s nu este instalat. Instalează jocul înainte de a-l porni.</string>
     <string name="intent_launch_failed">Nu s-a putut lansa jocul: comandă rapidă de lansare invalidă</string>
     <string name="intent_launch_steam_pending">Jocul va fi lansat când Steam se conectează</string>
+    <string name="intent_launch_service_pending">Jocul va fi lansat când serviciul este pregătit</string>
     <string name="intent_launch_steam_login_failed">Autentificarea Steam a eșuat — lansarea jocului a fost anulată</string>
+    <string name="intent_launch_service_timeout">Serviciul de joc nu a pornit — lansarea jocului a fost anulată</string>
     <string name="game_executable_not_found_title">Nu se poate porni</string>
     <string name="game_executable_not_found">Executabilul nu a putut fi selectat automat. Setează calea executabilului în setările containerului.</string>
     <string name="save_container_settings_title">Salvezi configurația containerului?</string>

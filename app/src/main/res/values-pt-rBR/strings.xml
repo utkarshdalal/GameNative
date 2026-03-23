@@ -95,7 +95,9 @@
     <string name="game_not_installed_message">%s não está instalado. Por favor instale o jogo primeiro antes de iniciar.</string>
     <string name="intent_launch_failed">Não foi possível iniciar o jogo: atalho de inicialização inválido</string>
     <string name="intent_launch_steam_pending">O jogo será iniciado quando o Steam se conectar</string>
+    <string name="intent_launch_service_pending">O jogo será iniciado quando o serviço estiver pronto</string>
     <string name="intent_launch_steam_login_failed">Falha no login do Steam — inicialização do jogo cancelada</string>
+    <string name="intent_launch_service_timeout">Falha ao iniciar o serviço do jogo — inicialização do jogo cancelada</string>
     <string name="game_executable_not_found_title">Não é possível iniciar</string>
     <string name="game_executable_not_found">O executável não pôde ser selecionado automaticamente. Defina o caminho do executável nas configurações do contêiner.</string>
     <string name="save_container_settings_title">Salvar configuração do contêiner?</string>

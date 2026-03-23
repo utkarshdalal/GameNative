@@ -166,7 +166,9 @@
     <string name="game_not_installed_message">%s 未安装，请在启动前先安装游戏</string>
     <string name="intent_launch_failed">无法启动游戏：启动快捷方式无效</string>
     <string name="intent_launch_steam_pending">Steam 连接后将启动游戏</string>
+    <string name="intent_launch_service_pending">服务就绪后将启动游戏</string>
     <string name="intent_launch_steam_login_failed">Steam 登录失败 — 游戏启动已取消</string>
+    <string name="intent_launch_service_timeout">游戏服务启动失败 — 游戏启动已取消</string>
     <string name="game_executable_not_found_title">无法启动</string>
     <string name="game_executable_not_found">无法自动选择可执行文件。请在容器设置中指定可执行文件路径。</string>
     <string name="save_container_settings_title">保存容器配置？</string>

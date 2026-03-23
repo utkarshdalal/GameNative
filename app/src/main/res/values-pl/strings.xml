@@ -179,7 +179,9 @@
     <string name="game_not_installed_message">%s nie jest zainstalowana. Proszę zainstalować grę przed uruchomieniem.</string>
     <string name="intent_launch_failed">Nie udało się uruchomić gry: nieprawidłowy skrót uruchamiania</string>
     <string name="intent_launch_steam_pending">Gra zostanie uruchomiona po połączeniu ze Steam</string>
+    <string name="intent_launch_service_pending">Gra zostanie uruchomiona po uruchomieniu usługi</string>
     <string name="intent_launch_steam_login_failed">Logowanie do Steam nie powiodło się — uruchomienie gry anulowane</string>
+    <string name="intent_launch_service_timeout">Nie udało się uruchomić usługi gry — uruchomienie gry anulowane</string>
     <string name="game_executable_not_found_title">Nie można uruchomić</string>
     <string name="game_executable_not_found">Nie udało się automatycznie wybrać pliku wykonywalnego. Ustaw ścieżkę do pliku wykonywalnego w ustawieniach kontenera.</string>
     <string name="save_container_settings_title">Zapisać konfigurację kontenera?</string>

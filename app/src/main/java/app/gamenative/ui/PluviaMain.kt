@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -118,6 +119,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
+private const val PENDING_LAUNCH_TIMEOUT_MS = 10_000L
+
 private fun NavHostController.navigateFromLoginIfNeeded(
     targetRoute: String,
     logTag: String = "PluviaMain",
@@ -198,22 +201,46 @@ private fun resolveGameAppId(context: Context, appId: String): GameResolutionRes
 }
 
 
-/** Steam game that needs login before launch (excludes offline-mode games) */
-private fun needsSteamLogin(context: Context, appId: String): Boolean {
+/** Check if launch should be deferred — Steam needs login, GOG/Epic/Amazon need service startup */
+private fun needsDeferLaunch(context: Context, appId: String): Boolean {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-    if (gameSource != GameSource.STEAM || SteamService.isLoggedIn) return false
-    // offline-mode games can launch without Steam
-    return try {
-        !ContainerUtils.getContainer(context, appId).isSteamOfflineMode()
-    } catch (_: Exception) {
-        true // no container → needs login
+    return when (gameSource) {
+        GameSource.STEAM -> {
+            if (SteamService.isLoggedIn) return false
+            try {
+                !ContainerUtils.getContainer(context, appId).isSteamOfflineMode()
+            } catch (_: Exception) {
+                true // no container → needs login
+            }
+        }
+        GameSource.GOG -> !GOGService.isRunning
+        GameSource.EPIC -> !EpicService.isRunning
+        GameSource.AMAZON -> !AmazonService.isRunning
+        else -> false
     }
 }
 
-/** Consume pending launch request only if it's a Steam game needing login, and show failure snackbar. */
-private fun consumePendingLaunchWithError(context: Context) {
+/** Show snackbar for a deferred launch based on the game's source. Returns true if shown. */
+private fun showDeferredLaunchSnackbar(context: Context, appId: String): Boolean {
+    val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+    return when {
+        gameSource == GameSource.STEAM && SteamService.isConnected -> {
+            SnackbarManager.show(context.getString(R.string.intent_launch_steam_pending))
+            true
+        }
+        gameSource != GameSource.STEAM -> {
+            SnackbarManager.show(context.getString(R.string.intent_launch_service_pending))
+            true
+        }
+        else -> false
+    }
+}
+
+/** Consume pending launch request only if it's a Steam login failure, and show failure snackbar. */
+private fun consumePendingSteamLoginError(context: Context) {
     val request = MainActivity.peekPendingLaunchRequest() ?: return
-    if (!needsSteamLogin(context, request.appId)) return
+    val gameSource = ContainerUtils.extractGameSourceFromContainerId(request.appId)
+    if (gameSource != GameSource.STEAM || SteamService.isLoggedIn) return
     MainActivity.consumePendingLaunchRequest()
     SnackbarManager.show(context.getString(R.string.intent_launch_steam_login_failed))
 }
@@ -258,6 +285,8 @@ fun PluviaMain(
 
     var isConnecting by rememberSaveable { mutableStateOf(false) }
     var shownPendingLaunchSnackbar by rememberSaveable { mutableStateOf(false) }
+    // incremented each time a launch is deferred, so the timeout restarts per request
+    var pendingLaunchGeneration by rememberSaveable { mutableIntStateOf(0) }
 
     var gameBackAction by remember { mutableStateOf<() -> Unit?>({}) }
 
@@ -297,17 +326,13 @@ fun PluviaMain(
     LaunchedEffect(Unit) {
         MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
             Timber.i("[PluviaMain]: Processing pending launch request for app ${launchRequest.appId}")
-            // Steam games needing login will be handled by OnLogonEnded/SteamDisconnected.
+            // defer if service isn't ready yet — will be processed on ServiceReady/OnLogonEnded
             // consume+requeue is safe: both calls are non-suspending, so no other coroutine
             // can interleave between them on the main dispatcher (cooperative scheduling).
-            if (needsSteamLogin(context, launchRequest.appId)) {
+            if (needsDeferLaunch(context, launchRequest.appId)) {
                 MainActivity.setPendingLaunchRequest(launchRequest)
-                shownPendingLaunchSnackbar = false
-                // stay quiet on first pass; snackbar shows after a failure
-                if (SteamService.isConnected) {
-                    shownPendingLaunchSnackbar = true
-                    SnackbarManager.show(context.getString(R.string.intent_launch_steam_pending))
-                }
+                pendingLaunchGeneration++
+                shownPendingLaunchSnackbar = showDeferredLaunchSnackbar(context, launchRequest.appId)
                 return@let
             }
             when (val resolution = resolveGameAppId(context, launchRequest.appId)) {
@@ -348,6 +373,70 @@ fun PluviaMain(
         }
     }
 
+    // timeout stale pending requests — if service never starts, don't hang indefinitely
+    // keyed on generation so timeout restarts each time a new request is deferred
+    LaunchedEffect(pendingLaunchGeneration) {
+        if (pendingLaunchGeneration == 0) return@LaunchedEffect
+        delay(PENDING_LAUNCH_TIMEOUT_MS)
+        MainActivity.peekPendingLaunchRequest()?.let { request ->
+            if (needsDeferLaunch(context, request.appId)) {
+                Timber.tag("IntentLaunch").w("Pending launch timed out for ${request.appId}")
+                MainActivity.consumePendingLaunchRequest()
+                SnackbarManager.show(context.getString(R.string.intent_launch_service_timeout))
+            }
+        }
+    }
+
+    // shared handler for deferred intent launches (Steam login, GOG/Epic/Amazon service startup)
+    val processPendingLaunch: (String) -> Unit = { reason ->
+        MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
+            Timber.tag("IntentLaunch")
+                .i("Processing pending launch for ${launchRequest.appId} ($reason)")
+            when (val resolution = resolveGameAppId(context, launchRequest.appId)) {
+                is GameResolutionResult.NotFound -> {
+                    val appName = ContainerUtils.resolveGameName(resolution.originalAppId)
+                    Timber.tag("IntentLaunch").w("Game not installed: $appName (${launchRequest.appId})")
+                    msgDialogState = MessageDialogState(
+                        visible = true,
+                        type = DialogType.SYNC_FAIL,
+                        title = context.getString(R.string.game_not_installed_title),
+                        message = context.getString(R.string.game_not_installed_message, appName),
+                        dismissBtnText = context.getString(R.string.ok),
+                    )
+                }
+
+                is GameResolutionResult.Success -> {
+                    if (launchRequest.containerConfig != null) {
+                        IntentLaunchManager.applyTemporaryConfigOverride(
+                            context, launchRequest.appId, launchRequest.containerConfig,
+                        )
+                    }
+                    val homeRoute = PluviaScreen.Home.route + "?offline={offline}"
+                    if (navController.currentDestination?.route != homeRoute) {
+                        navController.navigate(PluviaScreen.Home.route + "?offline=false") {
+                            popUpTo(navController.graph.startDestinationId) { saveState = false }
+                        }
+                    }
+                    MainActivity.wasLaunchedViaExternalIntent = true
+                    // finalAppId — track what actually launched (may differ from launchRequest.appId after resolution)
+                    trackGameLaunched(resolution.finalAppId)
+                    viewModel.setLaunchedAppId(resolution.finalAppId)
+                    viewModel.setBootToContainer(false)
+                    preLaunchApp(
+                        context = context,
+                        appId = resolution.finalAppId,
+                        useTemporaryOverride = launchRequest.containerConfig != null,
+                        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                        setLoadingProgress = viewModel::setLoadingDialogProgress,
+                        setLoadingMessage = viewModel::setLoadingDialogMessage,
+                        setMessageDialogState = setMessageDialogState,
+                        onSuccess = viewModel::launchApp,
+                    )
+                }
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
             when (event) {
@@ -358,8 +447,8 @@ fun PluviaMain(
                 is MainViewModel.MainUiEvent.ExternalGameLaunch -> {
                     Timber.i("[PluviaMain]: Received ExternalGameLaunch UI event for app ${event.appId}")
 
-                    // Steam games need login before launch (cloud sync uses userSteamId)
-                    if (needsSteamLogin(context, event.appId)) {
+                    // defer if service isn't ready yet
+                    if (needsDeferLaunch(context, event.appId)) {
                         // preserve any container config override already applied by handleLaunchIntent
                         MainActivity.setPendingLaunchRequest(
                             IntentLaunchManager.LaunchRequest(
@@ -367,11 +456,8 @@ fun PluviaMain(
                                 containerConfig = IntentLaunchManager.getTemporaryOverride(event.appId),
                             )
                         )
-                        shownPendingLaunchSnackbar = false
-                        if (SteamService.isConnected) {
-                            shownPendingLaunchSnackbar = true
-                            SnackbarManager.show(context.getString(R.string.intent_launch_steam_pending))
-                        }
+                        pendingLaunchGeneration++
+                        shownPendingLaunchSnackbar = showDeferredLaunchSnackbar(context, event.appId)
                         return@collect
                     }
 
@@ -434,62 +520,10 @@ fun PluviaMain(
                 is MainViewModel.MainUiEvent.OnLogonEnded -> {
                     when (event.result) {
                         LoginResult.Success -> {
-                            if (MainActivity.hasPendingLaunchRequest()) {
-                                MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
-                                    Timber.tag("IntentLaunch")
-                                        .i("Processing pending launch request for app ${launchRequest.appId} (user is now logged in)")
-                                    when (val resolution = resolveGameAppId(context, launchRequest.appId)) {
-                                        is GameResolutionResult.NotFound -> {
-                                            val appName = ContainerUtils.resolveGameName(resolution.originalAppId)
-                                            Timber.tag("IntentLaunch").w("Game not installed: $appName (${launchRequest.appId})")
-                                            msgDialogState = MessageDialogState(
-                                                visible = true,
-                                                type = DialogType.SYNC_FAIL,
-                                                title = context.getString(R.string.game_not_installed_title),
-                                                message = context.getString(R.string.game_not_installed_message, appName),
-                                                dismissBtnText = context.getString(R.string.ok),
-                                            )
-                                            return@let
-                                        }
-
-                                        is GameResolutionResult.Success -> {
-                                            if (launchRequest.containerConfig != null) {
-                                                IntentLaunchManager.applyTemporaryConfigOverride(
-                                                    context,
-                                                    launchRequest.appId,
-                                                    launchRequest.containerConfig,
-                                                )
-                                                Timber.tag("IntentLaunch")
-                                                    .i("Applied container config override for app ${launchRequest.appId}")
-                                            }
-
-                                            // Navigate to Home if not already there (for pending launch requests)
-                                            if (navController.currentDestination?.route != PluviaScreen.Home.route) {
-                                                navController.navigate(PluviaScreen.Home.route) {
-                                                    popUpTo(navController.graph.startDestinationId) {
-                                                        saveState = false
-                                                    }
-                                                }
-                                            }
-
-                                            MainActivity.wasLaunchedViaExternalIntent = true
-                                            trackGameLaunched(launchRequest.appId)
-                                            viewModel.setLaunchedAppId(launchRequest.appId)
-                                            viewModel.setBootToContainer(false)
-                                            preLaunchApp(
-                                                context = context,
-                                                appId = launchRequest.appId,
-                                                useTemporaryOverride = launchRequest.containerConfig != null,
-                                                setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                                                setLoadingProgress = viewModel::setLoadingDialogProgress,
-                                                setLoadingMessage = viewModel::setLoadingDialogMessage,
-                                                setMessageDialogState = setMessageDialogState,
-                                                onSuccess = viewModel::launchApp,
-                                            )
-                                        }
-                                    }
-                                }
-                            } else if (PluviaApp.xEnvironment == null) {
+                            val pending = MainActivity.peekPendingLaunchRequest()
+                            if (pending != null && !needsDeferLaunch(context, pending.appId)) {
+                                processPendingLaunch("user is now logged in")
+                            } else if (pending == null && PluviaApp.xEnvironment == null) {
                                 val currentRoute = navController.currentDestination?.route
                                 val targetRoute = viewModel.getPersistedRoute() ?: PluviaScreen.Home.route
                                 if (currentRoute == PluviaScreen.LoginUser.route) {
@@ -510,7 +544,7 @@ fun PluviaMain(
 
                         LoginResult.Failed -> {
                             Timber.i("Login failed: ${event.result}")
-                            consumePendingLaunchWithError(context)
+                            consumePendingSteamLoginError(context)
                         }
 
                         else -> {
@@ -522,13 +556,20 @@ fun PluviaMain(
                 is MainViewModel.MainUiEvent.SteamDisconnected -> {
                     if (event.isTerminal) {
                         shownPendingLaunchSnackbar = false
-                        consumePendingLaunchWithError(context)
+                        consumePendingSteamLoginError(context)
                     } else if (!shownPendingLaunchSnackbar) {
                         val appId = MainActivity.peekPendingLaunchRequest()?.appId
-                        if (appId != null && needsSteamLogin(context, appId)) {
+                        if (appId != null && needsDeferLaunch(context, appId)) {
                             shownPendingLaunchSnackbar = true
                             SnackbarManager.show(context.getString(R.string.intent_launch_steam_pending))
                         }
+                    }
+                }
+
+                MainViewModel.MainUiEvent.ServiceReady -> {
+                    val pending = MainActivity.peekPendingLaunchRequest()
+                    if (pending != null && !needsDeferLaunch(context, pending.appId)) {
+                        processPendingLaunch("service now ready")
                     }
                 }
 

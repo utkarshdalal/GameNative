@@ -167,7 +167,9 @@
     <string name="game_not_installed_message">%s n\'est pas installé. Veuillez installer le jeu avant de le lancer.</string>
     <string name="intent_launch_failed">Impossible de lancer le jeu : raccourci de lancement invalide</string>
     <string name="intent_launch_steam_pending">Le jeu se lancera une fois Steam connecté</string>
+    <string name="intent_launch_service_pending">Le jeu se lancera une fois le service prêt</string>
     <string name="intent_launch_steam_login_failed">Échec de la connexion Steam — lancement du jeu annulé</string>
+    <string name="intent_launch_service_timeout">Échec du démarrage du service de jeu — lancement du jeu annulé</string>
     <string name="game_executable_not_found_title">Impossible de lancer</string>
     <string name="game_executable_not_found">L\'exécutable n\'a pas pu être sélectionné automatiquement. Veuillez définir le chemin de l\'exécutable dans les paramètres du conteneur.</string>
     <string name="save_container_settings_title">Enregistrer la configuration du conteneur ?</string>
