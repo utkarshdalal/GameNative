@@ -286,6 +286,13 @@ class LibraryViewModel @Inject constructor(
         onFilterApps()
     }
 
+    fun onClearFilters() {
+        val defaultFilter = EnumSet.of(AppFilter.GAME, AppFilter.SHARED)
+        PrefManager.libraryFilter = defaultFilter
+        _state.update { it.copy(appInfoSortType = defaultFilter, searchQuery = "") }
+        onFilterApps(0)
+    }
+
     fun onPageChange(pageIncrement: Int) {
         // Amount to change by
         var toPage = max(0, paginationCurrentPage + pageIncrement)

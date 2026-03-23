@@ -1149,11 +1149,11 @@
     <string name="library_source_steam">Steam</string>
     <string name="library_source_custom">Custom Games</string>
     <string name="library_source_title">Source</string>
-    <string name="library_source_not_logged_in_steam">Sign in to Steam to see your library</string>
-    <string name="library_source_not_logged_in_gog">Sign in to GOG to see your library</string>
-    <string name="library_source_not_logged_in_epic">Sign in to Epic to see your library</string>
-    <string name="library_source_not_logged_in_amazon">Sign in to Amazon to see your library</string>
-    <string name="library_source_no_custom_games">No custom games added yet</string>
+    <string name="library_source_not_logged_in_steam">Sign in to access your Steam library.</string>
+    <string name="library_source_not_logged_in_gog">Sign in to access your GOG library.</string>
+    <string name="library_source_not_logged_in_epic">Sign in to access your Epic library.</string>
+    <string name="library_source_not_logged_in_amazon">Sign in to access your Amazon library.</string>
+    <string name="library_source_no_custom_games">You have not added any custom games.</string>
     <string name="library_layout_title">Layout</string>
     <string name="library_options">Options</string>
     <string name="back">Back</string>
@@ -1373,4 +1373,14 @@
     <string name="workshop_processing">Processing mods…</string>
     <string name="workshop_failed_count">%1$d workshop mod(s) failed to update</string>
     <string name="workshop_download_failed">Download failed</string>
+
+    <!-- Library empty states -->
+    <string name="empty_state_not_signed_in_subtitle">Your library will appear here once connected</string>
+    <string name="empty_state_empty_library">Your %s library is empty</string>
+    <string name="empty_state_empty_library_subtitle">Games you own will appear here</string>
+    <string name="empty_state_empty_library_action">Refresh Library</string>
+    <string name="empty_state_filtered_title">No games match your filters</string>
+    <string name="empty_state_filtered_subtitle">Try adjusting or clearing your filters</string>
+    <string name="empty_state_filtered_action">Clear Filters</string>
+    <string name="empty_state_custom_subtitle">Add a game folder from your device</string>
 </resources>
