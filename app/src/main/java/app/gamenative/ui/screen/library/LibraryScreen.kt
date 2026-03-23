@@ -844,10 +844,9 @@ private fun LibraryScreenContent(
         if (selectedAppId == null) {
             // Use Box to allow content to scroll behind the tab bar
             Box(modifier = Modifier.fillMaxSize()) {
-                // When on Steam/GOG/Epic/Amazon tab and not logged in, or LOCAL tab with no custom games, show splash.
-                // For Steam, allow cached library rows to render immediately while the service reconnects and refreshes.
+                // When on Steam/GOG/Epic/Amazon tab and not logged in, or LOCAL tab with no custom games, show splash
                 val showEmptyStateSplash = when (state.currentTab) {
-                    LibraryTab.STEAM -> !SteamService.isLoggedIn && PrefManager.steamGamesCount == 0
+                    LibraryTab.STEAM -> !SteamService.isLoggedIn
                     LibraryTab.GOG -> !GOGService.hasStoredCredentials(context)
                     LibraryTab.EPIC -> !EpicService.hasStoredCredentials(context)
                     LibraryTab.AMAZON -> !AmazonService.hasStoredCredentials(context)
