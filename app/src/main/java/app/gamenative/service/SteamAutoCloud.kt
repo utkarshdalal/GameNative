@@ -645,6 +645,7 @@ object SteamAutoCloud {
         var syncResult = SyncResult.Success
         var remoteTimestamp = 0L
         var localTimestamp = 0L
+        var recoveredLocalAheadConflict = false
         var uploadsRequired = false
         var uploadsCompleted = true
 
@@ -897,6 +898,7 @@ object SteamAutoCloud {
                             syncResult = SyncResult.Conflict
                             remoteTimestamp = recoveredAppFileChangeList.files.map { it.timestamp.time }.maxOrNull() ?: 0L
                             localTimestamp = allLocalUserFiles.map { it.timestamp }.maxOrNull() ?: 0L
+                            recoveredLocalAheadConflict = true
                         }
                     }
                 }
@@ -925,6 +927,7 @@ object SteamAutoCloud {
             microsecDeleteFiles = microsecDeleteFiles,
             microsecDownloadFiles = microsecDownloadFiles,
             microsecUploadFiles = microsecUploadFiles,
+            recoveredLocalAheadConflict = recoveredLocalAheadConflict,
         )
 
         postSyncInfo

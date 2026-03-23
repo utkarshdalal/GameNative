@@ -26,4 +26,5 @@ data class PostSyncInfo(
     val microsecDownloadFiles: Long = 0L,
     val microsecUploadFiles: Long = 0L,
     val pendingRemoteOperations: List<PendingRemoteOperation> = emptyList(),
+    val recoveredLocalAheadConflict: Boolean = false,
 )

@@ -1810,13 +1810,19 @@ fun preLaunchApp(
 
         when (postSyncInfo.syncResult) {
             SyncResult.Conflict -> {
+                val conflictMessageRes = if (postSyncInfo.recoveredLocalAheadConflict) {
+                    R.string.main_save_conflict_recovered_local_ahead_message
+                } else {
+                    R.string.main_save_conflict_message
+                }
+
                 setMessageDialogState(
                     MessageDialogState(
                         visible = true,
                         type = DialogType.SYNC_CONFLICT,
                         title = context.getString(R.string.main_save_conflict_title),
                         message = context.getString(
-                            R.string.main_save_conflict_message,
+                            conflictMessageRes,
                             Date(postSyncInfo.localTimestamp).toString(),
                             Date(postSyncInfo.remoteTimestamp).toString(),
                         ),

@@ -974,6 +974,7 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Save Conflict</string>
     <string name="main_save_conflict_message">There is a new remote save and a new local save, which would you like to keep?\n\nLocal save:\n\t%1$s\nRemote save:\n\t%2$s</string>
+    <string name="main_save_conflict_recovered_local_ahead_message">GameNative recovered from a Steam cloud sync mismatch and found that your local and cloud states diverged. Choose which one to keep.\n\nLocal save:\n\t%1$s\nRemote save:\n\t%2$s\n\nKeeping local will upload your current device save to Steam. Keeping remote will overwrite the local save with the Steam cloud version.</string>
     <string name="main_keep_local">Keep local</string>
     <string name="main_keep_remote">Keep remote</string>
 
