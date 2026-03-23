@@ -101,10 +101,10 @@ class PerformanceHudView(
     private val batteryMetric = createMetricViews(MetricId.BATTERY, 0xFFFFFFFF.toInt())
     private val powerMetric = createMetricViews(MetricId.POWER, 0xFF4DD0E1.toInt())
     private val runtimeMetric = createMetricViews(MetricId.RUNTIME, 0xFFA5D6A7.toInt())
-    private val batteryTempMetric = createMetricViews(MetricId.BATTERY_TEMP, 0xFFFFB74D.toInt())
     private val clockMetric = createMetricViews(MetricId.CLOCK, 0xFFFFCC80.toInt())
     private val cpuTempMetric = createMetricViews(MetricId.CPU_TEMP, 0xFFBDBDBD.toInt())
     private val gpuTempMetric = createMetricViews(MetricId.GPU_TEMP, 0xFFBDBDBD.toInt())
+    private val batteryTempMetric = createMetricViews(MetricId.BATTERY_TEMP, 0xFFBDBDBD.toInt())
 
     private val allMetrics = listOf(
         fpsMetric,
@@ -114,10 +114,10 @@ class PerformanceHudView(
         batteryMetric,
         powerMetric,
         runtimeMetric,
-        batteryTempMetric,
         clockMetric,
         cpuTempMetric,
         gpuTempMetric,
+        batteryTempMetric,
     )
 
     private val allTextRows = allMetrics.flatMap { listOf(it.stackedText, it.compactText) }
@@ -406,10 +406,10 @@ class PerformanceHudView(
             addMetricIfVisible(batteryMetric, config.showBatteryLevel)
             addMetricIfVisible(powerMetric, config.showPowerDraw)
             addMetricIfVisible(runtimeMetric, config.showBatteryRuntime)
-            addMetricIfVisible(batteryTempMetric, config.showBatteryTemperature)
             addMetricIfVisible(clockMetric, config.showClockTime)
             addMetricIfVisible(cpuTempMetric, config.showCpuTemperature)
             addMetricIfVisible(gpuTempMetric, config.showGpuTemperature)
+            addMetricIfVisible(batteryTempMetric, config.showBatteryTemperature)
         }
 
         val signatures = visibleMetrics.map {
