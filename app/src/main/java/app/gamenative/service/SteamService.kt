@@ -2555,6 +2555,13 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        private fun cancelLongLivedSteamJobs() {
+            // Cancel previous continuous jobs or else they will continue to run even after logout
+            instance?.picsGetProductInfoJob?.cancel()
+            instance?.picsChangesCheckerJob?.cancel()
+            instance?.friendCheckerJob?.cancel()
+        }
+
         private fun performLogOffDuties(clearCloudSyncState: Boolean = false) {
             val username = PrefManager.username
 
@@ -2563,10 +2570,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val event = SteamEvent.LoggedOut(username)
             PluviaApp.events.emit(event)
 
-            // Cancel previous continuous jobs or else they will continue to run even after logout
-            instance?.picsGetProductInfoJob?.cancel()
-            instance?.picsChangesCheckerJob?.cancel()
-            instance?.friendCheckerJob?.cancel()
+            cancelLongLivedSteamJobs()
         }
 
         suspend fun getOwnedGames(friendID: Long): List<OwnedGames> = withContext(Dispatchers.IO) {
@@ -3320,6 +3324,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             scope.launch { stop() }
         } else if (callback.result == EResult.LogonSessionReplaced) {
             // Unexpected session replacement should not wipe persisted Steam state.
+            cancelLongLivedSteamJobs()
             scope.launch { stop() }
         } else if (callback.result == EResult.LoggedInElsewhere) {
             // received when a client runs an app and wants to forcibly close another
