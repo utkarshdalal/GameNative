@@ -148,7 +148,10 @@ class GOGAppScreen : BaseAppScreen() {
         val displayInfo = GameDisplayInfo(
             name = game?.title ?: libraryItem.name,
             iconUrl = game?.iconUrl ?: libraryItem.iconHash,
-            heroImageUrl = game?.imageUrl ?: game?.iconUrl ?: libraryItem.iconHash,
+            heroImageUrl = game?.backgroundUrl?.ifEmpty { null }
+                ?: game?.imageUrl?.ifEmpty { null }
+                ?: game?.iconUrl
+                ?: libraryItem.iconHash,
             gameId = libraryItem.gameId, // Use gameId property which handles conversion
             appId = libraryItem.appId,
             releaseDate = releaseDateTimestamp,

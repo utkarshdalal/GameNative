@@ -137,8 +137,8 @@ data class EnvVarInfo(
                 selectionType = EnvVarSelectionType.TOGGLE,
                 possibleValues = listOf("0", "1"),
             ),
-            "FEX_SMC_CHECKS" to EnvVarInfo(
-                identifier = "FEX_SMC_CHECKS",
+            "FEX_SMCCHECKS" to EnvVarInfo(
+                identifier = "FEX_SMCCHECKS",
                 possibleValues = listOf("none", "mtrack", "full"),
             ),
             "FEX_VOLATILEMETADATA" to EnvVarInfo(

@@ -179,7 +179,10 @@
     <string name="game_not_installed_title">게임이 설치되지 않음</string>
     <string name="game_not_installed_message">%s이(가) 설치되지 않았습니다. 실행하기 전에 먼저 게임을 설치하세요.</string>
     <string name="intent_launch_failed">게임을 실행할 수 없습니다: 잘못된 실행 바로가기</string>
-    <string name="intent_launch_steam_login_required">이 게임을 실행하려면 Steam 로그인이 필요합니다</string>
+    <string name="intent_launch_steam_pending">Steam 연결 시 게임이 실행됩니다</string>
+    <string name="intent_launch_service_pending">서비스 준비 시 게임이 실행됩니다</string>
+    <string name="intent_launch_steam_login_failed">Steam 로그인 실패 — 게임 실행이 취소되었습니다</string>
+    <string name="intent_launch_service_timeout">게임 서비스 시작 실패 — 게임 실행이 취소되었습니다</string>
     <string name="game_executable_not_found_title">실행할 수 없음</string>
     <string name="game_executable_not_found">실행 파일을 자동으로 선택할 수 없습니다. 컨테이너 설정에서 실행 파일 경로를 지정하세요.</string>
     <string name="save_container_settings_title">컨테이너 구성을 저장하시겠습니까?</string>
@@ -230,6 +233,23 @@
     <string name="open_navigation_menu">탐색 메뉴 열기</string>
     <string name="quick_menu_title">빠른 메뉴</string>
     <string name="quick_menu_back">뒤로</string>
+    <string name="screen_effects">화면 효과</string>
+    <string name="screen_effects_live_preview">변경 사항이 현재 게임에 즉시 적용됩니다.</string>
+    <string name="screen_effects_color_adjustments">색상 조정</string>
+    <string name="screen_effects_shader_toggles">셰이더 효과</string>
+    <string name="screen_effects_brightness">밝기</string>
+    <string name="screen_effects_contrast">대비</string>
+    <string name="screen_effects_gamma">감마</string>
+    <string name="screen_effects_toon">툰 외곽선</string>
+    <string name="screen_effects_toon_description">셀 셰이딩 느낌을 위해 어두운 외곽선을 추가합니다.</string>
+    <string name="screen_effects_fxaa">FXAA</string>
+    <string name="screen_effects_fxaa_description">가벼운 후처리 안티앨리어싱으로 계단 현상을 완화합니다.</string>
+    <string name="screen_effects_crt">CRT</string>
+    <string name="screen_effects_crt_description">주사선과 은은한 색수차를 추가합니다.</string>
+    <string name="screen_effects_ntsc">NTSC</string>
+    <string name="screen_effects_ntsc_description">복고풍 컴포지트 TV 왜곡, 색 번짐, 주사선을 추가합니다.</string>
+    <string name="screen_effects_reset">재설정</string>
+    <string name="screen_effects_close">닫기</string>
     <string name="quick_menu_tab_general">일반</string>
     <string name="quick_menu_tab_controller">컨트롤러</string>
     <string name="performance_hud">성능 HUD</string>
@@ -262,6 +282,7 @@
     <string name="performance_hud_battery_level">배터리 잔량</string>
     <string name="performance_hud_power_draw">전력 소모</string>
     <string name="performance_hud_runtime_left">남은 시간</string>
+    <string name="performance_hud_battery_temperature">배터리 온도</string>
     <string name="performance_hud_clock_time">시계</string>
     <string name="performance_hud_cpu_temperature">CPU 온도</string>
     <string name="performance_hud_gpu_temperature">GPU 온도</string>
@@ -452,7 +473,7 @@
     <string name="fexcore_env_var_help__multiblock">멀티블록 코드 컴파일을 활성화합니다. JIT 컴파일 시간이 길어지고 끊김이 발생할 수 있습니다.</string>
     <string name="fexcore_env_var_help__hostfeatures">CPU 기능 강제를 제어합니다.</string>
     <string name="fexcore_env_var_help__smalltscscale">저주파수 시스템에서 TSC를 스케일링합니다.</string>
-    <string name="fexcore_env_var_help__smc_checks">자체 수정 코드 검사.</string>
+    <string name="fexcore_env_var_help__smcchecks">자체 수정 코드 검사.</string>
     <string name="fexcore_env_var_help__volatilemetadata">가능한 경우 TSO에 대한 PE 파일의 휘발성 메타데이터를 사용합니다.</string>
     <string name="fexcore_env_var_help__monohacks">Mono 감지를 위한 특수 SMC + JIT 블록 해킹.</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">CPUID 하이퍼바이저 비트를 숨깁니다(이것으로 충돌하는 앱에 유용).</string>
@@ -1258,7 +1279,6 @@
     <string name="manifest_content_untrusted">콘텐츠를 신뢰할 수 없으며 설치되지 않았습니다.</string>
     <string name="manifest_type_mismatch">다운로드한 콘텐츠가 예상 유형과 일치하지 않습니다.</string>
     <string name="manifest_glibc_not_supported">GLIBC 빌드는 지원되지 않습니다.</string>
-
     <!-- Library: source not logged in splash -->
     <string name="library_source_not_logged_in_steam">Steam 라이브러리에 액세스하려면 로그인하세요.</string>
     <string name="library_source_not_logged_in_gog">GOG 라이브러리에 액세스하려면 로그인하세요.</string>

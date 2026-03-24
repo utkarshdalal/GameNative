@@ -27,6 +27,7 @@ data class PerformanceHudConfig(
     val showBatteryLevel: Boolean = true,
     val showPowerDraw: Boolean = true,
     val showBatteryRuntime: Boolean = false,
+    val showBatteryTemperature: Boolean = false,
     val showClockTime: Boolean = false,
     val showCpuTemperature: Boolean = true,
     val showGpuTemperature: Boolean = true,

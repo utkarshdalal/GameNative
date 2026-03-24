@@ -2,6 +2,9 @@ package app.gamenative.gamefixes
 
 import app.gamenative.data.GameSource
 
+/**
+ * The Elder Scrolls IV: Oblivion (GOG)
+ */
 val GOG_Fix_1458058109: KeyedGameFix = KeyedRegistryKeyFix(
     gameSource = GameSource.GOG,
     gameId = "1458058109",

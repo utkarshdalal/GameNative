@@ -238,7 +238,7 @@ fun BootingSplash(
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     lineHeight = 20.sp,
                                 ),
-                                color = PluviaTheme.colors.borderDefault,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
                                     .fillMaxWidth()

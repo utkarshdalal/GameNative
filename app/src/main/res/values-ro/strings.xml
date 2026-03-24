@@ -168,7 +168,10 @@
     <string name="game_not_installed_title">Joc neinstalat</string>
     <string name="game_not_installed_message">%s nu este instalat. Instalează jocul înainte de a-l porni.</string>
     <string name="intent_launch_failed">Nu s-a putut lansa jocul: comandă rapidă de lansare invalidă</string>
-    <string name="intent_launch_steam_login_required">Autentificare Steam necesară pentru a lansa acest joc</string>
+    <string name="intent_launch_steam_pending">Jocul va fi lansat când Steam se conectează</string>
+    <string name="intent_launch_service_pending">Jocul va fi lansat când serviciul este pregătit</string>
+    <string name="intent_launch_steam_login_failed">Autentificarea Steam a eșuat — lansarea jocului a fost anulată</string>
+    <string name="intent_launch_service_timeout">Serviciul de joc nu a pornit — lansarea jocului a fost anulată</string>
     <string name="game_executable_not_found_title">Nu se poate porni</string>
     <string name="game_executable_not_found">Executabilul nu a putut fi selectat automat. Setează calea executabilului în setările containerului.</string>
     <string name="save_container_settings_title">Salvezi configurația containerului?</string>
@@ -219,6 +222,23 @@
     <string name="open_navigation_menu">Deschide meniul de navigare</string>
     <string name="quick_menu_title">Meniu rapid</string>
     <string name="quick_menu_back">Înapoi</string>
+    <string name="screen_effects">Efecte de ecran</string>
+    <string name="screen_effects_live_preview">Modificările se aplică instantaneu jocului curent.</string>
+    <string name="screen_effects_color_adjustments">Ajustări de culoare</string>
+    <string name="screen_effects_shader_toggles">Efecte shader</string>
+    <string name="screen_effects_brightness">Luminozitate</string>
+    <string name="screen_effects_contrast">Contrast</string>
+    <string name="screen_effects_gamma">Gamma</string>
+    <string name="screen_effects_toon">Contur toon</string>
+    <string name="screen_effects_toon_description">Adaugă contururi întunecate pentru un aspect cel-shading.</string>
+    <string name="screen_effects_fxaa">FXAA</string>
+    <string name="screen_effects_fxaa_description">Netezește marginile zimțate cu un efect ușor de anti-aliasing post-procesare.</string>
+    <string name="screen_effects_crt">CRT</string>
+    <string name="screen_effects_crt_description">Adaugă linii de scanare și o ușoară aberație cromatică.</string>
+    <string name="screen_effects_ntsc">NTSC</string>
+    <string name="screen_effects_ntsc_description">Adaugă distorsiune retro de televizor compozit, scurgere de culoare și linii de scanare.</string>
+    <string name="screen_effects_reset">Resetează</string>
+    <string name="screen_effects_close">Închide</string>
     <string name="quick_menu_tab_general">General</string>
     <string name="quick_menu_tab_controller">Controller</string>
     <string name="performance_hud">HUD de performanță</string>
@@ -251,6 +271,7 @@
     <string name="performance_hud_battery_level">Nivel baterie</string>
     <string name="performance_hud_power_draw">Consum de energie</string>
     <string name="performance_hud_runtime_left">Timp rămas</string>
+    <string name="performance_hud_battery_temperature">Temperatura bateriei</string>
     <string name="performance_hud_clock_time">Ora</string>
     <string name="performance_hud_cpu_temperature">Temperatura CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura GPU</string>
@@ -445,7 +466,7 @@
     <string name="fexcore_env_var_help__multiblock">Activează compilarea multiblock (poate cauza stutter)</string>
     <string name="fexcore_env_var_help__hostfeatures">Controlează forțarea capabilităților CPU</string>
     <string name="fexcore_env_var_help__smalltscscale">Scalează TSC pe sisteme cu frecvență redusă</string>
-    <string name="fexcore_env_var_help__smc_checks">Verificări pentru Self‑Modifying Code</string>
+    <string name="fexcore_env_var_help__smcchecks">Verificări pentru Self‑Modifying Code</string>
     <string name="fexcore_env_var_help__volatilemetadata">Folosește metadata volatilă din fișiere PE pentru TSO</string>
     <string name="fexcore_env_var_help__monohacks">Hack‑uri speciale SMC + JIT pentru detectarea Mono</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">Ascunde bitul CPUID hypervisor (util pentru aplicații care crash‑uiesc cu el)</string>
@@ -1259,7 +1280,6 @@
     <string name="manifest_content_untrusted">Conținutul nu este de încredere și nu a fost instalat.</string>
     <string name="manifest_type_mismatch">Conținutul descărcat nu corespunde tipului așteptat.</string>
     <string name="manifest_glibc_not_supported">Build-urile GLIBC nu sunt acceptate.</string>
-
     <!-- Library: source not logged in splash -->
     <string name="library_source_not_logged_in_steam">Conectează-te pentru a accesa biblioteca ta Steam.</string>
     <string name="library_source_not_logged_in_gog">Conectează-te pentru a accesa biblioteca ta GOG.</string>

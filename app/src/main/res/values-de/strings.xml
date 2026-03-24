@@ -159,7 +159,10 @@
     <string name="game_not_installed_title">Spiel nicht installiert</string>
     <string name="game_not_installed_message">%s ist nicht installiert. Bitte installiere das Spiel, bevor du es startest.</string>
     <string name="intent_launch_failed">Spiel konnte nicht gestartet werden: ungültige Startverknüpfung</string>
-    <string name="intent_launch_steam_login_required">Steam-Anmeldung erforderlich, um dieses Spiel zu starten</string>
+    <string name="intent_launch_steam_pending">Spiel wird gestartet, sobald Steam verbunden ist</string>
+    <string name="intent_launch_service_pending">Spiel wird gestartet, sobald der Dienst bereit ist</string>
+    <string name="intent_launch_steam_login_failed">Steam-Anmeldung fehlgeschlagen — Spielstart abgebrochen</string>
+    <string name="intent_launch_service_timeout">Spieldienst konnte nicht gestartet werden — Spielstart abgebrochen</string>
     <string name="game_executable_not_found_title">Start nicht möglich</string>
     <string name="game_executable_not_found">Die ausführbare Datei konnte nicht automatisch ausgewählt werden. Bitte lege den Pfad in den Containereinstellungen fest.</string>
     <string name="save_container_settings_title">Container-Konfiguration speichern?</string>
@@ -210,6 +213,23 @@
     <string name="open_navigation_menu">Navigationsmenü öffnen</string>
     <string name="quick_menu_title">Schnellmenü</string>
     <string name="quick_menu_back">Zurück</string>
+    <string name="screen_effects">Bildschirmeffekte</string>
+    <string name="screen_effects_live_preview">Änderungen werden sofort auf das aktuelle Spiel angewendet.</string>
+    <string name="screen_effects_color_adjustments">Farbkorrekturen</string>
+    <string name="screen_effects_shader_toggles">Shader-Effekte</string>
+    <string name="screen_effects_brightness">Helligkeit</string>
+    <string name="screen_effects_contrast">Kontrast</string>
+    <string name="screen_effects_gamma">Gamma</string>
+    <string name="screen_effects_toon">Toon-Kontur</string>
+    <string name="screen_effects_toon_description">Fügt dunkle Konturen für einen Cel-Shading-Look hinzu.</string>
+    <string name="screen_effects_fxaa">FXAA</string>
+    <string name="screen_effects_fxaa_description">Glättet gezackte Kanten mit einem leichten Post-Process-Anti-Aliasing-Effekt.</string>
+    <string name="screen_effects_crt">CRT</string>
+    <string name="screen_effects_crt_description">Fügt Scanlines und eine leichte chromatische Aberration hinzu.</string>
+    <string name="screen_effects_ntsc">NTSC</string>
+    <string name="screen_effects_ntsc_description">Fügt Retro-Composite-TV-Verzerrung, Farbausbluten und Scanlines hinzu.</string>
+    <string name="screen_effects_reset">Zurücksetzen</string>
+    <string name="screen_effects_close">Schließen</string>
     <string name="quick_menu_tab_general">Allgemein</string>
     <string name="quick_menu_tab_controller">Controller</string>
     <string name="performance_hud">Leistungs-HUD</string>
@@ -242,6 +262,7 @@
     <string name="performance_hud_battery_level">Batteriestand</string>
     <string name="performance_hud_power_draw">Stromverbrauch</string>
     <string name="performance_hud_runtime_left">Verbleibende Laufzeit</string>
+    <string name="performance_hud_battery_temperature">Batterietemperatur</string>
     <string name="performance_hud_clock_time">Uhrzeit</string>
     <string name="performance_hud_cpu_temperature">CPU-Temperatur</string>
     <string name="performance_hud_gpu_temperature">GPU-Temperatur</string>
@@ -426,7 +447,7 @@
     <string name="fexcore_env_var_help__multiblock">Aktiviert Multiblock-Codekompilierung. Kann längere Kompilierzeiten und Ruckler verursachen.</string>
     <string name="fexcore_env_var_help__hostfeatures">Steuert CPU-Feature-Emulation/Erzwingung.</string>
     <string name="fexcore_env_var_help__smalltscscale">TSC auf langsamen Systemen skalieren.</string>
-    <string name="fexcore_env_var_help__smc_checks">Checks für sich selbst modifizierenden Code (SMC).</string>
+    <string name="fexcore_env_var_help__smcchecks">Checks für sich selbst modifizierenden Code (SMC).</string>
     <string name="fexcore_env_var_help__volatilemetadata">Verwendet volatile Metadaten aus PE-Dateien für TSO, falls verfügbar.</string>
     <string name="fexcore_env_var_help__monohacks">Spezielle SMC+JIT-Block-Hacks für Mono-Erkennung.</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">Hypervisor-Bit in CPUID verstecken (bei Crashs von Apps mit Hypervisor).</string>
@@ -1194,7 +1215,6 @@
     <string name="manifest_content_untrusted">Inhalt ist nicht vertrauenswürdig und wurde nicht installiert.</string>
     <string name="manifest_type_mismatch">Heruntergeladener Inhalt entspricht nicht dem erwarteten Typ.</string>
     <string name="manifest_glibc_not_supported">GLIBC-Builds werden nicht unterstützt.</string>
-
     <!-- Library: source not logged in splash -->
     <string name="library_source_not_logged_in_steam">Melde dich an, um auf deine Steam-Bibliothek zuzugreifen.</string>
     <string name="library_source_not_logged_in_gog">Melde dich an, um auf deine GOG-Bibliothek zuzugreifen.</string>

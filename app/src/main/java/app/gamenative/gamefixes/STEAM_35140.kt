@@ -3,8 +3,8 @@ package app.gamenative.gamefixes
 import android.content.Context
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
-import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.MarkerUtils
+import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
 import timber.log.Timber
 import java.io.File
@@ -18,8 +18,8 @@ val STEAM_Fix_35140: KeyedGameFix = object : KeyedGameFix {
         gameId: String,
         installPath: String,
         installPathWindows: String,
+        container: Container,
     ): Boolean {
-        val container = ContainerUtils.getOrCreateContainer(context, "STEAM_$gameId")
         val userDocumentsConfigPath =
             ".wine/drive_c/users/${ImageFs.USER}/Documents/Square Enix/Batman Arkham Asylum GOTY/BmGame/Config"
         val staleFiles = listOf(
