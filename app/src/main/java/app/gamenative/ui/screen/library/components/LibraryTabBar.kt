@@ -5,8 +5,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.horizontalScroll
@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.theme.PluviaTheme
@@ -133,13 +134,15 @@ private fun CompactLibraryTabBar(
     onNextTab: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tabs = LibraryTab.entries
-    val currentIndex = tabs.indexOf(currentTab)
+    val tabs = LibraryTab.availableTabs()
+    val selectedTab = tabs.find { it == currentTab } ?: tabs.first()
+    val currentIndex = tabs.indexOf(selectedTab)
+    val showAddGameButton = BuildConfig.ENABLE_CUSTOM_GAMES
     val scrollState = rememberScrollState()
     val tabPositions = remember { mutableStateMapOf<Int, Float>() }
     val tabWidths = remember { mutableStateMapOf<Int, Float>() }
 
-    LaunchedEffect(currentTab) {
+    LaunchedEffect(selectedTab) {
         val pos = tabPositions[currentIndex] ?: return@LaunchedEffect
         val width = tabWidths[currentIndex] ?: return@LaunchedEffect
         val targetCenter = (pos + width / 2).toInt()
@@ -206,7 +209,7 @@ private fun CompactLibraryTabBar(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 tabs.forEachIndexed { index, tab ->
-                    val isSelected = tab == currentTab
+                    val isSelected = tab == selectedTab
                     val tabInteractionSource = remember { MutableInteractionSource() }
                     val isTabFocused by tabInteractionSource.collectIsFocusedAsState()
                     Box(
@@ -277,11 +280,13 @@ private fun CompactLibraryTabBar(
                 contentDescription = stringResource(R.string.search),
                 onClick = onSearchClick,
             )
-            CompactIconButton(
-                icon = Icons.Default.Add,
-                contentDescription = stringResource(R.string.action_add_game),
-                onClick = onAddGameClick,
-            )
+            if (showAddGameButton) {
+                CompactIconButton(
+                    icon = Icons.Default.Add,
+                    contentDescription = stringResource(R.string.action_add_game),
+                    onClick = onAddGameClick,
+                )
+            }
             CompactIconButton(
                 icon = Icons.Default.Menu,
                 contentDescription = stringResource(R.string.menu),
@@ -371,9 +376,11 @@ private fun ExpandedLibraryTabBar(
     onNextTab: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tabs = LibraryTab.entries
-    val currentIndex = tabs.indexOf(currentTab)
+    val tabs = LibraryTab.availableTabs()
+    val selectedTab = tabs.find { it == currentTab } ?: tabs.first()
+    val currentIndex = tabs.indexOf(selectedTab)
     val scrollState = rememberScrollState()
+    val showAddGameButton = BuildConfig.ENABLE_CUSTOM_GAMES
 
     val tabPositions = remember { mutableStateMapOf<Int, Float>() }
     val tabWidths = remember { mutableStateMapOf<Int, Float>() }
@@ -398,7 +405,7 @@ private fun ExpandedLibraryTabBar(
         label = "indicatorWidth",
     )
 
-    LaunchedEffect(currentTab) {
+    LaunchedEffect(selectedTab) {
         val pos = tabPositions[currentIndex] ?: return@LaunchedEffect
         val width = tabWidths[currentIndex] ?: return@LaunchedEffect
         val targetCenter = (pos + width / 2).toInt()
@@ -496,7 +503,7 @@ private fun ExpandedLibraryTabBar(
                         TabItem(
                             tab = tab,
                             count = tabCounts[tab],
-                            isSelected = tab == currentTab,
+                            isSelected = tab == selectedTab,
                             onClick = { onTabSelected(tab) },
                             onPositioned = { position, width ->
                                 tabPositions[index] = position
@@ -513,11 +520,13 @@ private fun ExpandedLibraryTabBar(
                 onClick = onSearchClick,
             )
 
-            IconActionButton(
-                icon = Icons.Default.Add,
-                contentDescription = stringResource(R.string.action_add_game),
-                onClick = onAddGameClick,
-            )
+            if (showAddGameButton) {
+                IconActionButton(
+                    icon = Icons.Default.Add,
+                    contentDescription = stringResource(R.string.action_add_game),
+                    onClick = onAddGameClick,
+                )
+            }
 
             IconActionButton(
                 icon = Icons.Default.Menu,

@@ -4,7 +4,6 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.view.KeyEvent
 import android.view.MotionEvent
-import app.gamenative.ui.util.SnackbarManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -66,6 +65,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
 import app.gamenative.R
@@ -101,6 +101,7 @@ import app.gamenative.ui.screen.library.components.SystemMenu
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.PlatformAuthUiHelpers
 import app.gamenative.ui.util.PlatformLogoutCallbacks
+import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
@@ -180,6 +181,7 @@ private fun LibraryScreenContent(
 ) {
     val context = LocalContext.current
     val lifecycleScope = LocalLifecycleOwner.current.lifecycleScope
+    val customGamesEnabled = BuildConfig.ENABLE_CUSTOM_GAMES
 
     val gogOAuthLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
@@ -421,10 +423,18 @@ private fun LibraryScreenContent(
 
     // Handle opening folder picker (with dialog check)
     val onAddCustomGameClick = {
-        if (PrefManager.showAddCustomGameDialog) {
-            showAddCustomGameDialog = true
-        } else {
-            folderPicker.launchPicker()
+        if (customGamesEnabled) {
+            if (PrefManager.showAddCustomGameDialog) {
+                showAddCustomGameDialog = true
+            } else {
+                folderPicker.launchPicker()
+            }
+        }
+    }
+
+    LaunchedEffect(customGamesEnabled, state.currentTab) {
+        if (!customGamesEnabled && state.currentTab == LibraryTab.LOCAL) {
+            onTabChanged(LibraryTab.ALL)
         }
     }
 
@@ -820,7 +830,7 @@ private fun LibraryScreenContent(
 
                         // X button - add custom game
                         KeyEvent.KEYCODE_BUTTON_X -> {
-                            if (selectedAppId == null && !state.isSearching && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
+                            if (customGamesEnabled && selectedAppId == null && !state.isSearching && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
                                 onAddCustomGameClick()
                                 true
                             } else {
@@ -867,7 +877,7 @@ private fun LibraryScreenContent(
                     LibraryTab.GOG -> !GOGService.hasStoredCredentials(context)
                     LibraryTab.EPIC -> !EpicService.hasStoredCredentials(context)
                     LibraryTab.AMAZON -> !AmazonService.hasStoredCredentials(context)
-                    LibraryTab.LOCAL -> PrefManager.customGamesCount == 0
+                    LibraryTab.LOCAL -> customGamesEnabled && PrefManager.customGamesCount == 0
                     else -> false
                 }
                 if (showEmptyStateSplash) {
@@ -1027,34 +1037,46 @@ private fun LibraryScreenContent(
                     ),
                 )
             } else {
-                listOf(
-                    LibraryActions.select,
-                    GamepadAction(
-                        button = GamepadButton.SELECT,
-                        labelResId = R.string.options,
-                        onClick = { onOptionsPanelToggle(true) },
-                    ),
-                    GamepadAction(
-                        button = GamepadButton.START,
-                        labelResId = R.string.action_system,
-                        onClick = { isSystemMenuOpen = true },
-                    ),
-                    GamepadAction(
-                        button = GamepadButton.B,
-                        labelResId = R.string.menu,
-                        onClick = { isSystemMenuOpen = true },
-                    ),
-                    GamepadAction(
-                        button = GamepadButton.Y,
-                        labelResId = R.string.search,
-                        onClick = { onIsSearching(true) },
-                    ),
-                    GamepadAction(
-                        button = GamepadButton.X,
-                        labelResId = R.string.action_add_game,
-                        onClick = onAddCustomGameClick,
-                    ),
-                )
+                buildList {
+                    add(LibraryActions.select)
+                    add(
+                        GamepadAction(
+                            button = GamepadButton.SELECT,
+                            labelResId = R.string.options,
+                            onClick = { onOptionsPanelToggle(true) },
+                        ),
+                    )
+                    add(
+                        GamepadAction(
+                            button = GamepadButton.START,
+                            labelResId = R.string.action_system,
+                            onClick = { isSystemMenuOpen = true },
+                        ),
+                    )
+                    add(
+                        GamepadAction(
+                            button = GamepadButton.B,
+                            labelResId = R.string.menu,
+                            onClick = { isSystemMenuOpen = true },
+                        ),
+                    )
+                    add(
+                        GamepadAction(
+                            button = GamepadButton.Y,
+                            labelResId = R.string.search,
+                            onClick = { onIsSearching(true) },
+                        ),
+                    )
+                    if (customGamesEnabled) {
+                        add(
+                            GamepadAction(
+                                button = GamepadButton.X,
+                                labelResId = R.string.action_add_game,
+                                onClick = onAddCustomGameClick,
+                            ),
+                        )
+                    }
+                }
             }
 
             GamepadActionBar(

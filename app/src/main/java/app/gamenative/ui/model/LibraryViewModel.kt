@@ -7,16 +7,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.data.AmazonGame
+import app.gamenative.data.EpicGame
+import app.gamenative.data.GOGGame
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
 import app.gamenative.events.AndroidEvent
-import app.gamenative.data.GOGGame
-import app.gamenative.data.EpicGame
-import app.gamenative.data.AmazonGame
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.db.dao.EpicGameDao
@@ -68,6 +69,8 @@ class LibraryViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(LibraryState(isLoading = true))
     val state: StateFlow<LibraryState> = _state.asStateFlow()
+
+    private val customGamesEnabled = BuildConfig.ENABLE_CUSTOM_GAMES
 
     // Keep the library scroll state. This will last longer as the VM will stay alive.
     var listState: LazyGridState by mutableStateOf(LazyGridState(0, 0))
@@ -214,6 +217,7 @@ class LibraryViewModel @Inject constructor(
             }
 
             GameSource.CUSTOM_GAME -> {
+                if (!customGamesEnabled) return
                 val newValue = !current.showCustomGamesInLibrary
                 PrefManager.showCustomGamesInLibrary = newValue
                 _state.update { it.copy(showCustomGamesInLibrary = newValue) }
@@ -248,13 +252,14 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun onTabChanged(tab: LibraryTab) {
-        _state.update { it.copy(currentTab = tab) }
+        _state.update { it.copy(currentTab = LibraryTab.sanitize(tab)) }
         onFilterApps(0) // Reset to first page and refresh
     }
 
     fun onNextTab() {
+        val availableTabs = LibraryTab.availableTabs()
         _state.update { currentState ->
-            val nextTab = currentState.currentTab.next()
+            val nextTab = LibraryTab.sanitize(currentState.currentTab).next(availableTabs)
             Timber.tag("LibraryViewModel").d("Tab next via bumper: ${currentState.currentTab} -> $nextTab")
             currentState.copy(currentTab = nextTab)
         }
@@ -262,8 +267,9 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun onPreviousTab() {
+        val availableTabs = LibraryTab.availableTabs()
         _state.update { currentState ->
-            val previousTab = currentState.currentTab.previous()
+            val previousTab = LibraryTab.sanitize(currentState.currentTab).previous(availableTabs)
             Timber.tag("LibraryViewModel").d("Tab previous via bumper: ${currentState.currentTab} -> $previousTab")
             currentState.copy(currentTab = previousTab)
         }
@@ -348,6 +354,8 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun addCustomGameFolder(path: String) {
+        if (!customGamesEnabled) return
+
         viewModelScope.launch(Dispatchers.IO) {
             val normalizedPath = File(path).absolutePath
             val libraryItem = CustomGameScanner.createLibraryItemFromFolder(normalizedPath)
@@ -486,8 +494,8 @@ class LibraryViewModel @Inject constructor(
             }
 
             // Scan Custom Games roots and create UI items (filtered by search query inside scanner)
-            // Only include custom games if GAME filter is selected
-            val customGameItems = if (currentState.appInfoSortType.contains(AppFilter.GAME)) {
+            // Only include custom games if the build supports them and GAME filter is selected
+            val customGameItems = if (customGamesEnabled && currentState.appInfoSortType.contains(AppFilter.GAME)) {
                 CustomGameScanner.scanAsLibraryItems(
                     query = currentState.searchQuery,
                 )
@@ -642,13 +650,13 @@ class LibraryViewModel @Inject constructor(
             // Compute effective source filters based on current tab
             // ALL tab uses user preferences, other tabs override with their presets
             // Use captured currentState (not _state.value) to avoid TOCTOU race
-            val currentTab = currentState.currentTab
+            val currentTab = LibraryTab.sanitize(currentState.currentTab)
             val includeSteam = if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
                 currentState.showSteamInLibrary
             } else {
                 currentTab.showSteam
             }
-            val includeOpen = if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
+            val includeOpen = customGamesEnabled && if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
                 currentState.showCustomGamesInLibrary
             } else {
                 currentTab.showCustom
@@ -755,7 +763,7 @@ class LibraryViewModel @Inject constructor(
                     // Per-source counts for tab badges
                     // Use user prefs + auth state only (not current tab) so badges stay stable across tab switches
                     allCount = (if (currentState.showSteamInLibrary) steamEntries.size else 0) +
-                        (if (currentState.showCustomGamesInLibrary) customEntries.size else 0) +
+                        (if (customGamesEnabled && currentState.showCustomGamesInLibrary) customEntries.size else 0) +
                         (if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0) +
                         (if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0) +
                         (if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0),
@@ -763,7 +771,7 @@ class LibraryViewModel @Inject constructor(
                     gogCount = if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0,
                     epicCount = if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0,
                     amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
-                    localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
+                    localCount = if (customGamesEnabled && currentState.showCustomGamesInLibrary) customEntries.size else 0,
                 )
             }
         }

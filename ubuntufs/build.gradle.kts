@@ -11,6 +11,16 @@ android {
         // testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("oss") {
+            dimension = "distribution"
+        }
+        create("playstore") {
+            dimension = "distribution"
+        }
+    }
+
     buildTypes {
         create("release-signed") {
             initWith(getByName("release"))

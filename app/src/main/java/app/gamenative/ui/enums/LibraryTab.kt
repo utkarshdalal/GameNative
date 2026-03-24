@@ -1,6 +1,7 @@
 package app.gamenative.ui.enums
 
 import androidx.annotation.StringRes
+import app.gamenative.BuildConfig
 import app.gamenative.R
 
 enum class LibraryTab(
@@ -68,16 +69,28 @@ enum class LibraryTab(
     );
 
     companion object {
-        fun LibraryTab.next(): LibraryTab {
-            val values = entries
-            val nextIndex = (ordinal + 1) % values.size
-            return values[nextIndex]
+        fun availableTabs(): List<LibraryTab> =
+            if (BuildConfig.ENABLE_CUSTOM_GAMES) {
+                entries
+            } else {
+                entries.filterNot { it == LOCAL }
+            }
+
+        fun sanitize(tab: LibraryTab): LibraryTab =
+            availableTabs().find { it == tab } ?: ALL
+
+        fun LibraryTab.next(availableTabs: List<LibraryTab> = LibraryTab.availableTabs()): LibraryTab {
+            val currentIndex = availableTabs.indexOf(this)
+            if (currentIndex == -1) return ALL
+            val nextIndex = (currentIndex + 1) % availableTabs.size
+            return availableTabs[nextIndex]
         }
 
-        fun LibraryTab.previous(): LibraryTab {
-            val values = entries
-            val prevIndex = if (ordinal == 0) values.size - 1 else ordinal - 1
-            return values[prevIndex]
+        fun LibraryTab.previous(availableTabs: List<LibraryTab> = LibraryTab.availableTabs()): LibraryTab {
+            val currentIndex = availableTabs.indexOf(this)
+            if (currentIndex == -1) return ALL
+            val prevIndex = if (currentIndex == 0) availableTabs.size - 1 else currentIndex - 1
+            return availableTabs[prevIndex]
         }
     }
 }

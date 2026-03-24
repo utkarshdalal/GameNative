@@ -107,6 +107,18 @@ android {
         )
     }
 
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("oss") {
+            dimension = "distribution"
+            buildConfigField("boolean", "ENABLE_CUSTOM_GAMES", "true")
+        }
+        create("playstore") {
+            dimension = "distribution"
+            buildConfigField("boolean", "ENABLE_CUSTOM_GAMES", "false")
+        }
+    }
+
     buildTypes {
         debug {
             isDebuggable = true
