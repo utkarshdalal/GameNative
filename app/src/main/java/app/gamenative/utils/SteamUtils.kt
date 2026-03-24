@@ -336,23 +336,12 @@ object SteamUtils {
     }
 
     internal fun writeColdClientIni(steamAppId: Int, container: Container) {
-        val appDirPath = SteamService.getAppDirPath(steamAppId)
         val gameName = getAppDirName(getAppInfoOf(steamAppId))
         val executablePath = container.executablePath.replace("/", "\\")
         val exePath = "steamapps\\common\\$gameName\\$executablePath"
         val exeCommandLine = container.execArgs
         val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
         iniFile.parentFile?.mkdirs()
-
-        // Cold client launch state can survive a previous session and break the next launch
-        // for some games (Batman: Arkham Asylum GOTY reproduced this as a persistent black screen).
-        // Always regenerate the loader ini and clear the launch marker before starting a new session.
-        if (MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)) {
-            Timber.i("Cleared stale STEAM_COLDCLIENT_USED marker for appId: $steamAppId")
-        }
-        if (iniFile.exists() && iniFile.delete()) {
-            Timber.i("Deleted stale ColdClientLoader.ini for appId: $steamAppId")
-        }
 
         // Only include DllsToInjectFolder if unpackFiles is enabled
         val injectionSection = if (container.isUnpackFiles) {
