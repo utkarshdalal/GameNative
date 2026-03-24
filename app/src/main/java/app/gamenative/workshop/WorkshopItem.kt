@@ -13,7 +13,17 @@ data class WorkshopItem(
     val fileUrl: String = "",
     val fileName: String = "",
     val previewUrl: String = "",
-)
+) {
+    companion object {
+        /** File extensions recognised as valid workshop content (used to skip magic-byte detection). */
+        val KNOWN_EXTENSIONS = setOf(
+            "gma", "vpk", "bsp", "zip", "rar", "7z",
+            "bsa", "esp", "esm", "ckm", "pak", "bin",
+            "txt", "cfg", "lua", "mdl", "vmt", "vtf",
+            "wav", "mp3", "ogg", "png", "jpg", "jpeg",
+        )
+    }
+}
 
 /**
  * Wraps a subscription fetch result so callers can distinguish

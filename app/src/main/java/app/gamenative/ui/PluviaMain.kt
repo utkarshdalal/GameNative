@@ -102,6 +102,7 @@ import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
+import com.winlator.core.StringUtils
 import com.winlator.core.TarCompressorUtils
 import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.ImageFsInstaller
@@ -1832,12 +1833,10 @@ fun preLaunchApp(
                                     onBytesProgress = { downloaded, total ->
                                         if (total > 0) {
                                             setLoadingProgress(downloaded.toFloat() / total.toFloat())
-                                            val dlMB = String.format(Locale.US, "%.1f", downloaded / 1_048_576.0)
-                                            val totalMB = String.format(Locale.US, "%.1f", total / 1_048_576.0)
                                             setLoadingMessage(
                                                 "Downloading Workshop Mods ($currentCompleted/${itemsToSync.size})\n" +
                                                     "$currentTitle\n" +
-                                                    "${dlMB} MB / ${totalMB} MB"
+                                                    "${StringUtils.formatBytes(downloaded)} / ${StringUtils.formatBytes(total)}"
                                             )
                                         }
                                     },

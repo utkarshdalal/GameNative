@@ -533,12 +533,7 @@ object WorkshopManager {
         }
     }
 
-    private val KNOWN_EXTENSIONS = setOf(
-        "gma", "vpk", "bsp", "zip", "rar", "7z",
-        "bsa", "esp", "esm", "ckm", "pak", "bin",
-        "txt", "cfg", "lua", "mdl", "vmt", "vtf",
-        "wav", "mp3", "ogg", "png", "jpg", "jpeg",
-    )
+    private val KNOWN_EXTENSIONS = WorkshopItem.KNOWN_EXTENSIONS
 
     private fun detectExtension(magic: ByteArray): String? {
         // GMA: "GMAD" (0x47 0x4D 0x41 0x44)
