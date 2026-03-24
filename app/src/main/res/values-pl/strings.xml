@@ -279,6 +279,7 @@
     <string name="performance_hud_battery_level">Poziom baterii</string>
     <string name="performance_hud_power_draw">Pobór mocy</string>
     <string name="performance_hud_runtime_left">Pozostały czas</string>
+    <string name="performance_hud_battery_temperature">Temperatura baterii</string>
     <string name="performance_hud_clock_time">Czas</string>
     <string name="performance_hud_cpu_temperature">Temperatura CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura GPU</string>

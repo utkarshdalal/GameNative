@@ -267,6 +267,7 @@
     <string name="performance_hud_battery_level">Niveau de batterie</string>
     <string name="performance_hud_power_draw">Consommation d’énergie</string>
     <string name="performance_hud_runtime_left">Autonomie restante</string>
+    <string name="performance_hud_battery_temperature">Température de la batterie</string>
     <string name="performance_hud_clock_time">Heure</string>
     <string name="performance_hud_cpu_temperature">Température CPU</string>
     <string name="performance_hud_gpu_temperature">Température GPU</string>

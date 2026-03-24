@@ -195,6 +195,7 @@
     <string name="performance_hud_battery_level">Batteriniveau</string>
     <string name="performance_hud_power_draw">Strømforbrug</string>
     <string name="performance_hud_runtime_left">Resterende tid</string>
+    <string name="performance_hud_battery_temperature">Batteritemperatur</string>
     <string name="performance_hud_clock_time">Klokkeslæt</string>
     <string name="performance_hud_cpu_temperature">CPU-temperatur</string>
     <string name="performance_hud_gpu_temperature">GPU-temperatur</string>

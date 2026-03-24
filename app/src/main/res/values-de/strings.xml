@@ -260,6 +260,7 @@
     <string name="performance_hud_battery_level">Batteriestand</string>
     <string name="performance_hud_power_draw">Stromverbrauch</string>
     <string name="performance_hud_runtime_left">Verbleibende Laufzeit</string>
+    <string name="performance_hud_battery_temperature">Batterietemperatur</string>
     <string name="performance_hud_clock_time">Uhrzeit</string>
     <string name="performance_hud_cpu_temperature">CPU-Temperatur</string>
     <string name="performance_hud_gpu_temperature">GPU-Temperatur</string>

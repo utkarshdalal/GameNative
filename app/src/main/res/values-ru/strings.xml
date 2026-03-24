@@ -866,6 +866,7 @@ https://gamenative.app
     <string name="performance_hud_battery_level">Уровень батареи</string>
     <string name="performance_hud_power_draw">Потребление энергии</string>
     <string name="performance_hud_runtime_left">Оставшееся время</string>
+    <string name="performance_hud_battery_temperature">Температура батареи</string>
     <string name="performance_hud_clock_time">Время</string>
     <string name="performance_hud_cpu_temperature">Температура CPU</string>
     <string name="performance_hud_gpu_temperature">Температура GPU</string>

@@ -263,6 +263,7 @@
     <string name="performance_hud_battery_level">Рівень батареї</string>
     <string name="performance_hud_power_draw">Споживання енергії</string>
     <string name="performance_hud_runtime_left">Залишок часу</string>
+    <string name="performance_hud_battery_temperature">Температура батареї</string>
     <string name="performance_hud_clock_time">Час</string>
     <string name="performance_hud_cpu_temperature">Температура CPU</string>
     <string name="performance_hud_gpu_temperature">Температура GPU</string>

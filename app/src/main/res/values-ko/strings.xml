@@ -280,6 +280,7 @@
     <string name="performance_hud_battery_level">배터리 잔량</string>
     <string name="performance_hud_power_draw">전력 소모</string>
     <string name="performance_hud_runtime_left">남은 시간</string>
+    <string name="performance_hud_battery_temperature">배터리 온도</string>
     <string name="performance_hud_clock_time">시계</string>
     <string name="performance_hud_cpu_temperature">CPU 온도</string>
     <string name="performance_hud_gpu_temperature">GPU 온도</string>

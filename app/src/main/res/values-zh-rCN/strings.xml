@@ -266,6 +266,7 @@
     <string name="performance_hud_battery_level">电池电量</string>
     <string name="performance_hud_power_draw">功耗</string>
     <string name="performance_hud_runtime_left">剩余时间</string>
+    <string name="performance_hud_battery_temperature">电池温度</string>
     <string name="performance_hud_clock_time">时间</string>
     <string name="performance_hud_cpu_temperature">CPU 温度</string>
     <string name="performance_hud_gpu_temperature">GPU 温度</string>

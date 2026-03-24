@@ -269,6 +269,7 @@
     <string name="performance_hud_battery_level">Nivel baterie</string>
     <string name="performance_hud_power_draw">Consum de energie</string>
     <string name="performance_hud_runtime_left">Timp rămas</string>
+    <string name="performance_hud_battery_temperature">Temperatura bateriei</string>
     <string name="performance_hud_clock_time">Ora</string>
     <string name="performance_hud_cpu_temperature">Temperatura CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura GPU</string>
