@@ -1808,7 +1808,11 @@ fun preLaunchApp(
         val prefixToPath: (String) -> String = { prefix ->
             PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
         }
-        setLoadingMessage("Syncing cloud saves")
+        val hasSavePatterns = SteamService.getAppInfoOf(gameId)
+            ?.ufs?.saveFilePatterns?.isNotEmpty() == true
+        if (hasSavePatterns) {
+            setLoadingMessage("Syncing cloud saves")
+        }
         setLoadingProgress(-1f)
         val postSyncInfo = SteamService.beginLaunchApp(
             appId = gameId,
