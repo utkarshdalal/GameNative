@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import com.winlator.inputcontrols.Binding
 
 /**
@@ -195,7 +196,7 @@ fun ControllerBindingDialog(
                             }
                         } else {
                             // Expanded search field
-                            OutlinedTextField(
+                            NoExtractOutlinedTextField(
                                 value = searchQuery,
                                 onValueChange = {
                                     searchQuery = it
@@ -232,7 +233,7 @@ fun ControllerBindingDialog(
                                     .fillMaxWidth()
                                     .height(44.dp), // Even more compact when expanded
                                 singleLine = true,
-                                textStyle = MaterialTheme.typography.bodySmall
+                                textStyle = MaterialTheme.typography.bodySmall,
                             )
                         }
 

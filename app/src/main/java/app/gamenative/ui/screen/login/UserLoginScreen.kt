@@ -50,8 +50,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -690,7 +690,7 @@ private fun CredentialsForm(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
-            OutlinedTextField(
+            NoExtractOutlinedTextField(
                 value = username,
                 onValueChange = onUsername,
                 singleLine = true,
@@ -728,7 +728,7 @@ private fun CredentialsForm(
             )
         }
 
-        OutlinedTextField(
+        NoExtractOutlinedTextField(
             value = password,
             onValueChange = onPassword,
             singleLine = true,
