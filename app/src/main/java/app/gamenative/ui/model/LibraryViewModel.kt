@@ -23,6 +23,7 @@ import app.gamenative.db.dao.EpicGameDao
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
+import app.gamenative.service.amazon.AmazonArtwork
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
@@ -585,6 +586,7 @@ class LibraryViewModel @Inject constructor(
                         capsuleImageUrl = game.artUrl,
                         headerImageUrl = layoutHero,
                         heroImageUrl = layoutHero.ifEmpty { game.artUrl },
+                        gridHeroImageScale = AmazonArtwork.GRID_HERO_ZOOM_SCALE,
                         isShared = false,
                         gameSource = GameSource.AMAZON,
                     ),
