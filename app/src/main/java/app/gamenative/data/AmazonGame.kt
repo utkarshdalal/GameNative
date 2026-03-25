@@ -50,7 +50,10 @@ data class AmazonGame(
     @ColumnInfo("art_url")
     val artUrl: String = "",
 
-    // Hero/background image URL for the detail screen (wide, landscape)
+    /**
+     * App detail hero (background art only, no crown) — resolved at sync in [app.gamenative.service.amazon.AmazonApiClient].
+     * Library grid crown/hero is derived from [productJson] via `AmazonArtwork.layoutHeroFromProductJson`.
+     */
     @ColumnInfo(name = "hero_url", defaultValue = "")
     val heroUrl: String = "",
 
