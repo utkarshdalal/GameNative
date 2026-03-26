@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.enums.LibraryTab
+import app.gamenative.ui.theme.PluviaBorder
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.WindowWidthClass
 import app.gamenative.ui.util.rememberWindowWidthClass
@@ -154,7 +155,7 @@ private fun CompactLibraryTabBar(
                 brush = Brush.verticalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                        MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
                         Color.Transparent,
                     ),
                 ),
@@ -199,8 +200,17 @@ private fun CompactLibraryTabBar(
                 modifier = Modifier
                     .weight(1f)
                     .horizontalScroll(scrollState)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            ),
+                        ),
+                    )
+                    .border(1.dp, PluviaBorder.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
@@ -292,7 +302,7 @@ private fun CompactLibraryTabBar(
 }
 
 /**
- * Simple icon button for compact tab bar.
+ * Icon button for compact tab bar — matches expanded IconActionButton styling.
  */
 @Composable
 private fun CompactIconButton(
@@ -304,9 +314,25 @@ private fun CompactIconButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
 
+    val scale by animateFloatAsState(
+        targetValue = if (isFocused) 1.15f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "compactIconScale",
+    )
+
+    val alpha by animateFloatAsState(
+        targetValue = if (isFocused) 1f else 0.7f,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "compactIconAlpha",
+    )
+
     Box(
         modifier = modifier
-            .size(36.dp)
+            .scale(scale)
+            .size(40.dp)
             .then(
                 if (isFocused) {
                     Modifier.border(
@@ -327,18 +353,27 @@ private fun CompactIconButton(
             )
             .clip(CircleShape)
             .background(
-                if (isFocused) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                },
+                brush = Brush.radialGradient(
+                    colors = if (isFocused) {
+                        listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                        )
+                    } else {
+                        listOf(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                        )
+                    },
+                ),
             )
             .selectable(
-                selected = false,
+                selected = isFocused,
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
-            ),
+            )
+            .alpha(alpha),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -411,8 +446,8 @@ private fun ExpandedLibraryTabBar(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-                        MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
                         Color.Transparent,
                     ),
                 ),
@@ -457,7 +492,7 @@ private fun ExpandedLibraryTabBar(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(
                         brush = Brush.horizontalGradient(
                             colors = listOf(
@@ -467,6 +502,7 @@ private fun ExpandedLibraryTabBar(
                             ),
                         ),
                     )
+                    .border(1.dp, PluviaBorder.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
                     .horizontalScroll(scrollState)
                     .padding(4.dp),
                 contentAlignment = Alignment.CenterStart,
@@ -556,7 +592,7 @@ private fun IconActionButton(
     Box(
         modifier = modifier
             .scale(scale)
-            .size(44.dp)
+            .size(40.dp)
             .then(
                 if (isFocused) {
                     Modifier.border(
