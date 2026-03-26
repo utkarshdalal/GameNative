@@ -46,7 +46,6 @@ import com.winlator.core.GPUInformation
 import java.io.File
 import kotlin.text.Charsets
 import kotlinx.coroutines.CoroutineScope
-import timber.log.Timber
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

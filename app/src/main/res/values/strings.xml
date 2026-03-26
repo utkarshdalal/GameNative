@@ -633,10 +633,6 @@
     <string name="use_legacy_drm">Use Legacy DRM</string>
     <string name="unpack_files">Unpack Files</string>
     <string name="unpack_files_description">Only use if you get \'Application Load Error 3:0000065432\'.</string>
-    <string name="workshop_mods">Enable Workshop Mods</string>
-    <string name="workshop_mods_description">Download and configure subscribed Steam Workshop mods before game launch</string>
-    <string name="delete_workshop_mods">Delete Workshop Mods</string>
-    <string name="delete_workshop_mods_confirm">This will delete all downloaded workshop mods and their symlinks for this game. You will need to re-download them if you enable workshop mods again. Continue?</string>
     <string name="force_dlc">Force DLC</string>
     <string name="force_dlc_description">Only enable if DLCs are not detected or saves with DLC are not working</string>
     <string name="local_saves_only">Local saves only</string>
