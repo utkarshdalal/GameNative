@@ -757,6 +757,39 @@ private fun Preview_LibraryTabBar() {
     }
 }
 
+@Preview(
+    showBackground = true,
+    backgroundColor = 0xFF1A1A1A,
+    device = "spec:width=1080px,height=1920px,dpi=440,orientation=landscape",
+)
+@Composable
+private fun Preview_LibraryTabBar_Landscape() {
+    PluviaTheme {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+        ) {
+            LibraryTabBar(
+                currentTab = LibraryTab.ALL,
+                tabCounts = mapOf(
+                    LibraryTab.ALL to 42,
+                    LibraryTab.STEAM to 30,
+                    LibraryTab.GOG to 8,
+                    LibraryTab.EPIC to 4,
+                    LibraryTab.LOCAL to 3,
+                ),
+                onTabSelected = {},
+                onOptionsClick = {},
+                onSearchClick = {},
+                onAddGameClick = {},
+                onMenuClick = {},
+                onNavigateDownToGrid = {},
+            )
+        }
+    }
+}
+
 @Preview(showBackground = true, backgroundColor = 0xFF1A1A1A)
 @Composable
 private fun Preview_LibraryTabBar_Steam() {
