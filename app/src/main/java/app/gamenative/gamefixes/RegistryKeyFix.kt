@@ -2,6 +2,7 @@ package app.gamenative.gamefixes
 
 import android.content.Context
 import app.gamenative.data.GameSource
+import com.winlator.container.Container
 import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
 import timber.log.Timber
@@ -18,6 +19,7 @@ class RegistryKeyFix(
         gameId: String,
         installPath: String,
         installPathWindows: String,
+        container: Container,
     ): Boolean {
         val imageFs = ImageFs.find(context)
         val systemRegFile = File(imageFs.wineprefix, "system.reg")

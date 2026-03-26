@@ -66,6 +66,7 @@ object ContainerConfigTransfer {
         context: Context,
         appId: String,
         uri: Uri,
+        onInstallStateChange: ((visible: Boolean, progress: Float, label: String) -> Unit)? = null,
     ): Boolean {
         return try {
             val jsonText =
@@ -109,19 +110,36 @@ object ContainerConfigTransfer {
                 configJson = configJson,
                 matchType = matchType,
             )
+            if (missingRequests.isNotEmpty()) {
+                onInstallStateChange?.invoke(
+                    true,
+                    -1f,
+                    missingRequests.first().entry.name,
+                )
+            }
             for (request in missingRequests) {
+                val label = request.entry.id
+                onInstallStateChange?.invoke(true, -1f, label)
                 val result = ManifestInstaller.installManifestEntry(
                     context = context,
                     entry = request.entry,
                     isDriver = request.isDriver,
                     contentType = request.contentType,
-                    onProgress = { _ -> },
+                    onProgress = { progress ->
+                        onInstallStateChange?.invoke(
+                            true,
+                            progress.coerceIn(0f, 1f),
+                            label,
+                        )
+                    },
                 )
                 SnackbarManager.show(result.message)
                 if (!result.success) {
+                    onInstallStateChange?.invoke(false, -1f, "")
                     return false
                 }
             }
+            onInstallStateChange?.invoke(false, -1f, "")
 
             // 3) Apply to container using the same mapping logic as BestConfig
             withContext(Dispatchers.IO) {
@@ -138,6 +156,7 @@ object ContainerConfigTransfer {
         } catch (e: CancellationException) {
             throw e
         } catch (e: IOException) {
+            onInstallStateChange?.invoke(false, -1f, "")
             SnackbarManager.show(
                 context.getString(
                     R.string.best_config_apply_failed,
@@ -146,6 +165,7 @@ object ContainerConfigTransfer {
             )
             false
         } catch (e: Exception) {
+            onInstallStateChange?.invoke(false, -1f, "")
             SnackbarManager.show(
                 context.getString(
                     R.string.best_config_apply_failed,

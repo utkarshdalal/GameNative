@@ -1,0 +1,327 @@
+439490: BLUE REVOLVER
+	appinfo
+		appid: 439490
+		common
+			name: BLUE REVOLVER
+			type: Game
+			clienttga: 8a6a1b01ad1566db0b6300e6acc3058d03c55893
+			clienticon: eba3afba6e2558d4b1ead0c3ea9f128def00190c
+			icon: 59e5a9c800756c699116aa4f6c68a3873360e1b3
+			clienticns: 6ea1b7347173d6e0861e322a6e22c1e605ba8a6d
+			oslist: windows,macos,linux
+			osarch: 
+			logo: 77a189e5c17208cfaa9b69c41bc50bb44eff56b0
+			logo_small: 77a189e5c17208cfaa9b69c41bc50bb44eff56b0_thumb
+			ReleaseState: released
+			osextended: macos64,macosapplesilicon
+			steam_deck_compatibility
+				category: 3
+				steamos_compatibility: 2
+				test_timestamp: 1731369600
+				tested_build_id: 16295677
+				tests
+					0
+						display: 4
+						token: #SteamDeckVerified_TestResult_DefaultControllerConfigFullyFunctional
+					1
+						display: 4
+						token: #SteamDeckVerified_TestResult_ControllerGlyphsMatchDeckDevice
+					2
+						display: 4
+						token: #SteamDeckVerified_TestResult_InterfaceTextIsLegible
+					3
+						display: 4
+						token: #SteamDeckVerified_TestResult_DefaultConfigurationIsPerformant
+					4
+						display: 1
+						token: #SteamDeckVerified_TestResult_CrossPlatformCloudSavesNotSupported
+				steamos_tests
+					0
+						display: 3
+						token: #SteamOS_TestResult_GameStartupFunctional
+					1
+						display: 1
+						token: #SteamOS_TestResult_CrossPlatformCloudSavesNotSupported
+				configuration
+					supported_input: gamepad
+					requires_manual_keyboard_invoke: 0
+					requires_non_controller_launcher_nav: 0
+					primary_player_is_controller_slot_0: 0
+					non_deck_display_glyphs: 0
+					small_text: 0
+					requires_internet_for_setup: 0
+					requires_internet_for_singleplayer: 0
+					recommended_runtime: proton-stable
+					requires_h264: 0
+					requires_voice_files: 0
+					gamescope_frame_limiter_not_supported: 1
+					hdr_support: 0
+			metacritic_name: BLUE REVOLVER
+			controllertagwizard: 1
+			controller_support: full
+			small_capsule
+				english: 719d000c4db063e40699393b59b1902a4d034360/capsule_231x87.jpg
+			header_image
+				english: header.jpg
+			library_assets
+				library_capsule: en
+				library_hero: en
+				library_hero_blur: en
+				library_logo: en
+				library_header: en
+				logo_position
+					pinned_position: BottomLeft
+					width_pct: 29.977116704805496
+					height_pct: 75.66595088919544
+			library_assets_full
+				library_capsule
+					image
+						english: 144ff1c29255feadd4222c93bacb7e150c38e492/library_600x900.jpg
+					image2x
+						english: 144ff1c29255feadd4222c93bacb7e150c38e492/library_600x900_2x.jpg
+				library_hero
+					image
+						english: 2b8a2a0206f4f3a462b42c7a743a8ed3a9393ed6/library_hero.jpg
+					image2x
+						english: 2b8a2a0206f4f3a462b42c7a743a8ed3a9393ed6/library_hero_2x.jpg
+				library_hero_blur
+					image
+						english: 2b8a2a0206f4f3a462b42c7a743a8ed3a9393ed6/library_hero_blur.jpg
+				library_logo
+					image
+						english: 2d15ab79577c89f996e08b975204495a619cc616/logo.png
+					image2x
+						english: 2d15ab79577c89f996e08b975204495a619cc616/logo_2x.png
+					logo_position
+						pinned_position: BottomLeft
+						width_pct: 29.977116704805496
+						height_pct: 75.66595088919544
+				library_header
+					image
+						english: 4f936187db68273a9b0425c15fda8611a1b2e439/library_header.jpg
+					image2x
+						english: 4f936187db68273a9b0425c15fda8611a1b2e439/library_header_2x.jpg
+			store_asset_mtime: 1731583544
+			associations
+				0
+					type: developer
+					name: danbo
+				1
+					type: developer
+					name: woof
+				2
+					type: publisher
+					name: Stellar Circle
+			primary_genre: 1
+			genres
+				0: 1
+				1: 23
+			category
+				category_2: 1
+				category_23: 1
+				category_28: 1
+				category_29: 1
+				category_22: 1
+				category_25: 1
+				category_55: 1
+				category_56: 1
+				category_57: 1
+				category_58: 1
+				category_62: 1
+			supported_languages
+				english
+					supported: true
+					subtitles: true
+				japanese
+					supported: true
+					subtitles: true
+				russian
+					supported: true
+					subtitles: true
+			steam_release_date: 1476205040
+			community_visible_stats: 1
+			community_hub_visible: 1
+			gameid: 439490
+			store_tags
+				0: 4255
+				1: 4885
+				2: 492
+				3: 19
+				4: 1773
+				5: 1756
+				6: 3964
+				7: 4085
+				8: 3871
+				9: 7208
+				10: 4026
+				11: 1774
+				12: 4004
+				13: 4637
+			review_score: 9
+			review_percentage: 98
+		extended
+			developer: danbo
+			publisher: Stellar Circle
+			homepage: https://danboland.net/brda/
+		config
+			contenttype: 3
+			installdir: BLUE REVOLVER
+			launch
+				0
+					executable: bluerevolver.exe
+					type: default
+					config
+						oslist: windows
+				1
+					executable: bluerevolver.app
+					type: default
+					config
+						oslist: macos
+						osarch: 64
+				2
+					executable: run.sh
+					type: default
+					config
+						oslist: linux
+			app_mappings
+
+		depots
+			439491
+				config
+					oslist: windows
+				manifests
+					public
+						gid: 2294351241466825511
+						size: 1246205769
+						download: 1195119920
+					1.12
+						gid: 4318495041138509751
+						size: 1233072940
+						download: 1190278928
+					1.51d
+						gid: 5421466464792822076
+						size: 1246190323
+						download: 1195128480
+					hautefix
+						gid: 3664227914967533320
+						size: 1246205775
+						download: 1195125664
+			439492
+				config
+					oslist: macos
+				manifests
+					public
+						gid: 4418773377630782369
+						size: 1263362898
+						download: 1199876096
+					1.12
+						gid: 7696109419199622446
+						size: 1238977520
+						download: 1191036784
+					1.51d
+						gid: 8818548965351437083
+						size: 1263347452
+						download: 1199859264
+					hautefix
+						gid: 4971566982693081306
+						size: 1263362904
+						download: 1199866320
+			439493
+				config
+					oslist: linux
+				manifests
+					public
+						gid: 2583846437361481995
+						size: 1249492173
+						download: 1195957760
+					1.12
+						gid: 4298525889882242366
+						size: 1257933577
+						download: 1195696960
+					1.51d
+						gid: 8820966931752253681
+						size: 1249476727
+						download: 1195952864
+					hautefix
+						gid: 1631834596038139564
+						size: 1249492179
+						download: 1195957840
+			439494
+				config
+					oslist: windows
+					osarch: 64
+				manifests
+					public
+						gid: 3769906124355020964
+						size: 1247991113
+						download: 1195646624
+					1.12
+						gid: 895637721803560756
+						size: 1233072940
+						download: 1190214448
+					1.51d
+						gid: 7578657148626478001
+						size: 1247975667
+						download: 1195630048
+					hautefix
+						gid: 7478393857524883120
+						size: 1247991119
+						download: 1195646944
+			branches
+				public
+					buildid: 16616887
+					timeupdated: 1733241731
+					timebuildupdated: 1733241279
+				1.12
+					buildid: 16412602
+					description: Old pre-DA version
+					timeupdated: 1731626334
+					timebuildupdated: 1731625881
+				1.51d
+					buildid: 16501676
+					description: November 2024
+					timeupdated: 1733239615
+					timebuildupdated: 1732287424
+				hautefix
+					buildid: 16648121
+					description: Fix for Haute42 controllers
+					timeupdated: 1733428803
+					timebuildupdated: 1733428633
+			privatebranches: 1
+		ufs
+			quota: 1000000000
+			maxnumfiles: 1000
+			savefiles
+				1
+					root: gameinstall
+					path: blue-revolver-final
+					pattern: save2.lua
+				2
+					root: gameinstall
+					path: blue-revolver-double-action
+					pattern: brda_save.sav
+				3
+					root: gameinstall
+					path: love/blue-revolver-final
+					pattern: save2.lua
+					platforms
+						1: Linux
+			rootoverrides
+				0
+					root: gameinstall
+					os: Windows
+					oscompare: =
+					useinstead: WinAppDataRoaming
+					addpath: 
+				1
+					root: gameinstall
+					os: MacOS
+					oscompare: =
+					useinstead: MacAppSupport
+					addpath: 
+				2
+					root: gameinstall
+					os: Linux
+					oscompare: =
+					useinstead: LinuxHome
+					addpath: .local/share/

@@ -1,5 +1,6 @@
 package app.gamenative.db.dao
 
+import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.gamenative.data.SteamApp
@@ -10,17 +11,17 @@ import app.gamenative.service.SteamService.Companion.INVALID_PKG_ID
 import `in`.dragonbra.javasteam.enums.ELicenseFlags
 import `in`.dragonbra.javasteam.enums.ELicenseType
 import `in`.dragonbra.javasteam.enums.EPaymentMethod
-import java.util.Date
-import java.util.EnumSet
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
-import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.util.Date
+import java.util.EnumSet
 
 @RunWith(RobolectricTestRunner::class)
 class SteamAppDaoTest {
@@ -30,127 +31,164 @@ class SteamAppDaoTest {
     private lateinit var licenseDao: SteamLicenseDao
 
     @Before
-    fun setup() {
-        db = Room.inMemoryDatabaseBuilder(
-            ApplicationProvider.getApplicationContext(),
-            PluviaDatabase::class.java,
-        ).allowMainThreadQueries().build()
+    fun setUp() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        db = Room.inMemoryDatabaseBuilder(context, PluviaDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
         appDao = db.steamAppDao()
         licenseDao = db.steamLicenseDao()
     }
 
     @After
-    fun teardown() {
+    fun tearDown() {
         db.close()
     }
 
-    // --- helpers ---
-
-    private fun license(packageId: Int, appIds: List<Int> = emptyList(), expired: Boolean = false) = SteamLicense(
+    private fun makeLicense(
+        packageId: Int,
+        flags: EnumSet<ELicenseFlags> = EnumSet.of(ELicenseFlags.None),
+        appIds: List<Int> = emptyList(),
+    ) = SteamLicense(
         packageId = packageId,
         lastChangeNumber = 0,
-        timeCreated = Date(0),
-        timeNextProcess = Date(0),
+        timeCreated = Date(),
+        timeNextProcess = Date(),
         minuteLimit = 0,
         minutesUsed = 0,
         paymentMethod = EPaymentMethod.None,
-        licenseFlags = if (expired) ELicenseFlags.from(8) else EnumSet.noneOf(ELicenseFlags::class.java),
+        licenseFlags = flags,
         purchaseCode = "",
         licenseType = ELicenseType.SinglePurchase,
         territoryCode = 0,
         accessToken = 0L,
-        ownerAccountId = emptyList(),
+        ownerAccountId = listOf(1),
         masterPackageID = 0,
         appIds = appIds,
     )
 
-    private fun app(id: Int, packageId: Int, type: AppType = AppType.game) = SteamApp(
-        id = id,
-        packageId = packageId,
-        type = type,
-        name = "App $id",
-        receivedPICS = type != AppType.invalid,
-    )
-
-    private fun ids(apps: List<SteamApp>) = apps.map { it.id }.toSet()
-
-    // --- tests ---
+    private fun makeApp(id: Int, packageId: Int, type: AppType = AppType.game) =
+        SteamApp(id = id, packageId = packageId, type = type, name = "App $id")
 
     @Test
-    fun `app with valid license listing its appId appears`() = runBlocking {
-        licenseDao.insertAll(listOf(license(packageId = 100, appIds = listOf(1000))))
-        appDao.insert(app(id = 1000, packageId = 100))
+    fun `valid license - app appears in library`() = runBlocking {
+        licenseDao.insertAll(listOf(makeLicense(packageId = 100, appIds = listOf(1))))
+        appDao.insert(makeApp(id = 1, packageId = 100))
 
-        val result = appDao.getAllOwnedApps().first()
-        assertTrue(ids(result).contains(1000))
+        val apps = appDao.getAllOwnedApps().first()
+        assertEquals(1, apps.size)
+        assertEquals(1, apps[0].id)
     }
 
     @Test
-    fun `app whose license was deleted does not appear`() = runBlocking {
-        // Insert license, then delete it (simulates expired free weekend)
-        licenseDao.insertAll(listOf(license(packageId = 100, appIds = listOf(1000))))
-        appDao.insert(app(id = 1000, packageId = 100))
-        licenseDao.deleteStaleLicenses(listOf(100))
+    fun `expired license - app excluded from library`() = runBlocking {
+        licenseDao.insertAll(listOf(makeLicense(
+            packageId = 100,
+            flags = EnumSet.of(ELicenseFlags.Expired),
+            appIds = listOf(1),
+        )))
+        appDao.insert(makeApp(id = 1, packageId = 100))
 
-        val result = appDao.getAllOwnedApps().first()
-        assertFalse(ids(result).contains(1000))
+        val apps = appDao.getAllOwnedApps().first()
+        assertTrue("expired license app should not appear", apps.isEmpty())
     }
 
     @Test
-    fun `app with INVALID_PKG_ID does not appear`() = runBlocking {
-        appDao.insert(app(id = 1000, packageId = INVALID_PKG_ID))
+    fun `no matching license - app excluded`() = runBlocking {
+        // app with valid package_id but no license row
+        appDao.insert(makeApp(id = 1, packageId = 999))
 
-        val result = appDao.getAllOwnedApps().first()
-        assertFalse(ids(result).contains(1000))
+        val apps = appDao.getAllOwnedApps().first()
+        assertTrue("app without license should not appear", apps.isEmpty())
     }
 
     @Test
-    fun `app with valid license but empty app_ids appears provisionally`() = runBlocking {
-        // Package PICS not yet fetched — app_ids is still []
-        licenseDao.insertAll(listOf(license(packageId = 100, appIds = emptyList())))
-        appDao.insert(app(id = 1000, packageId = 100))
+    fun `invalid package_id - app excluded`() = runBlocking {
+        appDao.insert(makeApp(id = 1, packageId = INVALID_PKG_ID))
 
-        val result = appDao.getAllOwnedApps().first()
-        assertTrue(ids(result).contains(1000))
+        val apps = appDao.getAllOwnedApps().first()
+        assertTrue("app with INVALID_PKG_ID should not appear", apps.isEmpty())
     }
 
     @Test
-    fun `app with license listing only other appIds does not appear`() = runBlocking {
-        licenseDao.insertAll(listOf(license(packageId = 100, appIds = listOf(9999))))
-        appDao.insert(app(id = 1000, packageId = 100))
+    fun `type 0 (invalid) - app excluded`() = runBlocking {
+        licenseDao.insertAll(listOf(makeLicense(packageId = 100, appIds = listOf(1))))
+        appDao.insert(makeApp(id = 1, packageId = 100, type = AppType.invalid))
 
-        val result = appDao.getAllOwnedApps().first()
-        assertFalse(ids(result).contains(1000))
+        val apps = appDao.getAllOwnedApps().first()
+        assertTrue("invalid type app should not appear", apps.isEmpty())
     }
 
     @Test
-    fun `app with expired free weekend license does not appear`() = runBlocking {
-        licenseDao.insertAll(listOf(license(packageId = 100, appIds = listOf(1000), expired = true)))
-        appDao.insert(app(id = 1000, packageId = 100))
+    fun `spacewar (480) - excluded`() = runBlocking {
+        licenseDao.insertAll(listOf(makeLicense(packageId = 100, appIds = listOf(480))))
+        appDao.insert(makeApp(id = 480, packageId = 100))
 
-        val result = appDao.getAllOwnedApps().first()
-        assertFalse(ids(result).contains(1000))
+        val apps = appDao.getAllOwnedApps().first()
+        assertTrue("Spacewar should not appear", apps.isEmpty())
     }
 
     @Test
-    fun `app appears when purchased after an expired free weekend`() = runBlocking {
-        // package_id points to expired free weekend, but a separate purchase license also lists the app
+    fun `multiple apps same license - all appear`() = runBlocking {
+        licenseDao.insertAll(listOf(makeLicense(packageId = 100, appIds = listOf(1, 2, 3))))
+        appDao.insert(makeApp(id = 1, packageId = 100))
+        appDao.insert(makeApp(id = 2, packageId = 100))
+        appDao.insert(makeApp(id = 3, packageId = 100))
+
+        val apps = appDao.getAllOwnedApps().first()
+        assertEquals(3, apps.size)
+    }
+
+    @Test
+    fun `mixed valid and expired licenses - only valid appear`() = runBlocking {
         licenseDao.insertAll(listOf(
-            license(packageId = 100, appIds = listOf(1000), expired = true),
-            license(packageId = 200, appIds = listOf(1000)),
+            makeLicense(packageId = 100, appIds = listOf(1)),
+            makeLicense(packageId = 200, flags = EnumSet.of(ELicenseFlags.Expired), appIds = listOf(2)),
         ))
-        appDao.insert(app(id = 1000, packageId = 100))
+        appDao.insert(makeApp(id = 1, packageId = 100))
+        appDao.insert(makeApp(id = 2, packageId = 200))
 
-        val result = appDao.getAllOwnedApps().first()
-        assertTrue(ids(result).contains(1000))
+        val apps = appDao.getAllOwnedApps().first()
+        assertEquals(1, apps.size)
+        assertEquals(1, apps[0].id)
     }
 
     @Test
-    fun `stub app with type invalid does not appear even with valid license`() = runBlocking {
-        licenseDao.insertAll(listOf(license(packageId = 100, appIds = listOf(1000))))
-        appDao.insert(app(id = 1000, packageId = 100, type = AppType.invalid))
+    fun `expired combined with other flags - still excluded`() = runBlocking {
+        // expired + renew flags together
+        licenseDao.insertAll(listOf(makeLicense(
+            packageId = 100,
+            flags = EnumSet.of(ELicenseFlags.Expired, ELicenseFlags.Renew),
+            appIds = listOf(1),
+        )))
+        appDao.insert(makeApp(id = 1, packageId = 100))
 
-        val result = appDao.getAllOwnedApps().first()
-        assertFalse(ids(result).contains(1000))
+        val apps = appDao.getAllOwnedApps().first()
+        assertTrue("expired+renew license should not appear", apps.isEmpty())
+    }
+
+    @Test
+    fun `non-expired flags - app appears`() = runBlocking {
+        // renew flag without expired
+        licenseDao.insertAll(listOf(makeLicense(
+            packageId = 100,
+            flags = EnumSet.of(ELicenseFlags.Renew),
+            appIds = listOf(1),
+        )))
+        appDao.insert(makeApp(id = 1, packageId = 100))
+
+        val apps = appDao.getAllOwnedApps().first()
+        assertEquals(1, apps.size)
+    }
+
+    @Test
+    fun `results ordered by name case-insensitive`() = runBlocking {
+        licenseDao.insertAll(listOf(makeLicense(packageId = 100, appIds = listOf(1, 2, 3))))
+        appDao.insert(SteamApp(id = 1, packageId = 100, type = AppType.game, name = "Zelda"))
+        appDao.insert(SteamApp(id = 2, packageId = 100, type = AppType.game, name = "alpha"))
+        appDao.insert(SteamApp(id = 3, packageId = 100, type = AppType.game, name = "Beta"))
+
+        val apps = appDao.getAllOwnedApps().first()
+        assertEquals(listOf("alpha", "Beta", "Zelda"), apps.map { it.name })
     }
 }

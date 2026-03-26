@@ -94,7 +94,10 @@
     <string name="game_not_installed_title">Jogo Não instalado</string>
     <string name="game_not_installed_message">%s não está instalado. Por favor instale o jogo primeiro antes de iniciar.</string>
     <string name="intent_launch_failed">Não foi possível iniciar o jogo: atalho de inicialização inválido</string>
-    <string name="intent_launch_steam_login_required">Login no Steam necessário para iniciar este jogo</string>
+    <string name="intent_launch_steam_pending">O jogo será iniciado quando o Steam se conectar</string>
+    <string name="intent_launch_service_pending">O jogo será iniciado quando o serviço estiver pronto</string>
+    <string name="intent_launch_steam_login_failed">Falha no login do Steam — inicialização do jogo cancelada</string>
+    <string name="intent_launch_service_timeout">Falha ao iniciar o serviço do jogo — inicialização do jogo cancelada</string>
     <string name="game_executable_not_found_title">Não é possível iniciar</string>
     <string name="game_executable_not_found">O executável não pôde ser selecionado automaticamente. Defina o caminho do executável nas configurações do contêiner.</string>
     <string name="save_container_settings_title">Salvar configuração do contêiner?</string>
@@ -145,6 +148,23 @@
     <string name="open_navigation_menu">Abrir Menu de Navegação</string>
     <string name="quick_menu_title">Menu rápido</string>
     <string name="quick_menu_back">Voltar</string>
+    <string name="screen_effects">Efeitos de tela</string>
+    <string name="screen_effects_live_preview">As alterações são aplicadas instantaneamente ao jogo atual.</string>
+    <string name="screen_effects_color_adjustments">Ajustes de cor</string>
+    <string name="screen_effects_shader_toggles">Efeitos de shader</string>
+    <string name="screen_effects_brightness">Brilho</string>
+    <string name="screen_effects_contrast">Contraste</string>
+    <string name="screen_effects_gamma">Gama</string>
+    <string name="screen_effects_toon">Contorno toon</string>
+    <string name="screen_effects_toon_description">Adiciona contornos escuros para um visual cel-shading.</string>
+    <string name="screen_effects_fxaa">FXAA</string>
+    <string name="screen_effects_fxaa_description">Suaviza serrilhados com um leve anti-aliasing por pós-processamento.</string>
+    <string name="screen_effects_crt">CRT</string>
+    <string name="screen_effects_crt_description">Adiciona scanlines e uma sutil aberração cromática.</string>
+    <string name="screen_effects_ntsc">NTSC</string>
+    <string name="screen_effects_ntsc_description">Adiciona distorção retrô de TV composta, sangramento e scanlines.</string>
+    <string name="screen_effects_reset">Redefinir</string>
+    <string name="screen_effects_close">Fechar</string>
     <string name="quick_menu_tab_general">Geral</string>
     <string name="quick_menu_tab_controller">Controle</string>
     <string name="performance_hud">HUD de desempenho</string>
@@ -177,6 +197,7 @@
     <string name="performance_hud_battery_level">Nível da bateria</string>
     <string name="performance_hud_power_draw">Consumo de energia</string>
     <string name="performance_hud_runtime_left">Tempo restante</string>
+    <string name="performance_hud_battery_temperature">Temperatura da bateria</string>
     <string name="performance_hud_clock_time">Hora</string>
     <string name="performance_hud_cpu_temperature">Temperatura da CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura da GPU</string>
@@ -756,6 +777,8 @@
     <!-- TODO: Revisão manual - PluviaMain: Conflitos de save -->
     <string name="main_save_conflict_title">Conflito de save</string>
     <string name="main_save_conflict_message">Há um novo save remoto e um novo save local, qual você gostaria de manter?\n\nSave local:\n\t%1$s\nSave remoto:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Escolher versão do save</string>
+    <string name="main_save_conflict_upgrade_v1_message">Corrigimos o tratamento dos caminhos de save na nuvem deste jogo e encontramos diferenças entre o save local e o da nuvem. Escolha qual versão manter.\n\nSave local:\n\t%1$s\nSave na nuvem:\n\t%2$s</string>
     <string name="main_keep_local">Manter local</string>
     <string name="main_keep_remote">Manter remoto</string>
 
@@ -1124,7 +1147,6 @@
     <string name="manifest_content_untrusted">O conteúdo não é confiável e não foi instalado.</string>
     <string name="manifest_type_mismatch">O conteúdo baixado não corresponde ao tipo esperado.</string>
     <string name="manifest_glibc_not_supported">Compilações GLIBC não são suportadas.</string>
-
     <!-- Library: source not logged in splash -->
     <string name="library_source_not_logged_in_steam">Faça login para acessar sua biblioteca Steam.</string>
     <string name="library_source_not_logged_in_gog">Faça login para acessar sua biblioteca GOG.</string>

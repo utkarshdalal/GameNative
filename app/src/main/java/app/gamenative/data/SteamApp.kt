@@ -25,6 +25,8 @@ data class SteamApp(
     val receivedPICS: Boolean = false,
     @ColumnInfo("last_change_number")
     val lastChangeNumber: Int = 0,
+    @ColumnInfo("ufs_parse_version", defaultValue = "0")
+    val ufsParseVersion: Int = 0,
 
     @ColumnInfo("depots")
     val depots: Map<Int, DepotInfo> = emptyMap(),

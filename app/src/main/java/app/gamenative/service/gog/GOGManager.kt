@@ -287,6 +287,7 @@ class GOGManager @Inject constructor(
             slug = parsedGame.slug,
             imageUrl = parsedGame.imageUrl,
             iconUrl = parsedGame.iconUrl,
+            backgroundUrl = parsedGame.backgroundUrl,
             description = parsedGame.description,
             releaseDate = parsedGame.releaseDate,
             developer = parsedGame.developer,

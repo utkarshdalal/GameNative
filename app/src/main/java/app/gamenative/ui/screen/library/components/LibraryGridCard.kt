@@ -188,6 +188,7 @@ internal fun GridViewCard(
                     imageModifier = Modifier
                         .fillMaxSize()
                         .alpha(imageAlpha),
+                    contentScale = getGridContentScale(paneType),
                     image = { currentImageUrl },
                     onFailure = {
                         if (imageUrls.fallback.isNotEmpty() && currentImageUrl == imageUrls.primary) {
@@ -372,6 +373,14 @@ private fun GridStatusIcons(appInfo: LibraryItem) {
  * Primary and optional fallback image URL for grid view (e.g. Steam header -> hero).
  */
 internal data class GridImageUrls(val primary: String, val fallback: String = "")
+
+private fun getGridContentScale(paneType: PaneType): ContentScale {
+    return if (paneType == PaneType.GRID_HERO) {
+        ContentScale.Crop
+    } else {
+        ContentScale.Fit
+    }
+}
 
 /**
  * Gets the appropriate image URL(s) for a game in grid view.

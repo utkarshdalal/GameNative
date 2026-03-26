@@ -143,6 +143,8 @@ public class Container {
 
     private boolean forceDlc = false;
 
+    private boolean localSavesOnly = false;
+
     private boolean steamOfflineMode = false;
 
     private boolean useLegacyDRM = false;
@@ -699,6 +701,9 @@ public class Container {
             // Force DLC setting
             data.put("forceDlc", forceDlc);
 
+            // Local saves only setting
+            data.put("localSavesOnly", localSavesOnly);
+
             // Steam offline mode setting
             data.put("steamOfflineMode", steamOfflineMode);
 
@@ -896,6 +901,9 @@ public class Container {
                 case "forceDlc":
                     this.forceDlc = data.getBoolean(key);
                     break;
+                case "localSavesOnly":
+                    this.localSavesOnly = data.getBoolean(key);
+                    break;
                 case "steamOfflineMode":
                     this.steamOfflineMode = data.getBoolean(key);
                     break;
@@ -919,6 +927,7 @@ public class Container {
                     break;
             }
         }
+
     }
 
     public static void checkObsoleteOrMissingProperties(JSONObject data) {
@@ -978,6 +987,14 @@ public class Container {
 
     public void setForceDlc(boolean forceDlc) {
         this.forceDlc = forceDlc;
+    }
+
+    public boolean isLocalSavesOnly() {
+        return localSavesOnly;
+    }
+
+    public void setLocalSavesOnly(boolean localSavesOnly) {
+        this.localSavesOnly = localSavesOnly;
     }
 
     public boolean isSteamOfflineMode() {

@@ -53,10 +53,12 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private int surfaceWidth;
     private int surfaceHeight;
     private boolean sceneInitialized = false;
+    private final EffectComposer effectComposer;
 
     public GLRenderer(XServerView xServerView, XServer xServer) {
         this.xServerView = xServerView;
         this.xServer = xServer;
+        this.effectComposer = new EffectComposer(this);
         rootCursorDrawable = createRootCursorDrawable();
 
         quadVertices.put(new float[]{
@@ -83,6 +85,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        effectComposer.invalidateGLResources();
         try (XLock lock = xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
             // iterate all known drawables; if you don't have a central list,
             // call this during updateScene() for each window's content.
@@ -122,10 +125,15 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             viewportNeedsUpdate = true;
         }
 
-        drawFrame();
+        if (effectComposer.hasEffects()) {
+            effectComposer.render();
+        }
+        else {
+            drawScene();
+        }
     }
 
-    private void drawFrame() {
+    void drawScene() {
         boolean xrFrame = false;
         // if (XrActivity.isSupported()) xrFrame = XrActivity.getInstance().beginFrame(XrActivity.getImmersive(), XrActivity.getSBS());
 
@@ -422,5 +430,25 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     public void setMagnifierZoom(float magnifierZoom) {
         this.magnifierZoom = magnifierZoom;
         xServerView.requestRender();
+    }
+
+    public int getSurfaceWidth() {
+        return surfaceWidth;
+    }
+
+    public int getSurfaceHeight() {
+        return surfaceHeight;
+    }
+
+    public VertexAttribute getQuadVertices() {
+        return quadVertices;
+    }
+
+    public void setViewportNeedsUpdate(boolean viewportNeedsUpdate) {
+        this.viewportNeedsUpdate = viewportNeedsUpdate;
+    }
+
+    public EffectComposer getEffectComposer() {
+        return effectComposer;
     }
 }

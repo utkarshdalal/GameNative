@@ -178,7 +178,10 @@
     <string name="game_not_installed_title">Gra nie zainstalowana</string>
     <string name="game_not_installed_message">%s nie jest zainstalowana. Proszę zainstalować grę przed uruchomieniem.</string>
     <string name="intent_launch_failed">Nie udało się uruchomić gry: nieprawidłowy skrót uruchamiania</string>
-    <string name="intent_launch_steam_login_required">Wymagane logowanie do Steam, aby uruchomić tę grę</string>
+    <string name="intent_launch_steam_pending">Gra zostanie uruchomiona po połączeniu ze Steam</string>
+    <string name="intent_launch_service_pending">Gra zostanie uruchomiona po uruchomieniu usługi</string>
+    <string name="intent_launch_steam_login_failed">Logowanie do Steam nie powiodło się — uruchomienie gry anulowane</string>
+    <string name="intent_launch_service_timeout">Nie udało się uruchomić usługi gry — uruchomienie gry anulowane</string>
     <string name="game_executable_not_found_title">Nie można uruchomić</string>
     <string name="game_executable_not_found">Nie udało się automatycznie wybrać pliku wykonywalnego. Ustaw ścieżkę do pliku wykonywalnego w ustawieniach kontenera.</string>
     <string name="save_container_settings_title">Zapisać konfigurację kontenera?</string>
@@ -229,6 +232,23 @@
     <string name="open_navigation_menu">Otwórz menu nawigacji</string>
     <string name="quick_menu_title">Menu szybkie</string>
     <string name="quick_menu_back">Wstecz</string>
+    <string name="screen_effects">Efekty ekranu</string>
+    <string name="screen_effects_live_preview">Zmiany są natychmiast stosowane do bieżącej gry.</string>
+    <string name="screen_effects_color_adjustments">Regulacja kolorów</string>
+    <string name="screen_effects_shader_toggles">Efekty shaderów</string>
+    <string name="screen_effects_brightness">Jasność</string>
+    <string name="screen_effects_contrast">Kontrast</string>
+    <string name="screen_effects_gamma">Gamma</string>
+    <string name="screen_effects_toon">Kontur toon</string>
+    <string name="screen_effects_toon_description">Dodaje ciemne kontury dla wyglądu cel-shading.</string>
+    <string name="screen_effects_fxaa">FXAA</string>
+    <string name="screen_effects_fxaa_description">Wygładza postrzępione krawędzie lekkim antyaliasingiem w postprocessingu.</string>
+    <string name="screen_effects_crt">CRT</string>
+    <string name="screen_effects_crt_description">Dodaje linie skanowania i subtelną aberrację chromatyczną.</string>
+    <string name="screen_effects_ntsc">NTSC</string>
+    <string name="screen_effects_ntsc_description">Dodaje retro zniekształcenia telewizora kompozytowego, rozlewanie kolorów i linie skanowania.</string>
+    <string name="screen_effects_reset">Resetuj</string>
+    <string name="screen_effects_close">Zamknij</string>
     <string name="quick_menu_tab_general">Ogólne</string>
     <string name="quick_menu_tab_controller">Kontroler</string>
     <string name="performance_hud">HUD wydajności</string>
@@ -261,6 +281,7 @@
     <string name="performance_hud_battery_level">Poziom baterii</string>
     <string name="performance_hud_power_draw">Pobór mocy</string>
     <string name="performance_hud_runtime_left">Pozostały czas</string>
+    <string name="performance_hud_battery_temperature">Temperatura baterii</string>
     <string name="performance_hud_clock_time">Czas</string>
     <string name="performance_hud_cpu_temperature">Temperatura CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura GPU</string>
@@ -451,7 +472,7 @@
     <string name="fexcore_env_var_help__multiblock">Włącza kompilację kodu wieloblokowego. Może powodować dłuższą kompilację JIT i przycięcia.</string>
     <string name="fexcore_env_var_help__hostfeatures">Kontroluje wymuszanie funkcji CPU.</string>
     <string name="fexcore_env_var_help__smalltscscale">Skaluje TSC na systemach o niskiej częstotliwości.</string>
-    <string name="fexcore_env_var_help__smc_checks">Sprawdzanie kodu samomodyfikującego się (SMC).</string>
+    <string name="fexcore_env_var_help__smcchecks">Sprawdzanie kodu samomodyfikującego się (SMC).</string>
     <string name="fexcore_env_var_help__volatilemetadata">Używa ulotnych metadanych z plików PE dla TSO, gdy są dostępne.</string>
     <string name="fexcore_env_var_help__monohacks">Specjalne hacki SMC + bloki JIT dla wykrywania Mono.</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">Ukrywa bit hiperwizora CPUID (przydatne dla aplikacji, które przez to awariują).</string>
@@ -945,6 +966,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Konflikt zapisu</string>
     <string name="main_save_conflict_message">Istnieje nowy zapis zdalny i nowy zapis lokalny. Który chcesz zachować?\n\nZapis lokalny:\n\t%1$s\nZapis zdalny:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Wybierz wersję zapisu</string>
+    <string name="main_save_conflict_upgrade_v1_message">Naprawiliśmy obsługę ścieżek zapisów w chmurze dla tej gry i wykryliśmy różnice między zapisem lokalnym a zapisem w chmurze. Wybierz, którą wersję zachować.\n\nZapis lokalny:\n\t%1$s\nZapis w chmurze:\n\t%2$s</string>
     <string name="main_keep_local">Zachowaj lokalny</string>
     <string name="main_keep_remote">Zachowaj zdalny</string>
 
@@ -1257,7 +1280,6 @@
     <string name="manifest_content_untrusted">Zawartość nie jest zaufana i nie została zainstalowana.</string>
     <string name="manifest_type_mismatch">Pobrana zawartość nie pasuje do oczekiwanego typu.</string>
     <string name="manifest_glibc_not_supported">Wersje GLIBC nie są obsługiwane.</string>
-
     <!-- Library: source not logged in splash -->
     <string name="library_source_not_logged_in_steam">Zaloguj się, aby uzyskać dostęp do swojej biblioteki Steam.</string>
     <string name="library_source_not_logged_in_gog">Zaloguj się, aby uzyskać dostęp do swojej biblioteki GOG.</string>
