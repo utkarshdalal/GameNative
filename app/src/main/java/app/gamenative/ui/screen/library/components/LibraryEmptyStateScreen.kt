@@ -57,11 +57,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import android.content.res.Configuration
+import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.R
 import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.theme.PluviaBackground
@@ -71,6 +74,7 @@ import app.gamenative.ui.theme.PluviaForegroundMuted
 import app.gamenative.ui.theme.PluviaPurple
 import app.gamenative.ui.icons.Amazon
 import app.gamenative.ui.icons.Steam
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.shouldShowGamepadUI
 
 sealed class LibraryEmptyState {
@@ -88,7 +92,8 @@ internal fun LibraryEmptyStateScreen(
 ) {
     val config = resolveEmptyStateConfig(state)
 
-    var visible by remember { mutableStateOf(false) }
+    val isInPreview = LocalInspectionMode.current
+    var visible by remember { mutableStateOf(isInPreview) }
     LaunchedEffect(Unit) { visible = true }
 
     Box(
@@ -340,3 +345,47 @@ private data class EmptyStateConfig(
     val actionLabel: String,
     val buttonIcon: ImageVector,
 )
+
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
+@Composable
+private fun Preview_NotSignedIn() {
+    PluviaTheme {
+        LibraryEmptyStateScreen(
+            state = LibraryEmptyState.NotSignedIn(LibraryTab.STEAM),
+            onAction = {},
+        )
+    }
+}
+
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
+@Composable
+private fun Preview_EmptyLibrary() {
+    PluviaTheme {
+        LibraryEmptyStateScreen(
+            state = LibraryEmptyState.EmptyLibrary(LibraryTab.STEAM),
+            onAction = {},
+        )
+    }
+}
+
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
+@Composable
+private fun Preview_FilteredEmpty() {
+    PluviaTheme {
+        LibraryEmptyStateScreen(
+            state = LibraryEmptyState.FilteredEmpty,
+            onAction = {},
+        )
+    }
+}
+
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
+@Composable
+private fun Preview_NoCustomGames() {
+    PluviaTheme {
+        LibraryEmptyStateScreen(
+            state = LibraryEmptyState.NoCustomGames,
+            onAction = {},
+        )
+    }
+}
