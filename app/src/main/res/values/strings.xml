@@ -1154,7 +1154,10 @@
     <string name="best_config_no_config_available">No best config available for this game</string>
     <string name="best_config_fetch_failed">Failed to fetch config. Please check your network connection.</string>
     <string name="best_config_apply_failed">Failed to apply config: %s</string>
-    <string name="best_config_missing_content">%s missing</string>
+    <string name="best_config_missing_components_title">Config not applied</string>
+    <string name="best_config_missing_components_message">The following required components are not available:\n\n%1$s</string>
+    <string name="best_config_apply_anyway">Apply anyway</string>
+    <string name="best_config_applied_with_defaults">Config applied with missing components replaced by defaults</string>
     <string name="import_config">Import config</string>
     <string name="export_config">Export config</string>
     <string name="library_app_type">App Type</string>

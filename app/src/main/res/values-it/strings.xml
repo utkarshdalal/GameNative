@@ -1097,11 +1097,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">Config applicata con successo</string>
+    <string name="best_config_missing_components_title">Configurazione non applicata</string>
+    <string name="best_config_missing_components_message">I seguenti componenti necessari non sono disponibili su questo dispositivo:\n\n%1$s\n\nInstalla i componenti mancanti e riprova.</string>
     <string name="best_config_known_config_invalid">Config nota non valida</string>
     <string name="best_config_no_config_available">Nessuna miglior config disponibile per questo gioco</string>
     <string name="best_config_fetch_failed">Impossibile recuperare la configurazione. Controlla la connessione di rete.</string>
+    <string name="best_config_apply_anyway">Applica comunque</string>
+    <string name="best_config_applied_with_defaults">Configurazione applicata, componenti mancanti sostituiti con valori predefiniti</string>
     <string name="best_config_apply_failed">Impossibile applicare config: %s</string>
-    <string name="best_config_missing_content">%s mancante</string>
     <string name="import_config">Importa configurazione</string>
     <string name="export_config">Esporta configurazione</string>
     <string name="library_app_type">Tipo App</string>

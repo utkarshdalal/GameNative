@@ -21,6 +21,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import app.gamenative.PluviaApp
 import app.gamenative.R
@@ -170,6 +171,26 @@ abstract class BaseAppScreen {
 
         fun shouldImportConfig(appId: String): Boolean {
             return importConfigRequests[appId] == true
+        }
+
+        // missing components that prevent config from being applied
+        data class MissingComponentsState(
+            val components: List<String>,
+            val onApplyAnyway: (() -> Unit)? = null,
+        )
+
+        private val missingComponentsDialogStates = mutableStateMapOf<String, MissingComponentsState>()
+
+        fun showMissingComponentsDialog(appId: String, components: List<String>, onApplyAnyway: (() -> Unit)? = null) {
+            missingComponentsDialogStates[appId] = MissingComponentsState(components, onApplyAnyway)
+        }
+
+        fun hideMissingComponentsDialog(appId: String) {
+            missingComponentsDialogStates.remove(appId)
+        }
+
+        fun getMissingComponentsState(appId: String): MissingComponentsState? {
+            return missingComponentsDialogStates[appId]
         }
 
         fun showKnownConfigInstallState(gameId: Int, state: KnownConfigInstallState) {
@@ -640,17 +661,44 @@ abstract class BaseAppScreen {
             )
             if (!installsOk) return
 
+            val appId = libraryItem.appId
+            val configJson = bestConfig.bestConfig
+            val matchType = bestConfig.matchType
+
             val parsedConfig = BestConfigService.parseConfigToContainerData(
                 context = context,
-                configJson = bestConfig.bestConfig,
-                matchType = bestConfig.matchType,
+                configJson = configJson,
+                matchType = matchType,
                 applyKnownConfig = true,
                 storeMatch = bestConfig.matchedStore.equals(libraryItem.gameSource.name, ignoreCase = true),
             )
-            val missingContentDescription = BestConfigService.consumeLastMissingContentDescription()
+            val missingComponents = BestConfigService.consumeLastMissingComponents()
 
-            if (parsedConfig != null && parsedConfig.isNotEmpty()) {
-                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+            if (missingComponents.isNotEmpty()) {
+                showMissingComponentsDialog(appId, missingComponents) {
+                    // "apply anyway" — re-parse with defaults replacing missing components
+                    uiScope.launch(Dispatchers.IO) {
+                        try {
+                            val forced = BestConfigService.parseConfigToContainerData(
+                                context, configJson, matchType, true, forceApply = true,
+                            )
+                            if (forced != null && forced.isNotEmpty()) {
+                                val c = ContainerUtils.getOrCreateContainer(context, appId)
+                                val cd = ContainerUtils.toContainerData(c)
+                                val updated = ContainerUtils.applyBestConfigMapToContainerData(cd, forced)
+                                ContainerUtils.applyToContainer(context, c, updated)
+                                SnackbarManager.show(context.getString(R.string.best_config_applied_with_defaults))
+                            } else {
+                                SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))
+                            }
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to force-apply config: ${e.message}")
+                            SnackbarManager.show(context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"))
+                        }
+                    }
+                }
+            } else if (parsedConfig != null && parsedConfig.isNotEmpty()) {
+                val container = ContainerUtils.getOrCreateContainer(context, appId)
                 val currentData = ContainerUtils.toContainerData(container)
                 val updatedData = ContainerUtils.applyBestConfigMapToContainerData(
                     currentData,
@@ -659,12 +707,7 @@ abstract class BaseAppScreen {
                 ContainerUtils.applyToContainer(context, container, updatedData)
                 SnackbarManager.show(context.getString(R.string.best_config_applied_successfully))
             } else {
-                val message = if (missingContentDescription != null) {
-                    context.getString(R.string.best_config_missing_content, missingContentDescription)
-                } else {
-                    context.getString(R.string.best_config_known_config_invalid)
-                }
-                SnackbarManager.show(message)
+                SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))
             }
         } catch (e: CancellationException) {
             throw e
@@ -1058,6 +1101,44 @@ abstract class BaseAppScreen {
                 context.getString(R.string.working)
             },
         )
+
+        // missing components dialog — shown when config can't be applied
+        val missingState = getMissingComponentsState(appId)
+        if (missingState != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    hideMissingComponentsDialog(appId)
+                },
+                title = { Text(stringResource(R.string.best_config_missing_components_title)) },
+                text = {
+                    Text(
+                        text = stringResource(
+                            R.string.best_config_missing_components_message,
+                            missingState.components.joinToString("\n"),
+                        ),
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        hideMissingComponentsDialog(appId)
+                    }) {
+                        Text(stringResource(R.string.ok))
+                    }
+                },
+                dismissButton = if (missingState.onApplyAnyway != null) {
+                    {
+                        TextButton(onClick = {
+                            hideMissingComponentsDialog(appId)
+                            missingState.onApplyAnyway.invoke()
+                        }) {
+                            Text(stringResource(R.string.best_config_apply_anyway))
+                        }
+                    }
+                } else {
+                    null
+                },
+            )
+        }
 
         // Render any additional dialogs
         AdditionalDialogs(libraryItem, onDismiss = {}, onEditContainer = onEditContainer, onBack = onBack)

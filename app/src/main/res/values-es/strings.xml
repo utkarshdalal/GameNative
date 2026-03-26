@@ -1117,11 +1117,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">La mejor configuración se ha aplicado correctamente.</string>
+    <string name="best_config_missing_components_title">Configuración no aplicada</string>
+    <string name="best_config_missing_components_message">Los siguientes componentes requeridos no están disponibles en este dispositivo:\n\n%1$s\n\nInstale los componentes faltantes e intente nuevamente.</string>
     <string name="best_config_known_config_invalid">La configuración conocida es inválida.</string>
     <string name="best_config_no_config_available">No hay una mejor configuración disponible para este juego.</string>
     <string name="best_config_fetch_failed">Error al obtener la configuración. Compruebe su conexión de red.</string>
+    <string name="best_config_apply_anyway">Aplicar de todos modos</string>
+    <string name="best_config_applied_with_defaults">Configuración aplicada, componentes faltantes reemplazados por valores predeterminados</string>
     <string name="best_config_apply_failed">Error al aplicar la configuración: %s.</string>
-    <string name="best_config_missing_content">Falta %s.</string>
     <string name="import_config">Importar configuración</string>
     <string name="export_config">Exportar configuración</string>
     <string name="library_app_type">Tipo de aplicación</string>

@@ -104,11 +104,14 @@
     <string name="bcn_emulation">Эмуляция BCn</string>
     <string name="bcn_emulation_type">Тип эмуляции BCn</string>
     <string name="best_config_applied_successfully">Конфигурация успешно применена</string>
+    <string name="best_config_applied_with_defaults">Конфигурация применена, отсутствующие компоненты заменены значениями по умолчанию</string>
+    <string name="best_config_apply_anyway">Применить всё равно</string>
     <string name="best_config_apply_failed">Ошибка применения конфигурации: %s</string>
     <string name="best_config_exact_gpu_match">Известная конфигурация работает на вашем GPU</string>
     <string name="best_config_fallback_match">Известная конфигурация может работать на вашем GPU</string>
     <string name="best_config_known_config_invalid">Известная конфигурация невалидна</string>
-    <string name="best_config_missing_content">%s отсутствует</string>
+    <string name="best_config_missing_components_message">Следующие необходимые компоненты недоступны на этом устройстве:\n\n%1$s\n\nУстановите недостающие компоненты и повторите попытку.</string>
+    <string name="best_config_missing_components_title">Конфигурация не применена</string>
     <string name="best_config_no_config_available">Нет доступной лучшей конфигурации для этой игры</string>
     <string name="best_config_fetch_failed">Не удалось получить конфигурацию. Проверьте сетевое подключение.</string>
     <string name="bind_button">Привязать: %1$s</string>
