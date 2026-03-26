@@ -24,5 +24,6 @@ enum class AppOptionMenuType(val text: String) {
     ForceUploadLocal("Force upload local saves"),
     FetchSteamGridDBImages("Fetch game images"),
     TestGraphics("Test graphics"),
-    ManageGameContent("Manage DLC");
+    ManageGameContent("Manage DLC"),
+    ManageWorkshop("Manage Workshop");
 }

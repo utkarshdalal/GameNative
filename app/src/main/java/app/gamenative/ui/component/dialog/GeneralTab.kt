@@ -43,7 +43,6 @@ fun GeneralTabContent(
     state: ContainerConfigState,
     nonzeroResolutionError: String,
     aspectResolutionError: String,
-    onDeleteWorkshopMods: (() -> Unit)? = null,
 ) {
     val config = state.config.value
     val graphicsDrivers = state.graphicsDrivers.value
@@ -335,46 +334,6 @@ fun GeneralTabContent(
                 state = config.unpackFiles,
                 onCheckedChange = { state.config.value = config.copy(unpackFiles = it) },
             )
-        }
-        SettingsSwitch(
-            colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.workshop_mods)) },
-            subtitle = { Text(text = stringResource(R.string.workshop_mods_description)) },
-            state = config.workshopMods,
-            onCheckedChange = { state.config.value = config.copy(workshopMods = it) },
-        )
-        if (onDeleteWorkshopMods != null) {
-            var showDeleteConfirmation by rememberSaveable { mutableStateOf(false) }
-            if (showDeleteConfirmation) {
-                AlertDialog(
-                    onDismissRequest = { showDeleteConfirmation = false },
-                    title = { Text(text = stringResource(R.string.delete_workshop_mods)) },
-                    text = { Text(text = stringResource(R.string.delete_workshop_mods_confirm)) },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            showDeleteConfirmation = false
-                            onDeleteWorkshopMods()
-                            state.config.value = state.config.value.copy(workshopMods = false)
-                        }) {
-                            Text(text = stringResource(R.string.delete))
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showDeleteConfirmation = false }) {
-                            Text(text = stringResource(R.string.cancel))
-                        }
-                    },
-                )
-            }
-            TextButton(
-                onClick = { showDeleteConfirmation = true },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.delete_workshop_mods),
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.error,
-                )
-            }
         }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),

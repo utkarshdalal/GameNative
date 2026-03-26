@@ -35,7 +35,6 @@ import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.createPinnedShortcut
-import app.gamenative.workshop.WorkshopManager
 import com.winlator.container.ContainerData
 import java.io.File
 import kotlin.text.Charsets
@@ -786,32 +785,6 @@ abstract class BaseAppScreen {
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
-                },
-                onDeleteWorkshopMods = if (libraryItem.gameSource == GameSource.STEAM) {
-                    {
-                        uiScope.launch {
-                            try {
-                                withContext(Dispatchers.IO) {
-                                    val gameRootDir = File(
-                                        app.gamenative.service.SteamService.getAppDirPath(
-                                            displayInfo.gameId
-                                        )
-                                    )
-                                    val gameName = displayInfo.name
-                                    WorkshopManager.deleteWorkshopMods(
-                                        context, libraryItem.appId,
-                                        gameRootDir, gameName,
-                                    )
-                                }
-                                SnackbarManager.show("Workshop mods deleted")
-                            } catch (e: Exception) {
-                                Timber.e(e, "Failed to delete workshop mods")
-                                SnackbarManager.show("Failed to delete workshop mods")
-                            }
-                        }
-                    }
-                } else {
-                    null
                 },
             )
         }

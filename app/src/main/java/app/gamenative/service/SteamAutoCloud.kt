@@ -18,10 +18,11 @@ import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileChangeList
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileInfo
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
-import `in`.dragonbra.javasteam.util.crypto.CryptoHelper
+import java.io.BufferedInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.RandomAccessFile
+import java.security.MessageDigest
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -51,6 +52,19 @@ import java.net.SocketTimeoutException
 object SteamAutoCloud {
 
     private const val MAX_USER_FILE_RETRIES = 3
+
+    /** Computes SHA-1 hash by streaming the file in chunks to avoid OOM on large files. */
+    private fun streamingShaHash(path: Path): ByteArray {
+        val digest = MessageDigest.getInstance("SHA-1")
+        val buf = ByteArray(8192)
+        BufferedInputStream(Files.newInputStream(path)).use { input ->
+            var bytesRead: Int
+            while (input.read(buf).also { bytesRead = it } != -1) {
+                digest.update(buf, 0, bytesRead)
+            }
+        }
+        return digest.digest()
+    }
 
     private fun findPlaceholderWithin(aString: String): Sequence<MatchResult> =
         Regex("%\\w+%").findAll(aString)
@@ -228,7 +242,7 @@ object SteamAutoCloud {
                         pattern = userFile.pattern,
                         maxDepth = 5,
                     ).map {
-                        val sha = CryptoHelper.shaHash(Files.readAllBytes(it))
+                        val sha = streamingShaHash(it)
 
                         Timber.i("Found ${it.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
 
@@ -256,7 +270,7 @@ object SteamAutoCloud {
                     pattern = "*",
                     maxDepth = 5,
                 ).map {
-                    val sha = CryptoHelper.shaHash(Files.readAllBytes(it))
+                    val sha = streamingShaHash(it)
 
                     val relativePath = basePath.relativize(it).pathString
 

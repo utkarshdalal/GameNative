@@ -56,6 +56,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import app.gamenative.ui.component.dialog.GameManagerDialog
+import app.gamenative.ui.component.dialog.WorkshopManagerDialog
 import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.ui.component.dialog.state.GameManagerDialogState
 import app.gamenative.ui.util.SnackbarManager
@@ -294,6 +295,20 @@ class SteamAppScreen : BaseAppScreen() {
 
         fun getGameManagerDialogState(gameId: Int): GameManagerDialogState? {
             return gameManagerDialogStates[gameId]
+        }
+
+        private val workshopDialogVisible = mutableStateMapOf<Int, Boolean>()
+
+        fun showWorkshopDialog(gameId: Int) {
+            workshopDialogVisible[gameId] = true
+        }
+
+        fun hideWorkshopDialog(gameId: Int) {
+            workshopDialogVisible.remove(gameId)
+        }
+
+        fun isWorkshopDialogVisible(gameId: Int): Boolean {
+            return workshopDialogVisible[gameId] == true
         }
 
         // Shared state for update/verify operation - map of gameId to AppOptionMenuType
@@ -793,6 +808,12 @@ class SteamAppScreen : BaseAppScreen() {
                             visible = true,
                         )
                     )
+                }
+            ),
+            AppMenuOption(
+                AppOptionMenuType.ManageWorkshop,
+                onClick = {
+                    showWorkshopDialog(gameId)
                 }
             ),
             AppMenuOption(
@@ -1365,6 +1386,45 @@ class SteamAppScreen : BaseAppScreen() {
                 },
                 onDismissRequest = {
                     hideGameManagerDialog(gameId)
+                }
+            )
+        }
+
+        var workshopDialogShown by remember(gameId) {
+            mutableStateOf(isWorkshopDialogVisible(gameId))
+        }
+        LaunchedEffect(gameId) {
+            snapshotFlow { isWorkshopDialogVisible(gameId) }
+                .collect { workshopDialogShown = it }
+        }
+
+        if (workshopDialogShown) {
+            val container = remember(libraryItem.appId) {
+                ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+            }
+            val currentEnabledIds = remember(container.enabledWorkshopItemIds) {
+                container.enabledWorkshopItemIds
+                    .split(",")
+                    .mapNotNull { it.trim().toLongOrNull() }
+                    .toSet()
+            }
+            WorkshopManagerDialog(
+                visible = true,
+                currentEnabledIds = currentEnabledIds,
+                onGetDisplayInfo = { context ->
+                    return@WorkshopManagerDialog getGameDisplayInfo(context, libraryItem)
+                },
+                onSave = { enabledIds ->
+                    hideWorkshopDialog(gameId)
+                    // Update the already-loaded container and save synchronously
+                    // to avoid a race where a game launch reads stale data from disk
+                    val idsString = enabledIds.joinToString(",")
+                    container.enabledWorkshopItemIds = idsString
+                    container.isWorkshopMods = enabledIds.isNotEmpty()
+                    container.saveData()
+                },
+                onDismissRequest = {
+                    hideWorkshopDialog(gameId)
                 }
             )
         }

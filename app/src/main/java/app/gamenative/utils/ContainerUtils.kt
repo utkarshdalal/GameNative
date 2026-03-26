@@ -294,6 +294,7 @@ object ContainerUtils {
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
             workshopMods = container.isWorkshopMods,
+            enabledWorkshopItemIds = container.enabledWorkshopItemIds,
             suspendPolicy = container.suspendPolicy,
             portraitMode = container.isPortraitMode,
             enableXInput = enableX,
@@ -380,6 +381,7 @@ object ContainerUtils {
                 "steamOfflineMode" -> value?.let { updatedData.copy(steamOfflineMode = it as? Boolean ?: updatedData.steamOfflineMode) } ?: updatedData
                 "unpackFiles" -> value?.let { updatedData.copy(unpackFiles = it as? Boolean ?: updatedData.unpackFiles) } ?: updatedData
                 "workshopMods" -> value?.let { updatedData.copy(workshopMods = it as? Boolean ?: updatedData.workshopMods) } ?: updatedData
+                "enabledWorkshopItemIds" -> value?.let { updatedData.copy(enabledWorkshopItemIds = it as? String ?: updatedData.enabledWorkshopItemIds) } ?: updatedData
                 "suspendPolicy" -> value?.let { updatedData.copy(suspendPolicy = it as? String ?: updatedData.suspendPolicy) } ?: updatedData
                 "envVars" -> value?.let { updatedData.copy(envVars = it as? String ?: updatedData.envVars) } ?: updatedData
                 "cpuList" -> value?.let { updatedData.copy(cpuList = it as? String ?: updatedData.cpuList) } ?: updatedData
@@ -474,6 +476,7 @@ object ContainerUtils {
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
         container.setWorkshopMods(containerData.workshopMods)
+        container.setEnabledWorkshopItemIds(containerData.enabledWorkshopItemIds)
         container.setSuspendPolicy(containerData.suspendPolicy)
         container.setPortraitMode(containerData.portraitMode)
         if (previousUnpackFiles != containerData.unpackFiles && containerData.unpackFiles) {

@@ -1042,28 +1042,6 @@ fun PluviaMain(
                                 openContainerConfigForAppId = null
                             }
                         },
-                        onDeleteWorkshopMods = {
-                            scope.launch {
-                                try {
-                                    withContext(Dispatchers.IO) {
-                                        val gameId = runCatching {
-                                            ContainerUtils.extractGameIdFromContainerId(appId)
-                                        }.getOrNull()
-                                        val gameRootDir = gameId?.let { SteamService.getAppDirPath(it) }
-                                            ?.let { File(it) }
-                                        val gameName = gameId?.let { SteamService.getAppInfoOf(it)?.name } ?: ""
-                                        WorkshopManager.deleteWorkshopMods(
-                                            context, appId,
-                                            gameRootDir, gameName,
-                                        )
-                                    }
-                                    SnackbarManager.show("Workshop mods deleted")
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Failed to delete workshop mods")
-                                    SnackbarManager.show("Failed to delete workshop mods")
-                                }
-                            }
-                        },
                     )
                 }
             }
@@ -1767,7 +1745,14 @@ fun preLaunchApp(
         }
 
         // Workshop mod sync: download subscribed mods and configure symlinks
-        if (container.isWorkshopMods) {
+        val enabledWorkshopIds = container.enabledWorkshopItemIds
+            .split(",")
+            .mapNotNull { it.trim().toLongOrNull() }
+            .toSet()
+        Timber.tag("Workshop").i(
+            "Workshop launch check: workshopMods=${container.isWorkshopMods}, enabledIds=${enabledWorkshopIds.size}"
+        )
+        if (container.isWorkshopMods && enabledWorkshopIds.isNotEmpty()) {
             try {
                 setLoadingMessage("Checking Workshop mods...")
                 setLoadingProgress(-1f)
@@ -1777,7 +1762,12 @@ fun preLaunchApp(
                     val imageFs = ImageFs.find(context)
                     val winePrefix = imageFs.wineprefix
                     val fetchResult = WorkshopManager.getSubscribedItems(gameId, steamClient, steamId)
-                    val items = fetchResult.items
+                    // Filter to only user-enabled mods
+                    val items = fetchResult.items.filter { it.publishedFileId in enabledWorkshopIds }
+                    Timber.tag("Workshop").i(
+                        "Fetch: succeeded=${fetchResult.succeeded}, complete=${fetchResult.isComplete}, " +
+                            "total=${fetchResult.items.size}, filtered=${items.size}"
+                    )
                     if (items.isNotEmpty()) {
                         Timber.tag("Workshop").i("Found ${items.size} subscribed workshop items for appId=$gameId")
                         val workshopContentDir = WorkshopManager.getWorkshopContentDir(winePrefix, gameId)

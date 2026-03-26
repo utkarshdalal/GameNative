@@ -144,6 +144,10 @@ object WorkshopManager {
                 this.page = page
                 this.numperpage = PAGE_SIZE
                 this.type = "mysubscriptions"
+                // ~0 = k_EUGCMatchingUGCType_All — include all file types.
+                // Default (0) = k_EUGCMatchingUGCType_Items which omits
+                // GameManagedItems (type 12) used by games like Cities in Motion 2.
+                this.filetype = 0xFFFFFFFF.toInt()
             }.build()
 
             Timber.tag(TAG).d("GetUserFiles RPC: appId=$appId page=$page numperpage=$PAGE_SIZE")

@@ -151,6 +151,8 @@ public class Container {
 
     private boolean workshopMods = false;
 
+    private String enabledWorkshopItemIds = "";
+
     private String suspendPolicy = SUSPEND_POLICY_MANUAL;
 
     private boolean portraitMode = false;
@@ -708,6 +710,7 @@ public class Container {
 
             // Workshop Mods setting
             data.put("workshopMods", workshopMods);
+            data.put("enabledWorkshopItemIds", enabledWorkshopItemIds);
 
             // Process suspend policy setting
             data.put("suspendPolicy", suspendPolicy);
@@ -905,6 +908,9 @@ public class Container {
                 case "workshopMods":
                     this.workshopMods = data.getBoolean(key);
                     break;
+                case "enabledWorkshopItemIds":
+                    this.enabledWorkshopItemIds = data.optString(key, "");
+                    break;
                 case "suspendPolicy":
                     setSuspendPolicy(data.getString(key));
                     break;
@@ -1004,6 +1010,14 @@ public class Container {
 
     public void setWorkshopMods(boolean workshopMods) {
         this.workshopMods = workshopMods;
+    }
+
+    public String getEnabledWorkshopItemIds() {
+        return enabledWorkshopItemIds;
+    }
+
+    public void setEnabledWorkshopItemIds(String enabledWorkshopItemIds) {
+        this.enabledWorkshopItemIds = enabledWorkshopItemIds != null ? enabledWorkshopItemIds : "";
     }
 
     public static String normalizeSuspendPolicy(String suspendPolicy) {

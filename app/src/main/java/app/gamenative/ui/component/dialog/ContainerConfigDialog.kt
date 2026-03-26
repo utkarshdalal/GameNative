@@ -145,7 +145,6 @@ fun ContainerConfigDialog(
     initialConfig: ContainerData = ContainerData(),
     onDismissRequest: () -> Unit,
     onSave: (ContainerData) -> Unit,
-    onDeleteWorkshopMods: (() -> Unit)? = null,
 ) {
     if (visible) {
         val context = LocalContext.current
@@ -1128,7 +1127,7 @@ fun ContainerConfigDialog(
                                 .verticalScroll(scrollState)
                                 .weight(1f),
                         ) {
-                            if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError, aspectResolutionError, onDeleteWorkshopMods)
+                            if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError, aspectResolutionError)
                             if (selectedTab == 1) GraphicsTabContent(state)
                             if (selectedTab == 2) EmulationTabContent(state)
                             if (selectedTab == 3) ControllerTabContent(state, default)
