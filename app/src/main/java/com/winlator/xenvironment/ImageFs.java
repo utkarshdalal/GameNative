@@ -181,4 +181,12 @@ public class ImageFs {
     public String toString() {
         return rootDir.getPath();
     }
+
+    public static File getImageFsSharedDir(Context context) {
+        File sharedDir = new File(context.getFilesDir(), "imagefs_shared");
+        if (!sharedDir.exists()) {
+            sharedDir.mkdirs();
+        }
+        return sharedDir;
+    }
 }

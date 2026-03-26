@@ -98,6 +98,8 @@ public abstract class ImageFsInstaller {
         // dialog.show(R.string.installing_system_files);
         return Executors.newSingleThreadExecutor().submit(() -> {
             clearRootDir(context, rootDir);
+            ensureSharedHomeRoot(context, rootDir);
+
             final byte compressionRatio = 22;
             String imagefsFile = containerVariant.equals(Container.GLIBC) ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
             File downloaded = new File(imageFs.getFilesDir(), imagefsFile);
@@ -202,12 +204,19 @@ public abstract class ImageFsInstaller {
     }
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager, Container container, Callback<Integer> onProgress) {
         ImageFs imageFs = ImageFs.find(context);
+        if (!ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(context, imageFs.getRootDir())) {
+            Log.w("ImageFsInstaller", "Failed to migrate legacy directories before installation.");
+            return Executors.newSingleThreadExecutor().submit(() -> false);
+        }
         if (!imageFs.isValid() || imageFs.getVersion() < LATEST_VERSION || !imageFs.getVariant().equals(container.getContainerVariant())) {
             Log.d("ImageFsInstaller", "Installing image from assets");
             return installFromAssetsFuture(context, assetManager, container.getContainerVariant(), onProgress);
         } else {
             Log.d("ImageFsInstaller", "Image FS already valid and at latest version");
-            return Executors.newSingleThreadExecutor().submit(() -> true);
+            return Executors.newSingleThreadExecutor().submit(() -> {
+                ensureSharedHomeRoot(context, imageFs.getRootDir());
+                return true;
+            });
         }
     }
 
@@ -377,5 +386,27 @@ public abstract class ImageFsInstaller {
         } catch (Exception e) {
             Log.e("ImageFsInstaller", "Error clearing Steam DLL markers: " + e.getMessage());
         }
+    }
+
+    /**
+     * Ensures that:
+     * - A shared home backing directory exists at imagefs_shared/home (containing xuser, etc.)
+     * - The given imagefs rootDir exposes /home as a symlink to that shared root.
+     *
+     * This allows the same user home (e.g. .wine, .cache) to be shared across variants.
+     */
+    private static void ensureSharedHomeRoot(Context context, File rootDir) {
+        File sharedHomeRoot = new File(ImageFs.getImageFsSharedDir(context), "home");
+        if (!sharedHomeRoot.exists()) {
+            sharedHomeRoot.mkdirs();
+        }
+
+        File homePathInImageFs = new File(rootDir, "home");
+        if (FileUtils.isSymlink(homePathInImageFs)) {
+            // Already symlinked: /imagefs/home is a symlink to imagefs_shared/home.
+            return;
+        }
+
+        FileUtils.symlink(sharedHomeRoot.getPath(), homePathInImageFs.getPath());
     }
 }
