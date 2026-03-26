@@ -40,9 +40,22 @@ import java.util.concurrent.TimeUnit
 
 object SteamUtils {
 
+    private const val MAX_REASONABLE_DOWNLOAD_TO_INSTALL_RATIO = 2L
+
     fun getDownloadBytes(manifest: ManifestInfo?): Long {
         if (manifest == null) return 0L
-        return if (manifest.download > 0L) manifest.download else manifest.size
+
+        val download = manifest.download
+        val size = manifest.size
+
+        if (download <= 0L) return size
+        if (size <= 0L) return download
+
+        if (download > size && download / size >= MAX_REASONABLE_DOWNLOAD_TO_INSTALL_RATIO) {
+            return size
+        }
+
+        return download
     }
 
     internal val http = Net.http.newBuilder()

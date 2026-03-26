@@ -696,18 +696,48 @@ class SteamService : Service(), IChallengeUrlChanged {
             return true
         }
 
+        private fun getAuthorizedDepotIds(appIds: Set<Int>): Set<Int> {
+            if (appIds.isEmpty()) return emptySet()
+
+            return runBlocking {
+                instance?.licenseDao?.getAllLicenses().orEmpty()
+            }.asSequence()
+                .filter { license ->
+                    license.depotIds.isNotEmpty() && license.appIds.any { it in appIds }
+                }
+                .flatMap { it.depotIds.asSequence() }
+                .toSet()
+        }
+
+        private fun filterAuthorizedDepots(
+            depots: Map<Int, DepotInfo>,
+            authorizedDepotIds: Set<Int>,
+        ): Map<Int, DepotInfo> {
+            if (depots.isEmpty() || authorizedDepotIds.isEmpty()) return depots
+            return depots.filterKeys { it in authorizedDepotIds }.ifEmpty { depots }
+        }
+
         fun getMainAppDepots(appId: Int, containerLanguage: String): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
+            val authorizedDepotIds = getAuthorizedDepotIds(
+                buildSet {
+                    add(appId)
+                    ownedDlc.values.mapTo(this) { it.dlcAppId }.remove(INVALID_APP_ID)
+                },
+            )
 
             // If the game ships any 64-bit depot, prefer those and ignore x86 ones
             val has64Bit = appInfo.depots.values.any { it.osArch == OSArch.Arch64 }
 
-            return appInfo.depots.asSequence()
-                .filter { (depotId, depot) ->
-                    return@filter filterForDownloadableDepots(depot, has64Bit, containerLanguage, ownedDlc)
-                }
-                .associate { it.toPair() }
+            return filterAuthorizedDepots(
+                appInfo.depots.asSequence()
+                    .filter { (_, depot) ->
+                        filterForDownloadableDepots(depot, has64Bit, containerLanguage, ownedDlc)
+                    }
+                    .associate { it.toPair() },
+                authorizedDepotIds,
+            )
         }
 
         /**
@@ -726,41 +756,52 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun getDownloadableDepots(appId: Int, preferredLanguage: String): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
+            val indirectDlcApps = getDownloadableDlcAppsOf(appId).orEmpty()
+            val authorizedDepotIds = getAuthorizedDepotIds(
+                buildSet {
+                    add(appId)
+                    ownedDlc.values.mapTo(this) { it.dlcAppId }.remove(INVALID_APP_ID)
+                    indirectDlcApps.mapTo(this) { it.id }
+                },
+            )
 
             // If the game ships any 64-bit depot, prefer those and ignore x86 ones
             val has64Bit = appInfo.depots.values.any { it.osArch == OSArch.Arch64 }
 
-            val map = appInfo.depots
-                .asSequence()
-                .filter { (depotId, depot) ->
-                    return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, ownedDlc)
-                }
-                .associate { it.toPair() }
-                .toMutableMap()
-
-            val indirectDlcApps = getDownloadableDlcAppsOf(appId).orEmpty()
-            indirectDlcApps.forEach { dlcApp ->
-                dlcApp.depots
+            val map = filterAuthorizedDepots(
+                appInfo.depots
                     .asSequence()
-                    .filter { (depotId, depot) ->
-                        return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, null)
+                    .filter { (_, depot) ->
+                        filterForDownloadableDepots(depot, has64Bit, preferredLanguage, ownedDlc)
                     }
-                    .associate { it.toPair() }
-                    .forEach { (depotId, depot) ->
-                        // Add DLC Depots with custom object
-                        map[depotId] = DepotInfo(
-                            depotId = depot.depotId,
-                            dlcAppId = dlcApp.id, // Set to DLC App ID
-                            optionalDlcId = depot.optionalDlcId,
-                            depotFromApp = depot.depotFromApp,
-                            sharedInstall = depot.sharedInstall,
-                            osList = depot.osList,
-                            osArch = depot.osArch,
-                            language = depot.language,
-                            manifests = depot.manifests,
-                            encryptedManifests = depot.encryptedManifests,
-                        )
-                    }
+                    .associate { it.toPair() },
+                authorizedDepotIds,
+            ).toMutableMap()
+
+            indirectDlcApps.forEach { dlcApp ->
+                filterAuthorizedDepots(
+                    dlcApp.depots
+                        .asSequence()
+                        .filter { (_, depot) ->
+                            filterForDownloadableDepots(depot, has64Bit, preferredLanguage, null)
+                        }
+                        .associate { it.toPair() },
+                    authorizedDepotIds,
+                ).forEach { (depotId, depot) ->
+                    // Add DLC Depots with custom object
+                    map[depotId] = DepotInfo(
+                        depotId = depot.depotId,
+                        dlcAppId = dlcApp.id, // Set to DLC App ID
+                        optionalDlcId = depot.optionalDlcId,
+                        depotFromApp = depot.depotFromApp,
+                        sharedInstall = depot.sharedInstall,
+                        osList = depot.osList,
+                        osArch = depot.osArch,
+                        language = depot.language,
+                        manifests = depot.manifests,
+                        encryptedManifests = depot.encryptedManifests,
+                    )
+                }
             }
 
             return map
