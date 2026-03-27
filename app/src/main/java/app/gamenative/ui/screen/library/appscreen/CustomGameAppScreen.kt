@@ -418,6 +418,21 @@ class CustomGameAppScreen : BaseAppScreen() {
         )
     }
 
+    /**
+     * For Custom games, only show Export/Import config in the Container section.
+     * We intentionally omit the generic "Use known config" here.
+     */
+    @Composable
+    override fun getConfigMenuOptions(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): List<AppMenuOption> {
+        return listOfNotNull(
+            getExportConfigOption(context, libraryItem),
+            getImportConfigOption(context, libraryItem),
+        )
+    }
+
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {
         val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
         return ContainerUtils.toContainerData(container)

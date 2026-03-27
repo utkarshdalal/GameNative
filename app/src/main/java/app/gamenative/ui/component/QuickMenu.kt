@@ -127,6 +127,7 @@ private fun applyPerformanceHudPreset(
             showBatteryLevel = false,
             showPowerDraw = false,
             showBatteryRuntime = false,
+            showBatteryTemperature = false,
             showClockTime = false,
             showCpuTemperature = false,
             showGpuTemperature = false,
@@ -143,6 +144,7 @@ private fun applyPerformanceHudPreset(
             showBatteryLevel = false,
             showPowerDraw = false,
             showBatteryRuntime = false,
+            showBatteryTemperature = false,
             showClockTime = false,
             showCpuTemperature = false,
             showGpuTemperature = false,
@@ -159,6 +161,7 @@ private fun applyPerformanceHudPreset(
             showBatteryLevel = true,
             showPowerDraw = false,
             showBatteryRuntime = true,
+            showBatteryTemperature = true,
             showClockTime = false,
             showCpuTemperature = false,
             showGpuTemperature = false,
@@ -175,6 +178,7 @@ private fun applyPerformanceHudPreset(
             showBatteryLevel = true,
             showPowerDraw = true,
             showBatteryRuntime = true,
+            showBatteryTemperature = true,
             showClockTime = true,
             showCpuTemperature = true,
             showGpuTemperature = true,
@@ -197,6 +201,7 @@ private fun matchesPerformanceHudPreset(
         currentConfig.showBatteryLevel == presetConfig.showBatteryLevel &&
         currentConfig.showPowerDraw == presetConfig.showPowerDraw &&
         currentConfig.showBatteryRuntime == presetConfig.showBatteryRuntime &&
+        currentConfig.showBatteryTemperature == presetConfig.showBatteryTemperature &&
         currentConfig.showClockTime == presetConfig.showClockTime &&
         currentConfig.showCpuTemperature == presetConfig.showCpuTemperature &&
         currentConfig.showGpuTemperature == presetConfig.showGpuTemperature &&
@@ -517,6 +522,11 @@ fun QuickMenu(
     LaunchedEffect(isVisible) {
         if (isVisible) {
             selectedTab = QuickMenuTab.HUD
+        }
+    }
+
+    LaunchedEffect(isVisible, selectedTab) {
+        if (isVisible && selectedTab == QuickMenuTab.HUD) {
             repeat(3) {
                 try {
                     hudTabFocusRequester.requestFocus()
@@ -778,6 +788,16 @@ private fun PerformanceHudQuickMenuTab(
             onToggle = {
                 onPerformanceHudConfigChanged(
                     performanceHudConfig.copy(showBatteryRuntime = !performanceHudConfig.showBatteryRuntime),
+                )
+            },
+            accentColor = accentColor,
+        )
+        QuickMenuToggleRow(
+            title = stringResource(R.string.performance_hud_battery_temperature),
+            enabled = performanceHudConfig.showBatteryTemperature,
+            onToggle = {
+                onPerformanceHudConfigChanged(
+                    performanceHudConfig.copy(showBatteryTemperature = !performanceHudConfig.showBatteryTemperature),
                 )
             },
             accentColor = accentColor,

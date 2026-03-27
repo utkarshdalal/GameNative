@@ -182,7 +182,9 @@
     <string name="game_not_installed_message">%s is not installed. Please install the game first before launching.</string>
     <string name="intent_launch_failed">Could not launch game: invalid launch shortcut</string>
     <string name="intent_launch_steam_pending">Game will launch when Steam connects</string>
+    <string name="intent_launch_service_pending">Game will launch when service is ready</string>
     <string name="intent_launch_steam_login_failed">Steam login failed — game launch cancelled</string>
+    <string name="intent_launch_service_timeout">Game service failed to start — game launch cancelled</string>
     <string name="game_executable_not_found_title">Cannot Launch</string>
     <string name="game_executable_not_found">The executable could not be auto-selected. Please set the executable path in container settings.</string>
     <string name="save_container_settings_title">Save Container Configuration?</string>
@@ -282,6 +284,7 @@
     <string name="performance_hud_battery_level">Battery level</string>
     <string name="performance_hud_power_draw">Power draw</string>
     <string name="performance_hud_runtime_left">Runtime left</string>
+    <string name="performance_hud_battery_temperature">Battery temperature</string>
     <string name="performance_hud_clock_time">Clock time</string>
     <string name="performance_hud_cpu_temperature">CPU temperature</string>
     <string name="performance_hud_gpu_temperature">GPU temperature</string>
@@ -505,7 +508,7 @@
     <string name="fexcore_env_var_help__multiblock">Enables multiblock code compilation. Can cause longer JIT compilation and stutter.</string>
     <string name="fexcore_env_var_help__hostfeatures">Controls CPU feature forcing.</string>
     <string name="fexcore_env_var_help__smalltscscale">Scales TSC on low-frequency systems.</string>
-    <string name="fexcore_env_var_help__smc_checks">Self-Modifying Code checks.</string>
+    <string name="fexcore_env_var_help__smcchecks">Self-Modifying Code checks.</string>
     <string name="fexcore_env_var_help__volatilemetadata">Uses volatile metadata from PE files for TSO when available.</string>
     <string name="fexcore_env_var_help__monohacks">Special SMC + JIT block hacks for Mono detection.</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">Hides CPUID hypervisor bit (useful for apps that crash with it).</string>
@@ -632,6 +635,8 @@
     <string name="unpack_files_description">Only use if you get \'Application Load Error 3:0000065432\'.</string>
     <string name="force_dlc">Force DLC</string>
     <string name="force_dlc_description">Only enable if DLCs are not detected or saves with DLC are not working</string>
+    <string name="local_saves_only">Local saves only</string>
+    <string name="local_saves_only_description">Disable cloud save sync for this game and keep saves on device only</string>
     <string name="launch_steam_client_beta">Launch Steam Client (Beta)</string>
     <string name="launch_steam_client_description">Reduces performance and slows down launch\nAllows online play and fixes DRM and controller issues\nNot all games work</string>
     <string name="steam_offline_mode">Steam Offline Mode</string>
@@ -850,6 +855,8 @@
     <string name="settings_interface_external_links_subtitle">Links open with your main web browser</string>
     <string name="settings_interface_hide_statusbar_title">Hide status bar when not in game</string>
     <string name="settings_interface_hide_statusbar_subtitle">Hide Android status bar in game list, settings, etc. App will restart when changed.</string>
+    <string name="settings_interface_swap_face_buttons_title">Swap face buttons</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Swap A↔B and X↔Y button icons</string>
     <string name="settings_interface_icon_style">Icon style</string>
     <string name="settings_interface_wifi_only_title">Download only over Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Prevent downloads on cellular data</string>
@@ -977,6 +984,8 @@
     <string name="main_save_conflict_recovered_local_ahead_message">GameNative recovered from a Steam cloud sync mismatch and found that your local and cloud states diverged. Choose which one to keep.\n\nLocal save:\n\t%1$s\nRemote save:\n\t%2$s\n\nKeeping local will upload your current device save to Steam. Keeping remote will overwrite the local save with the Steam cloud version.</string>
     <string name="main_keep_local">Keep local</string>
     <string name="main_keep_remote">Keep remote</string>
+    <string name="main_save_conflict_upgrade_v1_title">Choose Save Version</string>
+    <string name="main_save_conflict_upgrade_v1_message">We fixed cloud save path handling for this game and found different local and cloud saves. Pick one version to keep.\n\nLocal:\n\t%1$s\nCloud:\n\t%2$s</string>
 
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Sync operation is taking too long. Please try launching the game again in a moment.</string>

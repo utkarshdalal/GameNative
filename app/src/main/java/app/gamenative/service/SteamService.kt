@@ -52,6 +52,7 @@ import app.gamenative.utils.LicenseSerializer
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
+import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import app.gamenative.utils.generateSteamApp
 import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
@@ -1616,6 +1617,20 @@ class SteamService : Service(), IChallengeUrlChanged {
                             depotDownloader.add(dlcAppItem)
                         }
 
+                        // Signal that no more items will be added
+                        depotDownloader.finishAdding()
+
+                        // Start Download
+                        depotDownloader.startDownloading()
+
+                        Timber.i("Downloading game to " + defaultAppInstallPath)
+
+                        // Wait for completion
+                        depotDownloader.getCompletion().await()
+
+                        // Close the downloader
+                        depotDownloader.close()
+
                         val appConfig = getAppInfoOf(appId)?.config
                         if (appConfig?.steamControllerTemplateIndex == 1) {
                             val controllerConfig = appConfig.steamControllerConfigDetails
@@ -1747,20 +1762,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 }
                             }
                         }
-
-                        // Signal that no more items will be added
-                        depotDownloader.finishAdding()
-
-                        // Start Download
-                        depotDownloader.startDownloading()
-
-                        Timber.i("Downloading game to " + defaultAppInstallPath)
-
-                        // Wait for completion
-                        depotDownloader.getCompletion().await()
-
-                        // Close the downloader
-                        depotDownloader.close()
 
                         // Complete app download
                         if (mainAppDepots.isNotEmpty()) {
@@ -2522,6 +2523,22 @@ class SteamService : Service(), IChallengeUrlChanged {
             clearDatabase(clearCloudSyncState = clearCloudSyncState)
         }
 
+        private fun shouldClearUserDataForLoggedOnFailure(result: EResult): Boolean = when (result) {
+            EResult.InvalidPassword,
+            EResult.IllegalPassword,
+            EResult.PasswordUnset,
+            EResult.AccountLogonDenied,
+            EResult.AccountLogonDeniedNoMail,
+            EResult.AccountLogonDeniedVerifiedEmailRequired,
+            EResult.AccountLoginDeniedNeedTwoFactor,
+            EResult.InvalidLoginAuthCode,
+            EResult.ExpiredLoginAuthCode,
+            EResult.RequirePasswordReEntry,
+            EResult.ParentalControlRestricted,
+            EResult.CachedCredentialInvalid -> true
+            else -> false
+        }
+
         fun clearDatabase(clearCloudSyncState: Boolean = false) {
             with(instance!!) {
                 scope.launch {
@@ -2539,6 +2556,13 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        private fun cancelLongLivedSteamJobs() {
+            // Cancel previous continuous jobs or else they will continue to run even after logout
+            instance?.picsGetProductInfoJob?.cancel()
+            instance?.picsChangesCheckerJob?.cancel()
+            instance?.friendCheckerJob?.cancel()
+        }
+
         private fun performLogOffDuties(clearCloudSyncState: Boolean = false) {
             val username = PrefManager.username
 
@@ -2547,10 +2571,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val event = SteamEvent.LoggedOut(username)
             PluviaApp.events.emit(event)
 
-            // Cancel previous continuous jobs or else they will continue to run even after logout
-            instance?.picsGetProductInfoJob?.cancel()
-            instance?.picsChangesCheckerJob?.cancel()
-            instance?.friendCheckerJob?.cancel()
+            cancelLongLivedSteamJobs()
         }
 
         suspend fun getOwnedGames(friendID: Long): List<OwnedGames> = withContext(Dispatchers.IO) {
@@ -3279,7 +3300,9 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
 
             else -> {
-                clearUserData()
+                if (shouldClearUserDataForLoggedOnFailure(callback.result)) {
+                    clearUserData()
+                }
 
                 _loginResult = LoginResult.Failed
 
@@ -3301,8 +3324,8 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             scope.launch { stop() }
         } else if (callback.result == EResult.LogonSessionReplaced) {
-            performLogOffDuties()
-
+            // Unexpected session replacement should not wipe persisted Steam state.
+            cancelLongLivedSteamJobs()
             scope.launch { stop() }
         } else if (callback.result == EResult.LoggedInElsewhere) {
             // received when a client runs an app and wants to forcibly close another
@@ -3600,14 +3623,23 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                             // TODO maybe apps with -1 for the ownerAccountId can be stripped with necessities and name.
 
-                            if (app.changeNumber != appFromDb?.lastChangeNumber) {
-                                app.keyValues.generateSteamApp().copy(
+                            val ufsParseVersionOutdated = appFromDb != null && appFromDb.ufsParseVersion < CURRENT_UFS_PARSE_VERSION
+
+                            if (app.changeNumber != appFromDb?.lastChangeNumber || ufsParseVersionOutdated) {
+                                val newApp = app.keyValues.generateSteamApp().copy(
                                     packageId = packageId,
                                     ownerAccountId = ownerAccountId,
                                     receivedPICS = true,
                                     lastChangeNumber = app.changeNumber,
                                     licenseFlags = packageFromDb?.licenseFlags ?: EnumSet.noneOf(ELicenseFlags::class.java),
                                 )
+                                if (ufsParseVersionOutdated && newApp.ufs.saveFilePatterns.any { it.uploadRoot != it.root || it.uploadPath != it.path }) {
+                                    // UFS path logic changed and this app has rootoverrides — clear
+                                    // the file cache so the next sync detects the mismatch and
+                                    // prompts the user to choose between local and cloud saves.
+                                    fileChangeListsDao.deleteByAppId(app.id)
+                                }
+                                newApp
                             } else {
                                 null
                             }

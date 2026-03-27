@@ -25,5 +25,6 @@ interface AndroidEvent<T> : Event<T> {
     data class CustomGameImagesFetched(val appId: String) : AndroidEvent<Unit>
     data class GOGAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>
     data class EpicAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>
+    data object ServiceReady : AndroidEvent<Unit>
     // data class SetAppBarVisibility(val visible: Boolean) : AndroidEvent<Unit>
 }

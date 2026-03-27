@@ -411,7 +411,7 @@
     <string name="fexcore_env_var_help__monohacks">Специальные хаки SMC + JIT блока для определения Mono.</string>
     <string name="fexcore_env_var_help__multiblock">Включает многоблочную компиляцию кода. Может вызвать более длительную компиляцию JIT и заикание.</string>
     <string name="fexcore_env_var_help__smalltscscale">Масштабирует TSC на низкочастотных системах.</string>
-    <string name="fexcore_env_var_help__smc_checks">Проверки самомодифицирующегося кода.</string>
+    <string name="fexcore_env_var_help__smcchecks">Проверки самомодифицирующегося кода.</string>
     <string name="fexcore_env_var_help__tsoenabled">Включает операции TSO IR (требуется для многопоточных приложений).</string>
     <string name="fexcore_env_var_help__vectortsoenabled">Делает загрузки/сохранения векторов атомарными при включённом TSO.</string>
     <string name="fexcore_env_var_help__volatilemetadata">Использует летучие метаданные из PE файлов для TSO, когда они доступны.</string>
@@ -431,7 +431,9 @@
     <string name="game_not_installed_message">%s не установлена. Пожалуйста, установите игру перед запуском.</string>
     <string name="intent_launch_failed">Не удалось запустить игру: недействительный ярлык запуска</string>
     <string name="intent_launch_steam_pending">Игра запустится после подключения к Steam</string>
+    <string name="intent_launch_service_pending">Игра запустится после запуска сервиса</string>
     <string name="intent_launch_steam_login_failed">Ошибка входа в Steam — запуск игры отменён</string>
+    <string name="intent_launch_service_timeout">Не удалось запустить игровой сервис — запуск игры отменён</string>
     <string name="game_not_installed_title">Игра не установлена</string>
     <string name="game_options_cloud_saves">Облачные сохранения</string>
     <string name="game_options_container">Контейнер</string>
@@ -682,6 +684,8 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
 Удалённое сохранение:
 	%2$s</string>
     <string name="main_save_conflict_title">Конфликт сохранений</string>
+    <string name="main_save_conflict_upgrade_v1_title">Выберите версию сохранения</string>
+    <string name="main_save_conflict_upgrade_v1_message">Мы исправили обработку путей облачных сохранений для этой игры и обнаружили различия между локальным и облачным сохранением.\n\nЛокальное сохранение:\n\t%1$s\nОблачное сохранение:\n\t%2$s</string>
     <string name="main_share">Поделиться</string>
     <string name="main_share_text">Проверьте GameNative - играйте в ваши ПК игры Steam на Android, с полной поддержкой облачных сохранений!
 https://gamenative.app
@@ -866,6 +870,7 @@ https://gamenative.app
     <string name="performance_hud_battery_level">Уровень батареи</string>
     <string name="performance_hud_power_draw">Потребление энергии</string>
     <string name="performance_hud_runtime_left">Оставшееся время</string>
+    <string name="performance_hud_battery_temperature">Температура батареи</string>
     <string name="performance_hud_clock_time">Время</string>
     <string name="performance_hud_cpu_temperature">Температура CPU</string>
     <string name="performance_hud_gpu_temperature">Температура GPU</string>
@@ -1216,4 +1221,6 @@ https://gamenative.app
     <string name="download_failed_message">Не удалось загрузить необходимый файл. Проверьте подключение к сети и попробуйте снова.</string>
     <string name="install_failed_title">Ошибка установки</string>
     <string name="install_failed_message">Не удалось установить системные файлы. Попробуйте снова. Если проблема сохраняется, попробуйте другую сеть или используйте VPN.</string>
+    <string name="settings_interface_swap_face_buttons_title">Поменять кнопки действий</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Поменять местами значки кнопок A↔B и X↔Y</string>
 </resources>

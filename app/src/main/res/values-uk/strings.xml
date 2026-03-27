@@ -163,7 +163,9 @@
     <string name="game_not_installed_message">Гра %s не інстальована. Будь ласка, інсталюйте гру перед запуском.</string>
     <string name="intent_launch_failed">Не вдалося запустити гру: недійсний ярлик запуску</string>
     <string name="intent_launch_steam_pending">Гра запуститься після підключення до Steam</string>
+    <string name="intent_launch_service_pending">Гра запуститься після запуску сервісу</string>
     <string name="intent_launch_steam_login_failed">Помилка входу в Steam — запуск гри скасовано</string>
+    <string name="intent_launch_service_timeout">Не вдалося запустити ігровий сервіс — запуск гри скасовано</string>
     <string name="game_executable_not_found_title">Неможливо запустити</string>
     <string name="game_executable_not_found">Виконуваний файл не вдалося вибрати автоматично. Вкажіть шлях до виконуваного файлу в налаштуваннях контейнера.</string>
     <string name="save_container_settings_title">Зберегти налаштування контейнера?</string>
@@ -263,6 +265,7 @@
     <string name="performance_hud_battery_level">Рівень батареї</string>
     <string name="performance_hud_power_draw">Споживання енергії</string>
     <string name="performance_hud_runtime_left">Залишок часу</string>
+    <string name="performance_hud_battery_temperature">Температура батареї</string>
     <string name="performance_hud_clock_time">Час</string>
     <string name="performance_hud_cpu_temperature">Температура CPU</string>
     <string name="performance_hud_gpu_temperature">Температура GPU</string>
@@ -453,7 +456,7 @@
     <string name="fexcore_env_var_help__multiblock">Вмикає компіляцію мультиблоків (multiblock). Може збільшити час JIT-компіляції та спричинити ривки.</string>
     <string name="fexcore_env_var_help__hostfeatures">Керує примусовим увімкненням функцій CPU.</string>
     <string name="fexcore_env_var_help__smalltscscale">Масштабує TSC на системах з низькою частотою.</string>
-    <string name="fexcore_env_var_help__smc_checks">Перевірки коду, що модифікує сам себе (SMC).</string>
+    <string name="fexcore_env_var_help__smcchecks">Перевірки коду, що модифікує сам себе (SMC).</string>
     <string name="fexcore_env_var_help__volatilemetadata">Використовує volatile метадані з PE-файлів для TSO, коли це можливо.</string>
     <string name="fexcore_env_var_help__monohacks">Спеціальні хаки SMC + JIT блоків для виявлення Mono.</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">Приховує біт гіпервізора в CPUID (корисно для програм, що вилітають через нього).</string>
@@ -946,6 +949,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Конфлікт збережень</string>
     <string name="main_save_conflict_message">Знайдено нове віддалене та нове локальне збереження. Яке з них залишити?\n\nЛокальне збереження:\n\t%1$s\nВіддалене збереження:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Виберіть версію збереження</string>
+    <string name="main_save_conflict_upgrade_v1_message">Ми виправили обробку шляхів хмарних збережень для цієї гри та виявили відмінності між локальним і хмарним збереженням. Виберіть, яку версію залишити.\n\nЛокальне збереження:\n\t%1$s\nХмарне збереження:\n\t%2$s</string>
     <string name="main_keep_local">Залишити локальне</string>
     <string name="main_keep_remote">Залишити віддалене</string>
 
@@ -1268,7 +1273,6 @@
     <string name="manifest_content_untrusted">Вміст не є надійним, тому його не інстальовано.</string>
     <string name="manifest_type_mismatch">Завантажений вміст не відповідає очікуваному типу.</string>
     <string name="manifest_glibc_not_supported">Збірки GLIBC не підтримуються.</string>
-
     <!-- Library: source not logged in splash -->
     <string name="library_source_not_logged_in_steam">Увійдіть, щоб отримати доступ до бібліотеки Steam.</string>
     <string name="library_source_not_logged_in_gog">Увійдіть, щоб отримати доступ до бібліотеки GOG.</string>
@@ -1279,5 +1283,6 @@
     <string name="download_failed_message">Не вдалося завантажити необхідний файл. Перевірте підключення до мережі та спробуйте ще раз.</string>
     <string name="install_failed_title">Помилка інсталяції</string>
     <string name="install_failed_message">Не вдалося інсталювати системні файли. Спробуйте ще раз. Якщо проблема не зникає, спробуйте іншу мережу або скористайтеся VPN.</string>
+    <string name="settings_interface_swap_face_buttons_title">Поміняти місцями кнопки дій</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Поміняти місцями значки кнопок A↔B і X↔Y</string>
 </resources>
-

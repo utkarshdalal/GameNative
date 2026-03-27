@@ -166,7 +166,9 @@
     <string name="game_not_installed_message">%s 未安裝, 請在啟動前先安裝遊戲</string>
     <string name="intent_launch_failed">無法啟動遊戲：啟動捷徑無效</string>
     <string name="intent_launch_steam_pending">Steam 連線後將啟動遊戲</string>
+    <string name="intent_launch_service_pending">服務就緒後將啟動遊戲</string>
     <string name="intent_launch_steam_login_failed">Steam 登入失敗 — 遊戲啟動已取消</string>
+    <string name="intent_launch_service_timeout">遊戲服務啟動失敗 — 遊戲啟動已取消</string>
     <string name="game_executable_not_found_title">無法啟動</string>
     <string name="game_executable_not_found">無法自動選擇可執行檔。請在容器配置中指定可執行檔路徑。</string>
     <string name="save_container_settings_title">保存容器配置?</string>
@@ -266,6 +268,7 @@
     <string name="performance_hud_battery_level">電池電量</string>
     <string name="performance_hud_power_draw">功耗</string>
     <string name="performance_hud_runtime_left">剩餘時間</string>
+    <string name="performance_hud_battery_temperature">電池溫度</string>
     <string name="performance_hud_clock_time">時間</string>
     <string name="performance_hud_cpu_temperature">CPU 溫度</string>
     <string name="performance_hud_gpu_temperature">GPU 溫度</string>
@@ -456,7 +459,7 @@
     <string name="fexcore_env_var_help__multiblock">啟用多區塊程式碼編譯, 可能導致JIT編譯時間延長及畫面卡頓</string>
     <string name="fexcore_env_var_help__hostfeatures">控制 CPU 功能強制執行</string>
     <string name="fexcore_env_var_help__smalltscscale">調整低頻系統中TSC的係數</string>
-    <string name="fexcore_env_var_help__smc_checks">自我修改程式碼檢查</string>
+    <string name="fexcore_env_var_help__smcchecks">自我修改程式碼檢查</string>
     <string name="fexcore_env_var_help__volatilemetadata">在可用的情況下, 使用PE檔案中的揮發性元資料進行TSO作業</string>
     <string name="fexcore_env_var_help__monohacks">針對 Mono 應用程式偵測的特殊處理 (SMC + JIT block hacks)</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">隱藏 CPUID 虛擬化管理程式位元 (適用於因該位元導致崩潰的應用程式)</string>
@@ -947,6 +950,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">存檔衝突</string>
     <string name="main_save_conflict_message">遠端存檔與本地存檔發生衝突，請選擇要保留哪個？\n\n本地存檔：\n\t%1$s\n遠端存檔：\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">選擇存檔版本</string>
+    <string name="main_save_conflict_upgrade_v1_message">我們已修復此遊戲的雲端存檔路徑處理方式，並發現本機存檔與雲端存檔存在差異。請選擇要保留的版本。\n\n本機存檔：\n\t%1$s\n雲端存檔：\n\t%2$s</string>
     <string name="main_keep_local">保留本地存檔</string>
     <string name="main_keep_remote">保留遠端存檔</string>
 
@@ -1269,7 +1274,6 @@
     <string name="manifest_content_untrusted">內容不受信任，未安裝。</string>
     <string name="manifest_type_mismatch">下載的內容與預期類型不符。</string>
     <string name="manifest_glibc_not_supported">不支援 GLIBC 版本。</string>
-
     <!-- Library: source not logged in splash -->
     <string name="library_source_not_logged_in_steam">登入以存取您的 Steam 遊戲庫。</string>
     <string name="library_source_not_logged_in_gog">登入以存取您的 GOG 遊戲庫。</string>
@@ -1280,6 +1284,6 @@
     <string name="download_failed_message">無法下載必要的檔案。請檢查您的網路連線後重試。</string>
     <string name="install_failed_title">安裝失敗</string>
     <string name="install_failed_message">無法安裝系統檔案。請重試。如果問題持續存在，請嘗試使用其他網路或使用 VPN。</string>
+    <string name="settings_interface_swap_face_buttons_title">交換面鍵</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">交換 A↔B 和 X↔Y 按鍵圖示</string>
 </resources>
-
-

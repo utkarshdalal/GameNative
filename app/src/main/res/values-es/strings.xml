@@ -182,7 +182,9 @@
     <string name="game_not_installed_message">%s no está instalado. Instala el juego antes de iniciarlo.</string>
     <string name="intent_launch_failed">No se pudo iniciar el juego: acceso directo de inicio no válido</string>
     <string name="intent_launch_steam_pending">El juego se iniciará cuando Steam se conecte</string>
+    <string name="intent_launch_service_pending">El juego se iniciará cuando el servicio esté listo</string>
     <string name="intent_launch_steam_login_failed">Error de inicio de sesión en Steam — lanzamiento del juego cancelado</string>
+    <string name="intent_launch_service_timeout">El servicio del juego no pudo iniciarse — lanzamiento del juego cancelado</string>
     <string name="game_executable_not_found_title">No se puede iniciar</string>
     <string name="game_executable_not_found">No se pudo seleccionar automáticamente el ejecutable. Establece la ruta en los ajustes del contenedor.</string>
     <string name="save_container_settings_title">Guardar configuración del contenedor</string>
@@ -282,6 +284,7 @@
     <string name="performance_hud_battery_level">Nivel de batería</string>
     <string name="performance_hud_power_draw">Consumo de energía</string>
     <string name="performance_hud_runtime_left">Tiempo restante</string>
+    <string name="performance_hud_battery_temperature">Temperatura de la batería</string>
     <string name="performance_hud_clock_time">Hora</string>
     <string name="performance_hud_cpu_temperature">Temperatura de CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura de GPU</string>
@@ -505,7 +508,7 @@
     <string name="fexcore_env_var_help__multiblock">Habilita la compilación de código multibloque. Puede causar una compilación JIT más larga y tirones.</string>
     <string name="fexcore_env_var_help__hostfeatures">Controla el forzado de características de la CPU.</string>
     <string name="fexcore_env_var_help__smalltscscale">Escala el TSC en sistemas de baja frecuencia.</string>
-    <string name="fexcore_env_var_help__smc_checks">Comprobaciones de código automodificable (SMC).</string>
+    <string name="fexcore_env_var_help__smcchecks">Comprobaciones de código automodificable (SMC).</string>
     <string name="fexcore_env_var_help__volatilemetadata">Usa metadatos volátiles de archivos PE para TSO cuando estén disponibles.</string>
     <string name="fexcore_env_var_help__monohacks">Hacks especiales de bloques SMC + JIT para la detección de Mono.</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">Oculta el bit de hipervisor de CPUID (útil para aplicaciones que fallan con él).</string>
@@ -966,6 +969,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Conflicto de guardado</string>
     <string name="main_save_conflict_message">Hay un archivo de guardado en la nube y otro diferente en local. ¿Cuál quieres conservar?\n\nGuardado local:\n\t%1$s\nGuardado en la nube:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Elige versión de guardado</string>
+    <string name="main_save_conflict_upgrade_v1_message">Hemos corregido el manejo de rutas de guardado en la nube para este juego y encontramos diferencias entre el guardado local y el de la nube. Elige cuál conservar.\n\nGuardado local:\n\t%1$s\nGuardado en la nube:\n\t%2$s</string>
     <string name="main_keep_local">Mantener el local</string>
     <string name="main_keep_remote">Mantener el de la nube</string>
 
@@ -1288,4 +1293,6 @@
     <string name="download_failed_message">No se pudo descargar un archivo necesario. Comprueba tu conexión de red e inténtalo de nuevo.</string>
     <string name="install_failed_title">Error de instalación</string>
     <string name="install_failed_message">No se pudieron instalar los archivos del sistema. Inténtalo de nuevo. Si el problema persiste, prueba con una red diferente o usa una VPN.</string>
+    <string name="settings_interface_swap_face_buttons_title">Intercambiar botones frontales</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Intercambia los iconos de los botones A↔B y X↔Y</string>
 </resources>

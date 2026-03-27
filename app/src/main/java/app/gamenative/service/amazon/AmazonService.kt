@@ -746,6 +746,7 @@ class AmazonService : Service() {
         super.onCreate()
         instance = this
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
+        PluviaApp.events.emit(AndroidEvent.ServiceReady)
         Timber.i("[Amazon] Service created")
     }
 

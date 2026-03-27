@@ -18,6 +18,7 @@ import app.gamenative.events.SteamEvent
 import app.gamenative.ui.enums.Orientation
 import java.util.EnumSet
 import app.gamenative.service.SteamService
+import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
@@ -65,6 +66,7 @@ class MainViewModel @Inject constructor(
         data class SteamDisconnected(val isTerminal: Boolean) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
         data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
+        data object ServiceReady : MainUiEvent()
     }
 
     private val _state = MutableStateFlow(MainState())
@@ -198,6 +200,12 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    private val onServiceReady: (AndroidEvent.ServiceReady) -> Unit = {
+        viewModelScope.launch {
+            _uiEvent.send(MainUiEvent.ServiceReady)
+        }
+    }
+
     private val onSetBootingSplashText: (AndroidEvent.SetBootingSplashText) -> Unit = {
         setBootingSplashText(it.text)
         setShowBootingSplash(true)
@@ -243,6 +251,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.on<SteamEvent.LogonStarted, Unit>(onLoggingIn)
         PluviaApp.events.on<SteamEvent.LogonEnded, Unit>(onLogonEnded)
         PluviaApp.events.on<SteamEvent.LoggedOut, Unit>(onLoggedOut)
+        PluviaApp.events.on<AndroidEvent.ServiceReady, Unit>(onServiceReady)
 
         // Collect theme preferences
         viewModelScope.launch {
@@ -268,6 +277,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.off<SteamEvent.LogonStarted, Unit>(onLoggingIn)
         PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogonEnded)
         PluviaApp.events.off<SteamEvent.LoggedOut, Unit>(onLoggedOut)
+        PluviaApp.events.off<AndroidEvent.ServiceReady, Unit>(onServiceReady)
         connectionTimeoutJob?.cancel()
     }
 
@@ -479,59 +489,7 @@ class MainViewModel @Inject constructor(
                 val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
                 Timber.tag("Exit").i("Got game id: $gameId")
                 SteamService.notifyRunningProcesses()
-
-                // Check if this is a GOG or Epic game and sync cloud saves
-                val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-                if (gameSource == GameSource.GOG) {
-                    Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves after close")
-                    try {
-                        Timber.tag("GOG").d("[Cloud Saves] Starting post-game upload sync for $appId")
-                        val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
-                            context = context,
-                            appId = appId,
-                            preferredAction = "upload",
-                        )
-                        if (syncSuccess) {
-                            Timber.tag("GOG").i("[Cloud Saves] Upload sync completed successfully for $appId")
-                        } else {
-                            Timber.tag("GOG").w("[Cloud Saves] Upload sync failed for $appId")
-                        }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (t: Throwable) {
-                        Timber.tag("GOG").e(t, "[Cloud Saves] Exception during upload sync for $appId")
-                    }
-                } else if (gameSource == GameSource.EPIC) {
-                    Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves after close")
-                    try {
-                        Timber.tag("Epic").d("[Cloud Saves] Starting post-game upload sync for $gameId")
-                        val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
-                            context = context,
-                            appId = gameId,
-                            preferredAction = "upload",
-                        )
-                        if (syncSuccess) {
-                            Timber.tag("Epic").i("[Cloud Saves] Upload sync completed successfully for $gameId")
-                        } else {
-                            Timber.tag("Epic").w("[Cloud Saves] Upload sync failed for $gameId")
-                        }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (t: Throwable) {
-                        Timber.tag("Epic").e(t, "[Cloud Saves] Exception during upload sync for $gameId")
-                    }
-                } else {
-                    // For Steam games, sync cloud saves
-                    try {
-                        SteamService.closeApp(context, gameId, isOffline.value) { prefix ->
-                            PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
-                        }.await()
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (t: Throwable) {
-                        Timber.tag("Steam").e(t, "[Cloud Saves] Exception during close app sync for $gameId")
-                    }
-                }
+                handleExitCloudSync(context, appId, gameId)
 
                 // Prompt user to save temporary container configuration if one was applied
                 if (hadTemporaryOverride) {
@@ -571,6 +529,70 @@ class MainViewModel @Inject constructor(
                 }
             } finally {
                 onComplete?.invoke()
+            }
+        }
+    }
+
+    private suspend fun handleExitCloudSync(context: Context, appId: String, gameId: Int) {
+        val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+        if (ContainerUtils.isLocalSavesOnly(context, appId) || isOffline.value) {
+            Timber.tag("Exit").i("Local saves only or offline mode enabled for $appId — skipping cloud sync on exit")
+            return
+        }
+
+        if (gameSource == GameSource.GOG) {
+            Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves after close")
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    Timber.tag("GOG").d("[Cloud Saves] Starting post-game upload sync for $appId")
+                    val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
+                        context = context,
+                        appId = appId,
+                        preferredAction = "upload",
+                    )
+                    if (syncSuccess) {
+                        Timber.tag("GOG").i("[Cloud Saves] Upload sync completed successfully for $appId")
+                    } else {
+                        Timber.tag("GOG").w("[Cloud Saves] Upload sync failed for $appId")
+                    }
+                } catch (e: Exception) {
+                    Timber.tag("GOG").e(e, "[Cloud Saves] Exception during upload sync for $appId")
+                }
+            }
+            return
+        }
+
+        if (gameSource == GameSource.EPIC) {
+            Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves after close")
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    Timber.tag("Epic").d("[Cloud Saves] Starting post-game upload sync for $gameId")
+                    val syncSuccess = EpicCloudSavesManager.syncCloudSaves(
+                        context = context,
+                        appId = gameId,
+                        preferredAction = "upload",
+                    )
+                    if (syncSuccess) {
+                        Timber.tag("Epic").i("[Cloud Saves] Upload sync completed successfully for $gameId")
+                    } else {
+                        Timber.tag("Epic").w("[Cloud Saves] Upload sync failed for $gameId")
+                    }
+                } catch (e: Exception) {
+                    Timber.tag("Epic").e(e, "[Cloud Saves] Exception during upload sync for $gameId")
+                }
+            }
+            return
+        }
+
+        if (gameSource == GameSource.STEAM) {
+            try {
+                SteamService.closeApp(context, gameId, isOffline.value) { prefix ->
+                    PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+                }.await()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                Timber.tag("Steam").e(t, "[Cloud Saves] Exception during close app sync for $gameId")
             }
         }
     }

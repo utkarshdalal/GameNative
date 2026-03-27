@@ -171,7 +171,9 @@
     <string name="game_not_installed_message">%s non è installato. Installa prima il gioco per avviarlo.</string>
     <string name="intent_launch_failed">Impossibile avviare il gioco: collegamento di avvio non valido</string>
     <string name="intent_launch_steam_pending">Il gioco verrà avviato quando Steam si connette</string>
+    <string name="intent_launch_service_pending">Il gioco verrà avviato quando il servizio è pronto</string>
     <string name="intent_launch_steam_login_failed">Accesso a Steam non riuscito — avvio del gioco annullato</string>
+    <string name="intent_launch_service_timeout">Avvio del servizio di gioco non riuscito — avvio del gioco annullato</string>
     <string name="game_executable_not_found_title">Impossibile avviare</string>
     <string name="game_executable_not_found">L\'eseguibile non è stato selezionato automaticamente. Imposta il percorso dell\'eseguibile nelle impostazioni del Container.</string>
     <string name="save_container_settings_title">Salvare Configurazione Container?</string>
@@ -271,6 +273,7 @@
     <string name="performance_hud_battery_level">Livello batteria</string>
     <string name="performance_hud_power_draw">Consumo energetico</string>
     <string name="performance_hud_runtime_left">Autonomia residua</string>
+    <string name="performance_hud_battery_temperature">Temperatura della batteria</string>
     <string name="performance_hud_clock_time">Ora</string>
     <string name="performance_hud_cpu_temperature">Temperatura CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura GPU</string>
@@ -461,7 +464,7 @@
     <string name="fexcore_env_var_help__multiblock">Abilita compilazione codice multiblocco. Può causare compilazione JIT più lunga e stuttering.</string>
     <string name="fexcore_env_var_help__hostfeatures">Controlla forzatura funzionalità CPU.</string>
     <string name="fexcore_env_var_help__smalltscscale">Scala TSC su sistemi a bassa frequenza.</string>
-    <string name="fexcore_env_var_help__smc_checks">Controlli Codice Auto-Modificante (SMC).</string>
+    <string name="fexcore_env_var_help__smcchecks">Controlli Codice Auto-Modificante (SMC).</string>
     <string name="fexcore_env_var_help__volatilemetadata">Usa metadati volatili dai file PE per TSO quando disponibili.</string>
     <string name="fexcore_env_var_help__monohacks">Hack speciali blocco SMC + JIT per rilevamento Mono.</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">Nasconde bit hypervisor CPUID (utile per app che crashano con esso).</string>
@@ -946,6 +949,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Conflitto Salvataggio</string>
     <string name="main_save_conflict_message">C\'è un nuovo salvataggio remoto e un nuovo salvataggio locale, quale vuoi mantenere?\n\nSalvataggio locale:\n\t%1$s\nSalvataggio remoto:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Scegli la versione del salvataggio</string>
+    <string name="main_save_conflict_upgrade_v1_message">Abbiamo corretto la gestione dei percorsi dei salvataggi cloud per questo gioco e rilevato differenze tra salvataggio locale e cloud. Scegli quale versione mantenere.\n\nSalvataggio locale:\n\t%1$s\nSalvataggio cloud:\n\t%2$s</string>
     <string name="main_keep_local">Mantieni locale</string>
     <string name="main_keep_remote">Mantieni remoto</string>
 
@@ -1268,7 +1273,6 @@
     <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
     <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
     <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
-
     <!-- Library: source not logged in splash -->
     <string name="library_source_not_logged_in_steam">Accedi per accedere alla tua libreria Steam.</string>
     <string name="library_source_not_logged_in_gog">Accedi per accedere alla tua libreria GOG.</string>
@@ -1279,4 +1283,6 @@
     <string name="download_failed_message">Non è stato possibile scaricare un file necessario. Controlla la connessione di rete e riprova.</string>
     <string name="install_failed_title">Installazione non riuscita</string>
     <string name="install_failed_message">Non è stato possibile installare i file di sistema. Riprova. Se il problema persiste, prova una rete diversa o usa una VPN.</string>
+    <string name="settings_interface_swap_face_buttons_title">Scambia i pulsanti frontali</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Scambia le icone dei pulsanti A↔B e X↔Y</string>
 </resources>

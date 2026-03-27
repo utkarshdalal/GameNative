@@ -180,7 +180,9 @@
     <string name="game_not_installed_message">%s이(가) 설치되지 않았습니다. 실행하기 전에 먼저 게임을 설치하세요.</string>
     <string name="intent_launch_failed">게임을 실행할 수 없습니다: 잘못된 실행 바로가기</string>
     <string name="intent_launch_steam_pending">Steam 연결 시 게임이 실행됩니다</string>
+    <string name="intent_launch_service_pending">서비스 준비 시 게임이 실행됩니다</string>
     <string name="intent_launch_steam_login_failed">Steam 로그인 실패 — 게임 실행이 취소되었습니다</string>
+    <string name="intent_launch_service_timeout">게임 서비스 시작 실패 — 게임 실행이 취소되었습니다</string>
     <string name="game_executable_not_found_title">실행할 수 없음</string>
     <string name="game_executable_not_found">실행 파일을 자동으로 선택할 수 없습니다. 컨테이너 설정에서 실행 파일 경로를 지정하세요.</string>
     <string name="save_container_settings_title">컨테이너 구성을 저장하시겠습니까?</string>
@@ -280,6 +282,7 @@
     <string name="performance_hud_battery_level">배터리 잔량</string>
     <string name="performance_hud_power_draw">전력 소모</string>
     <string name="performance_hud_runtime_left">남은 시간</string>
+    <string name="performance_hud_battery_temperature">배터리 온도</string>
     <string name="performance_hud_clock_time">시계</string>
     <string name="performance_hud_cpu_temperature">CPU 온도</string>
     <string name="performance_hud_gpu_temperature">GPU 온도</string>
@@ -470,7 +473,7 @@
     <string name="fexcore_env_var_help__multiblock">멀티블록 코드 컴파일을 활성화합니다. JIT 컴파일 시간이 길어지고 끊김이 발생할 수 있습니다.</string>
     <string name="fexcore_env_var_help__hostfeatures">CPU 기능 강제를 제어합니다.</string>
     <string name="fexcore_env_var_help__smalltscscale">저주파수 시스템에서 TSC를 스케일링합니다.</string>
-    <string name="fexcore_env_var_help__smc_checks">자체 수정 코드 검사.</string>
+    <string name="fexcore_env_var_help__smcchecks">자체 수정 코드 검사.</string>
     <string name="fexcore_env_var_help__volatilemetadata">가능한 경우 TSO에 대한 PE 파일의 휘발성 메타데이터를 사용합니다.</string>
     <string name="fexcore_env_var_help__monohacks">Mono 감지를 위한 특수 SMC + JIT 블록 해킹.</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">CPUID 하이퍼바이저 비트를 숨깁니다(이것으로 충돌하는 앱에 유용).</string>
@@ -964,6 +967,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">저장 충돌</string>
     <string name="main_save_conflict_message">새 원격 저장 파일과 새 로컬 저장 파일이 있습니다. 어느 것을 유지하시겠습니까?\n\n로컬 저장 파일:\n\t%1$s\n원격 저장 파일:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">저장 버전 선택</string>
+    <string name="main_save_conflict_upgrade_v1_message">이 게임의 클라우드 저장 경로 처리 방식을 수정했으며 로컬 저장과 클라우드 저장이 서로 다르게 감지되었습니다. 유지할 버전을 선택하세요.\n\n로컬 저장:\n\t%1$s\n클라우드 저장:\n\t%2$s</string>
     <string name="main_keep_local">로컬 유지</string>
     <string name="main_keep_remote">원격 유지</string>
 
@@ -1276,7 +1281,6 @@
     <string name="manifest_content_untrusted">콘텐츠를 신뢰할 수 없으며 설치되지 않았습니다.</string>
     <string name="manifest_type_mismatch">다운로드한 콘텐츠가 예상 유형과 일치하지 않습니다.</string>
     <string name="manifest_glibc_not_supported">GLIBC 빌드는 지원되지 않습니다.</string>
-
     <!-- Library: source not logged in splash -->
     <string name="library_source_not_logged_in_steam">Steam 라이브러리에 액세스하려면 로그인하세요.</string>
     <string name="library_source_not_logged_in_gog">GOG 라이브러리에 액세스하려면 로그인하세요.</string>
@@ -1287,4 +1291,6 @@
     <string name="download_failed_message">필수 파일을 다운로드할 수 없습니다. 네트워크 연결을 확인하고 다시 시도해 주세요.</string>
     <string name="install_failed_title">설치 실패</string>
     <string name="install_failed_message">시스템 파일을 설치할 수 없습니다. 다시 시도해 주세요. 문제가 지속되면 다른 네트워크를 사용하거나 VPN을 사용해 보세요.</string>
+    <string name="settings_interface_swap_face_buttons_title">페이스 버튼 바꾸기</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">A↔B 및 X↔Y 버튼 아이콘 바꾸기</string>
 </resources>

@@ -110,6 +110,7 @@ fun SettingsGroupInterface(
     var pendingStatusBarValue by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var showStatusBarLoadingDialog by rememberSaveable { mutableStateOf(false) }
     var hideStatusBar by rememberSaveable { mutableStateOf(PrefManager.hideStatusBarWhenNotInGame) }
+    var swapFaceButtons by rememberSaveable { mutableStateOf(PrefManager.swapFaceButtons) }
 
     // Language selection dialog
     var openLanguageDialog by rememberSaveable { mutableStateOf(false) }
@@ -226,6 +227,17 @@ fun SettingsGroupInterface(
                 // Store the pending value and show confirmation dialog
                 pendingStatusBarValue = newValue
                 showStatusBarRestartDialog = true
+            },
+        )
+
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_swap_face_buttons_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_swap_face_buttons_subtitle)) },
+            state = swapFaceButtons,
+            onCheckedChange = {
+                swapFaceButtons = it
+                PrefManager.swapFaceButtons = it
             },
         )
 

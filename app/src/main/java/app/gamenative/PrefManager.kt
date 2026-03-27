@@ -363,6 +363,13 @@ object PrefManager {
             setPref(PERFORMANCE_HUD_SHOW_BATTERY_RUNTIME, value)
         }
 
+    private val PERFORMANCE_HUD_SHOW_BATTERY_TEMPERATURE = booleanPreferencesKey("performance_hud_show_battery_temperature")
+    var performanceHudShowBatteryTemperature: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_BATTERY_TEMPERATURE, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_BATTERY_TEMPERATURE, value)
+        }
+
     private val PERFORMANCE_HUD_SHOW_CLOCK_TIME = booleanPreferencesKey("performance_hud_show_clock_time")
     var performanceHudShowClockTime: Boolean
         get() = getPref(PERFORMANCE_HUD_SHOW_CLOCK_TIME, false)
@@ -459,6 +466,13 @@ object PrefManager {
         get() = getPref(FORCE_DLC, false)
         set(value) {
             setPref(FORCE_DLC, value)
+        }
+
+    private val LOCAL_SAVES_ONLY = booleanPreferencesKey("local_saves_only")
+    var localSavesOnly: Boolean
+        get() = getPref(LOCAL_SAVES_ONLY, false)
+        set(value) {
+            setPref(LOCAL_SAVES_ONLY, value)
         }
 
     private val STEAM_OFFLINE_MODE = booleanPreferencesKey("steam_offline_mode")
@@ -924,6 +938,14 @@ object PrefManager {
         get() = getPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, false)
         set(value) {
             setPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, value)
+        }
+
+    // Whether to swap A↔B and X↔Y button icons to match Xbox controller layout.
+    private val SWAP_FACE_BUTTONS = booleanPreferencesKey("swap_face_buttons")
+    var swapFaceButtons: Boolean
+        get() = getPref(SWAP_FACE_BUTTONS, false)
+        set(value) {
+            setPref(SWAP_FACE_BUTTONS, value)
         }
 
     private val ITEMS_PER_PAGE = intPreferencesKey("items_per_page")

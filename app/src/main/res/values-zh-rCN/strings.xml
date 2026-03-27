@@ -166,7 +166,9 @@
     <string name="game_not_installed_message">%s 未安装，请在启动前先安装游戏</string>
     <string name="intent_launch_failed">无法启动游戏：启动快捷方式无效</string>
     <string name="intent_launch_steam_pending">Steam 连接后将启动游戏</string>
+    <string name="intent_launch_service_pending">服务就绪后将启动游戏</string>
     <string name="intent_launch_steam_login_failed">Steam 登录失败 — 游戏启动已取消</string>
+    <string name="intent_launch_service_timeout">游戏服务启动失败 — 游戏启动已取消</string>
     <string name="game_executable_not_found_title">无法启动</string>
     <string name="game_executable_not_found">无法自动选择可执行文件。请在容器设置中指定可执行文件路径。</string>
     <string name="save_container_settings_title">保存容器配置？</string>
@@ -266,6 +268,7 @@
     <string name="performance_hud_battery_level">电池电量</string>
     <string name="performance_hud_power_draw">功耗</string>
     <string name="performance_hud_runtime_left">剩余时间</string>
+    <string name="performance_hud_battery_temperature">电池温度</string>
     <string name="performance_hud_clock_time">时间</string>
     <string name="performance_hud_cpu_temperature">CPU 温度</string>
     <string name="performance_hud_gpu_temperature">GPU 温度</string>
@@ -456,7 +459,7 @@
     <string name="fexcore_env_var_help__multiblock">启用多区块代码编译，可能导致JIT编译时间延长及画面卡顿</string>
     <string name="fexcore_env_var_help__hostfeatures">控制 CPU 功能强制执行</string>
     <string name="fexcore_env_var_help__smalltscscale">调整低频系统中TSC的系数</string>
-    <string name="fexcore_env_var_help__smc_checks">自我修改代码检查</string>
+    <string name="fexcore_env_var_help__smcchecks">自我修改代码检查</string>
     <string name="fexcore_env_var_help__volatilemetadata">在可用的情况下，使用PE文件中的易失性元数据进行TSO作业</string>
     <string name="fexcore_env_var_help__monohacks">针对 Mono 应用程序检测的特殊处理（SMC + JIT block hacks）</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">隐藏 CPUID 虚拟机管理器位（适用于因该位导致崩溃的应用程序）</string>
@@ -944,6 +947,8 @@
     <!-- 主界面：存档冲突 -->
     <string name="main_save_conflict_title">存档冲突</string>
     <string name="main_save_conflict_message"> 远程存档与本地存档发生冲突，请选择要保留哪个？\n\n本地存档：\n\t%1$s\n远程存档：\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">选择保存版本</string>
+    <string name="main_save_conflict_upgrade_v1_message">我们已修复此游戏的云存档路径处理方式，并发现本地存档与云存档存在差异。请选择要保留的版本。\n\n本地存档：\n\t%1$s\n云存档：\n\t%2$s</string>
     <string name="main_keep_local">保留本地存档</string>
     <string name="main_keep_remote">保留远程存档</string>
 
@@ -1266,7 +1271,6 @@
     <string name="manifest_content_untrusted">内容不可信，未安装。</string>
     <string name="manifest_type_mismatch">下载的内容与预期类型不匹配。</string>
     <string name="manifest_glibc_not_supported">不支持 GLIBC 构建。</string>
-
     <!-- Library: source not logged in splash -->
     <string name="library_source_not_logged_in_steam">登录以访问您的 Steam 游戏库。</string>
     <string name="library_source_not_logged_in_gog">登录以访问您的 GOG 游戏库。</string>
@@ -1277,4 +1281,6 @@
     <string name="download_failed_message">无法下载所需文件。请检查您的网络连接后重试。</string>
     <string name="install_failed_title">安装失败</string>
     <string name="install_failed_message">无法安装系统文件。请重试。如果问题持续存在，请尝试使用其他网络或使用 VPN。</string>
+    <string name="settings_interface_swap_face_buttons_title">交换面键</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">交换 A↔B 和 X↔Y 按键图标</string>
 </resources>

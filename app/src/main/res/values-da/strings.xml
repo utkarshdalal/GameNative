@@ -95,7 +95,9 @@
     <string name="game_not_installed_message">%s er ikke installeret. Installér spillet før du starter det.</string>
     <string name="intent_launch_failed">Kunne ikke starte spillet: ugyldig startgenvej</string>
     <string name="intent_launch_steam_pending">Spillet starter, når Steam opretter forbindelse</string>
+    <string name="intent_launch_service_pending">Spillet starter, når tjenesten er klar</string>
     <string name="intent_launch_steam_login_failed">Steam-login mislykkedes — spilstart annulleret</string>
+    <string name="intent_launch_service_timeout">Spiltjenesten kunne ikke starte — spilstart annulleret</string>
     <string name="game_executable_not_found_title">Kan ikke starte</string>
     <string name="game_executable_not_found">Den eksekverbare fil kunne ikke vælges automatisk. Angiv stien til den eksekverbare fil i containerindstillinger.</string>
     <string name="save_container_settings_title">Gem containerkonfiguration?</string>
@@ -195,6 +197,7 @@
     <string name="performance_hud_battery_level">Batteriniveau</string>
     <string name="performance_hud_power_draw">Strømforbrug</string>
     <string name="performance_hud_runtime_left">Resterende tid</string>
+    <string name="performance_hud_battery_temperature">Batteritemperatur</string>
     <string name="performance_hud_clock_time">Klokkeslæt</string>
     <string name="performance_hud_cpu_temperature">CPU-temperatur</string>
     <string name="performance_hud_gpu_temperature">GPU-temperatur</string>
@@ -774,6 +777,8 @@
     <!-- TODO: Manual review - PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Gemfilkonflikt</string>
     <string name="main_save_conflict_message">Der er en ny fjern-gemfil og en ny lokal gemfil, hvilken vil du beholde?\n\nLokal gemfil:\n\t%1$s\nFjern-gemfil:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Vælg gemmeversion</string>
+    <string name="main_save_conflict_upgrade_v1_message">Vi har rettet håndteringen af cloud-gemstier for dette spil og fundet forskelle mellem lokal gemfil og cloud-gemfil. Vælg hvilken version du vil beholde.\n\nLokal gemfil:\n\t%1$s\nCloud-gemfil:\n\t%2$s</string>
     <string name="main_keep_local">Behold lokal</string>
     <string name="main_keep_remote">Behold fjern</string>
 
@@ -1142,7 +1147,6 @@
     <string name="manifest_content_untrusted">Indholdet er ikke betroet og blev ikke installeret.</string>
     <string name="manifest_type_mismatch">Downloadet indhold matcher ikke den forventede type.</string>
     <string name="manifest_glibc_not_supported">GLIBC-builds understøttes ikke.</string>
-
     <!-- Library: source not logged in splash -->
     <string name="library_source_not_logged_in_steam">Log ind for at få adgang til din Steam-bibliotek.</string>
     <string name="library_source_not_logged_in_gog">Log ind for at få adgang til din GOG-bibliotek.</string>
@@ -1153,4 +1157,6 @@
     <string name="download_failed_message">En nødvendig fil kunne ikke downloades. Kontrollér din netværksforbindelse, og prøv igen.</string>
     <string name="install_failed_title">Installation mislykkedes</string>
     <string name="install_failed_message">Systemfiler kunne ikke installeres. Prøv igen. Hvis problemet fortsætter, prøv et andet netværk eller brug en VPN.</string>
+    <string name="settings_interface_swap_face_buttons_title">Byt frontknapper</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Byt A↔B- og X↔Y-knapikoner</string>
 </resources>
