@@ -1,7 +1,6 @@
 package app.gamenative.service.epic
 
 import android.content.Context
-import android.util.Log
 import app.gamenative.data.DownloadInfo
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
@@ -53,6 +52,8 @@ class EpicDownloadManager @Inject constructor(
         private const val CHUNK_BUFFER_SIZE = 1024 * 1024 // 1MB buffer for decompression
         private const val MAX_CHUNK_RETRIES = 3 // Maximum retries per chunk
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
+        private const val NETWORK_BUFFER_SIZE = 64 * 1024
+        private const val PROGRESS_UPDATE_GRANULARITY_BYTES = 256 * 1024L
     }
 
     /**
@@ -226,6 +227,7 @@ class EpicDownloadManager @Inject constructor(
             // Download chunks in batches to avoid overwhelming the system
             var downloadedChunks = 0
             val totalChunks = chunks.size
+            var lastLoggedPercent = -1
 
             // Initialize progress tracking
             downloadInfo.setProgress(0.0f)
@@ -254,6 +256,7 @@ class EpicDownloadManager @Inject constructor(
                 // Update progress after each batch completes
                 downloadedChunks += chunkBatch.size
                 val progress = downloadedChunks.toFloat() / totalChunks
+                val progressPercent = (progress * 100).toInt()
                 downloadInfo.setProgress(progress)
                 val statusMsg = if (dlcManifestData.isNotEmpty()) {
                     "Downloading base game ($downloadedChunks/$totalChunks chunks)"
@@ -263,7 +266,10 @@ class EpicDownloadManager @Inject constructor(
                 downloadInfo.updateStatusMessage(statusMsg)
                 downloadInfo.emitProgressChange()
 
-                Timber.tag("Epic").d("Download progress: $downloadedChunks/$totalChunks chunks (${(progress * 100).toInt()}%)")
+                if (progressPercent != lastLoggedPercent) {
+                    Timber.tag("Epic").d("Download progress: $downloadedChunks/$totalChunks chunks ($progressPercent%)")
+                    lastLoggedPercent = progressPercent
+                }
             }
 
             downloadInfo.updateStatusMessage("Assembling files...")
@@ -274,6 +280,7 @@ class EpicDownloadManager @Inject constructor(
 
             var assembledFiles = 0
             val totalFiles = files.size
+            var lastAssemblyPercent = -1
 
             // Process files in batches for better parallelism
             files.chunked(4).forEach { fileBatch ->
@@ -293,7 +300,11 @@ class EpicDownloadManager @Inject constructor(
                 assembledFiles += fileBatch.size
                 val assemblyProgress = assembledFiles.toFloat() / totalFiles
                 downloadInfo.updateStatusMessage("Assembling files ($assembledFiles/$totalFiles)")
-                Timber.tag("Epic").d("File assembly progress: $assembledFiles/$totalFiles (${(assemblyProgress * 100).toInt()}%)")
+                val assemblyPercent = (assemblyProgress * 100).toInt()
+                if (assemblyPercent != lastAssemblyPercent) {
+                    Timber.tag("Epic").d("File assembly progress: $assembledFiles/$totalFiles ($assemblyPercent%)")
+                    lastAssemblyPercent = assemblyPercent
+                }
             }
 
             // Cleanup chunk directory
@@ -571,11 +582,19 @@ class EpicDownloadManager @Inject constructor(
                             // Stream download to temp file
                             responseBody.byteStream().use { input ->
                                 tempChunkFile.outputStream().use { output ->
-                                    val buffer = ByteArray(8192)
+                                    val buffer = ByteArray(NETWORK_BUFFER_SIZE)
+                                    var pendingBytes = 0L
                                     var bytesRead: Int
                                     while (input.read(buffer).also { bytesRead = it } != -1) {
                                         output.write(buffer, 0, bytesRead)
-                                        downloadInfo.updateBytesDownloaded(bytesRead.toLong())
+                                        pendingBytes += bytesRead.toLong()
+                                        if (pendingBytes >= PROGRESS_UPDATE_GRANULARITY_BYTES) {
+                                            downloadInfo.updateBytesDownloaded(pendingBytes)
+                                            pendingBytes = 0L
+                                        }
+                                    }
+                                    if (pendingBytes > 0L) {
+                                        downloadInfo.updateBytesDownloaded(pendingBytes)
                                     }
                                 }
                             }
@@ -766,8 +785,6 @@ class EpicDownloadManager @Inject constructor(
                 expectedSize.toInt()
             }
 
-            Timber.tag("Epic").d("Chunk header: magic=0x${magic.toString(16)}, headerVersion=$headerVersion, headerSize=$headerSize, compressedSize=$compressedSize, uncompressedSize=$uncompressedSize, storedAs=0x${storedAs.toString(16)}, isCompressed=$isCompressed, expectedSize=$expectedSize")
-
             outputFile.outputStream().buffered().use { output ->
                 if (isCompressed) {
                     // Streaming decompression
@@ -776,7 +793,6 @@ class EpicDownloadManager @Inject constructor(
                         val inputBuffer = ByteArray(65536) // 64KB compressed read buffer
                         val outputBuffer = ByteArray(65536) // 64KB decompressed write buffer
                         var endOfStream = false
-                        var firstRead = true
 
                         while (totalBytesWritten < uncompressedSize && !endOfStream) {
                             // Feed more input if needed
@@ -786,10 +802,6 @@ class EpicDownloadManager @Inject constructor(
                                     endOfStream = true
                                     Timber.tag("Epic").d("Unexpected end of stream: read=$totalBytesWritten, expected=$uncompressedSize")
                                 } else {
-                                    if (firstRead) {
-                                        Log.d("Epic", "First compressed data bytes: ${inputBuffer.take(16).joinToString(" ") { "%02x".format(it) }}")
-                                        firstRead = false
-                                    }
                                     inflater.setInput(inputBuffer, 0, bytesRead)
                                 }
                             }
