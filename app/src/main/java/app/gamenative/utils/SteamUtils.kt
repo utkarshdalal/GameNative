@@ -5,6 +5,7 @@ import android.content.Context
 import android.provider.Settings
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.LaunchInfo
 import app.gamenative.data.ManifestInfo
 import app.gamenative.data.SteamApp
 import app.gamenative.enums.Marker
@@ -335,16 +336,19 @@ object SteamUtils {
         Timber.i("Finished restoreSteamclientFiles for appId: $steamAppId. Restored $restoredCount file(s)")
     }
 
-    internal fun writeColdClientIni(steamAppId: Int, container: Container) {
-        val gameName = getAppDirName(getAppInfoOf(steamAppId))
-        val executablePath = container.executablePath.replace("/", "\\")
-        val exePath = "steamapps\\common\\$gameName\\$executablePath"
-        val exeCommandLine = container.execArgs
-        val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
-        iniFile.parentFile?.mkdirs()
+    internal fun generateColdClientIni(
+        gameName: String,
+        executablePath: String,
+        exeCommandLine: String,
+        steamAppId: Int,
+        workingDir: String?,
+        isUnpackFiles: Boolean,
+    ): String {
+        val exePath = "steamapps\\common\\$gameName\\${executablePath.replace("/", "\\")}"
+        val exeRunDir = if (workingDir.isNullOrEmpty()) exePath.substringBeforeLast("\\") else ""
 
         // Only include DllsToInjectFolder if unpackFiles is enabled
-        val injectionSection = if (container.isUnpackFiles) {
+        val injectionSection = if (isUnpackFiles) {
             """
                 [Injection]
                 IgnoreLoaderArchDifference=1
@@ -357,12 +361,11 @@ object SteamUtils {
             """
         }
 
-        iniFile.writeText(
-            """
+        return """
                 [SteamClient]
 
                 Exe=$exePath
-                ExeRunDir=
+                ExeRunDir=$exeRunDir
                 ExeCommandLine=$exeCommandLine
                 AppId=$steamAppId
 
@@ -371,7 +374,23 @@ object SteamUtils {
                 SteamClient64Dll=steamclient64.dll
 
                 $injectionSection
-            """.trimIndent(),
+            """.trimIndent()
+    }
+
+    internal fun writeColdClientIni(steamAppId: Int, container: Container, launchInfo: LaunchInfo? = null) {
+        val gameName = getAppDirName(getAppInfoOf(steamAppId))
+        val workingDir = launchInfo?.workingDir
+        val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
+        iniFile.parentFile?.mkdirs()
+        iniFile.writeText(
+            generateColdClientIni(
+                gameName = gameName,
+                executablePath = container.executablePath,
+                exeCommandLine = container.execArgs,
+                steamAppId = steamAppId,
+                workingDir = workingDir,
+                isUnpackFiles = container.isUnpackFiles,
+            )
         )
     }
 

@@ -2891,7 +2891,7 @@ private fun getWineStartCommand(
         }
         if (!container.isUseLegacyDRM){
             // Create ColdClientLoader.ini file
-            SteamUtils.writeColdClientIni(gameId, container)
+            SteamUtils.writeColdClientIni(gameId, container, appLaunchInfo)
         }
         val controllerVdfText = SteamService.resolveSteamControllerVdfText(gameId)
         if (controllerVdfText.isNullOrEmpty()) {
