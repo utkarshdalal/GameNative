@@ -2049,6 +2049,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                         PrefManager.clientId?.let { clientId ->
                             instance?.let { steamInstance ->
                                 getAppInfoOf(appId)?.let { appInfo ->
+                                    if (appInfo.ufs.quota == 0) {
+                                        Timber.i("Skipping cloud sync for appId=$appId: no UFS quota")
+                                        syncResult = PostSyncInfo(SyncResult.UpToDate)
+                                        return@async syncResult
+                                    }
                                     steamInstance._steamCloud?.let { steamCloud ->
                                         val postSyncInfo = SteamAutoCloud.syncUserFiles(
                                             appInfo = appInfo,
@@ -2137,6 +2142,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                         PrefManager.clientId?.let { clientId ->
                             instance?.let { steamInstance ->
                                 getAppInfoOf(appId)?.let { appInfo ->
+                                    if (appInfo.ufs.quota == 0) {
+                                        Timber.i("Skipping cloud sync for appId=$appId: no UFS quota")
+                                        syncResult = PostSyncInfo(SyncResult.UpToDate)
+                                        return@async syncResult
+                                    }
                                     steamInstance._steamCloud?.let { steamCloud ->
                                         val postSyncInfo = SteamAutoCloud.syncUserFiles(
                                             appInfo = appInfo,
@@ -2198,6 +2208,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                             PrefManager.clientId?.let { clientId ->
                                 instance?.let { steamInstance ->
                                     getAppInfoOf(appId)?.let { appInfo ->
+                                        if (appInfo.ufs.quota == 0) {
+                                            Timber.i("Skipping cloud sync for appId=$appId: no UFS quota")
+                                            return@async
+                                        }
                                         steamInstance._steamCloud?.let { steamCloud ->
                                             val postSyncInfo = SteamAutoCloud.syncUserFiles(
                                                 appInfo = appInfo,
