@@ -286,4 +286,27 @@ public class ControllerManager {
         if (slotIndex < 0 || slotIndex >= 4) return false;
         return enabledSlots[slotIndex];
     }
+
+    /**
+     * Auto-assigns a device to the first available slot.
+     * If the device is already assigned, returns its existing slot.
+     * @param deviceId The Android device ID from the input event.
+     * @return The slot index (0-3), or -1 if no slot available or device is not a controller.
+     */
+    public int autoAssignDevice(int deviceId) {
+        int existingSlot = getSlotForDevice(deviceId);
+        if (existingSlot >= 0) return existingSlot;
+
+        InputDevice device = inputManager.getInputDevice(deviceId);
+        if (device == null || !isGameController(device)) return -1;
+
+        for (int i = 0; i < 4; i++) {
+            if (slotAssignments.get(i) == null) {
+                assignDeviceToSlot(i, device);
+                setSlotEnabled(i, true);
+                return i;
+            }
+        }
+        return -1;
+    }
 }
