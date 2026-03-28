@@ -932,6 +932,22 @@
     <string name="container_storage_location_external">External</string>
     <string name="container_storage_location_unknown">Unknown location</string>
     <string name="container_storage_unknown_error">Unknown error</string>
+    <string name="container_storage_breakdown_button">Breakdown</string>
+    <string name="container_storage_breakdown_title">Storage: %1$s</string>
+    <string name="container_storage_breakdown_no_data">No data found</string>
+    <string name="container_storage_empty_trash_title">Empty Trash?</string>
+    <string name="container_storage_empty_trash_message">Delete %1$s of trash for %2$s? This cannot be undone.</string>
+    <string name="container_storage_empty_trash_button">Empty Trash</string>
+    <string name="container_storage_empty_trash_sized_button">Empty Trash (%1$s)</string>
+    <string name="container_storage_delete_dir_title">Delete directory?</string>
+    <string name="container_storage_delete_dir_message">Delete %1$s (%2$s)? This cannot be undone.</string>
+    <string name="container_storage_delete_dir_button">Delete</string>
+    <string name="container_storage_delete_cd">Delete directory</string>
+    <string name="container_storage_breakdown_load_failed">Failed to load breakdown</string>
+    <string name="container_storage_deleted">Deleted %1$s</string>
+    <string name="container_storage_delete_failed">Failed to delete %1$s</string>
+    <string name="container_storage_trash_emptied">Trash emptied</string>
+    <string name="container_storage_trash_empty_failed">Failed to empty trash</string>
 
     <!-- Login Screen -->
     <string name="login_app_name">GameNative</string>

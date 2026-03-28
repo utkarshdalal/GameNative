@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.selection.selectable
@@ -25,14 +26,18 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.AlertDialog
@@ -79,8 +84,14 @@ import app.gamenative.utils.ContainerStorageManager
 import app.gamenative.utils.StorageUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
+
+// TODO: gate behind expert mode when that exists
+private const val ENABLE_BREAKDOWN_DELETE = false
 
 @Stable
 class ContainerStorageManagerUiState internal constructor(
@@ -117,8 +128,172 @@ class ContainerStorageManagerUiState internal constructor(
     var moveTotalFiles by mutableIntStateOf(0)
         private set
 
+    var breakdownEntry by mutableStateOf<ContainerStorageManager.Entry?>(null)
+        private set
+
+    var breakdownItems by mutableStateOf<List<ContainerStorageManager.DirSize>>(emptyList())
+        private set
+
+    var isLoadingBreakdown by mutableStateOf(false)
+        private set
+
+    var expandedPaths by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    var loadingPaths by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    // guards against stale async completions when switching breakdown targets
+    private var breakdownSession = 0
+
     val isMoving: Boolean
         get() = movingEntryName != null
+
+    fun requestBreakdown(entry: ContainerStorageManager.Entry) {
+        val session = ++breakdownSession
+        breakdownEntry = entry
+        breakdownItems = emptyList()
+        expandedPaths = emptySet()
+        loadingPaths = emptySet()
+        isLoadingBreakdown = true
+        scope.launch {
+            try {
+                val result = ContainerStorageManager.getStorageBreakdown(appContext, entry)
+                if (breakdownSession == session) breakdownItems = result
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to load storage breakdown")
+                SnackbarManager.show(e.message ?: appContext.getString(R.string.container_storage_breakdown_load_failed))
+            }
+            if (breakdownSession == session) isLoadingBreakdown = false
+        }
+    }
+
+    fun toggleExpand(item: ContainerStorageManager.DirSize) {
+        if (!item.isDirectory) return
+        val path = item.path
+        if (loadingPaths.contains(path)) return
+
+        val pathPrefix = "$path/"
+        if (expandedPaths.contains(path)) {
+            expandedPaths = expandedPaths - path - expandedPaths.filter { it.startsWith(pathPrefix) }.toSet()
+            loadingPaths = loadingPaths - path
+            breakdownItems = breakdownItems.filter { entry ->
+                !(entry.depth > item.depth && (entry.path.startsWith(pathPrefix) || entry.path.isEmpty()))
+            }
+        } else {
+            expandedPaths = expandedPaths + path
+            loadingPaths = loadingPaths + path
+            val session = breakdownSession
+            scope.launch {
+                try {
+                    val children = ContainerStorageManager.expandDirectory(path, item.depth + 1)
+                    if (breakdownSession != session) return@launch
+                    if (expandedPaths.contains(path) && children.isNotEmpty()) {
+                        val idx = breakdownItems.indexOf(item)
+                        if (idx >= 0) {
+                            val mutable = breakdownItems.toMutableList()
+                            mutable.addAll(idx + 1, children)
+                            breakdownItems = mutable
+                        } else {
+                            // parent vanished from list, clean up
+                            expandedPaths = expandedPaths - path
+                        }
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to expand directory")
+                    if (breakdownSession == session) expandedPaths = expandedPaths - path
+                }
+                if (breakdownSession == session) loadingPaths = loadingPaths - path
+            }
+        }
+    }
+
+    var trashSizes by mutableStateOf<Map<String, Long>>(emptyMap())
+        private set
+
+    var pendingEmptyTrash by mutableStateOf<ContainerStorageManager.Entry?>(null)
+        private set
+
+    var pendingDelete by mutableStateOf<ContainerStorageManager.DirSize?>(null)
+        private set
+
+    fun isExpanded(item: ContainerStorageManager.DirSize): Boolean = expandedPaths.contains(item.path)
+
+    fun requestDeleteDir(item: ContainerStorageManager.DirSize) {
+        pendingDelete = item
+    }
+
+    fun dismissDeleteDir() {
+        pendingDelete = null
+    }
+
+    fun confirmDeleteDir() {
+        val item = pendingDelete ?: return
+        pendingDelete = null
+        scope.launch {
+            try {
+                val deleted = ContainerStorageManager.deleteDirectory(appContext, item.path)
+                if (deleted) {
+                    val prefix = "${item.path}/"
+                    expandedPaths = expandedPaths.filter { it != item.path && !it.startsWith(prefix) }.toSet()
+                    breakdownItems = breakdownItems.filter { entry ->
+                        entry.path != item.path &&
+                            !(entry.depth > item.depth && (entry.path.startsWith(prefix) || entry.path.isEmpty()))
+                    }
+                    SnackbarManager.show(appContext.getString(R.string.container_storage_deleted, item.name))
+                    refresh()
+                } else {
+                    SnackbarManager.show(appContext.getString(R.string.container_storage_delete_failed, item.name))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to delete directory")
+                SnackbarManager.show(e.message ?: appContext.getString(R.string.container_storage_delete_failed, item.name))
+            }
+        }
+    }
+
+    fun requestEmptyTrash(entry: ContainerStorageManager.Entry) {
+        pendingEmptyTrash = entry
+    }
+
+    fun dismissEmptyTrash() {
+        pendingEmptyTrash = null
+    }
+
+    fun confirmEmptyTrash() {
+        val entry = pendingEmptyTrash ?: return
+        pendingEmptyTrash = null
+        scope.launch {
+            try {
+                val success = ContainerStorageManager.emptyTrash(appContext, entry.containerId)
+                if (success) {
+                    trashSizes = trashSizes - entry.containerId
+                    SnackbarManager.show(appContext.getString(R.string.container_storage_trash_emptied))
+                    refresh()
+                } else {
+                    SnackbarManager.show(appContext.getString(R.string.container_storage_trash_empty_failed))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to empty trash")
+                SnackbarManager.show(e.message ?: appContext.getString(R.string.container_storage_trash_empty_failed))
+            }
+        }
+    }
+
+    fun dismissBreakdown() {
+        breakdownEntry = null
+        breakdownItems = emptyList()
+        expandedPaths = emptySet()
+        isLoadingBreakdown = false
+    }
 
     fun ensureLoaded() {
         if (!hasLoaded && !isLoading) {
@@ -133,9 +308,21 @@ class ContainerStorageManagerUiState internal constructor(
             isLoading = true
             runCatching {
                 ContainerStorageManager.loadEntries(appContext)
-            }.onSuccess {
-                entries = it
+            }.onSuccess { loaded ->
+                entries = loaded
                 hasLoaded = true
+                trashSizes = coroutineScope {
+                    loaded.filter { it.hasContainer }.map { entry ->
+                        async {
+                            runCatching {
+                                entry.containerId to ContainerStorageManager.getTrashSize(appContext, entry.containerId)
+                            }.getOrNull()
+                        }
+                    }.awaitAll()
+                        .filterNotNull()
+                        .filter { it.second > 0L }
+                        .toMap()
+                }
             }.onFailure { error ->
                 hasLoaded = false
                 Timber.e(error, "Failed to load storage inventory")
@@ -375,6 +562,195 @@ fun ContainerStorageManagerTransientUi(
             totalFiles = state.moveTotalFiles,
         )
     }
+
+    state.pendingEmptyTrash?.let { entry ->
+        val trashSize = state.trashSizes[entry.containerId] ?: 0L
+        AlertDialog(
+            onDismissRequest = state::dismissEmptyTrash,
+            title = { Text(stringResource(R.string.container_storage_empty_trash_title)) },
+            text = {
+                Text(stringResource(R.string.container_storage_empty_trash_message, StorageUtils.formatBinarySize(trashSize), entry.displayName))
+            },
+            confirmButton = {
+                TextButton(onClick = state::confirmEmptyTrash) {
+                    Text(
+                        text = stringResource(R.string.container_storage_empty_trash_button),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = state::dismissEmptyTrash) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    state.breakdownEntry?.let { entry ->
+        StorageBreakdownDialog(
+            entryName = entry.displayName,
+            state = state,
+        )
+    }
+}
+
+@Composable
+private fun StorageBreakdownDialog(
+    entryName: String,
+    state: ContainerStorageManagerUiState,
+) {
+    Dialog(
+        onDismissRequest = state::dismissBreakdown,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .fillMaxHeight(0.7f),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.container_storage_breakdown_title, entryName),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (state.isLoadingBreakdown && state.breakdownItems.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else if (state.breakdownItems.isEmpty()) {
+                    Text(stringResource(R.string.container_storage_breakdown_no_data))
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f).focusGroup(),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        itemsIndexed(
+                            state.breakdownItems,
+                            key = { index, it -> it.path.ifEmpty { "${it.name}:${it.depth}:$index" } },
+                        ) { _, dir ->
+                            val indent = (dir.depth * 16).dp
+                            val isExpanded = state.isExpanded(dir)
+                            val dirInteractionSource = remember { MutableInteractionSource() }
+                            val isDirFocused by dirInteractionSource.collectIsFocusedAsState()
+                            val accentColor = PluviaTheme.colors.accentPurple
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(
+                                        if (dir.isDirectory) {
+                                            Modifier
+                                                .border(
+                                                    width = if (isDirFocused) 2.dp else 0.dp,
+                                                    color = if (isDirFocused) accentColor.copy(alpha = 0.7f) else Color.Transparent,
+                                                    shape = RoundedCornerShape(6.dp),
+                                                )
+                                                .selectable(
+                                                    selected = isExpanded,
+                                                    interactionSource = dirInteractionSource,
+                                                    indication = null, // focus border above handles feedback
+                                                    onClick = { state.toggleExpand(dir) },
+                                                )
+                                        } else {
+                                            Modifier
+                                        },
+                                    )
+                                    .padding(start = indent, top = 2.dp, bottom = 2.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    if (dir.isDirectory) {
+                                        Icon(
+                                            imageVector = if (isExpanded) {
+                                                Icons.Default.ArrowDownward
+                                            } else {
+                                                Icons.Default.ArrowForward
+                                            },
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Spacer(modifier = Modifier.size(4.dp))
+                                    }
+                                    Text(
+                                        text = dir.name,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                Text(
+                                    text = StorageUtils.formatBinarySize(dir.sizeBytes),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                if (ENABLE_BREAKDOWN_DELETE && dir.isDirectory && dir.depth > 0) {
+                                    IconButton(
+                                        onClick = { state.requestDeleteDir(dir) },
+                                        modifier = Modifier.size(24.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = stringResource(R.string.container_storage_delete_cd),
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.error,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(onClick = state::dismissBreakdown) {
+                        Text(stringResource(R.string.close))
+                    }
+                }
+            }
+        }
+    }
+
+    state.pendingDelete?.let { item ->
+        AlertDialog(
+            onDismissRequest = state::dismissDeleteDir,
+            title = { Text(stringResource(R.string.container_storage_delete_dir_title)) },
+            text = {
+                Text(stringResource(R.string.container_storage_delete_dir_message, item.name, StorageUtils.formatBinarySize(item.sizeBytes)))
+            },
+            confirmButton = {
+                TextButton(onClick = state::confirmDeleteDir) {
+                    Text(
+                        text = stringResource(R.string.container_storage_delete_dir_button),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = state::dismissDeleteDir) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -474,7 +850,7 @@ fun ContainerStorageManagerContent(
 
             else -> {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().focusGroup(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 24.dp),
                 ) {
@@ -491,6 +867,9 @@ fun ContainerStorageManagerContent(
                             },
                             onRemove = { state.requestRemove(entry) },
                             onUninstall = { state.requestUninstall(entry) },
+                            onBreakdown = { state.requestBreakdown(entry) },
+                            onEmptyTrash = { state.requestEmptyTrash(entry) },
+                            trashSizeBytes = state.trashSizes[entry.containerId] ?: 0L,
                         )
                     }
                 }
@@ -556,6 +935,9 @@ private fun StorageEntryCard(
     onMoveToInternal: () -> Unit,
     onRemove: () -> Unit,
     onUninstall: () -> Unit,
+    onBreakdown: () -> Unit,
+    onEmptyTrash: () -> Unit,
+    trashSizeBytes: Long,
 ) {
     val context = LocalContext.current
     val displayName = entry.displayName.ifBlank {
@@ -658,7 +1040,7 @@ private fun StorageEntryCard(
             if (canMoveToExternal || canMoveToInternal || entry.canUninstallGame || entry.hasContainer) {
                 Spacer(modifier = Modifier.height(14.dp))
                 FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusGroup(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -700,6 +1082,25 @@ private fun StorageEntryCard(
                             enabled = actionsEnabled,
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                             contentColor = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    // TODO: "Open Container" button — launch Wine desktop mode for manual cleanup
+                    StorageActionButton(
+                        text = stringResource(R.string.container_storage_breakdown_button),
+                        icon = Icons.Default.Info,
+                        onClick = onBreakdown,
+                        enabled = actionsEnabled,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    )
+                    if (trashSizeBytes > 0L) {
+                        StorageActionButton(
+                            text = stringResource(R.string.container_storage_empty_trash_sized_button, StorageUtils.formatBinarySize(trashSizeBytes)),
+                            icon = Icons.Default.Delete,
+                            onClick = onEmptyTrash,
+                            enabled = actionsEnabled,
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
                         )
                     }
                 }

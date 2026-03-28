@@ -34,6 +34,9 @@ import java.nio.file.Paths
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import timber.log.Timber
@@ -66,6 +69,14 @@ object ContainerStorageManager {
         EXTERNAL,
         UNKNOWN,
     }
+
+    data class DirSize(
+        val path: String,
+        val name: String,
+        val sizeBytes: Long,
+        val isDirectory: Boolean,
+        val depth: Int = 0,
+    )
 
     data class Entry(
         val containerId: String,
@@ -310,7 +321,7 @@ object ContainerStorageManager {
 
     suspend fun removeContainer(context: Context, containerId: String): Boolean = withContext(Dispatchers.IO) {
         val homeDir = File(ImageFs.find(context).rootDir, "home")
-        val containerDir = File(homeDir, "${ImageFs.USER}-$containerId")
+        val containerDir = getContainerDir(context, containerId)
         if (!containerDir.exists()) {
             Timber.tag("ContainerStorageManager").w("Remove requested for missing container: %s", containerId)
             return@withContext false
@@ -907,6 +918,148 @@ object ContainerStorageManager {
                 )
             }
         }
+    }
+
+    private fun getContainerDir(context: Context, containerId: String): File {
+        val homeDir = File(ImageFs.find(context).rootDir, "home")
+        return File(homeDir, "${ImageFs.USER}-$containerId")
+    }
+
+    suspend fun getStorageBreakdown(
+        context: Context,
+        entry: Entry,
+    ): List<DirSize> = withContext(Dispatchers.IO) {
+        coroutineScope {
+            val containerDeferred = if (entry.hasContainer) {
+                val containerDir = getContainerDir(context, entry.containerId)
+                if (containerDir.exists()) async { listChildren(containerDir, depth = 0) } else null
+            } else {
+                null
+            }
+
+            val installDeferred = entry.installPath?.let { path ->
+                val installDir = File(path)
+                if (installDir.exists()) async { listChildren(installDir, depth = 0) } else null
+            }
+
+            val result = mutableListOf<DirSize>()
+            containerDeferred?.await()?.let { result += it }
+            installDeferred?.await()?.let { result += it }
+            result.sortedByDescending { it.sizeBytes }
+        }
+    }
+
+    private fun getContainerTrashDir(context: Context, containerId: String): File {
+        return File(getContainerDir(context, containerId), ".local/share/Trash")
+    }
+
+    suspend fun getTrashSize(context: Context, containerId: String): Long = withContext(Dispatchers.IO) {
+        val trashDir = getContainerTrashDir(context, containerId)
+        if (!trashDir.exists()) return@withContext 0L
+        getContainerDirectorySize(trashDir.toPath())
+    }
+
+    suspend fun emptyTrash(context: Context, containerId: String): Boolean = withContext(Dispatchers.IO) {
+        val trashDir = getContainerTrashDir(context, containerId)
+        if (!trashDir.exists()) return@withContext true
+        if (!trashDir.isDirectory) {
+            Timber.tag("ContainerStorageManager").w("Trash path is not a directory: %s", trashDir.absolutePath)
+            return@withContext FileUtils.delete(trashDir)
+        }
+        try {
+            val children = trashDir.listFiles()
+            if (children == null) {
+                Timber.tag("ContainerStorageManager").w("Unable to list trash directory: %s", trashDir.absolutePath)
+                return@withContext false
+            }
+            var allDeleted = true
+            children.forEach { child ->
+                if (!FileUtils.delete(child)) {
+                    Timber.tag("ContainerStorageManager").w("Failed to delete trash item: %s", child.absolutePath)
+                    allDeleted = false
+                }
+            }
+            allDeleted
+        } catch (e: Exception) {
+            Timber.tag("ContainerStorageManager").e(e, "Failed to empty trash for %s", containerId)
+            false
+        }
+    }
+
+    suspend fun deleteDirectory(context: Context, path: String): Boolean = withContext(Dispatchers.IO) {
+        if (path.isBlank()) return@withContext false
+        val canonicalPath = normalizePath(path)
+        if (!isPathWithinSafeBoundaries(context, canonicalPath)) {
+            Timber.tag("ContainerStorageManager").w("Refusing to delete path outside safe boundaries: %s", path)
+            return@withContext false
+        }
+        val dir = File(canonicalPath)
+        if (!dir.exists()) return@withContext false
+        try {
+            FileUtils.delete(dir)
+        } catch (e: Exception) {
+            Timber.tag("ContainerStorageManager").e(e, "Failed to delete: %s", canonicalPath)
+            false
+        }
+    }
+
+    private fun isPathWithinSafeBoundaries(context: Context, path: String): Boolean {
+        val homeDir = File(ImageFs.find(context).rootDir, "home")
+        val safeRoots = listOfNotNull(
+            homeDir.absolutePath,
+            SteamService.internalAppInstallPath,
+            SteamService.externalAppInstallPath,
+            GOGConstants.internalGOGGamesPath,
+            GOGConstants.externalGOGGamesPath,
+            EpicConstants.internalEpicGamesPath(context),
+            EpicConstants.externalEpicGamesPath(),
+            AmazonConstants.internalAmazonGamesPath(context),
+            AmazonConstants.externalAmazonGamesPath(),
+        ).filter { it.isNotBlank() }
+        return safeRoots.any { root -> isPathWithin(path, root) }
+    }
+
+    suspend fun expandDirectory(path: String, depth: Int): List<DirSize> = withContext(Dispatchers.IO) {
+        val dir = File(path)
+        if (!dir.exists() || !dir.isDirectory) return@withContext emptyList()
+        listChildren(dir, depth).sortedByDescending { it.sizeBytes }
+    }
+
+    private suspend fun listChildren(root: File, depth: Int): List<DirSize> = coroutineScope {
+        val children = root.listFiles() ?: return@coroutineScope emptyList()
+        val (dirs, files) = children.partition { it.isDirectory }
+
+        val dirDeferred = dirs.map { child ->
+            async {
+                DirSize(
+                    path = child.absolutePath,
+                    name = "${root.name}/${child.name}",
+                    sizeBytes = getContainerDirectorySize(child.toPath()),
+                    isDirectory = true,
+                    depth = depth,
+                )
+            }
+        }
+
+        var looseFileBytes = 0L
+        for (file in files) {
+            looseFileBytes += file.length()
+        }
+
+        val result = dirDeferred.awaitAll().toMutableList()
+
+        if (looseFileBytes > 0L) {
+            result += DirSize(
+                // blank so deleteDirectory's isBlank() guard rejects it
+                path = "",
+                name = "${root.name}/(files)",
+                sizeBytes = looseFileBytes,
+                isDirectory = false,
+                depth = depth,
+            )
+        }
+
+        result
     }
 
     private fun relinkActiveSymlinkIfNeeded(homeDir: File, deletedContainerDir: File) {
