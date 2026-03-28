@@ -1030,6 +1030,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Conflicto de guardado</string>
     <string name="main_save_conflict_message">Hay un archivo de guardado en la nube y otro diferente en local. ¿Cuál quieres conservar?\n\nGuardado local:\n\t%1$s\nGuardado en la nube:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Elige versión de guardado</string>
+    <string name="main_save_conflict_upgrade_v1_message">Hemos corregido el manejo de rutas de guardado en la nube para este juego y encontramos diferencias entre el guardado local y el de la nube. Elige cuál conservar.\n\nGuardado local:\n\t%1$s\nGuardado en la nube:\n\t%2$s</string>
     <string name="main_keep_local">Mantener el local</string>
     <string name="main_keep_remote">Mantener el de la nube</string>
 

@@ -1018,6 +1018,8 @@
 	<!-- PluviaMain: Save Conflicts -->
 	<string name="main_save_conflict_title">Conflict de salvare</string>
 	<string name="main_save_conflict_message">Există o salvare nouă locală și una nouă remote. Pe care vrei să o păstrezi?\n\nSalvare locală:\n\t%1$s\nSalvare remote:\n\t%2$s</string>
+	<string name="main_save_conflict_upgrade_v1_title">Alege versiunea salvării</string>
+	<string name="main_save_conflict_upgrade_v1_message">Am corectat gestionarea căilor de salvare în cloud pentru acest joc și am găsit diferențe între salvarea locală și cea din cloud. Alege ce versiune să păstrezi.\n\nSalvare locală:\n\t%1$s\nSalvare în cloud:\n\t%2$s</string>
 	<string name="main_keep_local">Păstrează locală</string>
 	<string name="main_keep_remote">Păstrează remote</string>
 

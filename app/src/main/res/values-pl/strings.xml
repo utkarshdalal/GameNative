@@ -1027,6 +1027,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Konflikt zapisu</string>
     <string name="main_save_conflict_message">Istnieje nowy zapis zdalny i nowy zapis lokalny. Który chcesz zachować?\n\nZapis lokalny:\n\t%1$s\nZapis zdalny:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Wybierz wersję zapisu</string>
+    <string name="main_save_conflict_upgrade_v1_message">Naprawiliśmy obsługę ścieżek zapisów w chmurze dla tej gry i wykryliśmy różnice między zapisem lokalnym a zapisem w chmurze. Wybierz, którą wersję zachować.\n\nZapis lokalny:\n\t%1$s\nZapis w chmurze:\n\t%2$s</string>
     <string name="main_keep_local">Zachowaj lokalny</string>
     <string name="main_keep_remote">Zachowaj zdalny</string>
 

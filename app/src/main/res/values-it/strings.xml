@@ -1010,6 +1010,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Conflitto Salvataggio</string>
     <string name="main_save_conflict_message">C\'è un nuovo salvataggio remoto e un nuovo salvataggio locale, quale vuoi mantenere?\n\nSalvataggio locale:\n\t%1$s\nSalvataggio remoto:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Scegli la versione del salvataggio</string>
+    <string name="main_save_conflict_upgrade_v1_message">Abbiamo corretto la gestione dei percorsi dei salvataggi cloud per questo gioco e rilevato differenze tra salvataggio locale e cloud. Scegli quale versione mantenere.\n\nSalvataggio locale:\n\t%1$s\nSalvataggio cloud:\n\t%2$s</string>
     <string name="main_keep_local">Mantieni locale</string>
     <string name="main_keep_remote">Mantieni remoto</string>
 

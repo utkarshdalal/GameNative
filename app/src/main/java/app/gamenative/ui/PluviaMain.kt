@@ -1827,16 +1827,32 @@ fun preLaunchApp(
 
         when (postSyncInfo.syncResult) {
             SyncResult.Conflict -> {
+                val localDate = Date(postSyncInfo.localTimestamp).toString()
+                val remoteDate = Date(postSyncInfo.remoteTimestamp).toString()
+                val (conflictTitle, conflictMessage) = postSyncInfo.conflictUfsVersion
+                    ?.let { v ->
+                        val titleId = context.resources.getIdentifier(
+                            "main_save_conflict_upgrade_v${v}_title", "string", context.packageName,
+                        )
+                        val msgId = context.resources.getIdentifier(
+                            "main_save_conflict_upgrade_v${v}_message", "string", context.packageName,
+                        )
+                        if (titleId != 0 && msgId != 0) {
+                            context.getString(titleId) to context.getString(msgId, localDate, remoteDate)
+                        } else {
+                            null
+                        }
+                    }
+                    ?: run {
+                        context.getString(R.string.main_save_conflict_title) to
+                            context.getString(R.string.main_save_conflict_message, localDate, remoteDate)
+                    }
                 setMessageDialogState(
                     MessageDialogState(
                         visible = true,
                         type = DialogType.SYNC_CONFLICT,
-                        title = context.getString(R.string.main_save_conflict_title),
-                        message = context.getString(
-                            R.string.main_save_conflict_message,
-                            Date(postSyncInfo.localTimestamp).toString(),
-                            Date(postSyncInfo.remoteTimestamp).toString(),
-                        ),
+                        title = conflictTitle,
+                        message = conflictMessage,
                         dismissBtnText = context.getString(R.string.main_keep_local),
                         confirmBtnText = context.getString(R.string.main_keep_remote),
                     ),

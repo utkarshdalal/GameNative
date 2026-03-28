@@ -1010,6 +1010,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">存檔衝突</string>
     <string name="main_save_conflict_message">遠端存檔與本地存檔發生衝突，請選擇要保留哪個？\n\n本地存檔：\n\t%1$s\n遠端存檔：\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">選擇存檔版本</string>
+    <string name="main_save_conflict_upgrade_v1_message">我們已修復此遊戲的雲端存檔路徑處理方式，並發現本機存檔與雲端存檔存在差異。請選擇要保留的版本。\n\n本機存檔：\n\t%1$s\n雲端存檔：\n\t%2$s</string>
     <string name="main_keep_local">保留本地存檔</string>
     <string name="main_keep_remote">保留遠端存檔</string>
 

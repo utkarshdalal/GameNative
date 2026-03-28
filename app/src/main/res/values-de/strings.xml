@@ -965,6 +965,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Speicherstandkonflikt</string>
     <string name="main_save_conflict_message">Es wurden ein neuer lokaler und ein neuer Cloud-Spielstand gefunden. Welchen möchtest du behalten?\n\nLokal:\n\t%1$s\nCloud:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Speicherstand-Version wählen</string>
+    <string name="main_save_conflict_upgrade_v1_message">Wir haben die Cloud-Speicherpfadbehandlung für dieses Spiel korrigiert und Unterschiede zwischen lokalem und Cloud-Speicherstand gefunden. Wähle, welche Version du behalten möchtest.\n\nLokal:\n\t%1$s\nCloud:\n\t%2$s</string>
     <string name="main_keep_local">Lokal behalten</string>
     <string name="main_keep_remote">Cloud behalten</string>
     <!-- PluviaMain: Sync Errors -->

@@ -1046,6 +1046,8 @@
     <string name="main_save_conflict_message">There is a new remote save and a new local save, which would you like to keep?\n\nLocal save:\n\t%1$s\nRemote save:\n\t%2$s</string>
     <string name="main_keep_local">Keep local</string>
     <string name="main_keep_remote">Keep remote</string>
+    <string name="main_save_conflict_upgrade_v1_title">Choose Save Version</string>
+    <string name="main_save_conflict_upgrade_v1_message">We fixed cloud save path handling for this game and found different local and cloud saves. Pick one version to keep.\n\nLocal:\n\t%1$s\nCloud:\n\t%2$s</string>
 
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Sync operation is taking too long. Please try launching the game again in a moment.</string>

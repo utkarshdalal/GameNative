@@ -838,6 +838,8 @@
     <!-- TODO: Revisão manual - PluviaMain: Conflitos de save -->
     <string name="main_save_conflict_title">Conflito de save</string>
     <string name="main_save_conflict_message">Há um novo save remoto e um novo save local, qual você gostaria de manter?\n\nSave local:\n\t%1$s\nSave remoto:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Escolher versão do save</string>
+    <string name="main_save_conflict_upgrade_v1_message">Corrigimos o tratamento dos caminhos de save na nuvem deste jogo e encontramos diferenças entre o save local e o da nuvem. Escolha qual versão manter.\n\nSave local:\n\t%1$s\nSave na nuvem:\n\t%2$s</string>
     <string name="main_keep_local">Manter local</string>
     <string name="main_keep_remote">Manter remoto</string>
 

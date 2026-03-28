@@ -1007,6 +1007,8 @@
     <!-- 主界面：存档冲突 -->
     <string name="main_save_conflict_title">存档冲突</string>
     <string name="main_save_conflict_message"> 远程存档与本地存档发生冲突，请选择要保留哪个？\n\n本地存档：\n\t%1$s\n远程存档：\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">选择保存版本</string>
+    <string name="main_save_conflict_upgrade_v1_message">我们已修复此游戏的云存档路径处理方式，并发现本地存档与云存档存在差异。请选择要保留的版本。\n\n本地存档：\n\t%1$s\n云存档：\n\t%2$s</string>
     <string name="main_keep_local">保留本地存档</string>
     <string name="main_keep_remote">保留远程存档</string>
 

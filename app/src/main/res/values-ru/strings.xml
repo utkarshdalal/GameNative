@@ -683,6 +683,8 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
 Удалённое сохранение:
 	%2$s</string>
     <string name="main_save_conflict_title">Конфликт сохранений</string>
+    <string name="main_save_conflict_upgrade_v1_title">Выберите версию сохранения</string>
+    <string name="main_save_conflict_upgrade_v1_message">Мы исправили обработку путей облачных сохранений для этой игры и обнаружили различия между локальным и облачным сохранением.\n\nЛокальное сохранение:\n\t%1$s\nОблачное сохранение:\n\t%2$s</string>
     <string name="main_share">Поделиться</string>
     <string name="main_share_text">Проверьте GameNative - играйте в ваши ПК игры Steam на Android, с полной поддержкой облачных сохранений!
 https://gamenative.app

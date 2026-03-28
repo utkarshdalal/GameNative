@@ -1009,6 +1009,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Конфлікт збережень</string>
     <string name="main_save_conflict_message">Знайдено нове віддалене та нове локальне збереження. Яке з них залишити?\n\nЛокальне збереження:\n\t%1$s\nВіддалене збереження:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Виберіть версію збереження</string>
+    <string name="main_save_conflict_upgrade_v1_message">Ми виправили обробку шляхів хмарних збережень для цієї гри та виявили відмінності між локальним і хмарним збереженням. Виберіть, яку версію залишити.\n\nЛокальне збереження:\n\t%1$s\nХмарне збереження:\n\t%2$s</string>
     <string name="main_keep_local">Залишити локальне</string>
     <string name="main_keep_remote">Залишити віддалене</string>
 

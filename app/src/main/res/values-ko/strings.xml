@@ -1028,6 +1028,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">저장 충돌</string>
     <string name="main_save_conflict_message">새 원격 저장 파일과 새 로컬 저장 파일이 있습니다. 어느 것을 유지하시겠습니까?\n\n로컬 저장 파일:\n\t%1$s\n원격 저장 파일:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">저장 버전 선택</string>
+    <string name="main_save_conflict_upgrade_v1_message">이 게임의 클라우드 저장 경로 처리 방식을 수정했으며 로컬 저장과 클라우드 저장이 서로 다르게 감지되었습니다. 유지할 버전을 선택하세요.\n\n로컬 저장:\n\t%1$s\n클라우드 저장:\n\t%2$s</string>
     <string name="main_keep_local">로컬 유지</string>
     <string name="main_keep_remote">원격 유지</string>
 

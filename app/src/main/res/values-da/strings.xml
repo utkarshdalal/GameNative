@@ -838,6 +838,8 @@
     <!-- TODO: Manual review - PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Gemfilkonflikt</string>
     <string name="main_save_conflict_message">Der er en ny fjern-gemfil og en ny lokal gemfil, hvilken vil du beholde?\n\nLokal gemfil:\n\t%1$s\nFjern-gemfil:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Vælg gemmeversion</string>
+    <string name="main_save_conflict_upgrade_v1_message">Vi har rettet håndteringen af cloud-gemstier for dette spil og fundet forskelle mellem lokal gemfil og cloud-gemfil. Vælg hvilken version du vil beholde.\n\nLokal gemfil:\n\t%1$s\nCloud-gemfil:\n\t%2$s</string>
     <string name="main_keep_local">Behold lokal</string>
     <string name="main_keep_remote">Behold fjern</string>
 

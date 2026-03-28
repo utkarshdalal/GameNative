@@ -1014,6 +1014,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Conflit de sauvegarde</string>
     <string name="main_save_conflict_message">Il y a une nouvelle sauvegarde distante et une nouvelle sauvegarde locale, laquelle voulez-vous conserver ?\n\nSauvegarde locale :\n\t%1$s\nSauvegarde distante :\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Choisir la version de sauvegarde</string>
+    <string name="main_save_conflict_upgrade_v1_message">Nous avons corrigé la gestion des chemins de sauvegarde cloud pour ce jeu et détecté des différences entre la sauvegarde locale et la sauvegarde cloud. Choisissez la version à conserver.\n\nSauvegarde locale :\n\t%1$s\nSauvegarde cloud :\n\t%2$s</string>
     <string name="main_keep_local">Garder locale</string>
     <string name="main_keep_remote">Garder distante</string>
 
