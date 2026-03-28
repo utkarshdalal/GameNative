@@ -264,10 +264,62 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun shouldHardStopRunningSessionOnDestroy(): Boolean {
+        if (isChangingConfigurations) return false
+        return PluviaApp.xEnvironment != null || SteamService.keepAlive
+    }
+
+    private fun hardStopRunningSession(reason: String) {
+        Timber.w("Hard stopping running session: %s", reason)
+
+        runCatching {
+            PluviaApp.touchpadView?.releasePointerCapture()
+        }.onFailure {
+            Timber.w(it, "Failed to release pointer capture during hard stop")
+        }
+
+        runCatching {
+            PluviaApp.xServerView?.getxServer()?.winHandler?.stop()
+        }.onFailure {
+            Timber.w(it, "Failed to stop WinHandler during hard stop")
+        }
+
+        runCatching {
+            PluviaApp.xEnvironment?.stopEnvironmentComponents()
+        }.onFailure {
+            Timber.w(it, "Failed to stop environment components during hard stop")
+        }
+
+        runCatching {
+            PluviaApp.achievementWatcher?.stop()
+            PluviaApp.achievementWatcher = null
+            SteamService.clearCachedAchievements()
+        }.onFailure {
+            Timber.w(it, "Failed to clean up achievement state during hard stop")
+        }
+
+        SteamService.keepAlive = false
+        PluviaApp.clearActiveSuspendState()
+        PluviaApp.xEnvironment = null
+        PluviaApp.xServerView = null
+        PluviaApp.inputControlsView = null
+        PluviaApp.inputControlsManager = null
+        PluviaApp.touchpadView = null
+    }
+
     override fun onDestroy() {
+        val hardStoppedRunningSession = shouldHardStopRunningSessionOnDestroy()
+        if (hardStoppedRunningSession) {
+            hardStopRunningSession("MainActivity destroyed while a session is active")
+        }
+
         super.onDestroy()
 
-        PluviaApp.events.emit(AndroidEvent.ActivityDestroyed)
+        if (!hardStoppedRunningSession) {
+            PluviaApp.events.emit(AndroidEvent.ActivityDestroyed)
+        } else {
+            Timber.i("Skipped ActivityDestroyed event after hard-stopping active session")
+        }
 
         PluviaApp.events.off<AndroidEvent.SetSystemUIVisibility, Unit>(onSetSystemUi)
         PluviaApp.events.off<AndroidEvent.StartOrientator, Unit>(onStartOrientator)
@@ -275,11 +327,12 @@ class MainActivity : ComponentActivity() {
         PluviaApp.events.off<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
         Timber.d(
-            "onDestroy - Index: %d, Connected: %b, Logged-In: %b, Changing-Config: %b",
+            "onDestroy - Index: %d, Connected: %b, Logged-In: %b, Changing-Config: %b, Hard-Stopped-Session: %b",
             index,
             SteamService.isConnected,
             SteamService.isLoggedIn,
             isChangingConfigurations,
+            hardStoppedRunningSession,
         )
 
         if (SteamService.isConnected && !SteamService.isLoggedIn && !isChangingConfigurations && !SteamService.keepAlive) {
