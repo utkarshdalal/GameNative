@@ -940,6 +940,14 @@ object PrefManager {
             setPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, value)
         }
 
+    // Whether to swap A↔B and X↔Y button icons to match Xbox controller layout.
+    private val SWAP_FACE_BUTTONS = booleanPreferencesKey("swap_face_buttons")
+    var swapFaceButtons: Boolean
+        get() = getPref(SWAP_FACE_BUTTONS, false)
+        set(value) {
+            setPref(SWAP_FACE_BUTTONS, value)
+        }
+
     private val ITEMS_PER_PAGE = intPreferencesKey("items_per_page")
     var itemsPerPage: Int
         get() = getPref(ITEMS_PER_PAGE, 50)
@@ -1166,4 +1174,10 @@ object PrefManager {
     var gogAmazonPathMigrated: Boolean
         get() = getPref(GOG_AMAZON_PATH_MIGRATED, false)
         set(value) { setPref(GOG_AMAZON_PATH_MIGRATED, value) }
+
+    private val ACHIEVEMENT_NOTIFICATION_POSITION = stringPreferencesKey("achievement_notification_position")
+    var achievementNotificationPosition: String
+        get() = getPref(ACHIEVEMENT_NOTIFICATION_POSITION, "bottom_right")
+        set(value) { setPref(ACHIEVEMENT_NOTIFICATION_POSITION, value) }
+
 }

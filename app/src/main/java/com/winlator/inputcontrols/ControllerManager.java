@@ -7,6 +7,7 @@ import android.hardware.input.InputManager;
 import android.preference.PreferenceManager;
 import android.util.SparseArray;
 import android.view.InputDevice;
+import android.view.KeyEvent;
 
 import app.gamenative.PrefManager;
 
@@ -132,16 +133,30 @@ public class ControllerManager {
     public static boolean isGameController(InputDevice device) {
         if (device == null) return false;
 
-        int sources = device.getSources();
+        boolean isGamepad = device.supportsSource(InputDevice.SOURCE_GAMEPAD);
+        boolean isJoystick = device.supportsSource(InputDevice.SOURCE_JOYSTICK);
 
-        boolean isGamepad = (sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD;
-        boolean isJoystick = (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
+        boolean hasAxes =
+                device.getMotionRange(android.view.MotionEvent.AXIS_X) != null ||
+                        device.getMotionRange(android.view.MotionEvent.AXIS_Y) != null;
 
-        if (device.getKeyboardType() == InputDevice.KEYBOARD_TYPE_ALPHABETIC) {
-            return false;
+        boolean[] hasGamepadKeysArray = device.hasKeys(
+                KeyEvent.KEYCODE_BUTTON_A,
+                KeyEvent.KEYCODE_BUTTON_B,
+                KeyEvent.KEYCODE_BUTTON_X,
+                KeyEvent.KEYCODE_BUTTON_Y
+        );
+
+        boolean hasGamepadKeys = false;
+        for (boolean hasKey : hasGamepadKeysArray) {
+            if (hasKey) {
+                hasGamepadKeys = true;
+                break;
+            }
         }
 
-        return isGamepad || isJoystick;
+        return (isGamepad && hasGamepadKeys) ||
+                (isJoystick && hasAxes);
     }
 
     /**

@@ -25,5 +25,6 @@ enum class AppOptionMenuType(val text: String) {
     FetchSteamGridDBImages("Fetch game images"),
     TestGraphics("Test graphics"),
     ManageGameContent("Manage DLC"),
-    ManageWorkshop("Manage Workshop");
+    ManageWorkshop("Manage Workshop"),
+    ChangeBranch("Change branch");
 }

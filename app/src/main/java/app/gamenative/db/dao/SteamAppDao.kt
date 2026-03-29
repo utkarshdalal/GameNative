@@ -91,6 +91,17 @@ interface SteamAppDao {
             flow { emit(_getAllOwnedAppsPaged(invalidPkgId)) }
         }
 
+    @Query(
+        "SELECT * FROM steam_app " +
+            "WHERE id != 480 " +
+            "AND package_id != :invalidPkgId " +
+            "AND type != 0 " +
+            "ORDER BY LOWER(name)",
+    )
+    suspend fun getAllOwnedAppsAsList(
+        invalidPkgId: Int = INVALID_PKG_ID,
+    ): List<SteamApp>
+
     @Query("SELECT * FROM steam_app WHERE received_pics = 0 AND package_id != :invalidPkgId AND owner_account_id = :ownerId")
     fun getAllOwnedAppsWithoutPICS(
         ownerId: Int,

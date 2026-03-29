@@ -490,8 +490,7 @@ object SteamAutoCloud {
                     clientId = clientId,
                     filesToDelete = filesToDelete,
                     filesToUpload = filesToUpload.map { it.first },
-                    // TODO: have branch be user selected and use that selection here
-                    appBuildId = appInfo.branches["public"]?.buildId ?: 0,
+                    appBuildId = appInfo.branches[SteamService.getInstalledApp(appInfo.id)?.branch ?: "public"]?.buildId ?: 0,
                 ).await()
 
                 var uploadBatchSuccess = true
@@ -776,8 +775,8 @@ object SteamAutoCloud {
                 parentScope.async {
                     Timber.i("Uploading local user files")
 
-                    val fileChanges = steamInstance.fileChangeListsDao.getByAppId(appInfo.id)!!.let {
-                        val result = getFilesDiff(allLocalUserFiles, it.userFileInfo)
+                    val fileChanges = steamInstance.fileChangeListsDao.getByAppId(appInfo.id).let {
+                        val result = getFilesDiff(allLocalUserFiles, it?.userFileInfo ?: emptyList())
 
                         result.second
                     }

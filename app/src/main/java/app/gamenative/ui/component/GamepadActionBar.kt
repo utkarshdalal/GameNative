@@ -70,6 +70,7 @@ data class GamepadAction(
 @Composable
 private fun GamepadButtonHint(
     action: GamepadAction,
+    swapFaceButtons: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val clickableModifier = if (action.onClick != null) {
@@ -79,6 +80,17 @@ private fun GamepadButtonHint(
     }
 
     val label = stringResource(action.labelResId)
+    val iconRes = if (swapFaceButtons) {
+        when (action.button) {
+            GamepadButton.A -> GamepadButton.B.iconRes
+            GamepadButton.B -> GamepadButton.A.iconRes
+            GamepadButton.X -> GamepadButton.Y.iconRes
+            GamepadButton.Y -> GamepadButton.X.iconRes
+            else -> action.button.iconRes
+        }
+    } else {
+        action.button.iconRes
+    }
 
     Row(
         modifier = clickableModifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -86,7 +98,7 @@ private fun GamepadButtonHint(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Image(
-            painter = painterResource(action.button.iconRes),
+            painter = painterResource(iconRes),
             contentDescription = label,
             modifier = Modifier.size(28.dp),
         )
@@ -107,6 +119,7 @@ fun GamepadActionBar(
     visible: Boolean = true,
 ) {
     val showGamepadUI = shouldShowGamepadUI()
+    val swapFaceButtons = PrefManager.swapFaceButtons
 
     AnimatedVisibility(
         visible = visible && actions.isNotEmpty() && showGamepadUI,
@@ -155,7 +168,7 @@ fun GamepadActionBar(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     actions.forEach { action ->
-                        GamepadButtonHint(action = action)
+                        GamepadButtonHint(action = action, swapFaceButtons = swapFaceButtons)
                     }
                 }
             }

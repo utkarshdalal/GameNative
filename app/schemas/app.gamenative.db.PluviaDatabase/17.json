@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 17,
-    "identityHash": "35b5f662ceb01ae80de84ee692d4c5bb",
+    "identityHash": "2cbf07c442c82f778d23f75a81917e2d",
     "entities": [
       {
         "tableName": "app_info",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `is_downloaded` INTEGER NOT NULL, `downloaded_depots` TEXT NOT NULL, `dlc_depots` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `is_downloaded` INTEGER NOT NULL, `downloaded_depots` TEXT NOT NULL, `dlc_depots` TEXT NOT NULL, `branch` TEXT NOT NULL DEFAULT 'public', PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -31,6 +31,13 @@
             "columnName": "dlc_depots",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "branch",
+            "columnName": "branch",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'public'"
           }
         ],
         "primaryKey": {
@@ -171,7 +178,7 @@
       },
       {
         "tableName": "steam_app",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `package_id` INTEGER NOT NULL, `owner_account_id` TEXT NOT NULL, `license_flags` INTEGER NOT NULL, `received_pics` INTEGER NOT NULL, `last_change_number` INTEGER NOT NULL, `ufs_parse_version` INTEGER NOT NULL DEFAULT 0, `depots` TEXT NOT NULL, `branches` TEXT NOT NULL, `name` TEXT NOT NULL, `type` INTEGER NOT NULL, `os_list` INTEGER NOT NULL, `release_state` INTEGER NOT NULL, `release_date` INTEGER NOT NULL, `metacritic_score` INTEGER NOT NULL, `metacritic_full_url` TEXT NOT NULL, `logo_hash` TEXT NOT NULL, `logo_small_hash` TEXT NOT NULL, `icon_hash` TEXT NOT NULL, `client_icon_hash` TEXT NOT NULL, `client_tga_hash` TEXT NOT NULL, `small_capsule` TEXT NOT NULL, `header_image` TEXT NOT NULL, `library_assets` TEXT NOT NULL, `primary_genre` INTEGER NOT NULL, `review_score` INTEGER NOT NULL, `review_percentage` INTEGER NOT NULL, `controller_support` INTEGER NOT NULL, `demo_of_app_id` INTEGER NOT NULL, `developer` TEXT NOT NULL, `publisher` TEXT NOT NULL, `homepage_url` TEXT NOT NULL, `game_manual_url` TEXT NOT NULL, `load_all_before_launch` INTEGER NOT NULL, `dlc_app_ids` TEXT NOT NULL, `is_free_app` INTEGER NOT NULL, `dlc_for_app_id` INTEGER NOT NULL, `must_own_app_to_purchase` INTEGER NOT NULL, `dlc_available_on_store` INTEGER NOT NULL, `optional_dlc` INTEGER NOT NULL, `game_dir` TEXT NOT NULL, `install_script` TEXT NOT NULL, `no_servers` INTEGER NOT NULL, `order` INTEGER NOT NULL, `primary_cache` INTEGER NOT NULL, `valid_os_list` INTEGER NOT NULL, `third_party_cd_key` INTEGER NOT NULL, `visible_only_when_installed` INTEGER NOT NULL, `visible_only_when_subscribed` INTEGER NOT NULL, `launch_eula_url` TEXT NOT NULL, `require_default_install_folder` INTEGER NOT NULL, `content_type` INTEGER NOT NULL, `install_dir` TEXT NOT NULL, `use_launch_cmd_line` INTEGER NOT NULL, `launch_without_workshop_updates` INTEGER NOT NULL, `use_mms` INTEGER NOT NULL, `install_script_signature` TEXT NOT NULL, `install_script_override` INTEGER NOT NULL, `config` TEXT NOT NULL, `ufs` TEXT NOT NULL, `workshop_mods` INTEGER NOT NULL DEFAULT 0, `enabled_workshop_item_ids` TEXT NOT NULL DEFAULT '', `workshop_download_pending` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `package_id` INTEGER NOT NULL, `owner_account_id` TEXT NOT NULL, `license_flags` INTEGER NOT NULL, `received_pics` INTEGER NOT NULL, `last_change_number` INTEGER NOT NULL, `ufs_parse_version` INTEGER NOT NULL DEFAULT 0, `depots` TEXT NOT NULL, `branches` TEXT NOT NULL, `name` TEXT NOT NULL, `type` INTEGER NOT NULL, `os_list` INTEGER NOT NULL, `release_state` INTEGER NOT NULL, `release_date` INTEGER NOT NULL, `metacritic_score` INTEGER NOT NULL, `metacritic_full_url` TEXT NOT NULL, `logo_hash` TEXT NOT NULL, `logo_small_hash` TEXT NOT NULL, `icon_hash` TEXT NOT NULL, `client_icon_hash` TEXT NOT NULL, `client_tga_hash` TEXT NOT NULL, `small_capsule` TEXT NOT NULL, `header_image` TEXT NOT NULL, `library_assets` TEXT NOT NULL, `primary_genre` INTEGER NOT NULL, `review_score` INTEGER NOT NULL, `review_percentage` INTEGER NOT NULL, `controller_support` INTEGER NOT NULL, `demo_of_app_id` INTEGER NOT NULL, `developer` TEXT NOT NULL, `publisher` TEXT NOT NULL, `homepage_url` TEXT NOT NULL, `game_manual_url` TEXT NOT NULL, `load_all_before_launch` INTEGER NOT NULL, `dlc_app_ids` TEXT NOT NULL, `is_free_app` INTEGER NOT NULL, `dlc_for_app_id` INTEGER NOT NULL, `must_own_app_to_purchase` INTEGER NOT NULL, `dlc_available_on_store` INTEGER NOT NULL, `optional_dlc` INTEGER NOT NULL, `game_dir` TEXT NOT NULL, `install_script` TEXT NOT NULL, `no_servers` INTEGER NOT NULL, `order` INTEGER NOT NULL, `primary_cache` INTEGER NOT NULL, `valid_os_list` INTEGER NOT NULL, `third_party_cd_key` INTEGER NOT NULL, `visible_only_when_installed` INTEGER NOT NULL, `visible_only_when_subscribed` INTEGER NOT NULL, `launch_eula_url` TEXT NOT NULL, `require_default_install_folder` INTEGER NOT NULL, `content_type` INTEGER NOT NULL, `install_dir` TEXT NOT NULL, `use_launch_cmd_line` INTEGER NOT NULL, `launch_without_workshop_updates` INTEGER NOT NULL, `use_mms` INTEGER NOT NULL, `install_script_signature` TEXT NOT NULL, `install_script_override` INTEGER NOT NULL, `config` TEXT NOT NULL, `ufs` TEXT NOT NULL, `workshop_mods` INTEGER NOT NULL DEFAULT 0, `enabled_workshop_item_ids` TEXT NOT NULL DEFAULT '', PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -547,13 +554,6 @@
             "affinity": "TEXT",
             "notNull": true,
             "defaultValue": "''"
-          },
-          {
-            "fieldPath": "workshopDownloadPending",
-            "columnName": "workshop_download_pending",
-            "affinity": "INTEGER",
-            "notNull": true,
-            "defaultValue": "0"
           }
         ],
         "primaryKey": {
@@ -1177,7 +1177,7 @@
       },
       {
         "tableName": "downloading_app_info",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`appId` INTEGER NOT NULL, `dlcAppIds` TEXT NOT NULL, PRIMARY KEY(`appId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`appId` INTEGER NOT NULL, `dlcAppIds` TEXT NOT NULL, `branch` TEXT NOT NULL DEFAULT 'public', PRIMARY KEY(`appId`))",
         "fields": [
           {
             "fieldPath": "appId",
@@ -1190,6 +1190,13 @@
             "columnName": "dlcAppIds",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "branch",
+            "columnName": "branch",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'public'"
           }
         ],
         "primaryKey": {
@@ -1198,11 +1205,42 @@
             "appId"
           ]
         }
+      },
+      {
+        "tableName": "steam_unlocked_branch",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`appId` INTEGER NOT NULL, `branchName` TEXT NOT NULL, `password` TEXT NOT NULL, PRIMARY KEY(`appId`, `branchName`))",
+        "fields": [
+          {
+            "fieldPath": "appId",
+            "columnName": "appId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "branchName",
+            "columnName": "branchName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "password",
+            "columnName": "password",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "appId",
+            "branchName"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '35b5f662ceb01ae80de84ee692d4c5bb')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2cbf07c442c82f778d23f75a81917e2d')"
     ]
   }
 }

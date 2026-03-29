@@ -501,6 +501,7 @@ class GOGDownloadManager @Inject constructor(
             if (game != null) {
                 val installSize = calculateDirectorySize(installPath)
                 gogManager.updateGame(game.copy(isInstalled = true, installPath = installPath.absolutePath, installSize = installSize))
+                downloadInfo.clearPersistedBytesDownloaded(installPath.absolutePath)
                 Timber.tag("GOG").i("Updated database: game marked as installed, size: ${installSize / 1_000_000} MB")
             } else {
                 Timber.tag("GOG").w("Game $gameId not found in database, skipping DB update")

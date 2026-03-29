@@ -21,4 +21,10 @@ data class DepotInfo(
     val encryptedManifests: Map<String, ManifestInfo>,
     val language: String = "",
     val realm: String = "",
-)
+    val steamDeck: Boolean = false,
+) {
+    /** Windows or OS-untagged (neither Linux nor macOS) */
+    val isWindowsCompatible: Boolean
+        get() = osList.contains(OS.windows) ||
+            (!osList.contains(OS.linux) && !osList.contains(OS.macos))
+}

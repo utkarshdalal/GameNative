@@ -163,7 +163,6 @@ fun GameManagerDialog(
 
     fun getSizeInfo(dlcAppId: Int): Pair<String, String> {
         if (dlcAppId == INVALID_APP_ID || dlcAppId == gameId) {
-            // Base game case
             val depotsForBaseGame = downloadableDepots.filter { (_, depot) ->
                 depot.dlcAppId == INVALID_APP_ID
             }
@@ -181,7 +180,6 @@ fun GameManagerDialog(
             )
         }
 
-        // DLC case
         val depotsForDlc = downloadableDepots.filter { (_, depot) ->
             depot.dlcAppId == dlcAppId
         }
@@ -202,7 +200,6 @@ fun GameManagerDialog(
     fun getInstallSizeInfo(): InstallSizeInfo {
         val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
 
-        // For Base Game
         val baseGameInstallBytes = if (installedApp == null) {
             downloadableDepots
                 .filter { (_, depot) ->
@@ -223,7 +220,6 @@ fun GameManagerDialog(
             0L
         }
 
-        // For Selected DLCs
         val selectedInstallBytes = downloadableDepots
             .filter { (_, depot) ->
                 selectedAppIds[depot.dlcAppId] == true && enabledAppIds[depot.dlcAppId] == true

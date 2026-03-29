@@ -19,6 +19,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.hardware.input.InputManager
 import android.view.InputDevice
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -1062,8 +1063,9 @@ fun XServerScreen(
                     !keepPausedForEditor
             // logD("onKeyEvent(${it.event.device.sources})\n\tisGamepad: $isGamepad\n\tisKeyboard: $isKeyboard\n\t${it.event}")
 
-            if (waitingForManualResume && isGamepad) {
+            if (waitingForManualResume) {
                 when (it.event.keyCode) {
+                    KeyEvent.KEYCODE_ENTER,
                     KeyEvent.KEYCODE_BUTTON_A,
                     KeyEvent.KEYCODE_BUTTON_START -> {
                         if (it.event.action == KeyEvent.ACTION_DOWN && it.event.repeatCount == 0) {
@@ -1074,8 +1076,16 @@ fun XServerScreen(
                     else -> false
                 }
             } else if ((showElementEditor || keepPausedForEditor || showQuickMenu || isEditMode) && (isGamepad || isKeyboard)) {
-                // Let Compose focus system handle keyboard and gamepad navigation/selection while menu is visible.
-                false
+                val escPressed = isKeyboard && !keepPausedForEditor && it.event.keyCode == KeyEvent.KEYCODE_ESCAPE &&
+                        it.event.action == KeyEvent.ACTION_DOWN &&
+                        it.event.repeatCount == 0
+                if (escPressed) {
+                    (context as? ComponentActivity)?.onBackPressedDispatcher?.onBackPressed()
+                    true
+                } else {
+                    // Let Compose focus system handle keyboard and gamepad navigation/selection while menu is visible.
+                    false
+                }
             } else {
                 var handled = false
                 if (isGamepad) {
@@ -1085,7 +1095,17 @@ fun XServerScreen(
                     if (!handled) handled = xServerView!!.getxServer().winHandler.onKeyEvent(it.event)
                 }
                 if (!handled && isKeyboard) {
-                    handled = keyboard?.onKeyEvent(it.event) == true
+                    val isShiftEscPressed = it.event.keyCode == KeyEvent.KEYCODE_ESCAPE &&
+                            it.event.isShiftPressed &&
+                            it.event.action == KeyEvent.ACTION_DOWN &&
+                            it.event.repeatCount == 0
+                    if (isShiftEscPressed &&
+                        !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode) {
+                        gameBack()
+                        handled = true
+                    } else {
+                        handled = keyboard?.onKeyEvent(it.event) == true
+                    }
                 }
                 handled
             }
@@ -2816,6 +2836,7 @@ private fun setupXEnvironment(
         val achAppId = SteamService.cachedAchievementsAppId
         if (gameIdInt != null && achAppId != null) {
             val watchDirs = SteamService.getGseSaveDirs(context, gameIdInt)
+            val configDirectory = SteamService.findSteamSettingsDir(context, gameIdInt)
             val displayNameMap = SteamService.cachedAchievements?.associate { ach ->
                 ach.name to (ach.displayName?.get(container.language)
                     ?: ach.displayName?.get("english")
@@ -2826,8 +2847,13 @@ private fun setupXEnvironment(
                     "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$achAppId/$it"
                 }
             } ?: emptyMap()
-            PluviaApp.achievementWatcher = AchievementWatcher(watchDirs, displayNameMap, iconUrlMap)
-                .also { it.start() }
+            PluviaApp.achievementWatcher = AchievementWatcher(
+                appId = gameIdInt,
+                watchDirs = watchDirs,
+                displayNameMap = displayNameMap,
+                iconUrlMap = iconUrlMap,
+                configDirectory = configDirectory,
+            ).also { it.start() }
         }
     }
 
@@ -2871,7 +2897,7 @@ private fun getWineStartCommand(
         }
         if (!container.isUseLegacyDRM){
             // Create ColdClientLoader.ini file
-            SteamUtils.writeColdClientIni(gameId, container)
+            SteamUtils.writeColdClientIni(gameId, container, appLaunchInfo)
         }
         val controllerVdfText = SteamService.resolveSteamControllerVdfText(gameId)
         if (controllerVdfText.isNullOrEmpty()) {
@@ -3389,10 +3415,10 @@ private fun installRedistributables(
     try {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
 
-        // Get shared depots to determine if redistributables are needed
+        val installedBranch = SteamService.getInstalledApp(steamAppId)?.branch ?: "public"
         val downloadableDepots = SteamService.getDownloadableDepots(steamAppId)
         val sharedDepots = downloadableDepots.filter { (_, depotInfo) ->
-            val manifest = depotInfo.manifests["public"]
+            val manifest = depotInfo.manifests[installedBranch]
             manifest == null || manifest.gid == 0L
         }
 
@@ -3717,7 +3743,7 @@ private fun setupWineSystemFiles(
     }
 
     WineStartMenuCreator.create(context, container)
-    WineUtils.createDosdevicesSymlinks(container)
+    WineUtils.createDosdevicesSymlinks(context, container)
 
     val startupSelection = container.startupSelection.toString()
     if (startupSelection != container.getExtra("startupSelection")) {

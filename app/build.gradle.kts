@@ -179,6 +179,15 @@ android {
         ignoreFormatFailures  = false
     }
 
+    // xconnectorpatch is shipped as a prebuilt jniLib because our APK packaging flow
+    // does not rebuild native libraries during release creation.
+    // externalNativeBuild {
+    //     cmake {
+    //         path = file("src/main/cpp/xconnectorpatch/CMakeLists.txt")
+    //         version = "3.22.1"
+    //     }
+    // }
+
     // build extras needed in libwinlator_bionic.so
     // externalNativeBuild {
     //     cmake {

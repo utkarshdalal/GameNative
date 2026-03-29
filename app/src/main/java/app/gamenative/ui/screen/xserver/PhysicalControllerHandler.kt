@@ -27,8 +27,22 @@ class PhysicalControllerHandler(
     private val TAG = "gncontrol"
     private val mouseMoveOffset = PointF(0f, 0f)
     private var mouseMoveTimer: Timer? = null
+    // track which axis keycodes are currently "pressed" so we only release on actual transitions.
+    // accessed only from main thread (MotionEvent dispatch + Compose lifecycle), no sync needed.
+    private val activeAxisBindings = mutableSetOf<Int>()
+
+    private fun releaseActiveAxes() {
+        val controller = profile?.getController("*") ?: return
+        for (keyCode in activeAxisBindings) {
+            controller.getControllerBinding(keyCode)?.let {
+                handleInputEvent(it.binding, false, 0f)
+            }
+        }
+        activeAxisBindings.clear()
+    }
 
     fun setProfile(profile: ControlsProfile?) {
+        releaseActiveAxes()
         this.profile = profile
         Log.d(TAG, "PhysicalControllerHandler: Profile set to ${profile?.name}")
 
@@ -44,6 +58,7 @@ class PhysicalControllerHandler(
      * Clean up resources when handler is destroyed
      */
     fun cleanup() {
+        releaseActiveAxes()
         mouseMoveTimer?.cancel()
         mouseMoveTimer = null
         mouseMoveOffset.set(0f, 0f)
@@ -180,25 +195,35 @@ class PhysicalControllerHandler(
         )
 
         for (i in axes.indices) {
-            var controllerBinding: ExternalControllerBinding?
+            val posKeyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], 1.toByte())
+            val negKeyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], (-1).toByte())
+
             if (Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE) {
-                val keyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
-                controllerBinding = controller.getControllerBinding(keyCode)
-                if (controllerBinding != null) {
-                    handleInputEvent(controllerBinding.binding, true, values[i])
+                val activeKey = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
+                val oppositeKey = if (activeKey == posKeyCode) negKeyCode else posKeyCode
+
+                // always send press (gamepad bindings need continuous offset updates)
+                activeAxisBindings.add(activeKey)
+                controller.getControllerBinding(activeKey)?.let {
+                    handleInputEvent(it.binding, true, values[i])
+                }
+                // release opposite direction (if it was active)
+                if (activeAxisBindings.remove(oppositeKey)) {
+                    controller.getControllerBinding(oppositeKey)?.let {
+                        handleInputEvent(it.binding, false, 0f)
+                    }
                 }
             } else {
-                controllerBinding = controller.getControllerBinding(
-                    ExternalControllerBinding.getKeyCodeForAxis(axes[i], 1.toByte())
-                )
-                if (controllerBinding != null) {
-                    handleInputEvent(controllerBinding.binding, false, values[i])
+                // release both directions only if they were active
+                if (activeAxisBindings.remove(posKeyCode)) {
+                    controller.getControllerBinding(posKeyCode)?.let {
+                        handleInputEvent(it.binding, false, 0f)
+                    }
                 }
-                controllerBinding = controller.getControllerBinding(
-                    ExternalControllerBinding.getKeyCodeForAxis(axes[i], (-1).toByte())
-                )
-                if (controllerBinding != null) {
-                    handleInputEvent(controllerBinding.binding, false, values[i])
+                if (activeAxisBindings.remove(negKeyCode)) {
+                    controller.getControllerBinding(negKeyCode)?.let {
+                        handleInputEvent(it.binding, false, 0f)
+                    }
                 }
             }
         }
@@ -208,6 +233,8 @@ class PhysicalControllerHandler(
      * Apply a binding to the virtual gamepad state and send to WinHandler.
      * Extracted from InputControlsView.handleInputEvent()
      */
+    // offset: analog axis value for presses; must be 0f for releases (triggers use offset > 0f
+    // to determine pressed state, sticks gate on isActionDown, everything else ignores offset)
     private fun handleInputEvent(binding: Binding, isActionDown: Boolean, offset: Float = 0f) {
         if (binding.isGamepad) {
             val winHandler = xServer?.winHandler

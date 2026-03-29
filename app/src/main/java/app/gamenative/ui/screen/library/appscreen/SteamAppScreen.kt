@@ -4,17 +4,35 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Environment
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import app.gamenative.PluviaApp
 
@@ -54,6 +72,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import app.gamenative.ui.component.dialog.GameManagerDialog
 import app.gamenative.ui.component.dialog.WorkshopManagerDialog
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.ui.component.dialog.state.GameManagerDialogState
 import app.gamenative.ui.util.SnackbarManager
@@ -167,6 +186,18 @@ class SteamAppScreen : BaseAppScreen() {
         fun isWorkshopDialogVisible(gameId: Int): Boolean {
             return workshopDialogVisible[gameId] == true
         }
+
+        private val branchDialogVisibleIds = mutableStateListOf<Int>()
+
+        fun showBranchDialog(gameId: Int) {
+            if (gameId !in branchDialogVisibleIds) branchDialogVisibleIds.add(gameId)
+        }
+
+        fun hideBranchDialog(gameId: Int) {
+            branchDialogVisibleIds.remove(gameId)
+        }
+
+        fun shouldShowBranchDialog(gameId: Int): Boolean = gameId in branchDialogVisibleIds
 
         // Shared state for update/verify operation - map of gameId to AppOptionMenuType
         private val pendingUpdateVerifyOperations = mutableStateMapOf<Int, AppOptionMenuType>()
@@ -407,7 +438,8 @@ class SteamAppScreen : BaseAppScreen() {
     }
 
     override suspend fun isUpdatePendingSuspend(context: Context, libraryItem: LibraryItem): Boolean {
-        return SteamService.isUpdatePending(libraryItem.gameId)
+        val branch = SteamService.getInstalledApp(libraryItem.gameId)?.branch ?: "public"
+        return SteamService.isUpdatePending(libraryItem.gameId, branch)
     }
 
     override fun getInstallPath(context: Context, libraryItem: LibraryItem): String? {
@@ -710,8 +742,12 @@ class SteamAppScreen : BaseAppScreen() {
                     )
                 },
             ),
-            // Uninstall option removed from menu - now handled by delete button next to play button
-            // The button uses onDeleteDownloadClick which shows the uninstall dialog
+            AppMenuOption(
+                AppOptionMenuType.ChangeBranch,
+                onClick = {
+                    showBranchDialog(gameId)
+                }
+            ),
             AppMenuOption(
                 AppOptionMenuType.ForceCloudSync,
                 onClick = {
@@ -902,11 +938,12 @@ class SteamAppScreen : BaseAppScreen() {
                 val info = withContext(Dispatchers.IO) {
                     val depots = SteamService.getDownloadableDepots(gameId)
                     Timber.i("There are ${depots.size} depots belonging to ${libraryItem.appId}")
+                    val branch = SteamService.getInstalledApp(gameId)?.branch ?: "public"
                     val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
                     val downloadBytes = depots.values.sumOf {
-                        SteamUtils.getDownloadBytes(it.manifests["public"])
+                        SteamUtils.getDownloadBytes(it.manifests[branch])
                     }
-                    val installBytes = depots.values.sumOf { it.manifests["public"]?.size ?: 0 }
+                    val installBytes = depots.values.sumOf { it.manifests[branch]?.size ?: 0 }
                     InstallSizeInfo(
                         downloadSize = StorageUtils.formatBinarySize(downloadBytes),
                         installSize = StorageUtils.formatBinarySize(installBytes),
@@ -1175,7 +1212,6 @@ class SteamAppScreen : BaseAppScreen() {
 
                     val installedApp = SteamService.getInstalledApp(gameId)
                     if (installedApp != null) {
-                        // Remove markers if the app is already installed
                         MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
                         MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
                         MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
@@ -1251,5 +1287,204 @@ class SteamAppScreen : BaseAppScreen() {
                 )
             }
         }
+
+        // Branch change dialog
+        var showBranchDialogState by remember(gameId) {
+            mutableStateOf(shouldShowBranchDialog(gameId))
+        }
+        LaunchedEffect(gameId) {
+            snapshotFlow { shouldShowBranchDialog(gameId) }
+                .collect { showBranchDialogState = it }
+        }
+
+        if (showBranchDialogState) {
+            val publicBranches = remember(gameId) {
+                appInfo?.branches
+                    ?.filter { (_, info) -> !info.pwdRequired }
+                    ?.keys
+                    ?.sorted()
+                    .orEmpty()
+            }
+            var steamUnlockedBranchNames by remember(gameId) { mutableStateOf<List<String>>(emptyList()) }
+            LaunchedEffect(gameId) {
+                steamUnlockedBranchNames = SteamService.getSteamUnlockedBranches(gameId).map { it.branchName }
+            }
+            val availableBranches = remember(publicBranches, steamUnlockedBranchNames) {
+                (publicBranches + steamUnlockedBranchNames).distinct().sorted()
+            }
+            val currentBranch = remember(gameId) {
+                SteamService.getInstalledApp(gameId)?.branch ?: "public"
+            }
+            SteamChangeBranchDialog(
+                availableBranches = availableBranches,
+                currentBranch = currentBranch,
+                onCheckPassword = { password ->
+                    val result = SteamService.checkPrivateBranchPassword(gameId, password)
+                    if (result.isNotEmpty()) {
+                        val branches = SteamService.getSteamUnlockedBranches(gameId).map { it.branchName }
+                        steamUnlockedBranchNames = branches
+                        branches
+                    } else {
+                        emptyList()
+                    }
+                },
+                onConfirm = { selectedBranch ->
+                    hideBranchDialog(gameId)
+                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
+                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+                        val dlcAppIds = SteamService.getInstalledApp(gameId)
+                            ?.dlcDepots.orEmpty()
+                        SteamService.downloadApp(
+                            gameId,
+                            dlcAppIds,
+                            branch = selectedBranch,
+                            isUpdateOrVerify = true,
+                        )
+                        container.isNeedsUnpacking = true
+                        container.saveData()
+                    }
+                },
+                onDismissRequest = { hideBranchDialog(gameId) },
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SteamChangeBranchDialog(
+    availableBranches: List<String>,
+    currentBranch: String,
+    onCheckPassword: suspend (password: String) -> List<String>,
+    onConfirm: (selectedBranch: String) -> Unit,
+    onDismissRequest: () -> Unit,
+) {
+    var selectedBranch by remember { mutableStateOf(currentBranch) }
+    var privateBranchPassword by remember { mutableStateOf("") }
+    var privateBranchPasswordError by remember { mutableStateOf(false) }
+    var privateBranchPasswordSuccess by remember { mutableStateOf(false) }
+    var privateBranchPasswordChecking by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text(stringResource(R.string.change_branch)) },
+        text = {
+            var branchExpanded by remember { mutableStateOf(false) }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    text = stringResource(R.string.change_branch_message),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                ExposedDropdownMenuBox(
+                    expanded = branchExpanded,
+                    onExpandedChange = { branchExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = selectedBranch,
+                        onValueChange = {},
+                        readOnly = true,
+                        singleLine = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = branchExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = branchExpanded,
+                        onDismissRequest = { branchExpanded = false },
+                    ) {
+                        availableBranches.forEach { branch ->
+                            DropdownMenuItem(
+                                text = { Text(branch) },
+                                onClick = {
+                                    selectedBranch = branch
+                                    branchExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = privateBranchPassword,
+                    onValueChange = {
+                        privateBranchPassword = it
+                        privateBranchPasswordError = false
+                        privateBranchPasswordSuccess = false
+                    },
+                    label = { Text(stringResource(R.string.private_branch_password_hint)) },
+                    singleLine = true,
+                    isError = privateBranchPasswordError,
+                    supportingText = when {
+                        privateBranchPasswordError -> ({ Text(stringResource(R.string.private_branch_password_invalid)) })
+                        privateBranchPasswordSuccess -> ({ Text(stringResource(R.string.private_branch_password_success)) })
+                        else -> null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    enabled = privateBranchPassword.isNotBlank() && !privateBranchPasswordChecking,
+                    onClick = {
+                        privateBranchPasswordChecking = true
+                        privateBranchPasswordError = false
+                        privateBranchPasswordSuccess = false
+                        coroutineScope.launch {
+                            val result = onCheckPassword(privateBranchPassword)
+                            if (result.isNotEmpty()) {
+                                privateBranchPasswordSuccess = true
+                            } else {
+                                privateBranchPasswordError = true
+                            }
+                            privateBranchPasswordChecking = false
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.private_branch_password_check))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = selectedBranch != currentBranch,
+                onClick = { onConfirm(selectedBranch) },
+            ) {
+                Text(stringResource(R.string.install))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
+@Composable
+private fun Preview_SteamChangeBranchDialog() {
+    PluviaTheme {
+        SteamChangeBranchDialog(
+            availableBranches = listOf("beta", "experimental", "public"),
+            currentBranch = "public",
+            onCheckPassword = { emptyList() },
+            onConfirm = {},
+            onDismissRequest = {},
+        )
     }
 }

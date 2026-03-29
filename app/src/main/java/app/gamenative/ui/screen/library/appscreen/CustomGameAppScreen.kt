@@ -191,8 +191,8 @@ class CustomGameAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
         onClickPlay: (Boolean) -> Unit
     ) {
-        // Launch the game; preLaunchApp will show EXECUTABLE_NOT_FOUND if no exe (getLaunchExecutable blank)
-        PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(libraryItem.appId))
+        // custom games don't need downloading — go straight to preLaunchApp
+        onClickPlay(false)
     }
 
     override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {

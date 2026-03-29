@@ -427,11 +427,19 @@ class LibraryViewModel @Inject constructor(
 
             // Map Steam apps to UI items
             data class LibraryEntry(val item: LibraryItem, val isInstalled: Boolean)
+            val licensedDepotMap = SteamService.buildLicensedDepotMap(filteredSteamApps)
             val steamEntries: List<LibraryEntry> = filteredSteamApps.map { item ->
                 val isInstalled = downloadDirectorySet.contains(SteamService.getAppDirName(item))
-                // Calculate total size from all depot manifests (use "public" branch as default)
-                val totalSizeBytes = item.depots.values.sumOf { depot ->
-                    depot.manifests["public"]?.size ?: depot.manifests.values.firstOrNull()?.size ?: 0L
+                val installedBranch = if (isInstalled) {
+                    SteamService.getInstalledApp(item.id)?.branch ?: "public"
+                } else {
+                    "public"
+                }
+                // base-game size: ownedDlc=emptyMap excludes DLC depots
+                val licensedDepots = licensedDepotMap[item.id]
+                val resolved = SteamService.resolveDownloadableDepots(item.depots, "", emptyMap(), licensedDepots)
+                val totalSizeBytes = resolved.values.sumOf { depot ->
+                    depot.manifests[installedBranch]?.size ?: depot.manifests.values.firstOrNull()?.size ?: 0L
                 }
                 LibraryEntry(
                     item = LibraryItem(

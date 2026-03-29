@@ -266,7 +266,7 @@ fun QuickMenu(
         )
     }
 
-    var selectedTab by rememberSaveable { mutableIntStateOf(QuickMenuTab.HUD) }
+    var selectedTab by rememberSaveable(isVisible) { mutableIntStateOf(QuickMenuTab.HUD) }
     val selectedTabLabelResId = when (selectedTab) {
         QuickMenuTab.HUD -> R.string.performance_hud
         QuickMenuTab.EFFECTS -> R.string.screen_effects
@@ -274,6 +274,7 @@ fun QuickMenu(
     }
 
     val hudScrollState = rememberScrollState()
+    val effectsScrollState = rememberScrollState()
     val effectsTabFocusRequester = remember { FocusRequester() }
     val controllerScrollState = rememberScrollState()
     val hudTabFocusRequester = remember { FocusRequester() }
@@ -472,6 +473,7 @@ fun QuickMenu(
                                                 renderer = renderer,
                                                 modifier = Modifier.fillMaxSize(),
                                                 firstItemFocusRequester = effectsItemFocusRequester,
+                                                scrollState = effectsScrollState,
                                             )
                                         } else {
                                             Box(
@@ -521,15 +523,9 @@ fun QuickMenu(
 
     LaunchedEffect(isVisible) {
         if (isVisible) {
-            selectedTab = QuickMenuTab.HUD
-        }
-    }
-
-    LaunchedEffect(isVisible, selectedTab) {
-        if (isVisible && selectedTab == QuickMenuTab.HUD) {
             repeat(3) {
                 try {
-                    hudTabFocusRequester.requestFocus()
+                    hudItemFocusRequester.requestFocus()
                     return@LaunchedEffect
                 } catch (_: Exception) {
                     delay(80)

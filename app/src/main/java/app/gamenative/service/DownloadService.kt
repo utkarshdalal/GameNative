@@ -74,10 +74,9 @@ object DownloadService {
         return subDir.toMutableList()
     }
 
-    fun getSizeFromStoreDisplay (appId: Int): String {
-        // How big is the game? The store should know. Human readable.
+    fun getSizeFromStoreDisplay (appId: Int, branch: String = "public"): String {
         val depots = SteamService.getDownloadableDepots(appId)
-        val installBytes = depots.values.sumOf { it.manifests["public"]?.size ?: 0L }
+        val installBytes = depots.values.sumOf { (it.manifests[branch] ?: it.manifests["public"])?.size ?: 0L }
         return StorageUtils.formatBinarySize(installBytes)
     }
 

@@ -53,8 +53,14 @@ interface EpicGameDao {
     @Query("SELECT * FROM epic_games WHERE is_dlc = 0 AND namespace != 'ue' AND namespace != '89efe5924d3d467c839449ab6ab52e7f' ORDER BY title ASC")
     fun getAll(): Flow<List<EpicGame>>
 
+    @Query("SELECT * FROM epic_games WHERE is_dlc = 0 AND namespace != 'ue' AND namespace != '89efe5924d3d467c839449ab6ab52e7f' ORDER BY title ASC")
+    suspend fun getAllAsList(): List<EpicGame>
+
     @Query("SELECT * FROM epic_games WHERE is_installed = :isInstalled ORDER BY title ASC")
     fun getByInstallStatus(isInstalled: Boolean): Flow<List<EpicGame>>
+
+    @Query("SELECT * FROM epic_games WHERE is_installed = 0 ORDER BY title ASC")
+    suspend fun getNonInstalledGames(): List<EpicGame>
 
     @Query("SELECT * FROM epic_games WHERE base_game_app_name = (SELECT catalog_id FROM epic_games WHERE id = :appId)")
     fun getDLCForTitle(appId: Int): Flow<List<EpicGame>>
