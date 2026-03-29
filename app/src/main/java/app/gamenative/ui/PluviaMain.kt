@@ -113,6 +113,7 @@ import java.util.Locale
 import java.util.Date
 import java.util.EnumSet
 import kotlin.reflect.KFunction2
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -123,6 +124,9 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 private const val PENDING_LAUNCH_TIMEOUT_MS = 10_000L
+
+/** Used to suspend preLaunchApp while the user decides on large workshop updates. */
+private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
 
 private fun NavHostController.navigateFromLoginIfNeeded(
     targetRoute: String,
@@ -1062,6 +1066,18 @@ fun PluviaMain(
             }
         }
 
+        DialogType.WORKSHOP_UPDATE_PROMPT -> {
+            onConfirmClick = {
+                workshopUpdateDeferred?.complete(true)
+            }
+            onDismissClick = {
+                workshopUpdateDeferred?.complete(false)
+            }
+            onDismissRequest = {
+                workshopUpdateDeferred?.complete(false)
+            }
+        }
+
         else -> {
             onDismissRequest = null
             onDismissClick = null
@@ -1851,167 +1867,149 @@ fun preLaunchApp(
             PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
         }
 
-        // Workshop mod sync: download subscribed mods and configure symlinks
-        val enabledWorkshopIds = container.enabledWorkshopItemIds
-            .split(",")
-            .mapNotNull { it.trim().toLongOrNull() }
-            .toSet()
-        Timber.tag("Workshop").i(
-            "Workshop launch check: workshopMods=${container.isWorkshopMods}, enabledIds=${enabledWorkshopIds.size}"
+        // Workshop mod sync: check for updates and download if needed
+        val appDao = SteamService.instance?.appDao
+        val workshopMods = appDao?.getWorkshopMods(gameId) ?: false
+        val enabledWorkshopIds = WorkshopManager.parseEnabledIds(
+            appDao?.getEnabledWorkshopItemIds(gameId),
         )
-        if (container.isWorkshopMods && enabledWorkshopIds.isNotEmpty()) {
+        Timber.tag("Workshop").i(
+            "Workshop launch check: workshopMods=$workshopMods, enabledIds=${enabledWorkshopIds.size}"
+        )
+        if (workshopMods && enabledWorkshopIds.isNotEmpty()) {
             try {
-                setLoadingMessage("Checking Workshop mods...")
-                setLoadingProgress(-1f)
-                val steamClient = SteamService.instance?.steamClient
-                val steamId = SteamService.userSteamId
-                if (steamClient != null && steamId != null) {
-                    val imageFs = ImageFs.find(context)
-                    val winePrefix = imageFs.wineprefix
-                    val fetchResult = WorkshopManager.getSubscribedItems(gameId, steamClient, steamId)
-                    // Filter to only user-enabled mods
-                    val items = fetchResult.items.filter { it.publishedFileId in enabledWorkshopIds }
-                    Timber.tag("Workshop").i(
-                        "Fetch: succeeded=${fetchResult.succeeded}, complete=${fetchResult.isComplete}, " +
-                            "total=${fetchResult.items.size}, filtered=${items.size}"
+                // Skip workshop sync if Steam isn't fully connected yet
+                // (can happen if the user taps Play immediately after opening the app).
+                if (!SteamService.isLoggedIn) {
+                    Timber.tag("Workshop").w(
+                        "Steam not logged in yet, skipping workshop sync for appId=$gameId"
                     )
-                    if (items.isNotEmpty()) {
-                        Timber.tag("Workshop").i("Found ${items.size} subscribed workshop items for appId=$gameId")
-                        val workshopContentDir = WorkshopManager.getWorkshopContentDir(winePrefix, gameId)
+                } else {
+                // If a background download is still running from the save
+                // handler, wait for it to finish so its markers are on disk
+                // before we check for updates (avoids false re-download prompt).
+                SteamService.getAppDownloadInfo(gameId)?.let { activeDownload ->
+                    Timber.tag("Workshop").i(
+                        "Active workshop download in progress for appId=$gameId, waiting…"
+                    )
+                    setLoadingMessage(context.getString(R.string.workshop_checking_mods))
+                    setLoadingProgress(-1f)
+                    activeDownload.awaitCompletion(timeoutMs = 120_000)
+                    Timber.tag("Workshop").i("Active download finished, proceeding with update check")
+                }
 
-                        if (fetchResult.isComplete) {
-                            WorkshopManager.cleanupUnsubscribedItems(items, workshopContentDir)
-                        } else {
-                            Timber.tag("Workshop").w(
-                                "Subscription fetch incomplete, skipping cleanup to preserve existing mods"
+                setLoadingMessage(context.getString(R.string.workshop_checking_mods))
+                setLoadingProgress(-1f)
+
+                val updateCheck = WorkshopManager.checkForWorkshopUpdates(
+                    appId = gameId,
+                    enabledIds = enabledWorkshopIds,
+                    context = context,
+                )
+
+                if (updateCheck != null) {
+                    val totalBytes = updateCheck.totalUpdateBytes
+                    val thresholdBytes = WorkshopManager.getUpdateThresholdBytes()
+                    val sizeMB = String.format(Locale.US, "%.0f", totalBytes / 1_048_576.0)
+                    Timber.tag("Workshop").i(
+                        "${updateCheck.itemsToSync.size} mod update(s), ${sizeMB}MB total"
+                    )
+
+                    // Decide whether to download: auto if under threshold, prompt if over
+                    val shouldDownload = if (totalBytes > thresholdBytes) {
+                        val userChoice = CompletableDeferred<Boolean>()
+                        setLoadingDialogVisible(false)
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.WORKSHOP_UPDATE_PROMPT,
+                                title = context.getString(R.string.workshop_update_title),
+                                message = context.getString(R.string.workshop_update_prompt, sizeMB),
+                                confirmBtnText = context.getString(R.string.workshop_download_btn),
+                                dismissBtnText = context.getString(R.string.workshop_skip_btn),
                             )
-                        }
-                        val itemsToSync = WorkshopManager.getItemsNeedingSync(items, workshopContentDir)
+                        )
+                        workshopUpdateDeferred = userChoice
+                        val result = userChoice.await()
+                        workshopUpdateDeferred = null
+                        setMessageDialogState(MessageDialogState(false))
+                        setLoadingDialogVisible(true)
+                        result
+                    } else {
+                        true // Under threshold, download automatically
+                    }
 
-                        if (itemsToSync.isNotEmpty()) {
-                            // Check available disk space before downloading
-                            // Use 2x safety margin to account for LZMA decompression
-                            // and CKM extraction creating temp files alongside originals
-                            val requiredBytes = itemsToSync.sumOf { it.fileSizeBytes } * 2
-                            // usableSpace returns 0 for non-existent dirs; walk up to an existing ancestor.
-                            // Use -1L sentinel so a truly-full volume (0 bytes) still triggers the guard.
-                            val spaceDir = generateSequence(workshopContentDir) { it.parentFile }
-                                .firstOrNull { it.exists() }
-                            val availableBytes = spaceDir?.usableSpace ?: -1L
-                            if (requiredBytes > 0 && availableBytes >= 0 && requiredBytes > availableBytes) {
-                                val reqMB = String.format(Locale.US, "%.0f", requiredBytes / 1_048_576.0)
-                                val avlMB = String.format(Locale.US, "%.0f", availableBytes / 1_048_576.0)
-                                Timber.tag("Workshop").e(
-                                    "Insufficient disk space: need ${reqMB}MB, have ${avlMB}MB"
-                                )
-                                SnackbarManager.show(
-                                    "Not enough space for workshop mods (need ${reqMB} MB, have ${avlMB} MB)"
-                                )
-                            } else {
-                                Timber.tag("Workshop").i("Downloading ${itemsToSync.size} workshop items...")
-                                setLoadingMessage("Downloading Workshop Mods (0/${itemsToSync.size})")
+                    var downloadedItems = false
+
+                    if (shouldDownload) {
+                        val spaceError = WorkshopManager.checkDiskSpace(
+                            updateCheck.workshopContentDir, totalBytes * 2,
+                        )
+                        if (spaceError != null) {
+                            Timber.tag("Workshop").e(spaceError)
+                            SnackbarManager.show(spaceError)
+                        } else {
+                            val steamClient = SteamService.instance?.steamClient
+                            if (steamClient != null) {
+                                setLoadingMessage("Downloading Workshop Mods (0/${updateCheck.itemsToSync.size})")
                                 val licenses = SteamService.getLicensesFromDb()
-
-                                // Track item-level progress so byte callbacks can include it
                                 var currentCompleted = 0
-                                var currentTitle = itemsToSync.firstOrNull()?.title ?: ""
+                                var currentTitle = updateCheck.itemsToSync.firstOrNull()?.title ?: ""
 
                                 val successCount = WorkshopManager.downloadItems(
-                                    items = itemsToSync,
+                                    items = updateCheck.itemsToSync,
                                     steamClient = steamClient,
                                     licenses = licenses,
-                                    workshopContentDir = workshopContentDir,
+                                    workshopContentDir = updateCheck.workshopContentDir,
                                     onItemProgress = { completed, total, title ->
                                         currentCompleted = completed
                                         currentTitle = title
-                                        Timber.tag("Workshop").d("Progress: $completed/$total - $title")
-                                        setLoadingMessage("Downloading Workshop Mods ($completed/$total)\n$title")
+                                        setLoadingMessage(
+                                            context.getString(R.string.workshop_downloading, completed, total) +
+                                                "\n$title"
+                                        )
                                     },
                                     onBytesProgress = { downloaded, total ->
                                         if (total > 0) {
                                             setLoadingProgress(downloaded.toFloat() / total.toFloat())
                                             setLoadingMessage(
-                                                "Downloading Workshop Mods ($currentCompleted/${itemsToSync.size})\n" +
-                                                    "$currentTitle\n" +
+                                                context.getString(R.string.workshop_downloading, currentCompleted, updateCheck.itemsToSync.size) +
+                                                    "\n$currentTitle\n" +
                                                     "${StringUtils.formatBytes(downloaded)} / ${StringUtils.formatBytes(total)}"
                                             )
                                         }
                                     },
-                                    onOverallProgress = { progress ->
-                                        Timber.tag("Workshop").d("Overall: ${(progress * 100).toInt()}%")
-                                    },
                                 )
 
-                                val failedCount = itemsToSync.size - successCount
+                                val failedCount = updateCheck.itemsToSync.size - successCount
                                 if (failedCount > 0) {
-                                    Timber.tag("Workshop").w("$failedCount workshop mod(s) failed to download")
-                                    SnackbarManager.show(
-                                        "$failedCount workshop mod(s) failed to download"
-                                    )
+                                    Timber.tag("Workshop").w("$failedCount mod update(s) failed")
+                                    SnackbarManager.show(context.getString(R.string.workshop_failed_count, failedCount))
                                 }
-
-                                WorkshopManager.fixItemFileNames(itemsToSync, workshopContentDir)
+                                downloadedItems = true
                             }
                         }
-
-                        // Post-processing runs every launch (not just after downloads) so
-                        // that files from a previous broken run get fixed retroactively.
-                        // Order matters: decompress LZMA first so fixFileExtensions can
-                        // read the real magic bytes (e.g. GMAD) instead of LZMA's 0x5D.
-                        WorkshopManager.extractCkmFiles(workshopContentDir)
-                        WorkshopManager.decompressLzmaFiles(workshopContentDir)
-                        WorkshopManager.fixFileExtensions(workshopContentDir)
-
-                        WorkshopManager.updateMarkerTimestamps(items, workshopContentDir)
-
-                        setLoadingMessage("Configuring Workshop mods...")
-                        setLoadingProgress(-1f)
-                        val gameRootDir = File(SteamService.getAppDirPath(gameId))
-                        val gameName = SteamService.getAppInfoOf(gameId)?.name ?: ""
-                        WorkshopManager.configureModSymlinks(
-                            gameRootDir = gameRootDir,
-                            workshopContentDir = workshopContentDir,
-                            items = items,
-                            winePrefix = winePrefix,
-                            gameName = gameName,
-                        )
-                        Timber.tag("Workshop").i("Workshop mod sync complete for appId=$gameId")
-                    } else if (!fetchResult.succeeded) {
-                        // Fetch failed and returned no items — don't wipe existing mods.
-                        // Still configure symlinks so previously downloaded mods work offline.
-                        Timber.tag("Workshop").w(
-                            "Workshop fetch failed for appId=$gameId, preserving existing on-disk mods"
-                        )
-                        val workshopContentDir = WorkshopManager.getWorkshopContentDir(winePrefix, gameId)
-                        if (workshopContentDir.exists()) {
-                            setLoadingMessage("Configuring Workshop mods...")
-                            setLoadingProgress(-1f)
-                            val gameRootDir = File(SteamService.getAppDirPath(gameId))
-                            val gameName = SteamService.getAppInfoOf(gameId)?.name ?: ""
-                            WorkshopManager.configureModSymlinks(
-                                gameRootDir = gameRootDir,
-                                workshopContentDir = workshopContentDir,
-                                items = emptyList(),
-                                winePrefix = winePrefix,
-                                gameName = gameName,
-                            )
-                        }
                     } else {
-                        Timber.tag("Workshop").d("No subscribed workshop items for appId=$gameId")
-                        // Clean up previously downloaded mods and installed symlinks/copies
-                        val gameRootDir = File(SteamService.getAppDirPath(gameId))
-                        val gameName = SteamService.getAppInfoOf(gameId)?.name ?: ""
-                        WorkshopManager.deleteWorkshopMods(
-                            context = context,
-                            containerId = gameId.toString(),
-                            gameRootDir = gameRootDir,
-                            gameName = gameName,
-                        )
-                        Timber.tag("Workshop").i("Cleaned up workshop content for appId=$gameId")
+                        Timber.tag("Workshop").i("User skipped workshop mod updates")
                     }
-                } else {
-                    Timber.tag("Workshop").w("Steam client or Steam ID not available, skipping workshop sync")
+
+                    // Post-processing and symlinks (runs for both download and skip paths)
+                    setLoadingMessage(context.getString(R.string.workshop_processing))
+                    setLoadingProgress(-1f)
+                    WorkshopManager.runPostProcessing(
+                        if (downloadedItems) updateCheck.itemsToSync else null,
+                        updateCheck.allItems, updateCheck.workshopContentDir,
+                    ) { status ->
+                        setLoadingMessage(status)
+                    }
+                    WorkshopManager.configureSymlinksForApp(
+                        context, gameId, updateCheck.allItems,
+                        updateCheck.winePrefix, updateCheck.workshopContentDir,
+                    )
                 }
+                // If updateCheck is null, checkForWorkshopUpdates already handled everything
+                Timber.tag("Workshop").i("Workshop mod sync complete for appId=$gameId")
+                } // else (isLoggedIn)
             } catch (e: Exception) {
                 Timber.tag("Workshop").e(e, "Workshop mod sync failed, continuing without mods")
             }

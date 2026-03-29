@@ -14,9 +14,13 @@ import `in`.dragonbra.javasteam.steam.steamclient.SteamClient
 import `in`.dragonbra.javasteam.types.SteamID
 import android.content.Context
 import app.gamenative.PrefManager
+import app.gamenative.R
+import app.gamenative.data.DownloadInfo
+import app.gamenative.service.SteamService
 import app.gamenative.utils.ContainerUtils
 import com.winlator.xenvironment.ImageFs
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -24,10 +28,15 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import app.gamenative.utils.Net
 import okhttp3.Request
@@ -256,6 +265,10 @@ object WorkshopManager {
         items: List<WorkshopItem>,
         workshopContentDir: File,
     ): List<WorkshopItem> {
+        Timber.tag(TAG).d(
+            "getItemsNeedingSync: checking ${items.size} items in $workshopContentDir " +
+                "(exists=${workshopContentDir.exists()})"
+        )
         return items.filter { item ->
             // Skip items with no downloadable content (deleted/unavailable mods)
             if (item.fileUrl.isEmpty() && item.manifestId == 0L) {
@@ -269,18 +282,29 @@ object WorkshopManager {
             val partialDir = File(workshopContentDir, "${item.publishedFileId}.partial")
             val completeMarker = File(itemDir, COMPLETE_MARKER)
 
+            // DepotDownloader leaves .partial sibling dirs after completing.
+            // If the complete marker exists, the download finished — clean up
+            // the leftover .partial so it doesn't trigger a false re-download.
+            if (completeMarker.exists() && partialDir.exists()) {
+                partialDir.deleteRecursively()
+                Timber.tag(TAG).d(
+                    "Cleaned leftover .partial for ${item.publishedFileId} '${item.title}'"
+                )
+            }
+
             // Not downloaded at all or incomplete
             if (!completeMarker.exists() || partialDir.exists()) {
                 Timber.tag(TAG).d(
-                    "Item ${item.publishedFileId} needs sync: " +
+                    "Item ${item.publishedFileId} '${item.title}' needs sync: " +
                         "dir=${itemDir.exists()}, marker=${completeMarker.exists()}, " +
+                        "markerPath=${completeMarker.absolutePath}, " +
                         "partial=${partialDir.exists()}"
                 )
                 return@filter true
             }
 
             // Check if the mod was updated on Steam since we downloaded it
-            val savedTimestamp = completeMarker.readText().trim().toLongOrNull()
+            val savedTimestamp = runCatching { completeMarker.readText().trim().toLongOrNull() }.getOrNull()
             if (savedTimestamp != null && item.timeUpdated > savedTimestamp) {
                 Timber.tag(TAG).i(
                     "Mod ${item.publishedFileId} '${item.title}' updated on Steam: " +
@@ -289,34 +313,37 @@ object WorkshopManager {
                 return@filter true
             }
 
+            Timber.tag(TAG).d(
+                "Item ${item.publishedFileId} '${item.title}' is up-to-date " +
+                    "(saved=$savedTimestamp, remote=${item.timeUpdated})"
+            )
             false
         }
     }
 
     /**
-     * Backfills `.workshop_complete` markers with `timeUpdated` timestamps.
-     *
-     * Older markers are empty files. This writes the current `timeUpdated`
-     * so that future update detection works without triggering a wasteful
-     * re-download of already-current content.
+     * Ensures `.workshop_complete` markers are stamped with the current
+     * `timeUpdated` so that future update detection does not trigger a
+     * wasteful re-download or re-prompt for already-current content.
      */
     fun updateMarkerTimestamps(
         items: List<WorkshopItem>,
         workshopContentDir: File,
     ) {
-        var backfilledCount = 0
+        var updatedCount = 0
         for (item in items) {
             val itemDir = File(workshopContentDir, item.publishedFileId.toString())
             val completeMarker = File(itemDir, COMPLETE_MARKER)
             if (!completeMarker.exists()) continue
-            val existing = completeMarker.readText().trim().toLongOrNull()
-            if (existing == null && item.timeUpdated > 0) {
+            if (item.timeUpdated <= 0) continue
+            val existing = runCatching { completeMarker.readText().trim().toLongOrNull() }.getOrNull()
+            if (existing == null || existing != item.timeUpdated) {
                 completeMarker.writeText(item.timeUpdated.toString())
-                backfilledCount++
+                updatedCount++
             }
         }
-        if (backfilledCount > 0) {
-            Timber.tag(TAG).i("Backfilled $backfilledCount workshop markers with timestamps")
+        if (updatedCount > 0) {
+            Timber.tag(TAG).i("Updated $updatedCount workshop markers with current timestamps")
         }
     }
 
@@ -486,7 +513,7 @@ object WorkshopManager {
                 scannedCount++
                 // Skip files that already have a recognized extension
                 val ext = file.extension.lowercase()
-                if (ext in KNOWN_EXTENSIONS) return@fileLoop
+                if (ext in WorkshopItem.KNOWN_EXTENSIONS) return@fileLoop
 
                 // Read first 4 bytes for magic detection
                 val magic = ByteArray(4)
@@ -536,8 +563,6 @@ object WorkshopManager {
             Timber.tag(TAG).i("fixFileExtensions: scanned $scannedCount files, none needed fixing")
         }
     }
-
-    private val KNOWN_EXTENSIONS = WorkshopItem.KNOWN_EXTENSIONS
 
     private fun detectExtension(magic: ByteArray): String? {
         // GMA: "GMAD" (0x47 0x4D 0x41 0x44)
@@ -644,7 +669,6 @@ object WorkshopManager {
      * @param workshopContentDir The workshop/content/<appId>/ directory
      * @param onItemProgress Called with (completedCount, totalItems, lastTitle) as items finish
      * @param onBytesProgress Called with (totalDownloaded, totalEstimated) across all active items
-     * @param onOverallProgress Called with (0..1 float) for overall item progress
      * @return Number of items successfully downloaded
      */
     suspend fun downloadItems(
@@ -654,7 +678,6 @@ object WorkshopManager {
         workshopContentDir: File,
         onItemProgress: (completed: Int, total: Int, currentTitle: String) -> Unit,
         onBytesProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit,
-        onOverallProgress: (Float) -> Unit,
     ): Int = coroutineScope {
         workshopContentDir.mkdirs()
 
@@ -683,6 +706,11 @@ object WorkshopManager {
         val httpItems = items.filter { it.fileUrl.isNotEmpty() }
         val depotItems = items.filter { it.fileUrl.isEmpty() }
 
+        Timber.tag(TAG).i(
+            "[DL] downloadItems: ${items.size} total, ${httpItems.size} HTTP, " +
+                "${depotItems.size} depot, concurrency=$concurrentLimit"
+        )
+
         val allJobs = mutableListOf<Deferred<Boolean>>()
 
         // Single shared semaphore for both HTTP and depot downloads.
@@ -694,10 +722,14 @@ object WorkshopManager {
         if (httpItems.isNotEmpty()) {
             httpItems.mapTo(allJobs) { item ->
                 async {
-                    downloadSemaphore.withPermit {
-                        val itemDir = File(workshopContentDir, item.publishedFileId.toString())
-                        val completeMarker = File(itemDir, COMPLETE_MARKER)
-                        try {
+                    val itemDir = File(workshopContentDir, item.publishedFileId.toString())
+                    val completeMarker = File(itemDir, COMPLETE_MARKER)
+                    try {
+                        // Only the actual download needs the semaphore permit.
+                        // Preview images are cosmetic and must not block other
+                        // items from starting their downloads.
+                        downloadSemaphore.withPermit {
+                            ensureActive()
                             Timber.tag(TAG).i(
                                 "Downloading Workshop item (HTTP): '${item.title}' " +
                                     "(${item.publishedFileId})"
@@ -711,81 +743,208 @@ object WorkshopManager {
                             }
 
                             itemDir.mkdirs()
-                            downloadPreviewImage(item, itemDir)
+                            // Write marker immediately — mod content is on disk.
                             completeMarker.writeText(item.timeUpdated.toString())
-                            val done = completedCount.incrementAndGet()
-                            Timber.tag(TAG).i(
-                                "Workshop item $done/$totalItems completed: '${item.title}'"
-                            )
-                            onItemProgress(done, totalItems, item.title)
-                            onOverallProgress(done.toFloat() / totalItems.coerceAtLeast(1))
-                            true
-                        } catch (e: CancellationException) {
-                            Timber.tag(TAG).w("Workshop download cancelled: '${item.title}'")
-                            throw e
-                        } catch (e: Exception) {
-                            Timber.tag(TAG).e(
-                                e, "Failed to download Workshop item '${item.title}' " +
-                                    "(${item.publishedFileId}), skipping"
-                            )
-                            false
                         }
+                        // Semaphore released — progress update + preview don't
+                        // block other downloads from starting.
+                        val done = completedCount.incrementAndGet()
+                        Timber.tag(TAG).i(
+                            "Workshop item $done/$totalItems completed: '${item.title}'"
+                        )
+                        onItemProgress(done, totalItems, item.title)
+                        downloadPreviewImage(item, itemDir)
+                        true
+                    } catch (e: CancellationException) {
+                        if (!isActive) {
+                            // Parent scope cancelled (user paused)
+                            Timber.tag(TAG).w("[DL] HTTP download cancelled by user: '${item.title}'")
+                            throw e
+                        }
+                        // Internal cancellation (DepotDownloader killed the job)
+                        Timber.tag(TAG).e(e, "[DL] HTTP download internally cancelled: '${item.title}'")
+                        false
+                    } catch (e: Exception) {
+                        Timber.tag(TAG).e(
+                            e, "Failed to download Workshop item '${item.title}' " +
+                                "(${item.publishedFileId}), skipping"
+                        )
+                        false
                     }
                 }
             }
         }
 
-        // === Depot items: download each concurrently via semaphore ===
-        // Each item gets its own DepotDownloader for true N-way parallelism.
-        // DepotDownloader processes PubFileItems sequentially internally, so
-        // batching N items into one downloader gives zero parallelism within
-        // that batch. Per-item downloaders with a semaphore give real concurrency.
+        // === Depot items: one DepotDownloader per item ===
+        // DepotDownloader's internal pipeline shuts down after the first
+        // PubFileItem completes.  Process depot items one at a time.
+        // To eliminate the ~3s gap (Steam API manifest resolution),
+        // pre-start the NEXT item's DepotDownloader while the current
+        // one is still downloading chunks.
         if (depotItems.isNotEmpty()) {
             patchSupportedWorkshopFileTypes()
-            val (maxDownloads, maxDecompress) = computeDownloadThreads(concurrentLimit)
-            depotItems.mapTo(allJobs) { item ->
-                async {
-                    downloadSemaphore.withPermit {
-                        val itemDir = File(workshopContentDir, item.publishedFileId.toString())
-                        val completeMarker = File(itemDir, COMPLETE_MARKER)
-                        try {
-                            Timber.tag(TAG).i(
-                                "Downloading Workshop item (depot): '${item.title}' " +
-                                    "(${item.publishedFileId})"
+            val (maxDownloads, maxDecompress) = computeDownloadThreads()
+
+            allJobs += async {
+                val parentJob = coroutineContext[Job]
+
+                // Creates, configures, and starts a DepotDownloader for
+                // one item.  startDownloading() is non-blocking — it
+                // kicks off the Steam API manifest resolution in the
+                // background.
+                fun startDepotDownload(
+                    wsItem: WorkshopItem,
+                ): Triple<DepotDownloader, File, File> {
+                    val dir = File(workshopContentDir, wsItem.publishedFileId.toString())
+                    val marker = File(dir, COMPLETE_MARKER)
+                    // Don't delete the marker here — this may be a
+                    // pipelined pre-start for the NEXT item. Deleting
+                    // the marker now would lose "already complete" state
+                    // if the user pauses before we get to this item.
+                    // The marker is deleted just before we await().
+
+                    val dd = DepotDownloader(
+                        steamClient,
+                        licenses,
+                        debug = false,
+                        androidEmulation = true,
+                        maxDownloads = maxDownloads,
+                        maxDecompress = maxDecompress,
+                        parentJob = parentJob,
+                        autoStartDownload = false,
+                    )
+                    dd.addListener(object : IDownloadListener {
+                        override fun onDownloadStarted(dl: DownloadItem) {
+                            Timber.tag(TAG).i("[DL] onDownloadStarted: $dl")
+                        }
+                        override fun onDownloadCompleted(dl: DownloadItem) {
+                            Timber.tag(TAG).i("[DL] onDownloadCompleted: $dl")
+                        }
+                        override fun onDownloadFailed(dl: DownloadItem, error: Throwable) {
+                            Timber.tag(TAG).e(error, "[DL] onDownloadFailed: $dl")
+                        }
+                        override fun onStatusUpdate(message: String) {
+                            Timber.tag(TAG).d("[DL] onStatusUpdate: $message")
+                        }
+                        override fun onChunkCompleted(
+                            depotId: Int,
+                            depotPercentComplete: Float,
+                            compressedBytes: Long,
+                            uncompressedBytes: Long,
+                        ) {
+                            bytesDownloadedMap[wsItem.publishedFileId] = uncompressedBytes
+                            onBytesProgress(
+                                bytesDownloadedMap.values.sum(),
+                                fixedTotalBytes,
                             )
-                            completeMarker.delete()
-                            bytesDownloadedMap[item.publishedFileId] = 0L
+                        }
+                        override fun onDepotCompleted(
+                            depotId: Int,
+                            compressedBytes: Long,
+                            uncompressedBytes: Long,
+                        ) {
+                            Timber.tag(TAG).i(
+                                "[DL] onDepotCompleted: depot=$depotId " +
+                                    "compressed=${compressedBytes / 1024}KB " +
+                                    "uncompressed=${uncompressedBytes / 1024}KB"
+                            )
+                        }
+                    })
+                    dd.add(
+                        PubFileItem(
+                            appId = wsItem.appId,
+                            pubFile = wsItem.publishedFileId,
+                            installDirectory = dir.absolutePath,
+                        )
+                    )
+                    dd.finishAdding()
+                    dd.startDownloading()
+                    return Triple(dd, dir, marker)
+                }
 
-                            downloadViaDepotDownloader(
-                                item, steamClient, licenses, itemDir.absolutePath,
-                                maxDownloads, maxDecompress,
-                            ) { downloaded, _ ->
-                                bytesDownloadedMap[item.publishedFileId] = downloaded
-                                onBytesProgress(bytesDownloadedMap.values.sum(), fixedTotalBytes)
+                // Pipeline: pre-start next item while current downloads.
+                var pending: Triple<DepotDownloader, File, File>? = null
+                // Defer close() calls until the entire loop finishes.
+                // Closing a DD while another DD shares the same
+                // SteamClient can corrupt the concurrent download.
+                val openedDDs = mutableListOf<DepotDownloader>()
+
+                try {
+                for ((index, item) in depotItems.withIndex()) {
+                    ensureActive()
+
+                    val (depotDownloader, itemDir, completeMarker) =
+                        pending ?: startDepotDownload(item)
+                    pending = null
+                    openedDDs.add(depotDownloader)
+
+                    Timber.tag(TAG).i(
+                        "[DL] Downloading depot item: '${item.title}' " +
+                            "(${item.publishedFileId})"
+                    )
+
+                    // Pre-start the NEXT item so its API call overlaps
+                    // with this item's chunk download.
+                    if (index + 1 < depotItems.size) {
+                        pending = startDepotDownload(depotItems[index + 1])
+                    }
+
+                    try {
+                        // Delete marker now that we're committed to downloading
+                        // this item. (Not earlier, to avoid losing state for
+                        // pipelined items if the user pauses.)
+                        completeMarker.delete()
+
+                        val timeoutMs = computeDownloadTimeout(item.fileSizeBytes)
+                        // getCompletion() returns CompletableFuture<Void>
+                        // whose await() always returns null. Use withTimeout
+                        // so we can distinguish real timeouts from completion.
+                        try {
+                            withTimeout(timeoutMs) {
+                                depotDownloader.getCompletion().await()
                             }
+                        } catch (_: TimeoutCancellationException) {
+                            Timber.tag(TAG).w(
+                                "[DL] Depot download timed out: '${item.title}'"
+                            )
+                        }
 
-                            itemDir.mkdirs()
-                            downloadPreviewImage(item, itemDir)
+                        // Write marker if content was downloaded
+                        val hasContent = itemDir.exists() &&
+                            (itemDir.listFiles()?.any { !it.name.startsWith(".") } == true)
+                        if (hasContent) {
                             completeMarker.writeText(item.timeUpdated.toString())
+                            File(workshopContentDir, "${item.publishedFileId}.partial")
+                                .deleteRecursively()
                             val done = completedCount.incrementAndGet()
                             Timber.tag(TAG).i(
                                 "Workshop item $done/$totalItems completed: '${item.title}'"
                             )
                             onItemProgress(done, totalItems, item.title)
-                            onOverallProgress(done.toFloat() / totalItems.coerceAtLeast(1))
-                            true
-                        } catch (e: CancellationException) {
-                            Timber.tag(TAG).w("Workshop download cancelled: '${item.title}'")
-                            throw e
-                        } catch (e: Exception) {
-                            Timber.tag(TAG).e(
-                                e, "Failed to download depot Workshop item '${item.title}' " +
-                                    "(${item.publishedFileId}), skipping"
-                            )
-                            false
+                            launch { downloadPreviewImage(item, itemDir) }
                         }
+                    } catch (e: CancellationException) {
+                        pending?.let { (dd, _, _) ->
+                            openedDDs.add(dd)
+                        }
+                        pending = null
+                        Timber.tag(TAG).w("[DL] Depot download cancelled: '${item.title}'")
+                        throw e
+                    } catch (e: Exception) {
+                        Timber.tag(TAG).e(
+                            e, "[DL] Depot download failed: '${item.title}', skipping"
+                        )
                     }
                 }
+                } finally {
+                    // Close any pre-started DD that wasn't consumed.
+                    pending?.let { (dd, _, _) -> openedDDs.add(dd) }
+                    // Close all DDs now that the loop is done.
+                    for (dd in openedDDs) {
+                        Thread { try { dd.close() } catch (_: Exception) {} }.start()
+                    }
+                }
+                true
             }
         }
 
@@ -808,7 +967,7 @@ object WorkshopManager {
         return ((baseMins + extraMins).coerceIn(3, 120)) * 60 * 1000
     }
 
-    private fun computeDownloadThreads(concurrentLimit: Int = 1): Pair<Int, Int> {
+    private fun computeDownloadThreads(): Pair<Int, Int> {
         var downloadRatio = 1.5
         var decompressRatio = 0.5
         when (PrefManager.downloadSpeed) {
@@ -818,13 +977,11 @@ object WorkshopManager {
             32 -> { downloadRatio = 2.4; decompressRatio = 0.8 }
         }
         val cpuCores = Runtime.getRuntime().availableProcessors()
-        val totalMaxDownloads = (cpuCores * downloadRatio).toInt().coerceAtLeast(1)
-        val totalMaxDecompress = (cpuCores * decompressRatio).toInt().coerceAtLeast(1)
-        val maxDownloads = (totalMaxDownloads / concurrentLimit).coerceAtLeast(1)
-        val maxDecompress = (totalMaxDecompress / concurrentLimit).coerceAtLeast(1)
+        val maxDownloads = (cpuCores * downloadRatio).toInt().coerceAtLeast(1)
+        val maxDecompress = (cpuCores * decompressRatio).toInt().coerceAtLeast(1)
         Timber.tag(TAG).d(
             "Download speed setting=${PrefManager.downloadSpeed}, cpuCores=$cpuCores, " +
-                "concurrentLimit=$concurrentLimit, maxDownloads=$maxDownloads, maxDecompress=$maxDecompress"
+                "maxDownloads=$maxDownloads, maxDecompress=$maxDecompress"
         )
         return maxDownloads to maxDecompress
     }
@@ -902,7 +1059,19 @@ object WorkshopManager {
         Net.http.newCall(requestBuilder.build()).execute().use { response ->
             // 206 = partial content (resume), 200 = full content (server ignored Range)
             val isResuming = response.code == 206 && existingBytes > 0
-            if (!response.isSuccessful && response.code != 206) {
+
+            // 416 = Range Not Satisfiable → the partial file is already
+            // complete (or bigger than the remote). Accept it as-is.
+            if (response.code == 416 && existingBytes > 0) {
+                Timber.tag(TAG).i(
+                    "HTTP 416 for '${item.title}' — partial file is already complete " +
+                        "(${existingBytes} bytes)"
+                )
+                onBytesProgress(existingBytes, existingBytes)
+                return@withContext
+            }
+
+            if (!response.isSuccessful) {
                 throw WorkshopDownloadException(
                     "HTTP ${response.code} for '${item.title}' (${item.publishedFileId})"
                 )
@@ -954,88 +1123,6 @@ object WorkshopManager {
         }
     }
 
-    /**
-     * Downloads a workshop item via DepotDownloader's CDN pipeline.
-     * Used for manifest-based items that don't have a fileUrl.
-     */
-    private suspend fun downloadViaDepotDownloader(
-        item: WorkshopItem,
-        steamClient: SteamClient,
-        licenses: List<License>,
-        installDirectory: String,
-        maxDownloads: Int,
-        maxDecompress: Int,
-        onBytesProgress: (downloadedBytes: Long, estimatedTotalBytes: Long) -> Unit,
-    ) = coroutineScope {
-
-        val depotDownloader = DepotDownloader(
-            steamClient,
-            licenses,
-            debug = false,
-            androidEmulation = true,
-            maxDownloads = maxDownloads,
-            maxDecompress = maxDecompress,
-            parentJob = coroutineContext[Job],
-            autoStartDownload = false,
-        )
-
-        try {
-            val listener = WorkshopDownloadListener(item, onBytesProgress)
-            depotDownloader.addListener(listener)
-
-            val downloadItem = PubFileItem(
-                appId = item.appId,
-                pubFile = item.publishedFileId,
-                installDirectory = installDirectory,
-            )
-
-            depotDownloader.add(downloadItem)
-            depotDownloader.finishAdding()
-            depotDownloader.startDownloading()
-
-            val timeoutMs = computeDownloadTimeout(item.fileSizeBytes)
-            Timber.tag(TAG).d(
-                "Awaiting depot download for '${item.title}' (timeout=${timeoutMs / 1000}s)"
-            )
-            val completed = withTimeoutOrNull(timeoutMs) {
-                depotDownloader.getCompletion().await()
-            }
-
-            if (completed == null) {
-                val itemDir = File(installDirectory)
-                val hasFiles = itemDir.exists() &&
-                    (itemDir.listFiles()?.any { it.name != COMPLETE_MARKER } == true)
-                if (hasFiles) {
-                    Timber.tag(TAG).w(
-                        "Depot download timed out for '${item.title}' but files exist on disk"
-                    )
-                } else {
-                    throw WorkshopDownloadException(
-                        "Depot download timed out after ${timeoutMs / 1000}s for " +
-                            "'${item.title}' (${item.publishedFileId})"
-                    )
-                }
-            } else if (listener.failed) {
-                throw WorkshopDownloadException(
-                    "Download failed for '${item.title}' (${item.publishedFileId}): " +
-                        "${listener.failureMessage}"
-                )
-            }
-
-            Timber.tag(TAG).d("Depot download completed: ${item.publishedFileId}")
-        } finally {
-            // Close on a background thread to avoid blocking the caller.
-            // DepotDownloader.close() calls executorService.shutdown() which
-            // blocks for 5-15s waiting for internal tasks to drain. Running
-            // this on a separate thread prevents it from holding the download
-            // semaphore slot and stalling the next item's start.
-            Thread {
-                try {
-                    depotDownloader.close()
-                } catch (_: Exception) { }
-            }.start()
-        }
-    }
 
     /**
      * Gets the workshop content directory path for gbe_fork steamclient mode.
@@ -1050,6 +1137,20 @@ object WorkshopManager {
             winePrefix,
             "drive_c/Program Files (x86)/Steam/steamapps/workshop/content/$appId"
         )
+    }
+
+    /**
+     * Resolves the wine prefix for a specific Steam game's container,
+     * bypassing the `xuser` symlink.  This ensures workshop content is
+     * read from / written to the game's own container directory regardless
+     * of which container is currently active (the `xuser` symlink can
+     * point to any game's container).
+     */
+    private fun getContainerWinePrefix(context: Context, appId: Int): String {
+        val imageFs = ImageFs.find(context)
+        val homeDir = File(imageFs.rootDir, "home")
+        val containerDir = File(homeDir, "${ImageFs.USER}-STEAM_$appId")
+        return File(containerDir, ".wine").absolutePath
     }
 
     /**
@@ -1069,13 +1170,32 @@ object WorkshopManager {
         gameName: String = "",
     ) {
         val gameId = ContainerUtils.extractGameIdFromContainerId(containerId)
-        val winePrefix = ImageFs.find(context).wineprefix
+        val winePrefix = getContainerWinePrefix(context, gameId)
         val workshopDir = getWorkshopContentDir(winePrefix, gameId)
 
         // Clean up installed mod entries (symlinks/copies) in the game tree
         // before deleting the content dir, so isOurSymlink checks still work.
         if (gameRootDir != null) {
             cleanupInstalledModEntries(gameRootDir, workshopDir, winePrefix, gameName)
+        }
+
+        // Also clear the global Steam steam_settings/mods.json.
+        // configureModSymlinks populates this for ColdClient games,
+        // but cleanupInstalledModEntries only walks gameRootDir and
+        // misses the global Steam root.
+        val globalModsJson = workshopDir.parentFile  // content/
+            ?.parentFile  // workshop/
+            ?.parentFile  // steamapps/
+            ?.parentFile  // Steam/
+            ?.let { File(it, "steam_settings/mods.json") }
+        if (globalModsJson != null && globalModsJson.isFile) {
+            globalModsJson.writeText("{}")
+            Timber.tag(TAG).d("Cleared global mods.json at ${globalModsJson.absolutePath}")
+        }
+        val globalModImages = globalModsJson?.parentFile?.let { File(it, "mod_images") }
+        if (globalModImages != null && globalModImages.isDirectory) {
+            globalModImages.deleteRecursively()
+            Timber.tag(TAG).d("Cleared global mod_images at ${globalModImages.absolutePath}")
         }
 
         if (workshopDir.exists()) {
@@ -1106,15 +1226,14 @@ object WorkshopManager {
             val modsDir = file.parentFile?.let { File(File(it, "steam_settings"), "mods") }
                 ?: return@forEach
             if (modsDir.isDirectory) {
-                modsDir.listFiles()?.forEach { entry ->
-                    if (Files.isSymbolicLink(entry.toPath())) {
-                        Files.deleteIfExists(entry.toPath())
-                    }
-                }
+                clearModEntries(modsDir)
                 Timber.tag(TAG).d("Cleared gbe_fork mods at ${modsDir.absolutePath}")
             }
-            val modsJson = File(modsDir.parentFile, "mods.json")
+            val settingsDir = modsDir.parentFile
+            val modsJson = File(settingsDir, "mods.json")
             if (modsJson.isFile) modsJson.writeText("{}")
+            val modImagesDir = File(settingsDir, "mod_images")
+            if (modImagesDir.isDirectory) modImagesDir.deleteRecursively()
         }
 
         // Phase 2: Clean strategy-detected game mod directories
@@ -1168,6 +1287,56 @@ object WorkshopManager {
                 Timber.tag(TAG).w(e, "Unity AppData cleanup failed")
             }
         }
+
+        // Phase 4: Clean Skyrim Data/ manifest-tracked files (ESP/ESM/BSA)
+        val dataDir = File(gameRootDir, "Data")
+        val skyrimManifest = File(dataDir, ".gamenative_workshop_files")
+        if (dataDir.isDirectory && skyrimManifest.isFile) {
+            try {
+                syncSkyrimWorkshopMods(gameRootDir, emptyList(), winePrefix)
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Skyrim manifest cleanup failed")
+            }
+        }
+
+        // Phase 5: Clean Source engine VPK/GMA from addons/ and BSPs from maps/workshop/
+        if (isSourceEngine(gameRootDir)) {
+            // Clean addons/ and custom/ directories using manifests
+            for (dirName in listOf("addons", "custom")) {
+                gameRootDir.walkTopDown().maxDepth(5).forEach { dir ->
+                    if (!dir.isDirectory || dir.name != dirName) return@forEach
+                    if (dir.absolutePath.contains("steam_settings")) return@forEach
+                    val manifestFile = File(dir, ".gamenative_workshop_addons")
+                    if (manifestFile.isFile) {
+                        manifestFile.readText().lines().filter { it.isNotBlank() }.forEach { name ->
+                            try { Files.deleteIfExists(File(dir, name).toPath()) } catch (_: Exception) { }
+                        }
+                        manifestFile.delete()
+                    }
+                    // Also remove any symlinks (from older code)
+                    dir.listFiles()?.forEach { f ->
+                        if (Files.isSymbolicLink(f.toPath())) {
+                            Files.deleteIfExists(f.toPath())
+                        }
+                    }
+                }
+            }
+            gameRootDir.walkTopDown().maxDepth(5).forEach { dir ->
+                if (!dir.isDirectory || dir.name != "maps") return@forEach
+                if (dir.absolutePath.contains("steam_settings")) return@forEach
+                val workshopMapsDir = File(dir, "workshop")
+                if (!workshopMapsDir.isDirectory) return@forEach
+                workshopMapsDir.listFiles()?.forEach { f ->
+                    if (Files.isSymbolicLink(f.toPath())) {
+                        Files.deleteIfExists(f.toPath())
+                    } else if (f.isDirectory) {
+                        f.listFiles()?.forEach { inner -> Files.deleteIfExists(inner.toPath()) }
+                        if (f.listFiles()?.isEmpty() == true) f.delete()
+                    }
+                }
+            }
+            Timber.tag(TAG).d("Cleaned Source engine workshop artifacts")
+        }
     }
 
     /**
@@ -1187,6 +1356,35 @@ object WorkshopManager {
             Timber.tag(TAG).i("Reverted workshop_mods patch from ${gameInfoFile.name}")
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "Failed to revert gameinfo.txt at ${gameInfoFile.absolutePath}")
+        }
+    }
+
+    /**
+     * Finds a preview image file in a workshop item directory.
+     * Returns the first file matching `preview.{jpg,jpeg,png,gif}`, or null.
+     */
+    private fun findPreviewImage(itemDir: File): File? =
+        itemDir.listFiles()?.firstOrNull {
+            it.isFile && it.name.startsWith("preview.", ignoreCase = true) &&
+                it.extension.lowercase() in listOf("jpg", "jpeg", "png", "gif")
+        }
+
+    /** Returns true if [gameRootDir] contains a gameinfo.txt (Source engine marker). */
+    private fun isSourceEngine(gameRootDir: File): Boolean =
+        gameRootDir.walkTopDown().maxDepth(5)
+            .any { it.isFile && it.name == "gameinfo.txt" && !it.absolutePath.contains("steam_settings") }
+
+    /**
+     * Copies preview images from workshop item directories into a
+     * `mod_images/<itemId>/` tree under [settingsDir] for gbe_fork.
+     */
+    private fun copyPreviewImages(modDirs: List<File>, settingsDir: File) {
+        val modImagesDir = File(settingsDir, "mod_images")
+        modDirs.forEach { itemDir ->
+            val previewFile = findPreviewImage(itemDir) ?: return@forEach
+            val itemImagesDir = File(modImagesDir, itemDir.name)
+            itemImagesDir.mkdirs()
+            materializeWorkshopFile(previewFile, File(itemImagesDir, previewFile.name))
         }
     }
 
@@ -1236,6 +1434,14 @@ object WorkshopManager {
             val windowsPath = toWindowsPath(itemDir.absolutePath)
             if (windowsPath != null) {
                 entry.put("path", windowsPath)
+            }
+
+            // preview_filename: gbe_fork reads this to serve preview images
+            // to games via GetQueryUGCPreviewURL / UGCDownload. The actual
+            // image file is placed in steam_settings/mod_images/<itemId>/.
+            val previewFile = findPreviewImage(itemDir)
+            if (previewFile != null) {
+                entry.put("preview_filename", previewFile.name)
             }
 
             modsObj.put(itemDir.name, entry)
@@ -1738,13 +1944,37 @@ object WorkshopManager {
         }
         // Only include mod directories that have actual content
         // (not just .workshop_complete marker or .DepotDownloader metadata)
+        // and that are still in the enabled items list (if provided).
+        val enabledIdSet = if (items.isNotEmpty()) {
+            items.map { it.publishedFileId.toString() }.toSet()
+        } else {
+            null // no filtering when items list is empty (backward compat)
+        }
         val modDirs = workshopContentDir.listFiles()
             ?.filter { dir ->
                 dir.isDirectory && dir.name.toLongOrNull() != null &&
+                    (enabledIdSet == null || dir.name in enabledIdSet) &&
                     dir.listFiles()?.any { f ->
                         !f.name.startsWith(".") && (f.isFile || f.isDirectory)
                     } == true
             }
+
+        // Delete content directories for mods no longer in the enabled set.
+        // This reclaims disk space and prevents stale mods from appearing
+        // if the game scans the filesystem independently.
+        if (enabledIdSet != null) {
+            workshopContentDir.listFiles()?.forEach { dir ->
+                if (dir.isDirectory && dir.name.toLongOrNull() != null &&
+                    dir.name !in enabledIdSet
+                ) {
+                    Timber.tag(TAG).i("Removing deselected mod content: ${dir.name}")
+                    dir.deleteRecursively()
+                    // Also remove .partial sibling if present
+                    File(workshopContentDir, "${dir.name}.partial").deleteRecursively()
+                }
+            }
+        }
+
         if (modDirs.isNullOrEmpty()) {
             Timber.tag(TAG).d("No mod directories with content in ${workshopContentDir.absolutePath}")
             return
@@ -1754,8 +1984,7 @@ object WorkshopManager {
         val isInsurgency = appId == 222880
         val isLeft4Dead2 = appId == 550
         val isSkyrim = appId == 72850 || gameName.contains("skyrim", ignoreCase = true)
-        val isSourceEngine = gameRootDir.walkTopDown().maxDepth(5)
-            .any { it.isFile && it.name == "gameinfo.txt" && !it.absolutePath.contains("steam_settings") }
+        val isSourceEngine = isSourceEngine(gameRootDir)
 
         // ── Early strategy detection ────────────────────────────────────────
         // Detect whether the game reads mods from its own directory structure
@@ -1778,6 +2007,9 @@ object WorkshopManager {
         //
         // Source engine games are excluded because they have their own
         // VPK/GMA/BSP handler and need ISteamUGC populated for mod discovery.
+        val unityModTargets by lazy { detectUnityModTargets(gameRootDir, winePrefix) }
+        val modsJsonText by lazy { buildModsJson(modDirs, items).toString(2) }
+
         val willUseFilesystemMods = if (winePrefix.isNotEmpty() && !isSkyrim && !isSourceEngine) {
             try {
                 val detection = getOrDetectStrategy(gameRootDir, winePrefix, gameName)
@@ -1788,7 +2020,7 @@ object WorkshopManager {
                 val isHighConfSymlink = detection.strategy is WorkshopModPathStrategy.SymlinkIntoDir &&
                     detection.confidence == WorkshopModPathDetector.Confidence.HIGH
                 isHighConfSymlink ||
-                    detectUnityModTargets(gameRootDir, winePrefix).isNotEmpty()
+                    unityModTargets.isNotEmpty()
             } catch (e: Exception) {
                 Timber.tag(TAG).w(e, "Strategy detection failed, defaulting to ISteamUGC path")
                 false
@@ -1849,8 +2081,12 @@ object WorkshopManager {
                         }
                     }
                 }
+                // Always write the correct appId — the bootstrap above may
+                // have copied a stale value from a previously-launched game's
+                // global steam_settings, and ensureSteamSettings only writes
+                // when the file is absent, so a wrong value would persist.
                 val appIdFile = File(settingsDir, "steam_appid.txt")
-                if (!appIdFile.exists() && workshopAppIdText.toLongOrNull() != null) {
+                if (workshopAppIdText.toLongOrNull() != null) {
                     try {
                         appIdFile.writeText(workshopAppIdText)
                     } catch (_: Exception) { }
@@ -1875,13 +2111,7 @@ object WorkshopManager {
                     if (modsDir.exists()) {
                         // Don't use deleteRecursively() — it follows symlinks and
                         // would destroy the actual workshop content files
-                        modsDir.listFiles()?.forEach { entry ->
-                            if (Files.isSymbolicLink(entry.toPath())) {
-                                Files.deleteIfExists(entry.toPath())
-                            } else if (entry.isDirectory) {
-                                entry.deleteRecursively()
-                            }
-                        }
+                        clearModEntries(modsDir)
                         modsDir.delete()
                     }
                     modsDir.mkdirs()
@@ -1893,10 +2123,11 @@ object WorkshopManager {
 
                     // Write mods.json with titles and primary_filename so
                     // gbe_fork can serve correct metadata to games.
-                    val modsObj = buildModsJson(modDirs, items)
-                    File(settingsDir, "mods.json").writeText(
-                        modsObj.toString(2)
-                    )
+                    File(settingsDir, "mods.json").writeText(modsJsonText)
+
+                    // Copy preview images into steam_settings/mod_images/<itemId>/
+                    // so gbe_fork can serve them via GetQueryUGCPreviewURL.
+                    copyPreviewImages(modDirs, settingsDir)
 
                     configuredCount++
                     Timber.tag(TAG).d(
@@ -1906,11 +2137,7 @@ object WorkshopManager {
                     // Filesystem-managed game: clean stale gbe_fork mods from
                     // previous runs that may have lacked this early skip.
                     if (modsDir.isDirectory) {
-                        modsDir.listFiles()?.forEach { entry ->
-                            if (Files.isSymbolicLink(entry.toPath())) {
-                                Files.deleteIfExists(entry.toPath())
-                            }
-                        }
+                        removeSymlinksIn(modsDir)
                     }
                     File(settingsDir, "mods.json").apply { if (isFile) writeText("{}") }
                     Timber.tag(TAG).d(
@@ -2006,10 +2233,6 @@ object WorkshopManager {
             // first launch also gets mods configured.
             if (!globalSettingsDir.isDirectory && !willUseFilesystemMods) {
                 globalSettingsDir.mkdirs()
-                val appIdFile = File(globalSettingsDir, "steam_appid.txt")
-                if (!appIdFile.exists() && workshopAppIdText.toLongOrNull() != null) {
-                    appIdFile.writeText(workshopAppIdText)
-                }
                 Timber.tag(TAG).i(
                     "Created global steam_settings/ at ${globalSettingsDir.absolutePath} " +
                         "(ColdClient bootstrap for workshop mods)"
@@ -2017,6 +2240,15 @@ object WorkshopManager {
             }
 
             if (globalSettingsDir.isDirectory) {
+                // Always update the global steam_appid.txt to match this
+                // game — the global steam_settings is shared across games
+                // and may contain a stale appId from a previous launch.
+                if (workshopAppIdText.toLongOrNull() != null) {
+                    try {
+                        File(globalSettingsDir, "steam_appid.txt")
+                            .writeText(workshopAppIdText)
+                    } catch (_: Exception) { }
+                }
                 val globalModsJson = File(globalSettingsDir, "mods.json")
                 if (willUseFilesystemMods) {
                     // HIGH-confidence filesystem: clear ISteamUGC to prevent duplication
@@ -2027,10 +2259,16 @@ object WorkshopManager {
                 } else {
                     // ISteamUGC-needed: populate so ColdClient games can discover mods
                     try {
-                        val modsObj = buildModsJson(modDirs, items)
-                        globalModsJson.writeText(modsObj.toString(2))
+                        globalModsJson.writeText(modsJsonText)
                     } catch (e: Exception) {
                         Timber.tag(TAG).w(e, "Failed to write global mods.json")
+                    }
+
+                    // Also copy preview images to global mod_images/
+                    try {
+                        copyPreviewImages(modDirs, globalSettingsDir)
+                    } catch (e: Exception) {
+                        Timber.tag(TAG).w(e, "Failed to copy global mod preview images")
                     }
                 }
 
@@ -2039,13 +2277,7 @@ object WorkshopManager {
                 val globalModsDir = File(globalSettingsDir, "mods")
                 if (globalModsDir.isDirectory) {
                     try {
-                        globalModsDir.listFiles()?.forEach { entry ->
-                            if (Files.isSymbolicLink(entry.toPath())) {
-                                Files.deleteIfExists(entry.toPath())
-                            } else if (entry.isDirectory) {
-                                entry.deleteRecursively()
-                            }
-                        }
+                        clearModEntries(globalModsDir)
                         if (globalModsDir.listFiles()?.isEmpty() != false) {
                             globalModsDir.delete()
                         }
@@ -2103,13 +2335,16 @@ object WorkshopManager {
                 primaryAddonDirs.add(addonsDir.absolutePath)
                 primaryContentDirs.add(gameContentDir.absolutePath)
 
-                // Clean up old symlinks from custom/, content/, workshop_mods/
+                // Clean up old workshop files from custom/, content/, workshop_mods/
+                // (symlinks from previous code AND hard-linked/copied VPKs)
                 for (dirN in listOf("custom", "content", "workshop_mods")) {
                     val oldDir = File(gameContentDir, dirN)
                     if (oldDir.isDirectory) {
                         oldDir.listFiles()?.forEach { f ->
                             if (Files.isSymbolicLink(f.toPath())) {
                                 Files.deleteIfExists(f.toPath())
+                            } else if (f.isFile && f.name.endsWith(".vpk", ignoreCase = true)) {
+                                f.delete()
                             }
                         }
                     }
@@ -2126,19 +2361,37 @@ object WorkshopManager {
                 val customDir = File(contentDir, "custom")
                 customDir.mkdirs()
 
-                var vpkCount = 0
+                val manifestFile = File(customDir, ".gamenative_workshop_addons")
+
+                // Remove files placed by previous workshop syncs (tracked by manifest)
+                if (manifestFile.isFile) {
+                    manifestFile.readText().lines().filter { it.isNotBlank() }.forEach { name ->
+                        try { Files.deleteIfExists(File(customDir, name).toPath()) } catch (_: Exception) { }
+                    }
+                }
+                // Also remove any symlinks (from older code)
+                customDir.listFiles()?.forEach { f ->
+                    if (Files.isSymbolicLink(f.toPath())) {
+                        Files.deleteIfExists(f.toPath())
+                    }
+                }
+
+                val placedFiles = mutableListOf<String>()
                 modDirs.forEach { itemDir ->
                     itemDir.listFiles()
                         ?.filter { it.isFile && it.name.endsWith(".vpk", ignoreCase = true) }
                         ?.forEach { vpkFile ->
                             val outFile = File(customDir, vpkFile.name)
                             if (materializeWorkshopFile(vpkFile, outFile)) {
-                                vpkCount++
+                                placedFiles.add(vpkFile.name)
                             }
                         }
                 }
-                if (vpkCount > 0) {
-                    Timber.tag(TAG).d("Placed $vpkCount VPK mods in ${customDir.absolutePath}")
+                if (placedFiles.isNotEmpty()) {
+                    manifestFile.writeText(placedFiles.joinToString("\n", postfix = "\n"))
+                    Timber.tag(TAG).d("Placed ${placedFiles.size} VPK mods in ${customDir.absolutePath}")
+                } else {
+                    manifestFile.delete()
                 }
             }
             // Clean up stale inscustom/ created by previous metadata-path logic
@@ -2180,44 +2433,54 @@ object WorkshopManager {
         primaryAddonDirs.forEach { addonPath ->
             val dir = File(addonPath)
             try {
-                // Remove old workshop symlinks (preserve real files)
+                val manifestFile = File(dir, ".gamenative_workshop_addons")
+
+                // Remove files placed by previous workshop syncs (tracked by manifest)
+                if (manifestFile.isFile) {
+                    manifestFile.readText().lines().filter { it.isNotBlank() }.forEach { name ->
+                        try { Files.deleteIfExists(File(dir, name).toPath()) } catch (_: Exception) { }
+                    }
+                }
+                // Also remove any symlinks (from older code that used symlinks)
                 dir.listFiles()?.forEach { f ->
                     if (Files.isSymbolicLink(f.toPath())) {
                         Files.deleteIfExists(f.toPath())
                     }
                 }
 
-                var vpkCount = 0
+                val placedFiles = mutableListOf<String>()
+
                 modDirs.forEach { itemDir ->
                     itemDir.listFiles()
                         ?.filter { it.isFile && it.name.endsWith(".vpk", ignoreCase = true) }
                         ?.forEach { vpkFile ->
                             val outFile = File(dir, vpkFile.name)
                             if (materializeWorkshopFile(vpkFile, outFile)) {
-                                vpkCount++
+                                placedFiles.add(vpkFile.name)
                             }
                         }
-                }
-                if (vpkCount > 0) {
-                    Timber.tag(TAG).d("Linked $vpkCount VPK addons in ${dir.absolutePath}")
                 }
 
                 // Also link .gma files (Garry's Mod addon archives) into
                 // addons/ so GMod can mount them directly without relying
                 // on ISteamUGC::GetItemInstallInfo paths.
-                var gmaCount = 0
                 modDirs.forEach { itemDir ->
                     itemDir.listFiles()
                         ?.filter { it.isFile && it.name.endsWith(".gma", ignoreCase = true) }
                         ?.forEach { gmaFile ->
                             val outFile = File(dir, gmaFile.name)
                             if (materializeWorkshopFile(gmaFile, outFile)) {
-                                gmaCount++
+                                placedFiles.add(gmaFile.name)
                             }
                         }
                 }
-                if (gmaCount > 0) {
-                    Timber.tag(TAG).d("Linked $gmaCount GMA addons in ${dir.absolutePath}")
+
+                // Write manifest of files we placed so future syncs can clean them up
+                if (placedFiles.isNotEmpty()) {
+                    manifestFile.writeText(placedFiles.joinToString("\n", postfix = "\n"))
+                    Timber.tag(TAG).d("Linked ${placedFiles.size} addons in ${dir.absolutePath}")
+                } else {
+                    manifestFile.delete()
                 }
             } catch (e: Exception) {
                 Timber.tag(TAG).w(e, "Failed to create VPK symlinks in ${dir.absolutePath}")
@@ -2260,11 +2523,10 @@ object WorkshopManager {
                         if (Files.isSymbolicLink(f.toPath())) {
                             Files.deleteIfExists(f.toPath())
                         } else if (f.isDirectory) {
-                            // Clean up old symlinks inside item subdirectories
+                            // Item subdirs are fully workshop-managed — remove
+                            // all files (symlinks, hard links, copies).
                             f.listFiles()?.forEach { inner ->
-                                if (Files.isSymbolicLink(inner.toPath())) {
-                                    Files.deleteIfExists(inner.toPath())
-                                }
+                                Files.deleteIfExists(inner.toPath())
                             }
                             if (f.listFiles()?.isEmpty() == true) f.delete()
                         }
@@ -2303,7 +2565,12 @@ object WorkshopManager {
         // The existing VPK and BSP handlers above create their own symlinks
         // to individual files, but those point to files INSIDE primary addon
         // dirs and are re-created each run — so this cleanup is safe.
-        val workshopContentStr = workshopContentDir.absolutePath
+        // Use toRealPath() to resolve intermediate symlinks (e.g. xuser →
+        // xuser-STEAM_*) so old symlinks created with the xuser path are
+        // also recognized and cleaned.
+        val workshopContentReal = runCatching {
+            workshopContentDir.toPath().toRealPath().toString()
+        }.getOrElse { workshopContentDir.absolutePath }
         gameRootDir.walkTopDown().maxDepth(6).forEach { entry ->
             if (!Files.isSymbolicLink(entry.toPath())) return@forEach
             if (entry.absolutePath.contains("steam_settings")) return@forEach
@@ -2311,9 +2578,13 @@ object WorkshopManager {
                 val target = Files.readSymbolicLink(entry.toPath())
                 val resolvedTarget = if (target.isAbsolute) target
                 else entry.toPath().parent.resolve(target)
-                val targetStr = resolvedTarget.normalize().toAbsolutePath().toString()
+                val targetStr = runCatching {
+                    resolvedTarget.toRealPath().toString()
+                }.getOrElse {
+                    resolvedTarget.normalize().toAbsolutePath().toString()
+                }
                 // Remove symlinks that point into this game's workshop content
-                if (targetStr.startsWith(workshopContentStr)) {
+                if (targetStr.startsWith(workshopContentReal)) {
                     Files.deleteIfExists(entry.toPath())
                     Timber.tag(TAG).d("Removed stale workshop symlink: ${entry.absolutePath}")
                 }
@@ -2367,12 +2638,14 @@ object WorkshopManager {
             // Check if Phase 7 (Unity AppData) will handle mod directories.
             // If it does, skip Phase 6 SymlinkIntoDir for the same directory
             // names so mods aren't placed at both the install dir AND AppData.
-            val unityTargets = detectUnityModTargets(gameRootDir, winePrefix)
-            val unityHandledBaseNames = unityTargets.map {
+            val unityHandledBaseNames = unityModTargets.map {
                 // e.g. "UGC/Models" → "ugc"
                 val parts = it.toRelativeString(it.parentFile?.parentFile ?: it).split("/", "\\")
                 parts.firstOrNull()?.lowercase() ?: ""
             }.toSet()
+
+            // Local alias for Phase 7 Unity block below
+            val unityTargets = unityModTargets
 
             val activeItemDirs = modDirs.associate { dir ->
                 (dir.name.toLongOrNull() ?: 0L) to dir
@@ -2647,62 +2920,356 @@ object WorkshopManager {
         }
     }
 
-    /**
-     * IDownloadListener implementation for tracking Workshop item downloads.
-     */
-    private class WorkshopDownloadListener(
-        private val item: WorkshopItem,
-        private val onBytesProgress: (downloadedBytes: Long, estimatedTotalBytes: Long) -> Unit,
-    ) : IDownloadListener {
-        var failed = false
-            private set
-        var failureMessage: String? = null
-            private set
+    private class WorkshopDownloadException(message: String) : Exception(message)
 
-        override fun onDownloadStarted(item: DownloadItem) {
-            Timber.tag(TAG).d("Workshop download started: ${this.item.title}")
-        }
+    // ────────────────────────────────────────────────────────────────
+    // Shared helpers
+    // ────────────────────────────────────────────────────────────────
 
-        override fun onDownloadCompleted(item: DownloadItem) {
-            Timber.tag(TAG).d("Workshop download completed: ${this.item.title}")
-        }
-
-        override fun onDownloadFailed(item: DownloadItem, error: Throwable) {
-            failed = true
-            failureMessage = error.message
-            Timber.tag(TAG).e(error, "Workshop download failed: ${this.item.title}")
-        }
-
-        override fun onStatusUpdate(message: String) {
-            Timber.tag(TAG).d("Workshop status [${item.title}]: $message")
-        }
-
-        override fun onChunkCompleted(
-            depotId: Int,
-            depotPercentComplete: Float,
-            compressedBytes: Long,
-            uncompressedBytes: Long,
-        ) {
-            // uncompressedBytes is CUMULATIVE for this depot — use directly
-            val estimatedTotal = if (depotPercentComplete > 0.001f) {
-                (uncompressedBytes / depotPercentComplete).toLong()
-            } else {
-                item.fileSizeBytes
-            }
-            onBytesProgress(uncompressedBytes, estimatedTotal)
-        }
-
-        override fun onDepotCompleted(
-            depotId: Int,
-            compressedBytes: Long,
-            uncompressedBytes: Long,
-        ) {
-            Timber.tag(TAG).d(
-                "Workshop depot $depotId completed for '${item.title}': " +
-                    "${uncompressedBytes / 1024}KB"
-            )
+    /** Deletes only symbolic links that are direct children of [dir]. */
+    private fun removeSymlinksIn(dir: File) {
+        dir.listFiles()?.forEach { f ->
+            if (Files.isSymbolicLink(f.toPath())) Files.deleteIfExists(f.toPath())
         }
     }
 
-    private class WorkshopDownloadException(message: String) : Exception(message)
+    /**
+     * Deletes symbolic links and subdirectories (via [deleteRecursively]) that
+     * are direct children of [dir]. Regular files are left untouched.
+     */
+    private fun clearModEntries(dir: File) {
+        dir.listFiles()?.forEach { entry ->
+            if (Files.isSymbolicLink(entry.toPath())) {
+                Files.deleteIfExists(entry.toPath())
+            } else if (entry.isDirectory) {
+                entry.deleteRecursively()
+            }
+        }
+    }
+
+    /** Parses a comma-separated string of IDs into a [Set]. */
+    fun parseEnabledIds(idsString: String?): Set<Long> =
+        (idsString ?: "").split(",").mapNotNull { it.trim().toLongOrNull() }.toSet()
+
+    /** Runs the full post-processing pipeline on downloaded workshop content. */
+    suspend fun runPostProcessing(
+        downloadedItems: List<WorkshopItem>?,
+        allItems: List<WorkshopItem>,
+        workshopContentDir: File,
+        onStatus: ((String) -> Unit)? = null,
+    ) {
+        if (downloadedItems != null) {
+            onStatus?.invoke("Fixing file names…")
+            fixItemFileNames(downloadedItems, workshopContentDir)
+        }
+        onStatus?.invoke("Extracting archives…")
+        extractCkmFiles(workshopContentDir)
+        decompressLzmaFiles(workshopContentDir) { completed, total ->
+            onStatus?.invoke("Decompressing ($completed/$total)…")
+        }
+        onStatus?.invoke("Checking file types…")
+        fixFileExtensions(workshopContentDir)
+        updateMarkerTimestamps(allItems, workshopContentDir)
+    }
+
+    /** Configures mod symlinks for a given app. Public so callers don't duplicate the setup. */
+    fun configureSymlinksForApp(
+        context: Context,
+        appId: Int,
+        items: List<WorkshopItem>,
+        winePrefix: String,
+        workshopContentDir: File,
+    ) {
+        val gameRootDir = File(SteamService.getAppDirPath(appId))
+        val gameName = SteamService.getAppInfoOf(appId)?.name ?: ""
+        configureModSymlinks(
+            gameRootDir = gameRootDir,
+            workshopContentDir = workshopContentDir,
+            items = items,
+            winePrefix = winePrefix,
+            gameName = gameName,
+        )
+    }
+
+    /**
+     * Checks available disk space against the required amount.
+     * Returns an error message string if insufficient, or null if OK.
+     */
+    fun checkDiskSpace(dir: File, requiredBytes: Long): String? {
+        val spaceDir = generateSequence(dir) { it.parentFile }.firstOrNull { it.exists() }
+        val availableBytes = spaceDir?.usableSpace ?: -1L
+        if (requiredBytes > 0 && availableBytes >= 0 && requiredBytes > availableBytes) {
+            val reqMB = String.format(java.util.Locale.US, "%.0f", requiredBytes / 1_048_576.0)
+            val avlMB = String.format(java.util.Locale.US, "%.0f", availableBytes / 1_048_576.0)
+            return "Not enough space (need $reqMB MB, have $avlMB MB)"
+        }
+        return null
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // Workshop download triggered from the library screen (save flow)
+    // ────────────────────────────────────────────────────────────────
+
+    private const val WORKSHOP_UPDATE_THRESHOLD = 100L * 1024 * 1024 // 100 MB
+
+    /**
+     * Starts a background workshop mod download, returning a [DownloadInfo] that
+     * the library progress bar can observe.  Returns `null` when there is nothing
+     * to download (all mods already up-to-date).
+     *
+     * The download is launched on [Dispatchers.IO]; callers should **not** await
+     * the returned info — the library UI will pick it up automatically because
+     * it is registered in [SteamService.downloadJobs].
+     */
+    fun startWorkshopDownload(
+        appId: Int,
+        enabledIds: Set<Long>,
+        context: Context,
+    ): DownloadInfo? {
+        val steamClient = SteamService.instance?.steamClient ?: return null
+        val steamId = SteamService.userSteamId ?: return null
+
+        // Cancel any existing download for this app (e.g. user re-saved
+        // with different mod selection while previous download was running).
+        SteamService.getAppDownloadInfo(appId)?.cancel("Replaced by new workshop download")
+
+        // Build the DownloadInfo first (synchronous) so the caller can rely
+        // on it being in downloadJobs immediately after this returns.
+        val info = DownloadInfo(
+            jobCount = 1,
+            gameId = appId,
+            downloadingAppIds = java.util.concurrent.CopyOnWriteArrayList(listOf(appId)),
+        )
+        info.updateStatusMessage(context.getString(R.string.workshop_checking_mods))
+
+        SteamService.setAppDownloadInfo(appId, info)
+        SteamService.workshopPausedApps.remove(appId)
+        SteamService.notifyDownloadStarted(appId)
+
+        val job = CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Mark download as pending so it can be resumed if the app is killed
+                SteamService.instance?.appDao?.setWorkshopDownloadPending(appId, true)
+
+                Timber.tag(TAG).i("[WS] startWorkshopDownload: appId=$appId, enabledIds=${enabledIds.size}")
+
+                val fetchResult = getSubscribedItems(appId, steamClient, steamId)
+                val items = fetchResult.items.filter { it.publishedFileId in enabledIds }
+
+                Timber.tag(TAG).i(
+                    "[WS] Fetched ${fetchResult.items.size} subscribed items, " +
+                        "${items.size} match enabledIds for appId=$appId"
+                )
+
+                if (items.isEmpty()) {
+                    Timber.tag(TAG).i("Workshop download: no matching items for appId=$appId")
+                    return@launch
+                }
+
+                val winePrefix = getContainerWinePrefix(context, appId)
+                val workshopContentDir = getWorkshopContentDir(winePrefix, appId)
+
+                // Clean up mods that were deselected
+                if (fetchResult.isComplete) {
+                    cleanupUnsubscribedItems(items, workshopContentDir)
+                }
+
+                val itemsToSync = getItemsNeedingSync(items, workshopContentDir)
+                if (itemsToSync.isEmpty()) {
+                    Timber.tag(TAG).i("Workshop download: all mods up-to-date for appId=$appId")
+                    // Still configure symlinks for newly-enabled mods
+                    configureSymlinksForApp(context, appId, items, winePrefix, workshopContentDir)
+                    return@launch
+                }
+
+                // Set up byte tracking
+                val totalBytes = itemsToSync.sumOf { it.fileSizeBytes }
+                info.setTotalExpectedBytes(totalBytes)
+                info.setWeight(0, totalBytes)
+
+                // Check disk space (2x for decompression margin)
+                val spaceError = checkDiskSpace(workshopContentDir, totalBytes * 2)
+                if (spaceError != null) {
+                    Timber.tag(TAG).e(spaceError)
+                    info.updateStatusMessage(spaceError)
+                    return@launch
+                }
+
+                val licenses = SteamService.getLicensesFromDb()
+                var lastReportedBytes = 0L
+
+                val firstName = itemsToSync.firstOrNull()?.title ?: ""
+                info.updateStatusMessage("$firstName (0/${itemsToSync.size})")
+
+                val successCount = downloadItems(
+                    items = itemsToSync,
+                    steamClient = steamClient,
+                    licenses = licenses,
+                    workshopContentDir = workshopContentDir,
+                    onItemProgress = { completed, total, title ->
+                        info.updateStatusMessage("$title ($completed/$total)")
+                    },
+                    onBytesProgress = { downloaded, _ ->
+                        val delta = downloaded - lastReportedBytes
+                        if (delta > 0) {
+                            info.updateBytesDownloaded(delta)
+                            info.emitProgressChange()
+                        }
+                        lastReportedBytes = downloaded
+                    },
+                )
+
+                val failedCount = itemsToSync.size - successCount
+                if (failedCount > 0) {
+                    Timber.tag(TAG).w("$failedCount workshop mod(s) failed to download")
+                }
+
+                // Post-processing and symlinks
+                info.updateStatusMessage(context.getString(R.string.workshop_processing))
+                info.emitProgressChange()
+                runPostProcessing(itemsToSync, items, workshopContentDir) { status ->
+                    info.updateStatusMessage(status)
+                    info.emitProgressChange()
+                }
+                configureSymlinksForApp(context, appId, items, winePrefix, workshopContentDir)
+                Timber.tag(TAG).i("Workshop download complete for appId=$appId")
+            } catch (e: CancellationException) {
+                // Don't mark as "paused" if this was replaced by a new download
+                // for the same app (the new info is already in downloadJobs).
+                if (SteamService.getAppDownloadInfo(appId) === info) {
+                    Timber.tag(TAG).i("Workshop download paused for appId=$appId")
+                    SteamService.workshopPausedApps.add(appId)
+                } else {
+                    Timber.tag(TAG).i("Workshop download replaced for appId=$appId")
+                }
+                throw e
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Workshop download failed for appId=$appId")
+                info.updateStatusMessage(context.getString(R.string.workshop_download_failed))
+            } finally {
+                // Remove download indicator first — this must always run
+                // so the UI never shows a permanently-stuck download.
+                if (SteamService.getAppDownloadInfo(appId) === info) {
+                    SteamService.removeDownloadJob(appId)
+                }
+                // Clear pending flag. Uses NonCancellable so the suspend
+                // DB call completes even when the coroutine is cancelled
+                // (e.g. WiFi lost, download replaced, user paused).
+                if (!SteamService.workshopPausedApps.contains(appId)) {
+                    try {
+                        withContext(NonCancellable) {
+                            SteamService.instance?.appDao?.setWorkshopDownloadPending(appId, false)
+                        }
+                    } catch (_: Exception) { }
+                }
+            }
+        }
+
+        info.setDownloadJob(job)
+        return info
+    }
+
+    /**
+     * Checks for workshop mod updates at launch time. Returns the list of
+     * items needing sync plus all subscribed items, or null if no updates
+     * are needed (or workshop mods are disabled).
+     */
+    data class WorkshopUpdateCheck(
+        val itemsToSync: List<WorkshopItem>,
+        val allItems: List<WorkshopItem>,
+        val workshopContentDir: File,
+        val winePrefix: String,
+        val totalUpdateBytes: Long,
+    )
+
+    suspend fun checkForWorkshopUpdates(
+        appId: Int,
+        enabledIds: Set<Long>,
+        context: Context,
+    ): WorkshopUpdateCheck? {
+        val steamClient = SteamService.instance?.steamClient ?: return null
+        val steamId = SteamService.userSteamId ?: return null
+
+        val fetchResult = getSubscribedItems(appId, steamClient, steamId)
+        val items = fetchResult.items.filter { it.publishedFileId in enabledIds }
+
+        val winePrefix = getContainerWinePrefix(context, appId)
+
+        // Even if no enabled items remain, configure symlinks so stale
+        // symlinks from previously-enabled mods are cleaned up.
+        if (items.isEmpty()) {
+            val workshopContentDir = getWorkshopContentDir(winePrefix, appId)
+            configureSymlinksForApp(context, appId, emptyList(), winePrefix, workshopContentDir)
+            return null
+        }
+
+        val workshopContentDir = getWorkshopContentDir(winePrefix, appId)
+
+        if (fetchResult.isComplete) {
+            cleanupUnsubscribedItems(items, workshopContentDir)
+        }
+
+        val itemsToSync = getItemsNeedingSync(items, workshopContentDir)
+        if (itemsToSync.isEmpty()) {
+            // No updates, but still run post-processing and configure symlinks
+            runPostProcessing(null, items, workshopContentDir)
+            configureSymlinksForApp(context, appId, items, winePrefix, workshopContentDir)
+            return null
+        }
+
+        Timber.tag(TAG).i(
+            "[UpdateCheck] ${itemsToSync.size}/${items.size} items flagged as needing sync"
+        )
+
+        // Items flagged as "needing sync" may already have downloaded content
+        // if the Steam API returned slightly different timeUpdated values
+        // between the save-handler fetch and this launch-time fetch. Verify
+        // that each item truly lacks content before prompting for re-download.
+        val trulyMissing = itemsToSync.filter { item ->
+            val itemDir = File(workshopContentDir, item.publishedFileId.toString())
+            val marker = File(itemDir, COMPLETE_MARKER)
+            val markerExists = marker.exists()
+            val hasContent = itemDir.listFiles()?.any { !it.name.startsWith(".") } == true
+            val isMissing = !markerExists || !hasContent
+            Timber.tag(TAG).d(
+                "[UpdateCheck] Item ${item.publishedFileId} '${item.title}': " +
+                    "marker=$markerExists, hasContent=$hasContent, " +
+                    "dirExists=${itemDir.exists()}, isMissing=$isMissing"
+            )
+            isMissing
+        }
+
+        if (trulyMissing.isEmpty()) {
+            // All items have content — timestamp mismatch from API, not a real update.
+            // Update markers with the fresh values and configure symlinks normally.
+            Timber.tag(TAG).i(
+                "${itemsToSync.size} item(s) had stale timestamps but already have content — " +
+                    "updating markers (API timestamp mismatch)"
+            )
+            updateMarkerTimestamps(items, workshopContentDir)
+            runPostProcessing(null, items, workshopContentDir)
+            configureSymlinksForApp(context, appId, items, winePrefix, workshopContentDir)
+            return null
+        }
+
+        // If only some items truly need downloading, update markers for the
+        // ones that already have content so they don't reappear next launch.
+        if (trulyMissing.size < itemsToSync.size) {
+            Timber.tag(TAG).i(
+                "${itemsToSync.size - trulyMissing.size} item(s) had content with stale " +
+                    "timestamps — markers updated, ${trulyMissing.size} truly need download"
+            )
+            updateMarkerTimestamps(items, workshopContentDir)
+        }
+
+        return WorkshopUpdateCheck(
+            itemsToSync = trulyMissing,
+            allItems = items,
+            workshopContentDir = workshopContentDir,
+            winePrefix = winePrefix,
+            totalUpdateBytes = trulyMissing.sumOf { it.fileSizeBytes },
+        )
+    }
+
+    fun getUpdateThresholdBytes(): Long = WORKSHOP_UPDATE_THRESHOLD
 }

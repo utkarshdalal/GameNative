@@ -107,13 +107,10 @@ fun WorkshopManagerDialog(
             }
             if (result.succeeded) {
                 workshopItems.addAll(result.items.sortedBy { it.title.lowercase() })
-                // Pre-check items that are currently enabled, or all if no prior selection
+                // Pre-check items that are currently enabled
                 result.items.forEach { item ->
-                    selectedIds[item.publishedFileId] = if (currentEnabledIds.isEmpty()) {
-                        true // First time: select all
-                    } else {
+                    selectedIds[item.publishedFileId] =
                         currentEnabledIds.contains(item.publishedFileId)
-                    }
                 }
             } else {
                 fetchFailed = true

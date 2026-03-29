@@ -151,10 +151,6 @@ public class Container {
 
     private boolean unpackFiles = false;
 
-    private boolean workshopMods = false;
-
-    private String enabledWorkshopItemIds = "";
-
     private String suspendPolicy = SUSPEND_POLICY_MANUAL;
 
     private boolean portraitMode = false;
@@ -713,10 +709,6 @@ public class Container {
             // Unpack Files setting
             data.put("unpackFiles", unpackFiles);
 
-            // Workshop Mods setting
-            data.put("workshopMods", workshopMods);
-            data.put("enabledWorkshopItemIds", enabledWorkshopItemIds);
-
             // Process suspend policy setting
             data.put("suspendPolicy", suspendPolicy);
             data.put("portraitMode", portraitMode);
@@ -913,12 +905,6 @@ public class Container {
                 case "unpackFiles":
                     this.unpackFiles = data.getBoolean(key);
                     break;
-                case "workshopMods":
-                    this.workshopMods = data.getBoolean(key);
-                    break;
-                case "enabledWorkshopItemIds":
-                    this.enabledWorkshopItemIds = data.optString(key, "");
-                    break;
                 case "suspendPolicy":
                     setSuspendPolicy(data.getString(key));
                     break;
@@ -1019,22 +1005,6 @@ public class Container {
 
     public void setUnpackFiles(boolean unpackFiles) {
         this.unpackFiles = unpackFiles;
-    }
-
-    public boolean isWorkshopMods() {
-        return workshopMods;
-    }
-
-    public void setWorkshopMods(boolean workshopMods) {
-        this.workshopMods = workshopMods;
-    }
-
-    public String getEnabledWorkshopItemIds() {
-        return enabledWorkshopItemIds;
-    }
-
-    public void setEnabledWorkshopItemIds(String enabledWorkshopItemIds) {
-        this.enabledWorkshopItemIds = enabledWorkshopItemIds != null ? enabledWorkshopItemIds : "";
     }
 
     public static String normalizeSuspendPolicy(String suspendPolicy) {

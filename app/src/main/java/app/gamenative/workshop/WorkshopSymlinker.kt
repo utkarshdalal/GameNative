@@ -272,12 +272,9 @@ class WorkshopSymlinker {
                 val targetPath = srcFile.toPath().toAbsolutePath().normalize()
 
                 if (Files.isSymbolicLink(linkPath)) {
-                    val currentTarget = runCatching {
-                        val raw = Files.readSymbolicLink(linkPath)
-                        val resolved = if (raw.isAbsolute) raw else linkPath.parent.resolve(raw)
-                        resolved.normalize().toAbsolutePath()
-                    }.getOrNull()
-                    if (currentTarget == targetPath) {
+                    val currentTarget = resolveSymlinkTarget(linkPath)
+                    val resolvedTargetPath = resolvePath(targetPath) ?: targetPath
+                    if (currentTarget == resolvedTargetPath) {
                         skipped++
                         continue
                     }
@@ -304,13 +301,25 @@ class WorkshopSymlinker {
 
     // ── Ownership checks ─────────────────────────────────────────────────────
 
+    /**
+     * Resolves a [Path] to its real (symlink-resolved) location, falling back
+     * to normalize().toAbsolutePath() when the target no longer exists on disk.
+     */
+    private fun resolvePath(path: Path): Path? =
+        runCatching { path.toRealPath() }.getOrElse {
+            runCatching { path.normalize().toAbsolutePath() }.getOrNull()
+        }
+
+    /** Reads a symlink and resolves its target to a real path. */
+    private fun resolveSymlinkTarget(symlink: Path): Path? {
+        val raw = runCatching { Files.readSymbolicLink(symlink) }.getOrNull() ?: return null
+        val resolved = if (raw.isAbsolute) raw else symlink.parent.resolve(raw)
+        return resolvePath(resolved)
+    }
+
     private fun isOurSymlink(symlink: File, workshopContentBase: File): Boolean {
-        val raw = runCatching { Files.readSymbolicLink(symlink.toPath()) }.getOrNull() ?: return false
-        val resolved = if (raw.isAbsolute) raw else symlink.toPath().parent.resolve(raw)
-        val target = runCatching { resolved.normalize().toAbsolutePath() }.getOrNull() ?: return false
-        val base = runCatching {
-            workshopContentBase.toPath().toAbsolutePath().normalize()
-        }.getOrNull() ?: return false
+        val target = resolveSymlinkTarget(symlink.toPath()) ?: return false
+        val base = resolvePath(workshopContentBase.toPath()) ?: return false
         return target.startsWith(base)
     }
 
@@ -325,13 +334,12 @@ class WorkshopSymlinker {
         val targetPath = target.toPath().toAbsolutePath().normalize()
 
         if (Files.isSymbolicLink(linkPath)) {
-            val currentTarget = runCatching {
-                val raw = Files.readSymbolicLink(linkPath)
-                val resolved = if (raw.isAbsolute) raw else linkPath.parent.resolve(raw)
-                resolved.normalize().toAbsolutePath()
-            }.getOrNull()
+            // Compare using real (symlink-resolved) paths so that
+            // xuser/.wine/... matches xuser-STEAM_*/.wine/...
+            val currentTarget = resolveSymlinkTarget(linkPath)
+            val resolvedTargetPath = resolvePath(targetPath) ?: targetPath
 
-            if (currentTarget == targetPath) {
+            if (currentTarget == resolvedTargetPath) {
                 return LinkResult.ALREADY_OK
             }
             // Only replace symlinks we created (pointing into workshopContentBase)

@@ -50,7 +50,7 @@ const val DATABASE_NAME = "pluvia.db"
         AmazonGame::class,
         DownloadingAppInfo::class
     ],
-    version = 15,
+    version = 17,
     // For db migration, visit https://developer.android.com/training/data-storage/room/migrating-db-versions for more information
     exportSchema = true, // It is better to handle db changes carefully, as GN is getting much more users.
     autoMigrations = [
@@ -62,6 +62,8 @@ const val DATABASE_NAME = "pluvia.db"
         AutoMigration(from = 12, to = 13), // Added amazon_games table
         AutoMigration(from = 13, to = 14), // Added GOG background image column
         AutoMigration(from = 14, to = 15), // Added ufs_parse_version to steam_app
+        AutoMigration(from = 15, to = 16), // Added workshop_mods, enabled_workshop_item_ids to steam_app
+        AutoMigration(from = 16, to = 17), // Added workshop_download_pending to steam_app
     ]
 )
 @TypeConverters(

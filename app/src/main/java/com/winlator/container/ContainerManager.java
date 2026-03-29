@@ -229,7 +229,6 @@ public class ContainerManager {
         dstContainer.setDesktopTheme(srcContainer.getDesktopTheme());
         dstContainer.setRcfileId(srcContainer.getRCFileId());
         dstContainer.setWineVersion(srcContainer.getWineVersion());
-        dstContainer.setWorkshopMods(srcContainer.isWorkshopMods());
         dstContainer.saveData();
 
         containers.add(dstContainer);

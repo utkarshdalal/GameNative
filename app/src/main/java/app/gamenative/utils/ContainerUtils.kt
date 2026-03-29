@@ -296,8 +296,6 @@ object ContainerUtils {
             steamOfflineMode = container.isSteamOfflineMode(),
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
-            workshopMods = container.isWorkshopMods,
-            enabledWorkshopItemIds = container.enabledWorkshopItemIds,
             suspendPolicy = container.suspendPolicy,
             portraitMode = container.isPortraitMode,
             enableXInput = enableX,
@@ -383,8 +381,6 @@ object ContainerUtils {
                 "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
                 "steamOfflineMode" -> value?.let { updatedData.copy(steamOfflineMode = it as? Boolean ?: updatedData.steamOfflineMode) } ?: updatedData
                 "unpackFiles" -> value?.let { updatedData.copy(unpackFiles = it as? Boolean ?: updatedData.unpackFiles) } ?: updatedData
-                "workshopMods" -> value?.let { updatedData.copy(workshopMods = it as? Boolean ?: updatedData.workshopMods) } ?: updatedData
-                "enabledWorkshopItemIds" -> value?.let { updatedData.copy(enabledWorkshopItemIds = it as? String ?: updatedData.enabledWorkshopItemIds) } ?: updatedData
                 "suspendPolicy" -> value?.let { updatedData.copy(suspendPolicy = it as? String ?: updatedData.suspendPolicy) } ?: updatedData
                 "envVars" -> value?.let { updatedData.copy(envVars = it as? String ?: updatedData.envVars) } ?: updatedData
                 "cpuList" -> value?.let { updatedData.copy(cpuList = it as? String ?: updatedData.cpuList) } ?: updatedData
@@ -479,8 +475,6 @@ object ContainerUtils {
         container.setSteamOfflineMode(containerData.steamOfflineMode)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
-        container.setWorkshopMods(containerData.workshopMods)
-        container.setEnabledWorkshopItemIds(containerData.enabledWorkshopItemIds)
         container.setSuspendPolicy(containerData.suspendPolicy)
         container.setPortraitMode(containerData.portraitMode)
         if (previousUnpackFiles != containerData.unpackFiles && containerData.unpackFiles) {
@@ -723,9 +717,34 @@ object ContainerUtils {
             if (containerDir.exists() && !containerManager.hasContainer(containerId)) {
                 Timber.w("Found orphaned/corrupted container directory, deleting and retrying: $containerId")
                 try {
+                    // Preserve workshop content before deleting the corrupt container
+                    val workshopBase = File(containerDir, ".wine/drive_c/Program Files (x86)/Steam/steamapps/workshop")
+                    val tempWorkshop = if (workshopBase.exists() && workshopBase.isDirectory) {
+                        val temp = File(context.cacheDir, "workshop_preserve_$containerId")
+                        temp.deleteRecursively()
+                        if (workshopBase.renameTo(temp)) {
+                            Timber.i("Preserved workshop content from corrupted container: $containerId")
+                            temp
+                        } else null
+                    } else null
+
                     FileUtils.delete(containerDir)
                     // Retry container creation after cleanup
                     container = containerManager.createContainerFuture(containerId, data).get()
+
+                    // Restore preserved workshop content into the fresh container
+                    if (tempWorkshop != null && tempWorkshop.exists() && container != null) {
+                        val newWorkshopBase = File(
+                            container.rootDir,
+                            ".wine/drive_c/Program Files (x86)/Steam/steamapps/workshop",
+                        )
+                        newWorkshopBase.parentFile?.mkdirs()
+                        if (tempWorkshop.renameTo(newWorkshopBase)) {
+                            Timber.i("Restored workshop content into new container: $containerId")
+                        } else {
+                            Timber.w("Failed to restore workshop content for $containerId, preserved at: ${tempWorkshop.absolutePath}")
+                        }
+                    }
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to clean up corrupted container directory: $containerId")
                 }

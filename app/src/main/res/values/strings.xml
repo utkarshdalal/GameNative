@@ -1297,4 +1297,15 @@
     <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
     <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
     <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Checking Workshop mods…</string>
+    <string name="workshop_update_title">Workshop Mod Updates</string>
+    <string name="workshop_update_prompt">%1$s MB of mod updates available. Download now or skip?</string>
+    <string name="workshop_download_btn">Download</string>
+    <string name="workshop_skip_btn">Skip</string>
+    <string name="workshop_downloading">Downloading Workshop Mods (%1$d/%2$d)</string>
+    <string name="workshop_processing">Processing mods…</string>
+    <string name="workshop_failed_count">%1$d workshop mod(s) failed to update</string>
+    <string name="workshop_download_failed">Download failed</string>
 </resources>
