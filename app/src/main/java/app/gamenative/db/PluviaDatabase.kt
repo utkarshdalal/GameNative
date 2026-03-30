@@ -66,6 +66,8 @@ const val DATABASE_NAME = "pluvia.db"
         AutoMigration(from = 13, to = 14), // Added GOG background image column
         AutoMigration(from = 14, to = 15), // Added branch columns and steam_unlocked_branch table
         AutoMigration(from = 15, to = 16), // Added ufs_parse_version to steam_app
+        // Note: upstream disabled their 16→17 auto-migration due to duplicate ufs_parse_version column.
+        // Our 16→17 adds different columns (workshop_mods, enabled_workshop_item_ids), so it is valid.
         AutoMigration(from = 16, to = 17), // Added workshop_mods, enabled_workshop_item_ids to steam_app
         AutoMigration(from = 17, to = 18), // Added workshop_download_pending to steam_app
     ]
