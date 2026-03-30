@@ -214,9 +214,9 @@ public abstract class ImageFsInstaller {
     private static boolean isImportedWineProton(Context context, String fileName) {
         String lowerName = fileName.toLowerCase();
 
-        // Not a Wine/Proton directory
-        if (!lowerName.startsWith("wine-") && !lowerName.startsWith("proton-")) {
-            return false;
+        // Skip Wine/Proton directory
+        if (lowerName.startsWith("wine-") || lowerName.startsWith("proton-")) {
+            return true;
         }
 
         // Get bundled versions from resource arrays
