@@ -69,7 +69,7 @@ const val DATABASE_NAME = "pluvia.db"
         // AutoMigration(from = 16, to = 17),
         // Disabled auto-migration due to duplicated column in previous version (upstream PR #1048)
         // duplicate column name: ufs_parse_version (code 1 SQLITE_ERROR)
-        // Manual no-op Migration(16,17) in RoomMigration.kt provides a clean path for v16 users
+        // v16 users will fallback to destructive migration (only cached Steam data, re-fetched on login)
         AutoMigration(from = 17, to = 18), // Added workshop_mods, enabled_workshop_item_ids, workshop_download_pending to steam_app
     ]
 )
