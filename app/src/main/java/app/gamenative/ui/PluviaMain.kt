@@ -1602,6 +1602,31 @@ fun preLaunchApp(
 
         // set up Ubuntu file system — download required files and install
         SplitCompat.install(context)
+
+        try {
+            LaunchDependencies().ensureLaunchDependencies(
+                context = context,
+                container = container,
+                gameSource = gameSource,
+                gameId = gameId,
+                setLoadingMessage = setLoadingMessage,
+                setLoadingProgress = setLoadingProgress,
+            )
+        } catch (e: Exception) {
+            Timber.tag("preLaunchApp").e(e, "ensureLaunchDependencies failed")
+            setLoadingDialogVisible(false)
+            setMessageDialogState(
+                MessageDialogState(
+                    visible = true,
+                    type = DialogType.SYNC_FAIL,
+                    title = context.getString(R.string.launch_dependency_failed_title),
+                    message = e.message ?: context.getString(R.string.launch_dependency_failed_message),
+                    dismissBtnText = context.getString(R.string.ok),
+                ),
+            )
+            return@launch
+        }
+
         try {
             if (!SteamService.isImageFsInstallable(context, container.containerVariant)) {
                 setLoadingMessage("Downloading first-time files")
@@ -1660,30 +1685,6 @@ fun preLaunchApp(
                     type = DialogType.SYNC_FAIL,
                     title = context.getString(R.string.download_failed_title),
                     message = e.message ?: context.getString(R.string.download_failed_message),
-                    dismissBtnText = context.getString(R.string.ok),
-                ),
-            )
-            return@launch
-        }
-
-        try {
-            LaunchDependencies().ensureLaunchDependencies(
-                context = context,
-                container = container,
-                gameSource = gameSource,
-                gameId = gameId,
-                setLoadingMessage = setLoadingMessage,
-                setLoadingProgress = setLoadingProgress,
-            )
-        } catch (e: Exception) {
-            Timber.tag("preLaunchApp").e(e, "ensureLaunchDependencies failed")
-            setLoadingDialogVisible(false)
-            setMessageDialogState(
-                MessageDialogState(
-                    visible = true,
-                    type = DialogType.SYNC_FAIL,
-                    title = context.getString(R.string.launch_dependency_failed_title),
-                    message = e.message ?: context.getString(R.string.launch_dependency_failed_message),
                     dismissBtnText = context.getString(R.string.ok),
                 ),
             )
