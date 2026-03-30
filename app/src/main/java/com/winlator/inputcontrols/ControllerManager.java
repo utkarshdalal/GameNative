@@ -135,6 +135,9 @@ public class ControllerManager {
         if (device == null) return false;
         if (device.isVirtual()) return false;
 
+        String name = device.getName().toLowerCase();
+        if (name.contains("uinput")) return false;
+
         boolean isGamepad = device.supportsSource(InputDevice.SOURCE_GAMEPAD);
         boolean isJoystick = device.supportsSource(InputDevice.SOURCE_JOYSTICK);
 
