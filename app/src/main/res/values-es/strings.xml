@@ -1356,4 +1356,15 @@
     <string name="install_failed_message">No se pudieron instalar los archivos del sistema. Inténtalo de nuevo. Si el problema persiste, prueba con una red diferente o usa una VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Intercambiar botones frontales</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Intercambia los iconos de los botones A↔B y X↔Y</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Comprobando mods del Workshop…</string>
+    <string name="workshop_update_title">Actualizaciones de mods del Workshop</string>
+    <string name="workshop_update_prompt">%1$s MB de actualizaciones de mods disponibles. ¿Descargar ahora u omitir?</string>
+    <string name="workshop_download_btn">Descargar</string>
+    <string name="workshop_skip_btn">Omitir</string>
+    <string name="workshop_downloading">Descargando mods del Workshop (%1$d/%2$d)</string>
+    <string name="workshop_processing">Procesando mods…</string>
+    <string name="workshop_failed_count">%1$d mod(s) del Workshop no se pudieron actualizar</string>
+    <string name="workshop_download_failed">Error en la descarga</string>
 </resources>

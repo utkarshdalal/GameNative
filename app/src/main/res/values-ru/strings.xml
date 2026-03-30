@@ -1283,4 +1283,15 @@ https://gamenative.app
     <string name="install_failed_message">Не удалось установить системные файлы. Попробуйте снова. Если проблема сохраняется, попробуйте другую сеть или используйте VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Поменять кнопки действий</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Поменять местами значки кнопок A↔B и X↔Y</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Проверка модов Мастерской…</string>
+    <string name="workshop_update_title">Обновления модов Мастерской</string>
+    <string name="workshop_update_prompt">Доступно %1$s МБ обновлений модов. Загрузить сейчас или пропустить?</string>
+    <string name="workshop_download_btn">Загрузить</string>
+    <string name="workshop_skip_btn">Пропустить</string>
+    <string name="workshop_downloading">Загрузка модов Мастерской (%1$d/%2$d)</string>
+    <string name="workshop_processing">Обработка модов…</string>
+    <string name="workshop_failed_count">Не удалось обновить %1$d мод(ов) Мастерской</string>
+    <string name="workshop_download_failed">Ошибка загрузки</string>
 </resources>

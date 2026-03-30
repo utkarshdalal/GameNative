@@ -1346,4 +1346,15 @@
     <string name="install_failed_message">Non è stato possibile installare i file di sistema. Riprova. Se il problema persiste, prova una rete diversa o usa una VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Scambia i pulsanti frontali</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Scambia le icone dei pulsanti A↔B e X↔Y</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Controllo mod del Workshop…</string>
+    <string name="workshop_update_title">Aggiornamenti mod del Workshop</string>
+    <string name="workshop_update_prompt">%1$s MB di aggiornamenti mod disponibili. Scaricare ora o saltare?</string>
+    <string name="workshop_download_btn">Scarica</string>
+    <string name="workshop_skip_btn">Salta</string>
+    <string name="workshop_downloading">Download mod del Workshop (%1$d/%2$d)</string>
+    <string name="workshop_processing">Elaborazione mod…</string>
+    <string name="workshop_failed_count">%1$d mod del Workshop non aggiornati</string>
+    <string name="workshop_download_failed">Download non riuscito</string>
 </resources>

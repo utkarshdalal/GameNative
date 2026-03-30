@@ -1343,4 +1343,15 @@
     <string name="install_failed_message">无法安装系统文件。请重试。如果问题持续存在，请尝试使用其他网络或使用 VPN。</string>
     <string name="settings_interface_swap_face_buttons_title">交换面键</string>
     <string name="settings_interface_swap_face_buttons_subtitle">交换 A↔B 和 X↔Y 按键图标</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">正在检查创意工坊模组…</string>
+    <string name="workshop_update_title">创意工坊模组更新</string>
+    <string name="workshop_update_prompt">有 %1$s MB 的模组更新可用。立即下载还是跳过？</string>
+    <string name="workshop_download_btn">下载</string>
+    <string name="workshop_skip_btn">跳过</string>
+    <string name="workshop_downloading">正在下载创意工坊模组 (%1$d/%2$d)</string>
+    <string name="workshop_processing">正在处理模组…</string>
+    <string name="workshop_failed_count">%1$d 个创意工坊模组更新失败</string>
+    <string name="workshop_download_failed">下载失败</string>
 </resources>

@@ -1345,4 +1345,15 @@
     <string name="install_failed_message">Не вдалося інсталювати системні файли. Спробуйте ще раз. Якщо проблема не зникає, спробуйте іншу мережу або скористайтеся VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Поміняти місцями кнопки дій</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Поміняти місцями значки кнопок A↔B і X↔Y</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Перевірка модів Майстерні…</string>
+    <string name="workshop_update_title">Оновлення модів Майстерні</string>
+    <string name="workshop_update_prompt">%1$s МБ оновлень модів доступно. Завантажити зараз чи пропустити?</string>
+    <string name="workshop_download_btn">Завантажити</string>
+    <string name="workshop_skip_btn">Пропустити</string>
+    <string name="workshop_downloading">Завантаження модів Майстерні (%1$d/%2$d)</string>
+    <string name="workshop_processing">Обробка модів…</string>
+    <string name="workshop_failed_count">Не вдалося оновити %1$d мод(ів) Майстерні</string>
+    <string name="workshop_download_failed">Помилка завантаження</string>
 </resources>

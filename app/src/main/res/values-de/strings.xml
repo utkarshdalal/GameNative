@@ -1290,4 +1290,15 @@
     <string name="install_failed_message">Systemdateien konnten nicht installiert werden. Bitte versuche es erneut. Falls das Problem weiterhin besteht, versuche ein anderes Netzwerk oder verwende ein VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Aktionstasten tauschen</string>
     <string name="settings_interface_swap_face_buttons_subtitle">A↔B- und X↔Y-Tastensymbole tauschen</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Workshop-Mods werden überprüft…</string>
+    <string name="workshop_update_title">Workshop-Mod-Updates</string>
+    <string name="workshop_update_prompt">%1$s MB an Mod-Updates verfügbar. Jetzt herunterladen oder überspringen?</string>
+    <string name="workshop_download_btn">Herunterladen</string>
+    <string name="workshop_skip_btn">Überspringen</string>
+    <string name="workshop_downloading">Workshop-Mods werden heruntergeladen (%1$d/%2$d)</string>
+    <string name="workshop_processing">Mods werden verarbeitet…</string>
+    <string name="workshop_failed_count">%1$d Workshop-Mod(s) konnten nicht aktualisiert werden</string>
+    <string name="workshop_download_failed">Download fehlgeschlagen</string>
 </resources>

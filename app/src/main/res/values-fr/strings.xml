@@ -1350,4 +1350,15 @@
     <string name="install_failed_message">Les fichiers système n\'ont pas pu être installés. Veuillez réessayer. Si le problème persiste, essayez un autre réseau ou utilisez un VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Inverser les boutons d\'action</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Inverse les icônes des boutons A↔B et X↔Y</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Vérification des mods Workshop…</string>
+    <string name="workshop_update_title">Mises à jour des mods Workshop</string>
+    <string name="workshop_update_prompt">%1$s Mo de mises à jour de mods disponibles. Télécharger maintenant ou ignorer ?</string>
+    <string name="workshop_download_btn">Télécharger</string>
+    <string name="workshop_skip_btn">Ignorer</string>
+    <string name="workshop_downloading">Téléchargement des mods Workshop (%1$d/%2$d)</string>
+    <string name="workshop_processing">Traitement des mods…</string>
+    <string name="workshop_failed_count">%1$d mod(s) Workshop n\'ont pas pu être mis à jour</string>
+    <string name="workshop_download_failed">Échec du téléchargement</string>
 </resources>

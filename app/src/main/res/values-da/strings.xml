@@ -1220,4 +1220,15 @@
     <string name="install_failed_message">Systemfiler kunne ikke installeres. Prøv igen. Hvis problemet fortsætter, prøv et andet netværk eller brug en VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Byt frontknapper</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Byt A↔B- og X↔Y-knapikoner</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Tjekker Workshop-mods…</string>
+    <string name="workshop_update_title">Workshop-modopdateringer</string>
+    <string name="workshop_update_prompt">%1$s MB modopdateringer tilgængelige. Download nu eller spring over?</string>
+    <string name="workshop_download_btn">Download</string>
+    <string name="workshop_skip_btn">Spring over</string>
+    <string name="workshop_downloading">Downloader Workshop-mods (%1$d/%2$d)</string>
+    <string name="workshop_processing">Behandler mods…</string>
+    <string name="workshop_failed_count">%1$d workshop-mod(s) kunne ikke opdateres</string>
+    <string name="workshop_download_failed">Download mislykkedes</string>
 </resources>

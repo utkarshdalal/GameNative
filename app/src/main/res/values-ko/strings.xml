@@ -1354,4 +1354,15 @@
     <string name="install_failed_message">시스템 파일을 설치할 수 없습니다. 다시 시도해 주세요. 문제가 지속되면 다른 네트워크를 사용하거나 VPN을 사용해 보세요.</string>
     <string name="settings_interface_swap_face_buttons_title">페이스 버튼 바꾸기</string>
     <string name="settings_interface_swap_face_buttons_subtitle">A↔B 및 X↔Y 버튼 아이콘 바꾸기</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">워크숍 모드 확인 중…</string>
+    <string name="workshop_update_title">워크숍 모드 업데이트</string>
+    <string name="workshop_update_prompt">%1$s MB의 모드 업데이트가 있습니다. 지금 다운로드하시겠습니까?</string>
+    <string name="workshop_download_btn">다운로드</string>
+    <string name="workshop_skip_btn">건너뛰기</string>
+    <string name="workshop_downloading">워크숍 모드 다운로드 중 (%1$d/%2$d)</string>
+    <string name="workshop_processing">모드 처리 중…</string>
+    <string name="workshop_failed_count">%1$d개의 워크숍 모드를 업데이트하지 못했습니다</string>
+    <string name="workshop_download_failed">다운로드 실패</string>
 </resources>

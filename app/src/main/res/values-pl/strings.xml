@@ -1353,4 +1353,15 @@
     <string name="install_failed_message">Nie udało się zainstalować plików systemowych. Spróbuj ponownie. Jeśli problem będzie się powtarzał, spróbuj innej sieci lub użyj VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Zamień przyciski akcji</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Zamień ikony przycisków A↔B i X↔Y</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Sprawdzanie modów z Warsztatu…</string>
+    <string name="workshop_update_title">Aktualizacje modów z Warsztatu</string>
+    <string name="workshop_update_prompt">%1$s MB aktualizacji modów dostępnych. Pobrać teraz czy pominąć?</string>
+    <string name="workshop_download_btn">Pobierz</string>
+    <string name="workshop_skip_btn">Pomiń</string>
+    <string name="workshop_downloading">Pobieranie modów z Warsztatu (%1$d/%2$d)</string>
+    <string name="workshop_processing">Przetwarzanie modów…</string>
+    <string name="workshop_failed_count">Nie udało się zaktualizować %1$d modów z Warsztatu</string>
+    <string name="workshop_download_failed">Pobieranie nie powiodło się</string>
 </resources>

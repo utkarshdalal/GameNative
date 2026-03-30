@@ -1355,4 +1355,15 @@
     <string name="install_failed_message">Fișierele de sistem nu au putut fi instalate. Încearcă din nou. Dacă problema persistă, încearcă o altă rețea sau folosește un VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Inversează butoanele de acțiune</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Inversează pictogramele butoanelor A↔B și X↔Y</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Se verifică modurile Workshop…</string>
+    <string name="workshop_update_title">Actualizări moduri Workshop</string>
+    <string name="workshop_update_prompt">%1$s MB de actualizări de moduri disponibile. Descărcați acum sau săriți?</string>
+    <string name="workshop_download_btn">Descarcă</string>
+    <string name="workshop_skip_btn">Sari peste</string>
+    <string name="workshop_downloading">Se descarcă moduri Workshop (%1$d/%2$d)</string>
+    <string name="workshop_processing">Se procesează modurile…</string>
+    <string name="workshop_failed_count">%1$d mod(uri) Workshop nu au putut fi actualizate</string>
+    <string name="workshop_download_failed">Descărcarea a eșuat</string>
 </resources>

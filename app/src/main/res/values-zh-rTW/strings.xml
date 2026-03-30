@@ -1346,4 +1346,15 @@
     <string name="install_failed_message">無法安裝系統檔案。請重試。如果問題持續存在，請嘗試使用其他網路或使用 VPN。</string>
     <string name="settings_interface_swap_face_buttons_title">交換面鍵</string>
     <string name="settings_interface_swap_face_buttons_subtitle">交換 A↔B 和 X↔Y 按鍵圖示</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">正在檢查創意工坊模組…</string>
+    <string name="workshop_update_title">創意工坊模組更新</string>
+    <string name="workshop_update_prompt">有 %1$s MB 的模組更新可用。立即下載還是跳過？</string>
+    <string name="workshop_download_btn">下載</string>
+    <string name="workshop_skip_btn">跳過</string>
+    <string name="workshop_downloading">正在下載創意工坊模組 (%1$d/%2$d)</string>
+    <string name="workshop_processing">正在處理模組…</string>
+    <string name="workshop_failed_count">%1$d 個創意工坊模組更新失敗</string>
+    <string name="workshop_download_failed">下載失敗</string>
 </resources>
