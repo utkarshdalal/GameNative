@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
+import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
 
 import app.gamenative.R
@@ -896,7 +897,9 @@ class SteamAppScreen : BaseAppScreen() {
             }
             try {
                 val info = withContext(Dispatchers.IO) {
-                    val depots = SteamService.getDownloadableDepots(gameId)
+                    val container = ContainerManager(context).getContainerById("STEAM_$gameId")
+                    val language = container?.language ?: PrefManager.containerLanguage
+                    val depots = SteamService.getDownloadableDepots(gameId, language)
                     Timber.i("There are ${depots.size} depots belonging to ${libraryItem.appId}")
                     val branch = SteamService.getInstalledApp(gameId)?.branch ?: "public"
                     val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
