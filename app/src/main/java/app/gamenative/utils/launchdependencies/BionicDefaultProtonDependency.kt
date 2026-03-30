@@ -83,7 +83,6 @@ object BionicDefaultProtonDependency : LaunchDependency {
                 if (!success) {
                     throw IllegalStateException("Failed to extract $protonVersion from ${downloaded.absolutePath}")
                 }
-                downloaded.delete()
             }
         }
     }
