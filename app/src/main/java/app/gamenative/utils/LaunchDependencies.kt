@@ -3,7 +3,6 @@ package app.gamenative.utils
 import android.content.Context
 import app.gamenative.R
 import app.gamenative.data.GameSource
-import app.gamenative.utils.launchdependencies.BionicDefaultProtonDependency
 import app.gamenative.utils.launchdependencies.GogScriptInterpreterDependency
 import app.gamenative.utils.launchdependencies.LaunchDependencyCallbacks
 import app.gamenative.utils.launchdependencies.LaunchDependency
@@ -19,7 +18,6 @@ const val LOADING_PROGRESS_UNKNOWN: Float = -1f
 class LaunchDependencies {
     companion object {
         private val launchDependencies: List<LaunchDependency> = listOf(
-            BionicDefaultProtonDependency,
             GogScriptInterpreterDependency,
         )
     }

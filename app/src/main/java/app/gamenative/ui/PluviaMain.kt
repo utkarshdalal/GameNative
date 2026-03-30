@@ -1592,6 +1592,45 @@ fun preLaunchApp(
                     this,
                     context = context,
                 ).await()
+            } else {
+                if (container.wineVersion.contains("proton-9.0-arm64ec") &&
+                    !SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz")
+                ) {
+                    setLoadingMessage("Downloading arm64ec Proton")
+                    SteamService.downloadFile(
+                        onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                        this,
+                        context = context,
+                        "proton-9.0-arm64ec.txz",
+                    ).await()
+                } else if (container.wineVersion.contains("proton-9.0-x86_64") &&
+                    !SteamService.isFileInstallable(context, "proton-9.0-x86_64.txz")
+                ) {
+                    setLoadingMessage("Downloading x86_64 Proton")
+                    SteamService.downloadFile(
+                        onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                        this,
+                        context = context,
+                        "proton-9.0-x86_64.txz",
+                    ).await()
+                }
+                if (container.wineVersion.contains("proton-9.0-x86_64") || container.wineVersion.contains("proton-9.0-arm64ec")) {
+                    val protonVersion = container.wineVersion
+                    val imageFs = ImageFs.find(context)
+                    val outFile = File(imageFs.rootDir, "/opt/$protonVersion")
+                    val binDir = File(outFile, "bin")
+                    if (!binDir.exists() || !binDir.isDirectory) {
+                        Timber.i("Extracting $protonVersion to /opt/")
+                        setLoadingMessage("Extracting $protonVersion")
+                        setLoadingProgress(-1f)
+                        val downloaded = File(imageFs.getFilesDir(), "$protonVersion.txz")
+                        TarCompressorUtils.extract(
+                            TarCompressorUtils.Type.XZ,
+                            downloaded,
+                            outFile,
+                        )
+                    }
+                }
             }
 
             if (!container.isUseLegacyDRM && !container.isLaunchRealSteam &&
