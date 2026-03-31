@@ -551,7 +551,7 @@ internal fun AppScreenContent(
             ?: remember { mutableStateOf<String?>(null) }
         )
     val downloadingLabel = stringResource(R.string.downloading)
-    val downloadTimeLeftText = remember(displayInfo.appId, downloadProgress, downloadInfo, isDownloading) {
+    val downloadTimeLeftText = remember(displayInfo.appId, downloadProgress, downloadInfo, isDownloading, downloadStatusMessage) {
         val etaMs = downloadInfo?.getEstimatedTimeRemaining()
         if (etaMs != null && etaMs > 0L) {
             val totalSeconds = etaMs / 1000
@@ -560,6 +560,8 @@ internal fun AppScreenContent(
             "${minutesLeft}m ${secondsPart}s left"
         } else if (isDownloading && downloadProgress >= 1f) {
             "Unpacking..."
+        } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
+            downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
         } else {
             ""
         }

@@ -717,34 +717,9 @@ object ContainerUtils {
             if (containerDir.exists() && !containerManager.hasContainer(containerId)) {
                 Timber.w("Found orphaned/corrupted container directory, deleting and retrying: $containerId")
                 try {
-                    // Preserve workshop content before deleting the corrupt container
-                    val workshopBase = File(containerDir, ".wine/drive_c/Program Files (x86)/Steam/steamapps/workshop")
-                    val tempWorkshop = if (workshopBase.exists() && workshopBase.isDirectory) {
-                        val temp = File(context.cacheDir, "workshop_preserve_$containerId")
-                        temp.deleteRecursively()
-                        if (workshopBase.renameTo(temp)) {
-                            Timber.i("Preserved workshop content from corrupted container: $containerId")
-                            temp
-                        } else null
-                    } else null
-
                     FileUtils.delete(containerDir)
                     // Retry container creation after cleanup
                     container = containerManager.createContainerFuture(containerId, data).get()
-
-                    // Restore preserved workshop content into the fresh container
-                    if (tempWorkshop != null && tempWorkshop.exists() && container != null) {
-                        val newWorkshopBase = File(
-                            container.rootDir,
-                            ".wine/drive_c/Program Files (x86)/Steam/steamapps/workshop",
-                        )
-                        newWorkshopBase.parentFile?.mkdirs()
-                        if (tempWorkshop.renameTo(newWorkshopBase)) {
-                            Timber.i("Restored workshop content into new container: $containerId")
-                        } else {
-                            Timber.w("Failed to restore workshop content for $containerId, preserved at: ${tempWorkshop.absolutePath}")
-                        }
-                    }
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to clean up corrupted container directory: $containerId")
                 }

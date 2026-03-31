@@ -3191,6 +3191,12 @@ object WorkshopManager {
         val steamId = SteamService.userSteamId ?: return null
 
         val fetchResult = getSubscribedItems(appId, steamClient, steamId)
+
+        if (!fetchResult.succeeded || !fetchResult.isComplete) {
+            Timber.tag(TAG).w("Workshop fetch incomplete/failed for appId=$appId; skipping update check")
+            return null
+        }
+
         val items = fetchResult.items.filter { it.publishedFileId in enabledIds }
 
         val winePrefix = getContainerWinePrefix(context, appId)
@@ -3205,9 +3211,7 @@ object WorkshopManager {
 
         val workshopContentDir = getWorkshopContentDir(winePrefix, appId)
 
-        if (fetchResult.isComplete) {
-            cleanupUnsubscribedItems(items, workshopContentDir)
-        }
+        cleanupUnsubscribedItems(items, workshopContentDir)
 
         val itemsToSync = getItemsNeedingSync(items, workshopContentDir)
         if (itemsToSync.isEmpty()) {

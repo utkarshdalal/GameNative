@@ -1841,9 +1841,9 @@ fun preLaunchApp(
             try {
                 // Skip workshop sync if Steam isn't fully connected yet
                 // (can happen if the user taps Play immediately after opening the app).
-                if (!SteamService.isLoggedIn) {
+                if (isOffline || !SteamService.isConnected || !SteamService.isLoggedIn) {
                     Timber.tag("Workshop").w(
-                        "Steam not logged in yet, skipping workshop sync for appId=$gameId"
+                        "Steam not connected/logged in or offline, skipping workshop sync for appId=$gameId"
                     )
                 } else {
                 // If a background download is still running from the save
