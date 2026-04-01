@@ -222,10 +222,6 @@ internal fun LibraryCarouselPane(
     val firstTileOffsetPx = cardWidthPx * 0.08f
     val cameraDistancePx = with(density) { CAROUSEL_CAMERA_DISTANCE_DP.dp.toPx() }
 
-    // derivedStateOf reads listState.layoutInfo directly. It re-evaluates internally on every
-    // scroll frame but only propagates a value change to observers when the centered item index
-    // actually changes (i.e. on a snap), so composables reading centeredIndex only recompose
-    // once per snap — not once per display frame.
     val centeredIndex by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -274,16 +270,10 @@ internal fun LibraryCarouselPane(
             }
     }
 
-    // settledBackdropItem only updates once the carousel has fully stopped moving.
-    // This prevents the backdrop from strobing through every item during a fling.
-    // Any resumed scroll cancels the pending update and restarts the timer.
     var settledBackdropItem by remember { mutableStateOf<LibraryItem?>(null) }
     val currentAppInfoList by rememberUpdatedState(state.appInfoList)
     LaunchedEffect(listState) {
         var pendingUpdate: Job? = null
-        // Include centeredIndex in the pair so that the flow also fires when
-        // items first appear (centeredIndex transitions -1 → valid index on
-        // initial data load), not only when isScrollInProgress changes.
         snapshotFlow { listState.isScrollInProgress to centeredIndex }
             .collect { (isScrolling, _) ->
                 pendingUpdate?.cancel()
@@ -369,11 +359,6 @@ internal fun LibraryCarouselPane(
                         ) { listIndex ->
                             val item = state.appInfoList[listIndex]
 
-                            // Only centeredIndex (a derivedStateOf stable between snaps) is read
-                            // here in composition, purely to compute z-ordering. All per-frame
-                            // transform math is deferred into the graphicsLayer lambda below,
-                            // which runs at draw/layout time — avoiding per-frame recomposition
-                            // that would otherwise scale linearly with display refresh rate.
                             val relativeToCenter = if (centeredIndex >= 0) listIndex - centeredIndex else 0
                             val stepsFromCenter = abs(relativeToCenter)
                             val zOrder = if (stepsFromCenter == 0) 20f else (10f - stepsFromCenter).coerceAtLeast(0f)
@@ -411,11 +396,6 @@ internal fun LibraryCarouselPane(
                                         .width(cardWidth)
                                         .height(cardHeight + badgeReservedHeight)
                                         .graphicsLayer {
-                                            // Deferred reads: listState.layoutInfo is read here
-                                            // at draw/layout time, not composition. When the list
-                                            // scrolls, only this layer is invalidated and
-                                            // re-executed — no full item recomposition occurs.
-                                            // CPU cost stays flat regardless of display Hz.
                                             val layoutInfo = listState.layoutInfo
                                             val vc = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
                                             val span = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset)
@@ -428,8 +408,6 @@ internal fun LibraryCarouselPane(
                                             val itemStepDistancePx = (carouselItemSlotWidthPx + carouselItemSpacingPx).coerceAtLeast(1f)
                                             val distanceInSteps = abs(distanceFromCenter) / itemStepDistancePx
 
-                                            // relativeToCenter is a captured plain Int from
-                                            // composition; reading it here adds no state dependency.
                                             val direction = when {
                                                 relativeToCenter < 0 -> 1f
                                                 relativeToCenter > 0 -> -1f
