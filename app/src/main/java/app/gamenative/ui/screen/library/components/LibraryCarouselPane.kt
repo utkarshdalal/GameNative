@@ -484,7 +484,10 @@ internal fun LibraryCarouselPane(
                                         AppItem(
                                             modifier = appItemModifier,
                                             appInfo = item,
-                                            onClick = { onNavigate(item.appId) },
+                                            onClick = {
+                                                onFocusedIndexChanged(listIndex)
+                                                onNavigate(item.appId)
+                                            },
                                             onFocus = {
                                                 onFocusedIndexChanged(listIndex)
                                             },
