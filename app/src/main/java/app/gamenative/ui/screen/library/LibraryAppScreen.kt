@@ -76,6 +76,9 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -506,6 +509,7 @@ internal fun AppScreenContent(
 
     // Track the original progress bar bounds for ambient mode morph animation
     var progressBarBounds by remember { mutableStateOf<Rect?>(null) }
+    var ambientInteractionCounter by remember { mutableStateOf(0) }
 
     // Focus requesters for gamepad navigation
     val playButtonFocusRequester = remember { FocusRequester() }
@@ -620,7 +624,22 @@ internal fun AppScreenContent(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .onKeyEvent { handleKeyEvent(it.nativeKeyEvent) },
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val pointerEvent = awaitPointerEvent(PointerEventPass.Initial)
+                        if (pointerEvent.changes.any { it.changedToDownIgnoreConsumed() }) {
+                            ambientInteractionCounter++
+                        }
+                    }
+                }
+            }
+            .onKeyEvent {
+                if (it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
+                    ambientInteractionCounter++
+                }
+                handleKeyEvent(it.nativeKeyEvent)
+            },
     ) {
         Column(
             modifier = Modifier
@@ -1088,6 +1107,7 @@ internal fun AppScreenContent(
                 downloadProgress = downloadProgress,
                 iconUrl = displayInfo.iconUrl,
                 originBounds = progressBarBounds,
+                userInteractionCounter = ambientInteractionCounter,
             )
         }
     }

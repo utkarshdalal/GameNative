@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.library.components.ambient
 
+import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.core.*
@@ -23,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
@@ -57,6 +59,7 @@ internal fun AmbientDownloadOverlay(
     downloadProgress: Float,
     iconUrl: String? = null,
     originBounds: Rect? = null,
+    userInteractionCounter: Int = 0,
 ) {
     val activity = LocalActivity.current as? ComponentActivity ?: return
     val context = LocalContext.current
@@ -65,26 +68,34 @@ internal fun AmbientDownloadOverlay(
     var interactionCounter by remember { mutableIntStateOf(0) }
     var isIdle by remember { mutableStateOf(false) }
     var isDvdMode by remember { mutableStateOf(false) }
+    val registerInteraction = {
+        interactionCounter++
+        if (isIdle) isIdle = false
+        isDvdMode = false
+    }
 
     LaunchedEffect(interactionCounter) {
         delay(IDLE_TIMEOUT_MS)
         isIdle = true
     }
 
+    LaunchedEffect(userInteractionCounter) {
+        if (userInteractionCounter > 0) {
+            registerInteraction()
+        }
+    }
+
     DisposableEffect(Unit) {
         val keyListener: (AndroidEvent.KeyEvent) -> Boolean = {
-            if (isIdle) {
-                interactionCounter++
-                isIdle = false
-                isDvdMode = false
+            if (it.event.action == AndroidKeyEvent.ACTION_DOWN) {
+                registerInteraction()
             }
             false
         }
-        val motionListener: (AndroidEvent.MotionEvent) -> Boolean = {
-            if (isIdle) {
-                interactionCounter++
-                isIdle = false
-                isDvdMode = false
+        val motionListener: (AndroidEvent.MotionEvent) -> Boolean = { motionEvent ->
+            val event = motionEvent.event
+            if (event != null) {
+                registerInteraction()
             }
             false
         }
@@ -164,11 +175,9 @@ internal fun AmbientDownloadOverlay(
                 .pointerInput(Unit) {
                     awaitPointerEventScope {
                         while (true) {
-                            awaitPointerEvent(PointerEventPass.Initial)
-                            if (isIdle) {
-                                interactionCounter++
-                                isIdle = false
-                                isDvdMode = false
+                            val pointerEvent = awaitPointerEvent(PointerEventPass.Initial)
+                            if (pointerEvent.changes.any { it.changedToDownIgnoreConsumed() }) {
+                                registerInteraction()
                             }
                         }
                     }
@@ -182,7 +191,8 @@ internal fun AmbientDownloadOverlay(
                     iconUrl = iconUrl,
                 )
             } else {
-                val textAlpha = ((ambientAlpha - 0.7f) / 0.3f).coerceIn(0f, 1f) * AmbientModeConstants.TEXT_MAX_ALPHA
+                val textAlpha =
+                    ((ambientAlpha - 0.7f) / 0.3f).coerceIn(0f, 1f) * AmbientModeConstants.TEXT_MAX_ALPHA
 
                 if (textAlpha > 0f) {
                     Column(
