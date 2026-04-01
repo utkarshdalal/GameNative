@@ -36,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -71,6 +72,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -271,6 +274,28 @@ internal fun LibraryCarouselPane(
             }
     }
 
+    // settledBackdropItem only updates once the carousel has fully stopped moving.
+    // This prevents the backdrop from strobing through every item during a fling.
+    // Any resumed scroll cancels the pending update and restarts the timer.
+    var settledBackdropItem by remember { mutableStateOf<LibraryItem?>(null) }
+    val currentAppInfoList by rememberUpdatedState(state.appInfoList)
+    LaunchedEffect(listState) {
+        var pendingUpdate: Job? = null
+        snapshotFlow { listState.isScrollInProgress }
+            .collect { isScrolling ->
+                pendingUpdate?.cancel()
+                if (!isScrolling) {
+                    pendingUpdate = launch {
+                        delay(200)
+                        val list = currentAppInfoList
+                        val idx = centeredIndex.takeIf { it in list.indices }
+                            ?: listState.firstVisibleItemIndex.coerceIn(0, list.lastIndex.coerceAtLeast(0))
+                        settledBackdropItem = list.getOrNull(idx)
+                    }
+                }
+            }
+    }
+
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -302,17 +327,9 @@ internal fun LibraryCarouselPane(
                     }
                 },
         ) {
-            val selectedBackdropItem = if (state.appInfoList.isEmpty()) {
-                null
-            } else {
-                val fallbackIndex = listState.firstVisibleItemIndex.coerceIn(0, state.appInfoList.lastIndex)
-                val backdropIndex = centeredIndex.takeIf { it in state.appInfoList.indices } ?: fallbackIndex
-                state.appInfoList.getOrNull(backdropIndex)
-            }
-
             Box(modifier = Modifier.fillMaxSize()) {
                 LibraryDynamicBackdrop(
-                    appInfo = selectedBackdropItem,
+                    appInfo = settledBackdropItem,
                     imageRefreshCounter = state.imageRefreshCounter,
                     modifier = Modifier.fillMaxSize(),
                 )

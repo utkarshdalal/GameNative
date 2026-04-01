@@ -1,5 +1,7 @@
 package app.gamenative.ui.screen.library.components
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,48 +43,54 @@ internal fun LibraryDynamicBackdrop(
             .fillMaxSize()
             .background(Color.Black),
     ) {
-        if (appInfo != null) {
-            val imageUrls by produceState(
-                initialValue = GridImageUrls("", ""),
-                key1 = appInfo.appId,
-                key2 = imageRefreshCounter,
-            ) {
-                value = withContext(Dispatchers.IO) {
-                    getGridImageUrl(context, appInfo, PaneType.GRID_HERO)
+        Crossfade(
+            targetState = appInfo,
+            animationSpec = tween(durationMillis = 500),
+            label = "backdrop_fade",
+        ) { targetInfo ->
+            if (targetInfo != null) {
+                val imageUrls by produceState(
+                    initialValue = GridImageUrls("", ""),
+                    key1 = targetInfo.appId,
+                    key2 = imageRefreshCounter,
+                ) {
+                    value = withContext(Dispatchers.IO) {
+                        getGridImageUrl(context, targetInfo, PaneType.GRID_HERO)
+                    }
                 }
-            }
 
-            var currentImageUrl by remember(
-                imageUrls.primary,
-                imageUrls.fallback,
-                appInfo.appId,
-                imageRefreshCounter,
-            ) {
-                mutableStateOf(imageUrls.primary.ifEmpty { imageUrls.fallback })
-            }
+                var currentImageUrl by remember(
+                    imageUrls.primary,
+                    imageUrls.fallback,
+                    targetInfo.appId,
+                    imageRefreshCounter,
+                ) {
+                    mutableStateOf(imageUrls.primary.ifEmpty { imageUrls.fallback })
+                }
 
-            if (currentImageUrl.isNotEmpty()) {
-                CoilImage(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            scaleX = 1.06f
-                            scaleY = 1.06f
-                        }
-                        .blur(DYNAMIC_BACKDROP_BLUR_RADIUS),
-                    imageModel = { currentImageUrl },
-                    imageOptions = ImageOptions(
-                        contentScale = ContentScale.Crop,
-                        contentDescription = null,
-                    ),
-                    loading = {},
-                    failure = {
-                        if (imageUrls.fallback.isNotEmpty() && currentImageUrl == imageUrls.primary) {
-                            currentImageUrl = imageUrls.fallback
-                        }
-                    },
-                    previewPlaceholder = painterResource(R.drawable.ic_logo_color),
-                )
+                if (currentImageUrl.isNotEmpty()) {
+                    CoilImage(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = 1.06f
+                                scaleY = 1.06f
+                            }
+                            .blur(DYNAMIC_BACKDROP_BLUR_RADIUS),
+                        imageModel = { currentImageUrl },
+                        imageOptions = ImageOptions(
+                            contentScale = ContentScale.Crop,
+                            contentDescription = null,
+                        ),
+                        loading = {},
+                        failure = {
+                            if (imageUrls.fallback.isNotEmpty() && currentImageUrl == imageUrls.primary) {
+                                currentImageUrl = imageUrls.fallback
+                            }
+                        },
+                        previewPlaceholder = painterResource(R.drawable.ic_logo_color),
+                    )
+                }
             }
         }
 
