@@ -152,4 +152,7 @@ interface SteamAppDao {
 
     @Query("UPDATE steam_app SET workshop_mods = 0, enabled_workshop_item_ids = '', workshop_download_pending = 0 WHERE id = :appId")
     suspend fun clearWorkshopState(appId: Int)
+
+    @Query("SELECT * FROM steam_app WHERE config LIKE '%\"installDir\":\"' || :dirName || '\",%'")
+    suspend fun findSteamAppWithInstallDir(dirName: String): List<SteamApp>
 }

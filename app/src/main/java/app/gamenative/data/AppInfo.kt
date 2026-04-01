@@ -17,4 +17,9 @@ data class AppInfo (
     val branch: String = "public",
     @ColumnInfo(name = "recovered_install_size_bytes", defaultValue = "0")
     val recoveredInstallSizeBytes: Long = 0L,
-)
+    @ColumnInfo("custom_install_path", defaultValue = "")
+    val customInstallPath: String = "",
+) {
+    val isImported: Boolean
+        get() = customInstallPath != ""
+}

@@ -59,6 +59,7 @@ import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.StorageUtils
 import app.gamenative.workshop.WorkshopManager
 import app.gamenative.NetworkMonitor
+import app.gamenative.service.SteamService.Companion.getInstalledApp
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.posthog.PostHog
 import com.winlator.container.ContainerData
@@ -79,6 +80,7 @@ import app.gamenative.ui.component.dialog.state.GameManagerDialogState
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.util.SteamSaveTransfer
 import app.gamenative.utils.ContainerUtils.getContainer
+import app.gamenative.utils.CustomGameScanner
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import timber.log.Timber
@@ -1223,6 +1225,8 @@ class SteamAppScreen : BaseAppScreen() {
                             hideUninstallDialog(libraryItem.appId)
 
                             CoroutineScope(Dispatchers.IO).launch {
+                                val installedAppInfo = getInstalledApp(libraryItem.gameId)!!
+
                                 val success = SteamService.deleteApp(gameId)
                                 DownloadService.invalidateCache()
                                 withContext(Dispatchers.Main) {
@@ -1243,6 +1247,13 @@ class SteamAppScreen : BaseAppScreen() {
                                         )
                                     } else {
                                         SnackbarManager.show(context.getString(R.string.steam_uninstall_failed))
+                                    }
+                                }
+
+                                // Back to home screen as the game is imported
+                                if (success && installedAppInfo.isImported) {
+                                    withContext(Dispatchers.Main) {
+                                        onBack()
                                     }
                                 }
                             }

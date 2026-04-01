@@ -174,6 +174,7 @@ import app.gamenative.statsgen.StatType
 import app.gamenative.statsgen.StatsAchievementsGenerator
 import app.gamenative.statsgen.VdfParser
 import app.gamenative.utils.DownloadSpeedConfig
+import app.gamenative.utils.CustomGameScanner
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -601,6 +602,10 @@ class SteamService : Service(), IChallengeUrlChanged {
             return runBlocking(Dispatchers.IO) { instance?.appInfoDao?.getInstalledApp(appId) }
         }
 
+        fun findSteamAppWithInstallDir(dirName: String): List<SteamApp>? {
+            return runBlocking(Dispatchers.IO) { instance?.appDao?.findSteamAppWithInstallDir(dirName) }
+        }
+
         fun getInstalledDepotsOf(appId: Int): List<Int>? {
             return getInstalledApp(appId)?.downloadedDepots
         }
@@ -935,6 +940,13 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         fun getAppDirPath(gameId: Int): String {
             val info = getAppInfoOf(gameId)
+
+            // For installed game, check whether it has customInstallPath and return it
+            val appInfo = getInstalledApp(gameId)
+            if (appInfo != null && appInfo.isImported) {
+                return appInfo.customInstallPath
+            }
+
             val appName = getAppDirName(info)
             val oldName = info?.name.orEmpty()
             val names = if (oldName.isNotEmpty() && oldName != appName) listOf(appName, oldName) else listOf(appName)
@@ -1168,8 +1180,30 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         fun deleteApp(appId: Int): Boolean {
             // snapshot path before marker removal (removing the marker changes resolution)
-            val appDirPath = getAppDirPath(appId)
-            MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            val appInfo = getInstalledApp(appId)
+            val result = if (appInfo?.isImported == true) {
+                // For imported game, do cleanup
+                // Remove from manual folders list and invalidate cache
+                val folderPath = appInfo.customInstallPath
+                val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
+                manualFolders.remove(folderPath)
+                PrefManager.customGameManualFolders = manualFolders
+                CustomGameScanner.invalidateCache()
+
+                MarkerUtils.removeMarker(folderPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+
+                true
+            } else {
+                val appDirPath = getAppDirPath(appId)
+                val appDir = File(appDirPath)
+
+                if (appDir.exists()) {
+                    MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                }
+
+                File(appDirPath).deleteRecursively()
+            }
+
             // Remove from DB
             workshopPausedApps.remove(appId)
             with(instance!!) {
@@ -1191,7 +1225,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
             }
 
-            return File(appDirPath).deleteRecursively()
+            return result
         }
 
         fun downloadApp(appId: Int): DownloadInfo? {
@@ -1930,8 +1964,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 val updatedDlcDepots = (appInfo.dlcDepots + selectedDlcAppIds).distinct()
 
                 instance?.appInfoDao?.update(
-                    AppInfo(
-                        downloadingAppId,
+                    appInfo.copy(
                         isDownloaded = true,
                         downloadedDepots = updatedDownloadedDepots.sorted(),
                         dlcDepots = updatedDlcDepots.sorted(),

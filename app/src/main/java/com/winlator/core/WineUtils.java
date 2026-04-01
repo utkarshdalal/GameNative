@@ -19,6 +19,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
+import app.gamenative.PrefManager;
 import timber.log.Timber;
 
 public abstract class WineUtils {
@@ -63,8 +64,12 @@ public abstract class WineUtils {
             FileUtils.symlink(path, dosdevicesPath+"/"+drive[0].toLowerCase(Locale.ENGLISH)+":");
 
             // Check if this is the A: drive (game directory)
-            if (drive[0].equals("A") && path.contains("/Steam/steamapps/common/")) {
-                gameDirectoryPath = path;
+            if (drive[0].equals("A")) {
+                if (path.contains("/Steam/steamapps/common/")) {
+                    gameDirectoryPath = path;
+                } else if (PrefManager.INSTANCE.getCustomGameManualFolders().contains(path)) {
+                    gameDirectoryPath = path;
+                }
             }
         }
 
