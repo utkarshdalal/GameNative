@@ -281,8 +281,11 @@ internal fun LibraryCarouselPane(
     val currentAppInfoList by rememberUpdatedState(state.appInfoList)
     LaunchedEffect(listState) {
         var pendingUpdate: Job? = null
-        snapshotFlow { listState.isScrollInProgress }
-            .collect { isScrolling ->
+        // Include centeredIndex in the pair so that the flow also fires when
+        // items first appear (centeredIndex transitions -1 → valid index on
+        // initial data load), not only when isScrollInProgress changes.
+        snapshotFlow { listState.isScrollInProgress to centeredIndex }
+            .collect { (isScrolling, _) ->
                 pendingUpdate?.cancel()
                 if (!isScrolling) {
                     pendingUpdate = launch {
