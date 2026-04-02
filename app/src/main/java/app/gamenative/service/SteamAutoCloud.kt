@@ -315,19 +315,23 @@ object SteamAutoCloud {
                 // Also scan the IS cache for files written via ISteamRemoteStorage::FileWrite().
                 if (cloudFileList != null) {
                     val isCachePath = Paths.get(prefixToPath(PathType.SteamUserData.name))
-                    val pathTypePairs = getPathTypePairs(cloudFileList)
                     cloudFileList.files
                         .filter { !filenameMatchesUfsPattern(it.filename, appInfo.ufs.saveFilePatterns) }
                         .forEach { cloudFile ->
                             val isFilePath = isCachePath.resolve(cloudFile.filename)
                             if (Files.exists(isFilePath)) {
                                 val sha = streamingShaHash(isFilePath)
-                                val cloudRoot = if (cloudFile.pathPrefixIndex < pathTypePairs.size)
-                                    PathType.from(pathTypePairs[cloudFile.pathPrefixIndex].first)
-                                else PathType.SteamUserData
+                                // Derive cloudPath and cloudRoot directly from pathPrefixes using
+                                // pathPrefixIndex — not from pathTypePairs, whose indices differ
+                                // after flatten().distinct() when multiple prefixes share a root.
                                 val cloudPath = if (cloudFile.pathPrefixIndex < cloudFileList.pathPrefixes.size)
                                     cloudFileList.pathPrefixes[cloudFile.pathPrefixIndex]
                                 else ""
+                                val cloudRoot = findPlaceholderWithin(cloudPath)
+                                    .firstOrNull()?.value
+                                    ?.let { PathType.from(it) }
+                                    ?.takeIf { it != PathType.None }
+                                    ?: PathType.SteamUserData
                                 Timber.i(
                                     "Found IS-cache file ${isFilePath.pathString}" +
                                         " cloudRoot=$cloudRoot cloudPath=$cloudPath"

@@ -906,9 +906,8 @@ object SteamUtils {
         }.getOrDefault("english").lowercase()
         val useSteamInput = container.getExtra("useSteamInput", "false").toBoolean()
 
-        // Get appInfo to check if saveFilePatterns exist (used for both user and app configs)
+        // Get appInfo for cloud save config generation
         val appInfo = getAppInfoOf(steamAppId)
-        val hasSaveFilePatterns = appInfo?.ufs?.saveFilePatterns?.isNotEmpty() == true
 
         val iniContent = buildString {
             appendLine("[user::general]")
