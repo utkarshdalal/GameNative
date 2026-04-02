@@ -54,6 +54,20 @@ object SteamAutoCloud {
 
     private const val MAX_USER_FILE_RETRIES = 3
 
+    /**
+     * Returns true if [filename] matches at least one of the UFS [patterns] globs.
+     * Files that return false were written via ISteamRemoteStorage::FileWrite() and need
+     * separate handling from plain auto-cloud files.
+     */
+    private fun filenameMatchesUfsPattern(filename: String, patterns: List<SaveFilePattern>): Boolean {
+        if (patterns.isEmpty()) return false
+        return patterns.any { p ->
+            val parts = p.pattern.split("*").filter { it.isNotEmpty() }
+            if (parts.isEmpty()) return@any true   // bare "*" matches everything
+            parts.all { filename.contains(it, ignoreCase = true) }
+        }
+    }
+
     /** Computes SHA-1 hash by streaming the file in chunks to avoid OOM on large files. */
     private fun streamingShaHash(path: Path): ByteArray {
         val digest = MessageDigest.getInstance("SHA-1")
@@ -197,6 +211,17 @@ object SteamAutoCloud {
                 )
             }
 
+            // ISteamRemoteStorage files don't match the UFS glob; route them to the IS cache
+            // (SteamUserData) so the GSE can serve them via ISteamRemoteStorage::FileRead().
+            if (appInfo.ufs.saveFilePatterns.isNotEmpty() &&
+                !filenameMatchesUfsPattern(file.filename, appInfo.ufs.saveFilePatterns)
+            ) {
+                return@getFullFilePath Paths.get(
+                    prefixToPath(PathType.SteamUserData.name),
+                    file.filename
+                )
+            }
+
             val convertedPrefixes = convertPrefixes(fileList)
 
             if (file.pathPrefixIndex < fileList.pathPrefixes.size) {
@@ -256,7 +281,7 @@ object SteamAutoCloud {
                 }
             }
 
-        val getLocalUserFilesAsPrefixMap: () -> Map<String, List<UserFileInfo>> = {
+        val getLocalUserFilesAsPrefixMap: (AppFileChangeList?) -> Map<String, List<UserFileInfo>> = { cloudFileList ->
             val savePatterns = appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
 
             if (savePatterns.isNotEmpty()) {
@@ -285,6 +310,41 @@ object SteamAutoCloud {
 
                     val prefixKey = Paths.get(userFile.prefix).pathString
                     result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
+                }
+
+                // Also scan the IS cache for files written via ISteamRemoteStorage::FileWrite().
+                if (cloudFileList != null) {
+                    val isCachePath = Paths.get(prefixToPath(PathType.SteamUserData.name))
+                    val pathTypePairs = getPathTypePairs(cloudFileList)
+                    cloudFileList.files
+                        .filter { !filenameMatchesUfsPattern(it.filename, appInfo.ufs.saveFilePatterns) }
+                        .forEach { cloudFile ->
+                            val isFilePath = isCachePath.resolve(cloudFile.filename)
+                            if (Files.exists(isFilePath)) {
+                                val sha = streamingShaHash(isFilePath)
+                                val cloudRoot = if (cloudFile.pathPrefixIndex < pathTypePairs.size)
+                                    PathType.from(pathTypePairs[cloudFile.pathPrefixIndex].first)
+                                else PathType.SteamUserData
+                                val cloudPath = if (cloudFile.pathPrefixIndex < cloudFileList.pathPrefixes.size)
+                                    cloudFileList.pathPrefixes[cloudFile.pathPrefixIndex]
+                                else ""
+                                Timber.i(
+                                    "Found IS-cache file ${isFilePath.pathString}" +
+                                        " cloudRoot=$cloudRoot cloudPath=$cloudPath"
+                                )
+                                val fileInfo = UserFileInfo(
+                                    root = PathType.SteamUserData,
+                                    path = "",
+                                    filename = cloudFile.filename,
+                                    timestamp = Files.getLastModifiedTime(isFilePath).toMillis(),
+                                    sha = sha,
+                                    cloudRoot = cloudRoot,
+                                    cloudPath = cloudPath,
+                                )
+                                val prefixKey = Paths.get(fileInfo.prefix).pathString
+                                result.getOrPut(prefixKey) { mutableListOf() }.add(fileInfo)
+                            }
+                        }
                 }
 
                 result
@@ -350,7 +410,10 @@ object SteamAutoCloud {
                 val totalFiles = fileList.files.size
 
                 fileList.files.forEachIndexed { index, file ->
-                    val prefixedPath = getFilePrefixPath(file, fileList)
+                    // IS files must be requested by bare filename; the prefixed path returns an empty urlHost.
+                    val isISFile = appInfo.ufs.saveFilePatterns.isNotEmpty() &&
+                        !filenameMatchesUfsPattern(file.filename, appInfo.ufs.saveFilePatterns)
+                    val prefixedPath = if (isISFile) file.filename else getFilePrefixPath(file, fileList)
                     val actualFilePath = getFullFilePath(file, fileList)
 
                     Timber.i("$prefixedPath -> $actualFilePath")
@@ -700,7 +763,7 @@ object SteamAutoCloud {
             val allLocalUserFiles: List<UserFileInfo>
 
             microsecInitCaches = measureTime {
-                localUserFilesMap = getLocalUserFilesAsPrefixMap()
+                localUserFilesMap = getLocalUserFilesAsPrefixMap(appFileListChange)
                 allLocalUserFiles = localUserFilesMap.map { it.value }.flatten()
             }.inWholeMicroseconds
 
@@ -737,7 +800,7 @@ object SteamAutoCloud {
                     val updatedLocalFiles: Map<String, List<UserFileInfo>>
                     val hasLocalChanges: Boolean
                     microsecValidateState = measureTime {
-                        updatedLocalFiles = getLocalUserFilesAsPrefixMap()
+                        updatedLocalFiles = getLocalUserFilesAsPrefixMap(appFileListChange)
                         hasLocalChanges = hasHashConflicts(updatedLocalFiles, appFileListChange)
                         filesManaged = updatedLocalFiles.size
                     }.inWholeMicroseconds

@@ -919,13 +919,12 @@ object SteamUtils {
                 appendLine("ticket=$ticketBase64")
             }
 
-            // Only add [user::saves] section if no saveFilePatterns are defined
-            if (!hasSaveFilePatterns) {
-                val steamUserDataPath = "C:\\Program Files (x86)\\Steam\\userdata\\$accountId"
-                appendLine()
-                appendLine("[user::saves]")
-                appendLine("local_save_path=$steamUserDataPath")
-            }
+            // Always written so the GSE reads ISteamRemoteStorage files from the same
+            // SteamUserData path that GN's cloud sync downloads to.
+            val steamUserDataPath = "C:\\Program Files (x86)\\Steam\\userdata\\$accountId"
+            appendLine()
+            appendLine("[user::saves]")
+            appendLine("local_save_path=$steamUserDataPath")
         }
 
         if (Files.notExists(configsIni)) Files.createFile(configsIni)
