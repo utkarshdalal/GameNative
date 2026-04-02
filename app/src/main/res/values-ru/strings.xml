@@ -286,6 +286,7 @@
     <string name="denuvo">Denuvo</string>
     <string name="describe_what_happened">Опишите, что произошло</string>
     <string name="destination_downloads">Загрузки и хранилище</string>
+    <string name="downloads_section_title">Загрузки</string>
     <string name="destination_library">Библиотека</string>
     <string name="developer">Разработчик</string>
     <string name="direct3d">Direct3D</string>

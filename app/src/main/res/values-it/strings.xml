@@ -94,6 +94,7 @@
     <string name="confirm_delete">Conferma Eliminazione</string>
     <string name="destination_library">Libreria</string>
     <string name="destination_downloads">Download e archiviazione</string>
+    <string name="downloads_section_title">Download</string>
 
     <string name="downloads_empty">Nessun download attivo</string>
     <string name="downloads_overview_subtitle">Monitora download attivi, in pausa e riprendibili</string>
