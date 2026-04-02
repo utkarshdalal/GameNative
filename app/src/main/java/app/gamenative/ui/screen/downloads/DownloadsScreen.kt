@@ -101,13 +101,13 @@ private enum class DownloadsSection(
     val titleResId: Int,
     val icon: ImageVector,
 ) {
-    Downloads(
-        titleResId = R.string.settings_downloads_title,
-        icon = Icons.Default.Download,
-    ),
     Storage(
         titleResId = R.string.settings_storage_manage_title,
         icon = Icons.Default.Storage,
+    ),
+    Downloads(
+        titleResId = R.string.downloads_section_title,
+        icon = Icons.Default.Download,
     ),
 }
 

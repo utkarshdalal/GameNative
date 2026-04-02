@@ -104,6 +104,7 @@
     <string name="confirm_delete">Confirm Deletion</string>
     <string name="destination_library">Library</string>
     <string name="destination_downloads">Downloads &amp; Storage</string>
+    <string name="downloads_section_title">Downloads</string>
     <string name="downloads_empty">No active downloads</string>
     <string name="downloads_overview_subtitle">Track active, paused, and resumable downloads</string>
     <string name="downloads_cancel_confirm">Cancel download and delete files for %1$s?</string>
