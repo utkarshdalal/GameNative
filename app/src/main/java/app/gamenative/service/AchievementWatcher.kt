@@ -20,14 +20,14 @@ class AchievementWatcher(
     private val displayNameMap: Map<String, String>,
     private val iconUrlMap: Map<String, String?>,
     private val configDirectory: String?,
-) {
+) : SessionWatcher {
     private val observers = mutableListOf<FileObserver>()
     private val notifiedNames = mutableSetOf<String>()
     private val uploadedNames = mutableSetOf<String>()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var uploadJob: Job? = null
 
-    fun start() {
+    override fun start() {
         // Snapshot all currently earned achievements so we don't notify for
         // pre-existing unlocks when the game writes its initial achievements.json.
         for (dir in watchDirs) {
@@ -65,7 +65,7 @@ class AchievementWatcher(
         Timber.tag("achievements").d("AchievementWatcher started, watching ${watchDirs.size} dirs")
     }
 
-    fun stop() {
+    override fun stop() {
         observers.forEach { it.stopWatching() }
         observers.clear()
         scope.cancel()

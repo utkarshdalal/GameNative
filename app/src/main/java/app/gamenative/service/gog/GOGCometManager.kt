@@ -2,8 +2,10 @@ package app.gamenative.service.gog
 
 import android.content.Context
 import app.gamenative.data.GOGCredentials
+import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.Net
 import com.winlator.container.Container
+import com.winlator.xenvironment.ImageFs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -56,6 +58,39 @@ object GOGCometManager {
             Result.success("cmd /c $PREFIX_LAUNCHER_WINDOWS_PATH")
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to prepare Comet launch command")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getGameplayDatabaseFile(
+        context: Context,
+        container: Container,
+        appId: String,
+    ): Result<File> = withContext(Dispatchers.IO) {
+        try {
+            val credentials = GOGAuthManager.getStoredCredentials(context).getOrElse { error ->
+                return@withContext Result.failure(error)
+            }
+
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+                ?: return@withContext Result.failure(IllegalArgumentException("Invalid GOG appId: $appId"))
+            val installPath = GOGService.getInstallPath(gameId.toString())
+                ?: return@withContext Result.failure(IllegalStateException("No install path for $appId"))
+            val infoJson = GOGService.getInstance()?.gogManager?.readInfoFile(appId, installPath)
+                ?: return@withContext Result.failure(IllegalStateException("Could not read GOG info file for $appId"))
+            val clientId = infoJson.optString("clientId", "")
+            if (clientId.isBlank()) {
+                return@withContext Result.failure(IllegalStateException("No clientId found for $appId"))
+            }
+
+            val gameplayDb = File(
+                container.getRootDir(),
+                ".wine/drive_c/users/${ImageFs.USER}/AppData/Local/comet/gameplay/$clientId/${credentials.userId}/gameplay.db",
+            )
+            Timber.tag(TAG).i("Resolved Comet gameplay DB for $appId: ${gameplayDb.absolutePath}")
+            Result.success(gameplayDb)
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to resolve Comet gameplay DB for $appId")
             Result.failure(e)
         }
     }

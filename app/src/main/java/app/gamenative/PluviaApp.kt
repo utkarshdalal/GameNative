@@ -194,7 +194,7 @@ class PluviaApp : SplitCompatApplication() {
         var inputControlsView: InputControlsView? = null
         var inputControlsManager: InputControlsManager? = null
         var touchpadView: TouchpadView? = null
-        var achievementWatcher: app.gamenative.service.AchievementWatcher? = null
+        var achievementWatcher: app.gamenative.service.SessionWatcher? = null
 
         var isOverlayPaused by mutableStateOf(false)
         @Volatile

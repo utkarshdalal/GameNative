@@ -86,6 +86,8 @@ import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
+import app.gamenative.service.gog.GOGCometAchievementWatcher
+import app.gamenative.service.gog.GOGCometManager
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
@@ -2991,6 +2993,24 @@ private fun setupXEnvironment(
                 iconUrlMap = iconUrlMap,
                 configDirectory = configDirectory,
             ).also { it.start() }
+        }
+    } else if (gameSource == GameSource.GOG) {
+        val gameplayDatabase: File? = runBlocking {
+            GOGCometManager.getGameplayDatabaseFile(
+                context = context,
+                container = container,
+                appId = appId,
+            )
+        }.getOrNull()
+
+        if (gameplayDatabase != null) {
+            Timber.tag("GOG").i("Starting Comet achievement watcher for $appId at ${gameplayDatabase.absolutePath}")
+            PluviaApp.achievementWatcher = GOGCometAchievementWatcher(
+                appId = appId,
+                gameplayDatabase = gameplayDatabase,
+            ).also { it.start() }
+        } else {
+            Timber.tag("GOG").w("Could not resolve Comet gameplay DB for $appId; native GOG achievement popups disabled")
         }
     }
 
