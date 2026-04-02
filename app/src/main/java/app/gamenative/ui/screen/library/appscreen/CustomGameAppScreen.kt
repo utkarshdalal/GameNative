@@ -191,8 +191,8 @@ class CustomGameAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
         onClickPlay: (Boolean) -> Unit
     ) {
-        // Launch the game; preLaunchApp will show EXECUTABLE_NOT_FOUND if no exe (getLaunchExecutable blank)
-        PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(libraryItem.appId))
+        // custom games don't need downloading — go straight to preLaunchApp
+        onClickPlay(false)
     }
 
     override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
@@ -415,6 +415,21 @@ class CustomGameAppScreen : BaseAppScreen() {
                     }
                 }
             },
+        )
+    }
+
+    /**
+     * For Custom games, only show Export/Import config in the Container section.
+     * We intentionally omit the generic "Use known config" here.
+     */
+    @Composable
+    override fun getConfigMenuOptions(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): List<AppMenuOption> {
+        return listOfNotNull(
+            getExportConfigOption(context, libraryItem),
+            getImportConfigOption(context, libraryItem),
         )
     }
 

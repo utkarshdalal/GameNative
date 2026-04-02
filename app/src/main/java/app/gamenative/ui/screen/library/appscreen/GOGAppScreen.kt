@@ -145,6 +145,12 @@ class GOGAppScreen : BaseAppScreen() {
             0L
         }
 
+        val gameNameForCompatibility = game?.title ?: libraryItem.name
+        val (compatibilityMessage, compatibilityColor) = rememberCompatibilityInfo(
+            context = context,
+            gameName = gameNameForCompatibility,
+        )
+
         val displayInfo = GameDisplayInfo(
             name = game?.title ?: libraryItem.name,
             iconUrl = game?.iconUrl ?: libraryItem.iconHash,
@@ -159,6 +165,8 @@ class GOGAppScreen : BaseAppScreen() {
             installLocation = game?.installPath?.takeIf { it.isNotEmpty() },
             sizeOnDisk = sizeOnDisk,
             sizeFromStore = sizeFromStore,
+            compatibilityMessage = compatibilityMessage,
+            compatibilityColor = compatibilityColor,
         )
         Timber.tag(TAG).d("Returning GameDisplayInfo: name=${displayInfo.name}, iconUrl=${displayInfo.iconUrl}, heroImageUrl=${displayInfo.heroImageUrl}, developer=${displayInfo.developer}, installLocation=${displayInfo.installLocation}")
         return displayInfo
@@ -208,9 +216,7 @@ class GOGAppScreen : BaseAppScreen() {
     }
 
     override fun hasPartialDownload(context: Context, libraryItem: LibraryItem): Boolean {
-        if (isDownloading(context, libraryItem) || isInstalled(context, libraryItem)) return false
-        val installPath = GOGConstants.getGameInstallPath(libraryItem.name)
-        return File(installPath).exists() && !MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+        return GOGService.hasPartialDownload(libraryItem.gameId.toString(), libraryItem.name)
     }
 
     override fun onDownloadInstallClick(context: Context, libraryItem: LibraryItem, onClickPlay: (Boolean) -> Unit) {

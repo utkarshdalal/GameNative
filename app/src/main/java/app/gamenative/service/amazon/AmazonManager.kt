@@ -57,6 +57,11 @@ class AmazonManager @Inject constructor(
         amazonGameDao.getAllAsList()
     }
 
+    /** Return non-installed Amazon games from DB. */
+    suspend fun getNonInstalledGames(): List<AmazonGame> = withContext(Dispatchers.IO) {
+        amazonGameDao.getNonInstalledGames()
+    }
+
     /** Mark a game as installed and persist install metadata. */
     suspend fun markInstalled(productId: String, installPath: String, installSize: Long, versionId: String = "") =
         withContext(Dispatchers.IO) {

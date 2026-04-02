@@ -53,7 +53,7 @@ android {
         targetSdk = 28
 
         versionCode = 13
-        versionName = "0.8.1"
+        versionName = "0.9.0"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -179,6 +179,15 @@ android {
         ignoreFormatFailures  = false
     }
 
+    // xconnectorpatch is shipped as a prebuilt jniLib because our APK packaging flow
+    // does not rebuild native libraries during release creation.
+    // externalNativeBuild {
+    //     cmake {
+    //         path = file("src/main/cpp/xconnectorpatch/CMakeLists.txt")
+    //         version = "3.22.1"
+    //     }
+    // }
+
     // build extras needed in libwinlator_bionic.so
     // externalNativeBuild {
     //     cmake {
@@ -212,8 +221,8 @@ dependencies {
     // JavaSteam
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
-        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-12-SNAPSHOT.jar"))
-        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0-12-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0.1-15-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0.1-15-SNAPSHOT.jar"))
         implementation(libs.bundles.javasteam.dev)
     } else {
         implementation(libs.javasteam) {

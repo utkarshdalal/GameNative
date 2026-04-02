@@ -71,6 +71,13 @@
     <string name="install_app">安装</string>
     <string name="delete_app">删除</string>
     <string name="uninstall">卸载</string>
+    <string name="branch">分支</string>
+    <string name="change_branch">更改分支</string>
+    <string name="change_branch_message">通过开发者提供的分支从 Steam 下载游戏的替代版本。输入访问代码以解锁私有分支。</string>
+    <string name="private_branch_password_hint">输入访问代码</string>
+    <string name="private_branch_password_check">验证代码</string>
+    <string name="private_branch_password_success">分支已解锁！</string>
+    <string name="private_branch_password_invalid">访问代码无效</string>
     <string name="run_app">开始游戏</string>
     <string name="download_prompt_title">安装应用</string>
     <string name="calculating_space_requirements">计算空间需求中…</string>
@@ -85,10 +92,59 @@
     <string name="untitled">未命名</string>
     <string name="confirm_delete">确认删除</string>
     <string name="destination_library">游戏库</string>
-    <string name="destination_downloads">下载</string>
-    <string name="destination_friends">好友</string>
+    <string name="destination_downloads">下载和存储</string>
 
     <!-- Library Tabs -->
+    <string name="downloads_empty">暂无活动下载</string>
+    <string name="downloads_overview_subtitle">跟踪活动、已暂停和可恢复的下载</string>
+    <string name="downloads_cancel_confirm">要取消下载并删除 %1$s 的文件吗？</string>
+    <string name="downloads_cancel_all">全部取消</string>
+    <string name="downloads_clear_finished">清除已完成项</string>
+    <string name="downloads_pause_all">全部暂停</string>
+    <string name="downloads_resume_all">全部继续</string>
+    <string name="downloads_resume_available">可继续下载</string>
+    <string name="downloads_status_cancelled">已取消</string>
+    <string name="downloads_status_complete">已完成</string>
+    <string name="downloads_status_failed">失败</string>
+    <string name="downloads_status_paused">已暂停</string>
+    <string name="downloads_summary">在一处管理活动下载和存储</string>
+    <string name="container_storage_title">存储管理</string>
+    <string name="container_storage_subtitle">在内部存储与外部存储之间移动安装内容</string>
+    <string name="container_storage_summary">%1$d 项 • %2$s</string>
+    <string name="container_storage_loading">正在加载存储清单...</string>
+    <string name="container_storage_empty">未找到可移动的游戏安装项</string>
+    <string name="container_storage_source_and_status">%1$s • %2$s</string>
+    <string name="container_storage_source_unknown">未知来源</string>
+    <string name="container_storage_location_internal">内部</string>
+    <string name="container_storage_location_external">外部</string>
+    <string name="container_storage_location_unknown">未知</string>
+    <string name="container_storage_status_ready">就绪</string>
+    <string name="container_storage_status_orphaned">缺少游戏元数据</string>
+    <string name="container_storage_status_no_container">容器缺失</string>
+    <string name="container_storage_status_game_files_missing">游戏文件缺失</string>
+    <string name="container_storage_status_unreadable">无法读取</string>
+    <string name="container_storage_move_to_external_button">移动到外部</string>
+    <string name="container_storage_move_to_internal_button">移动到内部</string>
+    <string name="container_storage_move_external_disabled">移动游戏前，请先在设置中配置外部存储路径。</string>
+    <string name="container_storage_move_success">已将 %1$s 移动到 %2$s</string>
+    <string name="container_storage_move_failed">移动游戏失败：%1$s</string>
+    <string name="container_storage_remove_button">移除容器</string>
+    <string name="container_storage_remove_title">移除容器</string>
+    <string name="container_storage_remove_message">要移除 %1$s 的容器吗？游戏文件将保留在磁盘上。</string>
+    <string name="container_storage_remove_success">已移除 %1$s 的容器</string>
+    <string name="container_storage_remove_failed">移除容器失败</string>
+    <string name="container_storage_uninstall_button">卸载游戏</string>
+    <string name="container_storage_uninstall_title">卸载游戏</string>
+    <string name="container_storage_uninstall_message">要卸载 %1$s 并移除其容器吗？游戏文件和相关容器数据将被删除。</string>
+    <string name="container_storage_uninstall_game_only_title">仅卸载游戏</string>
+    <string name="container_storage_uninstall_game_only_message">%1$s 没有容器。只卸载游戏文件吗？</string>
+    <string name="container_storage_uninstall_success">已卸载 %1$s</string>
+    <string name="container_storage_uninstall_failed">卸载游戏失败：%1$s</string>
+    <string name="container_storage_unknown_container">未知容器</string>
+    <string name="container_storage_unknown_error">未知错误</string>
+    <string name="settings_storage_title">存储</string>
+    <string name="settings_storage_manage_title">管理存储</string>
+    <string name="settings_storage_manage_subtitle">查看安装内容、在不同存储位置之间移动它们，并清理容器</string>
     <string name="tab_all">全部</string>
     <string name="tab_steam">Steam</string>
     <string name="tab_gog">GOG</string>
@@ -268,7 +324,6 @@
     <string name="performance_hud_battery_level">电池电量</string>
     <string name="performance_hud_power_draw">功耗</string>
     <string name="performance_hud_runtime_left">剩余时间</string>
-    <string name="performance_hud_battery_temperature">电池温度</string>
     <string name="performance_hud_clock_time">时间</string>
     <string name="performance_hud_cpu_temperature">CPU 温度</string>
     <string name="performance_hud_gpu_temperature">GPU 温度</string>
@@ -586,6 +641,11 @@
     <string name="steam_offline_mode">Steam 离线模式</string>
     <string name="steam_offline_mode_description">以离线模式启动 Steam 游戏</string>
     <string name="achievement_unlocked">成就已解锁</string>
+    <string name="settings_achievement_notification_position">成就通知位置</string>
+    <string name="achievement_position_top_left">左上</string>
+    <string name="achievement_position_top_right">右上</string>
+    <string name="achievement_position_bottom_left">左下</string>
+    <string name="achievement_position_bottom_right">右下</string>
     <string name="launch_steam_client_description">降低性能并减慢启动速度\n允许在线游玩并修复 DRM 和控制器问题\n并非所有游戏都适用</string>
     <string name="allow_steam_updates">允许 Steam 更新</string>
     <string name="allow_steam_updates_description">将 Steam 更新至最新版本，会显著降低性能</string>
@@ -947,6 +1007,8 @@
     <!-- 主界面：存档冲突 -->
     <string name="main_save_conflict_title">存档冲突</string>
     <string name="main_save_conflict_message"> 远程存档与本地存档发生冲突，请选择要保留哪个？\n\n本地存档：\n\t%1$s\n远程存档：\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">选择保存版本</string>
+    <string name="main_save_conflict_upgrade_v1_message">我们已修复此游戏的云存档路径处理方式，并发现本地存档与云存档存在差异。请选择要保留的版本。\n\n本地存档：\n\t%1$s\n云存档：\n\t%2$s</string>
     <string name="main_keep_local">保留本地存档</string>
     <string name="main_keep_remote">保留远程存档</string>
 
@@ -1279,4 +1341,17 @@
     <string name="download_failed_message">无法下载所需文件。请检查您的网络连接后重试。</string>
     <string name="install_failed_title">安装失败</string>
     <string name="install_failed_message">无法安装系统文件。请重试。如果问题持续存在，请尝试使用其他网络或使用 VPN。</string>
+    <string name="settings_interface_swap_face_buttons_title">交换面键</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">交换 A↔B 和 X↔Y 按键图标</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">正在检查创意工坊模组…</string>
+    <string name="workshop_update_title">创意工坊模组更新</string>
+    <string name="workshop_update_prompt">有 %1$s MB 的模组更新可用。立即下载还是跳过？</string>
+    <string name="workshop_download_btn">下载</string>
+    <string name="workshop_skip_btn">跳过</string>
+    <string name="workshop_downloading">正在下载创意工坊模组 (%1$d/%2$d)</string>
+    <string name="workshop_processing">正在处理模组…</string>
+    <string name="workshop_failed_count">%1$d 个创意工坊模组更新失败</string>
+    <string name="workshop_download_failed">下载失败</string>
 </resources>

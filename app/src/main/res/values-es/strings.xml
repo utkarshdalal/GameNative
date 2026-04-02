@@ -81,6 +81,13 @@
     <string name="install_app">Instalar</string>
     <string name="delete_app">Borrar</string>
     <string name="uninstall">Desinstalar</string>
+    <string name="branch">Rama</string>
+    <string name="change_branch">Cambiar de rama</string>
+    <string name="change_branch_message">Descarga versiones alternativas del juego desde Steam usando ramas proporcionadas por los desarrolladores. Introduce códigos de acceso para desbloquear ramas privadas.</string>
+    <string name="private_branch_password_hint">Introduce el código de acceso</string>
+    <string name="private_branch_password_check">Comprobar código</string>
+    <string name="private_branch_password_success">¡Rama desbloqueada!</string>
+    <string name="private_branch_password_invalid">Código de acceso no válido</string>
     <string name="run_app">Jugar</string>
     <string name="download_prompt_title">Instalar aplicación</string>
     <string name="calculating_space_requirements">Calculando requisitos de espacio…</string>
@@ -95,8 +102,58 @@
     <string name="untitled">Sin título</string>
     <string name="confirm_delete">Confirmar eliminación</string>
     <string name="destination_library">Biblioteca</string>
-    <string name="destination_downloads">Descargas</string>
-    <string name="destination_friends">Amigos</string>
+    <string name="destination_downloads">Descargas y almacenamiento</string>
+
+    <string name="downloads_empty">No hay descargas activas</string>
+    <string name="downloads_overview_subtitle">Sigue las descargas activas, pausadas y reanudables</string>
+    <string name="downloads_cancel_confirm">¿Cancelar la descarga y eliminar los archivos de %1$s?</string>
+    <string name="downloads_cancel_all">Cancelar todo</string>
+    <string name="downloads_clear_finished">Limpiar finalizados</string>
+    <string name="downloads_pause_all">Pausar todo</string>
+    <string name="downloads_resume_all">Reanudar todo</string>
+    <string name="downloads_resume_available">Reanudación disponible</string>
+    <string name="downloads_status_cancelled">Cancelado</string>
+    <string name="downloads_status_complete">Completado</string>
+    <string name="downloads_status_failed">Fallido</string>
+    <string name="downloads_status_paused">Pausado</string>
+    <string name="downloads_summary">Gestiona descargas activas y almacenamiento en un solo lugar</string>
+    <string name="container_storage_title">Administrador de almacenamiento</string>
+    <string name="container_storage_subtitle">Mueve instalaciones entre almacenamiento interno y externo</string>
+    <string name="container_storage_summary">%1$d elementos • %2$s</string>
+    <string name="container_storage_loading">Cargando inventario de almacenamiento...</string>
+    <string name="container_storage_empty">No se encontraron instalaciones de juegos movibles</string>
+    <string name="container_storage_source_and_status">%1$s • %2$s</string>
+    <string name="container_storage_source_unknown">Origen desconocido</string>
+    <string name="container_storage_location_internal">Interno</string>
+    <string name="container_storage_location_external">Externo</string>
+    <string name="container_storage_location_unknown">Desconocido</string>
+    <string name="container_storage_status_ready">Listo</string>
+    <string name="container_storage_status_orphaned">Faltan metadatos del juego</string>
+    <string name="container_storage_status_no_container">Falta el contenedor</string>
+    <string name="container_storage_status_game_files_missing">Faltan los archivos del juego</string>
+    <string name="container_storage_status_unreadable">No se puede leer</string>
+    <string name="container_storage_move_to_external_button">Mover a externo</string>
+    <string name="container_storage_move_to_internal_button">Mover a interno</string>
+    <string name="container_storage_move_external_disabled">Configura una ruta de almacenamiento externo en Ajustes antes de mover juegos.</string>
+    <string name="container_storage_move_success">Se movió %1$s a %2$s</string>
+    <string name="container_storage_move_failed">No se pudo mover el juego: %1$s</string>
+    <string name="container_storage_remove_button">Quitar contenedor</string>
+    <string name="container_storage_remove_title">Quitar contenedor</string>
+    <string name="container_storage_remove_message">¿Quitar el contenedor de %1$s? Los archivos del juego permanecerán en el disco.</string>
+    <string name="container_storage_remove_success">Se quitó el contenedor de %1$s</string>
+    <string name="container_storage_remove_failed">No se pudo quitar el contenedor</string>
+    <string name="container_storage_uninstall_button">Desinstalar juego</string>
+    <string name="container_storage_uninstall_title">Desinstalar juego</string>
+    <string name="container_storage_uninstall_message">¿Desinstalar %1$s y quitar su contenedor? Se eliminarán los archivos del juego y los datos del contenedor relacionados.</string>
+    <string name="container_storage_uninstall_game_only_title">Desinstalar solo el juego</string>
+    <string name="container_storage_uninstall_game_only_message">%1$s no tiene contenedor. ¿Desinstalar solo los archivos del juego?</string>
+    <string name="container_storage_uninstall_success">Se desinstaló %1$s</string>
+    <string name="container_storage_uninstall_failed">No se pudo desinstalar el juego: %1$s</string>
+    <string name="container_storage_unknown_container">Contenedor desconocido</string>
+    <string name="container_storage_unknown_error">Error desconocido</string>
+    <string name="settings_storage_title">Almacenamiento</string>
+    <string name="settings_storage_manage_title">Gestionar almacenamiento</string>
+    <string name="settings_storage_manage_subtitle">Revisa instalaciones, muévelas entre ubicaciones de almacenamiento y limpia contenedores</string>
 
     <!-- Library Tabs -->
     <string name="tab_all">Todos</string>
@@ -284,7 +341,6 @@
     <string name="performance_hud_battery_level">Nivel de batería</string>
     <string name="performance_hud_power_draw">Consumo de energía</string>
     <string name="performance_hud_runtime_left">Tiempo restante</string>
-    <string name="performance_hud_battery_temperature">Temperatura de la batería</string>
     <string name="performance_hud_clock_time">Hora</string>
     <string name="performance_hud_cpu_temperature">Temperatura de CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura de GPU</string>
@@ -640,6 +696,11 @@
     <string name="steam_offline_mode">Modo sin conexión de Steam</string>
     <string name="steam_offline_mode_description">Inicia juegos de Steam en modo sin conexión.</string>
     <string name="achievement_unlocked">Logro desbloqueado</string>
+    <string name="settings_achievement_notification_position">Posición de notificación de logro</string>
+    <string name="achievement_position_top_left">Arriba izquierda</string>
+    <string name="achievement_position_top_right">Arriba derecha</string>
+    <string name="achievement_position_bottom_left">Abajo izquierda</string>
+    <string name="achievement_position_bottom_right">Abajo derecha</string>
     <string name="allow_steam_updates">Permitir actualizaciones de Steam</string>
     <string name="allow_steam_updates_description">Actualiza Steam a la última versión. Reduce significativamente el rendimiento.</string>
     <string name="steam_type">Tipo de Steam</string>
@@ -969,6 +1030,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Conflicto de guardado</string>
     <string name="main_save_conflict_message">Hay un archivo de guardado en la nube y otro diferente en local. ¿Cuál quieres conservar?\n\nGuardado local:\n\t%1$s\nGuardado en la nube:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Elige versión de guardado</string>
+    <string name="main_save_conflict_upgrade_v1_message">Hemos corregido el manejo de rutas de guardado en la nube para este juego y encontramos diferencias entre el guardado local y el de la nube. Elige cuál conservar.\n\nGuardado local:\n\t%1$s\nGuardado en la nube:\n\t%2$s</string>
     <string name="main_keep_local">Mantener el local</string>
     <string name="main_keep_remote">Mantener el de la nube</string>
 
@@ -1291,4 +1354,17 @@
     <string name="download_failed_message">No se pudo descargar un archivo necesario. Comprueba tu conexión de red e inténtalo de nuevo.</string>
     <string name="install_failed_title">Error de instalación</string>
     <string name="install_failed_message">No se pudieron instalar los archivos del sistema. Inténtalo de nuevo. Si el problema persiste, prueba con una red diferente o usa una VPN.</string>
+    <string name="settings_interface_swap_face_buttons_title">Intercambiar botones frontales</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Intercambia los iconos de los botones A↔B y X↔Y</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Comprobando mods del Workshop…</string>
+    <string name="workshop_update_title">Actualizaciones de mods del Workshop</string>
+    <string name="workshop_update_prompt">%1$s MB de actualizaciones de mods disponibles. ¿Descargar ahora u omitir?</string>
+    <string name="workshop_download_btn">Descargar</string>
+    <string name="workshop_skip_btn">Omitir</string>
+    <string name="workshop_downloading">Descargando mods del Workshop (%1$d/%2$d)</string>
+    <string name="workshop_processing">Procesando mods…</string>
+    <string name="workshop_failed_count">%1$d mod(s) del Workshop no se pudieron actualizar</string>
+    <string name="workshop_download_failed">Error en la descarga</string>
 </resources>

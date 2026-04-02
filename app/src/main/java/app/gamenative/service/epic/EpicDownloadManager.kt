@@ -362,6 +362,7 @@ class EpicDownloadManager @Inject constructor(
             downloadInfo.updateStatusMessage("Complete")
             // Ensure bytes-based progress shows 100% completion
             downloadInfo.updateBytesDownloaded(downloadInfo.getTotalExpectedBytes() - downloadInfo.getBytesDownloaded())
+            downloadInfo.clearPersistedBytesDownloaded(installPath)
             downloadInfo.setProgress(1.0f)
             downloadInfo.setActive(false)
             downloadInfo.emitProgressChange()

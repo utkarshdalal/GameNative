@@ -60,6 +60,13 @@
     <string name="install_app">Інсталювати</string>
     <string name="delete_app">Видалити</string>
     <string name="uninstall">Деінсталювати</string>
+    <string name="branch">Гілка</string>
+    <string name="change_branch">Змінити гілку</string>
+    <string name="change_branch_message">Завантажуйте альтернативні версії гри зі Steam за допомогою гілок, наданих розробниками. Введіть коди доступу, щоб розблокувати приватні гілки.</string>
+    <string name="private_branch_password_hint">Введіть код доступу</string>
+    <string name="private_branch_password_check">Перевірити код</string>
+    <string name="private_branch_password_success">Гілку розблоковано!</string>
+    <string name="private_branch_password_invalid">Невірний код доступу</string>
     <string name="run_app">Грати</string>
     <string name="gog_uninstall_game_title">Деінсталювати гру</string>
     <string name="gog_uninstall_confirmation_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
@@ -78,10 +85,59 @@
     <string name="untitled">Без назви</string>
     <string name="confirm_delete">Підтвердити видалення</string>
     <string name="destination_library">Бібліотека</string>
-    <string name="destination_downloads">Завантаження</string>
-    <string name="destination_friends">Друзі</string>
+    <string name="destination_downloads">Завантаження й сховище</string>
 
     <!-- Library Tabs -->
+    <string name="downloads_empty">Немає активних завантажень</string>
+    <string name="downloads_overview_subtitle">Стежте за активними, призупиненими та доступними для відновлення завантаженнями</string>
+    <string name="downloads_cancel_confirm">Скасувати завантаження й видалити файли для %1$s?</string>
+    <string name="downloads_cancel_all">Скасувати все</string>
+    <string name="downloads_clear_finished">Очистити завершені</string>
+    <string name="downloads_pause_all">Призупинити все</string>
+    <string name="downloads_resume_all">Відновити все</string>
+    <string name="downloads_resume_available">Відновлення доступне</string>
+    <string name="downloads_status_cancelled">Скасовано</string>
+    <string name="downloads_status_complete">Завершено</string>
+    <string name="downloads_status_failed">Помилка</string>
+    <string name="downloads_status_paused">Призупинено</string>
+    <string name="downloads_summary">Керуйте активними завантаженнями та сховищем в одному місці</string>
+    <string name="container_storage_title">Менеджер сховища</string>
+    <string name="container_storage_subtitle">Переміщуйте встановлення між внутрішнім і зовнішнім сховищем</string>
+    <string name="container_storage_summary">%1$d елементів • %2$s</string>
+    <string name="container_storage_loading">Завантаження інвентарю сховища...</string>
+    <string name="container_storage_empty">Не знайдено встановлених ігор, які можна перемістити</string>
+    <string name="container_storage_source_and_status">%1$s • %2$s</string>
+    <string name="container_storage_source_unknown">Невідоме джерело</string>
+    <string name="container_storage_location_internal">Внутрішнє</string>
+    <string name="container_storage_location_external">Зовнішнє</string>
+    <string name="container_storage_location_unknown">Невідомо</string>
+    <string name="container_storage_status_ready">Готово</string>
+    <string name="container_storage_status_orphaned">Бракує метаданих гри</string>
+    <string name="container_storage_status_no_container">Контейнер відсутній</string>
+    <string name="container_storage_status_game_files_missing">Файли гри відсутні</string>
+    <string name="container_storage_status_unreadable">Нечитабельно</string>
+    <string name="container_storage_move_to_external_button">Перемістити на зовнішнє</string>
+    <string name="container_storage_move_to_internal_button">Перемістити на внутрішнє</string>
+    <string name="container_storage_move_external_disabled">Перш ніж переміщувати ігри, у Налаштуваннях задайте шлях до зовнішнього сховища.</string>
+    <string name="container_storage_move_success">Переміщено %1$s до %2$s</string>
+    <string name="container_storage_move_failed">Не вдалося перемістити гру: %1$s</string>
+    <string name="container_storage_remove_button">Видалити контейнер</string>
+    <string name="container_storage_remove_title">Видалити контейнер</string>
+    <string name="container_storage_remove_message">Видалити контейнер для %1$s? Файли гри залишаться на диску.</string>
+    <string name="container_storage_remove_success">Контейнер для %1$s видалено</string>
+    <string name="container_storage_remove_failed">Не вдалося видалити контейнер</string>
+    <string name="container_storage_uninstall_button">Видалити гру</string>
+    <string name="container_storage_uninstall_title">Видалити гру</string>
+    <string name="container_storage_uninstall_message">Видалити %1$s і його контейнер? Файли гри та пов’язані дані контейнера буде видалено.</string>
+    <string name="container_storage_uninstall_game_only_title">Видалити лише гру</string>
+    <string name="container_storage_uninstall_game_only_message">%1$s не має контейнера. Видалити лише файли гри?</string>
+    <string name="container_storage_uninstall_success">%1$s видалено</string>
+    <string name="container_storage_uninstall_failed">Не вдалося видалити гру: %1$s</string>
+    <string name="container_storage_unknown_container">Невідомий контейнер</string>
+    <string name="container_storage_unknown_error">Невідома помилка</string>
+    <string name="settings_storage_title">Сховище</string>
+    <string name="settings_storage_manage_title">Керування сховищем</string>
+    <string name="settings_storage_manage_subtitle">Переглядайте встановлення, переміщуйте їх між місцями зберігання та очищайте контейнери</string>
     <string name="tab_all">Усі</string>
     <string name="tab_steam">Steam</string>
     <string name="tab_gog">GOG</string>
@@ -265,7 +321,6 @@
     <string name="performance_hud_battery_level">Рівень батареї</string>
     <string name="performance_hud_power_draw">Споживання енергії</string>
     <string name="performance_hud_runtime_left">Залишок часу</string>
-    <string name="performance_hud_battery_temperature">Температура батареї</string>
     <string name="performance_hud_clock_time">Час</string>
     <string name="performance_hud_cpu_temperature">Температура CPU</string>
     <string name="performance_hud_gpu_temperature">Температура GPU</string>
@@ -586,6 +641,11 @@
     <string name="steam_offline_mode">Режим Офлайн Steam</string>
     <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
     <string name="achievement_unlocked">Досягнення розблоковано</string>
+    <string name="settings_achievement_notification_position">Позиція сповіщення про досягнення</string>
+    <string name="achievement_position_top_left">Лівий верхній</string>
+    <string name="achievement_position_top_right">Правий верхній</string>
+    <string name="achievement_position_bottom_left">Лівий нижній</string>
+    <string name="achievement_position_bottom_right">Правий нижній</string>
     <string name="launch_steam_client_description">Зменшує продуктивність та сповільнює запуск.\nДозволяє онлайн гру, а також вирішує проблему DRM та контролеру.\nПрацює не з усіма іграми</string>
     <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
     <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>
@@ -949,6 +1009,8 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Конфлікт збережень</string>
     <string name="main_save_conflict_message">Знайдено нове віддалене та нове локальне збереження. Яке з них залишити?\n\nЛокальне збереження:\n\t%1$s\nВіддалене збереження:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Виберіть версію збереження</string>
+    <string name="main_save_conflict_upgrade_v1_message">Ми виправили обробку шляхів хмарних збережень для цієї гри та виявили відмінності між локальним і хмарним збереженням. Виберіть, яку версію залишити.\n\nЛокальне збереження:\n\t%1$s\nХмарне збереження:\n\t%2$s</string>
     <string name="main_keep_local">Залишити локальне</string>
     <string name="main_keep_remote">Залишити віддалене</string>
 
@@ -1281,4 +1343,17 @@
     <string name="download_failed_message">Не вдалося завантажити необхідний файл. Перевірте підключення до мережі та спробуйте ще раз.</string>
     <string name="install_failed_title">Помилка інсталяції</string>
     <string name="install_failed_message">Не вдалося інсталювати системні файли. Спробуйте ще раз. Якщо проблема не зникає, спробуйте іншу мережу або скористайтеся VPN.</string>
+    <string name="settings_interface_swap_face_buttons_title">Поміняти місцями кнопки дій</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Поміняти місцями значки кнопок A↔B і X↔Y</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Перевірка модів Майстерні…</string>
+    <string name="workshop_update_title">Оновлення модів Майстерні</string>
+    <string name="workshop_update_prompt">%1$s МБ оновлень модів доступно. Завантажити зараз чи пропустити?</string>
+    <string name="workshop_download_btn">Завантажити</string>
+    <string name="workshop_skip_btn">Пропустити</string>
+    <string name="workshop_downloading">Завантаження модів Майстерні (%1$d/%2$d)</string>
+    <string name="workshop_processing">Обробка модів…</string>
+    <string name="workshop_failed_count">Не вдалося оновити %1$d мод(ів) Майстерні</string>
+    <string name="workshop_download_failed">Помилка завантаження</string>
 </resources>

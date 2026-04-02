@@ -72,6 +72,13 @@
     <string name="install_app">Instalează</string>
     <string name="delete_app">Șterge</string>
     <string name="uninstall">Dezinstalează</string>
+    <string name="branch">Ramură</string>
+    <string name="change_branch">Schimbă ramura</string>
+    <string name="change_branch_message">Descarcă versiuni alternative ale jocului de pe Steam folosind ramuri oferite de dezvoltatori. Introdu coduri de acces pentru a debloca ramuri private.</string>
+    <string name="private_branch_password_hint">Introdu codul de acces</string>
+    <string name="private_branch_password_check">Verifică codul</string>
+    <string name="private_branch_password_success">Ramură deblocată!</string>
+    <string name="private_branch_password_invalid">Cod de acces invalid</string>
     <string name="run_app">Pornește</string>
     <string name="download_prompt_title">Instalare aplicație</string>
     <string name="calculating_space_requirements">Se calculează cerințele de spațiu...</string>
@@ -86,8 +93,58 @@
     <string name="untitled">Fără titlu</string>
     <string name="confirm_delete">Confirmă ștergerea</string>
     <string name="destination_library">Bibliotecă</string>
-    <string name="destination_downloads">Descărcări</string>
-    <string name="destination_friends">Prieteni</string>
+    <string name="destination_downloads">Descărcări și stocare</string>
+
+    <string name="downloads_empty">Nicio descărcare activă</string>
+    <string name="downloads_overview_subtitle">Urmărește descărcările active, întrerupte și reluabile</string>
+    <string name="downloads_cancel_confirm">Anulezi descărcarea și ștergi fișierele pentru %1$s?</string>
+    <string name="downloads_cancel_all">Anulează tot</string>
+    <string name="downloads_clear_finished">Șterge finalizatele</string>
+    <string name="downloads_pause_all">Pune totul pe pauză</string>
+    <string name="downloads_resume_all">Reia tot</string>
+    <string name="downloads_resume_available">Reluare disponibilă</string>
+    <string name="downloads_status_cancelled">Anulat</string>
+    <string name="downloads_status_complete">Complet</string>
+    <string name="downloads_status_failed">Eșuat</string>
+    <string name="downloads_status_paused">În pauză</string>
+    <string name="downloads_summary">Gestionează descărcările active și stocarea într-un singur loc</string>
+    <string name="container_storage_title">Manager stocare</string>
+    <string name="container_storage_subtitle">Mută instalările între stocarea internă și externă</string>
+    <string name="container_storage_summary">%1$d elemente • %2$s</string>
+    <string name="container_storage_loading">Se încarcă inventarul stocării...</string>
+    <string name="container_storage_empty">Nu s-au găsit instalări de jocuri ce pot fi mutate</string>
+    <string name="container_storage_source_and_status">%1$s • %2$s</string>
+    <string name="container_storage_source_unknown">Sursă necunoscută</string>
+    <string name="container_storage_location_internal">Intern</string>
+    <string name="container_storage_location_external">Extern</string>
+    <string name="container_storage_location_unknown">Necunoscut</string>
+    <string name="container_storage_status_ready">Gata</string>
+    <string name="container_storage_status_orphaned">Lipsesc metadatele jocului</string>
+    <string name="container_storage_status_no_container">Lipsește containerul</string>
+    <string name="container_storage_status_game_files_missing">Lipsesc fișierele jocului</string>
+    <string name="container_storage_status_unreadable">Ilizibil</string>
+    <string name="container_storage_move_to_external_button">Mută pe extern</string>
+    <string name="container_storage_move_to_internal_button">Mută pe intern</string>
+    <string name="container_storage_move_external_disabled">Setează o cale de stocare externă în Setări înainte de a muta jocuri.</string>
+    <string name="container_storage_move_success">S-a mutat %1$s în %2$s</string>
+    <string name="container_storage_move_failed">Mutarea jocului a eșuat: %1$s</string>
+    <string name="container_storage_remove_button">Elimină containerul</string>
+    <string name="container_storage_remove_title">Elimină containerul</string>
+    <string name="container_storage_remove_message">Elimini containerul pentru %1$s? Fișierele jocului vor rămâne pe disc.</string>
+    <string name="container_storage_remove_success">S-a eliminat containerul pentru %1$s</string>
+    <string name="container_storage_remove_failed">Eliminarea containerului a eșuat</string>
+    <string name="container_storage_uninstall_button">Dezinstalează jocul</string>
+    <string name="container_storage_uninstall_title">Dezinstalează jocul</string>
+    <string name="container_storage_uninstall_message">Dezinstalezi %1$s și elimini containerul său? Fișierele jocului și datele containerului asociate vor fi șterse.</string>
+    <string name="container_storage_uninstall_game_only_title">Dezinstalează doar jocul</string>
+    <string name="container_storage_uninstall_game_only_message">%1$s nu are container. Dezinstalezi doar fișierele jocului?</string>
+    <string name="container_storage_uninstall_success">S-a dezinstalat %1$s</string>
+    <string name="container_storage_uninstall_failed">Dezinstalarea jocului a eșuat: %1$s</string>
+    <string name="container_storage_unknown_container">Container necunoscut</string>
+    <string name="container_storage_unknown_error">Eroare necunoscută</string>
+    <string name="settings_storage_title">Stocare</string>
+    <string name="settings_storage_manage_title">Gestionează stocarea</string>
+    <string name="settings_storage_manage_subtitle">Revizuiește instalările, mută-le între locații de stocare și curăță containerele</string>
 
     <!-- Library Tabs -->
     <string name="tab_all">Toate</string>
@@ -271,7 +328,6 @@
     <string name="performance_hud_battery_level">Nivel baterie</string>
     <string name="performance_hud_power_draw">Consum de energie</string>
     <string name="performance_hud_runtime_left">Timp rămas</string>
-    <string name="performance_hud_battery_temperature">Temperatura bateriei</string>
     <string name="performance_hud_clock_time">Ora</string>
     <string name="performance_hud_cpu_temperature">Temperatura CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura GPU</string>
@@ -595,6 +651,11 @@
 	<string name="steam_offline_mode">Mod Offline Steam</string>
 	<string name="steam_offline_mode_description">Pornește jocurile Steam în mod offline</string>
 	<string name="achievement_unlocked">Realizare deblocată</string>
+	<string name="settings_achievement_notification_position">Poziția notificării realizării</string>
+	<string name="achievement_position_top_left">Stânga sus</string>
+	<string name="achievement_position_top_right">Dreapta sus</string>
+	<string name="achievement_position_bottom_left">Stânga jos</string>
+	<string name="achievement_position_bottom_right">Dreapta jos</string>
 	<string name="launch_steam_client_description">Reduce performanța și încetinește lansarea\nPermite joc online și rezolvă probleme DRM și controller\nNu toate jocurile funcționează</string>
 	<string name="allow_steam_updates">Permite actualizările Steam</string>
 	<string name="allow_steam_updates_description">Actualizează Steam la ultima versiune. Reduce semnificativ performanța.</string>
@@ -957,6 +1018,8 @@
 	<!-- PluviaMain: Save Conflicts -->
 	<string name="main_save_conflict_title">Conflict de salvare</string>
 	<string name="main_save_conflict_message">Există o salvare nouă locală și una nouă remote. Pe care vrei să o păstrezi?\n\nSalvare locală:\n\t%1$s\nSalvare remote:\n\t%2$s</string>
+	<string name="main_save_conflict_upgrade_v1_title">Alege versiunea salvării</string>
+	<string name="main_save_conflict_upgrade_v1_message">Am corectat gestionarea căilor de salvare în cloud pentru acest joc și am găsit diferențe între salvarea locală și cea din cloud. Alege ce versiune să păstrezi.\n\nSalvare locală:\n\t%1$s\nSalvare în cloud:\n\t%2$s</string>
 	<string name="main_keep_local">Păstrează locală</string>
 	<string name="main_keep_remote">Păstrează remote</string>
 
@@ -1290,4 +1353,17 @@
     <string name="download_failed_message">Un fișier necesar nu a putut fi descărcat. Verifică conexiunea la rețea și încearcă din nou.</string>
     <string name="install_failed_title">Instalarea a eșuat</string>
     <string name="install_failed_message">Fișierele de sistem nu au putut fi instalate. Încearcă din nou. Dacă problema persistă, încearcă o altă rețea sau folosește un VPN.</string>
+    <string name="settings_interface_swap_face_buttons_title">Inversează butoanele de acțiune</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Inversează pictogramele butoanelor A↔B și X↔Y</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Se verifică modurile Workshop…</string>
+    <string name="workshop_update_title">Actualizări moduri Workshop</string>
+    <string name="workshop_update_prompt">%1$s MB de actualizări de moduri disponibile. Descărcați acum sau săriți?</string>
+    <string name="workshop_download_btn">Descarcă</string>
+    <string name="workshop_skip_btn">Sari peste</string>
+    <string name="workshop_downloading">Se descarcă moduri Workshop (%1$d/%2$d)</string>
+    <string name="workshop_processing">Se procesează modurile…</string>
+    <string name="workshop_failed_count">%1$d mod(uri) Workshop nu au putut fi actualizate</string>
+    <string name="workshop_download_failed">Descărcarea a eșuat</string>
 </resources>

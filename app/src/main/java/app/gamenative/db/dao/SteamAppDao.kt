@@ -91,6 +91,17 @@ interface SteamAppDao {
             flow { emit(_getAllOwnedAppsPaged(invalidPkgId)) }
         }
 
+    @Query(
+        "SELECT * FROM steam_app " +
+            "WHERE id != 480 " +
+            "AND package_id != :invalidPkgId " +
+            "AND type != 0 " +
+            "ORDER BY LOWER(name)",
+    )
+    suspend fun getAllOwnedAppsAsList(
+        invalidPkgId: Int = INVALID_PKG_ID,
+    ): List<SteamApp>
+
     @Query("SELECT * FROM steam_app WHERE received_pics = 0 AND package_id != :invalidPkgId AND owner_account_id = :ownerId")
     fun getAllOwnedAppsWithoutPICS(
         ownerId: Int,
@@ -123,4 +134,22 @@ interface SteamAppDao {
 
     @Query("SELECT id FROM steam_app")
     suspend fun getAllAppIds(): List<Int>
+
+    @Query("UPDATE steam_app SET workshop_mods = :workshopMods, enabled_workshop_item_ids = :enabledIds WHERE id = :appId")
+    suspend fun updateWorkshopState(appId: Int, workshopMods: Boolean, enabledIds: String)
+
+    @Query("SELECT workshop_mods FROM steam_app WHERE id = :appId")
+    suspend fun getWorkshopMods(appId: Int): Boolean?
+
+    @Query("SELECT enabled_workshop_item_ids FROM steam_app WHERE id = :appId")
+    suspend fun getEnabledWorkshopItemIds(appId: Int): String?
+
+    @Query("UPDATE steam_app SET workshop_download_pending = :pending WHERE id = :appId")
+    suspend fun setWorkshopDownloadPending(appId: Int, pending: Boolean)
+
+    @Query("SELECT id FROM steam_app WHERE workshop_download_pending = 1 AND workshop_mods = 1 AND enabled_workshop_item_ids != ''")
+    suspend fun getAppsWithPendingWorkshopDownloads(): List<Int>
+
+    @Query("UPDATE steam_app SET workshop_mods = 0, enabled_workshop_item_ids = '', workshop_download_pending = 0 WHERE id = :appId")
+    suspend fun clearWorkshopState(appId: Int)
 }

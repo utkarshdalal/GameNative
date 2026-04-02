@@ -357,6 +357,41 @@ class AmazonService : Service() {
         fun getDownloadInfo(productId: String): DownloadInfo? =
             getInstance()?.activeDownloads?.get(productId)
 
+        fun getActiveDownloads(): Map<String, DownloadInfo> =
+            getInstance()?.activeDownloads?.let { HashMap(it) } ?: emptyMap()
+
+        private fun getPartialInstallPaths(context: Context): Set<String> {
+            val roots = buildList {
+                add(AmazonConstants.internalAmazonGamesPath(context))
+                if (app.gamenative.PrefManager.externalStoragePath.isNotBlank()) {
+                    add(AmazonConstants.externalAmazonGamesPath())
+                }
+            }.distinct()
+
+            return roots.asSequence()
+                .flatMap { root -> MarkerUtils.findResumablePartialInstalls(root).asSequence() }
+                .toSet()
+        }
+
+        suspend fun getPartialDownloads(context: Context): List<String> {
+            val instance = getInstance() ?: return emptyList()
+            val partialInstallPaths = getPartialInstallPaths(context)
+            if (partialInstallPaths.isEmpty()) return emptyList()
+
+            return instance.amazonManager.getNonInstalledGames()
+                .asSequence()
+                .filter { game -> !instance.activeDownloads.containsKey(game.productId) }
+                .filter { game ->
+                    val expectedPaths = buildList {
+                        game.installPath.takeIf { it.isNotBlank() }?.let(::add)
+                        add(AmazonConstants.getGameInstallPath(context, game.title))
+                    }
+                    expectedPaths.any(partialInstallPaths::contains)
+                }
+                .map { it.productId }
+                .toList()
+        }
+
         /** Returns the active [DownloadInfo] for [appId], or null if not downloading. */
         fun getDownloadInfoByAppId(appId: Int): DownloadInfo? {
             val productId = getProductIdByAppId(appId) ?: return null

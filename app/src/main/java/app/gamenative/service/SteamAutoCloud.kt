@@ -12,16 +12,18 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.service.SteamService.Companion.FileChanges
 import app.gamenative.service.SteamService.Companion.getAppDirPath
+import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.SteamUtils
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileChangeList
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileInfo
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
-import `in`.dragonbra.javasteam.util.crypto.CryptoHelper
+import java.io.BufferedInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.RandomAccessFile
+import java.security.MessageDigest
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -51,6 +53,19 @@ import java.net.SocketTimeoutException
 object SteamAutoCloud {
 
     private const val MAX_USER_FILE_RETRIES = 3
+
+    /** Computes SHA-1 hash by streaming the file in chunks to avoid OOM on large files. */
+    private fun streamingShaHash(path: Path): ByteArray {
+        val digest = MessageDigest.getInstance("SHA-1")
+        val buf = ByteArray(8192)
+        BufferedInputStream(Files.newInputStream(path)).use { input ->
+            var bytesRead: Int
+            while (input.read(buf).also { bytesRead = it } != -1) {
+                digest.update(buf, 0, bytesRead)
+            }
+        }
+        return digest.digest()
+    }
 
     private fun findPlaceholderWithin(aString: String): Sequence<MatchResult> =
         Regex("%\\w+%").findAll(aString)
@@ -86,6 +101,25 @@ object SteamAutoCloud {
 
         Timber.i("Retrieving save files of ${appInfo.name}")
 
+        // When a rootoverride remaps a root (e.g. GameInstall → WinAppDataRoaming), the cloud
+        // still stores files under the original root placeholder (uploadRoot). Map those
+        // placeholders to the local root so downloads land in the right directory.
+        val uploadRootRemap: Map<String, String> = appInfo.ufs.saveFilePatterns
+            .filter { it.uploadRoot != it.root }
+            .associate { "%${it.uploadRoot.name}%" to it.root.name }
+
+        // Full-prefix remap for patterns where addPath shifts the local subfolder relative to
+        // the cloud path. E.g. cloud "%GameInstall%saves" must land at "<WinAppDataRoaming>/MyGame/saves",
+        // not "<WinAppDataRoaming>/saves" — root-only replacement can't express this.
+        val cloudPrefixToLocalPath: Map<String, String> = appInfo.ufs.saveFilePatterns
+            .filter { it.uploadPath != it.path }
+            .associate { p ->
+                val cloudKey = "%${p.uploadRoot.name}%${p.uploadPath}"
+                    .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
+                    .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+                cloudKey to Paths.get(prefixToPath(p.root.name), p.substitutedPath).pathString
+            }
+
         val getPathTypePairs: (AppFileChangeList) -> List<Pair<String, String>> = { fileList ->
             fileList.pathPrefixes
                 .map {
@@ -102,32 +136,42 @@ object SteamAutoCloud {
                 }
                 .flatten()
                 .distinct()
-                .map { it to prefixToPath(it) }
+                .map { placeholder ->
+                    val localRootName = uploadRootRemap[placeholder] ?: placeholder
+                    placeholder to prefixToPath(localRootName)
+                }
         }
 
         val convertPrefixes: (AppFileChangeList) -> List<String> = { fileList ->
             val pathTypePairs = getPathTypePairs(fileList)
 
             fileList.pathPrefixes.map { prefix ->
-                var modified = prefix
+                // Full-prefix match first: handles addPath case where the cloud path omits a
+                // subfolder that the local path includes. Root-only replacement can't express this.
+                // Cloud prefixes sometimes include a trailing slash (e.g. "%WinAppDataLocalLow%76561198035529760/save1/")
+                // but the map keys are built without one — trim before lookup so they match.
+                cloudPrefixToLocalPath[prefix.trimEnd('/')]
+                    ?: run {
+                        var modified = prefix
 
-                val prefixContainsNoPlaceholder = findPlaceholderWithin(prefix).none()
+                        val prefixContainsNoPlaceholder = findPlaceholderWithin(prefix).none()
 
-                if (prefixContainsNoPlaceholder) {
-                    modified = Paths.get(PathType.DEFAULT.name, prefix).pathString
-                }
+                        if (prefixContainsNoPlaceholder) {
+                            modified = Paths.get(PathType.DEFAULT.name, prefix).pathString
+                        }
 
-                pathTypePairs.forEach {
-                    modified = modified.replace(it.first, it.second)
-                }
+                        pathTypePairs.forEach {
+                            modified = modified.replace(it.first, it.second)
+                        }
 
-                // if the prefix has not been modified then there were no placeholders in it
-                // so we need to set it to point to the default path
-                if (modified == prefix) {
-                    modified = Paths.get(prefixToPath(PathType.DEFAULT.name), modified).toString()
-                }
+                        // if the prefix has not been modified then there were no placeholders in it
+                        // so we need to set it to point to the default path
+                        if (modified == prefix) {
+                            modified = Paths.get(prefixToPath(PathType.DEFAULT.name), modified).toString()
+                        }
 
-                modified
+                        modified
+                    }
             }
         }
 
@@ -228,13 +272,13 @@ object SteamAutoCloud {
                         pattern = userFile.pattern,
                         maxDepth = 5,
                     ).map {
-                        val sha = CryptoHelper.shaHash(Files.readAllBytes(it))
+                        val sha = streamingShaHash(it)
 
                         Timber.i("Found ${it.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
 
                         val relativePath = basePath.relativize(it).pathString
 
-                        UserFileInfo(userFile.root, userFile.substitutedPath, relativePath, Files.getLastModifiedTime(it).toMillis(), sha)
+                        UserFileInfo(userFile.root, userFile.substitutedPath, relativePath, Files.getLastModifiedTime(it).toMillis(), sha, cloudRoot = userFile.uploadRoot, cloudPath = userFile.uploadPath)
                     }.collect(Collectors.toList())
 
                     Timber.i("Found ${files.size} file(s) in $basePath for pattern ${userFile.pattern}")
@@ -256,7 +300,7 @@ object SteamAutoCloud {
                     pattern = "*",
                     maxDepth = 5,
                 ).map {
-                    val sha = CryptoHelper.shaHash(Files.readAllBytes(it))
+                    val sha = streamingShaHash(it)
 
                     val relativePath = basePath.relativize(it).pathString
 
@@ -446,8 +490,7 @@ object SteamAutoCloud {
                     clientId = clientId,
                     filesToDelete = filesToDelete,
                     filesToUpload = filesToUpload.map { it.first },
-                    // TODO: have branch be user selected and use that selection here
-                    appBuildId = appInfo.branches["public"]?.buildId ?: 0,
+                    appBuildId = appInfo.branches[SteamService.getInstalledApp(appInfo.id)?.branch ?: "public"]?.buildId ?: 0,
                 ).await()
 
                 var uploadBatchSuccess = true
@@ -614,6 +657,7 @@ object SteamAutoCloud {
         }
 
         var syncResult = SyncResult.Success
+        var conflictUfsVersion: Int? = null
         var remoteTimestamp = 0L
         var localTimestamp = 0L
         var uploadsRequired = false
@@ -640,7 +684,9 @@ object SteamAutoCloud {
         microsecTotal = measureTime {
             val localAppChangeNumber = overrideLocalChangeNumber ?: steamInstance.changeNumbersDao.getByAppId(appInfo.id)?.changeNumber ?: -1
 
-            val changeNumber = if (localAppChangeNumber >= 0) localAppChangeNumber else 0
+            val cachedFileList = steamInstance.fileChangeListsDao.getByAppId(appInfo.id)
+            val cacheIsAbsentOrEmpty = cachedFileList == null || cachedFileList.userFileInfo.isEmpty()
+            val changeNumber = if (!cacheIsAbsentOrEmpty && localAppChangeNumber >= 0) localAppChangeNumber else 0L
             val appFileListChange = steamCloud.getAppFileListChange(appInfo.id, changeNumber).await()
 
             val cloudAppChangeNumber = appFileListChange.currentChangeNumber
@@ -657,6 +703,13 @@ object SteamAutoCloud {
                 localUserFilesMap = getLocalUserFilesAsPrefixMap()
                 allLocalUserFiles = localUserFilesMap.map { it.value }.flatten()
             }.inWholeMicroseconds
+
+            val effectiveLocalChangeNumber = if (cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty()) {
+                Timber.w("Cache absent/empty but local files exist — forcing full cloud fetch (storedCn=$localAppChangeNumber)")
+                -1L
+            } else {
+                localAppChangeNumber
+            }
 
             val downloadUserFiles: (CoroutineScope) -> Deferred<PostSyncInfo?> = { parentScope ->
                 parentScope.async {
@@ -722,8 +775,8 @@ object SteamAutoCloud {
                 parentScope.async {
                     Timber.i("Uploading local user files")
 
-                    val fileChanges = steamInstance.fileChangeListsDao.getByAppId(appInfo.id)!!.let {
-                        val result = getFilesDiff(allLocalUserFiles, it.userFileInfo)
+                    val fileChanges = steamInstance.fileChangeListsDao.getByAppId(appInfo.id).let {
+                        val result = getFilesDiff(allLocalUserFiles, it?.userFileInfo ?: emptyList())
 
                         result.second
                     }
@@ -754,7 +807,7 @@ object SteamAutoCloud {
                 }
             }
 
-            if (localAppChangeNumber < cloudAppChangeNumber) {
+            if (effectiveLocalChangeNumber < cloudAppChangeNumber) {
                 // our change number is less than the expected, meaning we are behind and
                 // need to download the new user files, but first we should check that
                 // the local user files are not conflicting with their respective change
@@ -771,6 +824,16 @@ object SteamAutoCloud {
 
                     /*TODO: hasLocalChanges should be true if the user plays offline for the first time without ever pulling cloud saves
                        If that happens, the next time they go online, their change number is -1, and saves are always overwritten by cloud*/
+
+                    // If cache is absent but local files exist and a prior sync was recorded,
+                    // the cache was cleared on upgrade due to a UFS path fix — treat as conflict
+                    // so the user can choose which save to keep rather than silently overwriting.
+                    val isUpgradeConflict = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty() && localAppChangeNumber >= 0
+                    if (isUpgradeConflict) {
+                        hasLocalChanges = true
+                        conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                    }
+
                     if (!hasLocalChanges) {
                         // we can safely download the new changes since no changes have been
                         // made locally
@@ -804,14 +867,14 @@ object SteamAutoCloud {
                         }
                     }
                 }.inWholeMicroseconds
-            } else if (localAppChangeNumber == cloudAppChangeNumber) {
+            } else if (effectiveLocalChangeNumber == cloudAppChangeNumber) {
                 // our app change numbers are the same so the file hashes should match
                 // if they do not then that means we have new user files locally that
                 // need uploading
                 microsecAcExit = measureTime {
                     // var fileChanges: FileChanges? = null
 
-                    val hasLocalChanges = steamInstance.fileChangeListsDao.getByAppId(appInfo.id)
+                    val hasLocalChanges = cachedFileList
                         ?.let {
                             val result = getFilesDiff(allLocalUserFiles, it.userFileInfo)
                             // fileChanges = result.second
@@ -842,6 +905,7 @@ object SteamAutoCloud {
 
         postSyncInfo = PostSyncInfo(
             syncResult = syncResult,
+            conflictUfsVersion = conflictUfsVersion,
             remoteTimestamp = remoteTimestamp,
             localTimestamp = localTimestamp,
             uploadsRequired = uploadsRequired,

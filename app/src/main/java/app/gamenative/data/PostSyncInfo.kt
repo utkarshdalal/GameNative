@@ -5,6 +5,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamcloud.PendingRemoteOperation
 
 data class PostSyncInfo(
     val syncResult: SyncResult,
+    val conflictUfsVersion: Int? = null,
     val remoteTimestamp: Long = 0,
     val localTimestamp: Long = 0,
     val uploadsRequired: Boolean = false,

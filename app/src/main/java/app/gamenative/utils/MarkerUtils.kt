@@ -5,8 +5,43 @@ import timber.log.Timber
 import java.io.File
 
 object MarkerUtils {
+    private const val DOWNLOAD_INFO_DIR = ".DownloadInfo"
+    private const val BYTES_DOWNLOADED_FILE = "bytes_downloaded.txt"
+
     fun hasMarker(dirPath: String, type: Marker): Boolean {
         return File(dirPath, type.fileName).exists()
+    }
+
+    fun hasPartialInstall(dirPath: String): Boolean {
+        if (dirPath.isBlank()) return false
+        val dir = File(dirPath)
+        return dir.exists() && !hasMarker(dirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+    }
+
+    fun hasPersistedPartialProgress(dirPath: String): Boolean {
+        if (dirPath.isBlank()) return false
+        val bytesFile = File(File(dirPath, DOWNLOAD_INFO_DIR), BYTES_DOWNLOADED_FILE)
+        return bytesFile.isFile && bytesFile.length() > 0L
+    }
+
+    fun hasResumablePartialInstall(dirPath: String): Boolean {
+        if (dirPath.isBlank()) return false
+        val dir = File(dirPath)
+        if (!dir.isDirectory) return false
+        if (hasMarker(dirPath, Marker.DOWNLOAD_COMPLETE_MARKER)) return false
+        return hasMarker(dirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER) || hasPersistedPartialProgress(dirPath)
+    }
+
+    fun findResumablePartialInstalls(rootPath: String): Set<String> {
+        val root = File(rootPath)
+        if (!root.isDirectory) return emptySet()
+
+        return root.listFiles()
+            ?.asSequence()
+            ?.filter { it.isDirectory && hasResumablePartialInstall(it.absolutePath) }
+            ?.map { it.absolutePath }
+            ?.toSet()
+            .orEmpty()
     }
 
     fun addMarker(dirPath: String, type: Marker): Boolean {
