@@ -24,6 +24,8 @@ import com.winlator.xserver.requests.WindowRequests;
 import java.io.IOException;
 import java.nio.ByteOrder;
 
+import timber.log.Timber;
+
 public class XClientRequestHandler implements RequestHandler {
     public static final byte RESPONSE_CODE_ERROR = 0;
     public static final byte RESPONSE_CODE_SUCCESS = 1;
@@ -447,15 +449,19 @@ public class XClientRequestHandler implements RequestHandler {
                 default:
                     if (opcode < 0) {
                         Extension extension = client.xServer.extensions.get(opcode);
-                        if (extension != null) extension.handleRequest(client, inputStream, outputStream);
+                        if (extension != null)
+                            extension.handleRequest(client, inputStream, outputStream);
+                        else
+                            Timber.w("handleNormalRequest: unhandled opcode=%d, requestData=%d, requestLength=%d", opcode, requestData, requestLength);
+
                     }
-                    else Log.d("XClientRequestHandler", "Unsupported opcode " + opcode);
+                    else Timber.w("handleNormalRequest: unsupported opcode " + opcode);
                     break;
             }
         }
         catch (XRequestError e) {
             client.skipRequest();
-            Log.w("XClientRequestHandler", "handleNormalRequest error " + e);
+            Timber.e("handleNormalRequest: XRequestError for opcode=%d: %s", opcode, e);
             e.sendError(client, opcode);
         }
 
