@@ -13,6 +13,8 @@ data class WorkshopItem(
     val fileUrl: String = "",
     val fileName: String = "",
     val previewUrl: String = "",
+    val description: String = "",
+    val tags: String = "",
 ) {
     companion object {
         /** File extensions recognised as valid workshop content (used to skip magic-byte detection). */

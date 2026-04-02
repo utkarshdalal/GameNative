@@ -196,6 +196,11 @@ object WorkshopManager {
                     fileUrl = details.fileUrl ?: "",
                     fileName = details.filename ?: "",
                     previewUrl = details.previewUrl ?: "",
+                    description = details.fileDescription ?: "",
+                    tags = details.tagsList
+                        ?.mapNotNull { tag -> tag.tag?.takeIf { it.isNotBlank() } }
+                        ?.joinToString(",")
+                        ?: "",
                 ).also {
                     Timber.tag(TAG).d(
                         "Item ${it.publishedFileId} '${it.title}': " +
@@ -482,6 +487,85 @@ object WorkshopManager {
 
         if (extractedCount > 0) {
             Timber.tag(TAG).i("Extracted $extractedCount CKM files into BSA/ESP")
+        }
+    }
+
+    /**
+     * Extracts workshop items that consist of a single ZIP archive.
+     *
+     * Many Workshop authors upload a single `.zip` file as their mod content
+     * (e.g. Door Kickers' `modupload.zip`). On a real Steam client the game
+     * expects the extracted contents, not the archive. This function detects
+     * item directories whose only substantive file is a `.zip`, extracts it
+     * in-place, and deletes the archive.
+     *
+     * A `.zip_extracted` marker file prevents re-extraction on subsequent runs.
+     * Preview images (`preview.jpg`/`preview.png`) are preserved.
+     */
+    fun extractZipMods(workshopContentDir: File) {
+        if (!workshopContentDir.exists()) return
+        var extractedCount = 0
+
+        workshopContentDir.listFiles()?.forEach { itemDir ->
+            if (!itemDir.isDirectory) return@forEach
+
+            // Skip if already extracted
+            if (File(itemDir, ".zip_extracted").exists()) return@forEach
+
+            // Find content files (skip hidden files and preview images)
+            val contentFiles = itemDir.listFiles()?.filter { f ->
+                f.isFile &&
+                    !f.name.startsWith(".") &&
+                    !f.name.startsWith("preview", ignoreCase = true)
+            } ?: return@forEach
+
+            // Only auto-extract when the sole content file is a ZIP
+            if (contentFiles.size != 1) return@forEach
+            val zipFile = contentFiles.first()
+            if (!zipFile.name.endsWith(".zip", ignoreCase = true)) return@forEach
+
+            // Verify it's actually a ZIP via magic bytes
+            val magic = ByteArray(4)
+            try {
+                zipFile.inputStream().use { it.read(magic) }
+            } catch (_: Exception) { return@forEach }
+            if (magic[0] != 0x50.toByte() || magic[1] != 0x4B.toByte() ||
+                magic[2] != 0x03.toByte() || magic[3] != 0x04.toByte()
+            ) return@forEach
+
+            try {
+                java.util.zip.ZipInputStream(zipFile.inputStream().buffered()).use { zis ->
+                    var entry = zis.nextEntry
+                    while (entry != null) {
+                        val outFile = File(itemDir, entry.name)
+                        // Guard against zip-slip (path traversal)
+                        if (!outFile.canonicalPath.startsWith(itemDir.canonicalPath + File.separator)) {
+                            Timber.tag(TAG).w("Skipping zip entry with path traversal: ${entry.name}")
+                            entry = zis.nextEntry
+                            continue
+                        }
+                        if (entry.isDirectory) {
+                            outFile.mkdirs()
+                        } else {
+                            outFile.parentFile?.mkdirs()
+                            outFile.outputStream().use { fos ->
+                                zis.copyTo(fos)
+                            }
+                        }
+                        entry = zis.nextEntry
+                    }
+                }
+                // Successfully extracted — remove the zip and leave a marker
+                zipFile.delete()
+                File(itemDir, ".zip_extracted").createNewFile()
+                extractedCount++
+                Timber.tag(TAG).d("Extracted ZIP mod: ${zipFile.name} in ${itemDir.name}")
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Failed to extract ZIP: ${zipFile.name} in ${itemDir.name}")
+            }
+        }
+        if (extractedCount > 0) {
+            Timber.tag(TAG).i("Extracted $extractedCount ZIP workshop mods")
         }
     }
 
@@ -1444,6 +1528,26 @@ object WorkshopManager {
                 entry.put("preview_filename", previewFile.name)
             }
 
+            // Enriched metadata: gbe_fork's GetPublishedFileDetails() and
+            // ISteamUGC queries read these fields from mods.json to populate
+            // item details returned to games (fixes "no item details" for
+            // games like Dimension Jump).
+            if (item != null) {
+                if (item.description.isNotEmpty()) {
+                    entry.put("description", item.description)
+                }
+                if (item.tags.isNotEmpty()) {
+                    entry.put("tags", item.tags)
+                }
+                if (item.previewUrl.isNotEmpty()) {
+                    entry.put("preview_url", item.previewUrl)
+                }
+                entry.put(
+                    "workshop_item_url",
+                    "https://steamcommunity.com/sharedfiles/filedetails/?id=${item.publishedFileId}"
+                )
+            }
+
             modsObj.put(itemDir.name, entry)
         }
         return modsObj
@@ -1791,7 +1895,7 @@ object WorkshopManager {
     // ── Strategy cache ────────────────────────────────────────────────────────
 
     /** Bump when detection logic changes to invalidate all cached strategies. */
-    private const val STRATEGY_CACHE_VERSION = 13
+    private const val STRATEGY_CACHE_VERSION = 15
 
     private fun strategyCacheFile(gameRootDir: File): File =
         File(gameRootDir, ".gamenative_mod_strategy.json")
@@ -1831,6 +1935,7 @@ object WorkshopManager {
                     put("dirs", arr)
                 }
                 if (fanOut != null) put("fanOut", fanOut)
+                put("stdSeen", result.stdSeen)
             }
             strategyCacheFile(gameRootDir).writeText(json.toString(2))
             Timber.tag(TAG).d("Saved strategy cache for ${gameRootDir.name}")
@@ -1884,7 +1989,8 @@ object WorkshopManager {
                 else -> return null
             }
             Timber.tag(TAG).d("Loaded cached strategy for ${gameRootDir.name}: $type [$confidence]")
-            WorkshopModPathDetector.DetectionResult(strategy, confidence, reason)
+            val stdSeen = json.optBoolean("stdSeen", false)
+            WorkshopModPathDetector.DetectionResult(strategy, confidence, reason, stdSeen)
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "Failed to load cached strategy, re-detecting")
             file.delete()
@@ -1937,6 +2043,7 @@ object WorkshopManager {
         items: List<WorkshopItem> = emptyList(),
         winePrefix: String = "",
         gameName: String = "",
+        workshopModPath: String = "",
     ) {
         if (!workshopContentDir.exists()) {
             Timber.tag(TAG).d("Workshop content dir doesn't exist yet, skipping symlink config")
@@ -1986,6 +2093,115 @@ object WorkshopManager {
         val isSkyrim = appId == 72850 || gameName.contains("skyrim", ignoreCase = true)
         val isSourceEngine = isSourceEngine(gameRootDir)
 
+        // ── Manual mod path override ────────────────────────────────────────
+        // When the user has set a custom mod folder, symlink all workshop
+        // items into that directory. mods.json is still populated for games
+        // that use ISteamUGC. All automatic detection is bypassed.
+        val hasManualModPath = workshopModPath.isNotEmpty()
+        if (hasManualModPath) {
+            val targetDir = File(workshopModPath)
+
+            // ── Clean ALL workshop symlinks from every possible location ─────
+            // When switching from one manual path to another (e.g. LocalLow→Local),
+            // or from auto-detection to manual, stale symlinks in previous
+            // locations must be removed to avoid mods appearing in multiple places.
+            val workshopContentAbs = workshopContentDir.absolutePath
+            val targetCanonical = runCatching { targetDir.canonicalPath }.getOrElse { targetDir.absolutePath }
+
+            // Helper: remove workshop symlinks from a directory, unless it's the new target
+            fun cleanWorkshopSymlinksFrom(dir: File) {
+                if (!dir.isDirectory) return
+                val dirCanonical = runCatching { dir.canonicalPath }.getOrElse { dir.absolutePath }
+                if (dirCanonical == targetCanonical) return  // skip — we'll recreate these below
+                dir.listFiles()?.forEach { entry ->
+                    if (Files.isSymbolicLink(entry.toPath())) {
+                        try {
+                            val linkTarget = Files.readSymbolicLink(entry.toPath())
+                            val resolved = if (linkTarget.isAbsolute) linkTarget
+                            else entry.toPath().parent.resolve(linkTarget)
+                            val resolvedStr = runCatching { resolved.toRealPath().toString() }
+                                .getOrElse { resolved.normalize().toAbsolutePath().toString() }
+                            if (resolvedStr.contains("workshop/content/") ||
+                                resolvedStr.startsWith(workshopContentAbs)
+                            ) {
+                                Files.deleteIfExists(entry.toPath())
+                            }
+                        } catch (_: Exception) { }
+                    }
+                }
+            }
+
+            // 1) Clean game directory tree (shallow walk for known mod dirs)
+            gameRootDir.walkTopDown().maxDepth(4).forEach { dir ->
+                if (!dir.isDirectory) return@forEach
+                if (dir.absolutePath.contains("steam_settings")) return@forEach
+                if (dir.name.lowercase() in WorkshopModPathDetector.ALL_MOD_DIR_NAMES ||
+                    dir == gameRootDir
+                ) {
+                    cleanWorkshopSymlinksFrom(dir)
+                }
+            }
+
+            // 2) Clean AppData / Documents trees (the other roots
+            //    the folder picker offers)
+            if (winePrefix.isNotEmpty()) {
+                listOf(
+                    appDataRoaming(winePrefix),
+                    appDataLocal(winePrefix),
+                    appDataLocalLow(winePrefix),
+                    documentsDir(winePrefix),
+                    documentsMyGames(winePrefix),
+                ).forEach { root ->
+                    if (!root.isDirectory) return@forEach
+                    // Walk the root itself + up to 5 levels deep to catch
+                    // symlinks at any nesting level (e.g. Documents/Dev/Game/mods/)
+                    root.walkTopDown().maxDepth(5).forEach { dir ->
+                        if (dir.isDirectory) {
+                            cleanWorkshopSymlinksFrom(dir)
+                        }
+                    }
+                }
+            }
+            Timber.tag(TAG).d("Cleaned workshop symlinks from all previous locations")
+
+            // ── Create fresh symlinks in the chosen target ──────────────────
+            try {
+                if (!targetDir.isDirectory) targetDir.mkdirs()
+                // Clean the target itself (in case of stale entries)
+                cleanWorkshopSymlinksFrom(targetDir).also {
+                    // The helper skips targetCanonical, so clean it explicitly
+                    targetDir.listFiles()?.forEach { entry ->
+                        if (Files.isSymbolicLink(entry.toPath())) {
+                            try {
+                                val linkTarget = Files.readSymbolicLink(entry.toPath())
+                                val resolved = if (linkTarget.isAbsolute) linkTarget
+                                else entry.toPath().parent.resolve(linkTarget)
+                                val resolvedStr = runCatching { resolved.toRealPath().toString() }
+                                    .getOrElse { resolved.normalize().toAbsolutePath().toString() }
+                                if (resolvedStr.contains("workshop/content/") ||
+                                    resolvedStr.startsWith(workshopContentAbs)
+                                ) {
+                                    Files.deleteIfExists(entry.toPath())
+                                }
+                            } catch (_: Exception) { }
+                        }
+                    }
+                }
+                // Create fresh symlinks
+                modDirs.forEach { itemDir ->
+                    val linkPath = targetDir.toPath().resolve(itemDir.name)
+                    if (!Files.exists(linkPath)) {
+                        Files.createSymbolicLink(linkPath, itemDir.toPath())
+                    }
+                }
+                Timber.tag(TAG).i(
+                    "Manual mod path: symlinked ${modDirs.size} items into ${targetDir.absolutePath}"
+                )
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Failed to symlink mods into manual path: ${targetDir.absolutePath}")
+            }
+        }
+
         // ── Early strategy detection ────────────────────────────────────────
         // Detect whether the game reads mods from its own directory structure
         // (SymlinkIntoDir) BEFORE writing gbe_fork mods in Phases 2/4. If
@@ -2010,17 +2226,52 @@ object WorkshopManager {
         val unityModTargets by lazy { detectUnityModTargets(gameRootDir, winePrefix) }
         val modsJsonText by lazy { buildModsJson(modDirs, items).toString(2) }
 
-        val willUseFilesystemMods = if (winePrefix.isNotEmpty() && !isSkyrim && !isSourceEngine) {
+        // Starbound has mods/ (HIGH confidence) but workshop items use a
+        // _metadata format that doesn't work when symlinked into mods/.
+        // Force ISteamUGC path regardless of detection.
+        val forceStandardAppIds = setOf(211820) // Starbound
+
+        // When the game's binary contains ISteamUGC / GetItemInstallInfo
+        // strings AND there's a HIGH-confidence mod directory, the game
+        // likely uses the Steam Workshop API for content discovery — the
+        // directory is for manual/non-workshop mods.  In that case we
+        // populate mods.json (ISteamUGC) and suppress filesystem symlinks
+        // to prevent duplication.
+        //
+        // This heuristic naturally separates:
+        //  • Native C++ games (ISteamUGC strings in exe)  → ISteamUGC path
+        //  • .NET / Unity games (no ISteamUGC in exe)     → filesystem path
+        var stdSeenWithHighDir = false
+
+        val willUseFilesystemMods = if (hasManualModPath) {
+            // User chose a specific mod folder — always populate mods.json
+            // alongside the manual symlinks (covers ISteamUGC games too)
+            Timber.tag(TAG).i("Manual mod path set for $gameName — forcing ISteamUGC mods.json")
+            false
+        } else if (appId in forceStandardAppIds) {
+            stdSeenWithHighDir = true // treat like stdSeen so Phase 6 + cleanup runs
+            Timber.tag(TAG).i("Force-Standard override for appId $appId ($gameName)")
+            false
+        } else if (winePrefix.isNotEmpty() && !isSkyrim && !isSourceEngine) {
             try {
                 val detection = getOrDetectStrategy(gameRootDir, winePrefix, gameName)
                 Timber.tag(TAG).i(
                     "Strategy detection: ${detection.strategy::class.simpleName} " +
-                        "[${detection.confidence}] — ${detection.reason}"
+                        "[${detection.confidence}] stdSeen=${detection.stdSeen} — ${detection.reason}"
                 )
                 val isHighConfSymlink = detection.strategy is WorkshopModPathStrategy.SymlinkIntoDir &&
                     detection.confidence == WorkshopModPathDetector.Confidence.HIGH
-                isHighConfSymlink ||
-                    unityModTargets.isNotEmpty()
+
+                if (isHighConfSymlink && detection.stdSeen) {
+                    stdSeenWithHighDir = true
+                    Timber.tag(TAG).i(
+                        "ISteamUGC binary signals + HIGH-confidence mod dir for $gameName — " +
+                            "preferring ISteamUGC path (mods.json), suppressing filesystem symlinks"
+                    )
+                    false  // use ISteamUGC, not filesystem
+                } else {
+                    (isHighConfSymlink || unityModTargets.isNotEmpty())
+                }
             } catch (e: Exception) {
                 Timber.tag(TAG).w(e, "Strategy detection failed, defaulting to ISteamUGC path")
                 false
@@ -2032,7 +2283,7 @@ object WorkshopManager {
             )
             false
         }
-        Timber.tag(TAG).i("willUseFilesystemMods=$willUseFilesystemMods for $gameName")
+        Timber.tag(TAG).i("willUseFilesystemMods=$willUseFilesystemMods stdSeenOverride=$stdSeenWithHighDir for $gameName")
 
         // Find all gbe_fork DLL locations (steam_api.dll, steam_api64.dll,
         // steamclient.dll, steamclient64.dll) and create mods/ symlinks next
@@ -2133,6 +2384,10 @@ object WorkshopManager {
                     Timber.tag(TAG).d(
                         "Configured ${modDirs.size} mod symlinks at ${modsDir.absolutePath}"
                     )
+                    Timber.tag(TAG).d(
+                        "mods.json written (${modDirs.size} entries) next to ${file.name}: " +
+                            modDirs.joinToString { it.name }
+                    )
                 } else if (modsDir.isDirectory || File(settingsDir, "mods.json").isFile) {
                     // Filesystem-managed game: clean stale gbe_fork mods from
                     // previous runs that may have lacked this early skip.
@@ -2152,6 +2407,12 @@ object WorkshopManager {
                 val interfacesFile = File(file.parentFile, "steam_interfaces.txt")
                 if (origDll.isFile) {
                     ensureInterfacesComplete(origDll, interfacesFile)
+                }
+                if (interfacesFile.isFile) {
+                    Timber.tag(TAG).d(
+                        "steam_interfaces.txt for ${file.name}: " +
+                            interfacesFile.readText().trim().replace("\n", ", ")
+                    )
                 }
             } catch (e: Exception) {
                 Timber.tag(TAG).w(e, "Failed to create mod symlinks at ${modsDir.absolutePath}")
@@ -2571,9 +2832,21 @@ object WorkshopManager {
         val workshopContentReal = runCatching {
             workshopContentDir.toPath().toRealPath().toString()
         }.getOrElse { workshopContentDir.absolutePath }
+        // When the user has a manual mod path inside the game tree, skip
+        // cleaning symlinks in that directory — they were just created above.
+        val manualTargetCanonical = if (hasManualModPath) {
+            runCatching { File(workshopModPath).canonicalPath }.getOrElse { workshopModPath }
+        } else ""
         gameRootDir.walkTopDown().maxDepth(6).forEach { entry ->
             if (!Files.isSymbolicLink(entry.toPath())) return@forEach
             if (entry.absolutePath.contains("steam_settings")) return@forEach
+            // Protect manual mod path symlinks from stale cleanup
+            if (hasManualModPath && manualTargetCanonical.isNotEmpty()) {
+                val parentCanonical = runCatching {
+                    entry.parentFile?.canonicalPath ?: ""
+                }.getOrElse { entry.parentFile?.absolutePath ?: "" }
+                if (parentCanonical == manualTargetCanonical) return@forEach
+            }
             try {
                 val target = Files.readSymbolicLink(entry.toPath())
                 val resolvedTarget = if (target.isAbsolute) target
@@ -2634,7 +2907,7 @@ object WorkshopManager {
         // already fully handled by the VPK→addons/ and BSP→maps/workshop/
         // symlinks above. Running the detector on them causes regressions
         // (e.g. item-directory symlinks in maps/ confuse L4D2).
-        if (winePrefix.isNotEmpty() && modDirs.isNotEmpty() && !isSourceEngine) {
+        if (winePrefix.isNotEmpty() && modDirs.isNotEmpty() && !isSourceEngine && !stdSeenWithHighDir && !hasManualModPath) {
             // Check if Phase 7 (Unity AppData) will handle mod directories.
             // If it does, skip Phase 6 SymlinkIntoDir for the same directory
             // names so mods aren't placed at both the install dir AND AppData.
@@ -2886,6 +3159,44 @@ object WorkshopManager {
             }
         }
 
+        // ── Clean stale Phase 6 symlinks for ISteamUGC-preferred games ────────
+        // When the stdSeen heuristic suppresses filesystem symlinks, previous
+        // launches may have created symlinks in the game's mod directories
+        // (e.g. mods/). Remove them so the game doesn't see duplicate
+        // workshop items (one from ISteamUGC/mods.json and one from the filesystem).
+        if (stdSeenWithHighDir && winePrefix.isNotEmpty() && !hasManualModPath) {
+            try {
+                val detection = getOrDetectStrategy(gameRootDir, winePrefix, gameName)
+                val strategy = detection.strategy
+                if (strategy is WorkshopModPathStrategy.SymlinkIntoDir) {
+                    for (dir in strategy.effectiveDirs) {
+                        if (!dir.isDirectory) continue
+                        dir.listFiles()?.forEach { entry ->
+                            if (Files.isSymbolicLink(entry.toPath())) {
+                                try {
+                                    val linkTarget = Files.readSymbolicLink(entry.toPath())
+                                    val resolved = if (linkTarget.isAbsolute) linkTarget
+                                    else entry.toPath().parent.resolve(linkTarget)
+                                    val resolvedStr = runCatching { resolved.toRealPath().toString() }
+                                        .getOrElse { resolved.normalize().toAbsolutePath().toString() }
+                                    if (resolvedStr.contains("workshop/content/") ||
+                                        resolvedStr.startsWith(workshopContentDir.absolutePath)
+                                    ) {
+                                        Files.deleteIfExists(entry.toPath())
+                                        Timber.tag(TAG).d(
+                                            "Removed stale workshop symlink: ${entry.absolutePath}"
+                                        )
+                                    }
+                                } catch (_: Exception) { }
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Failed to clean stale symlinks for ISteamUGC-preferred game '$gameName'")
+            }
+        }
+
 
     }
 
@@ -2964,6 +3275,7 @@ object WorkshopManager {
         }
         onStatus?.invoke("Extracting archives…")
         extractCkmFiles(workshopContentDir)
+        extractZipMods(workshopContentDir)
         decompressLzmaFiles(workshopContentDir) { completed, total ->
             onStatus?.invoke("Decompressing ($completed/$total)…")
         }
@@ -2982,12 +3294,24 @@ object WorkshopManager {
     ) {
         val gameRootDir = File(SteamService.getAppDirPath(appId))
         val gameName = SteamService.getAppInfoOf(appId)?.name ?: ""
+
+        // Read the user's manual mod path override from the container
+        val containerId = "STEAM_$appId"
+        val modPathOverride = try {
+            val container = ContainerUtils.getContainer(context, containerId)
+            container.getExtra("workshopModPath", "")
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Failed to read workshopModPath for appId $appId")
+            ""
+        }
+
         configureModSymlinks(
             gameRootDir = gameRootDir,
             workshopContentDir = workshopContentDir,
             items = items,
             winePrefix = winePrefix,
             gameName = gameName,
+            workshopModPath = modPathOverride,
         )
     }
 
@@ -3064,6 +3388,21 @@ object WorkshopManager {
                 if (items.isEmpty()) {
                     Timber.tag(TAG).i("Workshop download: no matching items for appId=$appId")
                     return@launch
+                }
+
+                // Ensure the container exists before downloading so that
+                // workshopContentDir (which lives inside the container's
+                // .wine prefix) doesn't accidentally pre-create the container
+                // directory.  If that happens, ContainerManager.createContainer()
+                // fails on first game launch (mkdirs returns false for an
+                // existing dir), triggers the orphan-cleanup path which deletes
+                // the entire directory including the just-downloaded mods.
+                val containerId = "STEAM_$appId"
+                try {
+                    ContainerUtils.getOrCreateContainer(context, containerId)
+                    Timber.tag(TAG).d("Container ensured for appId=$appId before workshop download")
+                } catch (e: Exception) {
+                    Timber.tag(TAG).w(e, "Failed to ensure container for appId=$appId (workshop download will still proceed)")
                 }
 
                 val winePrefix = getContainerWinePrefix(context, appId)

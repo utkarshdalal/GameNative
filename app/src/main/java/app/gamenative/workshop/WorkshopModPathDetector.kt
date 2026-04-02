@@ -25,6 +25,8 @@ class WorkshopModPathDetector {
         val strategy: WorkshopModPathStrategy,
         val confidence: Confidence,
         val reason: String,
+        /** True when the game binary contains ISteamUGC / GetItemInstallInfo strings. */
+        val stdSeen: Boolean = false,
     )
 
     companion object {
@@ -46,12 +48,16 @@ class WorkshopModPathDetector {
             "scenarios", "scenario", "missions", "mission",
             "workshop", "override", "gamedata",
             "maps",
+            "packs", "outfits", "skins", "characters",
+            "textures", "sounds", "audio",
         )
         val LOW_CONFIDENCE_NAMES = setOf(
             "custom", "usercontent", "user_content", "community",
             "packages", "package", "downloads", "download", "downloaded",
             "extras", "expansion", "expansions",
+            "content", "assets", "data",
         )
+        /** Union of all three confidence tiers — used for fast membership checks. */
         val ALL_MOD_DIR_NAMES = HIGH_CONFIDENCE_NAMES + MEDIUM_CONFIDENCE_NAMES + LOW_CONFIDENCE_NAMES
 
         val APPDATA_TOKENS = listOf(
@@ -143,7 +149,8 @@ class WorkshopModPathDetector {
                 )
                 DetectionResult(
                     WorkshopModPathStrategy.Standard, Confidence.MEDIUM,
-                    "Standard Steam Workshop API detected, no local mod dirs found"
+                    "Standard Steam Workshop API detected, no local mod dirs found",
+                    stdSeen = true,
                 )
             } else {
                 Timber.tag(TAG).i(
@@ -189,7 +196,7 @@ class WorkshopModPathDetector {
                 "strongFamilies=$distinctStrongFamilies topConf=$topConf"
         )
 
-        return DetectionResult(WorkshopModPathStrategy.SymlinkIntoDir(dirs, fanOut), topConf, reason)
+        return DetectionResult(WorkshopModPathStrategy.SymlinkIntoDir(dirs, fanOut), topConf, reason, binaryResult.stdSeen)
     }
 
     // ── Heuristic 1: Binary scan ──────────────────────────────────────────────
