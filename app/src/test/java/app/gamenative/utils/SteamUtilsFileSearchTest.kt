@@ -1531,12 +1531,13 @@ class SteamUtilsFileSearchTest {
 
         val userIniContent = userIni.readText()
 
-        // Verify [user::saves] section does NOT exist
-        assertFalse("configs.user.ini should not contain [user::saves] section",
+        // Verify [user::saves] section IS written even when saveFilePatterns are defined —
+        // games can use both UFS filesystem saves and ISteamRemoteStorage API calls.
+        assertTrue("configs.user.ini should contain [user::saves] section",
             userIniContent.contains("[user::saves]"))
 
-        // Verify local_save_path does NOT exist
-        assertFalse("configs.user.ini should not contain local_save_path",
+        // Verify local_save_path is present
+        assertTrue("configs.user.ini should contain local_save_path",
             userIniContent.contains("local_save_path="))
     }
 
