@@ -113,6 +113,40 @@ class GOGAppScreen : BaseAppScreen() {
 
         val game = gogGame
 
+        // Lazily fetch accurate install size from the build manifest when the game is not yet
+        // installed and either no size is stored or the stored size looks like just the
+        // compressed download size (installSize == 0 or installSize <= downloadSize).
+        // This mirrors the same pattern used by EpicAppScreen.
+        LaunchedEffect(gameId, refreshTrigger) {
+            val g = GOGService.getGOGGameOf(gameId) ?: return@LaunchedEffect
+            if (!g.isInstalled && (g.installSize == 0L || g.installSize <= g.downloadSize)) {
+                Timber.tag(TAG).d("Install size not available for ${g.title}, fetching from manifest...")
+                withContext(Dispatchers.IO) {
+                    try {
+                        val sizes = GOGService.fetchManifestSizes(gameId)
+                        if (sizes.installSize > 0L || sizes.downloadSize > 0L) {
+                            // Re-read the game from DB immediately before writing to avoid
+                            // overwriting fields updated concurrently since g was captured.
+                            val current = GOGService.getGOGGameOf(gameId) ?: return@withContext
+                            Timber.tag(TAG).i(
+                                "Fetched sizes for ${current.title}: install=${sizes.installSize} download=${sizes.downloadSize}",
+                            )
+                            val updatedGame = current.copy(
+                                installSize = sizes.installSize,
+                                downloadSize = sizes.downloadSize,
+                            )
+                            GOGService.updateGOGGame(updatedGame)
+                            withContext(Dispatchers.Main) {
+                                gogGame = updatedGame
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Timber.tag(TAG).w(e, "Failed to fetch manifest sizes for ${g.title}")
+                    }
+                }
+            }
+        }
+
         // Format sizes for display
         val sizeOnDisk = if (game != null && game.isInstalled && game.installSize > 0) {
             formatBytes(game.installSize)
@@ -120,8 +154,14 @@ class GOGAppScreen : BaseAppScreen() {
             null
         }
 
-        val sizeFromStore = if (game != null && game.downloadSize > 0) {
-            formatBytes(game.downloadSize)
+        // Prefer the uncompressed install size (fetched from manifest) over the compressed
+        // download size (from product API) — same logic as EpicAppScreen.
+        val sizeFromStore = if (game != null) {
+            when {
+                game.installSize > 0 -> formatBytes(game.installSize)
+                game.downloadSize > 0 -> formatBytes(game.downloadSize)
+                else -> null
+            }
         } else {
             null
         }

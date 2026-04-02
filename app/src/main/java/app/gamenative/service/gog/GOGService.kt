@@ -274,6 +274,11 @@ class GOGService : Service() {
             getInstance()?.gogManager?.updateGame(game)
         }
 
+        suspend fun fetchManifestSizes(gameId: String, language: String = GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE): GOGDownloadManager.ManifestSizes {
+            return getInstance()?.gogDownloadManager?.fetchManifestSizes(gameId, language)
+                ?: GOGDownloadManager.ManifestSizes(0L, 0L)
+        }
+
         fun isGameInstalled(gameId: String): Boolean {
             return runBlocking(Dispatchers.IO) {
                 val game = getInstance()?.gogManager?.getGameFromDbById(gameId)

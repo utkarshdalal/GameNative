@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import app.gamenative.data.DownloadInfo
 import app.gamenative.enums.Marker
+import app.gamenative.service.ChunkRefCounter
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.data.EpicGame
 import app.gamenative.service.epic.manifest.EpicManifest
@@ -53,6 +54,7 @@ class EpicDownloadManager @Inject constructor(
         private const val CHUNK_BUFFER_SIZE = 1024 * 1024 // 1MB buffer for decompression
         private const val MAX_CHUNK_RETRIES = 3 // Maximum retries per chunk
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
+
     }
 
     /**
@@ -251,7 +253,6 @@ class EpicDownloadManager @Inject constructor(
                     )
                 }
 
-                // Update progress after each batch completes
                 downloadedChunks += chunkBatch.size
                 val progress = downloadedChunks.toFloat() / totalChunks
                 downloadInfo.setProgress(progress)
@@ -275,6 +276,12 @@ class EpicDownloadManager @Inject constructor(
             var assembledFiles = 0
             val totalFiles = files.size
 
+            val refCounter = ChunkRefCounter(chunkCacheDir)
+            for (fileManifest in files) {
+                refCounter.trackFile(fileManifest.chunkParts.map { it.guidStr })
+            }
+            refCounter.logInitialState()
+
             // Process files in batches for better parallelism
             files.chunked(4).forEach { fileBatch ->
                 val assembleResults = fileBatch.map { fileManifest ->
@@ -290,13 +297,18 @@ class EpicDownloadManager @Inject constructor(
                     )
                 }
 
+                // Release chunks for all files in this batch now that they are assembled
+                for (fileManifest in fileBatch) {
+                    refCounter.releaseFile(fileManifest.chunkParts.map { it.guidStr })
+                }
+
                 assembledFiles += fileBatch.size
                 val assemblyProgress = assembledFiles.toFloat() / totalFiles
                 downloadInfo.updateStatusMessage("Assembling files ($assembledFiles/$totalFiles)")
                 Timber.tag("Epic").d("File assembly progress: $assembledFiles/$totalFiles (${(assemblyProgress * 100).toInt()}%)")
             }
 
-            // Cleanup chunk directory
+            // Safety-net cleanup: removes any chunks the ref counter may have missed
             chunkCacheDir.deleteRecursively()
 
             // Log final directory structure
@@ -380,6 +392,8 @@ class EpicDownloadManager @Inject constructor(
             downloadInfo.updateStatusMessage("Failed: ${e.message}")
             downloadInfo.setProgress(-1.0f)
             downloadInfo.setActive(false)
+            // Clean up any remaining chunk cache left by a failed or cancelled download
+            File(installPath, ".chunks").deleteRecursively()
             Result.failure(e)
         } finally {
             // Always emit download stopped event
@@ -448,6 +462,12 @@ class EpicDownloadManager @Inject constructor(
             val installDir = File(installPath)
             installDir.mkdirs()
 
+            val refCounter = ChunkRefCounter(chunkCacheDir)
+            for (fileManifest in files) {
+                refCounter.trackFile(fileManifest.chunkParts.map { it.guidStr })
+            }
+            refCounter.logInitialState()
+
             files.chunked(4).forEach { fileBatch ->
                 val assembleResults = fileBatch.map { fileManifest ->
                     async {
@@ -460,9 +480,14 @@ class EpicDownloadManager @Inject constructor(
                         failedResult.exceptionOrNull() ?: Exception("Failed to assemble file"),
                     )
                 }
+
+                // Release chunks for all files in this batch now that they are assembled
+                for (fileManifest in fileBatch) {
+                    refCounter.releaseFile(fileManifest.chunkParts.map { it.guidStr })
+                }
             }
 
-            // Cleanup
+            // Safety-net cleanup: removes any chunks the ref counter may have missed
             chunkCacheDir.deleteRecursively()
 
             // Update database
@@ -476,6 +501,8 @@ class EpicDownloadManager @Inject constructor(
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.tag("Epic").e(e, "DLC download failed: ${e.message}")
+            // Clean up any remaining chunk cache left by a failed or cancelled DLC download
+            File(installPath, ".chunks").deleteRecursively()
             Result.failure(e)
         }
     }

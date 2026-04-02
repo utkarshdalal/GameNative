@@ -2,6 +2,7 @@ package app.gamenative.service.gog
 
 import android.content.Context
 import app.gamenative.data.DownloadInfo
+import app.gamenative.service.ChunkRefCounter
 import app.gamenative.service.gog.api.DepotFile
 import app.gamenative.service.gog.api.FileChunk
 import app.gamenative.service.gog.api.GOGApiClient
@@ -80,6 +81,70 @@ class GOGDownloadManager @Inject constructor(
         private const val MAX_CHUNK_RETRIES = 3 // Maximum retries per chunk
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
         private const val DEPENDENCY_URL = "https://content-system.gog.com/dependencies/repository?generation=2"
+
+    }
+
+    /**
+     * Holds the compressed download size and uncompressed install size for a GOG game,
+     * as derived from the build manifest (accurate, unlike the product API's total_size).
+     */
+    data class ManifestSizes(val downloadSize: Long, val installSize: Long)
+
+    /**
+     * Fetches the build manifest for [gameId] and returns accurate compressed/uncompressed
+     * sizes by summing all owned depot files. This is the same manifest used during actual
+     * installation, so the sizes match what will actually be downloaded and written to disk.
+     *
+     * Returns [ManifestSizes] with zeros if the manifest cannot be fetched.
+     */
+    suspend fun fetchManifestSizes(
+        gameId: String,
+        language: String = GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE,
+    ): ManifestSizes = withContext(Dispatchers.IO) {
+        try {
+            val gen2Result = apiClient.getBuildsForGame(gameId, WINDOWS_OS_VERSION, generation = 2)
+            val gen2Build = if (gen2Result.isSuccess) {
+                parser.selectBuild(gen2Result.getOrThrow().items, preferredGeneration = 2, platform = WINDOWS_OS_VERSION)
+            } else null
+            val selectedBuild = gen2Build ?: run {
+                val gen1Result = apiClient.getBuildsForGame(gameId, WINDOWS_OS_VERSION, generation = 1)
+                if (gen1Result.isFailure) return@withContext ManifestSizes(0L, 0L)
+                parser.selectBuild(gen1Result.getOrThrow().items, preferredGeneration = 1, platform = WINDOWS_OS_VERSION)
+                    ?: return@withContext ManifestSizes(0L, 0L)
+            }
+
+            val manifest = apiClient.fetchManifest(selectedBuild.link).getOrNull()
+                ?: return@withContext ManifestSizes(0L, 0L)
+
+            val (languageDepots, _) = parser.filterDepotsByLanguage(manifest, language)
+            val ownedGameIds = gogManager.getAllGameIds()
+            val depots = parser.filterDepotsByOwnership(languageDepots, ownedGameIds)
+            if (depots.isEmpty()) return@withContext ManifestSizes(0L, 0L)
+
+            var downloadBytes = 0L
+            var installBytes = 0L
+            for (depot in depots) {
+                val depotManifest = apiClient.fetchDepotManifest(depot.manifest).getOrNull()
+                    ?: run {
+                        // A missing depot manifest means we cannot produce accurate totals;
+                        // return zeros so the caller treats the result as unknown rather than
+                        // displaying an understated size.
+                        Timber.tag("GOG").w("fetchManifestSizes: depot ${depot.productId} manifest unavailable, returning unknown size")
+                        return@withContext ManifestSizes(0L, 0L)
+                    }
+                val (gameFiles, _) = parser.separateSupportFiles(depotManifest.files)
+                downloadBytes += parser.calculateTotalSize(gameFiles)
+                installBytes += parser.calculateUncompressedSize(gameFiles)
+            }
+
+            Timber.tag("GOG").d("fetchManifestSizes: game=$gameId download=${downloadBytes / 1_000_000.0} MB install=${installBytes / 1_000_000.0} MB")
+            ManifestSizes(downloadSize = downloadBytes, installSize = installBytes)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("GOG").w(e, "fetchManifestSizes failed for game $gameId")
+            ManifestSizes(0L, 0L)
+        }
     }
 
     /**
@@ -394,6 +459,7 @@ class GOGDownloadManager @Inject constructor(
             )
 
             if (downloadResult.isFailure) {
+                chunkCacheDir.deleteRecursively()
                 MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 return@withContext downloadResult
             }
@@ -404,8 +470,15 @@ class GOGDownloadManager @Inject constructor(
             // Use installPath directly since it already includes the game-specific folder
             gameInstallDir.mkdirs()
 
-            val assembleResult = assembleFiles(gameFiles, chunkCacheDir, gameInstallDir, downloadInfo)
+            val refCounter = ChunkRefCounter(chunkCacheDir, chunkExtension = ".chunk")
+            for (file in gameFiles) {
+                refCounter.trackFile(file.chunks.map { it.compressedMd5 })
+            }
+            refCounter.logInitialState()
+
+            val assembleResult = assembleFiles(gameFiles, chunkCacheDir, gameInstallDir, downloadInfo, refCounter)
             if (assembleResult.isFailure) {
+                chunkCacheDir.deleteRecursively()
                 MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 return@withContext assembleResult
             }
@@ -444,6 +517,9 @@ class GOGDownloadManager @Inject constructor(
 
             // Ensure in-progress marker is cleared on failure
             MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+
+            // Clean up any remaining chunk cache left by a failed or cancelled download
+            File(installPath, ".gog_chunks").deleteRecursively()
 
             Result.failure(e)
         }
@@ -828,7 +904,6 @@ class GOGDownloadManager @Inject constructor(
 
                 downloadedChunks += chunkBatch.size
 
-                // Update progress with smooth interpolation
                 val progress = downloadedChunks.toFloat() / totalChunks
                 downloadInfo.setProgress(progress)
                 downloadInfo.updateStatusMessage("Downloading chunks ($downloadedChunks/$totalChunks)")
@@ -960,6 +1035,7 @@ class GOGDownloadManager @Inject constructor(
                 // Download chunks
                 val downloadResult = downloadChunksSimple(chunkUrlMap, depotCacheDir, downloadInfo)
                 if (downloadResult.isFailure) {
+                    depotCacheDir.deleteRecursively()
                     Timber.tag("GOG").w("Failed to download chunks for ${depot.readableName}: ${downloadResult.exceptionOrNull()?.message}")
                     continue
                 }
@@ -983,13 +1059,19 @@ class GOGDownloadManager @Inject constructor(
                     depotFiles
                 }
 
-                val assembleResult = assembleFiles(filesToAssemble, depotCacheDir, depotInstallDir, downloadInfo)
+                val depotRefCounter = ChunkRefCounter(depotCacheDir, chunkExtension = ".chunk")
+                for (file in filesToAssemble) {
+                    depotRefCounter.trackFile(file.chunks.map { it.compressedMd5 })
+                }
+
+                val assembleResult = assembleFiles(filesToAssemble, depotCacheDir, depotInstallDir, downloadInfo, depotRefCounter)
                 if (assembleResult.isFailure) {
+                    depotCacheDir.deleteRecursively()
                     Timber.tag("GOG").w("Failed to assemble files for ${depot.readableName}: ${assembleResult.exceptionOrNull()?.message}")
                     continue
                 }
 
-                // Cleanup cache
+                // Safety-net cleanup: removes any chunks the ref counter may have missed
                 depotCacheDir.deleteRecursively()
 
                 Timber.tag("GOG").i("Successfully downloaded dependency: ${depot.readableName} to ${depotInstallDir.absolutePath}")
@@ -1258,6 +1340,7 @@ class GOGDownloadManager @Inject constructor(
         chunkCacheDir: File,
         installDir: File,
         downloadInfo: DownloadInfo,
+        refCounter: ChunkRefCounter? = null,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val totalFiles = files.size
@@ -1267,7 +1350,8 @@ class GOGDownloadManager @Inject constructor(
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
 
-                downloadInfo.updateStatusMessage("Assembling ${index + 1}/$totalFiles: ${file.path}")
+                val assembled = index + 1
+                downloadInfo.updateStatusMessage("Assembling $assembled/$totalFiles: ${file.path}")
 
                 val assembleResult = assembleFile(file, chunkCacheDir, installDir)
                 if (assembleResult.isFailure) {
@@ -1275,6 +1359,8 @@ class GOGDownloadManager @Inject constructor(
                         assembleResult.exceptionOrNull() ?: Exception("Failed to assemble ${file.path}"),
                     )
                 }
+
+                refCounter?.releaseFile(file.chunks.map { it.compressedMd5 })
             }
 
             Timber.tag("GOG").i("Assembled $totalFiles file(s) successfully")

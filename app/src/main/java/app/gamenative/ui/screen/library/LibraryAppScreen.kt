@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
@@ -237,7 +238,8 @@ private fun PrimaryActionButton(
                 LinearProgressIndicator(
                     progress = { downloadProgress },
                     modifier = Modifier
-                        .width(80.dp)
+                        .weight(1f)
+                        .widthIn(min = 40.dp)
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
                         .then(
@@ -799,7 +801,7 @@ internal fun AppScreenContent(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        // Primary action button (left-aligned)
+                        val primaryButtonUsesWeight = (isDownloading || hasPartialDownload) && isPortrait
                         if (isDownloading || hasPartialDownload) {
                             PrimaryActionButton(
                                 text = if (isDownloading) {
@@ -808,6 +810,7 @@ internal fun AppScreenContent(
                                     stringResource(R.string.resume_download)
                                 },
                                 onClick = onPauseResumeClick,
+                                modifier = if (primaryButtonUsesWeight) Modifier.weight(1f) else Modifier,
                                 enabled = pauseResumeEnabled,
                                 isInstalled = false,
                                 isDownloading = isDownloading,
@@ -858,7 +861,7 @@ internal fun AppScreenContent(
                                     )
                                 }
                             }
-                        } else {
+                        } else if (!primaryButtonUsesWeight) {
                             Spacer(modifier = Modifier.weight(1f))
                         }
 
@@ -904,6 +907,7 @@ internal fun AppScreenContent(
                             }
                         }
                     }
+
                     }
 
                     // Compatibility status (if applicable)

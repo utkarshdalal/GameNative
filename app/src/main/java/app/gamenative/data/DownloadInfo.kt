@@ -167,6 +167,7 @@ data class DownloadInfo(
 
     fun isActive(): Boolean = isActive
 
+
     /**
      * Returns the total expected bytes for the download.
      */
