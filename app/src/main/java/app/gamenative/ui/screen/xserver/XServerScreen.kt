@@ -1104,7 +1104,11 @@ fun XServerScreen(
                         gameBack()
                         handled = true
                     } else {
-                        handled = keyboard?.onKeyEvent(it.event) == true
+                        if (it.event.device?.isVirtual == true) {
+                            handled = keyboard?.onVirtualKeyEvent(it.event) == true
+                        } else {
+                            handled = keyboard?.onKeyEvent(it.event) == true
+                        }
                     }
                 }
                 handled

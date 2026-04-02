@@ -89,6 +89,28 @@ public class Keyboard {
                 device.getKeyboardType() == InputDevice.KEYBOARD_TYPE_ALPHABETIC;
     }
 
+    public boolean onVirtualKeyEvent(KeyEvent event) {
+        int action = event.getAction();
+        if (action == KeyEvent.ACTION_DOWN || action == KeyEvent.ACTION_UP) {
+            int keyCode = event.getKeyCode();
+            if (keyCode >= keycodeMap.length) return false;
+
+            XKeycode xKeycode = keycodeMap[keyCode];
+            if (xKeycode == null) return false;
+
+            if (action == KeyEvent.ACTION_DOWN) {
+                boolean shiftPressed = event.isShiftPressed() || keyCode == KeyEvent.KEYCODE_AT || keyCode == KeyEvent.KEYCODE_STAR || keyCode == KeyEvent.KEYCODE_POUND || keyCode == KeyEvent.KEYCODE_PLUS;
+                if (shiftPressed) xServer.injectKeyPress(XKeycode.KEY_SHIFT_L);
+                xServer.injectKeyPress(xKeycode, xKeycode != XKeycode.KEY_ENTER ? event.getUnicodeChar() : 0);
+            }
+            else if (action == KeyEvent.ACTION_UP) {
+                xServer.injectKeyRelease(XKeycode.KEY_SHIFT_L);
+                xServer.injectKeyRelease(xKeycode);
+            }
+        }
+        return true;
+    }
+
     public boolean onKeyEvent(KeyEvent event) {
 
         int action = event.getAction();
