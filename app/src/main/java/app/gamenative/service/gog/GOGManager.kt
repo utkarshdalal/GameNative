@@ -767,6 +767,25 @@ class GOGManager @Inject constructor(
             guestProgramLauncherComponent.workingDir = gameDir
         }
 
+        val cometLaunchCommand = runBlocking {
+            GOGCometManager.prepareLaunchCommand(
+                context = context,
+                container = container,
+                gameWindowsPath = windowsPath,
+            )
+        }
+
+        val preparedCometCommand = cometLaunchCommand.getOrNull()
+        if (preparedCometCommand != null) {
+            Timber.tag("GOG").i("Launching GOG game with Comet support")
+            Timber.d("GOG Wine command: $preparedCometCommand")
+            return preparedCometCommand
+        }
+
+        Timber.tag("GOG").w(
+            cometLaunchCommand.exceptionOrNull(),
+            "Failed to prepare Comet support, falling back to direct GOG launch",
+        )
         Timber.d("GOG Wine command: \"$windowsPath\"")
         return "\"$windowsPath\""
     }
