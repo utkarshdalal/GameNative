@@ -34,6 +34,8 @@ import java.util.Objects;
 
 public class DRI3Extension implements Extension {
     public static final byte MAJOR_OPCODE = -102;
+    private byte firstEventId = 0;
+    private byte firstErrorId = 0;
     private final Callback<Drawable> onDestroyDrawableListener = (drawable) -> {
         ByteBuffer data = drawable.getData();
         SysVSharedMemory.unmapSHMSegment(data, data.capacity());
@@ -57,14 +59,22 @@ public class DRI3Extension implements Extension {
     }
 
     @Override
-    public byte getFirstErrorId() {
-        return 0;
-    }
+    public int getNumEvents() { return 0; }
 
     @Override
-    public byte getFirstEventId() {
-        return 0;
-    }
+    public int getNumErrors() { return 0; }
+
+    @Override
+    public void setFirstEventId(byte id) { this.firstEventId = id; }
+
+    @Override
+    public void setFirstErrorId(byte id) { this.firstErrorId = id; }
+
+    @Override
+    public byte getFirstEventId() { return firstEventId; }
+
+    @Override
+    public byte getFirstErrorId() { return firstErrorId; }
 
     private void queryVersion(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         inputStream.skip(8);

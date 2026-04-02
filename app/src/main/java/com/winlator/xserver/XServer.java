@@ -192,12 +192,28 @@ public class XServer {
         }
     }
 
+    private void registerExtension(Extension ext, int[] nextEventId, int[] nextErrorId) {
+        if (ext.getNumEvents() > 0) {
+            ext.setFirstEventId((byte) nextEventId[0]);
+            nextEventId[0] += ext.getNumEvents();
+        }
+        if (ext.getNumErrors() > 0) {
+            ext.setFirstErrorId((byte) nextErrorId[0]);
+            nextErrorId[0] += ext.getNumErrors();
+        }
+        extensions.put(ext.getMajorOpcode(), ext);
+    }
+
     private void setupExtensions() {
-        extensions.put(BigReqExtension.MAJOR_OPCODE, new BigReqExtension());
-        extensions.put(MITSHMExtension.MAJOR_OPCODE, new MITSHMExtension());
-        extensions.put(DRI3Extension.MAJOR_OPCODE, new DRI3Extension());
-        extensions.put(PresentExtension.MAJOR_OPCODE, new PresentExtension());
-        extensions.put(SyncExtension.MAJOR_OPCODE, new SyncExtension());
+        int[] nextEventId = {64};
+        int[] nextErrorId = {128};
+
+        registerExtension(new BigReqExtension(),    nextEventId, nextErrorId);
+        registerExtension(new MITSHMExtension(),    nextEventId, nextErrorId);
+        registerExtension(new DRI3Extension(),      nextEventId, nextErrorId);
+        registerExtension(new PresentExtension(),   nextEventId, nextErrorId);
+        registerExtension(new SyncExtension(),      nextEventId, nextErrorId);
+        registerExtension(new XInput2Extension(),   nextEventId, nextErrorId);
     }
 
     public <T extends Extension> T getExtension(int opcode) {
