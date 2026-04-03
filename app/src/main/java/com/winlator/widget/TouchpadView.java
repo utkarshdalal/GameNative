@@ -92,6 +92,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private float pinchLastDistance;
     // Two-finger tap detection
     private boolean twoFingerTapPossible;
+    private boolean twoFingerTapFired;
     // Track which WASD/arrow keys are currently held
     private boolean panKeyUp, panKeyDown, panKeyLeft, panKeyRight;
     // True when finger has moved beyond tap tolerance (prevents spurious tap on lift)
@@ -549,6 +550,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         movedBeyondTapThreshold = false;
         twoFingerDragging = false;
         twoFingerTapPossible = false;
+        twoFingerTapFired = false;
         twoFingerMiddleButtonDown = false;
         twoFingerGestureMode = TWO_FINGER_GESTURE_NONE;
 
@@ -716,6 +718,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             moveCursorTo((int) pt[0], (int) pt[1]);
             injectClick(gestureConfig.getTwoFingerTapAction());
             injectRelease(gestureConfig.getTwoFingerTapAction());
+            twoFingerTapFired = true;
         }
         releasePanKeys();
         releaseTwoFingerMiddleButton();
@@ -755,6 +758,12 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         // Double-tap already sent its clicks on DOWN — skip the tap on UP
         if (doubleTapDetected) {
             doubleTapDetected = false;
+            return;
+        }
+
+        // Two-finger tap already sent its click on POINTER_UP — skip the tap on UP
+        if (twoFingerTapFired) {
+            twoFingerTapFired = false;
             return;
         }
 
