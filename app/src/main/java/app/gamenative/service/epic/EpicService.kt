@@ -444,6 +444,18 @@ class EpicService : Service() {
                         downloadInfo.setActive(false)
 
                         SnackbarManager.show("Download completed successfully!")
+
+                        // Trigger a cloud save download so saves are ready before first launch.
+                        if (game.cloudSaveEnabled) {
+                            PluviaApp.events.emitJava(AndroidEvent.CloudSaveSyncStarted(gameId))
+                            instance.scope.launch {
+                                EpicCloudSavesManager.syncCloudSaves(
+                                    context = context,
+                                    appId = gameId,
+                                    preferredAction = "download",
+                                )
+                            }
+                        }
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")

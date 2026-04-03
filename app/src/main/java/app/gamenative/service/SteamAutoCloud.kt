@@ -2,7 +2,6 @@ package app.gamenative.service
 
 import androidx.room.withTransaction
 import app.gamenative.data.PostSyncInfo
-import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
 import app.gamenative.data.UserFileInfo
 import app.gamenative.data.UserFilesDownloadResult
@@ -11,7 +10,6 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.service.SteamService.Companion.FileChanges
-import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.SteamUtils
@@ -84,6 +82,136 @@ object SteamAutoCloud {
             total += bytesRead
             progress(total)
         }
+    }
+
+    private fun getFilesDiff(
+        currentFiles: List<UserFileInfo>,
+        oldFiles: List<UserFileInfo>,
+    ): Pair<Boolean, FileChanges> {
+        val overlappingFiles = currentFiles.filter { currentFile ->
+            oldFiles.any { currentFile.prefixPath == it.prefixPath }
+        }
+
+        val newFiles = currentFiles.filter { currentFile ->
+            !oldFiles.any { currentFile.prefixPath == it.prefixPath }
+        }
+
+        val deletedFiles = oldFiles.filter { oldFile ->
+            !currentFiles.any { oldFile.prefixPath == it.prefixPath }
+        }
+
+        val modifiedFiles = overlappingFiles.filter { file ->
+            oldFiles.first {
+                it.prefixPath == file.prefixPath
+            }.let {
+                Timber.i("Comparing SHA of ${it.prefixPath} and ${file.prefixPath}")
+                Timber.i("[${it.sha.joinToString(", ")}]\n[${file.sha.joinToString(", ")}]")
+
+                !it.sha.contentEquals(file.sha)
+            }
+        }
+
+        val changesExist = newFiles.isNotEmpty() || deletedFiles.isNotEmpty() || modifiedFiles.isNotEmpty()
+
+        return changesExist to FileChanges(deletedFiles, modifiedFiles, newFiles)
+    }
+
+    internal fun getLocalUserFilesAsPrefixMap(
+        appInfo: SteamApp,
+        prefixToPath: (String) -> String,
+    ): Map<String, List<UserFileInfo>> {
+        val savePatterns = appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
+
+        return if (savePatterns.isNotEmpty()) {
+            val result = mutableMapOf<String, MutableList<UserFileInfo>>()
+
+            savePatterns.forEach { userFile ->
+                val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
+
+                Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
+
+                val files = FileUtils.findFilesRecursive(
+                    rootPath = basePath,
+                    pattern = userFile.pattern,
+                    maxDepth = 5,
+                ).map {
+                    val sha = streamingShaHash(it)
+
+                    Timber.i("Found ${it.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
+
+                    val relativePath = basePath.relativize(it).pathString
+
+                    UserFileInfo(userFile.root, userFile.substitutedPath, relativePath, Files.getLastModifiedTime(it).toMillis(), sha, cloudRoot = userFile.uploadRoot, cloudPath = userFile.uploadPath)
+                }.collect(Collectors.toList())
+
+                Timber.i("Found ${files.size} file(s) in $basePath for pattern ${userFile.pattern}")
+
+                val prefixKey = Paths.get(userFile.prefix).pathString
+                result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
+            }
+
+            result
+        } else {
+            // Fallback: no UFS patterns; scan SteamUserData root recursively (depth 5)
+            val rootType = PathType.SteamUserData
+            val basePath = Paths.get(prefixToPath(rootType.toString()))
+
+            Timber.i("No UFS patterns; scanning $basePath recursively (depth 5) under ${rootType.name}")
+
+            val files = FileUtils.findFilesRecursive(
+                rootPath = basePath,
+                pattern = "*",
+                maxDepth = 5,
+            ).map {
+                val sha = streamingShaHash(it)
+
+                val relativePath = basePath.relativize(it).pathString
+
+                Timber.i("Found ${it.pathString}\n\tin %${rootType.name}%\n\twith sha [${sha.joinToString(", ")}]")
+
+                // Store relative path in filename; empty path component
+                UserFileInfo(rootType, "", relativePath, Files.getLastModifiedTime(it).toMillis(), sha)
+            }.collect(Collectors.toList())
+
+            Timber.i("Found ${files.size} file(s) in $basePath for fallback recursive scan")
+
+            mapOf(Paths.get("%${rootType.name}%").pathString to files)
+        }
+    }
+
+    internal data class CloudSyncSnapshot(
+        val cloudIsNewer: Boolean,
+        val localFilesMap: Map<String, List<UserFileInfo>>,
+        val hasLocalChanges: Boolean?, // null = no DB cache
+        val cloudChangeNumber: Long,
+        val changeList: AppFileChangeList,
+    )
+
+    internal suspend fun fetchSyncSnapshot(
+        appInfo: SteamApp,
+        steamInstance: SteamService,
+        steamCloud: SteamCloud,
+        prefixToPath: (String) -> String,
+    ): CloudSyncSnapshot {
+        val localChangeNumber = steamInstance.changeNumbersDao
+            .getByAppId(appInfo.id)?.changeNumber ?: 0L
+        val changeList = steamCloud.getAppFileListChange(appInfo.id, localChangeNumber).await()
+        val cloudChangeNumber = changeList.currentChangeNumber
+        val localFilesMap = getLocalUserFilesAsPrefixMap(appInfo, prefixToPath)
+        val allLocalFiles = localFilesMap.values.flatten()
+        val cachedFiles = steamInstance.fileChangeListsDao.getByAppId(appInfo.id)?.userFileInfo
+        val hasLocalChanges = if (cachedFiles.isNullOrEmpty()) {
+            null
+        } else {
+            getFilesDiff(allLocalFiles, cachedFiles).first
+        }
+        return CloudSyncSnapshot(
+            cloudIsNewer = cloudChangeNumber > localChangeNumber,
+            localFilesMap = localFilesMap,
+            hasLocalChanges = hasLocalChanges,
+            cloudChangeNumber = cloudChangeNumber,
+            changeList = changeList,
+        )
     }
 
     fun syncUserFiles(
@@ -207,35 +335,6 @@ object SteamAutoCloud {
             }
         }
 
-        val getFilesDiff: (List<UserFileInfo>, List<UserFileInfo>) -> Pair<Boolean, FileChanges> = { currentFiles, oldFiles ->
-            val overlappingFiles = currentFiles.filter { currentFile ->
-                oldFiles.any { currentFile.prefixPath == it.prefixPath }
-            }
-
-            val newFiles = currentFiles.filter { currentFile ->
-                !oldFiles.any { currentFile.prefixPath == it.prefixPath }
-            }
-
-            val deletedFiles = oldFiles.filter { oldFile ->
-                !currentFiles.any { oldFile.prefixPath == it.prefixPath }
-            }
-
-            val modifiedFiles = overlappingFiles.filter { file ->
-                oldFiles.first {
-                    it.prefixPath == file.prefixPath
-                }.let {
-                    Timber.i("Comparing SHA of ${it.prefixPath} and ${file.prefixPath}")
-                    Timber.i("[${it.sha.joinToString(", ")}]\n[${file.sha.joinToString(", ")}]")
-
-                    !it.sha.contentEquals(file.sha)
-                }
-            }
-
-            val changesExist = newFiles.isNotEmpty() || deletedFiles.isNotEmpty() || modifiedFiles.isNotEmpty()
-
-            changesExist to FileChanges(deletedFiles, modifiedFiles, newFiles)
-        }
-
         val hasHashConflicts: (Map<String, List<UserFileInfo>>, AppFileChangeList) -> Boolean =
             { localUserFiles, fileList ->
                 fileList.files.any { file ->
@@ -255,66 +354,6 @@ object SteamAutoCloud {
                     } == true
                 }
             }
-
-        val getLocalUserFilesAsPrefixMap: () -> Map<String, List<UserFileInfo>> = {
-            val savePatterns = appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
-
-            if (savePatterns.isNotEmpty()) {
-                val result = mutableMapOf<String, MutableList<UserFileInfo>>()
-
-                savePatterns.forEach { userFile ->
-                    val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
-
-                    Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
-
-                    val files = FileUtils.findFilesRecursive(
-                        rootPath = basePath,
-                        pattern = userFile.pattern,
-                        maxDepth = 5,
-                    ).map {
-                        val sha = streamingShaHash(it)
-
-                        Timber.i("Found ${it.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
-
-                        val relativePath = basePath.relativize(it).pathString
-
-                        UserFileInfo(userFile.root, userFile.substitutedPath, relativePath, Files.getLastModifiedTime(it).toMillis(), sha, cloudRoot = userFile.uploadRoot, cloudPath = userFile.uploadPath)
-                    }.collect(Collectors.toList())
-
-                    Timber.i("Found ${files.size} file(s) in $basePath for pattern ${userFile.pattern}")
-
-                    val prefixKey = Paths.get(userFile.prefix).pathString
-                    result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
-                }
-
-                result
-            } else {
-                // Fallback: no UFS patterns; scan SteamUserData root recursively (depth 5)
-                val rootType = PathType.SteamUserData
-                val basePath = Paths.get(prefixToPath(rootType.toString()))
-
-                Timber.i("No UFS patterns; scanning $basePath recursively (depth 5) under ${rootType.name}")
-
-                val files = FileUtils.findFilesRecursive(
-                    rootPath = basePath,
-                    pattern = "*",
-                    maxDepth = 5,
-                ).map {
-                    val sha = streamingShaHash(it)
-
-                    val relativePath = basePath.relativize(it).pathString
-
-                    Timber.i("Found ${it.pathString}\n\tin %${rootType.name}%\n\twith sha [${sha.joinToString(", ")}]")
-
-                    // Store relative path in filename; empty path component
-                    UserFileInfo(rootType, "", relativePath, Files.getLastModifiedTime(it).toMillis(), sha)
-                }.collect(Collectors.toList())
-
-                Timber.i("Found ${files.size} file(s) in $basePath for fallback recursive scan")
-
-                mapOf(Paths.get("%${rootType.name}%").pathString to files)
-            }
-        }
 
         val fileChangeListToUserFiles: (AppFileChangeList) -> List<UserFileInfo> = { appFileListChange ->
             val pathTypePairs = getPathTypePairs(appFileListChange)
@@ -700,7 +739,7 @@ object SteamAutoCloud {
             val allLocalUserFiles: List<UserFileInfo>
 
             microsecInitCaches = measureTime {
-                localUserFilesMap = getLocalUserFilesAsPrefixMap()
+                localUserFilesMap = getLocalUserFilesAsPrefixMap(appInfo, prefixToPath)
                 allLocalUserFiles = localUserFilesMap.map { it.value }.flatten()
             }.inWholeMicroseconds
 
@@ -737,7 +776,7 @@ object SteamAutoCloud {
                     val updatedLocalFiles: Map<String, List<UserFileInfo>>
                     val hasLocalChanges: Boolean
                     microsecValidateState = measureTime {
-                        updatedLocalFiles = getLocalUserFilesAsPrefixMap()
+                        updatedLocalFiles = getLocalUserFilesAsPrefixMap(appInfo, prefixToPath)
                         hasLocalChanges = hasHashConflicts(updatedLocalFiles, appFileListChange)
                         filesManaged = updatedLocalFiles.size
                     }.inWholeMicroseconds

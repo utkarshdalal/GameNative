@@ -17,16 +17,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.EpicGame
 import app.gamenative.data.LibraryItem
+import app.gamenative.events.AndroidEvent
 import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.service.epic.EpicConstants
 import app.gamenative.service.epic.EpicService
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.ui.data.CloudSaveStatus
+import app.gamenative.ui.data.toDisplayString
 import app.gamenative.enums.Marker
+import app.gamenative.enums.SaveLocation
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId
 import app.gamenative.utils.MarkerUtils
@@ -37,7 +42,6 @@ import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -259,6 +263,71 @@ class EpicAppScreen : BaseAppScreen() {
             gameName = gameNameForCompatibility,
         )
 
+        val hasCloudSaves = game?.cloudSaveEnabled
+
+        val syncStateText = remember(gameId) { mutableStateOf<String?>(null) }
+        val cloudSaveStatus = remember(gameId) { mutableStateOf<CloudSaveStatus?>(null) }
+        val conflictLocalTimestamp = remember(gameId) { mutableStateOf(0L) }
+        val conflictRemoteTimestamp = remember(gameId) { mutableStateOf(0L) }
+
+        // Re-run cloud check whenever network availability changes
+        val cloudConnectivityVersion = remember { mutableStateOf(0) }
+        DisposableEffect(Unit) {
+            val onNetworkChanged: (AndroidEvent.NetworkAvailabilityChanged) -> Unit = { cloudConnectivityVersion.value++ }
+            val onCloudSaveSynced: (AndroidEvent.CloudSaveSynced) -> Unit = { event ->
+                if (event.appId == gameId) {
+                    if (event.success) {
+                        cloudSaveStatus.value = CloudSaveStatus.UP_TO_DATE
+                        syncStateText.value = context.getString(R.string.cloud_saves_up_to_date)
+                    } else {
+                        cloudConnectivityVersion.value++
+                    }
+                }
+            }
+            val onCloudSaveSyncStarted: (AndroidEvent.CloudSaveSyncStarted) -> Unit = { event ->
+                if (event.appId == gameId) {
+                    cloudSaveStatus.value = CloudSaveStatus.SYNCING
+                    syncStateText.value = context.getString(R.string.cloud_saves_syncing)
+                }
+            }
+            PluviaApp.events.on<AndroidEvent.NetworkAvailabilityChanged, Unit>(onNetworkChanged)
+            PluviaApp.events.on<AndroidEvent.CloudSaveSynced, Unit>(onCloudSaveSynced)
+            PluviaApp.events.on<AndroidEvent.CloudSaveSyncStarted, Unit>(onCloudSaveSyncStarted)
+            onDispose {
+                PluviaApp.events.off<AndroidEvent.NetworkAvailabilityChanged, Unit>(onNetworkChanged)
+                PluviaApp.events.off<AndroidEvent.CloudSaveSynced, Unit>(onCloudSaveSynced)
+                PluviaApp.events.off<AndroidEvent.CloudSaveSyncStarted, Unit>(onCloudSaveSyncStarted)
+            }
+        }
+
+        LaunchedEffect(gameId, cloudConnectivityVersion.value, hasCloudSaves) {
+            if (hasCloudSaves == true) {
+                cloudSaveStatus.value = CloudSaveStatus.CHECKING
+                syncStateText.value = context.getString(R.string.cloud_saves_checking)
+                val epicGame = withContext(Dispatchers.IO) { EpicService.getEpicGameOf(gameId) }
+                val status = if (epicGame == null) {
+                    CloudSaveStatus.OFFLINE
+                } else {
+                    when (withContext(Dispatchers.IO) { EpicCloudSavesManager.determineSyncAction(context, game = epicGame) }) {
+                        EpicCloudSavesManager.SyncAction.DOWNLOAD -> CloudSaveStatus.PENDING_DOWNLOAD
+                        EpicCloudSavesManager.SyncAction.UPLOAD   -> CloudSaveStatus.PENDING_UPLOAD
+                        EpicCloudSavesManager.SyncAction.CONFLICT -> CloudSaveStatus.CONFLICT
+                        EpicCloudSavesManager.SyncAction.NONE     -> CloudSaveStatus.UP_TO_DATE
+                        null                                      -> CloudSaveStatus.OFFLINE
+                    }
+                }
+                if (status == CloudSaveStatus.CONFLICT) {
+                    withContext(Dispatchers.IO) { EpicCloudSavesManager.getConflictTimestamps(context, gameId) }
+                        ?.let { (local, remote) ->
+                            conflictLocalTimestamp.value = local
+                            conflictRemoteTimestamp.value = remote
+                        }
+                }
+                cloudSaveStatus.value = status
+                syncStateText.value = status.toDisplayString(context)
+            }
+        }
+
         val displayInfo = GameDisplayInfo(
             name = game?.title ?: libraryItem.name,
             iconUrl = game?.iconUrl ?: libraryItem.iconHash,
@@ -272,6 +341,11 @@ class EpicAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
+            hasCloudSaves = hasCloudSaves,
+            lastSyncStateText = syncStateText.value,
+            cloudSaveStatus = cloudSaveStatus.value,
+            conflictLocalTimestamp = conflictLocalTimestamp.value,
+            conflictRemoteTimestamp = conflictRemoteTimestamp.value,
         )
         Timber.tag(TAG).d("Returning GameDisplayInfo: name=${displayInfo.name}, iconUrl=${displayInfo.iconUrl}, heroImageUrl=${displayInfo.heroImageUrl}, developer=${displayInfo.developer}, installLocation=${displayInfo.installLocation}")
         return displayInfo
@@ -534,42 +608,17 @@ class EpicAppScreen : BaseAppScreen() {
         onClickPlay: (Boolean) -> Unit,
         isInstalled: Boolean,
     ): List<AppMenuOption> {
-        val options = mutableListOf<AppMenuOption>()
+        return emptyList()
+    }
 
-        // Add cloud sync option if game supports cloud saves
+    override fun getForceCloudSync(context: Context, libraryItem: LibraryItem): ((SaveLocation) -> Unit)? {
         val epicGame = EpicService.getEpicGameOf(libraryItem.gameId)
-        if (epicGame?.cloudSaveEnabled == true) {
-            options.add(
-                AppMenuOption(
-                    optionType = AppOptionMenuType.ForceCloudSync,
-                    onClick = {
-                        val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-                        scope.launch {
-                            try {
-                                SnackbarManager.show(context.getString(R.string.epic_cloud_sync_starting))
-
-                                val result = withContext(Dispatchers.IO) {
-                                    EpicCloudSavesManager.syncCloudSaves(
-                                        context,
-                                        libraryItem.gameId,
-                                        preferredAction = "download", // Force download for testing
-                                    )
-                                }
-
-                                SnackbarManager.show(
-                                    if (result) context.getString(R.string.epic_cloud_sync_success) else context.getString(R.string.epic_cloud_sync_failed),
-                                )
-                            } catch (e: Exception) {
-                                Timber.tag(TAG).e(e, "[Cloud Saves] Sync failed")
-                                SnackbarManager.show(context.getString(R.string.epic_cloud_sync_error, e.message ?: ""))
-                            }
-                        }
-                    },
-                ),
-            )
+        if (epicGame?.cloudSaveEnabled != true) return null
+        return { saveLocation ->
+            CoroutineScope(Dispatchers.IO).launch {
+                EpicCloudSavesManager.launchForceSync(context, libraryItem.gameId, saveLocation)
+            }
         }
-
-        return options
     }
 
     /**

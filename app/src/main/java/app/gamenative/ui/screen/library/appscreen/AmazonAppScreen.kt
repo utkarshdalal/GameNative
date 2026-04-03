@@ -192,6 +192,7 @@ class AmazonAppScreen : BaseAppScreen() {
             playtimeText = null,
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
+            hasCloudSaves = false,
         )
     }
 

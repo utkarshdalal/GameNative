@@ -1357,4 +1357,15 @@
     <string name="workshop_processing">Elaborazione mod…</string>
     <string name="workshop_failed_count">%1$d mod del Workshop non aggiornati</string>
     <string name="workshop_download_failed">Download non riuscito</string>
+    <string name="cloud_saves_last_synced">Ultima sincronizzazione</string>
+    <string name="cloud_saves_sync_state">Stato sincronizzazione</string>
+    <string name="cloud_saves_up_to_date">Aggiornato</string>
+    <string name="cloud_saves_pending_download">Download in attesa</string>
+    <string name="cloud_saves_checking">Verifica\u2026</string>
+    <string name="cloud_saves_syncing">Sincronizzazione\u2026</string>
+    <string name="cloud_saves_conflict">Conflitto</string>
+    <string name="cloud_saves_failed">Fallito</string>
+    <string name="cloud_saves_offline">Non in linea</string>
+    <string name="cloud_saves_pending_upload">Caricamento in attesa</string>
+    <string name="cloud_saves_force_sync">Forza sincronizzazione</string>
 </resources>

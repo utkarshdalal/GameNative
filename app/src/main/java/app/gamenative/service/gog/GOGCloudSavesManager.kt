@@ -16,7 +16,6 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.time.Instant
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
@@ -36,13 +35,22 @@ class GOGCloudSavesManager(
         private const val CLOUD_STORAGE_BASE_URL = "https://cloudstorage.gog.com"
         private const val USER_AGENT = "GOGGalaxyCommunicationService/2.0.13.27 (Windows_32bit) dont_sync_marker/true installation_source/gog"
         private const val DELETION_MD5 = "aadd86936a80ee8a369579c3926f1b3c"
+
     }
 
     enum class SyncAction {
         UPLOAD,
         DOWNLOAD,
         CONFLICT,
-        NONE
+        NONE;
+
+        /** Severity rank for picking the worst action across multiple save locations.
+         *  CONFLICT > UPLOAD/DOWNLOAD > NONE. Use [rankOrNull] for the nullable variant. */
+        fun rank(): Int = when (this) {
+            CONFLICT -> 3
+            UPLOAD, DOWNLOAD -> 2
+            NONE -> 1
+        }
     }
 
     /**
@@ -174,7 +182,10 @@ class GOGCloudSavesManager(
 
             // Get cloud files using game-specific clientId in URL path
             Timber.tag("GOG").d("[Cloud Saves] Fetching cloud file list for dirname: $dirname")
-            val cloudFiles = getCloudFiles(credentials.userId, clientId, dirname, credentials.accessToken)
+            val cloudFiles = getCloudFiles(credentials.userId, clientId, dirname, credentials.accessToken) ?: run {
+                Timber.tag("GOG-CloudSaves").e("Failed to fetch cloud files, aborting sync")
+                return@withContext 0L
+            }
             Timber.tag("GOG").d("[Cloud Saves] Retrieved ${cloudFiles.size} total cloud files")
             val downloadableCloud = cloudFiles.filter { !it.isDeleted }
             Timber.tag("GOG").i("[Cloud Saves] Found ${downloadableCloud.size} downloadable cloud file(s) (excluding deleted)")
@@ -329,6 +340,77 @@ class GOGCloudSavesManager(
     }
 
     /**
+     * Read-only status check: determine what sync action would be needed without actually syncing.
+     * Returns null if credentials can't be obtained (offline / not authenticated).
+     */
+    suspend fun determineSyncAction(
+        localPath: String,
+        dirname: String,
+        clientId: String,
+        clientSecret: String,
+        lastSyncTimestamp: Long = 0,
+    ): SyncAction? = withContext(Dispatchers.IO) {
+        try {
+            val credentials = GOGAuthManager.getGameCredentials(context, clientId, clientSecret)
+                .getOrNull() ?: return@withContext null
+
+            val syncDir = File(localPath)
+            val localFiles = if (syncDir.exists()) scanLocalFiles(syncDir) else emptyList()
+            val cloudFiles = getCloudFiles(credentials.userId, clientId, dirname, credentials.accessToken)
+                ?: return@withContext null
+
+            Timber.tag("GOG-CloudSaves").d(
+                "determineSyncAction: dirname=$dirname lastSyncTimestamp=$lastSyncTimestamp " +
+                "localFiles=${localFiles.size} cloudFiles=${cloudFiles.size}"
+            )
+            localFiles.forEach { f ->
+                Timber.tag("GOG-CloudSaves").d("  local  ${f.relativePath} ts=${f.updateTimestamp}")
+            }
+            cloudFiles.forEach { f ->
+                Timber.tag("GOG-CloudSaves").d("  cloud  ${f.relativePath} ts=${f.updateTimestamp} deleted=${f.isDeleted}")
+            }
+
+            val action = when {
+                localFiles.isEmpty() && cloudFiles.isEmpty() -> SyncAction.NONE
+                localFiles.isNotEmpty() && cloudFiles.isEmpty() -> SyncAction.UPLOAD
+                localFiles.isEmpty() && cloudFiles.any { !it.isDeleted } -> SyncAction.DOWNLOAD
+                else -> classifyFiles(localFiles, cloudFiles, lastSyncTimestamp).determineAction()
+            }
+            Timber.tag("GOG-CloudSaves").d("determineSyncAction result: $action")
+            action
+        } catch (e: Exception) {
+            Timber.tag("GOG-CloudSaves").e(e, "determineSyncAction failed")
+            null
+        }
+    }
+
+    /**
+     * Returns the max local and remote timestamps (in milliseconds) for conflict display.
+     * Returns null if credentials can't be obtained.
+     */
+    suspend fun getConflictTimestamps(
+        localPath: String,
+        dirname: String,
+        clientId: String,
+        clientSecret: String,
+    ): Pair<Long, Long>? = withContext(Dispatchers.IO) {
+        try {
+            val credentials = GOGAuthManager.getGameCredentials(context, clientId, clientSecret)
+                .getOrNull() ?: return@withContext null
+            val syncDir = File(localPath)
+            val localFiles = if (syncDir.exists()) scanLocalFiles(syncDir) else emptyList()
+            val cloudFiles = getCloudFiles(credentials.userId, clientId, dirname, credentials.accessToken)
+                ?: return@withContext null
+            val localMax = localFiles.maxOfOrNull { it.updateTimestamp ?: 0L } ?: 0L
+            val remoteMax = cloudFiles.maxOfOrNull { it.updateTimestamp ?: 0L } ?: 0L
+            Pair(localMax * 1000, remoteMax * 1000)
+        } catch (e: Exception) {
+            Timber.tag("GOG-CloudSaves").e(e, "getConflictTimestamps failed")
+            null
+        }
+    }
+
+    /**
      * Scan local directory for save files
      */
     private suspend fun scanLocalFiles(directory: File): List<SyncFile> = withContext(Dispatchers.IO) {
@@ -356,14 +438,16 @@ class GOGCloudSavesManager(
     }
 
     /**
-     * Get cloud files list from GOG API
+     * Returns the list of cloud files for this dirname, or null if the request failed
+     * (network error, HTTP error, parse error). A successful but empty response returns
+     * an empty list — callers must distinguish null (unknown) from empty (no cloud files).
      */
     private suspend fun getCloudFiles(
         userId: String,
         clientId: String,
         dirname: String,
         authToken: String
-    ): List<CloudFile> = withContext(Dispatchers.IO) {
+    ): List<CloudFile>? = withContext(Dispatchers.IO) {
         try {
             // List all files (don't include dirname in URL - it's used as a prefix filter)
             val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId"
@@ -383,7 +467,7 @@ class GOGCloudSavesManager(
                     val errorBody = response.body?.string() ?: "No response body"
                     Timber.tag("GOG").e("[Cloud Saves] Failed to fetch cloud files: HTTP ${response.code}")
                     Timber.tag("GOG").e("[Cloud Saves] Response body: $errorBody")
-                    return@withContext emptyList()
+                    return@withContext null
                 }
 
                 val responseBody = response.body?.string() ?: ""
@@ -397,7 +481,7 @@ class GOGCloudSavesManager(
                 } catch (e: Exception) {
                     Timber.tag("GOG").e(e, "[Cloud Saves] Failed to parse JSON array response")
                     Timber.tag("GOG").e("[Cloud Saves] Response was: $responseBody")
-                    return@withContext emptyList()
+                    return@withContext null
                 }
 
                 Timber.tag("GOG").d("[Cloud Saves] Found ${items.length()} total items in cloud storage")
@@ -413,9 +497,11 @@ class GOGCloudSavesManager(
 
                     // Filter files that belong to this save location (name starts with dirname/)
                     if (name.isNotEmpty() && hash.isNotEmpty() && name.startsWith("$dirname/")) {
+                        // GOG cloud storage returns ISO 8601 timestamps with a UTC offset, e.g.
+                        // "2026-04-02T20:34:00.123456+00:00". OffsetDateTime also accepts "Z".
                         val timestamp = try {
-                            Instant.parse(lastModified).epochSecond
-                        } catch (e: Exception) {
+                            java.time.OffsetDateTime.parse(lastModified).toInstant().epochSecond
+                        } catch (e: java.time.format.DateTimeParseException) {
                             null
                         }
 
@@ -434,7 +520,7 @@ class GOGCloudSavesManager(
 
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "Failed to get cloud files")
-            emptyList()
+            null
         }
     }
 

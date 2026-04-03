@@ -153,6 +153,9 @@ data class SteamApp(
     @ColumnInfo(name = "workshop_download_pending", defaultValue = "0")
     val workshopDownloadPending: Boolean = false,
 ) {
+    val supportsCloudSaves: Boolean
+        get() = ufs.quota > 0
+
     val logoUrl: String
         get() = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$id/$logoHash.jpg"
     val logoSmallUrl: String

@@ -5,6 +5,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -14,11 +15,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.GOGGame
 import app.gamenative.data.LibraryItem
+import app.gamenative.enums.Marker
+import app.gamenative.enums.SaveLocation
+import app.gamenative.events.AndroidEvent
+import app.gamenative.service.gog.GOGCloudSavesManager
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
+import app.gamenative.ui.data.CloudSaveStatus
+import app.gamenative.ui.data.toDisplayString
 import app.gamenative.utils.MarkerUtils
 import java.io.File
 import app.gamenative.ui.data.AppMenuOption
@@ -150,6 +158,112 @@ class GOGAppScreen : BaseAppScreen() {
             gameName = gameNameForCompatibility,
         )
 
+        // Cloud saves: null = unknown/checking, true = supported, false = not supported
+        var hasCloudSaves by remember(gameId) { mutableStateOf<Boolean?>(null) }
+
+        val syncStateText = remember(gameId) { mutableStateOf<String?>(null) }
+        val cloudSaveStatus = remember(gameId) { mutableStateOf<CloudSaveStatus?>(null) }
+        val conflictLocalTimestamp = remember(gameId) { mutableStateOf(0L) }
+        val conflictRemoteTimestamp = remember(gameId) { mutableStateOf(0L) }
+
+        val cloudConnectivityVersion = remember { mutableStateOf(0) }
+        DisposableEffect(Unit) {
+            val onNetworkChanged: (AndroidEvent.NetworkAvailabilityChanged) -> Unit = { cloudConnectivityVersion.value++ }
+            val onCloudSaveSynced: (AndroidEvent.CloudSaveSynced) -> Unit = { event ->
+                if (event.appId == libraryItem.gameId) {
+                    if (event.success) {
+                        cloudSaveStatus.value = CloudSaveStatus.UP_TO_DATE
+                        syncStateText.value = context.getString(R.string.cloud_saves_up_to_date)
+                    } else {
+                        cloudConnectivityVersion.value++
+                    }
+                }
+            }
+            val onCloudSaveSyncStarted: (AndroidEvent.CloudSaveSyncStarted) -> Unit = { event ->
+                if (event.appId == libraryItem.gameId) {
+                    cloudSaveStatus.value = CloudSaveStatus.SYNCING
+                    syncStateText.value = context.getString(R.string.cloud_saves_syncing)
+                }
+            }
+            PluviaApp.events.on<AndroidEvent.NetworkAvailabilityChanged, Unit>(onNetworkChanged)
+            PluviaApp.events.on<AndroidEvent.CloudSaveSynced, Unit>(onCloudSaveSynced)
+            PluviaApp.events.on<AndroidEvent.CloudSaveSyncStarted, Unit>(onCloudSaveSyncStarted)
+            onDispose {
+                PluviaApp.events.off<AndroidEvent.NetworkAvailabilityChanged, Unit>(onNetworkChanged)
+                PluviaApp.events.off<AndroidEvent.CloudSaveSynced, Unit>(onCloudSaveSynced)
+                PluviaApp.events.off<AndroidEvent.CloudSaveSyncStarted, Unit>(onCloudSaveSyncStarted)
+            }
+        }
+
+        LaunchedEffect(gameId, cloudConnectivityVersion.value) {
+            val locations = withContext(Dispatchers.IO) {
+                GOGService.getSaveLocations(context, libraryItem.appId, libraryItem.name)
+            }
+            val supportsCloudSaves = locations?.isNotEmpty()
+            hasCloudSaves = supportsCloudSaves
+
+            val safeLocations = locations.orEmpty()
+            if (supportsCloudSaves == true) {
+                cloudSaveStatus.value = CloudSaveStatus.CHECKING
+                syncStateText.value = context.getString(R.string.cloud_saves_checking)
+
+                val cloudSavesManager = GOGCloudSavesManager(context)
+                var worstAction: GOGCloudSavesManager.SyncAction? = GOGCloudSavesManager.SyncAction.NONE
+                var firstConflictLocation: app.gamenative.data.GOGCloudSavesLocation? = null
+
+                for (location in safeLocations) {
+                    val instance = GOGService.getInstance()
+                    val timestampStr = instance?.gogManager?.getCloudSaveSyncTimestamp(libraryItem.appId, location.name)
+                    val timestamp = timestampStr?.toLongOrNull() ?: 0L
+
+                    val action = withContext(Dispatchers.IO) {
+                        cloudSavesManager.determineSyncAction(
+                            localPath = location.location,
+                            dirname = location.name,
+                            clientId = location.clientId,
+                            clientSecret = location.clientSecret,
+                            lastSyncTimestamp = timestamp,
+                        )
+                    }
+
+                    // null = offline; rank: CONFLICT > UPLOAD/DOWNLOAD > NONE > null
+                    if (action == null) {
+                        worstAction = null
+                        break
+                    }
+                    if (action.rank() > (worstAction?.rank() ?: 0)) {
+                        worstAction = action
+                        if (action == GOGCloudSavesManager.SyncAction.CONFLICT) firstConflictLocation = location
+                    }
+                }
+
+                val status = when (worstAction) {
+                    GOGCloudSavesManager.SyncAction.DOWNLOAD -> CloudSaveStatus.PENDING_DOWNLOAD
+                    GOGCloudSavesManager.SyncAction.UPLOAD   -> CloudSaveStatus.PENDING_UPLOAD
+                    GOGCloudSavesManager.SyncAction.CONFLICT -> CloudSaveStatus.CONFLICT
+                    GOGCloudSavesManager.SyncAction.NONE     -> CloudSaveStatus.UP_TO_DATE
+                    null                                      -> CloudSaveStatus.OFFLINE
+                }
+
+                if (status == CloudSaveStatus.CONFLICT && firstConflictLocation != null) {
+                    withContext(Dispatchers.IO) {
+                        cloudSavesManager.getConflictTimestamps(
+                            localPath = firstConflictLocation.location,
+                            dirname = firstConflictLocation.name,
+                            clientId = firstConflictLocation.clientId,
+                            clientSecret = firstConflictLocation.clientSecret,
+                        )
+                    }?.let { (local, remote) ->
+                        conflictLocalTimestamp.value = local
+                        conflictRemoteTimestamp.value = remote
+                    }
+                }
+
+                cloudSaveStatus.value = status
+                syncStateText.value = status.toDisplayString(context)
+            }
+        }
+
         val displayInfo = GameDisplayInfo(
             name = game?.title ?: libraryItem.name,
             iconUrl = game?.iconUrl ?: libraryItem.iconHash,
@@ -166,9 +280,25 @@ class GOGAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
+            hasCloudSaves = hasCloudSaves,
+            lastSyncStateText = syncStateText.value,
+            cloudSaveStatus = cloudSaveStatus.value,
+            conflictLocalTimestamp = conflictLocalTimestamp.value,
+            conflictRemoteTimestamp = conflictRemoteTimestamp.value,
         )
         Timber.tag(TAG).d("Returning GameDisplayInfo: name=${displayInfo.name}, iconUrl=${displayInfo.iconUrl}, heroImageUrl=${displayInfo.heroImageUrl}, developer=${displayInfo.developer}, installLocation=${displayInfo.installLocation}")
         return displayInfo
+    }
+
+    override fun getForceCloudSync(context: Context, libraryItem: LibraryItem): ((SaveLocation) -> Unit) = { saveLocation ->
+        CoroutineScope(Dispatchers.IO).launch {
+            val preferredAction = when (saveLocation) {
+                SaveLocation.Local -> "upload"
+                SaveLocation.Remote -> "download"
+                SaveLocation.None -> "none"
+            }
+            GOGService.syncCloudSaves(context, libraryItem.appId, preferredAction)
+        }
     }
 
     override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean {

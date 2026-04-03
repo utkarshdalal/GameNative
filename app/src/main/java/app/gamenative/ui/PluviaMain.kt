@@ -66,6 +66,7 @@ import app.gamenative.service.amazon.AmazonService
 import com.posthog.PostHog
 import app.gamenative.ui.component.AchievementOverlay
 import app.gamenative.ui.component.ConnectionStatusBanner
+import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
@@ -1827,18 +1828,50 @@ fun preLaunchApp(
             } else {
                 // Handle Cloud Saves
                 Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves before launch")
-                // Sync cloud saves (download latest saves before playing)
-                Timber.tag("Epic").d("[Cloud Saves] Starting pre-game download sync for $appId")
-                val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
+
+                val preferredAction = when (preferredSave) {
+                    SaveLocation.Local  -> "upload"
+                    SaveLocation.Remote -> "download"
+                    SaveLocation.None   -> "auto"
+                }
+
+                // If no explicit preference, pre-check for conflict so we can ask the user
+                if (preferredSave == SaveLocation.None) {
+                    val epicGame = EpicService.getEpicGameOf(gameId)
+                    if (epicGame != null) {
+                        val action = EpicCloudSavesManager.determineSyncAction(context, game = epicGame)
+                        if (action == EpicCloudSavesManager.SyncAction.CONFLICT) {
+                            val (localTs, remoteTs) = EpicCloudSavesManager.getConflictTimestamps(context, gameId)
+                                ?: (0L to 0L)
+                            val localDate = java.util.Date(localTs).toString()
+                            val remoteDate = java.util.Date(remoteTs).toString()
+                            setMessageDialogState(
+                                MessageDialogState(
+                                    visible = true,
+                                    type = DialogType.SYNC_CONFLICT,
+                                    title = context.getString(R.string.main_save_conflict_title),
+                                    message = context.getString(R.string.main_save_conflict_message, localDate, remoteDate),
+                                    dismissBtnText = context.getString(R.string.main_keep_local),
+                                    confirmBtnText = context.getString(R.string.main_keep_remote),
+                                ),
+                            )
+                            setLoadingDialogVisible(false)
+                            return@launch
+                        }
+                    }
+                }
+
+                Timber.tag("Epic").d("[Cloud Saves] Starting pre-game sync for $appId (action=$preferredAction)")
+                val syncSuccess = EpicCloudSavesManager.syncCloudSaves(
                     context = context,
                     appId = gameId,
+                    preferredAction = preferredAction,
                 )
 
                 if (!syncSuccess) {
-                    Timber.tag("Epic").w("[Cloud Saves] Download sync failed for $appId, proceeding with launch anyway")
-                    // Don't block launch on sync failure - log warning and continue
+                    Timber.tag("Epic").w("[Cloud Saves] Sync failed for $appId, proceeding with launch anyway")
                 } else {
-                    Timber.tag("Epic").i("[Cloud Saves] Download sync completed successfully for $appId")
+                    Timber.tag("Epic").i("[Cloud Saves] Sync completed successfully for $appId")
                 }
             }
 

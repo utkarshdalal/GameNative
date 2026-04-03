@@ -22,5 +22,9 @@ data class GameDisplayInfo(
     val headerUrl: String? = null, // Header image URL (for SteamGridDB, can use grid as header)
     val compatibilityMessage: String? = null, // Compatibility message text (e.g., "Works on your GPU")
     val compatibilityColor: ULong? = null, // Compatibility message color (ARGB)
+    val hasCloudSaves: Boolean? = null, // null = unknown/not applicable, true/false = cloud save support
+    val lastSyncStateText: String? = null, // e.g. "Up to date", "New cloud save", "Synced", "Failed"
+    val cloudSaveStatus: CloudSaveStatus? = null,
+    val conflictLocalTimestamp: Long = 0L,
+    val conflictRemoteTimestamp: Long = 0L,
 )
-

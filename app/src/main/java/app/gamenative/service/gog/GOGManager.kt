@@ -1099,21 +1099,19 @@ class GOGManager @Inject constructor(
             Timber.tag("GOG").d("[Cloud Saves] Fetching save locations from API")
             val result = getSaveSyncLocation(context, appId, installPath)
 
-            val clientSecret: String
-            val locations: List<GOGCloudSavesLocationTemplate>
-
-            // If no locations from API, use default Windows path
             if (result == null || result.second.isEmpty()) {
-                clientSecret = ""
-                Timber.tag("GOG").d("[Cloud Saves] No save locations from API, using default for game $gameId")
-                val defaultLocation = "%LOCALAPPDATA%/GOG.com/Galaxy/Applications/$clientId/Storage/Shared/Files"
-                Timber.tag("GOG").d("[Cloud Saves] Using default location: $defaultLocation")
-                locations = listOf(GOGCloudSavesLocationTemplate("__default", defaultLocation))
-            } else {
-                clientSecret = result.first
-                locations = result.second
-                Timber.tag("GOG").i("[Cloud Saves] Retrieved ${locations.size} save location(s) from API")
+                // The remote config API returned no locations, meaning this game either has cloud
+                // saves disabled or no save paths configured. We don't fall back to the default
+                // GOG Galaxy path (%LOCALAPPDATA%/GOG.com/Galaxy/Applications/<clientId>/Storage/…)
+                // because clientSecret also comes from the API — without it, the token exchange
+                // always fails and we'd just show a false "Offline" status.
+                Timber.tag("GOG").d("[Cloud Saves] No save locations from API for game $gameId, cloud saves not supported")
+                return@withContext null
             }
+
+            val clientSecret = result.first
+            val locations = result.second
+            Timber.tag("GOG").i("[Cloud Saves] Retrieved ${locations.size} save location(s) from API")
 
             // Resolve each location
             val resolvedLocations = mutableListOf<GOGCloudSavesLocation>()

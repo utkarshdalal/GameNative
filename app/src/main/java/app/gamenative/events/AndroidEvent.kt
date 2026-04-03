@@ -19,9 +19,12 @@ interface AndroidEvent<T> : Event<T> {
     data class ShowLaunchingOverlay(val appName: String) : AndroidEvent<Unit>
     data object HideLaunchingOverlay : AndroidEvent<Unit>
     data class SetBootingSplashText(val text: String) : AndroidEvent<Unit>
+    data class NetworkAvailabilityChanged(val isAvailable: Boolean) : AndroidEvent<Unit>
     data class DownloadPausedDueToConnectivity(val appId: Int) : AndroidEvent<Unit>
     data class DownloadStatusChanged(val appId: Int, val isDownloading: Boolean) : AndroidEvent<Unit>
     data class LibraryInstallStatusChanged(val appId: Int) : AndroidEvent<Unit>
+    data class CloudSaveSyncStarted(val appId: Int) : AndroidEvent<Unit>
+    data class CloudSaveSynced(val appId: Int, val success: Boolean) : AndroidEvent<Unit>
     data class CustomGameImagesFetched(val appId: String) : AndroidEvent<Unit>
     data class GOGAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>
     data class EpicAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>

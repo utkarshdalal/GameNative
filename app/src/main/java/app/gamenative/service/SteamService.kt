@@ -43,6 +43,7 @@ import app.gamenative.enums.LoginResult
 import app.gamenative.enums.Marker
 import app.gamenative.enums.OS
 import app.gamenative.enums.OSArch
+import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
@@ -163,6 +164,7 @@ import app.gamenative.db.dao.DownloadingAppInfoDao
 import app.gamenative.db.dao.SteamUnlockedBranchDao
 import kotlinx.coroutines.flow.update
 import java.util.concurrent.CopyOnWriteArrayList
+import app.gamenative.ui.data.CloudSaveStatus
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.FormBody
@@ -1956,6 +1958,19 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(downloadInfo.gameId))
 
+                // Sync cloud saves after install. Activate the container first so the Wine
+                // prefix paths exist before attempting to write save files into them.
+                instance?.scope?.launch {
+                    val svc = instance ?: return@launch
+                    val appId = downloadInfo.gameId
+                    if (getAppInfoOf(appId)?.supportsCloudSaves == true) {
+                        launchForceSync(
+                            context = svc.applicationContext,
+                            appId = appId,
+                        )
+                    }
+                }
+
                 // Clear persisted bytes file on successful completion
                 downloadInfo.clearPersistedBytesDownloaded(appDirPath)
             }
@@ -2158,6 +2173,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                                         postSyncInfo?.let { info ->
                                             syncResult = info
+                                            PluviaApp.events.emit(AndroidEvent.CloudSaveSynced(appId, success = info.syncResult == SyncResult.Success || info.syncResult == SyncResult.UpToDate))
 
                                             if (info.syncResult == SyncResult.Success || info.syncResult == SyncResult.UpToDate) {
                                                 Timber.i(
@@ -2211,6 +2227,97 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        /**
+         * Fetches the current cloud save status for [appId] in one pass (single network call +
+         * single file scan). Returns the [CloudSaveStatus] and, when it is [CloudSaveStatus.CONFLICT],
+         * a pair of (localTimestamp, remoteTimestamp) for the conflict dialog.
+         */
+        suspend fun resolveCloudSaveStatus(
+            appId: Int,
+            prefixToPath: (String) -> String,
+        ): Pair<CloudSaveStatus, Pair<Long, Long>?> = withContext(Dispatchers.IO) {
+            val steamInstance = instance ?: return@withContext CloudSaveStatus.OFFLINE to null
+            val steamCloud = steamInstance._steamCloud ?: return@withContext CloudSaveStatus.OFFLINE to null
+            val appInfo = steamInstance.appDao.findApp(appId) ?: return@withContext CloudSaveStatus.OFFLINE to null
+
+            val snapshot = try {
+                SteamAutoCloud.fetchSyncSnapshot(appInfo, steamInstance, steamCloud, prefixToPath)
+            } catch (e: Exception) {
+                Timber.tag("SteamCloudSaveStatus").w(e, "[$appId] fetchSyncSnapshot failed")
+                return@withContext CloudSaveStatus.OFFLINE to null
+            }
+
+            Timber.tag("SteamCloudSaveStatus").d(
+                "[$appId] cloudIsNewer=${snapshot.cloudIsNewer} hasLocalChanges=${snapshot.hasLocalChanges}",
+            )
+
+            val status = when {
+                snapshot.cloudIsNewer -> {
+                    if (snapshot.hasLocalChanges == true) {
+                        CloudSaveStatus.CONFLICT
+                    } else {
+                        CloudSaveStatus.PENDING_DOWNLOAD
+                    }
+                }
+                snapshot.hasLocalChanges == true -> CloudSaveStatus.PENDING_UPLOAD
+                else -> {
+                    val localFilesExist = snapshot.localFilesMap.values.any { it.isNotEmpty() }
+                    if (!localFilesExist && snapshot.cloudChangeNumber > 0L) {
+                        CloudSaveStatus.PENDING_DOWNLOAD
+                    } else {
+                        CloudSaveStatus.UP_TO_DATE
+                    }
+                }
+            }
+
+            val conflictTimestamps = if (status == CloudSaveStatus.CONFLICT) {
+                val remoteTs = snapshot.changeList.files.maxOfOrNull { it.timestamp.time } ?: 0L
+                val localTs = snapshot.localFilesMap.values.flatten().maxOfOrNull { it.timestamp } ?: 0L
+                localTs to remoteTs
+            } else {
+                null
+            }
+
+            status to conflictTimestamps
+        }
+
+        /**
+         * High-level entry point for a manual cloud sync (e.g. triggered from the UI).
+         * Resolves container-aware Wine prefix paths, emits [AndroidEvent.CloudSaveSyncStarted],
+         * then delegates to [forceSyncUserFiles].
+         */
+        suspend fun launchForceSync(
+            context: Context,
+            appId: Int,
+            preferredSave: SaveLocation = SaveLocation.None,
+        ) {
+            val accountId = userSteamId?.accountID?.toLong() ?: return
+            PluviaApp.events.emit(AndroidEvent.CloudSaveSyncStarted(appId))
+            val container = ContainerUtils.getOrCreateContainer(context, "STEAM_$appId")
+            ContainerManager(context).activateContainer(container)
+            val sharedWinePrefix = "${ImageFs.find(context).rootDir.absolutePath}${ImageFs.WINEPREFIX}"
+            val containerWinePrefix = run {
+                val containerHome = File(ImageFs.find(context).rootDir, "home/${ImageFs.USER}-STEAM_$appId")
+                if (containerHome.exists()) "${containerHome.absolutePath}/.wine" else null
+            }
+            val prefixToPath: (String) -> String = { prefix ->
+                val resolved = PathType.from(prefix).toAbsPath(context, appId, accountId)
+                if (containerWinePrefix != null && resolved.startsWith(sharedWinePrefix)) {
+                    resolved.replaceFirst(sharedWinePrefix, containerWinePrefix)
+                } else {
+                    resolved
+                }
+            }
+
+            forceSyncUserFiles(appId = appId, prefixToPath = prefixToPath, preferredSave = preferredSave).await()
+        }
+
+        /**
+         * Core sync worker. Acquires the sync lock, calls [SteamAutoCloud.syncUserFiles] with
+         * retry logic, and stores the result. Caller is responsible for supplying [prefixToPath]
+         * (path resolution is container-specific). Called by [launchForceSync] for UI-triggered
+         * syncs and directly by the game launch/exit flow with its own prefix mapping.
+         */
         suspend fun forceSyncUserFiles(
             appId: Int,
             prefixToPath: (String) -> String,
@@ -2223,36 +2330,29 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return@async PostSyncInfo(SyncResult.InProgress)
             }
 
-            try {
-                var syncResult = PostSyncInfo(SyncResult.UnknownFail)
-
+            suspend fun doSyncWithRetry(): PostSyncInfo {
                 val maxAttempts = 3
                 for (attempt in 1..maxAttempts) {
                     try {
-                        PrefManager.clientId?.let { clientId ->
-                            instance?.let { steamInstance ->
-                                getAppInfoOf(appId)?.let { appInfo ->
-                                    steamInstance._steamCloud?.let { steamCloud ->
-                                        val postSyncInfo = SteamAutoCloud.syncUserFiles(
-                                            appInfo = appInfo,
-                                            clientId = clientId,
-                                            steamInstance = steamInstance,
-                                            steamCloud = steamCloud,
-                                            preferredSave = preferredSave,
-                                            parentScope = parentScope,
-                                            prefixToPath = prefixToPath,
-                                            overrideLocalChangeNumber = overrideLocalChangeNumber,
-                                        ).await()
-
-                                        postSyncInfo?.let { info ->
-                                            syncResult = info
-                                            Timber.i("Force cloud sync completed for app $appId with result: ${info.syncResult}")
-                                        }
-                                    }
-                                }
-                            }
+                        val clientId = PrefManager.clientId ?: return PostSyncInfo(SyncResult.UnknownFail)
+                        val steamInstance = instance ?: return PostSyncInfo(SyncResult.UnknownFail)
+                        val appInfo = getAppInfoOf(appId) ?: return PostSyncInfo(SyncResult.UnknownFail)
+                        val steamCloud = steamInstance._steamCloud ?: return PostSyncInfo(SyncResult.UnknownFail)
+                        val postSyncInfo = SteamAutoCloud.syncUserFiles(
+                            appInfo = appInfo,
+                            clientId = clientId,
+                            steamInstance = steamInstance,
+                            steamCloud = steamCloud,
+                            preferredSave = preferredSave,
+                            parentScope = parentScope,
+                            prefixToPath = prefixToPath,
+                            overrideLocalChangeNumber = overrideLocalChangeNumber,
+                        ).await()
+                        if (postSyncInfo != null) {
+                            Timber.i("Force cloud sync completed for app $appId with result: ${postSyncInfo.syncResult}")
+                            return postSyncInfo
                         }
-                        break
+                        return PostSyncInfo(SyncResult.UnknownFail)
                     } catch (e: AsyncJobFailedException) {
                         if (attempt == maxAttempts) {
                             Timber.e(e, "Force cloud sync failed after $maxAttempts attempts")
@@ -2262,11 +2362,19 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
                     }
                 }
+                return PostSyncInfo(SyncResult.UnknownFail)
+            }
 
-                return@async syncResult
+            val syncResult = try {
+                doSyncWithRetry()
+            } catch (e: Exception) {
+                Timber.e(e, "Force cloud sync failed unexpectedly for appId=$appId")
+                PostSyncInfo(SyncResult.UnknownFail)
             } finally {
                 releaseSync(appId)
             }
+            PluviaApp.events.emit(AndroidEvent.CloudSaveSynced(appId, success = syncResult.syncResult == SyncResult.Success || syncResult.syncResult == SyncResult.UpToDate))
+            syncResult
         }
 
         suspend fun closeApp(context: Context, appId: Int, isOffline: Boolean, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
@@ -2303,6 +2411,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                                                 prefixToPath = prefixToPath,
                                             ).await()
 
+                                            postSyncInfo?.let { info ->
+                                                PluviaApp.events.emit(AndroidEvent.CloudSaveSynced(appId, success = info.syncResult == SyncResult.Success || info.syncResult == SyncResult.UpToDate))
+                                            }
                                             steamCloud.signalAppExitSyncDone(
                                                 appId = appId,
                                                 clientId = clientId,
@@ -3069,7 +3180,13 @@ class SteamService : Service(), IChallengeUrlChanged {
         // pause downloads when WiFi/Ethernet connectivity changes
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         networkCallback = object : ConnectivityManager.NetworkCallback() {
-            override fun onLost(network: Network) = checkAndPauseDownloads()
+            override fun onAvailable(network: Network) {
+                PluviaApp.events.emit(AndroidEvent.NetworkAvailabilityChanged(true))
+            }
+            override fun onLost(network: Network) {
+                PluviaApp.events.emit(AndroidEvent.NetworkAvailabilityChanged(false))
+                checkAndPauseDownloads()
+            }
             override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) = checkAndPauseDownloads()
 
             // query ConnectivityManager directly (not NetworkMonitor) to avoid

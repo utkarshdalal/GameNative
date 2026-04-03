@@ -26,6 +26,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.enums.SaveLocation
 import app.gamenative.events.AndroidEvent
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.data.AppMenuOption
@@ -515,6 +516,12 @@ abstract class BaseAppScreen {
     }
 
     /**
+     * Get a callback for force cloud sync, or null if not supported.
+     * Shown as an icon button next to the cloud save status indicator.
+     */
+    protected open fun getForceCloudSync(context: Context, libraryItem: LibraryItem): ((SaveLocation) -> Unit)? = null
+
+    /**
      * Get source-specific menu options. Subclasses can override to add custom options.
      */
     @Composable
@@ -990,13 +997,15 @@ abstract class BaseAppScreen {
         // Render the common UI
         app.gamenative.ui.screen.library.AppScreenContent(
             displayInfo = displayInfo,
-            isInstalled = isInstalledState,
-            isValidToDownload = isValidToDownloadState,
-            isDownloading = isDownloadingState,
-            downloadProgress = downloadProgressState,
-            hasPartialDownload = hasPartialDownloadState,
-            isUpdatePending = isUpdatePendingState,
-            downloadInfo = downloadInfo,
+            downloadState = app.gamenative.ui.screen.library.AppScreenDownloadState(
+                isInstalled = isInstalledState,
+                isValidToDownload = isValidToDownloadState,
+                isDownloading = isDownloadingState,
+                downloadProgress = downloadProgressState,
+                hasPartialDownload = hasPartialDownloadState,
+                isUpdatePending = isUpdatePendingState,
+                downloadInfo = downloadInfo,
+            ),
             onDownloadInstallClick = {
                 onDownloadInstallClick(context, libraryItem, onClickPlay)
                 uiScope.launch {
@@ -1021,6 +1030,7 @@ abstract class BaseAppScreen {
                 }
             },
             onBack = onBack,
+            onForceCloudSync = if (displayInfo.hasCloudSaves == true) getForceCloudSync(context, libraryItem) else null,
             optionsMenu = optionsMenu.toTypedArray(),
         )
 

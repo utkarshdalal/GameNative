@@ -39,13 +39,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.SyncProblem
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -94,13 +103,17 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.NetworkMonitor
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.DownloadInfo
 import app.gamenative.data.LibraryItem
+import app.gamenative.enums.SaveLocation
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.LoadingScreen
+import app.gamenative.ui.component.dialog.MessageDialog
 import app.gamenative.ui.data.AppMenuOption
+import app.gamenative.ui.data.CloudSaveStatus
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.internal.fakeAppInfo
@@ -484,24 +497,30 @@ private fun formatBytes(bytes: Long): String {
     }
 }
 
+data class AppScreenDownloadState(
+    val isInstalled: Boolean,
+    val isValidToDownload: Boolean,
+    val isDownloading: Boolean,
+    val downloadProgress: Float,
+    val hasPartialDownload: Boolean,
+    val isUpdatePending: Boolean,
+    val downloadInfo: DownloadInfo? = null,
+)
+
 @Composable
 internal fun AppScreenContent(
     modifier: Modifier = Modifier,
     displayInfo: GameDisplayInfo,
-    isInstalled: Boolean,
-    isValidToDownload: Boolean,
-    isDownloading: Boolean,
-    downloadProgress: Float,
-    hasPartialDownload: Boolean,
-    isUpdatePending: Boolean,
-    downloadInfo: app.gamenative.data.DownloadInfo? = null,
+    downloadState: AppScreenDownloadState,
     onDownloadInstallClick: () -> Unit,
     onPauseResumeClick: () -> Unit,
     onDeleteDownloadClick: () -> Unit,
     onUpdateClick: () -> Unit,
     onBack: () -> Unit = {},
+    onForceCloudSync: ((SaveLocation) -> Unit)? = null,
     vararg optionsMenu: AppMenuOption,
 ) {
+    val (isInstalled, isValidToDownload, isDownloading, downloadProgress, hasPartialDownload, isUpdatePending, downloadInfo) = downloadState
     val context = LocalContext.current
     // reactive — recomposes when network state changes
     val hasInternet by NetworkMonitor.hasInternet.collectAsState()
@@ -510,6 +529,7 @@ internal fun AppScreenContent(
     val scrollState = rememberScrollState()
 
     var optionsMenuVisible by remember { mutableStateOf(false) }
+    var showConflictDialog by remember { mutableStateOf(false) }
 
     // Track the original progress bar bounds for ambient mode morph animation
     var progressBarBounds by remember { mutableStateOf<Rect?>(null) }
@@ -859,7 +879,83 @@ internal fun AppScreenContent(
                                 }
                             }
                         } else {
-                            Spacer(modifier = Modifier.weight(1f))
+                            // Cloud saves status (centre of action bar when not downloading)
+                            if (isInstalled && displayInfo.hasCloudSaves == true) {
+                                val (cloudIcon, cloudColor) = when (displayInfo.cloudSaveStatus) {
+                                    CloudSaveStatus.UP_TO_DATE ->
+                                        Icons.Default.CloudDone to PluviaTheme.colors.statusInstalled
+                                    CloudSaveStatus.PENDING_DOWNLOAD ->
+                                        Icons.Default.CloudDownload to Color(0xFFFFA726) // amber
+                                    CloudSaveStatus.PENDING_UPLOAD ->
+                                        Icons.Default.CloudUpload to Color(0xFFFFA726) // amber
+                                    CloudSaveStatus.FAILED, CloudSaveStatus.CONFLICT ->
+                                        Icons.Default.CloudOff to MaterialTheme.colorScheme.error
+                                    CloudSaveStatus.OFFLINE ->
+                                        Icons.Default.CloudOff to Color.White.copy(alpha = 0.45f)
+                                    else ->
+                                        Icons.Default.Cloud to Color.White.copy(alpha = 0.7f)
+                                }
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = cloudIcon,
+                                        contentDescription = null,
+                                        tint = cloudColor,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                    Column(
+                                        modifier = Modifier.weight(1f, fill = false),
+                                        verticalArrangement = Arrangement.Center,
+                                    ) {
+                                        val stateText = displayInfo.lastSyncStateText
+                                            ?: stringResource(R.string.game_options_cloud_saves)
+                                        Text(
+                                            text = stateText,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.White.copy(alpha = 0.9f),
+                                        )
+                                    }
+                                    val syncButtonState = when (displayInfo.cloudSaveStatus) {
+                                        CloudSaveStatus.PENDING_DOWNLOAD ->
+                                            Triple(Icons.Default.Sync, Color(0xFFFFA726), Color(0xFF3E2800))
+                                        CloudSaveStatus.PENDING_UPLOAD ->
+                                            Triple(Icons.Default.Sync, Color(0xFFFFA726), Color(0xFF3E2800))
+                                        CloudSaveStatus.CONFLICT ->
+                                            Triple(Icons.Default.SyncProblem, MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.onError)
+                                        else -> null
+                                    }
+                                    if (onForceCloudSync != null && syncButtonState != null) {
+                                        val (syncIcon, containerColor, contentColor) = syncButtonState
+                                        FilledTonalIconButton(
+                                            onClick = {
+                                                if (displayInfo.cloudSaveStatus == CloudSaveStatus.CONFLICT) {
+                                                    showConflictDialog = true
+                                                } else {
+                                                    onForceCloudSync.invoke(SaveLocation.None)
+                                                }
+                                            },
+                                            modifier = Modifier.size(32.dp),
+                                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                                containerColor = containerColor.copy(alpha = 0.25f),
+                                                contentColor = containerColor,
+                                            ),
+                                        ) {
+                                            Icon(
+                                                imageVector = syncIcon,
+                                                contentDescription = stringResource(R.string.cloud_saves_force_sync),
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
                         }
 
                         // Secondary action icons (right-aligned)
@@ -1137,6 +1233,23 @@ internal fun AppScreenContent(
                 userInteractionCounter = ambientInteractionCounter,
             )
         }
+
+        val localDate = remember(displayInfo.conflictLocalTimestamp) {
+            if (displayInfo.conflictLocalTimestamp > 0L) Date(displayInfo.conflictLocalTimestamp).toString() else ""
+        }
+        val remoteDate = remember(displayInfo.conflictRemoteTimestamp) {
+            if (displayInfo.conflictRemoteTimestamp > 0L) Date(displayInfo.conflictRemoteTimestamp).toString() else ""
+        }
+        MessageDialog(
+            visible = showConflictDialog,
+            title = stringResource(R.string.main_save_conflict_title),
+            message = stringResource(R.string.main_save_conflict_message, localDate, remoteDate),
+            confirmBtnText = stringResource(R.string.main_keep_remote),
+            dismissBtnText = stringResource(R.string.main_keep_local),
+            onConfirmClick = { showConflictDialog = false; onForceCloudSync?.invoke(SaveLocation.Remote) },
+            onDismissClick = { showConflictDialog = false; onForceCloudSync?.invoke(SaveLocation.Local) },
+            onDismissRequest = { showConflictDialog = false },
+        )
     }
 }
 
@@ -1227,13 +1340,15 @@ private fun Preview_AppScreen() {
         Surface {
             AppScreenContent(
                 displayInfo = displayInfo,
-                isInstalled = false,
-                isValidToDownload = true,
-                isDownloading = isDownloading,
-                downloadProgress = .50f,
-                hasPartialDownload = false,
-                isUpdatePending = false,
-                downloadInfo = null,
+                downloadState = AppScreenDownloadState(
+                    isInstalled = false,
+                    isValidToDownload = true,
+                    isDownloading = isDownloading,
+                    downloadProgress = .50f,
+                    hasPartialDownload = false,
+                    isUpdatePending = false,
+                    downloadInfo = null,
+                ),
                 onDownloadInstallClick = { isDownloading = !isDownloading },
                 onPauseResumeClick = { },
                 onDeleteDownloadClick = { },

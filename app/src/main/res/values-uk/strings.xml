@@ -1356,4 +1356,15 @@
     <string name="workshop_processing">Обробка модів…</string>
     <string name="workshop_failed_count">Не вдалося оновити %1$d мод(ів) Майстерні</string>
     <string name="workshop_download_failed">Помилка завантаження</string>
+    <string name="cloud_saves_last_synced">Остання синхронізація</string>
+    <string name="cloud_saves_sync_state">Стан синхронізації</string>
+    <string name="cloud_saves_up_to_date">Актуально</string>
+    <string name="cloud_saves_pending_download">Очікування завантаження</string>
+    <string name="cloud_saves_checking">Перевірка\u2026</string>
+    <string name="cloud_saves_syncing">Синхронізація\u2026</string>
+    <string name="cloud_saves_conflict">Конфлікт</string>
+    <string name="cloud_saves_failed">Помилка</string>
+    <string name="cloud_saves_offline">Офлайн</string>
+    <string name="cloud_saves_pending_upload">Очікування вивантаження</string>
+    <string name="cloud_saves_force_sync">Примусова синхронізація</string>
 </resources>
