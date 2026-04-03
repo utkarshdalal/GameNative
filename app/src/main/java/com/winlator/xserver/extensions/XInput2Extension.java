@@ -357,6 +357,12 @@ public class XInput2Extension implements Extension {
     private void selectEvents(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         int windowId = inputStream.readInt();
         int numMasks = inputStream.readShort() & 0xFFFF;
+
+        if (numMasks == 0) {
+            inputStream.skip(client.getRemainingRequestLength());
+            throw new BadValue(numMasks);
+        }
+
         inputStream.readShort();
 
         Window window = client.xServer.windowManager.getWindow(windowId);
