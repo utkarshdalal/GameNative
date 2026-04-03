@@ -168,8 +168,8 @@ public class XServer {
             if (confinement != null) {
                 minX = Math.max(minX, confinement.left);
                 minY = Math.max(minY, confinement.top);
-                maxX = Math.min(maxX, confinement.right);
-                maxY = Math.min(maxY, confinement.bottom);
+                maxX = Math.min(maxX, confinement.right - 1);
+                maxY = Math.min(maxY, confinement.bottom - 1);
 
                 clampedX = (short) Mathf.clamp(pointer.getX() + dx, minX, maxX);
                 clampedY = (short) Mathf.clamp(pointer.getY() + dy, minY, maxY);
