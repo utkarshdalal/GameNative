@@ -58,6 +58,7 @@ fun KeyValue.generateSteamApp(): SteamApp {
                     encryptedManifests = encryptedManifests,
                     language = currentDepot["config"]["language"].value.orEmpty(),
                     realm = currentDepot["config"]["realm"].value.orEmpty(),
+                    systemDefined = currentDepot["systemdefined"].asBoolean(),
                     optionalDlcId = currentDepot["config"]["optionaldlc"].asInteger(INVALID_APP_ID),
                     steamDeck = currentDepot["config"]["steamdeck"].asBoolean(false),
                 )
