@@ -8,6 +8,8 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Icon
@@ -24,7 +26,7 @@ import kotlinx.coroutines.withContext
 
 private fun createAdaptiveIconBitmap(context: Context, src: Bitmap): Bitmap {
     val density = context.resources.displayMetrics.density
-    val targetSize = (108f * density).toInt().coerceAtLeast(108)
+    val targetSize = maxOf((108f * density).toInt().coerceAtLeast(108), 512)
     val outBmp = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(outBmp)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
@@ -65,11 +67,11 @@ private fun createAdaptiveIconBitmap(context: Context, src: Bitmap): Bitmap {
     // Fill background first so transparent icons still have a pleasant backdrop
     canvas.drawColor(bgColor)
 
-    // Add uniform inset so icons are not cropped too tightly
+    // Add uniform inset so icons are not cropped too tightly.
     val insetFraction = 0.18f // 18% padding around
     val availSize = targetSize * (1f - insetFraction * 2f)
 
-    // Center-fit scale to keep entire icon visible inside the padded area
+    // Center-fit scale to keep the entire icon visible inside the padded area.
     val scale = minOf(
         availSize.toFloat() / src.width.coerceAtLeast(1),
         availSize.toFloat() / src.height.coerceAtLeast(1),
@@ -81,6 +83,16 @@ private fun createAdaptiveIconBitmap(context: Context, src: Bitmap): Bitmap {
     val dest = RectF(left, top, left + drawW, top + drawH)
 
     canvas.drawBitmap(src, null, dest, paint)
+
+    val maskPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
+    }
+    val maskInset = targetSize * 0.04f
+    canvas.drawOval(
+        RectF(maskInset, maskInset, targetSize - maskInset, targetSize - maskInset),
+        maskPaint,
+    )
+    maskPaint.xfermode = null
 
     return outBmp
 }
@@ -154,11 +166,19 @@ internal suspend fun createPinnedShortcut(context: Context, gameId: Int, label: 
         .build()
 
     withContext(Dispatchers.Main) {
-        if (shortcutManager?.isRequestPinShortcutSupported == true) {
-            shortcutManager.requestPinShortcut(shortcut, null)
+        val manager = shortcutManager ?: return@withContext
+        val shortcutId = shortcut.id
+        val existingShortcutIds =
+            (manager.pinnedShortcuts + manager.dynamicShortcuts)
+                .map { it.id }
+                .toSet()
+
+        if (shortcutId in existingShortcutIds) {
+            manager.updateShortcuts(listOf(shortcut))
+        } else if (manager.isRequestPinShortcutSupported) {
+            manager.requestPinShortcut(shortcut, null)
         } else {
-            val existing = shortcutManager?.dynamicShortcuts ?: emptyList()
-            shortcutManager?.dynamicShortcuts = (existing + shortcut).take(4)
+            manager.dynamicShortcuts = (manager.dynamicShortcuts + shortcut).take(4)
         }
     }
 }

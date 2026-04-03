@@ -569,6 +569,14 @@
     <string name="add_custom_game_dont_show_again">Don\'t show this dialog again</string>
     <string name="base_app_shortcut_created">Shortcut created</string>
     <string name="base_app_shortcut_failed">Failed to create shortcut: %s</string>
+    <string name="shortcut_icon_dialog_title">Choose shortcut icon</string>
+    <string name="shortcut_icon_dialog_subtitle">Pick a SteamGridDB icon for this shortcut, or keep the default if none look right.</string>
+    <string name="shortcut_icon_dialog_no_icons">No SteamGridDB icons were found for this game. You can still create the shortcut with the default icon.</string>
+    <string name="shortcut_icon_dialog_missing_api_key">SteamGridDB API key is not configured for this build. Add your API key and rebuild to use SteamGridDB shortcut icons.</string>
+    <string name="shortcut_icon_dialog_option">Icon</string>
+    <string name="shortcut_icon_dialog_default">Default</string>
+    <string name="shortcut_icon_dialog_preview">Preview icon</string>
+    <string name="shortcut_icon_dialog_choose">Use this icon</string>
     <string name="base_app_images_fetched">Images fetched successfully</string>
     <string name="base_app_game_folder_not_found">Game folder not found</string>
     <string name="base_app_images_fetch_failed">Failed to fetch images: %s</string>

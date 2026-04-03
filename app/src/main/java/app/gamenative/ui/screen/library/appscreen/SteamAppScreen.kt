@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
+import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 
 import app.gamenative.R
@@ -47,6 +48,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.ui.component.dialog.MessageDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
+import app.gamenative.ui.component.dialog.ShortcutIconChooserDialog
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
@@ -54,6 +56,7 @@ import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.MarkerUtils
+import app.gamenative.utils.SteamGridDB
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.StorageUtils
 import app.gamenative.workshop.WorkshopManager
@@ -77,6 +80,7 @@ import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.ui.component.dialog.state.GameManagerDialogState
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerUtils.getContainer
+import app.gamenative.utils.createPinnedShortcut
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import timber.log.Timber
@@ -349,6 +353,68 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean {
         return SteamService.isAppInstalled(libraryItem.gameId)
+    }
+
+    @Composable
+    protected override fun getCreateShortcutOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        val gameSource = getGameSource(libraryItem)
+        val gameId = getGameId(libraryItem)
+        val gameName = getGameName(context, libraryItem)
+        val defaultIconUrl = getIconUrl(context, libraryItem)
+        val hasSteamGridDbKey = remember { BuildConfig.STEAMGRIDDB_API_KEY.isNotBlank() }
+        var showShortcutChooser by remember { mutableStateOf(false) }
+        var isLoadingShortcutIcons by remember(showShortcutChooser) { mutableStateOf(false) }
+        var shortcutIcons by remember(showShortcutChooser) { mutableStateOf<List<SteamGridDB.ShortcutIconOption>>(emptyList()) }
+
+        LaunchedEffect(showShortcutChooser, gameName, gameId) {
+            if (!showShortcutChooser) return@LaunchedEffect
+            if (!hasSteamGridDbKey) {
+                shortcutIcons = emptyList()
+                isLoadingShortcutIcons = false
+                return@LaunchedEffect
+            }
+            isLoadingShortcutIcons = true
+            shortcutIcons = SteamGridDB.fetchShortcutIcons(gameName, steamAppId = gameId)
+            isLoadingShortcutIcons = false
+        }
+
+        ShortcutIconChooserDialog(
+            openDialog = showShortcutChooser,
+            icons = shortcutIcons,
+            defaultIconUrl = defaultIconUrl,
+            isLoading = isLoadingShortcutIcons,
+            emptyMessage = if (hasSteamGridDbKey) {
+                context.getString(R.string.shortcut_icon_dialog_no_icons)
+            } else {
+                context.getString(R.string.shortcut_icon_dialog_missing_api_key)
+            },
+            onDismiss = { showShortcutChooser = false },
+            onConfirm = { selectedIconUrl ->
+                showShortcutChooser = false
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        createPinnedShortcut(
+                            context = context,
+                            gameId = gameId,
+                            label = gameName,
+                            gameSource = gameSource,
+                            iconUrl = selectedIconUrl,
+                        )
+                        SnackbarManager.show(context.getString(R.string.base_app_shortcut_created))
+                    } catch (e: Exception) {
+                        SnackbarManager.show(context.getString(R.string.base_app_shortcut_failed, e.message ?: ""))
+                    }
+                }
+            },
+        )
+
+        return AppMenuOption(
+            optionType = AppOptionMenuType.CreateShortcut,
+            onClick = { showShortcutChooser = true },
+        )
     }
 
     override fun isValidToDownload(context: Context, libraryItem: LibraryItem): Boolean {
