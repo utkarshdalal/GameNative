@@ -102,7 +102,7 @@ public class Pointer {
         }
     }
 
-    private void triggerOnPointerMove(short x, short y) {
+    public void triggerOnPointerMove(short x, short y) {
         for (int i = onPointerMotionListeners.size()-1; i >= 0; i--) {
             onPointerMotionListeners.get(i).onPointerMove(x, y);
         }

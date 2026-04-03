@@ -82,7 +82,7 @@ public class Drawable extends XResource {
         this.data = data;
     }
 
-    private short getStride() {
+    public short getStride() {
         return texture instanceof GPUImage ? ((GPUImage)texture).getStride() : width;
     }
 
@@ -204,6 +204,12 @@ public class Drawable extends XResource {
 
         this.data.rewind();
         forceUpdate();
+    }
+
+    public void drawBitmap(Bitmap bitmap) {
+        fromBitmap(bitmap, data);
+        texture.setNeedsUpdate(true);
+        if (onDrawListener != null) onDrawListener.run();
     }
 
     public void drawAlphaMaskedBitmap(byte foreRed, byte foreGreen, byte foreBlue, byte backRed, byte backGreen, byte backBlue, Drawable srcDrawable, Drawable maskDrawable) {

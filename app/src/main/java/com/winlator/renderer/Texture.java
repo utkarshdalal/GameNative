@@ -3,7 +3,6 @@ package com.winlator.renderer;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 
-// import com.winlator.XrActivity;
 import com.winlator.xserver.Drawable;
 
 import java.nio.ByteBuffer;
@@ -49,19 +48,22 @@ public class Texture {
         this.needsUpdate = needsUpdate;
     }
 
-    public void updateFromDrawable(Drawable drawable) {
-        ByteBuffer data = drawable.getData();
+    public void updateFromBuffer(ByteBuffer data, short width, short height) {
         if (data == null) return;
 
         if (!isAllocated()) {
-            allocateTexture(drawable.width, drawable.height, data);
+            allocateTexture(width, height, data);
         }
         else if (needsUpdate) {
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-            GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, drawable.width, drawable.height, format, GLES20.GL_UNSIGNED_BYTE, data);
+            GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, width, height, format, GLES20.GL_UNSIGNED_BYTE, data);
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
             needsUpdate = false;
         }
+    }
+
+    public void updateFromDrawable(Drawable drawable) {
+        updateFromBuffer(drawable.getData(), drawable.width, drawable.height);
     }
 
     public boolean isAllocated() {

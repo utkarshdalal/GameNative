@@ -62,7 +62,7 @@ public class EffectComposer {
         int width = renderer.getSurfaceWidth();
         int height = renderer.getSurfaceHeight();
         if (effects.isEmpty() || width <= 0 || height <= 0) {
-            renderer.drawScene();
+            renderer.drawFrame();
             return;
         }
 
@@ -70,7 +70,7 @@ public class EffectComposer {
         writeBuffer.allocateFramebuffer(width, height);
 
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, readBuffer.getFramebuffer());
-        renderer.drawScene();
+        renderer.drawFrame();
 
         ArrayList<Effect> snapshot = new ArrayList<>(effects);
         RenderTarget source = readBuffer;
