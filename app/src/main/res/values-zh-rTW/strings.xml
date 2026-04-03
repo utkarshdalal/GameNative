@@ -1346,6 +1346,8 @@
     <string name="install_failed_message">無法安裝系統檔案。請重試。如果問題持續存在，請嘗試使用其他網路或使用 VPN。</string>
     <string name="settings_interface_swap_face_buttons_title">交換面鍵</string>
     <string name="settings_interface_swap_face_buttons_subtitle">交換 A↔B 和 X↔Y 按鍵圖示</string>
+    <string name="settings_interface_library_compatibility_badges_title">顯示庫中的相容性徽章</string>
+    <string name="settings_interface_library_compatibility_badges_subtitle">在隱藏庫檢視中的相容性徽章時，仍保留每個遊戲頁面上的相容性詳細資訊</string>
 
     <!-- Workshop -->
     <string name="workshop_checking_mods">正在檢查創意工坊模組…</string>

@@ -1343,6 +1343,8 @@
     <string name="install_failed_message">无法安装系统文件。请重试。如果问题持续存在，请尝试使用其他网络或使用 VPN。</string>
     <string name="settings_interface_swap_face_buttons_title">交换面键</string>
     <string name="settings_interface_swap_face_buttons_subtitle">交换 A↔B 和 X↔Y 按键图标</string>
+    <string name="settings_interface_library_compatibility_badges_title">显示库中的兼容性徽章</string>
+    <string name="settings_interface_library_compatibility_badges_subtitle">在隐藏库视图中的兼容性徽章的同时，保留每个游戏页面上的兼容性详情</string>
 
     <!-- Workshop -->
     <string name="workshop_checking_mods">正在检查创意工坊模组…</string>

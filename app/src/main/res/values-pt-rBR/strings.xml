@@ -1220,6 +1220,8 @@
     <string name="install_failed_message">Os arquivos do sistema não puderam ser instalados. Tente novamente. Se o problema persistir, tente uma rede diferente ou use uma VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Trocar botões de ação</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Troca os ícones dos botões A↔B e X↔Y</string>
+    <string name="settings_interface_library_compatibility_badges_title">Mostrar selos de compatibilidade na biblioteca</string>
+    <string name="settings_interface_library_compatibility_badges_subtitle">Oculta os selos de compatibilidade nas visualizações da biblioteca, mantendo os detalhes de compatibilidade na página de cada jogo</string>
 
     <!-- Workshop -->
     <string name="workshop_checking_mods">Verificando mods da Oficina…</string>

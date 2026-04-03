@@ -948,6 +948,14 @@ object PrefManager {
             setPref(SWAP_FACE_BUTTONS, value)
         }
 
+    // Whether to show compatibility badges in the top-level library views.
+    private val SHOW_LIBRARY_COMPATIBILITY_BADGES = booleanPreferencesKey("show_library_compatibility_badges")
+    var showLibraryCompatibilityBadges: Boolean
+        get() = getPref(SHOW_LIBRARY_COMPATIBILITY_BADGES, true)
+        set(value) {
+            setPref(SHOW_LIBRARY_COMPATIBILITY_BADGES, value)
+        }
+
     private val ITEMS_PER_PAGE = intPreferencesKey("items_per_page")
     var itemsPerPage: Int
         get() = getPref(ITEMS_PER_PAGE, 50)

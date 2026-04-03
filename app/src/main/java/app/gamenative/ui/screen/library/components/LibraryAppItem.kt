@@ -110,6 +110,12 @@ internal fun AppItem(
         rememberUpdatedState(1f)
     }
 
+    val visibleCompatibilityStatus = if (PrefManager.showLibraryCompatibilityBadges) {
+        compatibilityStatus
+    } else {
+        null
+    }
+
     when (paneType) {
         PaneType.LIST -> ListViewCard(
             modifier = modifier,
@@ -119,7 +125,7 @@ internal fun AppItem(
             isFocused = isFocused,
             onFocusChanged = { isFocused = it },
             isRefreshing = isRefreshing,
-            compatibilityStatus = compatibilityStatus,
+            compatibilityStatus = visibleCompatibilityStatus,
             context = context,
         )
 
@@ -139,7 +145,7 @@ internal fun AppItem(
                 hideText = false
                 alpha = 0.1f
             },
-            compatibilityStatus = compatibilityStatus,
+            compatibilityStatus = visibleCompatibilityStatus,
             showFocusGlow = showFocusGlow,
             context = context,
         )

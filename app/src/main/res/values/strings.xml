@@ -871,6 +871,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">Hide Android status bar in game list, settings, etc. App will restart when changed.</string>
     <string name="settings_interface_swap_face_buttons_title">Swap face buttons</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Swap A↔B and X↔Y button icons</string>
+    <string name="settings_interface_library_compatibility_badges_title">Show library compatibility badges</string>
+    <string name="settings_interface_library_compatibility_badges_subtitle">Hide compatibility badges in library views while keeping compatibility details on each game page</string>
     <string name="settings_interface_icon_style">Icon style</string>
     <string name="settings_interface_wifi_only_title">Download only over Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Prevent downloads on cellular data</string>

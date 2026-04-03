@@ -112,6 +112,9 @@ fun SettingsGroupInterface(
     var showStatusBarLoadingDialog by rememberSaveable { mutableStateOf(false) }
     var hideStatusBar by rememberSaveable { mutableStateOf(PrefManager.hideStatusBarWhenNotInGame) }
     var swapFaceButtons by rememberSaveable { mutableStateOf(PrefManager.swapFaceButtons) }
+    var showLibraryCompatibilityBadges by rememberSaveable {
+        mutableStateOf(PrefManager.showLibraryCompatibilityBadges)
+    }
 
     // Language selection dialog
     var openLanguageDialog by rememberSaveable { mutableStateOf(false) }
@@ -259,6 +262,17 @@ fun SettingsGroupInterface(
             onCheckedChange = {
                 swapFaceButtons = it
                 PrefManager.swapFaceButtons = it
+            },
+        )
+
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_library_compatibility_badges_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_library_compatibility_badges_subtitle)) },
+            state = showLibraryCompatibilityBadges,
+            onCheckedChange = {
+                showLibraryCompatibilityBadges = it
+                PrefManager.showLibraryCompatibilityBadges = it
             },
         )
 

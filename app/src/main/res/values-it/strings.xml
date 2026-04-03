@@ -1346,6 +1346,8 @@
     <string name="install_failed_message">Non è stato possibile installare i file di sistema. Riprova. Se il problema persiste, prova una rete diversa o usa una VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Scambia i pulsanti frontali</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Scambia le icone dei pulsanti A↔B e X↔Y</string>
+    <string name="settings_interface_library_compatibility_badges_title">Mostra i badge di compatibilità nella libreria</string>
+    <string name="settings_interface_library_compatibility_badges_subtitle">Nasconde i badge di compatibilità nelle viste della libreria mantenendo i dettagli di compatibilità nella pagina di ciascun gioco</string>
 
     <!-- Workshop -->
     <string name="workshop_checking_mods">Controllo mod del Workshop…</string>

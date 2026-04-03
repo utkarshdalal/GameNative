@@ -1220,6 +1220,8 @@
     <string name="install_failed_message">Systemfiler kunne ikke installeres. Prøv igen. Hvis problemet fortsætter, prøv et andet netværk eller brug en VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Byt frontknapper</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Byt A↔B- og X↔Y-knapikoner</string>
+    <string name="settings_interface_library_compatibility_badges_title">Vis kompatibilitetsmærker i biblioteket</string>
+    <string name="settings_interface_library_compatibility_badges_subtitle">Skjul kompatibilitetsmærker i biblioteksvisninger, mens kompatibilitetsdetaljer stadig vises på hver spilside</string>
 
     <!-- Workshop -->
     <string name="workshop_checking_mods">Tjekker Workshop-mods…</string>

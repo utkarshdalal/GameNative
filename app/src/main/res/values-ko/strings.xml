@@ -1354,6 +1354,8 @@
     <string name="install_failed_message">시스템 파일을 설치할 수 없습니다. 다시 시도해 주세요. 문제가 지속되면 다른 네트워크를 사용하거나 VPN을 사용해 보세요.</string>
     <string name="settings_interface_swap_face_buttons_title">페이스 버튼 바꾸기</string>
     <string name="settings_interface_swap_face_buttons_subtitle">A↔B 및 X↔Y 버튼 아이콘 바꾸기</string>
+    <string name="settings_interface_library_compatibility_badges_title">라이브러리 호환성 배지 표시</string>
+    <string name="settings_interface_library_compatibility_badges_subtitle">각 게임 페이지의 호환성 세부 정보는 유지한 채 라이브러리 보기에서는 호환성 배지를 숨깁니다</string>
 
     <!-- Workshop -->
     <string name="workshop_checking_mods">워크숍 모드 확인 중…</string>
