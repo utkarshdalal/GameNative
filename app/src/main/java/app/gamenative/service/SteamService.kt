@@ -68,7 +68,9 @@ import `in`.dragonbra.javasteam.depotdownloader.data.AppItem
 import `in`.dragonbra.javasteam.depotdownloader.data.DownloadItem
 import `in`.dragonbra.javasteam.enums.EDepotFileFlag
 import `in`.dragonbra.javasteam.enums.ELicenseFlags
+import `in`.dragonbra.javasteam.enums.ELicenseType
 import `in`.dragonbra.javasteam.enums.EOSType
+import `in`.dragonbra.javasteam.enums.EPaymentMethod
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.networking.steam3.ProtocolTypes
@@ -360,6 +362,70 @@ class SteamService : Service(), IChallengeUrlChanged {
             if (removed != null) {
                 notifyDownloadStopped(appId)
             }
+        }
+
+        internal fun selectPreferredPackageId(
+            existingPackageId: Int,
+            incomingPackageId: Int,
+            licensesByPackageId: Map<Int, SteamLicense>,
+        ): Int {
+            if (existingPackageId == INVALID_PKG_ID) return incomingPackageId
+            if (incomingPackageId == INVALID_PKG_ID) return existingPackageId
+
+            val existingPriority = packageSelectionPriority(existingPackageId, licensesByPackageId[existingPackageId])
+            val incomingPriority = packageSelectionPriority(incomingPackageId, licensesByPackageId[incomingPackageId])
+
+            return if (incomingPriority > existingPriority) incomingPackageId else existingPackageId
+        }
+
+        private data class PackageSelectionPriority(
+            val hasMetadata: Boolean,
+            val isNonExpired: Boolean,
+            val isDurable: Boolean,
+            val timeCreatedMs: Long,
+            val packageId: Int,
+        ) : Comparable<PackageSelectionPriority> {
+            override fun compareTo(other: PackageSelectionPriority): Int =
+                compareValuesBy(
+                    this,
+                    other,
+                    PackageSelectionPriority::hasMetadata,
+                    PackageSelectionPriority::isNonExpired,
+                    PackageSelectionPriority::isDurable,
+                    PackageSelectionPriority::timeCreatedMs,
+                    PackageSelectionPriority::packageId,
+                )
+        }
+
+        private fun packageSelectionPriority(
+            packageId: Int,
+            license: SteamLicense?,
+        ): PackageSelectionPriority = PackageSelectionPriority(
+            hasMetadata = license != null,
+            isNonExpired = license?.licenseFlags?.contains(ELicenseFlags.Expired) != true,
+            isDurable = license?.let(::isDurableLicense) == true,
+            timeCreatedMs = license?.timeCreated?.time ?: Long.MIN_VALUE,
+            packageId = packageId,
+        )
+
+        private fun isDurableLicense(license: SteamLicense): Boolean {
+            val limitedUseLicense = when (license.licenseType) {
+                ELicenseType.SinglePurchaseLimitedUse,
+                ELicenseType.RecurringChargeLimitedUse,
+                ELicenseType.RecurringChargeLimitedUseWithOverages,
+                ELicenseType.LimitedUseDelayedActivation -> true
+                else -> false
+            }
+
+            val temporaryPaymentMethod = when (license.paymentMethod) {
+                EPaymentMethod.GuestPass,
+                EPaymentMethod.Promotional,
+                EPaymentMethod.AutoGrant,
+                EPaymentMethod.Complimentary -> true
+                else -> false
+            }
+
+            return !limitedUseLicense && !temporaryPaymentMethod
         }
 
         /** Returns true if there is an incomplete download on disk (no complete marker). */
@@ -4054,67 +4120,61 @@ class SteamService : Service(), IChallengeUrlChanged {
                             // implementation overwrote SteamApp.packageId with whichever pkg was iterated
                             // last — non-deterministic and prone to landing on a non-user-owned package,
                             // which then makes the user's own game appear as family-shared in the library.
-                            // To fix that we (a) process user-owned packages last so they win the
-                            // last-write-wins assignment within this batch and (b) refuse to downgrade an
-                            // existing user-owned packageId across batches.
-                            val accountId = userSteamId?.accountID?.toInt()
-                            val packageLicenses: Map<Int, SteamLicense> = if (accountId != null) {
-                                val packageIds = picsCallback.packages.values.map { it.id }
-                                licenseDao.findLicenses(packageIds).associateBy { it.packageId }
-                            } else {
-                                emptyMap()
-                            }
-                            val userOwnedPackageIds: Set<Int> = if (accountId != null) {
-                                packageLicenses.values
-                                    .filter { it.ownerAccountId.contains(accountId) }
-                                    .mapTo(HashSet()) { it.packageId }
-                            } else {
-                                emptySet()
+                            data class PackageAppsAndDepots(
+                                val packageId: Int,
+                                val appIds: List<Int>,
+                                val depotIds: List<Int>,
+                            )
+
+                            val packageData = picsCallback.packages.values.map { pkg ->
+                                PackageAppsAndDepots(
+                                    packageId = pkg.id,
+                                    appIds = pkg.keyValues["appids"].children.map { it.asInteger() },
+                                    depotIds = pkg.keyValues["depotids"].children.map { it.asInteger() },
+                                )
                             }
 
-                            // Prefer non-expired user-owned packages so a live sub wins over an expired remnant.
-                            fun pkgRank(pkgId: Int): Int {
-                                if (pkgId !in userOwnedPackageIds) return 0
-                                val expired = packageLicenses[pkgId]?.licenseFlags?.contains(ELicenseFlags.Expired) == true
-                                return if (expired) 1 else 2
-                            }
+                            val appIdsInBatch = packageData
+                                .flatMap { it.appIds }
+                                .distinct()
+                            val appsById = appDao.findApps(appIdsInBatch)
+                                .associateBy { it.id }
+                                .toMutableMap()
+                            val existingPackageIds = appsById.values
+                                .map { it.packageId }
+                                .filter { it != INVALID_PKG_ID }
+                            val packageIdsNeedingMetadata = (packageData.map { it.packageId } + existingPackageIds).distinct()
+                            val licensesByPackageId = licenseDao.findLicenses(packageIdsNeedingMetadata).associateBy { it.packageId }
 
-                            val orderedPackages = picsCallback.packages.values.sortedBy { pkgRank(it.id) }
-
-                            orderedPackages.forEach { pkg ->
-                                val appIds = pkg.keyValues["appids"].children.map { it.asInteger() }
-                                licenseDao.updateApps(pkg.id, appIds)
-
-                                val depotIds = pkg.keyValues["depotids"].children.map { it.asInteger() }
-                                licenseDao.updateDepots(pkg.id, depotIds)
+                            packageData.forEach { pkg ->
+                                licenseDao.updateApps(pkg.packageId, pkg.appIds)
+                                licenseDao.updateDepots(pkg.packageId, pkg.depotIds)
 
                                 // Insert a stub row (or update) of SteamApps to the database.
-                                appIds.forEach { appid ->
-                                    val existing = appDao.findApp(appid)
-                                    if (existing == null) {
-                                        appDao.insert(SteamApp(id = appid, packageId = pkg.id))
-                                        return@forEach
-                                    }
-                                    if (existing.packageId == pkg.id) {
-                                        return@forEach
-                                    }
-                                    if (accountId != null && existing.packageId != INVALID_PKG_ID) {
-                                        val existingLicense = packageLicenses[existing.packageId]
-                                            ?: licenseDao.findLicense(existing.packageId)
-                                        val existingRank = when {
-                                            existingLicense == null -> 0
-                                            !existingLicense.ownerAccountId.contains(accountId) -> 0
-                                            ELicenseFlags.Expired in existingLicense.licenseFlags -> 1
-                                            else -> 2
+                                // Steam can report multiple packages for the same app. Choose a
+                                // stable winner so temporary licenses do not overwrite durable
+                                // purchases based on callback iteration order.
+                                pkg.appIds.forEach { appid ->
+                                    val steamApp = appsById[appid]
+                                    if (steamApp != null) {
+                                        val selectedPackageId = selectPreferredPackageId(
+                                            existingPackageId = steamApp.packageId,
+                                            incomingPackageId = pkg.packageId,
+                                            licensesByPackageId = licensesByPackageId,
+                                        )
+                                        if (selectedPackageId != steamApp.packageId) {
+                                            val updatedSteamApp = steamApp.copy(packageId = selectedPackageId)
+                                            appDao.update(updatedSteamApp)
+                                            appsById[appid] = updatedSteamApp
                                         }
-                                        if (existingRank > pkgRank(pkg.id)) {
-                                            return@forEach
-                                        }
+                                    } else {
+                                        val stubSteamApp = SteamApp(id = appid, packageId = pkg.packageId)
+                                        appDao.insert(stubSteamApp)
+                                        appsById[appid] = stubSteamApp
                                     }
-                                    appDao.update(existing.copy(packageId = pkg.id))
                                 }
 
-                                queue.addAll(appIds)
+                                queue.addAll(pkg.appIds)
                             }
                         }
 

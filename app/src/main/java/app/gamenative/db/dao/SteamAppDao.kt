@@ -145,6 +145,20 @@ interface SteamAppDao {
     @Query("SELECT * FROM steam_app WHERE id = :appId")
     suspend fun findApp(appId: Int): SteamApp?
 
+    @Query("SELECT * FROM steam_app WHERE id IN (:appIds)")
+    suspend fun _findApps(appIds: List<Int>): List<SteamApp>
+
+    @Transaction
+    suspend fun findApps(appIds: List<Int>): List<SteamApp> {
+        if (appIds.isEmpty()) return emptyList()
+        val results = mutableListOf<SteamApp>()
+        for (chunkStart in appIds.indices step SQLITE_MAX_VARS) {
+            val chunkEnd = minOf(chunkStart + SQLITE_MAX_VARS, appIds.size)
+            results += _findApps(appIds.subList(chunkStart, chunkEnd))
+        }
+        return results
+    }
+
     @Query("SELECT * FROM steam_app AS app WHERE dlc_for_app_id = :appId AND depots <> '{}' AND " +
             " EXISTS (" +
             "   SELECT * FROM steam_license AS license " +
