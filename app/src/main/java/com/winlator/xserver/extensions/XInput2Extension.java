@@ -11,6 +11,7 @@ import com.winlator.xconnector.XInputStream;
 import com.winlator.xconnector.XOutputStream;
 import com.winlator.xconnector.XStreamLock;
 import com.winlator.xserver.errors.BadImplementation;
+import com.winlator.xserver.errors.BadValue;
 import com.winlator.xserver.errors.BadWindow;
 import com.winlator.xserver.errors.XRequestError;
 import com.winlator.xserver.events.XIRawButtonPressNotify;
@@ -376,7 +377,12 @@ public class XInput2Extension implements Extension {
             int deviceId = inputStream.readShort() & 0xFFFF;
             int maskLen = inputStream.readShort() & 0xFFFF;
 
-            Bitmask mask = new Bitmask(inputStream.readInt());
+            Bitmask mask = new Bitmask(0);
+
+            for (int word = 0; word < maskLen; word++) {
+                long value = inputStream.readUnsignedInt();
+                mask.set(value << (word * 32));
+            }
 
             Selection sel = new Selection();
             sel.client = client;

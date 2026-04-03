@@ -76,8 +76,8 @@ public abstract class WindowRequests {
             outputStream.writeByte((byte)window.getMapState().ordinal());
             outputStream.writeByte((byte)(window.attributes.isOverrideRedirect() ? 1 : 0));
             outputStream.writeInt(0);
-            outputStream.writeInt(window.getAllEventMasks().getBits());
-            outputStream.writeInt(client.getEventMaskForWindow(window).getBits());
+            outputStream.writeInt((int)window.getAllEventMasks().getBits());
+            outputStream.writeInt((int)client.getEventMaskForWindow(window).getBits());
             outputStream.writeShort((short)window.attributes.getDoNotPropagateMask().getBits());
             outputStream.writeShort((short)0);
         }

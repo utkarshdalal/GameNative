@@ -84,7 +84,7 @@ public class XClientRequestHandler implements RequestHandler {
             outputStream.writeInt(0);
             outputStream.writeInt(0xffffff);
             outputStream.writeInt(0x000000);
-            outputStream.writeInt(client.xServer.windowManager.rootWindow.getAllEventMasks().getBits());
+            outputStream.writeInt((int)client.xServer.windowManager.rootWindow.getAllEventMasks().getBits());
             outputStream.writeShort(client.xServer.screenInfo.width);
             outputStream.writeShort(client.xServer.screenInfo.height);
             outputStream.writeShort(client.xServer.screenInfo.getWidthInMillimeters());
