@@ -1284,7 +1284,7 @@ https://gamenative.app
     <string name="settings_interface_swap_face_buttons_title">Поменять кнопки действий</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Поменять местами значки кнопок A↔B и X↔Y</string>
     <string name="settings_interface_library_compatibility_badges_title">Показывать значки совместимости в библиотеке</string>
-    <string name="settings_interface_library_compatibility_badges_subtitle">Скрывает значки совместимости в представлениях библиотеки, сохраняя сведения о совместимости на странице каждой игры</string>
+    <string name="settings_interface_library_compatibility_badges_subtitle">Показывает значки совместимости в представлениях библиотеки, сохраняя сведения о совместимости на странице каждой игры</string>
 
     <!-- Workshop -->
     <string name="workshop_checking_mods">Проверка модов Мастерской…</string>

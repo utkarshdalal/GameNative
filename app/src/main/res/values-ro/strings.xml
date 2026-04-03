@@ -1356,7 +1356,7 @@
     <string name="settings_interface_swap_face_buttons_title">Inversează butoanele de acțiune</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Inversează pictogramele butoanelor A↔B și X↔Y</string>
     <string name="settings_interface_library_compatibility_badges_title">Afișează insignele de compatibilitate în bibliotecă</string>
-    <string name="settings_interface_library_compatibility_badges_subtitle">Ascunde insignele de compatibilitate în vizualizările bibliotecii, păstrând în același timp detaliile de compatibilitate pe pagina fiecărui joc</string>
+    <string name="settings_interface_library_compatibility_badges_subtitle">Afișează insignele de compatibilitate în vizualizările bibliotecii, păstrând în același timp detaliile de compatibilitate pe pagina fiecărui joc</string>
 
     <!-- Workshop -->
     <string name="workshop_checking_mods">Se verifică modurile Workshop…</string>

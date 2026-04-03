@@ -1351,7 +1351,7 @@
     <string name="settings_interface_swap_face_buttons_title">Inverser les boutons d\'action</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Inverse les icônes des boutons A↔B et X↔Y</string>
     <string name="settings_interface_library_compatibility_badges_title">Afficher les badges de compatibilité dans la bibliothèque</string>
-    <string name="settings_interface_library_compatibility_badges_subtitle">Masque les badges de compatibilité dans les vues de la bibliothèque tout en conservant les détails de compatibilité sur la page de chaque jeu</string>
+    <string name="settings_interface_library_compatibility_badges_subtitle">Affiche les badges de compatibilité dans les vues de la bibliothèque tout en conservant les détails de compatibilité sur la page de chaque jeu</string>
 
     <!-- Workshop -->
     <string name="workshop_checking_mods">Vérification des mods Workshop…</string>

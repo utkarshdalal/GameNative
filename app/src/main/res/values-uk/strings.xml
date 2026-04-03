@@ -1346,7 +1346,7 @@
     <string name="settings_interface_swap_face_buttons_title">Поміняти місцями кнопки дій</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Поміняти місцями значки кнопок A↔B і X↔Y</string>
     <string name="settings_interface_library_compatibility_badges_title">Показувати значки сумісності в бібліотеці</string>
-    <string name="settings_interface_library_compatibility_badges_subtitle">Приховує значки сумісності у поданнях бібліотеки, зберігаючи відомості про сумісність на сторінці кожної гри</string>
+    <string name="settings_interface_library_compatibility_badges_subtitle">Показує значки сумісності у поданнях бібліотеки, зберігаючи відомості про сумісність на сторінці кожної гри</string>
 
     <!-- Workshop -->
     <string name="workshop_checking_mods">Перевірка модів Майстерні…</string>

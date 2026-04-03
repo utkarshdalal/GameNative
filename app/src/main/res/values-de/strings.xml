@@ -1291,7 +1291,7 @@
     <string name="settings_interface_swap_face_buttons_title">Aktionstasten tauschen</string>
     <string name="settings_interface_swap_face_buttons_subtitle">A↔B- und X↔Y-Tastensymbole tauschen</string>
     <string name="settings_interface_library_compatibility_badges_title">Kompatibilitätsabzeichen in der Bibliothek anzeigen</string>
-    <string name="settings_interface_library_compatibility_badges_subtitle">Kompatibilitätsabzeichen in den Bibliotheksansichten ausblenden, während die Kompatibilitätsdetails auf jeder Spieleseite erhalten bleiben</string>
+    <string name="settings_interface_library_compatibility_badges_subtitle">Kompatibilitätsabzeichen in den Bibliotheksansichten anzeigen, während die Kompatibilitätsdetails auf jeder Spieleseite erhalten bleiben</string>
 
     <!-- Workshop -->
     <string name="workshop_checking_mods">Workshop-Mods werden überprüft…</string>

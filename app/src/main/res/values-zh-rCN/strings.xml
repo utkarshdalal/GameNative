@@ -1344,7 +1344,7 @@
     <string name="settings_interface_swap_face_buttons_title">交换面键</string>
     <string name="settings_interface_swap_face_buttons_subtitle">交换 A↔B 和 X↔Y 按键图标</string>
     <string name="settings_interface_library_compatibility_badges_title">显示库中的兼容性徽章</string>
-    <string name="settings_interface_library_compatibility_badges_subtitle">在隐藏库视图中的兼容性徽章的同时，保留每个游戏页面上的兼容性详情</string>
+    <string name="settings_interface_library_compatibility_badges_subtitle">在库视图中显示兼容性徽章，同时保留每个游戏页面上的兼容性详情</string>
 
     <!-- Workshop -->
     <string name="workshop_checking_mods">正在检查创意工坊模组…</string>

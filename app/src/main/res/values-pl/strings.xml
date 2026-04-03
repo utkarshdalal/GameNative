@@ -1354,7 +1354,7 @@
     <string name="settings_interface_swap_face_buttons_title">Zamień przyciski akcji</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Zamień ikony przycisków A↔B i X↔Y</string>
     <string name="settings_interface_library_compatibility_badges_title">Pokazuj oznaczenia zgodności w bibliotece</string>
-    <string name="settings_interface_library_compatibility_badges_subtitle">Ukrywa oznaczenia zgodności w widokach biblioteki, zachowując szczegóły zgodności na stronie każdej gry</string>
+    <string name="settings_interface_library_compatibility_badges_subtitle">Pokazuje oznaczenia zgodności w widokach biblioteki, zachowując szczegóły zgodności na stronie każdej gry</string>
 
     <!-- Workshop -->
     <string name="workshop_checking_mods">Sprawdzanie modów z Warsztatu…</string>
