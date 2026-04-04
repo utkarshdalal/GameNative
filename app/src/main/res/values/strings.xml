@@ -248,6 +248,13 @@
     <string name="screen_effects_live_preview">Changes apply instantly to the current game.</string>
     <string name="screen_effects_color_adjustments">Color adjustments</string>
     <string name="screen_effects_shader_toggles">Shader effects</string>
+    <string name="screen_effects_scaling_mode">Scaling mode</string>
+    <string name="screen_effects_scaling_mode_none">None</string>
+    <string name="screen_effects_scaling_mode_nearest">Nearest</string>
+    <string name="screen_effects_scaling_mode_linear">Linear</string>
+    <string name="screen_effects_scaling_mode_fill">Fill</string>
+    <string name="screen_effects_scaling_mode_stretch">Stretch</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
     <string name="screen_effects_fsr">FSR 1.0</string>
     <string name="screen_effects_fsr_description">Official AMD FidelityFX Super Resolution 1.0 using EASU + RCAS with a lower internal render resolution and full-resolution upscale.</string>
     <string name="screen_effects_fsr_quality">FSR quality</string>

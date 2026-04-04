@@ -76,6 +76,7 @@ import com.winlator.renderer.effects.FSR1EasuEffect
 import com.winlator.renderer.effects.FSR1RcasEffect
 import com.winlator.renderer.effects.FXAAEffect
 import com.winlator.renderer.effects.NTSCCombinedEffect
+import com.winlator.renderer.effects.ScalingModeEffect
 import com.winlator.renderer.effects.ToonEffect
 import kotlin.math.abs
 
@@ -84,6 +85,12 @@ private const val SCREEN_EFFECT_GAMMA_STEP = 0.1f
 private const val SCREEN_EFFECT_FSR_MIN_LEVEL = 1
 private const val SCREEN_EFFECT_FSR_MAX_LEVEL = 5
 private const val SCREEN_EFFECT_FSR_DEFAULT_LEVEL = 3
+private const val SCREEN_EFFECT_SCALE_MODE_NONE = 0
+private const val SCREEN_EFFECT_SCALE_MODE_NEAREST = 1
+private const val SCREEN_EFFECT_SCALE_MODE_LINEAR = 2
+private const val SCREEN_EFFECT_SCALE_MODE_FILL = 3
+private const val SCREEN_EFFECT_SCALE_MODE_STRETCH = 4
+private const val SCREEN_EFFECT_SCALE_MODE_FSR = 5
 
 private fun fsrQuickMenuLevelToStops(level: Int): Float {
     val clamped = level.coerceIn(SCREEN_EFFECT_FSR_MIN_LEVEL, SCREEN_EFFECT_FSR_MAX_LEVEL)
@@ -104,6 +111,29 @@ private fun fsrStopsToQuickMenuLevel(stops: Float): Int = when {
     else -> 5
 }
 
+private fun scalingEffectModeToQuickMenuMode(mode: ScalingModeEffect.Mode?): Int = when (mode) {
+    ScalingModeEffect.Mode.NEAREST -> SCREEN_EFFECT_SCALE_MODE_NEAREST
+    ScalingModeEffect.Mode.FILL -> SCREEN_EFFECT_SCALE_MODE_FILL
+    ScalingModeEffect.Mode.STRETCH -> SCREEN_EFFECT_SCALE_MODE_STRETCH
+    else -> SCREEN_EFFECT_SCALE_MODE_LINEAR
+}
+
+private fun quickMenuModeToScalingEffectMode(mode: Int): ScalingModeEffect.Mode = when (mode) {
+    SCREEN_EFFECT_SCALE_MODE_NEAREST -> ScalingModeEffect.Mode.NEAREST
+    SCREEN_EFFECT_SCALE_MODE_FILL -> ScalingModeEffect.Mode.FILL
+    SCREEN_EFFECT_SCALE_MODE_STRETCH -> ScalingModeEffect.Mode.STRETCH
+    else -> ScalingModeEffect.Mode.LINEAR
+}
+
+private fun scalingModeLabelRes(mode: Int): Int = when (mode) {
+    SCREEN_EFFECT_SCALE_MODE_NEAREST -> R.string.screen_effects_scaling_mode_nearest
+    SCREEN_EFFECT_SCALE_MODE_LINEAR -> R.string.screen_effects_scaling_mode_linear
+    SCREEN_EFFECT_SCALE_MODE_FILL -> R.string.screen_effects_scaling_mode_fill
+    SCREEN_EFFECT_SCALE_MODE_STRETCH -> R.string.screen_effects_scaling_mode_stretch
+    SCREEN_EFFECT_SCALE_MODE_FSR -> R.string.screen_effects_scaling_mode_fsr
+    else -> R.string.screen_effects_scaling_mode_none
+}
+
 @Composable
 fun ScreenEffectsTabContent(
     renderer: GLRenderer,
@@ -113,6 +143,8 @@ fun ScreenEffectsTabContent(
 ) {
     val composer = renderer.effectComposer
     val initialColorEffect = composer.getEffect(ColorEffect::class.java)
+    val initialScalingEffect = composer.getEffect(ScalingModeEffect::class.java)
+    val initialFsrEasuEffect = composer.getEffect(FSR1EasuEffect::class.java)
     val initialFsrRcasEffect = composer.getEffect(FSR1RcasEffect::class.java)
 
     var brightness by remember(renderer) {
@@ -124,10 +156,13 @@ fun ScreenEffectsTabContent(
     var gamma by remember(renderer) {
         mutableFloatStateOf(initialColorEffect?.gamma ?: 1.0f)
     }
-    var enableFSR by remember(renderer) {
-        mutableStateOf(
-            composer.getEffect(FSR1EasuEffect::class.java) != null &&
-                composer.getEffect(FSR1RcasEffect::class.java) != null,
+    var scalingMode by remember(renderer) {
+        mutableIntStateOf(
+            when {
+                initialFsrEasuEffect != null && initialFsrRcasEffect != null -> SCREEN_EFFECT_SCALE_MODE_FSR
+                initialScalingEffect != null -> scalingEffectModeToQuickMenuMode(initialScalingEffect.mode)
+                else -> SCREEN_EFFECT_SCALE_MODE_NONE
+            },
         )
     }
     var fsrSharpnessLevel by remember(renderer) {
@@ -153,7 +188,7 @@ fun ScreenEffectsTabContent(
         brightness,
         contrast,
         gamma,
-        enableFSR,
+        scalingMode,
         fsrSharpnessLevel,
         enableToon,
         enableFXAA,
@@ -162,11 +197,21 @@ fun ScreenEffectsTabContent(
     ) {
         val effects = mutableListOf<Effect>()
 
-        if (enableFSR) {
-            effects += composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
-            val rcasEffect = composer.getEffect(FSR1RcasEffect::class.java) ?: FSR1RcasEffect()
-            rcasEffect.sharpnessStops = fsrQuickMenuLevelToStops(fsrSharpnessLevel)
-            effects += rcasEffect
+        when (scalingMode) {
+            SCREEN_EFFECT_SCALE_MODE_FSR -> {
+                effects += composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
+                val rcasEffect = composer.getEffect(FSR1RcasEffect::class.java) ?: FSR1RcasEffect()
+                rcasEffect.sharpnessStops = fsrQuickMenuLevelToStops(fsrSharpnessLevel)
+                effects += rcasEffect
+            }
+
+            SCREEN_EFFECT_SCALE_MODE_NONE -> Unit
+
+            else -> {
+                val scalingEffect = composer.getEffect(ScalingModeEffect::class.java) ?: ScalingModeEffect()
+                scalingEffect.mode = quickMenuModeToScalingEffectMode(scalingMode)
+                effects += scalingEffect
+            }
         }
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
@@ -197,7 +242,7 @@ fun ScreenEffectsTabContent(
         brightness = 0f
         contrast = 0f
         gamma = 1.0f
-        enableFSR = false
+        scalingMode = SCREEN_EFFECT_SCALE_MODE_NONE
         fsrSharpnessLevel = SCREEN_EFFECT_FSR_DEFAULT_LEVEL
         enableToon = false
         enableFXAA = false
@@ -250,12 +295,22 @@ fun ScreenEffectsTabContent(
 
         OptionSectionHeader(text = stringResource(R.string.screen_effects_shader_toggles))
 
-        ScreenEffectToggleRow(
-            title = stringResource(R.string.screen_effects_fsr),
-            enabled = enableFSR,
-            onToggle = { enableFSR = !enableFSR },
+        ScreenEffectAdjustmentRow(
+            title = stringResource(R.string.screen_effects_scaling_mode),
+            valueText = stringResource(scalingModeLabelRes(scalingMode)),
+            progress = normalizedProgress(
+                scalingMode.toFloat(),
+                SCREEN_EFFECT_SCALE_MODE_NONE.toFloat(),
+                SCREEN_EFFECT_SCALE_MODE_FSR.toFloat(),
+            ),
+            onDecrease = {
+                scalingMode = (scalingMode - 1).coerceAtLeast(SCREEN_EFFECT_SCALE_MODE_NONE)
+            },
+            onIncrease = {
+                scalingMode = (scalingMode + 1).coerceAtMost(SCREEN_EFFECT_SCALE_MODE_FSR)
+            },
         )
-        if (enableFSR) {
+        if (scalingMode == SCREEN_EFFECT_SCALE_MODE_FSR) {
             ScreenEffectAdjustmentRow(
                 title = stringResource(R.string.screen_effects_fsr_sharpness),
                 valueText = stringResource(R.string.screen_effects_fsr_sharpness_value, fsrSharpnessLevel),

@@ -4,6 +4,7 @@ import android.opengl.GLES20;
 
 import com.winlator.renderer.effects.Effect;
 import com.winlator.renderer.effects.RenderScaleEffect;
+import com.winlator.renderer.effects.SourceTextureFilterEffect;
 import com.winlator.renderer.material.ShaderMaterial;
 
 import java.util.ArrayList;
@@ -73,8 +74,8 @@ public class EffectComposer {
         int sceneHeight = outputHeight;
         if (!snapshot.isEmpty() && snapshot.get(0) instanceof RenderScaleEffect) {
             RenderScaleEffect renderScaleEffect = (RenderScaleEffect) snapshot.get(0);
-            sceneWidth = Math.max(1, Math.min(outputWidth, renderScaleEffect.getRenderWidth(renderer, outputWidth)));
-            sceneHeight = Math.max(1, Math.min(outputHeight, renderScaleEffect.getRenderHeight(renderer, outputHeight)));
+            sceneWidth = Math.max(1, renderScaleEffect.getRenderWidth(renderer, outputWidth));
+            sceneHeight = Math.max(1, renderScaleEffect.getRenderHeight(renderer, outputHeight));
         }
         boolean scaledScene = sceneWidth != outputWidth || sceneHeight != outputHeight;
 
@@ -110,6 +111,14 @@ public class EffectComposer {
             Effect effect = snapshot.get(i);
             effect.use(renderer);
             ShaderMaterial material = effect.getMaterial();
+
+            if (effect instanceof SourceTextureFilterEffect) {
+                SourceTextureFilterEffect textureFilterEffect = (SourceTextureFilterEffect) effect;
+                source.setFilters(textureFilterEffect.getSourceMinFilter(), textureFilterEffect.getSourceMagFilter());
+            }
+            else {
+                source.setFilters(GLES20.GL_NEAREST, GLES20.GL_NEAREST);
+            }
 
             renderer.getQuadVertices().bind(material.programId);
             material.setUniformVec2("resolution", targetWidth, targetHeight);
