@@ -1219,6 +1219,7 @@ class SteamAutoCloudTest {
         ))
 
         val roamingRoot = File(tempDir, "roaming")
+        val userdataRoot = File(tempDir, "userdata")
         // Files live in the addPath subdirectory: <roamingRoot>/MyGame/saves/
         val saveDir = File(roamingRoot, "MyGame/saves")
         saveDir.mkdirs()
@@ -1282,6 +1283,7 @@ class SteamAutoCloudTest {
         val prefixToPath: (String) -> String = { prefix ->
             when (prefix) {
                 "WinAppDataRoaming" -> roamingRoot.absolutePath
+                "SteamUserData" -> userdataRoot.absolutePath
                 else -> tempDir.absolutePath
             }
         }
@@ -1331,6 +1333,7 @@ class SteamAutoCloudTest {
 
         // Create a temp directory to act as the WinAppDataRoaming root
         val roamingRoot = File(tempDir, "roaming")
+        val userdataRoot = File(tempDir, "userdata")
         val saveSubdir = File(roamingRoot, "TheGame")
         saveSubdir.mkdirs()
         val saveFile = File(saveSubdir, "save.sav")
@@ -1391,6 +1394,7 @@ class SteamAutoCloudTest {
         val prefixToPath: (String) -> String = { prefix ->
             when (prefix) {
                 "WinAppDataRoaming" -> roamingRoot.absolutePath
+                "SteamUserData" -> userdataRoot.absolutePath
                 else -> tempDir.absolutePath
             }
         }
