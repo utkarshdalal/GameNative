@@ -922,9 +922,9 @@ internal fun AppScreenContent(
                                     }
                                     val syncButtonState = when (displayInfo.cloudSaveStatus) {
                                         CloudSaveStatus.PENDING_DOWNLOAD ->
-                                            Triple(Icons.Default.Sync, Color(0xFFFFA726), Color(0xFF3E2800))
+                                            Triple(Icons.Default.Sync, Color(0xFF3E2800), Color(0xFFFFA726))
                                         CloudSaveStatus.PENDING_UPLOAD ->
-                                            Triple(Icons.Default.Sync, Color(0xFFFFA726), Color(0xFF3E2800))
+                                            Triple(Icons.Default.Sync, Color(0xFF3E2800), Color(0xFFFFA726))
                                         CloudSaveStatus.CONFLICT ->
                                             Triple(Icons.Default.SyncProblem, MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.onError)
                                         else -> null
