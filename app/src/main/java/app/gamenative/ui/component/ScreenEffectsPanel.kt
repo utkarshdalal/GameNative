@@ -256,6 +256,46 @@ fun ScreenEffectsTabContent(
             .focusGroup()
             .padding(vertical = 12.dp),
     ) {
+        OptionSectionHeader(text = stringResource(R.string.screen_effects_scaling))
+
+        ScreenEffectAdjustmentRow(
+            title = stringResource(R.string.screen_effects_scaling_mode),
+            valueText = stringResource(scalingModeLabelRes(scalingMode)),
+            progress = normalizedProgress(
+                scalingMode.toFloat(),
+                SCREEN_EFFECT_SCALE_MODE_NONE.toFloat(),
+                SCREEN_EFFECT_SCALE_MODE_FSR.toFloat(),
+            ),
+            onDecrease = {
+                scalingMode = (scalingMode - 1).coerceAtLeast(SCREEN_EFFECT_SCALE_MODE_NONE)
+            },
+            onIncrease = {
+                scalingMode = (scalingMode + 1).coerceAtMost(SCREEN_EFFECT_SCALE_MODE_FSR)
+            },
+            focusRequester = firstItemFocusRequester,
+        )
+        if (scalingMode == SCREEN_EFFECT_SCALE_MODE_FSR) {
+            ScreenEffectAdjustmentRow(
+                title = stringResource(R.string.screen_effects_fsr_sharpness),
+                valueText = stringResource(R.string.screen_effects_fsr_sharpness_value, fsrSharpnessLevel),
+                progress = normalizedProgress(
+                    fsrSharpnessLevel.toFloat(),
+                    SCREEN_EFFECT_FSR_MIN_LEVEL.toFloat(),
+                    SCREEN_EFFECT_FSR_MAX_LEVEL.toFloat(),
+                ),
+                onDecrease = {
+                    fsrSharpnessLevel = (fsrSharpnessLevel - 1).coerceAtLeast(SCREEN_EFFECT_FSR_MIN_LEVEL)
+                },
+                onIncrease = {
+                    fsrSharpnessLevel = (fsrSharpnessLevel + 1).coerceAtMost(SCREEN_EFFECT_FSR_MAX_LEVEL)
+                },
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        OptionSectionHeader(text = stringResource(R.string.screen_effects_color_adjustments))
+
         ScreenEffectAdjustmentRow(
             title = stringResource(R.string.screen_effects_brightness),
             valueText = formatPercent(brightness),
@@ -266,7 +306,6 @@ fun ScreenEffectsTabContent(
             onIncrease = {
                 brightness = (brightness + SCREEN_EFFECT_PERCENT_STEP).coerceIn(-100f, 100f)
             },
-            focusRequester = firstItemFocusRequester,
         )
         ScreenEffectAdjustmentRow(
             title = stringResource(R.string.screen_effects_contrast),
@@ -295,38 +334,6 @@ fun ScreenEffectsTabContent(
 
         OptionSectionHeader(text = stringResource(R.string.screen_effects_shader_toggles))
 
-        ScreenEffectAdjustmentRow(
-            title = stringResource(R.string.screen_effects_scaling_mode),
-            valueText = stringResource(scalingModeLabelRes(scalingMode)),
-            progress = normalizedProgress(
-                scalingMode.toFloat(),
-                SCREEN_EFFECT_SCALE_MODE_NONE.toFloat(),
-                SCREEN_EFFECT_SCALE_MODE_FSR.toFloat(),
-            ),
-            onDecrease = {
-                scalingMode = (scalingMode - 1).coerceAtLeast(SCREEN_EFFECT_SCALE_MODE_NONE)
-            },
-            onIncrease = {
-                scalingMode = (scalingMode + 1).coerceAtMost(SCREEN_EFFECT_SCALE_MODE_FSR)
-            },
-        )
-        if (scalingMode == SCREEN_EFFECT_SCALE_MODE_FSR) {
-            ScreenEffectAdjustmentRow(
-                title = stringResource(R.string.screen_effects_fsr_sharpness),
-                valueText = stringResource(R.string.screen_effects_fsr_sharpness_value, fsrSharpnessLevel),
-                progress = normalizedProgress(
-                    fsrSharpnessLevel.toFloat(),
-                    SCREEN_EFFECT_FSR_MIN_LEVEL.toFloat(),
-                    SCREEN_EFFECT_FSR_MAX_LEVEL.toFloat(),
-                ),
-                onDecrease = {
-                    fsrSharpnessLevel = (fsrSharpnessLevel - 1).coerceAtLeast(SCREEN_EFFECT_FSR_MIN_LEVEL)
-                },
-                onIncrease = {
-                    fsrSharpnessLevel = (fsrSharpnessLevel + 1).coerceAtMost(SCREEN_EFFECT_FSR_MAX_LEVEL)
-                },
-            )
-        }
         ScreenEffectToggleRow(
             title = stringResource(R.string.screen_effects_toon),
             subtitle = stringResource(R.string.screen_effects_toon_description),
