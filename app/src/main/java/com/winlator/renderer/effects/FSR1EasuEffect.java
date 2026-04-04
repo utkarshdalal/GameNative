@@ -12,19 +12,35 @@ import com.winlator.renderer.material.ShaderMaterial;
  * Copyright (c) 2021 Advanced Micro Devices, Inc.
  * Released under the MIT license by AMD.
  */
-public class FSR1EasuEffect extends Effect {
+public class FSR1EasuEffect extends Effect implements RenderScaleEffect {
+    private float renderScale = 0.67f;
+
     @Override
     protected ShaderMaterial createMaterial() {
         return new FSR1EasuMaterial();
     }
 
+    @Override
+    public float getRenderScale() {
+        return renderScale;
+    }
+
+    public void setRenderScale(float renderScale) {
+        this.renderScale = Math.max(0.5f, Math.min(renderScale, 1.0f));
+    }
+
     private static class FSR1EasuMaterial extends ScreenMaterial {
+        public FSR1EasuMaterial() {
+            setUniformNames("screenTexture", "inputResolution", "outputResolution");
+        }
+
         @Override
         protected String getFragmentShader() {
             return
                 "precision highp float;\n" +
                 "uniform sampler2D screenTexture;\n" +
-                "uniform vec2 resolution;\n" +
+                "uniform vec2 inputResolution;\n" +
+                "uniform vec2 outputResolution;\n" +
                 "varying vec2 vUV;\n" +
                 "vec3 FsrEasuCF(vec2 p) { return texture2D(screenTexture, p).rgb; }\n" +
                 "void FsrEasuCon(out vec4 con0, out vec4 con1, out vec4 con2, out vec4 con3, vec2 inputViewportInPixels, vec2 inputSizeInPixels, vec2 outputSizeInPixels) {\n" +
@@ -130,7 +146,7 @@ public class FSR1EasuEffect extends Effect {
                 "void main() {\n" +
                 "    vec3 color;\n" +
                 "    vec4 con0, con1, con2, con3;\n" +
-                "    FsrEasuCon(con0, con1, con2, con3, resolution, resolution, resolution);\n" +
+                "    FsrEasuCon(con0, con1, con2, con3, inputResolution, inputResolution, outputResolution);\n" +
                 "    FsrEasuF(color, gl_FragCoord.xy, con0, con1, con2, con3);\n" +
                 "    gl_FragColor = vec4(color, texture2D(screenTexture, vUV).a);\n" +
                 "}";

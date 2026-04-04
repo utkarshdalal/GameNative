@@ -85,6 +85,11 @@ private const val SCREEN_EFFECT_GAMMA_STEP = 0.1f
 private const val SCREEN_EFFECT_FSR_MIN_LEVEL = 1
 private const val SCREEN_EFFECT_FSR_MAX_LEVEL = 5
 private const val SCREEN_EFFECT_FSR_DEFAULT_LEVEL = 3
+private const val SCREEN_EFFECT_FSR_MODE_ULTRA_QUALITY = 0
+private const val SCREEN_EFFECT_FSR_MODE_QUALITY = 1
+private const val SCREEN_EFFECT_FSR_MODE_BALANCED = 2
+private const val SCREEN_EFFECT_FSR_MODE_PERFORMANCE = 3
+private const val SCREEN_EFFECT_FSR_DEFAULT_MODE = SCREEN_EFFECT_FSR_MODE_QUALITY
 
 private fun fsrQuickMenuLevelToStops(level: Int): Float {
     val clamped = level.coerceIn(SCREEN_EFFECT_FSR_MIN_LEVEL, SCREEN_EFFECT_FSR_MAX_LEVEL)
@@ -105,6 +110,20 @@ private fun fsrStopsToQuickMenuLevel(stops: Float): Int = when {
     else -> 5
 }
 
+private fun fsrModeToRenderScale(mode: Int): Float = when (mode) {
+    SCREEN_EFFECT_FSR_MODE_ULTRA_QUALITY -> 0.77f
+    SCREEN_EFFECT_FSR_MODE_BALANCED -> 0.59f
+    SCREEN_EFFECT_FSR_MODE_PERFORMANCE -> 0.50f
+    else -> 0.67f
+}
+
+private fun fsrRenderScaleToMode(scale: Float): Int = when {
+    scale >= 0.72f -> SCREEN_EFFECT_FSR_MODE_ULTRA_QUALITY
+    scale >= 0.63f -> SCREEN_EFFECT_FSR_MODE_QUALITY
+    scale >= 0.55f -> SCREEN_EFFECT_FSR_MODE_BALANCED
+    else -> SCREEN_EFFECT_FSR_MODE_PERFORMANCE
+}
+
 private fun isVkBasaltSharpnessEnabled(effect: String): Boolean = !effect.equals("None", ignoreCase = true)
 
 @Composable
@@ -118,6 +137,7 @@ fun ScreenEffectsTabContent(
 ) {
     val composer = renderer.effectComposer
     val initialColorEffect = composer.getEffect(ColorEffect::class.java)
+    val initialFsrEasuEffect = composer.getEffect(FSR1EasuEffect::class.java)
     val initialFsrRcasEffect = composer.getEffect(FSR1RcasEffect::class.java)
     val sharpnessEffects = stringArrayResource(R.array.vkbasalt_sharpness_entries).toList()
     val sharpnessEffectLabels = stringArrayResource(R.array.vkbasalt_sharpness_labels).toList()
@@ -148,6 +168,12 @@ fun ScreenEffectsTabContent(
                 ?: SCREEN_EFFECT_FSR_DEFAULT_LEVEL,
         )
     }
+    var fsrQualityMode by remember(renderer) {
+        mutableIntStateOf(
+            initialFsrEasuEffect?.renderScale?.let(::fsrRenderScaleToMode)
+                ?: SCREEN_EFFECT_FSR_DEFAULT_MODE,
+        )
+    }
     var enableToon by remember(renderer) {
         mutableStateOf(composer.getEffect(ToonEffect::class.java) != null)
     }
@@ -167,6 +193,7 @@ fun ScreenEffectsTabContent(
         gamma,
         enableFSR,
         fsrSharpnessLevel,
+        fsrQualityMode,
         enableToon,
         enableFXAA,
         enableCRT,
@@ -174,19 +201,21 @@ fun ScreenEffectsTabContent(
     ) {
         val effects = mutableListOf<Effect>()
 
+        if (enableFSR) {
+            val easuEffect = composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
+            easuEffect.renderScale = fsrModeToRenderScale(fsrQualityMode)
+            effects += easuEffect
+            val rcasEffect = composer.getEffect(FSR1RcasEffect::class.java) ?: FSR1RcasEffect()
+            rcasEffect.sharpnessStops = fsrQuickMenuLevelToStops(fsrSharpnessLevel)
+            effects += rcasEffect
+        }
+
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
             val colorEffect = ColorEffect()
             colorEffect.brightness = brightness / 100f
             colorEffect.contrast = contrast / 100f
             colorEffect.gamma = gamma
             effects += colorEffect
-        }
-
-        if (enableFSR) {
-            effects += composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
-            val rcasEffect = composer.getEffect(FSR1RcasEffect::class.java) ?: FSR1RcasEffect()
-            rcasEffect.sharpnessStops = fsrQuickMenuLevelToStops(fsrSharpnessLevel)
-            effects += rcasEffect
         }
 
         if (enableToon) {
@@ -222,6 +251,7 @@ fun ScreenEffectsTabContent(
         gamma = 1.0f
         enableFSR = false
         fsrSharpnessLevel = SCREEN_EFFECT_FSR_DEFAULT_LEVEL
+        fsrQualityMode = SCREEN_EFFECT_FSR_DEFAULT_MODE
         enableToon = false
         enableFXAA = false
         enableCRT = false
@@ -287,6 +317,29 @@ fun ScreenEffectsTabContent(
             onToggle = { enableFSR = !enableFSR },
         )
         if (enableFSR) {
+            val fsrQualityLabel = stringResource(
+                when (fsrQualityMode) {
+                    SCREEN_EFFECT_FSR_MODE_ULTRA_QUALITY -> R.string.screen_effects_fsr_quality_ultra_quality
+                    SCREEN_EFFECT_FSR_MODE_BALANCED -> R.string.screen_effects_fsr_quality_balanced
+                    SCREEN_EFFECT_FSR_MODE_PERFORMANCE -> R.string.screen_effects_fsr_quality_performance
+                    else -> R.string.screen_effects_fsr_quality_quality
+                },
+            )
+            ScreenEffectAdjustmentRow(
+                title = stringResource(R.string.screen_effects_fsr_quality),
+                valueText = fsrQualityLabel,
+                progress = normalizedProgress(
+                    fsrQualityMode.toFloat(),
+                    SCREEN_EFFECT_FSR_MODE_ULTRA_QUALITY.toFloat(),
+                    SCREEN_EFFECT_FSR_MODE_PERFORMANCE.toFloat(),
+                ),
+                onDecrease = {
+                    fsrQualityMode = (fsrQualityMode - 1).coerceAtLeast(SCREEN_EFFECT_FSR_MODE_ULTRA_QUALITY)
+                },
+                onIncrease = {
+                    fsrQualityMode = (fsrQualityMode + 1).coerceAtMost(SCREEN_EFFECT_FSR_MODE_PERFORMANCE)
+                },
+            )
             ScreenEffectAdjustmentRow(
                 title = stringResource(R.string.screen_effects_fsr_sharpness),
                 valueText = stringResource(R.string.screen_effects_fsr_sharpness_value, fsrSharpnessLevel),
