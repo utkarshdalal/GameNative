@@ -249,7 +249,7 @@
     <string name="screen_effects_color_adjustments">Color adjustments</string>
     <string name="screen_effects_shader_toggles">Shader effects</string>
     <string name="screen_effects_fsr">FSR 1.0</string>
-    <string name="screen_effects_fsr_description">Experimental two-pass EASU + RCAS post-process inspired by the Steam Deck path.</string>
+    <string name="screen_effects_fsr_description">Official AMD FidelityFX Super Resolution 1.0 using EASU + RCAS in the quick-menu post-process chain.</string>
     <string name="screen_effects_fsr_sharpness">FSR sharpness</string>
     <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
     <string name="screen_effects_launch_sharpness">Launch sharpness</string>
