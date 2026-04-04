@@ -25,6 +25,6 @@ data class GameDisplayInfo(
     val hasCloudSaves: Boolean? = null, // null = unknown/not applicable, true/false = cloud save support
     val lastSyncStateText: String? = null, // e.g. "Up to date", "New cloud save", "Synced", "Failed"
     val cloudSaveStatus: CloudSaveStatus? = null,
-    val conflictLocalTimestamp: Long = 0L,
-    val conflictRemoteTimestamp: Long = 0L,
+    val conflictLocalTimestamp: Long? = null,
+    val conflictRemoteTimestamp: Long? = null,
 )

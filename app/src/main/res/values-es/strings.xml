@@ -1376,6 +1376,6 @@
     <string name="cloud_saves_conflict">Conflicto</string>
     <string name="cloud_saves_failed">Error</string>
     <string name="cloud_saves_offline">Sin conexión</string>
-    <string name="cloud_saves_pending_upload">Carga pendiente</string>
+    <string name="cloud_saves_pending_upload">Subida pendiente</string>
     <string name="cloud_saves_force_sync">Forzar sincronización</string>
 </resources>

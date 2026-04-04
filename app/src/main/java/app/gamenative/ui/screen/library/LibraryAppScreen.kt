@@ -942,7 +942,7 @@ internal fun AppScreenContent(
                                             modifier = Modifier.size(32.dp),
                                             colors = IconButtonDefaults.filledTonalIconButtonColors(
                                                 containerColor = containerColor.copy(alpha = 0.25f),
-                                                contentColor = containerColor,
+                                                contentColor = contentColor,
                                             ),
                                         ) {
                                             Icon(
@@ -1234,11 +1234,12 @@ internal fun AppScreenContent(
             )
         }
 
+        val conflictDateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault()) }
         val localDate = remember(displayInfo.conflictLocalTimestamp) {
-            if (displayInfo.conflictLocalTimestamp > 0L) Date(displayInfo.conflictLocalTimestamp).toString() else ""
+            displayInfo.conflictLocalTimestamp?.let { conflictDateFormat.format(Date(it)) } ?: ""
         }
         val remoteDate = remember(displayInfo.conflictRemoteTimestamp) {
-            if (displayInfo.conflictRemoteTimestamp > 0L) Date(displayInfo.conflictRemoteTimestamp).toString() else ""
+            displayInfo.conflictRemoteTimestamp?.let { conflictDateFormat.format(Date(it)) } ?: ""
         }
         MessageDialog(
             visible = showConflictDialog,

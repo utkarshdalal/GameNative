@@ -201,7 +201,7 @@ object SteamAutoCloud {
         val allLocalFiles = localFilesMap.values.flatten()
         val cachedFiles = steamInstance.fileChangeListsDao.getByAppId(appInfo.id)?.userFileInfo
         val hasLocalChanges = if (cachedFiles.isNullOrEmpty()) {
-            null
+            allLocalFiles.isNotEmpty()
         } else {
             getFilesDiff(allLocalFiles, cachedFiles).first
         }

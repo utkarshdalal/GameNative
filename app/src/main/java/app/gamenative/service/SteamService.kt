@@ -3181,11 +3181,13 @@ class SteamService : Service(), IChallengeUrlChanged {
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         networkCallback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                PluviaApp.events.emit(AndroidEvent.NetworkAvailabilityChanged(true))
+                val available = hasActiveWifiOrEthernet()
+                PluviaApp.events.emit(AndroidEvent.NetworkAvailabilityChanged(available))
             }
             override fun onLost(network: Network) {
-                PluviaApp.events.emit(AndroidEvent.NetworkAvailabilityChanged(false))
-                checkAndPauseDownloads()
+                val available = hasActiveWifiOrEthernet()
+                PluviaApp.events.emit(AndroidEvent.NetworkAvailabilityChanged(available))
+                if (!available) checkAndPauseDownloads()
             }
             override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) = checkAndPauseDownloads()
 

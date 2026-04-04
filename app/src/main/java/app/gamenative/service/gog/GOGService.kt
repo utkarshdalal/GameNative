@@ -550,6 +550,7 @@ class GOGService : Service() {
                     // Validate clientSecret is available
                     if (location.clientSecret.isEmpty()) {
                         Timber.tag("GOG").e("[Cloud Saves] Missing clientSecret for '${location.name}', skipping sync")
+                        allSucceeded = false
                         continue
                     }
 

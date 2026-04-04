@@ -163,11 +163,11 @@ class GOGAppScreen : BaseAppScreen() {
 
         val syncStateText = remember(gameId) { mutableStateOf<String?>(null) }
         val cloudSaveStatus = remember(gameId) { mutableStateOf<CloudSaveStatus?>(null) }
-        val conflictLocalTimestamp = remember(gameId) { mutableStateOf(0L) }
-        val conflictRemoteTimestamp = remember(gameId) { mutableStateOf(0L) }
+        val conflictLocalTimestamp = remember(gameId) { mutableStateOf<Long?>(null) }
+        val conflictRemoteTimestamp = remember(gameId) { mutableStateOf<Long?>(null) }
 
         val cloudConnectivityVersion = remember { mutableStateOf(0) }
-        DisposableEffect(Unit) {
+        DisposableEffect(gameId) {
             val onNetworkChanged: (AndroidEvent.NetworkAvailabilityChanged) -> Unit = { cloudConnectivityVersion.value++ }
             val onCloudSaveSynced: (AndroidEvent.CloudSaveSynced) -> Unit = { event ->
                 if (event.appId == libraryItem.gameId) {
@@ -181,6 +181,7 @@ class GOGAppScreen : BaseAppScreen() {
             }
             val onCloudSaveSyncStarted: (AndroidEvent.CloudSaveSyncStarted) -> Unit = { event ->
                 if (event.appId == libraryItem.gameId) {
+                    hasCloudSaves = true
                     cloudSaveStatus.value = CloudSaveStatus.SYNCING
                     syncStateText.value = context.getString(R.string.cloud_saves_syncing)
                 }
@@ -208,14 +209,12 @@ class GOGAppScreen : BaseAppScreen() {
                 syncStateText.value = context.getString(R.string.cloud_saves_checking)
 
                 val cloudSavesManager = GOGCloudSavesManager(context)
-                var worstAction: GOGCloudSavesManager.SyncAction? = GOGCloudSavesManager.SyncAction.NONE
-                var firstConflictLocation: app.gamenative.data.GOGCloudSavesLocation? = null
 
-                for (location in safeLocations) {
-                    val instance = GOGService.getInstance()
-                    val timestampStr = instance?.gogManager?.getCloudSaveSyncTimestamp(libraryItem.appId, location.name)
+                // Collect (location, action) pairs for all save locations
+                val locationActions = safeLocations.map { location ->
+                    val timestampStr = GOGService.getInstance()?.gogManager
+                        ?.getCloudSaveSyncTimestamp(libraryItem.appId, location.name)
                     val timestamp = timestampStr?.toLongOrNull() ?: 0L
-
                     val action = withContext(Dispatchers.IO) {
                         cloudSavesManager.determineSyncAction(
                             localPath = location.location,
@@ -225,17 +224,27 @@ class GOGAppScreen : BaseAppScreen() {
                             lastSyncTimestamp = timestamp,
                         )
                     }
-
-                    // null = offline; rank: CONFLICT > UPLOAD/DOWNLOAD > NONE > null
-                    if (action == null) {
-                        worstAction = null
-                        break
-                    }
-                    if (action.rank() > (worstAction?.rank() ?: 0)) {
-                        worstAction = action
-                        if (action == GOGCloudSavesManager.SyncAction.CONFLICT) firstConflictLocation = location
-                    }
+                    location to action
                 }
+
+                // null action = offline; mixed UPLOAD+DOWNLOAD across locations = CONFLICT
+                val isOffline = locationActions.any { it.second == null }
+                val nonNull = locationActions.filter { it.second != null }
+                val hasUpload = nonNull.any { it.second == GOGCloudSavesManager.SyncAction.UPLOAD }
+                val hasDownload = nonNull.any { it.second == GOGCloudSavesManager.SyncAction.DOWNLOAD }
+                val worstAction: GOGCloudSavesManager.SyncAction? = when {
+                    isOffline -> null
+                    hasUpload && hasDownload -> GOGCloudSavesManager.SyncAction.CONFLICT
+                    else -> nonNull.maxByOrNull { it.second!!.rank() }?.second
+                        ?: GOGCloudSavesManager.SyncAction.NONE
+                }
+                val firstConflictLocation = if (worstAction == GOGCloudSavesManager.SyncAction.CONFLICT) {
+                    nonNull.firstOrNull { it.second == GOGCloudSavesManager.SyncAction.CONFLICT }?.first
+                        ?: nonNull.firstOrNull {
+                            it.second == GOGCloudSavesManager.SyncAction.UPLOAD ||
+                            it.second == GOGCloudSavesManager.SyncAction.DOWNLOAD
+                        }?.first
+                } else null
 
                 val status = when (worstAction) {
                     GOGCloudSavesManager.SyncAction.DOWNLOAD -> CloudSaveStatus.PENDING_DOWNLOAD

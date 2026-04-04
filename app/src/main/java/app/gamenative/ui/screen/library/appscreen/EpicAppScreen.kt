@@ -267,12 +267,12 @@ class EpicAppScreen : BaseAppScreen() {
 
         val syncStateText = remember(gameId) { mutableStateOf<String?>(null) }
         val cloudSaveStatus = remember(gameId) { mutableStateOf<CloudSaveStatus?>(null) }
-        val conflictLocalTimestamp = remember(gameId) { mutableStateOf(0L) }
-        val conflictRemoteTimestamp = remember(gameId) { mutableStateOf(0L) }
+        val conflictLocalTimestamp = remember(gameId) { mutableStateOf<Long?>(null) }
+        val conflictRemoteTimestamp = remember(gameId) { mutableStateOf<Long?>(null) }
 
         // Re-run cloud check whenever network availability changes
         val cloudConnectivityVersion = remember { mutableStateOf(0) }
-        DisposableEffect(Unit) {
+        DisposableEffect(gameId) {
             val onNetworkChanged: (AndroidEvent.NetworkAvailabilityChanged) -> Unit = { cloudConnectivityVersion.value++ }
             val onCloudSaveSynced: (AndroidEvent.CloudSaveSynced) -> Unit = { event ->
                 if (event.appId == gameId) {

@@ -1841,10 +1841,12 @@ fun preLaunchApp(
                     if (epicGame != null) {
                         val action = EpicCloudSavesManager.determineSyncAction(context, game = epicGame)
                         if (action == EpicCloudSavesManager.SyncAction.CONFLICT) {
-                            val (localTs, remoteTs) = EpicCloudSavesManager.getConflictTimestamps(context, gameId)
-                                ?: (0L to 0L)
-                            val localDate = java.util.Date(localTs).toString()
-                            val remoteDate = java.util.Date(remoteTs).toString()
+                            val conflictTimestamps = EpicCloudSavesManager.getConflictTimestamps(context, gameId)
+                            val conflictDateFmt = java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault())
+                            val localDate = conflictTimestamps?.let { conflictDateFmt.format(java.util.Date(it.first)) }
+                                ?: context.getString(R.string.unknown_app)
+                            val remoteDate = conflictTimestamps?.let { conflictDateFmt.format(java.util.Date(it.second)) }
+                                ?: context.getString(R.string.unknown_app)
                             setMessageDialogState(
                                 MessageDialogState(
                                     visible = true,

@@ -339,10 +339,10 @@ class SteamAppScreen : BaseAppScreen() {
 
         val syncStateText = remember(gameId) { mutableStateOf<String?>(null) }
         val cloudSaveStatus = remember(gameId) { mutableStateOf<CloudSaveStatus?>(null) }
-        val conflictLocalTimestamp = remember(gameId) { mutableStateOf(0L) }
-        val conflictRemoteTimestamp = remember(gameId) { mutableStateOf(0L) }
+        val conflictLocalTimestamp = remember(gameId) { mutableStateOf<Long?>(null) }
+        val conflictRemoteTimestamp = remember(gameId) { mutableStateOf<Long?>(null) }
 
-        DisposableEffect(Unit) {
+        DisposableEffect(gameId) {
             val onLogonEnded: (SteamEvent.LogonEnded) -> Unit = { event ->
                 if (event.loginResult == LoginResult.Success) cloudConnectivityVersion.value++
             }

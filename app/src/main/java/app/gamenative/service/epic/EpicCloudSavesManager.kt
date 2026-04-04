@@ -64,7 +64,6 @@ object EpicCloudSavesManager {
         appId: Int,
         preferredSave: SaveLocation = SaveLocation.None,
     ) {
-        PluviaApp.events.emit(AndroidEvent.CloudSaveSyncStarted(appId))
         val preferredAction = when (preferredSave) {
             SaveLocation.Local -> "upload"
             SaveLocation.Remote -> "download"
@@ -94,73 +93,66 @@ object EpicCloudSavesManager {
             activeSyncs.add(appId)
         }
 
-        try {
-            Timber.tag("Epic").i("[Cloud Saves] Starting sync for $appId (action: $preferredAction)")
-
-            // Get game info to retrieve appName
-            val game = EpicService.getEpicGameOf(appId)
-            if (game == null) {
-                Timber.tag("Epic").e("[Cloud Saves] Game not found: $appId")
-                return@withContext false
-            }
-
-            // Check if game supports cloud saves
-            if (!game.cloudSaveEnabled) {
-                Timber.tag("Epic").w("[Cloud Saves] Game does not support cloud saves: ${game.title}")
-                return@withContext false
-            }
-
-            // Get credentials and validate.
-            val credentials = EpicAuthManager.getStoredCredentials(context)
-            if (credentials.isFailure) {
-                Timber.tag("Epic").e("[Cloud Saves] Not logged in to Epic: ${credentials.exceptionOrNull()?.message}")
-                return@withContext false
-            }
-
-            val creds = credentials.getOrNull()!!
-            Timber.tag("Epic").d("[Cloud Saves] Using account: ${creds.accountId} (${creds.displayName})")
-
-            //  Determine sync action - Upload,Download, Conflict or none
-            val action = determineSyncAction(context, creds.accountId, game, preferredAction)
-                ?: return@withContext false
-
-            Timber.tag("Epic").i("[Cloud Saves] Sync action determined: $action")
-
-            // Execute the action
-            val result = when (action) {
-                SyncAction.DOWNLOAD -> {
-                    downloadSaves(context, appId, creds.accountId)
-                }
-
-                SyncAction.UPLOAD -> uploadSaves(context, creds.accountId, game)
-
-                SyncAction.CONFLICT -> {
-                    Timber.tag("Epic").w("[Cloud Saves] Conflict requires user resolution — aborting sync")
-                    false
-                }
-
-                SyncAction.NONE -> {
-                    Timber.tag("Epic").i("[Cloud Saves] No sync needed")
-                    true
-                }
-            }
-
-            if (result) {
-                Timber.tag("Epic").i("[Cloud Saves] Sync completed successfully")
-            }
-
-            PluviaApp.events.emit(AndroidEvent.CloudSaveSynced(appId, success = result))
-            result
+        PluviaApp.events.emit(AndroidEvent.CloudSaveSyncStarted(appId))
+        val result = try {
+            doSync(context, appId, preferredAction)
         } catch (e: Exception) {
             Timber.tag("Epic").e(e, "[Cloud Saves] Sync failed")
-            PluviaApp.events.emit(AndroidEvent.CloudSaveSynced(appId, success = false))
             false
         } finally {
-            // Always remove from active syncs when done
-            syncMutex.withLock {
-                activeSyncs.remove(appId)
+            syncMutex.withLock { activeSyncs.remove(appId) }
+        }
+        PluviaApp.events.emit(AndroidEvent.CloudSaveSynced(appId, success = result))
+        result
+    }
+
+    private suspend fun doSync(
+        context: Context,
+        appId: Int,
+        preferredAction: String,
+    ): Boolean {
+        Timber.tag("Epic").i("[Cloud Saves] Starting sync for $appId (action: $preferredAction)")
+
+        val game = EpicService.getEpicGameOf(appId)
+        if (game == null) {
+            Timber.tag("Epic").e("[Cloud Saves] Game not found: $appId")
+            return false
+        }
+
+        if (!game.cloudSaveEnabled) {
+            Timber.tag("Epic").w("[Cloud Saves] Game does not support cloud saves: ${game.title}")
+            return false
+        }
+
+        val credentials = EpicAuthManager.getStoredCredentials(context)
+        if (credentials.isFailure) {
+            Timber.tag("Epic").e("[Cloud Saves] Not logged in to Epic: ${credentials.exceptionOrNull()?.message}")
+            return false
+        }
+
+        val creds = credentials.getOrNull()!!
+        Timber.tag("Epic").d("[Cloud Saves] Using account: ${creds.accountId} (${creds.displayName})")
+
+        val action = determineSyncAction(context, creds.accountId, game, preferredAction)
+            ?: return false
+
+        Timber.tag("Epic").i("[Cloud Saves] Sync action determined: $action")
+
+        val result = when (action) {
+            SyncAction.DOWNLOAD -> downloadSaves(context, appId, creds.accountId)
+            SyncAction.UPLOAD -> uploadSaves(context, creds.accountId, game)
+            SyncAction.CONFLICT -> {
+                Timber.tag("Epic").w("[Cloud Saves] Conflict requires user resolution — aborting sync")
+                false
+            }
+            SyncAction.NONE -> {
+                Timber.tag("Epic").i("[Cloud Saves] No sync needed")
+                true
             }
         }
+
+        if (result) Timber.tag("Epic").i("[Cloud Saves] Sync completed successfully")
+        return result
     }
 
     /**
@@ -528,7 +520,15 @@ object EpicCloudSavesManager {
             // 9. Update sync timestamp. Use Instant.now() rather than manifestInfo.lastModified
             // so that downloaded files (whose mtime is set to device-now at write time) don't
             // appear newer than the sync timestamp and trigger a false LOCAL_CHANGES status.
-            setSyncTimestamp(context, appId, java.time.Instant.now().toString())
+            // Ceiling-round to seconds so the timestamp is never earlier than the file mtimes
+            // written during this download (which are also ceiling-rounded on upload).
+            val now = java.time.Instant.now()
+            val ceilNow = if (now.truncatedTo(java.time.temporal.ChronoUnit.SECONDS) == now) {
+                now
+            } else {
+                now.truncatedTo(java.time.temporal.ChronoUnit.SECONDS).plusSeconds(1)
+            }
+            setSyncTimestamp(context, appId, ceilNow.toString())
 
             Timber.tag("Epic").i("[Cloud Saves] Download complete: $downloadedFiles files reconstructed")
             downloadedFiles > 0
