@@ -243,6 +243,17 @@ data class EnvVarInfo(
                 selectionType = EnvVarSelectionType.MULTI_SELECT,
                 possibleValues = listOf("simple", "fps", "frametime"),
             ),
+            // Wine DLL overrides — user types freely or picks a common preset
+            // More common DLL overrides can be added in future. Only audio related for now
+            "WINEDLLOVERRIDES" to EnvVarInfo(
+                identifier = "WINEDLLOVERRIDES",
+                possibleValues = listOf(
+                    "openal32=native,builtin",
+                    "soft_oal=native",
+                    "openal32=native,builtin;soft_oal=native",
+                    "xaudio2_7=native,builtin",
+                ),
+            ),
         )
     }
 }

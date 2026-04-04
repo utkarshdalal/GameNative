@@ -3734,6 +3734,22 @@ private fun setupWineSystemFiles(
         containerDataChanged = true
     }
 
+    // OpenAL audio: extract native DLLs if WINEDLLOVERRIDES mentions openal32 or soft_oal
+    val dllOverrides = EnvVars(container.envVars).get("WINEDLLOVERRIDES")
+    val needsOpenalDlls = dllOverrides.contains("openal32") || dllOverrides.contains("soft_oal")
+    val openalState = if (needsOpenalDlls) "yes" else "no"
+    if (openalState != container.getExtra("openal_dlls") || firstTimeBoot) {
+        if (needsOpenalDlls) {
+            val windowsDir = File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
+            TarCompressorUtils.extract(
+                TarCompressorUtils.Type.ZSTD, context.assets,
+                "wincomponents/openal.tzst", windowsDir, onExtractFileListener,
+            )
+        }
+        container.putExtra("openal_dlls", openalState)
+        containerDataChanged = true
+    }
+
     if (container.isLaunchRealSteam){
         extractSteamFiles(context, container, onExtractFileListener)
     }
@@ -4408,6 +4424,8 @@ private fun changeWineAudioDriver(audioDriver: String, container: Container, ima
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "alsa")
             } else if (audioDriver == "pulseaudio") {
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse")
+            } else if (audioDriver == "disabled") {
+                registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "")
             }
         }
         container.putExtra("audioDriver", audioDriver)
