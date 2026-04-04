@@ -69,13 +69,13 @@ public class EffectComposer {
         }
 
         ArrayList<Effect> snapshot = new ArrayList<>(effects);
-        float renderScale = 1.0f;
+        int sceneWidth = outputWidth;
+        int sceneHeight = outputHeight;
         if (!snapshot.isEmpty() && snapshot.get(0) instanceof RenderScaleEffect) {
-            renderScale = ((RenderScaleEffect) snapshot.get(0)).getRenderScale();
+            RenderScaleEffect renderScaleEffect = (RenderScaleEffect) snapshot.get(0);
+            sceneWidth = Math.max(1, Math.min(outputWidth, renderScaleEffect.getRenderWidth(renderer, outputWidth)));
+            sceneHeight = Math.max(1, Math.min(outputHeight, renderScaleEffect.getRenderHeight(renderer, outputHeight)));
         }
-
-        int sceneWidth = Math.max(1, Math.min(outputWidth, Math.round(outputWidth * renderScale)));
-        int sceneHeight = Math.max(1, Math.min(outputHeight, Math.round(outputHeight * renderScale)));
         boolean scaledScene = sceneWidth != outputWidth || sceneHeight != outputHeight;
 
         sceneBuffer.setFilters(GLES20.GL_NEAREST, GLES20.GL_NEAREST);

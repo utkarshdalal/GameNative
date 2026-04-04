@@ -1,5 +1,6 @@
 package com.winlator.renderer.effects;
 
+import com.winlator.renderer.GLRenderer;
 import com.winlator.renderer.material.ScreenMaterial;
 import com.winlator.renderer.material.ShaderMaterial;
 
@@ -13,20 +14,19 @@ import com.winlator.renderer.material.ShaderMaterial;
  * Released under the MIT license by AMD.
  */
 public class FSR1EasuEffect extends Effect implements RenderScaleEffect {
-    private float renderScale = 0.67f;
-
     @Override
     protected ShaderMaterial createMaterial() {
         return new FSR1EasuMaterial();
     }
 
     @Override
-    public float getRenderScale() {
-        return renderScale;
+    public int getRenderWidth(GLRenderer renderer, int outputWidth) {
+        return Math.max(1, Math.min(outputWidth, renderer.getXServerWidth()));
     }
 
-    public void setRenderScale(float renderScale) {
-        this.renderScale = Math.max(0.5f, Math.min(renderScale, 1.0f));
+    @Override
+    public int getRenderHeight(GLRenderer renderer, int outputHeight) {
+        return Math.max(1, Math.min(outputHeight, renderer.getXServerHeight()));
     }
 
     private static class FSR1EasuMaterial extends ScreenMaterial {

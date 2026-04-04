@@ -457,6 +457,14 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         return surfaceHeight;
     }
 
+    public int getXServerWidth() {
+        return xServer.screenInfo.width;
+    }
+
+    public int getXServerHeight() {
+        return xServer.screenInfo.height;
+    }
+
     public VertexAttribute getQuadVertices() {
         return quadVertices;
     }

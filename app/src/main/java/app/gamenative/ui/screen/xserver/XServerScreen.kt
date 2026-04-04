@@ -89,7 +89,6 @@ import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
-import app.gamenative.ui.component.QuickMenuVkBasaltSharpnessConfig
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.data.XServerState
@@ -380,23 +379,6 @@ fun XServerScreen(
     var hasInternalTouchpad by remember { mutableStateOf(false) }
     var hasUpdatedScreenGamepad by remember { mutableStateOf(false) }
     var isPerformanceHudEnabled by remember { mutableStateOf(PrefManager.showFps) }
-    var quickMenuVkBasaltSharpnessConfig by remember(container.id) {
-        mutableStateOf(
-            QuickMenuVkBasaltSharpnessConfig(
-                effect = container.getExtra("sharpnessEffect", "None"),
-                sharpnessLevel = container.getExtra("sharpnessLevel", "100").toIntOrNull() ?: 100,
-                sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
-            ),
-        )
-    }
-
-    fun persistQuickMenuVkBasaltSharpnessConfig(config: QuickMenuVkBasaltSharpnessConfig) {
-        quickMenuVkBasaltSharpnessConfig = config
-        container.putExtra("sharpnessEffect", config.effect)
-        container.putExtra("sharpnessLevel", config.sharpnessLevel.toString())
-        container.putExtra("sharpnessDenoise", config.sharpnessDenoise.toString())
-        container.saveData()
-    }
 
     fun loadPerformanceHudConfig(): PerformanceHudConfig {
         return PerformanceHudConfig(
@@ -2055,8 +2037,6 @@ fun XServerScreen(
             isPerformanceHudEnabled = isPerformanceHudEnabled,
             performanceHudConfig = performanceHudConfig,
             onPerformanceHudConfigChanged = ::applyPerformanceHudConfig,
-            vkBasaltSharpnessConfig = quickMenuVkBasaltSharpnessConfig,
-            onVkBasaltSharpnessConfigChanged = ::persistQuickMenuVkBasaltSharpnessConfig,
             hasPhysicalController = hasPhysicalController,
             activeToggleIds = buildSet {
                 if (areControlsVisible) add(QuickMenuAction.INPUT_CONTROLS)

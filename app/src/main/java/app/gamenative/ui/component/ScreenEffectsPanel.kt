@@ -62,7 +62,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -85,11 +84,6 @@ private const val SCREEN_EFFECT_GAMMA_STEP = 0.1f
 private const val SCREEN_EFFECT_FSR_MIN_LEVEL = 1
 private const val SCREEN_EFFECT_FSR_MAX_LEVEL = 5
 private const val SCREEN_EFFECT_FSR_DEFAULT_LEVEL = 3
-private const val SCREEN_EFFECT_FSR_MODE_ULTRA_QUALITY = 0
-private const val SCREEN_EFFECT_FSR_MODE_QUALITY = 1
-private const val SCREEN_EFFECT_FSR_MODE_BALANCED = 2
-private const val SCREEN_EFFECT_FSR_MODE_PERFORMANCE = 3
-private const val SCREEN_EFFECT_FSR_DEFAULT_MODE = SCREEN_EFFECT_FSR_MODE_QUALITY
 
 private fun fsrQuickMenuLevelToStops(level: Int): Float {
     val clamped = level.coerceIn(SCREEN_EFFECT_FSR_MIN_LEVEL, SCREEN_EFFECT_FSR_MAX_LEVEL)
@@ -110,42 +104,16 @@ private fun fsrStopsToQuickMenuLevel(stops: Float): Int = when {
     else -> 5
 }
 
-private fun fsrModeToRenderScale(mode: Int): Float = when (mode) {
-    SCREEN_EFFECT_FSR_MODE_ULTRA_QUALITY -> 0.77f
-    SCREEN_EFFECT_FSR_MODE_BALANCED -> 0.59f
-    SCREEN_EFFECT_FSR_MODE_PERFORMANCE -> 0.50f
-    else -> 0.67f
-}
-
-private fun fsrRenderScaleToMode(scale: Float): Int = when {
-    scale >= 0.72f -> SCREEN_EFFECT_FSR_MODE_ULTRA_QUALITY
-    scale >= 0.63f -> SCREEN_EFFECT_FSR_MODE_QUALITY
-    scale >= 0.55f -> SCREEN_EFFECT_FSR_MODE_BALANCED
-    else -> SCREEN_EFFECT_FSR_MODE_PERFORMANCE
-}
-
-private fun isVkBasaltSharpnessEnabled(effect: String): Boolean = !effect.equals("None", ignoreCase = true)
-
 @Composable
 fun ScreenEffectsTabContent(
     renderer: GLRenderer,
-    vkBasaltSharpnessConfig: QuickMenuVkBasaltSharpnessConfig = QuickMenuVkBasaltSharpnessConfig(),
-    onVkBasaltSharpnessConfigChanged: (QuickMenuVkBasaltSharpnessConfig) -> Unit = {},
     modifier: Modifier = Modifier,
     firstItemFocusRequester: FocusRequester? = null,
     scrollState: ScrollState = rememberScrollState(),
 ) {
     val composer = renderer.effectComposer
     val initialColorEffect = composer.getEffect(ColorEffect::class.java)
-    val initialFsrEasuEffect = composer.getEffect(FSR1EasuEffect::class.java)
     val initialFsrRcasEffect = composer.getEffect(FSR1RcasEffect::class.java)
-    val sharpnessEffects = stringArrayResource(R.array.vkbasalt_sharpness_entries).toList()
-    val sharpnessEffectLabels = stringArrayResource(R.array.vkbasalt_sharpness_labels).toList()
-    val sharpnessDisplayItems = if (sharpnessEffectLabels.size == sharpnessEffects.size) {
-        sharpnessEffectLabels
-    } else {
-        sharpnessEffects
-    }
 
     var brightness by remember(renderer) {
         mutableFloatStateOf((initialColorEffect?.brightness ?: 0f) * 100f)
@@ -168,12 +136,6 @@ fun ScreenEffectsTabContent(
                 ?: SCREEN_EFFECT_FSR_DEFAULT_LEVEL,
         )
     }
-    var fsrQualityMode by remember(renderer) {
-        mutableIntStateOf(
-            initialFsrEasuEffect?.renderScale?.let(::fsrRenderScaleToMode)
-                ?: SCREEN_EFFECT_FSR_DEFAULT_MODE,
-        )
-    }
     var enableToon by remember(renderer) {
         mutableStateOf(composer.getEffect(ToonEffect::class.java) != null)
     }
@@ -193,7 +155,6 @@ fun ScreenEffectsTabContent(
         gamma,
         enableFSR,
         fsrSharpnessLevel,
-        fsrQualityMode,
         enableToon,
         enableFXAA,
         enableCRT,
@@ -202,9 +163,7 @@ fun ScreenEffectsTabContent(
         val effects = mutableListOf<Effect>()
 
         if (enableFSR) {
-            val easuEffect = composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
-            easuEffect.renderScale = fsrModeToRenderScale(fsrQualityMode)
-            effects += easuEffect
+            effects += composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
             val rcasEffect = composer.getEffect(FSR1RcasEffect::class.java) ?: FSR1RcasEffect()
             rcasEffect.sharpnessStops = fsrQuickMenuLevelToStops(fsrSharpnessLevel)
             effects += rcasEffect
@@ -234,35 +193,16 @@ fun ScreenEffectsTabContent(
         composer.setEffects(effects)
     }
 
-    fun cycleVkBasaltEffect(direction: Int) {
-        if (sharpnessEffects.isEmpty()) return
-        val currentIndex = sharpnessEffects.indexOfFirst { it.equals(vkBasaltSharpnessConfig.effect, ignoreCase = true) }
-            .takeIf { it >= 0 } ?: 0
-        val nextIndex = (currentIndex + direction).coerceIn(0, sharpnessEffects.lastIndex)
-        if (nextIndex == currentIndex) return
-        onVkBasaltSharpnessConfigChanged(
-            vkBasaltSharpnessConfig.copy(effect = sharpnessEffects[nextIndex]),
-        )
-    }
-
     fun resetEffects() {
         brightness = 0f
         contrast = 0f
         gamma = 1.0f
         enableFSR = false
         fsrSharpnessLevel = SCREEN_EFFECT_FSR_DEFAULT_LEVEL
-        fsrQualityMode = SCREEN_EFFECT_FSR_DEFAULT_MODE
         enableToon = false
         enableFXAA = false
         enableCRT = false
         enableNTSC = false
-    }
-
-    val currentVkBasaltEffectIndex = sharpnessEffects.indexOfFirst {
-        it.equals(vkBasaltSharpnessConfig.effect, ignoreCase = true)
-    }.coerceAtLeast(0)
-    val currentVkBasaltEffectLabel = sharpnessDisplayItems.getOrElse(currentVkBasaltEffectIndex) {
-        sharpnessEffects.getOrElse(currentVkBasaltEffectIndex) { vkBasaltSharpnessConfig.effect }
     }
 
     Column(
@@ -316,29 +256,6 @@ fun ScreenEffectsTabContent(
             onToggle = { enableFSR = !enableFSR },
         )
         if (enableFSR) {
-            val fsrQualityLabel = stringResource(
-                when (fsrQualityMode) {
-                    SCREEN_EFFECT_FSR_MODE_ULTRA_QUALITY -> R.string.screen_effects_fsr_quality_ultra_quality
-                    SCREEN_EFFECT_FSR_MODE_BALANCED -> R.string.screen_effects_fsr_quality_balanced
-                    SCREEN_EFFECT_FSR_MODE_PERFORMANCE -> R.string.screen_effects_fsr_quality_performance
-                    else -> R.string.screen_effects_fsr_quality_quality
-                },
-            )
-            ScreenEffectAdjustmentRow(
-                title = stringResource(R.string.screen_effects_fsr_quality),
-                valueText = fsrQualityLabel,
-                progress = normalizedProgress(
-                    fsrQualityMode.toFloat(),
-                    SCREEN_EFFECT_FSR_MODE_ULTRA_QUALITY.toFloat(),
-                    SCREEN_EFFECT_FSR_MODE_PERFORMANCE.toFloat(),
-                ),
-                onDecrease = {
-                    fsrQualityMode = (fsrQualityMode - 1).coerceAtLeast(SCREEN_EFFECT_FSR_MODE_ULTRA_QUALITY)
-                },
-                onIncrease = {
-                    fsrQualityMode = (fsrQualityMode + 1).coerceAtMost(SCREEN_EFFECT_FSR_MODE_PERFORMANCE)
-                },
-            )
             ScreenEffectAdjustmentRow(
                 title = stringResource(R.string.screen_effects_fsr_sharpness),
                 valueText = stringResource(R.string.screen_effects_fsr_sharpness_value, fsrSharpnessLevel),
@@ -379,73 +296,6 @@ fun ScreenEffectsTabContent(
             enabled = enableNTSC,
             onToggle = { enableNTSC = !enableNTSC },
         )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        OptionSectionHeader(text = stringResource(R.string.screen_effects_launch_sharpness))
-
-        Text(
-            text = stringResource(R.string.screen_effects_launch_sharpness_note),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-        )
-
-        ScreenEffectAdjustmentRow(
-            title = stringResource(R.string.sharpness_effect),
-            valueText = currentVkBasaltEffectLabel,
-            progress = normalizedProgress(
-                currentVkBasaltEffectIndex.toFloat(),
-                0f,
-                sharpnessEffects.lastIndex.coerceAtLeast(0).toFloat(),
-            ),
-            onDecrease = { cycleVkBasaltEffect(-1) },
-            onIncrease = { cycleVkBasaltEffect(1) },
-        )
-
-        if (isVkBasaltSharpnessEnabled(vkBasaltSharpnessConfig.effect)) {
-            ScreenEffectAdjustmentRow(
-                title = stringResource(R.string.sharpness_level),
-                valueText = stringResource(R.string.performance_hud_percentage_value, vkBasaltSharpnessConfig.sharpnessLevel),
-                progress = normalizedProgress(vkBasaltSharpnessConfig.sharpnessLevel.toFloat(), 0f, 100f),
-                onDecrease = {
-                    onVkBasaltSharpnessConfigChanged(
-                        vkBasaltSharpnessConfig.copy(
-                            sharpnessLevel = (vkBasaltSharpnessConfig.sharpnessLevel - 5).coerceAtLeast(0),
-                        ),
-                    )
-                },
-                onIncrease = {
-                    onVkBasaltSharpnessConfigChanged(
-                        vkBasaltSharpnessConfig.copy(
-                            sharpnessLevel = (vkBasaltSharpnessConfig.sharpnessLevel + 5).coerceAtMost(100),
-                        ),
-                    )
-                },
-            )
-        }
-
-        if (vkBasaltSharpnessConfig.effect.equals("DLS", ignoreCase = true)) {
-            ScreenEffectAdjustmentRow(
-                title = stringResource(R.string.sharpness_denoise),
-                valueText = stringResource(R.string.performance_hud_percentage_value, vkBasaltSharpnessConfig.sharpnessDenoise),
-                progress = normalizedProgress(vkBasaltSharpnessConfig.sharpnessDenoise.toFloat(), 0f, 100f),
-                onDecrease = {
-                    onVkBasaltSharpnessConfigChanged(
-                        vkBasaltSharpnessConfig.copy(
-                            sharpnessDenoise = (vkBasaltSharpnessConfig.sharpnessDenoise - 5).coerceAtLeast(0),
-                        ),
-                    )
-                },
-                onIncrease = {
-                    onVkBasaltSharpnessConfigChanged(
-                        vkBasaltSharpnessConfig.copy(
-                            sharpnessDenoise = (vkBasaltSharpnessConfig.sharpnessDenoise + 5).coerceAtMost(100),
-                        ),
-                    )
-                },
-            )
-        }
 
         Spacer(modifier = Modifier.height(20.dp))
 
