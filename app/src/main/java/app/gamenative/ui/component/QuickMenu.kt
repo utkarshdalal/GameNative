@@ -107,6 +107,12 @@ data class QuickMenuItem(
     val enabled: Boolean = true,
 )
 
+data class QuickMenuVkBasaltSharpnessConfig(
+    val effect: String = "None",
+    val sharpnessLevel: Int = 100,
+    val sharpnessDenoise: Int = 100,
+)
+
 private enum class PerformanceHudPreset(val labelResId: Int) {
     FPS_ONLY(R.string.performance_hud_preset_fps_only),
     ESSENTIAL(R.string.performance_hud_preset_essential),
@@ -219,6 +225,8 @@ fun QuickMenu(
     isPerformanceHudEnabled: Boolean = false,
     performanceHudConfig: PerformanceHudConfig = PerformanceHudConfig(),
     onPerformanceHudConfigChanged: (PerformanceHudConfig) -> Unit = {},
+    vkBasaltSharpnessConfig: QuickMenuVkBasaltSharpnessConfig = QuickMenuVkBasaltSharpnessConfig(),
+    onVkBasaltSharpnessConfigChanged: (QuickMenuVkBasaltSharpnessConfig) -> Unit = {},
     hasPhysicalController: Boolean = false,
     activeToggleIds: Set<Int> = emptySet(),
     modifier: Modifier = Modifier,
@@ -472,6 +480,8 @@ fun QuickMenu(
                                         if (renderer != null) {
                                             ScreenEffectsTabContent(
                                                 renderer = renderer,
+                                                vkBasaltSharpnessConfig = vkBasaltSharpnessConfig,
+                                                onVkBasaltSharpnessConfigChanged = onVkBasaltSharpnessConfigChanged,
                                                 modifier = Modifier.fillMaxSize(),
                                                 firstItemFocusRequester = effectsItemFocusRequester,
                                                 scrollState = effectsScrollState,

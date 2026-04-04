@@ -168,49 +168,6 @@ fun GraphicsTabContent(state: ContainerConfigState) {
                         state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                     },
                 )
-                // Sharpness (vkBasalt)
-                SettingsListDropdown(
-                    colors = settingsTileColors(),
-                    title = { Text(text = stringResource(R.string.sharpness_effect)) },
-                    value = state.sharpnessEffectIndex.value.coerceIn(0, state.sharpnessEffects.lastIndex.coerceAtLeast(0)),
-                    items = state.sharpnessDisplayItems,
-                    onItemSelected = { idx ->
-                        state.sharpnessEffectIndex.value = idx
-                        state.config.value = config.copy(sharpnessEffect = state.sharpnessEffects[idx])
-                    },
-                )
-                val selectedBoost = state.sharpnessEffects
-                    .getOrNull(state.sharpnessEffectIndex.value)
-                    ?.equals("None", ignoreCase = true)
-                    ?.not() ?: false
-                if (selectedBoost) {
-                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                        Text(text = stringResource(R.string.sharpness_level))
-                        Slider(
-                            value = state.sharpnessLevel.value.toFloat(),
-                            onValueChange = { newValue ->
-                                val clamped = newValue.roundToInt().coerceIn(0, 100)
-                                state.sharpnessLevel.value = clamped
-                                state.config.value = config.copy(sharpnessLevel = clamped)
-                            },
-                            valueRange = 0f..100f,
-                        )
-                        Text(text = "${state.sharpnessLevel.value}%")
-                    }
-                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                        Text(text = stringResource(R.string.sharpness_denoise))
-                        Slider(
-                            value = state.sharpnessDenoise.value.toFloat(),
-                            onValueChange = { newValue ->
-                                val clamped = newValue.roundToInt().coerceIn(0, 100)
-                                state.sharpnessDenoise.value = clamped
-                                state.config.value = config.copy(sharpnessDenoise = clamped)
-                            },
-                            valueRange = 0f..100f,
-                        )
-                        Text(text = "${state.sharpnessDenoise.value}%")
-                    }
-                }
             }
         } else {
             // Non-bionic: existing driver/version UI and Vortek-specific options

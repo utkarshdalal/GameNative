@@ -248,6 +248,12 @@
     <string name="screen_effects_live_preview">Changes apply instantly to the current game.</string>
     <string name="screen_effects_color_adjustments">Color adjustments</string>
     <string name="screen_effects_shader_toggles">Shader effects</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">Experimental two-pass EASU + RCAS post-process inspired by the Steam Deck path.</string>
+    <string name="screen_effects_fsr_sharpness">FSR sharpness</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">Launch sharpness</string>
+    <string name="screen_effects_launch_sharpness_note">CAS and DLS are applied through vkBasalt and take effect the next time you launch the game.</string>
     <string name="screen_effects_brightness">Brightness</string>
     <string name="screen_effects_contrast">Contrast</string>
     <string name="screen_effects_gamma">Gamma</string>
