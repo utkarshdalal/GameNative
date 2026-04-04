@@ -312,7 +312,6 @@ fun ScreenEffectsTabContent(
 
         ScreenEffectToggleRow(
             title = stringResource(R.string.screen_effects_fsr),
-            subtitle = stringResource(R.string.screen_effects_fsr_description),
             enabled = enableFSR,
             onToggle = { enableFSR = !enableFSR },
         )
@@ -978,7 +977,7 @@ private fun ScreenEffectAdjustmentButton(
 @Composable
 private fun ScreenEffectToggleRow(
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     enabled: Boolean,
     onToggle: () -> Unit,
 ) {
@@ -1035,12 +1034,14 @@ private fun ScreenEffectToggleRow(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (!subtitle.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         Box(contentAlignment = Alignment.CenterEnd) {
