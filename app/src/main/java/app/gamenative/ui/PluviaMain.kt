@@ -1842,7 +1842,7 @@ fun preLaunchApp(
                         val action = EpicCloudSavesManager.determineSyncAction(context, game = epicGame)
                         if (action == EpicCloudSavesManager.SyncAction.CONFLICT) {
                             val conflictTimestamps = EpicCloudSavesManager.getConflictTimestamps(context, gameId)
-                            val conflictDateFmt = java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault())
+                            val conflictDateFmt = java.text.SimpleDateFormat("MMM dd, yyyy HH:mm:ss", java.util.Locale.getDefault())
                             val localDate = conflictTimestamps?.let { conflictDateFmt.format(java.util.Date(it.first)) }
                                 ?: context.getString(R.string.unknown_app)
                             val remoteDate = conflictTimestamps?.let { conflictDateFmt.format(java.util.Date(it.second)) }
