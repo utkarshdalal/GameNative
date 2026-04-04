@@ -1477,9 +1477,27 @@ fun XServerScreen(
                                 if (!container.isDisableMouseInput && !container.isTouchscreenMode) renderer?.setCursorVisible(true)
                                 xServerState.value.winStarted = true
                             }
-                            if (window.id == frameRatingWindowId) {
-                                (context as? Activity)?.runOnUiThread {
-                                    frameRating?.update()
+                            when {
+                                window.id == frameRatingWindowId -> {
+                                    (context as? Activity)?.runOnUiThread {
+                                        frameRating?.update()
+                                    }
+                                }
+                                frameRatingWindowId == -1 -> {
+                                    // Fallback for non-Vulkan games that never set candidate properties.
+                                    val rating = frameRating ?: return
+                                    val targetExe = extractExecutableBasename(container.executablePath)
+                                    if (windowMatchesExecutable(window, targetExe)) {
+                                        frameRatingWindowId = window.id
+                                        Timber.i(
+                                            "FrameRating fallback (non-Vulkan) tracking attached via first content update to %s",
+                                            describeFrameRatingWindow(window),
+                                        )
+                                        (context as? Activity)?.runOnUiThread {
+                                            rating.visibility = View.VISIBLE
+                                        }
+                                        rating.update()
+                                    }
                                 }
                             }
                         }
