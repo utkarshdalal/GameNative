@@ -1,6 +1,7 @@
 package app.gamenative.utils
 
 import android.content.res.AssetManager
+import app.gamenative.data.SaveFilePattern
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
@@ -133,9 +134,34 @@ object FileUtils {
         }
     }
 
+    /**
+     * Returns true if [fileName] matches the given UFS glob [pattern].
+     * Steam only supports `*` as a wildcard; parts must appear left-to-right in order.
+     */
+    fun matchesGlobPattern(fileName: String, pattern: String): Boolean {
+        val parts = pattern.split("*").filter { it.isNotEmpty() }
+        if (parts.isEmpty()) return true
+        var startIndex = 0
+        for (part in parts) {
+            val index = fileName.indexOf(part, startIndex)
+            if (index < 0) return false
+            startIndex = index + part.length
+        }
+        return true
+    }
+
+    /**
+     * Returns true if [filename] matches at least one of the UFS [patterns] globs.
+     * Delegates to [matchesGlobPattern] so ordering and case-sensitivity are consistent
+     * with [findFilesRecursive].
+     */
+    fun matchesAnyUfsPattern(filename: String, patterns: List<SaveFilePattern>): Boolean {
+        if (patterns.isEmpty()) return false
+        return patterns.any { p -> matchesGlobPattern(filename, p.pattern) }
+    }
+
     fun findFiles(rootPath: Path, pattern: String, includeDirectories: Boolean = false): Stream<Path> {
-        val patternParts = pattern.split("*").filter { it.isNotEmpty() }
-        Timber.i("$pattern -> $patternParts")
+        Timber.i("findFiles: $pattern")
         if (!Files.exists(rootPath)) return emptyList<Path>().stream()
         return Files.list(rootPath).filter { path ->
             if (path.isDirectory() && !includeDirectories) {
@@ -143,14 +169,7 @@ object FileUtils {
             } else {
                 val fileName = path.name
                 Timber.i("Checking $fileName for pattern $pattern")
-                var startIndex = 0
-                !patternParts.map {
-                    val index = fileName.indexOf(it, startIndex)
-                    if (index >= 0) {
-                        startIndex = index + it.length
-                    }
-                    index
-                }.any { it < 0 }
+                matchesGlobPattern(fileName, pattern)
             }
         }
     }
@@ -161,31 +180,20 @@ object FileUtils {
         maxDepth: Int = -1,
         includeDirectories: Boolean = false,
     ): Stream<Path> {
-        val patternParts = pattern.split("*").filter { it.isNotEmpty() }
-        Timber.i("$pattern -> $patternParts (recursive, depth=$maxDepth)")
+        Timber.i("findFilesRecursive: $pattern (depth=$maxDepth)")
         if (!Files.exists(rootPath)) return emptyList<Path>().stream()
 
         val results = mutableListOf<Path>()
 
-        fun matches(fileName: String): Boolean {
-            var startIndex = 0
-            for (part in patternParts) {
-                val index = fileName.indexOf(part, startIndex)
-                if (index < 0) return false
-                startIndex = index + part.length
-            }
-            return true
-        }
-
         walkThroughPath(rootPath, maxDepth) { path ->
             if (path.isDirectory()) {
-                if (includeDirectories && matches(path.name)) {
+                if (includeDirectories && matchesGlobPattern(path.name, pattern)) {
                     results.add(path)
                 }
             } else {
                 val fileName = path.name
                 Timber.i("Checking $fileName for pattern $pattern (recursive)")
-                if (matches(fileName)) {
+                if (matchesGlobPattern(fileName, pattern)) {
                     results.add(path)
                 }
             }

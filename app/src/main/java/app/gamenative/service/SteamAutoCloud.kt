@@ -54,20 +54,6 @@ object SteamAutoCloud {
 
     private const val MAX_USER_FILE_RETRIES = 3
 
-    /**
-     * Returns true if [filename] matches at least one of the UFS [patterns] globs.
-     * Files that return false were written via ISteamRemoteStorage::FileWrite() and need
-     * separate handling from plain auto-cloud files.
-     */
-    private fun filenameMatchesUfsPattern(filename: String, patterns: List<SaveFilePattern>): Boolean {
-        if (patterns.isEmpty()) return false
-        return patterns.any { p ->
-            val parts = p.pattern.split("*").filter { it.isNotEmpty() }
-            if (parts.isEmpty()) return@any true   // bare "*" matches everything
-            parts.all { filename.contains(it, ignoreCase = true) }
-        }
-    }
-
     /** Computes SHA-1 hash by streaming the file in chunks to avoid OOM on large files. */
     private fun streamingShaHash(path: Path): ByteArray {
         val digest = MessageDigest.getInstance("SHA-1")
@@ -214,7 +200,7 @@ object SteamAutoCloud {
             // ISteamRemoteStorage files don't match the UFS glob; route them to the IS cache
             // (SteamUserData) so the GSE can serve them via ISteamRemoteStorage::FileRead().
             if (appInfo.ufs.saveFilePatterns.isNotEmpty() &&
-                !filenameMatchesUfsPattern(file.filename, appInfo.ufs.saveFilePatterns)
+                !FileUtils.matchesAnyUfsPattern(file.filename, appInfo.ufs.saveFilePatterns)
             ) {
                 return@getFullFilePath Paths.get(
                     prefixToPath(PathType.SteamUserData.name),
@@ -316,7 +302,7 @@ object SteamAutoCloud {
                 if (cloudFileList != null) {
                     val isCachePath = Paths.get(prefixToPath(PathType.SteamUserData.name))
                     cloudFileList.files
-                        .filter { !filenameMatchesUfsPattern(it.filename, appInfo.ufs.saveFilePatterns) }
+                        .filter { !FileUtils.matchesAnyUfsPattern(it.filename, appInfo.ufs.saveFilePatterns) }
                         .forEach { cloudFile ->
                             val isFilePath = isCachePath.resolve(cloudFile.filename)
                             if (Files.exists(isFilePath)) {
@@ -324,14 +310,16 @@ object SteamAutoCloud {
                                 // Derive cloudPath and cloudRoot directly from pathPrefixes using
                                 // pathPrefixIndex — not from pathTypePairs, whose indices differ
                                 // after flatten().distinct() when multiple prefixes share a root.
-                                val cloudPath = if (cloudFile.pathPrefixIndex < cloudFileList.pathPrefixes.size)
+                                val rawPrefix = if (cloudFile.pathPrefixIndex < cloudFileList.pathPrefixes.size)
                                     cloudFileList.pathPrefixes[cloudFile.pathPrefixIndex]
                                 else ""
-                                val cloudRoot = findPlaceholderWithin(cloudPath)
+                                val cloudRoot = findPlaceholderWithin(rawPrefix)
                                     .firstOrNull()?.value
                                     ?.let { PathType.from(it) }
                                     ?.takeIf { it != PathType.None }
                                     ?: PathType.SteamUserData
+                                val cloudPath = findPlaceholderWithin(rawPrefix)
+                                    .fold(rawPrefix) { acc, mr -> acc.replace(mr.value, "") }
                                 Timber.i(
                                     "Found IS-cache file ${isFilePath.pathString}" +
                                         " cloudRoot=$cloudRoot cloudPath=$cloudPath"
@@ -416,7 +404,7 @@ object SteamAutoCloud {
                 fileList.files.forEachIndexed { index, file ->
                     // IS files must be requested by bare filename; the prefixed path returns an empty urlHost.
                     val isISFile = appInfo.ufs.saveFilePatterns.isNotEmpty() &&
-                        !filenameMatchesUfsPattern(file.filename, appInfo.ufs.saveFilePatterns)
+                        !FileUtils.matchesAnyUfsPattern(file.filename, appInfo.ufs.saveFilePatterns)
                     val prefixedPath = if (isISFile) file.filename else getFilePrefixPath(file, fileList)
                     val actualFilePath = getFullFilePath(file, fileList)
 
