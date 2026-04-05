@@ -299,8 +299,9 @@ object SteamAutoCloud {
                 }
 
                 // Also scan the IS cache for files written via ISteamRemoteStorage::FileWrite().
+                // First pass: use cloudFileList to recover exact cloud prefix from pathPrefixIndex.
+                val isCachePath = Paths.get(prefixToPath(PathType.SteamUserData.name))
                 if (cloudFileList != null) {
-                    val isCachePath = Paths.get(prefixToPath(PathType.SteamUserData.name))
                     cloudFileList.files
                         .filter { !FileUtils.matchesAnyUfsPattern(it.filename, appInfo.ufs.saveFilePatterns) }
                         .forEach { cloudFile ->
@@ -336,6 +337,38 @@ object SteamAutoCloud {
                                 val prefixKey = Paths.get(fileInfo.prefix).pathString
                                 result.getOrPut(prefixKey) { mutableListOf() }.add(fileInfo)
                             }
+                        }
+                }
+
+                // Second pass: scan IS cache directly for local IS files not yet in the cloud
+                // (first-play-on-GN scenario where cloudFileList is empty or missing the file).
+                // IS files share the same cloud prefix as UFS files for the same game.
+                if (Files.exists(isCachePath)) {
+                    val alreadyFoundFilenames = result.values.flatten().map { it.filename }.toSet()
+                    val (isCloudRoot, isCloudPath) = savePatterns.firstOrNull()
+                        ?.let { Pair(it.root, it.substitutedPath) }
+                        ?: Pair(PathType.SteamUserData, "")
+                    Files.list(isCachePath)
+                        .filter { !Files.isDirectory(it) }
+                        .filter { !FileUtils.matchesAnyUfsPattern(it.name, appInfo.ufs.saveFilePatterns) }
+                        .filter { it.name !in alreadyFoundFilenames }
+                        .forEach { isFilePath ->
+                            val sha = streamingShaHash(isFilePath)
+                            Timber.i(
+                                "Found local-only IS-cache file ${isFilePath.pathString}" +
+                                    " cloudRoot=$isCloudRoot cloudPath=$isCloudPath"
+                            )
+                            val fileInfo = UserFileInfo(
+                                root = PathType.SteamUserData,
+                                path = "",
+                                filename = isFilePath.name,
+                                timestamp = Files.getLastModifiedTime(isFilePath).toMillis(),
+                                sha = sha,
+                                cloudRoot = isCloudRoot,
+                                cloudPath = isCloudPath,
+                            )
+                            val prefixKey = Paths.get(fileInfo.prefix).pathString
+                            result.getOrPut(prefixKey) { mutableListOf() }.add(fileInfo)
                         }
                 }
 
