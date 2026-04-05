@@ -82,7 +82,6 @@ public class FSR1RcasEffect extends Effect {
                 "    float lobeG = max(-hitMinG, hitMaxG);\n" +
                 "    float lobeB = max(-hitMinB, hitMaxB);\n" +
                 "    float lobe = max(-FSR_RCAS_LIMIT, min(max(max(lobeR, lobeG), lobeB), 0.0)) * con;\n" +
-                "    lobe *= nz;\n" +
                 "    float rcpL = 1.0 / (4.0 * lobe + 1.0);\n" +
                 "    return vec3(\n" +
                 "        (lobe * b.r + lobe * d.r + lobe * h.r + lobe * f.r + e.r) * rcpL,\n" +
