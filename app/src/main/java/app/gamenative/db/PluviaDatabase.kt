@@ -53,7 +53,7 @@ const val DATABASE_NAME = "pluvia.db"
         DownloadingAppInfo::class,
         SteamUnlockedBranch::class,
     ],
-    version = 18,
+    version = 19,
     // For db migration, visit https://developer.android.com/training/data-storage/room/migrating-db-versions for more information
     exportSchema = true, // It is better to handle db changes carefully, as GN is getting much more users.
     autoMigrations = [
@@ -71,6 +71,7 @@ const val DATABASE_NAME = "pluvia.db"
         // duplicate column name: ufs_parse_version (code 1 SQLITE_ERROR)
         // v16 users will fallback to destructive migration (only cached Steam data, re-fetched on login)
         AutoMigration(from = 17, to = 18), // Added workshop_mods, enabled_workshop_item_ids, workshop_download_pending to steam_app
+        AutoMigration(from = 18, to = 19), // Added recovered_install_size_bytes to app_info
     ]
 )
 @TypeConverters(
