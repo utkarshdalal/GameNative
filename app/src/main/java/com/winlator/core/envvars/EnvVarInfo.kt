@@ -212,6 +212,9 @@ data class EnvVarInfo(
             "MESA_EXTENSION_MAX_YEAR" to EnvVarInfo(
                 identifier = "MESA_EXTENSION_MAX_YEAR",
             ),
+            "WRAPPER_MAX_IMAGE_COUNT" to EnvVarInfo(
+                identifier = "WRAPPER_MAX_IMAGE_COUNT",
+            ),
             "PULSE_LATENCY_MSEC" to EnvVarInfo(
                 identifier = "PULSE_LATENCY_MSEC",
             ),
@@ -243,9 +246,6 @@ data class EnvVarInfo(
             "MESA_GL_VERSION_OVERRIDE" to EnvVarInfo(
                 identifier = "MESA_GL_VERSION_OVERRIDE",
             ),
-            "MESA_VK_PRESENT_MODE" to EnvVarInfo(
-                identifier = "MESA_VK_PRESENT_MODE",
-            ),
             "MESA_VK_WSI_DEBUG" to EnvVarInfo(
                 identifier = "MESA_VK_WSI_DEBUG",
             ),
@@ -260,6 +260,15 @@ data class EnvVarInfo(
             ),
             "VKD3D_SHADER_CACHE_PATH" to EnvVarInfo(
                 identifier = "VKD3D_SHADER_CACHE_PATH",
+            ),
+            "DXVK_CONFIG" to EnvVarInfo(
+                identifier = "DXVK_CONFIG",
+            ),
+            "VKD3D_CONFIG" to EnvVarInfo(
+                identifier = "VKD3D_CONFIG",
+            ),
+            "MESA_VK_PRESENT_MODE" to EnvVarInfo(
+                identifier = "MESA_VK_PRESENT_MODE",
             ),
             "DXVK_FILTER_DEVICE_NAME" to EnvVarInfo(
                 identifier = "DXVK_FILTER_DEVICE_NAME",
