@@ -13,4 +13,6 @@ data class AppInfo (
     val downloadedDepots: List<Int> = emptyList<Int>(),
     @ColumnInfo("dlc_depots")
     val dlcDepots: List<Int> = emptyList<Int>(),
-){}
+    @ColumnInfo("branch", defaultValue = "public")
+    val branch: String = "public",
+)

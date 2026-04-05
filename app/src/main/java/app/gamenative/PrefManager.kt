@@ -935,7 +935,7 @@ object PrefManager {
     // Whether to hide the Android status bar when not in a game (in game list, settings, etc.)
     private val HIDE_STATUS_BAR_WHEN_NOT_IN_GAME = booleanPreferencesKey("hide_status_bar_when_not_in_game")
     var hideStatusBarWhenNotInGame: Boolean
-        get() = getPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, false)
+        get() = getPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, true)
         set(value) {
             setPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, value)
         }
@@ -1174,4 +1174,10 @@ object PrefManager {
     var gogAmazonPathMigrated: Boolean
         get() = getPref(GOG_AMAZON_PATH_MIGRATED, false)
         set(value) { setPref(GOG_AMAZON_PATH_MIGRATED, value) }
+
+    private val ACHIEVEMENT_NOTIFICATION_POSITION = stringPreferencesKey("achievement_notification_position")
+    var achievementNotificationPosition: String
+        get() = getPref(ACHIEVEMENT_NOTIFICATION_POSITION, "bottom_right")
+        set(value) { setPref(ACHIEVEMENT_NOTIFICATION_POSITION, value) }
+
 }

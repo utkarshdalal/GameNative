@@ -5,6 +5,7 @@ import android.content.Context
 import android.provider.Settings
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.LaunchInfo
 import app.gamenative.data.ManifestInfo
 import app.gamenative.data.SteamApp
 import app.gamenative.enums.Marker
@@ -335,16 +336,19 @@ object SteamUtils {
         Timber.i("Finished restoreSteamclientFiles for appId: $steamAppId. Restored $restoredCount file(s)")
     }
 
-    internal fun writeColdClientIni(steamAppId: Int, container: Container) {
-        val gameName = getAppDirName(getAppInfoOf(steamAppId))
-        val executablePath = container.executablePath.replace("/", "\\")
-        val exePath = "steamapps\\common\\$gameName\\$executablePath"
-        val exeCommandLine = container.execArgs
-        val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
-        iniFile.parentFile?.mkdirs()
+    internal fun generateColdClientIni(
+        gameName: String,
+        executablePath: String,
+        exeCommandLine: String,
+        steamAppId: Int,
+        workingDir: String?,
+        isUnpackFiles: Boolean,
+    ): String {
+        val exePath = "steamapps\\common\\$gameName\\${executablePath.replace("/", "\\")}"
+        val exeRunDir = if (workingDir.isNullOrEmpty()) exePath.substringBeforeLast("\\") else ""
 
         // Only include DllsToInjectFolder if unpackFiles is enabled
-        val injectionSection = if (container.isUnpackFiles) {
+        val injectionSection = if (isUnpackFiles) {
             """
                 [Injection]
                 IgnoreLoaderArchDifference=1
@@ -357,12 +361,11 @@ object SteamUtils {
             """
         }
 
-        iniFile.writeText(
-            """
+        return """
                 [SteamClient]
 
                 Exe=$exePath
-                ExeRunDir=
+                ExeRunDir=$exeRunDir
                 ExeCommandLine=$exeCommandLine
                 AppId=$steamAppId
 
@@ -371,7 +374,23 @@ object SteamUtils {
                 SteamClient64Dll=steamclient64.dll
 
                 $injectionSection
-            """.trimIndent(),
+            """.trimIndent()
+    }
+
+    internal fun writeColdClientIni(steamAppId: Int, container: Container, launchInfo: LaunchInfo? = null) {
+        val gameName = getAppDirName(getAppInfoOf(steamAppId))
+        val workingDir = launchInfo?.workingDir
+        val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
+        iniFile.parentFile?.mkdirs()
+        iniFile.writeText(
+            generateColdClientIni(
+                gameName = gameName,
+                executablePath = container.executablePath,
+                exeCommandLine = container.execArgs,
+                steamAppId = steamAppId,
+                workingDir = workingDir,
+                isUnpackFiles = container.isUnpackFiles,
+            )
         )
     }
 
@@ -566,16 +585,17 @@ object SteamUtils {
                 Timber.i("Created symlink from ${steamGameLink.absolutePath} to ${gameDir.absolutePath}")
             }
 
-            // Get build ID and depot information
-            val buildId = appInfo.branches["public"]?.buildId ?: 0L
+            val installedBranch = SteamService.getInstalledApp(steamAppId)?.branch ?: "public"
+            val buildId = (appInfo.branches[installedBranch] ?: appInfo.branches["public"])?.buildId ?: 0L
             val downloadableDepots = SteamService.getDownloadableDepots(steamAppId)
 
-            // Separate depots into regular depots (with manifests) and shared depots (without manifests)
             val regularDepots = mutableMapOf<Int, DepotInfo>()
             val sharedDepots = mutableMapOf<Int, DepotInfo>()
 
             downloadableDepots.forEach { (depotId, depotInfo) ->
-                val manifest = depotInfo.manifests["public"]
+                val manifest = depotInfo.manifests[installedBranch]
+                    ?: depotInfo.manifests["public"]
+                    ?: depotInfo.manifests.values.firstOrNull()
                 if (manifest != null && manifest.gid != 0L) {
                     regularDepots[depotId] = depotInfo
                 } else {
@@ -614,7 +634,9 @@ object SteamUtils {
                     appendLine("\t\"InstalledDepots\"")
                     appendLine("\t{")
                     regularDepots.forEach { (depotId, depotInfo) ->
-                        val manifest = depotInfo.manifests["public"]
+                        val manifest = depotInfo.manifests[installedBranch]
+                            ?: depotInfo.manifests["public"]
+                            ?: depotInfo.manifests.values.firstOrNull()
                         appendLine("\t\t\"$depotId\"")
                         appendLine("\t\t{")
                         appendLine("\t\t\t\"manifest\"\t\t\"${manifest?.gid ?: "0"}\"")
@@ -941,8 +963,17 @@ object SteamUtils {
                 }
             }
 
-            // Add cloud save config sections if appInfo exists
+            // Add app paths and cloud save config sections if appInfo exists
             if (appInfo != null) {
+                // Some games required this path to be setup for detecting dlc, e.g. Vampire Survivors
+                val gameDir = File(SteamService.getAppDirPath(steamAppId))
+                val gameName = gameDir.name
+                val actualInstallDir = appInfo.config.installDir.ifEmpty { gameName }
+                appendLine()
+                appendLine("[app::paths]")
+                appendLine("$steamAppId=./steamapps/common/$actualInstallDir")
+
+                // Setup for cloud save
                 appendLine()
                 append(generateCloudSaveConfig(appInfo))
             }

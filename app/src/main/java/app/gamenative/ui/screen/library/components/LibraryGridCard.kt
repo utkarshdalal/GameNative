@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -183,11 +184,22 @@ internal fun GridViewCard(
                     )
                 }
 
+                val gridHeroZoom = if (!isCapsule && appInfo.gridHeroImageScale != 1f) {
+                    Modifier.graphicsLayer {
+                        scaleX = appInfo.gridHeroImageScale
+                        scaleY = appInfo.gridHeroImageScale
+                        transformOrigin = TransformOrigin.Center
+                    }
+                } else {
+                    Modifier
+                }
+
                 ListItemImage(
                     modifier = Modifier.fillMaxSize(),
                     imageModifier = Modifier
                         .fillMaxSize()
-                        .alpha(imageAlpha),
+                        .alpha(imageAlpha)
+                        .then(gridHeroZoom),
                     contentScale = getGridContentScale(paneType),
                     image = { currentImageUrl },
                     onFailure = {

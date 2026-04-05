@@ -634,7 +634,8 @@ class MainViewModel @Inject constructor(
                         processes.add(process)
                     } while (parentWindow != null)
 
-                    GameProcessInfo(appId = gameId, processes = processes).let {
+                    val installedBranch = SteamService.getInstalledApp(gameId)?.branch ?: "public"
+                    GameProcessInfo(appId = gameId, branch = installedBranch, processes = processes).let {
                         // Only notify Steam if we're not using real Steam
                         // When launchRealSteam is true, let the real Steam client handle the "game is running" notification
                         val shouldLaunchRealSteam = try {

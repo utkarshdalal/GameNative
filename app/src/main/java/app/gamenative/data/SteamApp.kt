@@ -143,6 +143,15 @@ data class SteamApp(
 
     @ColumnInfo("ufs")
     val ufs: UFS = UFS(),
+
+    @ColumnInfo(name = "workshop_mods", defaultValue = "0")
+    val workshopMods: Boolean = false,
+
+    @ColumnInfo(name = "enabled_workshop_item_ids", defaultValue = "")
+    val enabledWorkshopItemIds: String = "",
+
+    @ColumnInfo(name = "workshop_download_pending", defaultValue = "0")
+    val workshopDownloadPending: Boolean = false,
 ) {
     val logoUrl: String
         get() = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$id/$logoHash.jpg"

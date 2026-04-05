@@ -29,6 +29,9 @@ interface AmazonGameDao {
     @Query("SELECT * FROM amazon_games ORDER BY title ASC")
     suspend fun getAllAsList(): List<AmazonGame>
 
+    @Query("SELECT * FROM amazon_games WHERE is_installed = 0")
+    suspend fun getNonInstalledGames(): List<AmazonGame>
+
     @Query(
         "UPDATE amazon_games SET is_installed = 1, install_path = :path, install_size = :size, version_id = :versionId WHERE product_id = :productId",
     )

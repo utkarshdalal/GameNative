@@ -18,6 +18,7 @@ import java.io.ByteArrayOutputStream
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.file.Files
 import java.security.DigestOutputStream
 import java.security.MessageDigest
 import java.util.zip.Inflater
@@ -501,6 +502,7 @@ class GOGDownloadManager @Inject constructor(
             if (game != null) {
                 val installSize = calculateDirectorySize(installPath)
                 gogManager.updateGame(game.copy(isInstalled = true, installPath = installPath.absolutePath, installSize = installSize))
+                downloadInfo.clearPersistedBytesDownloaded(installPath.absolutePath)
                 Timber.tag("GOG").i("Updated database: game marked as installed, size: ${installSize / 1_000_000} MB")
             } else {
                 Timber.tag("GOG").w("Game $gameId not found in database, skipping DB update")
@@ -1456,10 +1458,8 @@ class GOGDownloadManager @Inject constructor(
     }
 
     /**
-     * Calculate the total size of a directory recursively
-     *
-     * @param directory The directory to calculate size for
-     * @return Total size in bytes
+     * Total size under [directory]. Symlinks are skipped so GOG scriptinterpreter
+     * `rootdir` (symlink to install root) does not re-count the whole tree.
      */
     private fun calculateDirectorySize(directory: File): Long {
         var size = 0L
@@ -1470,6 +1470,9 @@ class GOGDownloadManager @Inject constructor(
 
             val files = directory.listFiles() ?: return 0L
             for (file in files) {
+                if (Files.isSymbolicLink(file.toPath())) {
+                    continue
+                }
                 size += if (file.isDirectory) {
                     calculateDirectorySize(file)
                 } else {

@@ -43,6 +43,7 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.StarHalf
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Person
@@ -243,6 +244,7 @@ fun SystemMenu(
     isOpen: Boolean,
     onDismiss: () -> Unit,
     onNavigateRoute: (String) -> Unit,
+    onDownloadsClick: () -> Unit = {},
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
     isOffline: Boolean = false,
@@ -560,6 +562,16 @@ fun SystemMenu(
                             .focusGroup(),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
+                        SystemMenuItem(
+                            text = stringResource(R.string.app_downloads),
+                            icon = Icons.Default.Download,
+                            onClick = {
+                                onDownloadsClick()
+                                onDismiss()
+                            },
+                            focusRequester = firstItemFocusRequester,
+                        )
+
                         SystemMenuItem(
                             text = stringResource(R.string.settings_text),
                             icon = Icons.Default.Settings,

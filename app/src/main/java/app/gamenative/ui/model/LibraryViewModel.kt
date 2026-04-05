@@ -23,6 +23,7 @@ import app.gamenative.db.dao.EpicGameDao
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
+import app.gamenative.service.amazon.AmazonArtwork
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
@@ -427,11 +428,19 @@ class LibraryViewModel @Inject constructor(
 
             // Map Steam apps to UI items
             data class LibraryEntry(val item: LibraryItem, val isInstalled: Boolean)
+            val licensedDepotMap = SteamService.buildLicensedDepotMap(filteredSteamApps)
             val steamEntries: List<LibraryEntry> = filteredSteamApps.map { item ->
                 val isInstalled = downloadDirectorySet.contains(SteamService.getAppDirName(item))
-                // Calculate total size from all depot manifests (use "public" branch as default)
-                val totalSizeBytes = item.depots.values.sumOf { depot ->
-                    depot.manifests["public"]?.size ?: depot.manifests.values.firstOrNull()?.size ?: 0L
+                val installedBranch = if (isInstalled) {
+                    SteamService.getInstalledApp(item.id)?.branch ?: "public"
+                } else {
+                    "public"
+                }
+                // base-game size: ownedDlc=emptyMap excludes DLC depots
+                val licensedDepots = licensedDepotMap[item.id]
+                val resolved = SteamService.resolveDownloadableDepots(item.depots, "", emptyMap(), licensedDepots)
+                val totalSizeBytes = resolved.values.sumOf { depot ->
+                    depot.manifests[installedBranch]?.size ?: depot.manifests.values.firstOrNull()?.size ?: 0L
                 }
                 LibraryEntry(
                     item = LibraryItem(
@@ -566,6 +575,8 @@ class LibraryViewModel @Inject constructor(
             val amazonEntries = filteredAmazonGames
                 .filter { passesCompatibleFilter(it.title) }
                 .map { game ->
+                val layoutHero = AmazonArtwork.layoutHeroFromProductJson(game.productJson)
+                    .ifEmpty { game.heroUrl.ifEmpty { game.artUrl } }
                 LibraryEntry(
                     item = LibraryItem(
                         index = 0,
@@ -573,8 +584,9 @@ class LibraryViewModel @Inject constructor(
                         name = game.title,
                         iconHash = game.artUrl,
                         capsuleImageUrl = game.artUrl,
-                        headerImageUrl = game.heroUrl.ifEmpty { game.artUrl },
-                        heroImageUrl = game.heroUrl.ifEmpty { game.artUrl },
+                        headerImageUrl = layoutHero,
+                        heroImageUrl = layoutHero.ifEmpty { game.artUrl },
+                        gridHeroImageScale = AmazonArtwork.GRID_HERO_ZOOM_SCALE,
                         isShared = false,
                         gameSource = GameSource.AMAZON,
                     ),

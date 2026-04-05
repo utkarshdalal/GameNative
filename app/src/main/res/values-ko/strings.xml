@@ -81,6 +81,13 @@
     <string name="install_app">설치</string>
     <string name="delete_app">삭제</string>
     <string name="uninstall">제거</string>
+    <string name="branch">브랜치</string>
+    <string name="change_branch">브랜치 변경</string>
+    <string name="change_branch_message">개발자가 제공하는 브랜치를 통해 Steam에서 게임의 대체 버전을 다운로드하세요. 비공개 브랜치를 잠금 해제하려면 액세스 코드를 입력하세요.</string>
+    <string name="private_branch_password_hint">액세스 코드 입력</string>
+    <string name="private_branch_password_check">코드 확인</string>
+    <string name="private_branch_password_success">브랜치가 잠금 해제되었습니다!</string>
+    <string name="private_branch_password_invalid">잘못된 액세스 코드</string>
     <string name="run_app">플레이</string>
     <string name="download_prompt_title">앱 설치</string>
     <string name="calculating_space_requirements">공간 요구사항 계산 중...</string>
@@ -95,8 +102,58 @@
     <string name="untitled">제목 없음</string>
     <string name="confirm_delete">삭제 확인</string>
     <string name="destination_library">라이브러리</string>
-    <string name="destination_downloads">다운로드</string>
-    <string name="destination_friends">친구</string>
+    <string name="destination_downloads">다운로드 및 저장소</string>
+
+    <string name="downloads_empty">진행 중인 다운로드 없음</string>
+    <string name="downloads_overview_subtitle">진행 중, 일시 중지됨, 다시 시작 가능한 다운로드를 추적합니다</string>
+    <string name="downloads_cancel_confirm">%1$s의 다운로드를 취소하고 파일을 삭제할까요?</string>
+    <string name="downloads_cancel_all">모두 취소</string>
+    <string name="downloads_clear_finished">완료 항목 지우기</string>
+    <string name="downloads_pause_all">모두 일시중지</string>
+    <string name="downloads_resume_all">모두 다시 시작</string>
+    <string name="downloads_resume_available">다시 시작 가능</string>
+    <string name="downloads_status_cancelled">취소됨</string>
+    <string name="downloads_status_complete">완료됨</string>
+    <string name="downloads_status_failed">실패</string>
+    <string name="downloads_status_paused">일시중지됨</string>
+    <string name="downloads_summary">한곳에서 진행 중인 다운로드와 저장소를 관리합니다</string>
+    <string name="container_storage_title">저장소 관리자</string>
+    <string name="container_storage_subtitle">내부 저장소와 외부 저장소 사이에서 설치 항목을 이동합니다</string>
+    <string name="container_storage_summary">%1$d개 항목 • %2$s</string>
+    <string name="container_storage_loading">저장소 목록 불러오는 중...</string>
+    <string name="container_storage_empty">이동할 수 있는 게임 설치를 찾지 못했습니다</string>
+    <string name="container_storage_source_and_status">%1$s • %2$s</string>
+    <string name="container_storage_source_unknown">알 수 없는 출처</string>
+    <string name="container_storage_location_internal">내부</string>
+    <string name="container_storage_location_external">외부</string>
+    <string name="container_storage_location_unknown">알 수 없음</string>
+    <string name="container_storage_status_ready">준비됨</string>
+    <string name="container_storage_status_orphaned">게임 메타데이터 없음</string>
+    <string name="container_storage_status_no_container">컨테이너 없음</string>
+    <string name="container_storage_status_game_files_missing">게임 파일 없음</string>
+    <string name="container_storage_status_unreadable">읽을 수 없음</string>
+    <string name="container_storage_move_to_external_button">외부로 이동</string>
+    <string name="container_storage_move_to_internal_button">내부로 이동</string>
+    <string name="container_storage_move_external_disabled">게임을 이동하기 전에 설정에서 외부 저장소 경로를 지정하세요.</string>
+    <string name="container_storage_move_success">%1$s을(를) %2$s(으)로 이동했습니다</string>
+    <string name="container_storage_move_failed">게임 이동 실패: %1$s</string>
+    <string name="container_storage_remove_button">컨테이너 제거</string>
+    <string name="container_storage_remove_title">컨테이너 제거</string>
+    <string name="container_storage_remove_message">%1$s의 컨테이너를 제거할까요? 게임 파일은 디스크에 그대로 유지됩니다.</string>
+    <string name="container_storage_remove_success">%1$s의 컨테이너를 제거했습니다</string>
+    <string name="container_storage_remove_failed">컨테이너 제거 실패</string>
+    <string name="container_storage_uninstall_button">게임 제거</string>
+    <string name="container_storage_uninstall_title">게임 제거</string>
+    <string name="container_storage_uninstall_message">%1$s을(를) 제거하고 컨테이너도 삭제할까요? 게임 파일과 관련 컨테이너 데이터가 삭제됩니다.</string>
+    <string name="container_storage_uninstall_game_only_title">게임만 제거</string>
+    <string name="container_storage_uninstall_game_only_message">%1$s에는 컨테이너가 없습니다. 게임 파일만 제거할까요?</string>
+    <string name="container_storage_uninstall_success">%1$s을(를) 제거했습니다</string>
+    <string name="container_storage_uninstall_failed">게임 제거 실패: %1$s</string>
+    <string name="container_storage_unknown_container">알 수 없는 컨테이너</string>
+    <string name="container_storage_unknown_error">알 수 없는 오류</string>
+    <string name="settings_storage_title">저장소</string>
+    <string name="settings_storage_manage_title">저장소 관리</string>
+    <string name="settings_storage_manage_subtitle">설치 항목을 검토하고 저장 위치 사이에서 이동하며 컨테이너를 정리합니다</string>
 
     <!-- Library Tabs -->
     <string name="tab_all">전체</string>
@@ -282,7 +339,6 @@
     <string name="performance_hud_battery_level">배터리 잔량</string>
     <string name="performance_hud_power_draw">전력 소모</string>
     <string name="performance_hud_runtime_left">남은 시간</string>
-    <string name="performance_hud_battery_temperature">배터리 온도</string>
     <string name="performance_hud_clock_time">시계</string>
     <string name="performance_hud_cpu_temperature">CPU 온도</string>
     <string name="performance_hud_gpu_temperature">GPU 온도</string>
@@ -604,6 +660,11 @@
     <string name="steam_offline_mode">Steam 오프라인 모드</string>
     <string name="steam_offline_mode_description">Steam 게임을 오프라인 모드로 실행</string>
     <string name="achievement_unlocked">업적 달성</string>
+    <string name="settings_achievement_notification_position">업적 알림 위치</string>
+    <string name="achievement_position_top_left">좌측 상단</string>
+    <string name="achievement_position_top_right">우측 상단</string>
+    <string name="achievement_position_bottom_left">좌측 하단</string>
+    <string name="achievement_position_bottom_right">우측 하단</string>
     <string name="launch_steam_client_description">성능이 저하되고 실행 속도가 느려집니다\n온라인 플레이를 허용하고 DRM 및 컨트롤러 문제를 해결합니다\n모든 게임이 작동하는 것은 아닙니다</string>
     <string name="allow_steam_updates">Steam 업데이트 허용</string>
     <string name="allow_steam_updates_description">Steam을 최신 버전으로 업데이트합니다. 성능이 크게 저하될 수 있습니다.</string>
@@ -1293,4 +1354,15 @@
     <string name="install_failed_message">시스템 파일을 설치할 수 없습니다. 다시 시도해 주세요. 문제가 지속되면 다른 네트워크를 사용하거나 VPN을 사용해 보세요.</string>
     <string name="settings_interface_swap_face_buttons_title">페이스 버튼 바꾸기</string>
     <string name="settings_interface_swap_face_buttons_subtitle">A↔B 및 X↔Y 버튼 아이콘 바꾸기</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">워크숍 모드 확인 중…</string>
+    <string name="workshop_update_title">워크숍 모드 업데이트</string>
+    <string name="workshop_update_prompt">%1$s MB의 모드 업데이트가 있습니다. 지금 다운로드하시겠습니까?</string>
+    <string name="workshop_download_btn">다운로드</string>
+    <string name="workshop_skip_btn">건너뛰기</string>
+    <string name="workshop_downloading">워크숍 모드 다운로드 중 (%1$d/%2$d)</string>
+    <string name="workshop_processing">모드 처리 중…</string>
+    <string name="workshop_failed_count">%1$d개의 워크숍 모드를 업데이트하지 못했습니다</string>
+    <string name="workshop_download_failed">다운로드 실패</string>
 </resources>

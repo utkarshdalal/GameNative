@@ -314,10 +314,7 @@ class EpicAppScreen : BaseAppScreen() {
     }
 
     override fun hasPartialDownload(context: Context, libraryItem: LibraryItem): Boolean {
-        val game = EpicService.getEpicGameOf(libraryItem.gameId) ?: return false
-        if (game.isInstalled) return false // Already installed (including old installs with no marker)
-        val path = EpicConstants.getGameInstallPath(context, game.appName)
-        return File(path).exists() && !MarkerUtils.hasMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)
+        return EpicService.hasPartialDownload(context, libraryItem.gameId)
     }
 
     override fun onDownloadInstallClick(context: Context, libraryItem: LibraryItem, onClickPlay: (Boolean) -> Unit) {

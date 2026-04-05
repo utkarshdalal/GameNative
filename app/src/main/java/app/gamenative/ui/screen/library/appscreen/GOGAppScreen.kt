@@ -216,9 +216,7 @@ class GOGAppScreen : BaseAppScreen() {
     }
 
     override fun hasPartialDownload(context: Context, libraryItem: LibraryItem): Boolean {
-        if (isDownloading(context, libraryItem) || isInstalled(context, libraryItem)) return false
-        val installPath = GOGConstants.getGameInstallPath(libraryItem.name)
-        return File(installPath).exists() && !MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+        return GOGService.hasPartialDownload(libraryItem.gameId.toString(), libraryItem.name)
     }
 
     override fun onDownloadInstallClick(context: Context, libraryItem: LibraryItem, onClickPlay: (Boolean) -> Unit) {

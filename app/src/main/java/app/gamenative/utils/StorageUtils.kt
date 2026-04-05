@@ -67,28 +67,26 @@ object StorageUtils {
         return result
     }
 
-    /**
-     * Move games from internal only storage to user storage.
-     * This should be removed after a few versions and just
-     * remove the old path to free up space.
-     */
-    suspend fun moveGamesFromOldPath(
+    suspend fun moveDirectory(
         sourceDir: String,
         targetDir: String,
         onProgressUpdate: (currentFile: String, fileProgress: Float, movedFiles: Int, totalFiles: Int) -> Unit,
-        onComplete: () -> Unit,
-    ) = withContext(Dispatchers.IO) {
+    ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val sourcePath = Paths.get(sourceDir)
-            val targetPath = Paths.get(targetDir)
+            val sourceRootPath = Paths.get(sourceDir)
+            val targetRootPath = Paths.get(targetDir)
 
-            if (!Files.exists(targetPath)) {
-                Files.createDirectories(targetPath)
+            if (!Files.exists(sourceRootPath) || !Files.isDirectory(sourceRootPath)) {
+                return@withContext Result.failure(IllegalArgumentException("Invalid source directory: $sourceDir"))
+            }
+
+            if (!Files.exists(targetRootPath)) {
+                Files.createDirectories(targetRootPath)
             }
 
             val allFiles = mutableListOf<Path>()
             Files.walkFileTree(
-                sourcePath,
+                sourceRootPath,
                 object : SimpleFileVisitor<Path>() {
                     override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
                         if (Files.isRegularFile(file)) {
@@ -107,25 +105,23 @@ object StorageUtils {
             val totalFiles = allFiles.size
             var filesMoved = 0
 
-            for (sourcePath in allFiles) {
-                val relativePath = sourcePath.subpath(Paths.get(sourceDir).nameCount, sourcePath.nameCount)
-                val targetFilePath = Paths.get(targetDir, relativePath.toString())
+            for (sourceFilePath in allFiles) {
+                val relativePath = sourceRootPath.relativize(sourceFilePath)
+                val targetFilePath = targetRootPath.resolve(relativePath)
 
                 Files.createDirectories(targetFilePath.parent)
 
-                // val fileName = sourcePath.fileName.toString()
-
                 try {
-                    Files.move(sourcePath, targetFilePath, StandardCopyOption.ATOMIC_MOVE)
+                    Files.move(sourceFilePath, targetFilePath, StandardCopyOption.ATOMIC_MOVE)
 
                     withContext(Dispatchers.Main) {
                         onProgressUpdate(relativePath.toString(), 1f, filesMoved++, totalFiles)
                     }
                 } catch (e: Exception) {
-                    val fileSize = Files.size(sourcePath)
+                    val fileSize = Files.size(sourceFilePath)
                     var bytesCopied = 0L
 
-                    FileChannel.open(sourcePath, StandardOpenOption.READ).use { sourceChannel ->
+                    FileChannel.open(sourceFilePath, StandardOpenOption.READ).use { sourceChannel ->
                         FileChannel.open(
                             targetFilePath,
                             StandardOpenOption.CREATE,
@@ -157,7 +153,7 @@ object StorageUtils {
                         }
                     }
 
-                    Files.delete(sourcePath)
+                    Files.delete(sourceFilePath)
                     withContext(Dispatchers.Main) {
                         onProgressUpdate(relativePath.toString(), 1f, filesMoved++, totalFiles)
                     }
@@ -165,7 +161,7 @@ object StorageUtils {
             }
 
             Files.walkFileTree(
-                sourcePath,
+                sourceRootPath,
                 object : SimpleFileVisitor<Path>() {
                     override fun postVisitDirectory(dir: Path, exc: IOException?): FileVisitResult {
                         if (exc == null) {
@@ -177,7 +173,7 @@ object StorageUtils {
                                     }
                                 }
 
-                                if (isEmpty && (dir != sourcePath)) {
+                                if (isEmpty && dir != sourceRootPath) {
                                     Files.delete(dir)
                                 }
                             } catch (e: Exception) {
@@ -191,27 +187,45 @@ object StorageUtils {
 
             try {
                 var isEmpty = true
-                Files.newDirectoryStream(sourcePath).use { stream ->
+                Files.newDirectoryStream(sourceRootPath).use { stream ->
                     if (stream.iterator().hasNext()) {
                         isEmpty = false
                     }
                 }
 
                 if (isEmpty) {
-                    Files.delete(sourcePath)
+                    Files.delete(sourceRootPath)
                 }
             } catch (e: Exception) {
                 Timber.e(e)
             }
 
-            withContext(Dispatchers.Main) {
-                onComplete()
-            }
+            Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e)
-            withContext(Dispatchers.Main) {
-                onComplete()
-            }
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Move games from internal only storage to user storage.
+     * This should be removed after a few versions and just
+     * remove the old path to free up space.
+     */
+    suspend fun moveGamesFromOldPath(
+        sourceDir: String,
+        targetDir: String,
+        onProgressUpdate: (currentFile: String, fileProgress: Float, movedFiles: Int, totalFiles: Int) -> Unit,
+        onComplete: () -> Unit,
+    ) = withContext(Dispatchers.IO) {
+        moveDirectory(
+            sourceDir = sourceDir,
+            targetDir = targetDir,
+            onProgressUpdate = onProgressUpdate,
+        )
+
+        withContext(Dispatchers.Main) {
+            onComplete()
         }
     }
 }

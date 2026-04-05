@@ -179,6 +179,47 @@ class EpicService : Service() {
             return getInstance()?.activeDownloads?.get(appId)
         }
 
+        fun getActiveDownloads(): Map<Int, DownloadInfo> =
+            getInstance()?.activeDownloads?.let { HashMap(it) } ?: emptyMap()
+
+        fun hasPartialDownload(context: Context, appId: Int): Boolean {
+            val game = getEpicGameOf(appId) ?: return false
+            if (game.isInstalled) return false
+            val appName = game.appName.ifBlank { return false }
+            val installPath = EpicConstants.getGameInstallPath(context, appName)
+            return MarkerUtils.hasPartialInstall(installPath)
+        }
+
+        private fun getPartialInstallPaths(context: Context): Set<String> {
+            val roots = buildList {
+                add(EpicConstants.internalEpicGamesPath(context))
+                if (app.gamenative.PrefManager.externalStoragePath.isNotBlank()) {
+                    add(EpicConstants.externalEpicGamesPath())
+                }
+            }.distinct()
+
+            return roots.asSequence()
+                .flatMap { root -> MarkerUtils.findResumablePartialInstalls(root).asSequence() }
+                .toSet()
+        }
+
+        suspend fun getPartialDownloads(): List<Int> {
+            val instance = getInstance() ?: return emptyList()
+            val context = instance.applicationContext
+            val partialInstallPaths = getPartialInstallPaths(context)
+            if (partialInstallPaths.isEmpty()) return emptyList()
+
+            return instance.epicManager.getNonInstalledGames()
+                .asSequence()
+                .filter { game -> !instance.activeDownloads.containsKey(game.id) }
+                .filter { game ->
+                    val appName = game.appName.ifBlank { return@filter false }
+                    partialInstallPaths.contains(EpicConstants.getGameInstallPath(context, appName))
+                }
+                .map { it.id }
+                .toList()
+        }
+
         suspend fun deleteGame(context: Context, appId: Int): Result<Unit> {
             val instance = getInstance()
             if (instance == null) {
@@ -369,6 +410,12 @@ class EpicService : Service() {
                 gameId = appId,
                 downloadingAppIds = CopyOnWriteArrayList<Int>(),
             )
+            downloadInfo.setPersistencePath(installPath)
+
+            val persistedBytes = downloadInfo.loadPersistedBytesDownloaded(installPath)
+            if (persistedBytes > 0L) {
+                downloadInfo.initializeBytesDownloaded(persistedBytes)
+            }
 
             instance.activeDownloads[appId] = downloadInfo
             downloadInfo.setActive(true)

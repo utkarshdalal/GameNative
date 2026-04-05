@@ -81,6 +81,13 @@
     <string name="install_app">Zainstaluj</string>
     <string name="delete_app">Usuń</string>
     <string name="uninstall">Odinstaluj</string>
+    <string name="branch">Gałąź</string>
+    <string name="change_branch">Zmień gałąź</string>
+    <string name="change_branch_message">Pobieraj alternatywne wersje gry ze Steam, korzystając z gałęzi udostępnianych przez deweloperów. Wpisz kody dostępu, aby odblokować prywatne gałęzie.</string>
+    <string name="private_branch_password_hint">Wpisz kod dostępu</string>
+    <string name="private_branch_password_check">Sprawdź kod</string>
+    <string name="private_branch_password_success">Gałąź odblokowana!</string>
+    <string name="private_branch_password_invalid">Nieprawidłowy kod dostępu</string>
     <string name="run_app">Graj</string>
     <string name="download_prompt_title">Zainstaluj aplikację</string>
     <string name="calculating_space_requirements">Obliczanie wymaganego miejsca...</string>
@@ -95,8 +102,58 @@
     <string name="untitled">Bez tytułu</string>
     <string name="confirm_delete">Potwierdź usunięcie</string>
     <string name="destination_library">Biblioteka</string>
-    <string name="destination_downloads">Pobrane</string>
-    <string name="destination_friends">Znajomi</string>
+    <string name="destination_downloads">Pobrane i pamięć</string>
+
+    <string name="downloads_empty">Brak aktywnych pobrań</string>
+    <string name="downloads_overview_subtitle">Śledź aktywne, wstrzymane i wznawialne pobrania</string>
+    <string name="downloads_cancel_confirm">Anulować pobieranie i usunąć pliki dla %1$s?</string>
+    <string name="downloads_cancel_all">Anuluj wszystko</string>
+    <string name="downloads_clear_finished">Wyczyść zakończone</string>
+    <string name="downloads_pause_all">Wstrzymaj wszystko</string>
+    <string name="downloads_resume_all">Wznów wszystko</string>
+    <string name="downloads_resume_available">Wznowienie dostępne</string>
+    <string name="downloads_status_cancelled">Anulowano</string>
+    <string name="downloads_status_complete">Ukończono</string>
+    <string name="downloads_status_failed">Nieudane</string>
+    <string name="downloads_status_paused">Wstrzymano</string>
+    <string name="downloads_summary">Zarządzaj aktywnymi pobraniami i pamięcią w jednym miejscu</string>
+    <string name="container_storage_title">Menedżer pamięci</string>
+    <string name="container_storage_subtitle">Przenoś instalacje między pamięcią wewnętrzną i zewnętrzną</string>
+    <string name="container_storage_summary">%1$d elementów • %2$s</string>
+    <string name="container_storage_loading">Ładowanie stanu pamięci...</string>
+    <string name="container_storage_empty">Nie znaleziono przenośnych instalacji gier</string>
+    <string name="container_storage_source_and_status">%1$s • %2$s</string>
+    <string name="container_storage_source_unknown">Nieznane źródło</string>
+    <string name="container_storage_location_internal">Wewnętrzna</string>
+    <string name="container_storage_location_external">Zewnętrzna</string>
+    <string name="container_storage_location_unknown">Nieznana</string>
+    <string name="container_storage_status_ready">Gotowe</string>
+    <string name="container_storage_status_orphaned">Brak metadanych gry</string>
+    <string name="container_storage_status_no_container">Brak kontenera</string>
+    <string name="container_storage_status_game_files_missing">Brak plików gry</string>
+    <string name="container_storage_status_unreadable">Nieczytelne</string>
+    <string name="container_storage_move_to_external_button">Przenieś na zewnętrzną</string>
+    <string name="container_storage_move_to_internal_button">Przenieś do wewnętrznej</string>
+    <string name="container_storage_move_external_disabled">Ustaw ścieżkę pamięci zewnętrznej w Ustawieniach przed przenoszeniem gier.</string>
+    <string name="container_storage_move_success">Przeniesiono %1$s do %2$s</string>
+    <string name="container_storage_move_failed">Nie udało się przenieść gry: %1$s</string>
+    <string name="container_storage_remove_button">Usuń kontener</string>
+    <string name="container_storage_remove_title">Usuń kontener</string>
+    <string name="container_storage_remove_message">Usunąć kontener dla %1$s? Pliki gry pozostaną na dysku.</string>
+    <string name="container_storage_remove_success">Usunięto kontener dla %1$s</string>
+    <string name="container_storage_remove_failed">Nie udało się usunąć kontenera</string>
+    <string name="container_storage_uninstall_button">Odinstaluj grę</string>
+    <string name="container_storage_uninstall_title">Odinstaluj grę</string>
+    <string name="container_storage_uninstall_message">Odinstalować %1$s i usunąć jego kontener? Pliki gry i powiązane dane kontenera zostaną usunięte.</string>
+    <string name="container_storage_uninstall_game_only_title">Odinstaluj tylko grę</string>
+    <string name="container_storage_uninstall_game_only_message">%1$s nie ma kontenera. Odinstalować tylko pliki gry?</string>
+    <string name="container_storage_uninstall_success">Odinstalowano %1$s</string>
+    <string name="container_storage_uninstall_failed">Nie udało się odinstalować gry: %1$s</string>
+    <string name="container_storage_unknown_container">Nieznany kontener</string>
+    <string name="container_storage_unknown_error">Nieznany błąd</string>
+    <string name="settings_storage_title">Pamięć</string>
+    <string name="settings_storage_manage_title">Zarządzaj pamięcią</string>
+    <string name="settings_storage_manage_subtitle">Przeglądaj instalacje, przenoś je między lokalizacjami pamięci i czyść kontenery</string>
 
     <!-- Library Tabs -->
     <string name="tab_all">Wszystkie</string>
@@ -281,7 +338,6 @@
     <string name="performance_hud_battery_level">Poziom baterii</string>
     <string name="performance_hud_power_draw">Pobór mocy</string>
     <string name="performance_hud_runtime_left">Pozostały czas</string>
-    <string name="performance_hud_battery_temperature">Temperatura baterii</string>
     <string name="performance_hud_clock_time">Czas</string>
     <string name="performance_hud_cpu_temperature">Temperatura CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura GPU</string>
@@ -603,6 +659,11 @@
     <string name="steam_offline_mode">Tryb Offline Steam</string>
     <string name="steam_offline_mode_description">Uruchamiaj gry Steam w trybie offline</string>
     <string name="achievement_unlocked">Osiągnięcie odblokowane</string>
+    <string name="settings_achievement_notification_position">Pozycja powiadomienia o osiągnięciu</string>
+    <string name="achievement_position_top_left">Lewy górny</string>
+    <string name="achievement_position_top_right">Prawy górny</string>
+    <string name="achievement_position_bottom_left">Lewy dolny</string>
+    <string name="achievement_position_bottom_right">Prawy dolny</string>
     <string name="launch_steam_client_description">Zmniejsza wydajność i spowalnia uruchamianie\nPozwala na grę online i naprawia problemy z DRM oraz kontrolerem\nNie wszystkie gry działają</string>
     <string name="allow_steam_updates">Zezwól na aktualizacje Steam</string>
     <string name="allow_steam_updates_description">Aktualizuje Steam do najnowszej wersji. Znacząco zmniejsza wydajność.</string>
@@ -1292,4 +1353,15 @@
     <string name="install_failed_message">Nie udało się zainstalować plików systemowych. Spróbuj ponownie. Jeśli problem będzie się powtarzał, spróbuj innej sieci lub użyj VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Zamień przyciski akcji</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Zamień ikony przycisków A↔B i X↔Y</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Sprawdzanie modów z Warsztatu…</string>
+    <string name="workshop_update_title">Aktualizacje modów z Warsztatu</string>
+    <string name="workshop_update_prompt">%1$s MB aktualizacji modów dostępnych. Pobrać teraz czy pominąć?</string>
+    <string name="workshop_download_btn">Pobierz</string>
+    <string name="workshop_skip_btn">Pomiń</string>
+    <string name="workshop_downloading">Pobieranie modów z Warsztatu (%1$d/%2$d)</string>
+    <string name="workshop_processing">Przetwarzanie modów…</string>
+    <string name="workshop_failed_count">Nie udało się zaktualizować %1$d modów z Warsztatu</string>
+    <string name="workshop_download_failed">Pobieranie nie powiodło się</string>
 </resources>

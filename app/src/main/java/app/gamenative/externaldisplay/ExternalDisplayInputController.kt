@@ -20,8 +20,6 @@ import com.winlator.container.Container
 import com.winlator.widget.TouchpadView
 import com.winlator.xserver.XServer
 
-private const val EXTERNAL_SURFACE_BG_RES: Int = R.color.external_display_surface_background
-private const val EXTERNAL_KEY_BG_RES: Int = R.color.external_display_key_background
 
 class ExternalDisplayInputController(
     private val context: Context,
@@ -155,7 +153,7 @@ private class ExternalInputPresentation(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
-                    setBackgroundColor(ContextCompat.getColor(context, EXTERNAL_SURFACE_BG_RES))
+                    setBackgroundColor(ContextCompat.getColor(context, R.color.external_display_surface_background))
                     touchpadViewProvider()?.let { primary ->
                         setSimTouchScreen(primary.isSimTouchScreen)
                     }
@@ -168,7 +166,7 @@ private class ExternalInputPresentation(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
-                    setBackgroundColor(ContextCompat.getColor(context, EXTERNAL_SURFACE_BG_RES))
+                    setBackgroundColor(ContextCompat.getColor(context, R.color.external_display_surface_background))
                 }
 
                 val hintIcon = ImageView(context).apply {
@@ -178,7 +176,7 @@ private class ExternalInputPresentation(
                         gravity = Gravity.CENTER
                     }
                     setImageResource(R.drawable.icon_keyboard)
-                    alpha = 0.35f
+                    setColorFilter(ContextCompat.getColor(context, R.color.external_display_key_color))
                     scaleType = ImageView.ScaleType.FIT_CENTER
                 }
 
@@ -221,7 +219,7 @@ private class HybridInputLayout(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT,
         )
-        setBackgroundColor(ContextCompat.getColor(context, EXTERNAL_SURFACE_BG_RES))
+        setBackgroundColor(ContextCompat.getColor(context, R.color.external_display_surface_background))
         touchpadViewProvider()?.let { primary ->
             setSimTouchScreen(primary.isSimTouchScreen)
         }
@@ -246,9 +244,10 @@ private class HybridInputLayout(
         }
         background = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
-            setColor(ContextCompat.getColor(context, EXTERNAL_KEY_BG_RES))
+            setColor(ContextCompat.getColor(context, R.color.external_display_key_background))
         }
         setImageResource(R.drawable.icon_keyboard)
+        setColorFilter(ContextCompat.getColor(context, R.color.external_display_key_color))
         scaleType = ImageView.ScaleType.CENTER_INSIDE
         setPadding(marginPx / 2, marginPx / 2, marginPx / 2, marginPx / 2)
         setOnClickListener { toggleKeyboard() }
