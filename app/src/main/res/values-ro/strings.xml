@@ -290,6 +290,8 @@
     <string name="screen_effects_toon_description">Adaugă contururi întunecate pentru un aspect cel-shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Netezește marginile zimțate cu un efect ușor de anti-aliasing post-procesare.</string>
+    <string name="screen_effects_vivid">Vivid</string>
+    <string name="screen_effects_vivid_description">Adaugă bloom și un plus de contrast pentru o imagine mai puternică.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Adaugă linii de scanare și o ușoară aberație cromatică.</string>
     <string name="screen_effects_ntsc">NTSC</string>

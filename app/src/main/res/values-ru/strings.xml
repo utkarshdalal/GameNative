@@ -831,6 +831,8 @@ https://gamenative.app
     <string name="screen_effects_toon_description">Добавляет тёмные контуры для эффекта cel-shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Сглаживает зубчатые края лёгким постобрабатывающим антиалиасингом.</string>
+    <string name="screen_effects_vivid">Насыщенный</string>
+    <string name="screen_effects_vivid_description">Добавляет bloom и усиливает контраст для более выразительного изображения.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Добавляет строки развёртки и лёгкую хроматическую аберрацию.</string>
     <string name="screen_effects_ntsc">NTSC</string>

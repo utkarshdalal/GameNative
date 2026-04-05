@@ -281,6 +281,8 @@
     <string name="screen_effects_toon_description">Fügt dunkle Konturen für einen Cel-Shading-Look hinzu.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Glättet gezackte Kanten mit einem leichten Post-Process-Anti-Aliasing-Effekt.</string>
+    <string name="screen_effects_vivid">Lebendig</string>
+    <string name="screen_effects_vivid_description">Fügt Bloom und einen Kontrastschub für ein kräftigeres Bild hinzu.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Fügt Scanlines und eine leichte chromatische Aberration hinzu.</string>
     <string name="screen_effects_ntsc">NTSC</string>

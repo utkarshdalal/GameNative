@@ -283,6 +283,8 @@
     <string name="screen_effects_toon_description">Додає темні контури для вигляду cel-shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Згладжує зубчасті краї за допомогою легкого постпроцесного згладжування.</string>
+    <string name="screen_effects_vivid">Насичений</string>
+    <string name="screen_effects_vivid_description">Додає bloom і підсилює контраст для виразнішого зображення.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Додає рядки розгортки та легку хроматичну аберацію.</string>
     <string name="screen_effects_ntsc">NTSC</string>

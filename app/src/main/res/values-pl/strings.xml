@@ -300,6 +300,8 @@
     <string name="screen_effects_toon_description">Dodaje ciemne kontury dla wyglądu cel-shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Wygładza postrzępione krawędzie lekkim antyaliasingiem w postprocessingu.</string>
+    <string name="screen_effects_vivid">Żywy</string>
+    <string name="screen_effects_vivid_description">Dodaje bloom i zwiększa kontrast, aby obraz był bardziej wyrazisty.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Dodaje linie skanowania i subtelną aberrację chromatyczną.</string>
     <string name="screen_effects_ntsc">NTSC</string>

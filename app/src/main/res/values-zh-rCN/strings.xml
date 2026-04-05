@@ -286,6 +286,8 @@
     <string name="screen_effects_toon_description">添加深色描边，呈现 cel-shading 风格外观。</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">通过轻量级后处理抗锯齿平滑锯齿边缘。</string>
+    <string name="screen_effects_vivid">鲜艳</string>
+    <string name="screen_effects_vivid_description">增加泛光和对比度增强，让画面更有冲击力。</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">添加扫描线和轻微色差效果。</string>
     <string name="screen_effects_ntsc">NTSC</string>
