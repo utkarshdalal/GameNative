@@ -255,8 +255,8 @@
     <string name="screen_effects_toon_description">Adds dark outlines for a cel-shaded look.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Smooths jagged edges with a light post-process anti-aliasing pass.</string>
-    <string name="screen_effects_hdr">HDR</string>
-    <string name="screen_effects_hdr_description">Bloom and contrast enhancement for a punchier image.</string>
+    <string name="screen_effects_vivid">Vivid</string>
+    <string name="screen_effects_vivid_description">Adds a bloom and contrast boost for a punchier image.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Adds scanlines and subtle chromatic aberration.</string>
     <string name="screen_effects_ntsc">NTSC</string>

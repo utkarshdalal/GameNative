@@ -72,7 +72,7 @@ import com.winlator.renderer.effects.ColorEffect
 import com.winlator.renderer.effects.CRTEffect
 import com.winlator.renderer.effects.Effect
 import com.winlator.renderer.effects.FXAAEffect
-import com.winlator.renderer.effects.HDREffect
+import com.winlator.renderer.effects.VividEffect
 import com.winlator.renderer.effects.NTSCCombinedEffect
 import com.winlator.renderer.effects.ToonEffect
 import kotlin.math.abs
@@ -105,8 +105,8 @@ fun ScreenEffectsTabContent(
     var enableFXAA by remember(renderer) {
         mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
     }
-    var enableHDR by remember(renderer) {
-        mutableStateOf(composer.getEffect(HDREffect::class.java) != null)
+    var enableVivid by remember(renderer) {
+        mutableStateOf(composer.getEffect(VividEffect::class.java) != null)
     }
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
@@ -115,7 +115,7 @@ fun ScreenEffectsTabContent(
         mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableHDR, enableCRT, enableNTSC) {
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableVivid, enableCRT, enableNTSC) {
         val effects = mutableListOf<Effect>()
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
@@ -132,8 +132,8 @@ fun ScreenEffectsTabContent(
         if (enableFXAA) {
             effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
         }
-        if (enableHDR) {
-            effects += composer.getEffect(HDREffect::class.java) ?: HDREffect()
+        if (enableVivid) {
+            effects += composer.getEffect(VividEffect::class.java) ?: VividEffect()
         }
         if (enableCRT) {
             effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
@@ -151,7 +151,7 @@ fun ScreenEffectsTabContent(
         gamma = 1.0f
         enableToon = false
         enableFXAA = false
-        enableHDR = false
+        enableVivid = false
         enableCRT = false
         enableNTSC = false
     }
@@ -212,10 +212,10 @@ fun ScreenEffectsTabContent(
             onToggle = { enableFXAA = !enableFXAA },
         )
         ScreenEffectToggleRow(
-            title = stringResource(R.string.screen_effects_hdr),
-            subtitle = stringResource(R.string.screen_effects_hdr_description),
-            enabled = enableHDR,
-            onToggle = { enableHDR = !enableHDR },
+            title = stringResource(R.string.screen_effects_vivid),
+            subtitle = stringResource(R.string.screen_effects_vivid_description),
+            enabled = enableVivid,
+            onToggle = { enableVivid = !enableVivid },
         )
         ScreenEffectToggleRow(
             title = stringResource(R.string.screen_effects_crt),
@@ -269,8 +269,8 @@ fun ScreenEffectsPanel(
     var enableFXAA by remember(renderer) {
         mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
     }
-    var enableHDR by remember(renderer) {
-        mutableStateOf(composer.getEffect(HDREffect::class.java) != null)
+    var enableVivid by remember(renderer) {
+        mutableStateOf(composer.getEffect(VividEffect::class.java) != null)
     }
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
@@ -279,7 +279,7 @@ fun ScreenEffectsPanel(
         mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableHDR, enableCRT, enableNTSC) {
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableVivid, enableCRT, enableNTSC) {
         val effects = mutableListOf<Effect>()
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
@@ -296,8 +296,8 @@ fun ScreenEffectsPanel(
         if (enableFXAA) {
             effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
         }
-        if (enableHDR) {
-            effects += composer.getEffect(HDREffect::class.java) ?: HDREffect()
+        if (enableVivid) {
+            effects += composer.getEffect(VividEffect::class.java) ?: VividEffect()
         }
         if (enableCRT) {
             effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
@@ -315,7 +315,7 @@ fun ScreenEffectsPanel(
         gamma = 1.0f
         enableToon = false
         enableFXAA = false
-        enableHDR = false
+        enableVivid = false
         enableCRT = false
         enableNTSC = false
     }
@@ -495,10 +495,10 @@ fun ScreenEffectsPanel(
                         onToggle = { enableFXAA = !enableFXAA },
                     )
                     ScreenEffectToggleRow(
-                        title = stringResource(R.string.screen_effects_hdr),
-                        subtitle = stringResource(R.string.screen_effects_hdr_description),
-                        enabled = enableHDR,
-                        onToggle = { enableHDR = !enableHDR },
+                        title = stringResource(R.string.screen_effects_vivid),
+                        subtitle = stringResource(R.string.screen_effects_vivid_description),
+                        enabled = enableVivid,
+                        onToggle = { enableVivid = !enableVivid },
                     )
                     ScreenEffectToggleRow(
                         title = stringResource(R.string.screen_effects_crt),

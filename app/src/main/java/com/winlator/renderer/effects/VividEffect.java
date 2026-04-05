@@ -4,23 +4,23 @@ import com.winlator.renderer.material.ScreenMaterial;
 import com.winlator.renderer.material.ShaderMaterial;
 
 /**
- * A punchy fake-HDR post-process inspired by the shader used in Ludashi/Winlator forks.
- * This is not true HDR output; it is a bloom + contrast style fullscreen effect.
+ * A punchy vivid post-process inspired by the shader used in Ludashi/Winlator forks.
+ * This is a bloom + contrast style fullscreen effect for a more vivid image.
  */
-public class HDREffect extends Effect {
+public class VividEffect extends Effect {
     @Override
     protected ShaderMaterial createMaterial() {
-        return new HDRMaterial();
+        return new VividMaterial();
     }
 
-    private static class HDRMaterial extends ScreenMaterial {
+    private static class VividMaterial extends ScreenMaterial {
         @Override
         protected String getFragmentShader() {
             return
                 "precision highp float;\n" +
                 "uniform sampler2D screenTexture;\n" +
                 "uniform vec2 resolution;\n" +
-                "const float HDR_POWER = 1.30;\n" +
+                "const float VIVID_POWER = 1.30;\n" +
                 "const float RADIUS_1 = 0.793;\n" +
                 "const float RADIUS_2 = 0.870;\n" +
                 "void main() {\n" +
@@ -49,9 +49,9 @@ public class HDREffect extends Effect {
                 "    bloom2 *= 0.010;\n" +
                 "\n" +
                 "    float dist = RADIUS_2 - RADIUS_1;\n" +
-                "    vec3 hdr = (color + (bloom2 - bloom1)) * dist;\n" +
-                "    vec3 blend = hdr + color;\n" +
-                "    color = pow(abs(blend), vec3(abs(HDR_POWER))) + hdr;\n" +
+                "    vec3 vivid = (color + (bloom2 - bloom1)) * dist;\n" +
+                "    vec3 blend = vivid + color;\n" +
+                "    color = pow(abs(blend), vec3(abs(VIVID_POWER))) + vivid;\n" +
                 "\n" +
                 "    gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);\n" +
                 "}";
