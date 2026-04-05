@@ -9,9 +9,8 @@ import timber.log.Timber
 
 object UbisoftConnectStep : PreInstallStep {
     private const val TAG = "UbisoftConnectStep"
-    private const val INSTALLER_NAME = "UbisoftConnectInstaller.exe"
+    private val INSTALLER_NAMES = listOf("UbisoftConnectInstaller.exe", "UplayInstaller.exe")
     private const val COMMON_REDIST_SUBDIR = "_CommonRedist/UbisoftConnect"
-    private const val WINE_INSTALLER_PATH = "A:\\_CommonRedist\\UbisoftConnect\\UbisoftConnectInstaller.exe"
 
     override val marker: Marker = Marker.UBISOFT_CONNECT_INSTALLED
 
@@ -32,20 +31,27 @@ object UbisoftConnectStep : PreInstallStep {
         gameDir: File,
         gameDirPath: String,
     ): String? {
-        val rootInstaller = File(gameDir, INSTALLER_NAME)
         val commonRedistDir = File(gameDir, COMMON_REDIST_SUBDIR)
-        val commonRedistInstaller = File(commonRedistDir, INSTALLER_NAME)
+        val installerName =
+            INSTALLER_NAMES.firstOrNull { installer ->
+                ensureInstallerAtCommonRedist(
+                    rootInstaller = File(gameDir, installer),
+                    commonRedistDir = commonRedistDir,
+                    commonRedistInstaller = File(commonRedistDir, installer),
+                )
+            }
 
-        if (!ensureInstallerAtCommonRedist(rootInstaller, commonRedistDir, commonRedistInstaller)) {
+        if (installerName == null) {
             Timber.tag(TAG).i(
-                "Ubisoft Connect installer not present at expected _CommonRedist path for game at %s",
+                "Ubisoft installer not present at expected _CommonRedist path for game at %s",
                 gameDirPath,
             )
             return null
         }
 
-        val command = "$WINE_INSTALLER_PATH /S"
-        Timber.tag(TAG).i("Using Ubisoft Connect installer (silent): %s", command)
+        val wineInstallerPath = "A:\\_CommonRedist\\UbisoftConnect\\$installerName"
+        val command = "$wineInstallerPath /S"
+        Timber.tag(TAG).i("Using Ubisoft installer (silent): %s", command)
 
         return command
     }
@@ -68,7 +74,7 @@ object UbisoftConnectStep : PreInstallStep {
             Files.createSymbolicLink(commonRedistInstaller.toPath(), rootInstaller.toPath())
             return commonRedistInstaller.exists()
         } catch (t: Throwable) {
-            Timber.tag(TAG).w(t, "Failed creating Ubisoft Connect symlink")
+            Timber.tag(TAG).w(t, "Failed creating Ubisoft symlink")
             return false
         }
     }

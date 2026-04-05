@@ -760,8 +760,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             if (depot.language.isNotEmpty() && depot.language != preferredLanguage)
                 return false
             // 6. Package grants this depot — prevents grabbing region depots the user has no license for.
-            //    Skip for DLC depots: they're licensed via their own package, already validated by check 4.
-            if (depot.dlcAppId == INVALID_APP_ID && licensedDepotIds != null && depot.depotId !in licensedDepotIds)
+            //    Skip for DLC and systemDefined depots: DLC licensed via own package (check 4), systemDefined always granted.
+            if (depot.dlcAppId == INVALID_APP_ID && !depot.systemDefined && licensedDepotIds != null && depot.depotId !in licensedDepotIds)
                 return false
             // 7. Prefer non-Steam-Deck depot when both exist (we're on Android, not Deck)
             if (depot.steamDeck && preferNonDeckWindows)
@@ -860,6 +860,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             language = depot.language,
                             manifests = depot.manifests,
                             encryptedManifests = depot.encryptedManifests,
+                            systemDefined = depot.systemDefined,
                             steamDeck = depot.steamDeck,
                         )
                     }
