@@ -3,8 +3,6 @@ package app.gamenative.data
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
@@ -32,7 +30,7 @@ data class DownloadInfo(
     private var emaSpeedBytesPerSec: Double = 0.0
     private var hasEmaSpeed: Boolean = false
     private var isActive: Boolean = true
-    private val statusMessage = MutableStateFlow<String?>(null)
+    private var currentStatusMessage: String? = null
 
     fun cancel() {
         cancel("Cancelled by user")
@@ -135,10 +133,11 @@ data class DownloadInfo(
     }
 
     fun updateStatusMessage(message: String?) {
-        statusMessage.value = message
+        currentStatusMessage = message
+        emitProgressChange()
     }
 
-    fun getStatusMessageFlow(): StateFlow<String?> = statusMessage
+    fun getCurrentStatusMessage(): String? = currentStatusMessage
 
     private fun addSpeedSample(timestampMs: Long) {
         speedSamples.add(SpeedSample(timestampMs, bytesDownloaded))
