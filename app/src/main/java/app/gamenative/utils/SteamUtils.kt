@@ -865,7 +865,7 @@ object SteamUtils {
      * This function copies all files from the GSE saves location to the proper Steam userdata
      * location and then removes the original GSE directory to complete the migration.
      */
-    private fun migrateGSESavesToSteamUserdata(context: Context, appId: Int) {
+    fun migrateGSESavesToSteamUserdata(context: Context, appId: Int) {
         val imageFs = ImageFs.find(context)
         val accountId = SteamService.userSteamId?.accountID?.toInt()
             ?: PrefManager.steamUserAccountId.takeIf { it != 0 }
@@ -983,9 +983,6 @@ object SteamUtils {
             if (!ticketBase64.isNullOrEmpty()) {
                 appendLine("ticket=$ticketBase64")
             }
-
-            // Migrate GSE Saves to Steam userdata
-            migrateGSESavesToSteamUserdata(context, steamAppId)
 
             // Add [user::saves] section
             val steamUserDataPath = "C:\\Program Files (x86)\\Steam\\userdata\\$accountId"

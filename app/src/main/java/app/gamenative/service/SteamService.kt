@@ -2143,6 +2143,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return@async PostSyncInfo(SyncResult.InProgress)
             }
 
+            // Migrate GSE Saves to Steam userdata
+            SteamUtils.migrateGSESavesToSteamUserdata(instance?.applicationContext!!, appId)
+
             try {
                 var syncResult = PostSyncInfo(SyncResult.UnknownFail)
 
