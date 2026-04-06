@@ -45,19 +45,26 @@ class IniFileFix(
                 updated = updateIniValue(updated, key, value)
             }
 
-            if (updated == original) {
-                return false
+            val fileChanged = updated != original
+
+            if (fileChanged) {
+                iniFile.writeText(updated, StandardCharsets.UTF_8)
             }
 
-            iniFile.writeText(updated, StandardCharsets.UTF_8)
-
+            var migrationMarked = false
             if (migrationKey != null) {
                 container.putExtra(migrationKey, "1")
                 container.saveData()
+                migrationMarked = true
             }
 
-            Timber.tag("GameFixes").i("Updated $relativePath for game $gameId")
-            true
+            if (fileChanged) {
+                Timber.tag("GameFixes").i("Updated $relativePath for game $gameId")
+            } else if (migrationMarked) {
+                Timber.tag("GameFixes").d("Marked $relativePath migration as complete for game $gameId")
+            }
+
+            fileChanged || migrationMarked
         }.getOrElse { error ->
             Timber.tag("GameFixes").w(error, "Failed to update $relativePath for game $gameId")
             false
