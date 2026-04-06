@@ -27,6 +27,7 @@ import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.data.CloudSaveStatus
 import app.gamenative.ui.data.toDisplayString
+import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.MarkerUtils
 import java.io.File
 import app.gamenative.ui.data.AppMenuOption
@@ -196,15 +197,17 @@ class GOGAppScreen : BaseAppScreen() {
             }
         }
 
-        LaunchedEffect(gameId, cloudConnectivityVersion.value) {
+        val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, libraryItem.appId)
+
+        LaunchedEffect(gameId, cloudConnectivityVersion.value, isLocalSavesOnly) {
             val locations = withContext(Dispatchers.IO) {
                 GOGService.getSaveLocations(context, libraryItem.appId, libraryItem.name)
             }
-            val supportsCloudSaves = locations?.isNotEmpty()
+            val supportsCloudSaves = (locations?.isNotEmpty() ?: false) && !isLocalSavesOnly
             hasCloudSaves = supportsCloudSaves
 
             val safeLocations = locations.orEmpty()
-            if (supportsCloudSaves == true) {
+            if (supportsCloudSaves) {
                 cloudSaveStatus.value = CloudSaveStatus.CHECKING
                 syncStateText.value = context.getString(R.string.cloud_saves_checking)
 

@@ -330,8 +330,8 @@ class SteamAppScreen : BaseAppScreen() {
             gameName = appInfo.name,
         )
 
-        // Cloud saves sync status — cached state shown immediately, updated by live check
-        val hasCloudSaves = appInfo.supportsCloudSaves
+        // Cloud saves sync status
+        val hasCloudSaves = appInfo.supportsCloudSaves && !ContainerUtils.isLocalSavesOnly(context, libraryItem.appId)
 
         // Re-run cloud check after a successful logon (userSteamId guaranteed valid),
         // and also on disconnect so the status updates to Offline immediately.
