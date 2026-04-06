@@ -295,7 +295,9 @@ public class ControllerManager {
      */
     public int autoAssignDevice(int deviceId) {
         int existingSlot = getSlotForDevice(deviceId);
-        if (existingSlot >= 0) return existingSlot;
+        if (existingSlot >= 0) {
+            return isSlotEnabled(existingSlot) ? existingSlot : -1;
+        }
 
         InputDevice device = inputManager.getInputDevice(deviceId);
         if (device == null || !isGameController(device)) return -1;
