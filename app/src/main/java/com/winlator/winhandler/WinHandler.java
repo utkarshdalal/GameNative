@@ -156,6 +156,13 @@ public class WinHandler {
     }
 
     public void setControllerForSlot(int slot, ExternalController controller) {
+        if (slot < 0 || slot >= MAX_PLAYERS) return;
+        ExternalController old = getControllerForSlot(slot);
+        if (old != null && old != controller) {
+            stopVibrationForSlot(slot, old);
+            lastLowFreqs[slot] = 0;
+            lastHighFreqs[slot] = 0;
+        }
         if (slot == 0) { currentController = controller; return; }
         if (slot > 0 && slot <= extraControllers.length) extraControllers[slot - 1] = controller;
     }
