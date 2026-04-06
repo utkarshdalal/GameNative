@@ -262,6 +262,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     protected void renderDrawable(Drawable drawable, int x, int y, ShaderMaterial material, boolean forceFullscreen, float sx, float sy) {
+        if (drawable == null) return;
         synchronized (drawable.renderLock) {
             if (forceFullscreen) {
                 short newHeight = (short)Math.min(xServer.screenInfo.height, ((float)xServer.screenInfo.width / drawable.width) * drawable.height);
