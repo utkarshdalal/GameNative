@@ -963,8 +963,17 @@ object SteamUtils {
                 }
             }
 
-            // Add cloud save config sections if appInfo exists
+            // Add app paths and cloud save config sections if appInfo exists
             if (appInfo != null) {
+                // Some games required this path to be setup for detecting dlc, e.g. Vampire Survivors
+                val gameDir = File(SteamService.getAppDirPath(steamAppId))
+                val gameName = gameDir.name
+                val actualInstallDir = appInfo.config.installDir.ifEmpty { gameName }
+                appendLine()
+                appendLine("[app::paths]")
+                appendLine("$steamAppId=./steamapps/common/$actualInstallDir")
+
+                // Setup for cloud save
                 appendLine()
                 append(generateCloudSaveConfig(appInfo))
             }

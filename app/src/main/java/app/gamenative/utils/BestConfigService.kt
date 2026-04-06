@@ -72,9 +72,10 @@ object BestConfigService {
      */
     suspend fun fetchBestConfig(
         gameName: String,
-        gpuName: String
+        gpuName: String,
+        gameStore: String,
     ): BestConfigResponse? = withContext(Dispatchers.IO) {
-        val cacheKey = "${gameName}_${gpuName}"
+        val cacheKey = "${gameName}_${gpuName}_${gameStore}"
 
         // Check cache first
         cache[cacheKey]?.let {
@@ -86,6 +87,7 @@ object BestConfigService {
             val requestBody = JSONObject().apply {
                 put("gameName", gameName)
                 put("gpuName", gpuName)
+                put("game_store", gameStore)
             }
 
             val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")

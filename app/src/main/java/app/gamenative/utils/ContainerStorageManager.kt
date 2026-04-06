@@ -6,7 +6,9 @@ import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
+import app.gamenative.data.AppInfo
 import app.gamenative.db.dao.AmazonGameDao
+import app.gamenative.db.dao.AppInfoDao
 import app.gamenative.db.dao.EpicGameDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.db.dao.SteamAppDao
@@ -43,6 +45,7 @@ object ContainerStorageManager {
     @InstallIn(SingletonComponent::class)
     interface StorageManagerDaoEntryPoint {
         fun steamAppDao(): SteamAppDao
+        fun appInfoDao(): AppInfoDao
         fun gogGameDao(): GOGGameDao
         fun epicGameDao(): EpicGameDao
         fun amazonGameDao(): AmazonGameDao
@@ -425,7 +428,7 @@ object ContainerStorageManager {
         val installedGames = linkedMapOf<String, InstalledGame>()
 
         runCatching {
-            loadSteamInstalledGames(entryPoint.steamAppDao())
+            loadSteamInstalledGames(entryPoint.steamAppDao(), entryPoint.appInfoDao())
         }.onSuccess { games ->
             games.forEach { installedGames[it.appId] = it }
         }.onFailure { e ->
@@ -524,19 +527,41 @@ object ContainerStorageManager {
         return installedGames
     }
 
-    private suspend fun loadSteamInstalledGames(steamAppDao: SteamAppDao): List<InstalledGame> {
-        return steamAppDao.getAllOwnedAppsAsList()
+    private suspend fun loadSteamInstalledGames(steamAppDao: SteamAppDao, appInfoDao: AppInfoDao): List<InstalledGame> {
+        val appInfosById = appInfoDao.getAll().associateBy { it.id }
+        val recoveredAppInfos = mutableListOf<AppInfo>()
+
+        val installedGames = steamAppDao.getAllOwnedAppsAsList()
             .mapNotNull { app ->
                 val installPath = resolveSteamInstallPath(app) ?: return@mapNotNull null
+                val appInfo = appInfosById[app.id]
+                val installSizeBytes = estimateSteamInstallSize(app)
+                    ?: appInfo?.recoveredInstallSizeBytes?.takeIf { it > 0L }
+                    ?: getDirectorySizeIfPresent(installPath)?.also { recoveredSizeBytes ->
+                        buildRecoveredSteamInstallSizeAppInfo(appInfo, app.id, recoveredSizeBytes)?.let { updatedAppInfo ->
+                            recoveredAppInfos += updatedAppInfo
+                        }
+                        Timber.tag("ContainerStorageManager").i(
+                            "Recovered and cached on-disk Steam size for %s (%s) because installed depot metadata is unavailable",
+                            app.id,
+                            installPath,
+                        )
+                    }
                 InstalledGame(
                     appId = "${GameSource.STEAM.name}_${app.id}",
                     displayName = app.name.ifBlank { app.id.toString() },
                     gameSource = GameSource.STEAM,
                     installPath = installPath,
                     iconUrl = app.clientIconUrl.takeIf { app.clientIconHash.isNotEmpty() }.orEmpty(),
-                    installSizeBytes = estimateSteamInstallSize(app),
+                    installSizeBytes = installSizeBytes,
                 )
             }
+
+        if (recoveredAppInfos.isNotEmpty()) {
+            appInfoDao.insertAll(recoveredAppInfos)
+        }
+
+        return installedGames
     }
 
     private fun resolveSteamInstallPath(app: SteamApp): String? {
@@ -793,6 +818,29 @@ object ContainerStorageManager {
             .filter { depot -> installedDepotIds.contains(depot.depotId) }
             .sumOf { depot -> depot.manifests["public"]?.size ?: depot.manifests.values.firstOrNull()?.size ?: 0L }
             .takeIf { it > 0L }
+    }
+
+    private fun getDirectorySizeIfPresent(path: String): Long? {
+        val dir = File(path)
+        if (!dir.exists() || !dir.isDirectory) return null
+        return getContainerDirectorySize(dir.toPath()).takeIf { it > 0L }
+    }
+
+    private fun buildRecoveredSteamInstallSizeAppInfo(
+        existingAppInfo: AppInfo?,
+        appId: Int,
+        recoveredSizeBytes: Long,
+    ): AppInfo? {
+        if (recoveredSizeBytes <= 0L || existingAppInfo?.recoveredInstallSizeBytes == recoveredSizeBytes) return null
+
+        return existingAppInfo?.copy(
+            isDownloaded = true,
+            recoveredInstallSizeBytes = recoveredSizeBytes,
+        ) ?: AppInfo(
+            id = appId,
+            isDownloaded = true,
+            recoveredInstallSizeBytes = recoveredSizeBytes,
+        )
     }
 
     private fun readConfig(configFile: File): JSONObject? {
