@@ -207,6 +207,9 @@ public class Drawable extends XResource {
     }
 
     public void drawBitmap(Bitmap bitmap) {
+        if (this.data == null) {
+            return;
+        }
         fromBitmap(bitmap, data);
         texture.setNeedsUpdate(true);
         if (onDrawListener != null) onDrawListener.run();
