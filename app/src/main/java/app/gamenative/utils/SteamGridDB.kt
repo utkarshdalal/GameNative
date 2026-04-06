@@ -27,10 +27,7 @@ object SteamGridDB {
     private const val LOGOS_ENDPOINT = "/logos/game"
     private const val ICONS_ENDPOINT = "/icons/game"
 
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+    private val httpClient = Net.http
 
     private fun apiKeyOrNull(logMissing: Boolean = false): String? {
         val apiKey = app.gamenative.BuildConfig.STEAMGRIDDB_API_KEY.takeIf { it.isNotEmpty() }
@@ -41,25 +38,12 @@ object SteamGridDB {
     }
 
     private fun extensionFromUrl(url: String): String = when {
-        url.contains(".png", ignoreCase = true) -> ".png"
-        url.contains(".jpg", ignoreCase = true) -> ".jpg"
-        url.contains(".jpeg", ignoreCase = true) -> ".jpg"
-        url.contains(".webp", ignoreCase = true) -> ".webp"
+        url.endsWith(".png", ignoreCase = true) -> ".png"
+        url.endsWith(".jpg", ignoreCase = true) -> ".jpg"
+        url.endsWith(".jpeg", ignoreCase = true) -> ".jpg"
+        url.endsWith(".webp", ignoreCase = true) -> ".webp"
         else -> ".png"
     }
-
-    private fun File.hasSupportedImageExtension(): Boolean =
-        name.endsWith(".png", ignoreCase = true) ||
-            name.endsWith(".jpg", ignoreCase = true) ||
-            name.endsWith(".webp", ignoreCase = true)
-
-    private fun File.findFirstImage(prefix: String, excludeSubstring: String? = null): File? =
-        listFiles { file ->
-            file.isFile &&
-                file.name.startsWith(prefix, ignoreCase = true) &&
-                file.hasSupportedImageExtension() &&
-                (excludeSubstring == null || !file.name.contains(excludeSubstring, ignoreCase = true))
-        }?.firstOrNull()
 
     private fun authorizedRequest(url: String, apiKey: String): Request =
         Request.Builder()
@@ -84,7 +68,7 @@ object SteamGridDB {
         }
     }
 
-    private fun downloadBytes(url: String, errorLabel: String): ByteArray? {
+    private fun downloadImageBytes(url: String, errorLabel: String): ByteArray? {
         val response = httpClient.newCall(basicRequest(url)).execute()
         response.use {
             if (!it.isSuccessful) {
@@ -209,12 +193,19 @@ object SteamGridDB {
 
             val data = json.optJSONArray("data") ?: return@withContext emptyList()
             buildList {
-                for (i in 0 until data.length()) {
+                // Loop until either the length of the data or the specified limit, whichever is smaller
+                for (i in 0 until data.length().coerceAtMost(limit)) {
                     val item = data.optJSONObject(i) ?: continue
                     val url = item.optString("url")
                     if (url.isBlank()) continue
 
                     // Exclude clearly animated assets for pinned launcher shortcuts.
+                    // TODO: Remove this and just filter on the API request instead
+                    // mimes
+                    //Array of strings (MimesIcon)
+                    //Items Enum: "image/png" "image/vnd.microsoft.icon"
+                    //Filter results by image mime types. Multiple types can be provided as comma delimited strings.
+
                     val mime = item.optString("mime")
                     val isAnimated = item.optBoolean("animated", false) ||
                         mime.contains("gif", ignoreCase = true) ||
@@ -227,8 +218,6 @@ object SteamGridDB {
                             style = item.optString("style"),
                         ),
                     )
-
-                    if (size >= limit) break
                 }
             }
         } catch (e: Exception) {
@@ -272,7 +261,7 @@ object SteamGridDB {
     ): Pair<String, Boolean?>? = withContext(Dispatchers.IO) {
         try {
             // Download the image
-            val imageBytes = downloadBytes(imageUrl, "Failed to download image from $imageUrl")
+            val imageBytes = downloadImageBytes(imageUrl, "Failed to download image from $imageUrl")
                 ?: return@withContext null
 
             // Determine orientation
@@ -338,7 +327,7 @@ object SteamGridDB {
                 val extension = extensionFromUrl(imageUrl)
 
                 // Download the image to check orientation first
-                val imageBytes = downloadBytes(
+                val imageBytes = downloadImageBytes(
                     imageUrl,
                     "Failed to download grid image from $imageUrl"
                 ) ?: continue
@@ -448,7 +437,7 @@ object SteamGridDB {
             val outputFile = File(gameFolder, fileName)
 
             // Download the image
-            val imageBytes = downloadBytes(imageUrl, "Failed to download image from $imageUrl")
+            val imageBytes = downloadImageBytes(imageUrl, "Failed to download image from $imageUrl")
                 ?: return@withContext null
 
             // Save to file
