@@ -1237,6 +1237,8 @@
     <string name="cloud_saves_pending_download">Afventer download</string>
     <string name="cloud_saves_checking">Kontrollerer\u2026</string>
     <string name="cloud_saves_syncing">Synkroniserer\u2026</string>
+    <string name="cloud_saves_downloading">Henter\u2026</string>
+    <string name="cloud_saves_uploading">Sender\u2026</string>
     <string name="cloud_saves_conflict">Konflikt</string>
     <string name="cloud_saves_failed">Mislykkedes</string>
     <string name="cloud_saves_offline">Offline</string>

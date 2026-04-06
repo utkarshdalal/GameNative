@@ -1370,6 +1370,8 @@
     <string name="cloud_saves_pending_download">Oczekiwanie na pobranie</string>
     <string name="cloud_saves_checking">Sprawdzanie\u2026</string>
     <string name="cloud_saves_syncing">Synchronizowanie\u2026</string>
+    <string name="cloud_saves_downloading">Pobieranie\u2026</string>
+    <string name="cloud_saves_uploading">Wysyłanie\u2026</string>
     <string name="cloud_saves_conflict">Konflikt</string>
     <string name="cloud_saves_failed">Nie powiodło się</string>
     <string name="cloud_saves_offline">Offline</string>

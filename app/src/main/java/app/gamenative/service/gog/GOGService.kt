@@ -455,7 +455,6 @@ class GOGService : Service() {
                 }
 
                 val numericId = ContainerUtils.extractGameIdFromContainerId(appId)
-                PluviaApp.events.emit(AndroidEvent.CloudSaveSyncStarted(numericId))
 
                 val syncSuccess = try {
                     doSyncCloudSavesForApp(context, appId, preferredAction)
@@ -562,6 +561,9 @@ class GOGService : Service() {
                         dirname = location.name,
                         lastSyncTimestamp = timestamp,
                         preferredAction = preferredAction,
+                        onPhaseStarted = { isUploading ->
+                            PluviaApp.events.emit(AndroidEvent.CloudSaveSyncStarted(gameId, isUploading = isUploading))
+                        },
                     )
 
                     if (newTimestamp > 0) {

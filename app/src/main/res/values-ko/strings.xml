@@ -1371,6 +1371,8 @@
     <string name="cloud_saves_pending_download">다운로드 대기 중</string>
     <string name="cloud_saves_checking">확인 중\u2026</string>
     <string name="cloud_saves_syncing">동기화 중\u2026</string>
+    <string name="cloud_saves_downloading">다운로드 중\u2026</string>
+    <string name="cloud_saves_uploading">업로드 중\u2026</string>
     <string name="cloud_saves_conflict">충돌</string>
     <string name="cloud_saves_failed">실패</string>
     <string name="cloud_saves_offline">오프라인</string>

@@ -1360,6 +1360,8 @@
     <string name="cloud_saves_pending_download">等待下载</string>
     <string name="cloud_saves_checking">检查中\u2026</string>
     <string name="cloud_saves_syncing">同步中\u2026</string>
+    <string name="cloud_saves_downloading">下载中\u2026</string>
+    <string name="cloud_saves_uploading">上传中\u2026</string>
     <string name="cloud_saves_conflict">冲突</string>
     <string name="cloud_saves_failed">失败</string>
     <string name="cloud_saves_offline">离线</string>

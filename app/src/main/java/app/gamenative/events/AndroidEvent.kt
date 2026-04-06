@@ -23,7 +23,7 @@ interface AndroidEvent<T> : Event<T> {
     data class DownloadPausedDueToConnectivity(val appId: Int) : AndroidEvent<Unit>
     data class DownloadStatusChanged(val appId: Int, val isDownloading: Boolean) : AndroidEvent<Unit>
     data class LibraryInstallStatusChanged(val appId: Int) : AndroidEvent<Unit>
-    data class CloudSaveSyncStarted(val appId: Int) : AndroidEvent<Unit>
+    data class CloudSaveSyncStarted(val appId: Int, val isUploading: Boolean = false) : AndroidEvent<Unit>
     data class CloudSaveSynced(val appId: Int, val success: Boolean) : AndroidEvent<Unit>
     data class CustomGameImagesFetched(val appId: String) : AndroidEvent<Unit>
     data class GOGAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>

@@ -1372,6 +1372,8 @@
     <string name="cloud_saves_pending_download">Descărcare în așteptare</string>
     <string name="cloud_saves_checking">Se verifică\u2026</string>
     <string name="cloud_saves_syncing">Se sincronizează\u2026</string>
+    <string name="cloud_saves_downloading">Se descarcă\u2026</string>
+    <string name="cloud_saves_uploading">Se încarcă\u2026</string>
     <string name="cloud_saves_conflict">Conflict</string>
     <string name="cloud_saves_failed">Eșuat</string>
     <string name="cloud_saves_offline">Offline</string>

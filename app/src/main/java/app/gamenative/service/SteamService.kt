@@ -2292,7 +2292,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             preferredSave: SaveLocation = SaveLocation.None,
         ) {
             val accountId = userSteamId?.accountID?.toLong() ?: return
-            PluviaApp.events.emit(AndroidEvent.CloudSaveSyncStarted(appId))
             val container = ContainerUtils.getOrCreateContainer(context, "STEAM_$appId")
             ContainerManager(context).activateContainer(container)
             val sharedWinePrefix = "${ImageFs.find(context).rootDir.absolutePath}${ImageFs.WINEPREFIX}"
@@ -2350,6 +2349,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                             parentScope = parentScope,
                             prefixToPath = prefixToPath,
                             overrideLocalChangeNumber = overrideLocalChangeNumber,
+                            onPhaseStarted = { isUploading ->
+                                PluviaApp.events.emit(AndroidEvent.CloudSaveSyncStarted(appId, isUploading = isUploading))
+                            },
                         ).await()
                         if (postSyncInfo != null) {
                             Timber.i("Force cloud sync completed for app $appId with result: ${postSyncInfo.syncResult}")

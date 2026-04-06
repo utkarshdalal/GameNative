@@ -884,9 +884,9 @@ internal fun AppScreenContent(
                                 val (cloudIcon, cloudColor) = when (displayInfo.cloudSaveStatus) {
                                     CloudSaveStatus.UP_TO_DATE ->
                                         Icons.Default.CloudDone to PluviaTheme.colors.statusInstalled
-                                    CloudSaveStatus.PENDING_DOWNLOAD ->
+                                    CloudSaveStatus.DOWNLOADING, CloudSaveStatus.PENDING_DOWNLOAD ->
                                         Icons.Default.CloudDownload to Color(0xFFFFA726) // amber
-                                    CloudSaveStatus.PENDING_UPLOAD ->
+                                    CloudSaveStatus.UPLOADING, CloudSaveStatus.PENDING_UPLOAD ->
                                         Icons.Default.CloudUpload to Color(0xFFFFA726) // amber
                                     CloudSaveStatus.FAILED, CloudSaveStatus.CONFLICT ->
                                         Icons.Default.CloudOff to MaterialTheme.colorScheme.error

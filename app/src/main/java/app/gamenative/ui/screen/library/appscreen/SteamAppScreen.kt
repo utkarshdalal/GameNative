@@ -360,8 +360,8 @@ class SteamAppScreen : BaseAppScreen() {
             }
             val onCloudSaveSyncStarted: (AndroidEvent.CloudSaveSyncStarted) -> Unit = { event ->
                 if (event.appId == gameId) {
-                    cloudSaveStatus.value = CloudSaveStatus.SYNCING
-                    syncStateText.value = context.getString(R.string.cloud_saves_syncing)
+                    cloudSaveStatus.value = if (event.isUploading) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING
+                    syncStateText.value = context.getString(if (event.isUploading) R.string.cloud_saves_uploading else R.string.cloud_saves_downloading)
                 }
             }
             PluviaApp.events.on<SteamEvent.LogonEnded, Unit>(onLogonEnded)

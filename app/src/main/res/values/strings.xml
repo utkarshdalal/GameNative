@@ -1177,6 +1177,8 @@
     <string name="cloud_saves_pending_download">Pending Download</string>
     <string name="cloud_saves_checking">Checking\u2026</string>
     <string name="cloud_saves_syncing">Syncing\u2026</string>
+    <string name="cloud_saves_downloading">Downloading\u2026</string>
+    <string name="cloud_saves_uploading">Uploading\u2026</string>
     <string name="cloud_saves_conflict">Conflict</string>
     <string name="cloud_saves_failed">Failed</string>
     <string name="cloud_saves_offline">Offline</string>

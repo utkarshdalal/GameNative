@@ -152,7 +152,8 @@ class GOGCloudSavesManager(
         clientId: String,
         clientSecret: String,
         lastSyncTimestamp: Long = 0,
-        preferredAction: String = "none"
+        preferredAction: String = "none",
+        onPhaseStarted: ((isUploading: Boolean) -> Unit)? = null,
     ): Long = withContext(Dispatchers.IO) {
         try {
             Timber.tag("GOG-CloudSaves").i("Starting sync for path: $localPath")
@@ -199,6 +200,7 @@ class GOGCloudSavesManager(
             when {
                 localFiles.isNotEmpty() && cloudFiles.isEmpty() -> {
                     Timber.tag("GOG-CloudSaves").i("No files in cloud, uploading ${localFiles.size} file(s)")
+                    onPhaseStarted?.invoke(true)
                     localFiles.forEach { file ->
                         uploadFile(credentials.userId, clientId, dirname, file, credentials.accessToken)
                     }
@@ -207,6 +209,7 @@ class GOGCloudSavesManager(
 
                 localFiles.isEmpty() && downloadableCloud.isNotEmpty() -> {
                     Timber.tag("GOG-CloudSaves").i("No files locally, downloading ${downloadableCloud.size} file(s)")
+                    onPhaseStarted?.invoke(false)
                     downloadableCloud.forEach { file ->
                         downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
                     }
@@ -222,6 +225,7 @@ class GOGCloudSavesManager(
             // Handle preferred action
             if (preferredAction == "download" && downloadableCloud.isNotEmpty()) {
                 Timber.tag("GOG-CloudSaves").i("Forcing download of ${downloadableCloud.size} file(s) (user requested)")
+                onPhaseStarted?.invoke(false)
                 downloadableCloud.forEach { file ->
                     downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
                 }
@@ -230,6 +234,7 @@ class GOGCloudSavesManager(
 
             if (preferredAction == "upload" && localFiles.isNotEmpty()) {
                 Timber.tag("GOG-CloudSaves").i("Forcing upload of ${localFiles.size} file(s) (user requested)")
+                onPhaseStarted?.invoke(true)
                 localFiles.forEach { file ->
                     uploadFile(credentials.userId, clientId, dirname, file, credentials.accessToken)
                 }
@@ -241,6 +246,7 @@ class GOGCloudSavesManager(
             when (classifier.determineAction()) {
                 SyncAction.DOWNLOAD -> {
                     Timber.tag("GOG-CloudSaves").i("Downloading ${classifier.updatedCloud.size} updated cloud file(s)")
+                    onPhaseStarted?.invoke(false)
                     classifier.updatedCloud.forEach { file ->
                         downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
                     }
@@ -253,6 +259,7 @@ class GOGCloudSavesManager(
 
                 SyncAction.UPLOAD -> {
                     Timber.tag("GOG-CloudSaves").i("Uploading ${classifier.updatedLocal.size} updated local file(s)")
+                    onPhaseStarted?.invoke(true)
                     classifier.updatedLocal.forEach { file ->
                         uploadFile(credentials.userId, clientId, dirname, file, credentials.accessToken)
                     }

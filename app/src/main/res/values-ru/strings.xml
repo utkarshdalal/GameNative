@@ -1300,6 +1300,8 @@ https://gamenative.app
     <string name="cloud_saves_pending_download">Ожидание загрузки</string>
     <string name="cloud_saves_checking">Проверка\u2026</string>
     <string name="cloud_saves_syncing">Синхронизация\u2026</string>
+    <string name="cloud_saves_downloading">Скачивание\u2026</string>
+    <string name="cloud_saves_uploading">Загрузка\u2026</string>
     <string name="cloud_saves_conflict">Конфликт</string>
     <string name="cloud_saves_failed">Ошибка</string>
     <string name="cloud_saves_offline">Не в сети</string>

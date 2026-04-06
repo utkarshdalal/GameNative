@@ -1362,6 +1362,8 @@
     <string name="cloud_saves_pending_download">Очікування завантаження</string>
     <string name="cloud_saves_checking">Перевірка\u2026</string>
     <string name="cloud_saves_syncing">Синхронізація\u2026</string>
+    <string name="cloud_saves_downloading">Завантаження\u2026</string>
+    <string name="cloud_saves_uploading">Вивантаження\u2026</string>
     <string name="cloud_saves_conflict">Конфлікт</string>
     <string name="cloud_saves_failed">Помилка</string>
     <string name="cloud_saves_offline">Офлайн</string>

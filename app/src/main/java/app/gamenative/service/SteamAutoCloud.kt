@@ -224,6 +224,7 @@ object SteamAutoCloud {
         prefixToPath: (String) -> String,
         overrideLocalChangeNumber: Long? = null,
         onProgress: ((message: String, progress: Float) -> Unit)? = null,
+        onPhaseStarted: ((isUploading: Boolean) -> Unit)? = null,
     ): Deferred<PostSyncInfo?> = parentScope.async {
         val postSyncInfo: PostSyncInfo?
 
@@ -879,6 +880,7 @@ object SteamAutoCloud {
 
                         Timber.i("No local changes but new cloud user files")
 
+                        onPhaseStarted?.invoke(false)
                         downloadUserFiles(parentScope).await()?.let {
                             return@async it
                         }
@@ -888,11 +890,13 @@ object SteamAutoCloud {
                         when (preferredSave) {
                             SaveLocation.Local -> {
                                 // overwrite remote save with the local one
+                                onPhaseStarted?.invoke(true)
                                 uploadUserFiles(parentScope).await()
                             }
 
                             SaveLocation.Remote -> {
                                 // overwrite local save with the remote one
+                                onPhaseStarted?.invoke(false)
                                 downloadUserFiles(parentScope).await()?.let {
                                     return@async it
                                 }
@@ -923,6 +927,7 @@ object SteamAutoCloud {
                     if (hasLocalChanges) {
                         Timber.i("Found local changes and no new cloud user files")
 
+                        onPhaseStarted?.invoke(true)
                         uploadUserFiles(parentScope).await()
                     } else {
                         Timber.i("No local changes and no new cloud user files, doing nothing...")
