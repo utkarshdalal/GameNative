@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
+import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.GameSource
@@ -34,11 +35,14 @@ import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.dialog.LoadingDialog
+import app.gamenative.ui.component.dialog.ShortcutIconChooserDialog
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.ManifestInstaller
+import app.gamenative.utils.SteamGridDB
+import app.gamenative.utils.SteamGridDB.fetchShortcutIcons
 import app.gamenative.utils.createPinnedShortcut
 import kotlinx.coroutines.CancellationException
 import com.winlator.container.ContainerData
@@ -491,11 +495,37 @@ abstract class BaseAppScreen {
         val gameSource = getGameSource(libraryItem)
         val gameId = getGameId(libraryItem)
         val gameName = getGameName(context, libraryItem)
-        val iconUrl = getIconUrl(context, libraryItem)
+        val defaultIconUrl = getIconUrl(context, libraryItem)
+        val hasSteamGridDbKey = remember { BuildConfig.STEAMGRIDDB_API_KEY.isNotBlank() }
+        var showShortcutChooser by remember { mutableStateOf(false) }
+        var isLoadingShortcutIcons by remember(showShortcutChooser) { mutableStateOf(false) }
+        var shortcutIcons by remember(showShortcutChooser) { mutableStateOf<List<SteamGridDB.ShortcutIconOption>>(emptyList()) }
 
-        return AppMenuOption(
-            optionType = AppOptionMenuType.CreateShortcut,
-            onClick = {
+        LaunchedEffect(showShortcutChooser, gameName, gameId) {
+            if (!showShortcutChooser) return@LaunchedEffect
+            if (!hasSteamGridDbKey) {
+                shortcutIcons = emptyList()
+                isLoadingShortcutIcons = false
+                return@LaunchedEffect
+            }
+            isLoadingShortcutIcons = true
+            shortcutIcons = if (gameSource === GameSource.STEAM) { fetchShortcutIcons(gameName, gameId) } else { fetchShortcutIcons(gameName) }
+            isLoadingShortcutIcons = false
+        }
+
+        ShortcutIconChooserDialog(
+            openDialog = showShortcutChooser,
+            icons = shortcutIcons,
+            defaultIconUrl = defaultIconUrl,
+            isLoading = isLoadingShortcutIcons,
+            emptyMessage = if (hasSteamGridDbKey) {
+                context.getString(R.string.shortcut_icon_dialog_no_icons)
+            } else {
+                context.getString(R.string.shortcut_icon_dialog_missing_api_key)
+            },
+            onDismiss = { showShortcutChooser = false },
+            onConfirm = { selectedIconUrl ->
+                showShortcutChooser = false
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         createPinnedShortcut(
@@ -503,7 +533,7 @@ abstract class BaseAppScreen {
                             gameId = gameId,
                             label = gameName,
                             gameSource = gameSource,
-                            iconUrl = iconUrl,
+                            iconUrl = selectedIconUrl,
                         )
                         SnackbarManager.show(context.getString(R.string.base_app_shortcut_created))
                     } catch (e: Exception) {
@@ -511,6 +541,11 @@ abstract class BaseAppScreen {
                     }
                 }
             },
+        )
+
+        return AppMenuOption(
+            optionType = AppOptionMenuType.CreateShortcut,
+            onClick = { showShortcutChooser = true },
         )
     }
 

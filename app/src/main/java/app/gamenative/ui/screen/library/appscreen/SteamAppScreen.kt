@@ -355,68 +355,6 @@ class SteamAppScreen : BaseAppScreen() {
         return SteamService.isAppInstalled(libraryItem.gameId)
     }
 
-    @Composable
-    protected override fun getCreateShortcutOption(
-        context: Context,
-        libraryItem: LibraryItem,
-    ): AppMenuOption? {
-        val gameSource = getGameSource(libraryItem)
-        val gameId = getGameId(libraryItem)
-        val gameName = getGameName(context, libraryItem)
-        val defaultIconUrl = getIconUrl(context, libraryItem)
-        val hasSteamGridDbKey = remember { BuildConfig.STEAMGRIDDB_API_KEY.isNotBlank() }
-        var showShortcutChooser by remember { mutableStateOf(false) }
-        var isLoadingShortcutIcons by remember(showShortcutChooser) { mutableStateOf(false) }
-        var shortcutIcons by remember(showShortcutChooser) { mutableStateOf<List<SteamGridDB.ShortcutIconOption>>(emptyList()) }
-
-        LaunchedEffect(showShortcutChooser, gameName, gameId) {
-            if (!showShortcutChooser) return@LaunchedEffect
-            if (!hasSteamGridDbKey) {
-                shortcutIcons = emptyList()
-                isLoadingShortcutIcons = false
-                return@LaunchedEffect
-            }
-            isLoadingShortcutIcons = true
-            shortcutIcons = SteamGridDB.fetchShortcutIcons(gameName, steamAppId = gameId)
-            isLoadingShortcutIcons = false
-        }
-
-        ShortcutIconChooserDialog(
-            openDialog = showShortcutChooser,
-            icons = shortcutIcons,
-            defaultIconUrl = defaultIconUrl,
-            isLoading = isLoadingShortcutIcons,
-            emptyMessage = if (hasSteamGridDbKey) {
-                context.getString(R.string.shortcut_icon_dialog_no_icons)
-            } else {
-                context.getString(R.string.shortcut_icon_dialog_missing_api_key)
-            },
-            onDismiss = { showShortcutChooser = false },
-            onConfirm = { selectedIconUrl ->
-                showShortcutChooser = false
-                CoroutineScope(Dispatchers.IO).launch {
-                    try {
-                        createPinnedShortcut(
-                            context = context,
-                            gameId = gameId,
-                            label = gameName,
-                            gameSource = gameSource,
-                            iconUrl = selectedIconUrl,
-                        )
-                        SnackbarManager.show(context.getString(R.string.base_app_shortcut_created))
-                    } catch (e: Exception) {
-                        SnackbarManager.show(context.getString(R.string.base_app_shortcut_failed, e.message ?: ""))
-                    }
-                }
-            },
-        )
-
-        return AppMenuOption(
-            optionType = AppOptionMenuType.CreateShortcut,
-            onClick = { showShortcutChooser = true },
-        )
-    }
-
     override fun isValidToDownload(context: Context, libraryItem: LibraryItem): Boolean {
         val appInfo = SteamService.getAppInfoOf(libraryItem.gameId) ?: return false
         return appInfo.branches.isNotEmpty() && appInfo.depots.isNotEmpty()
