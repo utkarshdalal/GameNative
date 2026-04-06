@@ -984,6 +984,9 @@ object SteamUtils {
                 appendLine("ticket=$ticketBase64")
             }
 
+            // Migrate GSE Saves to Steam userdata
+            migrateGSESavesToSteamUserdata(context, steamAppId)
+
             // Add [user::saves] section
             val steamUserDataPath = "C:\\Program Files (x86)\\Steam\\userdata\\$accountId"
             appendLine()
