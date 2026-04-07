@@ -71,6 +71,7 @@ import java.nio.file.Paths
 import kotlin.io.path.pathString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import app.gamenative.ui.component.dialog.GameManagerDialog
@@ -353,9 +354,8 @@ class SteamAppScreen : BaseAppScreen() {
                     if (event.success) {
                         cloudSaveStatus.value = CloudSaveStatus.UP_TO_DATE
                         syncStateText.value = context.getString(R.string.cloud_saves_up_to_date)
-                    } else {
-                        cloudConnectivityVersion.value++
                     }
+                    cloudConnectivityVersion.value++
                 }
             }
             val onCloudSaveSyncStarted: (AndroidEvent.CloudSaveSyncStarted) -> Unit = { event ->
@@ -380,6 +380,14 @@ class SteamAppScreen : BaseAppScreen() {
 
         LaunchedEffect(gameId, cloudConnectivityVersion.value) {
             if (hasCloudSaves) {
+                while (true) {
+                    val activePhase = SteamService.getActiveCloudSyncPhase(gameId) ?: break
+                    cloudSaveStatus.value = if (activePhase) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING
+                    syncStateText.value = context.getString(
+                        if (activePhase) R.string.cloud_saves_uploading else R.string.cloud_saves_downloading,
+                    )
+                    delay(250)
+                }
                 cloudSaveStatus.value = CloudSaveStatus.CHECKING
                 syncStateText.value = context.getString(R.string.cloud_saves_checking)
                 val accountId = (SteamService.userSteamId?.accountID?.toLong()

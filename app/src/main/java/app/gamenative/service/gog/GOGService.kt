@@ -463,6 +463,7 @@ class GOGService : Service() {
                     false
                 } finally {
                     // Always end the sync, even if an exception occurred
+                    getInstance()?.gogManager?.markCloudSyncFinished(appId)
                     getInstance()?.gogManager?.endSync(appId)
                     Timber.tag("GOG").d("[Cloud Saves] Sync completed and lock released for $appId")
                 }
@@ -562,6 +563,7 @@ class GOGService : Service() {
                         lastSyncTimestamp = timestamp,
                         preferredAction = preferredAction,
                         onPhaseStarted = { isUploading ->
+                            instance.gogManager.markCloudSyncStarted(appId, isUploading)
                             PluviaApp.events.emit(AndroidEvent.CloudSaveSyncStarted(gameId, isUploading = isUploading))
                         },
                     )
