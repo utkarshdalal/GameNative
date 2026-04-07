@@ -78,12 +78,16 @@ class CaseInsensitiveFileSystem(
             children[lower] = exact
             return exact
         }
-        // case mismatch — list directory once, pre-populate all siblings
+        // case mismatch — list directory once, pre-populate directory siblings only
         val listing = delegate.listOrNull(parent)
         if (listing != null) {
             for (entry in listing) {
-                val entryLower = lowercasePool.computeIfAbsent(entry.name) { it.lowercase() }
-                children.putIfAbsent(entryLower, entry)
+                // Only cache directories, not files
+                val metadata = delegate.metadataOrNull(entry)
+                if (metadata?.isDirectory == true) {
+                    val entryLower = lowercasePool.computeIfAbsent(entry.name) { it.lowercase() }
+                    children.putIfAbsent(entryLower, entry)
+                }
             }
         }
         return children[lower] ?: exact.also { children[lower] = it }
