@@ -595,6 +595,9 @@ public class WinHandler {
     }
 
     private void startRumblePoller() {
+        // poller skips case where controller is null and we
+        // do NOT vibrate phone as of now to prevent issues with docked users.
+        // TODO: add phone vibration option in upcoming ux when no controller device connected
         rumblePollerThread = new Thread(() -> {
             while (running) {
                 try {
@@ -607,13 +610,16 @@ public class WinHandler {
 
                         if (lowFreq != lastLowFreqs[slot] || highFreq != lastHighFreqs[slot]) {
                             ExternalController controller = getControllerForSlot(slot);
+
+                            // case: disable vibration, attempt to disable safely
                             if (lowFreq == 0 && highFreq == 0) {
                                 lastLowFreqs[slot] = lowFreq;
                                 lastHighFreqs[slot] = highFreq;
                                 stopVibrationForSlot(slot, controller);
-                            } else if (controller != null || slot == 0) {
-                                // Only mark as delivered when we can actually vibrate:
-                                // physical controller is available, or slot 0 has phone fallback
+
+                            // case: controller exists and vibration exists
+                            } else if (controller != null) {
+                                // Only mark as delivered when we can actually vibrate
                                 lastLowFreqs[slot] = lowFreq;
                                 lastHighFreqs[slot] = highFreq;
                                 startVibrationForSlot(slot, controller, lowFreq, highFreq);
@@ -645,53 +651,24 @@ public class WinHandler {
             stopVibrationForSlot(slot, controller);
             return;
         }
+        if (controller == null) return;
+        InputDevice device = InputDevice.getDevice(controller.getDeviceId());
+        if (device == null) return;
+        Vibrator controllerVibrator = device.getVibrator();
+        if (controllerVibrator == null || !controllerVibrator.hasVibrator()) return;
         isRumbling[slot] = true;
-        // Attempt to vibrate the physical controller first
-        if (controller != null) {
-            InputDevice device = InputDevice.getDevice(controller.getDeviceId());
-            if (device != null) {
-                Vibrator controllerVibrator = device.getVibrator();
-                if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
-                    controllerVibrator.vibrate(VibrationEffect.createOneShot(50, amplitude));
-                    return;
-                }
-            }
-        }
-        // Fallback to phone vibration only for P1
-        if (slot == 0) {
-            Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
-            if (phoneVibrator != null && phoneVibrator.hasVibrator()) {
-                float normalizedAmplitude = (float) amplitude / 255.0f;
-                float curvedAmplitude = (float) Math.pow(normalizedAmplitude, 0.6f);
-                int finalPhoneAmplitude = (int) (curvedAmplitude * 255);
-                if (finalPhoneAmplitude > 255) finalPhoneAmplitude = 255;
-                if (finalPhoneAmplitude <= 1) finalPhoneAmplitude = 0;
-                if (finalPhoneAmplitude > 0) {
-                    phoneVibrator.vibrate(VibrationEffect.createOneShot(50, finalPhoneAmplitude));
-                }
-            }
-        }
+        controllerVibrator.vibrate(VibrationEffect.createOneShot(50, amplitude));
     }
 
     private void stopVibrationForSlot(int slot, ExternalController controller) {
         if (!isRumbling[slot]) return;
-        if (controller != null) {
-            InputDevice device = InputDevice.getDevice(controller.getDeviceId());
-            if (device != null) {
-                Vibrator vibrator = device.getVibrator();
-                if (vibrator != null && vibrator.hasVibrator()) {
-                    vibrator.cancel();
-                }
-            }
-        }
-        // Stop phone vibration only for P1
-        if (slot == 0) {
-            Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
-            if (phoneVibrator != null) {
-                phoneVibrator.cancel();
-            }
-        }
-        isRumbling[slot] = false;
+        isRumbling[slot] = false;  // handle before early returns - disconnected or null controller leaves slot, assures to disable
+        if (controller == null) return;
+        InputDevice device = InputDevice.getDevice(controller.getDeviceId());
+        if (device == null) return;
+        Vibrator controllerVibrator = device.getVibrator();
+        if (controllerVibrator == null || !controllerVibrator.hasVibrator()) return;
+        controllerVibrator.cancel();
     }
 
     public void sendGamepadState() {
