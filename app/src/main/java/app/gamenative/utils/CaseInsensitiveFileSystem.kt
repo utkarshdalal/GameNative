@@ -1,8 +1,10 @@
 package app.gamenative.utils
 
+import `in`.dragonbra.javasteam.depotdownloader.BaseCaseInsensitiveFileSystem
 import okio.FileSystem
 import okio.ForwardingFileSystem
 import okio.Path
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -16,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class CaseInsensitiveFileSystem(
     delegate: FileSystem = SYSTEM,
-) : ForwardingFileSystem(delegate) {
+) : BaseCaseInsensitiveFileSystem(delegate) {
 
     // (parent, lowercased segment) → resolved child path.
     // keyed by lowercase so all casing variants ("Saves", "saves", "SAVES") hit
@@ -57,5 +59,41 @@ class CaseInsensitiveFileSystem(
         }
 
         return resolved
+    }
+
+    /**
+     * Resolve [path] to an on-disk [File] through the filesystem.
+     * Handles case-insensitive file resolution and caching.
+     */
+    override fun toResolvedFile(path: Path): File {
+        val resolvedPath = onPathParameter(path, "toResolvedFile", "path")
+        return resolvedPath.toFile()
+    }
+
+    /**
+     * Remove cache entries for a completed file path.
+     * This cleans up both the full path cache and segment cache entries
+     * for the file's parent directory to prevent memory accumulation.
+     */
+    override fun removeFileCache(path: Path) {
+        val segments = path.segments
+        if (segments.isEmpty()) return
+        
+        val root = path.root ?: return
+        var currentPath = root
+        
+        // Remove cache entries for each segment in the path
+        for (segment in segments) {
+            val key = currentPath to segment.lowercase()
+            cache.remove(key)
+            currentPath = currentPath / segment
+        }
+    }
+
+    /**
+     * Clear all caches. Useful for cleanup when downloads are complete.
+     */
+    override fun clearAllCaches() {
+        cache.clear()
     }
 }
