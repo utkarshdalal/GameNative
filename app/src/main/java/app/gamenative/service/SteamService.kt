@@ -1667,7 +1667,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             maxDecompress = maxDecompress,
                             parentJob = coroutineContext[Job],
                             autoStartDownload = false,
-                            filesystem = CaseInsensitiveFileSystem(),
+                            filesystem = CaseInsensitiveFileSystem(showDebugLog = false),
                         )
 
                         // Create listeners for DLC apps

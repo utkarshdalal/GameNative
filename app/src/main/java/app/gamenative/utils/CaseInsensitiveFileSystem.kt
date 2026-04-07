@@ -3,6 +3,7 @@ package app.gamenative.utils
 import `in`.dragonbra.javasteam.depotdownloader.BaseCaseInsensitiveFileSystem
 import okio.FileSystem
 import okio.Path
+import timber.log.Timber
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -25,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class CaseInsensitiveFileSystem(
     delegate: FileSystem = SYSTEM,
+    val showDebugLog: Boolean = false,
 ) : BaseCaseInsensitiveFileSystem(delegate) {
 
     // parent → (lowercase segment → resolved child). bounded by directory count.
@@ -33,8 +35,14 @@ class CaseInsensitiveFileSystem(
     // segment string → lowercased form. game paths reuse a small set of names.
     private val lowercasePool = ConcurrentHashMap<String, String>()
 
+    private fun log(message: String) {
+        if (showDebugLog) {
+            Timber.tag("CaseInsensitiveFileSystem").d(message)
+        }
+    }
+
     private companion object {
-        val DIRECTORY_OPS = setOf("createDirectory", "createDirectories")
+        val DIRECTORY_OPS = setOf("createDirectory", "createDirectories", "deleteRecursively")
     }
 
     override fun onPathParameter(path: Path, functionName: String, parameterName: String): Path {
@@ -60,11 +68,45 @@ class CaseInsensitiveFileSystem(
             }
         }
 
-        if (!resolveAll) {
+        if (resolveAll) {
+            if (functionName == "deleteRecursively") {
+                // Remove from cache before returning
+                removeCacheForPath(resolved)
+            }
+        } else {
             resolved = resolved / segments.last()
         }
 
         return resolved
+    }
+
+    private fun removeCacheForPath(deletedPath: Path) {
+        log("Removing cache entries for deleted path '$deletedPath'")
+
+        // Remove all cache entries that start with the deleted path
+        val keysToRemove = mutableListOf<Path>()
+        for (cachedParent in segmentCache.keys) {
+            if (cachedParent.toString().startsWith(deletedPath.toString())) {
+                keysToRemove.add(cachedParent)
+            }
+        }
+
+        for (key in keysToRemove) {
+            segmentCache.remove(key)
+        }
+
+        // Also remove the deleted directory from its parent's cache
+        val parentPath = deletedPath.parent
+        if (parentPath != null) {
+            val parentChildren = segmentCache[parentPath]
+            if (parentChildren != null) {
+                val deletedDirName = deletedPath.name.lowercase()
+                parentChildren.remove(deletedDirName)
+                log("Removed '$deletedDirName' from parent cache")
+            }
+        }
+
+        log("Removed ${keysToRemove.size} cache entries for deleted path")
     }
 
     private fun resolveAndCache(
@@ -73,24 +115,43 @@ class CaseInsensitiveFileSystem(
         lower: String,
         children: ConcurrentHashMap<String, Path>,
     ): Path {
+        log("Resolving segment '$segment' in parent '$parent'")
+
         val exact = parent / segment
         if (delegate.metadataOrNull(exact) != null) {
+            log("Found exact match for '$segment', caching")
             children[lower] = exact
             return exact
         }
+
+        log("Case mismatch for '$segment', listing directory '$parent'")
         // case mismatch — list directory once, pre-populate directory siblings only
         val listing = delegate.listOrNull(parent)
         if (listing != null) {
+            log("Found ${listing.size} entries in '$parent'")
+            var directoriesCached = 0
+            var filesSkipped = 0
+
             for (entry in listing) {
                 // Only cache directories, not files
                 val metadata = delegate.metadataOrNull(entry)
                 if (metadata?.isDirectory == true) {
                     val entryLower = lowercasePool.computeIfAbsent(entry.name) { it.lowercase() }
                     children.putIfAbsent(entryLower, entry)
+                    directoriesCached++
+                } else {
+                    filesSkipped++
                 }
             }
+
+            log("Cached $directoriesCached directories, skipped $filesSkipped files")
+        } else {
+            log("Could not list directory '$parent'")
         }
-        return children[lower] ?: exact.also { children[lower] = it }
+
+        val result = children[lower] ?: exact.also { children[lower] = it }
+        log("Resolved '$segment' to '$result'")
+        return result
     }
 
     override fun toResolvedFile(path: Path): File {
