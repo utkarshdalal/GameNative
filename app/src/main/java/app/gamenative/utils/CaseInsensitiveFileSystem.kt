@@ -11,47 +11,51 @@ import java.util.concurrent.ConcurrentHashMap
  * when Steam depot manifests use different casing than what's already installed
  * (e.g. DLC referencing `_Work` when the base game created `_work`).
  *
- * Two-level cache: full-path results are cached so repeat operations on the same
- * path (common during chunk writes) skip per-segment resolution entirely.
- * Per-segment results are cached in a nested map so different paths sharing a
- * common prefix reuse earlier resolution work without allocating keys.
+ * Resolved segments are cached for the lifetime of this instance (one download
+ * session) so repeated lookups for the same parent+segment are O(1).
  */
 class CaseInsensitiveFileSystem(
     delegate: FileSystem = SYSTEM,
 ) : ForwardingFileSystem(delegate) {
 
-    // full path → resolved path. most calls hit this and return immediately.
-    private val pathCache = ConcurrentHashMap<Path, Path>()
+    // (parent, lowercased segment) → resolved child path.
+    // keyed by lowercase so all casing variants ("Saves", "saves", "SAVES") hit
+    // the same entry. computeIfAbsent is atomic on ConcurrentHashMap, so
+    // concurrent threads won't race to create duplicate directories.
+    private val cache = ConcurrentHashMap<Pair<Path, String>, Path>()
 
-    // parent → (lowercase segment → resolved child path).
-    // nested map avoids key concatenation/Pair allocation on every lookup.
-    private val segmentCache = ConcurrentHashMap<Path, ConcurrentHashMap<String, Path>>()
-
-    // segment string → its lowercase form. game paths reuse a small vocabulary
-    // of directory names, so this prevents repeated lowercase() allocation.
-    private val lowercasePool = ConcurrentHashMap<String, String>()
+    private companion object {
+        val DIRECTORY_OPS = setOf("createDirectory", "createDirectories")
+    }
 
     override fun onPathParameter(path: Path, functionName: String, parameterName: String): Path {
-        pathCache[path]?.let { return it }
-
         val root = path.root ?: return path
+        val segments = path.segments
+        if (segments.isEmpty()) return path
+
+        val resolveAll = functionName in DIRECTORY_OPS
+        val lastDirIndex = if (resolveAll) segments.lastIndex else segments.lastIndex - 1
+
         var resolved = root
-        for (segment in path.segments) {
-            val lower = lowercasePool.computeIfAbsent(segment) { it.lowercase() }
-            val parent = resolved
-            val children = segmentCache.computeIfAbsent(parent) { ConcurrentHashMap() }
-            resolved = children.computeIfAbsent(lower) {
-                val exact = parent / segment
+        for (i in 0..lastDirIndex) {
+            val segment = segments[i]
+            val key = resolved to segment.lowercase()
+            resolved = cache.computeIfAbsent(key) {
+                val exact = resolved / segment
                 if (delegate.metadataOrNull(exact) != null) {
                     exact
                 } else {
-                    delegate.listOrNull(parent)
+                    delegate.listOrNull(resolved)
                         ?.firstOrNull { it.name.equals(segment, ignoreCase = true) }
                         ?: exact
                 }
             }
         }
-        pathCache[path] = resolved
+
+        if (!resolveAll) {
+            resolved = resolved / segments.last()
+        }
+
         return resolved
     }
 }
