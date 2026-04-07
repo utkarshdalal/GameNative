@@ -12,6 +12,7 @@ import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
+import app.gamenative.ui.data.CloudSaveStatus
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
@@ -467,7 +468,7 @@ class GOGService : Service() {
                     getInstance()?.gogManager?.endSync(appId)
                     Timber.tag("GOG").d("[Cloud Saves] Sync completed and lock released for $appId")
                 }
-                PluviaApp.events.emit(AndroidEvent.CloudSaveSynced(numericId, success = syncSuccess))
+                PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(numericId, if (syncSuccess) CloudSaveStatus.UP_TO_DATE else CloudSaveStatus.FAILED))
                 syncSuccess
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "[Cloud Saves] Failed to sync cloud saves for App ID: $appId")
@@ -564,7 +565,7 @@ class GOGService : Service() {
                         preferredAction = preferredAction,
                         onPhaseStarted = { isUploading ->
                             instance.gogManager.markCloudSyncStarted(appId, isUploading)
-                            PluviaApp.events.emit(AndroidEvent.CloudSaveSyncStarted(gameId, isUploading = isUploading))
+                            PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(gameId, if (isUploading) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING))
                         },
                     )
 

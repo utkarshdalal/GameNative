@@ -43,7 +43,6 @@ import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -277,40 +276,32 @@ class EpicAppScreen : BaseAppScreen() {
         val cloudConnectivityVersion = remember { mutableIntStateOf(0) }
         DisposableEffect(gameId) {
             val onNetworkChanged: (AndroidEvent.NetworkAvailabilityChanged) -> Unit = { cloudConnectivityVersion.value++ }
-            val onCloudSaveSynced: (AndroidEvent.CloudSaveSynced) -> Unit = { event ->
+            val onCloudStatusChanged: (AndroidEvent.CloudStatusChanged) -> Unit = { event ->
                 if (event.appId == gameId) {
-                    if (event.success) {
-                        cloudSaveStatus.value = CloudSaveStatus.UP_TO_DATE
-                        syncStateText.value = context.getString(R.string.cloud_saves_up_to_date)
+                    cloudSaveStatus.value = event.status
+                    syncStateText.value = event.status.toDisplayString(context)
+                    if (event.status !in setOf(CloudSaveStatus.UPLOADING, CloudSaveStatus.DOWNLOADING, CloudSaveStatus.CHECKING)) {
+                        cloudConnectivityVersion.value++
                     }
-                    cloudConnectivityVersion.value++
-                }
-            }
-            val onCloudSaveSyncStarted: (AndroidEvent.CloudSaveSyncStarted) -> Unit = { event ->
-                if (event.appId == gameId) {
-                    cloudSaveStatus.value = if (event.isUploading) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING
-                    syncStateText.value = context.getString(if (event.isUploading) R.string.cloud_saves_uploading else R.string.cloud_saves_downloading)
                 }
             }
             PluviaApp.events.on<AndroidEvent.NetworkAvailabilityChanged, Unit>(onNetworkChanged)
-            PluviaApp.events.on<AndroidEvent.CloudSaveSynced, Unit>(onCloudSaveSynced)
-            PluviaApp.events.on<AndroidEvent.CloudSaveSyncStarted, Unit>(onCloudSaveSyncStarted)
+            PluviaApp.events.on<AndroidEvent.CloudStatusChanged, Unit>(onCloudStatusChanged)
             onDispose {
                 PluviaApp.events.off<AndroidEvent.NetworkAvailabilityChanged, Unit>(onNetworkChanged)
-                PluviaApp.events.off<AndroidEvent.CloudSaveSynced, Unit>(onCloudSaveSynced)
-                PluviaApp.events.off<AndroidEvent.CloudSaveSyncStarted, Unit>(onCloudSaveSyncStarted)
+                PluviaApp.events.off<AndroidEvent.CloudStatusChanged, Unit>(onCloudStatusChanged)
             }
         }
 
         LaunchedEffect(gameId, cloudConnectivityVersion.value, hasCloudSaves) {
             if (hasCloudSaves) {
-                while (true) {
-                    val activePhase = withContext(Dispatchers.IO) { EpicCloudSavesManager.getActiveCloudSyncPhase(gameId) } ?: break
+                val activePhase = withContext(Dispatchers.IO) { EpicCloudSavesManager.getActiveCloudSyncPhase(gameId) }
+                if (activePhase != null) {
                     cloudSaveStatus.value = if (activePhase) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING
                     syncStateText.value = context.getString(
                         if (activePhase) R.string.cloud_saves_uploading else R.string.cloud_saves_downloading,
                     )
-                    delay(250)
+                    return@LaunchedEffect
                 }
                 cloudSaveStatus.value = CloudSaveStatus.CHECKING
                 syncStateText.value = context.getString(R.string.cloud_saves_checking)
