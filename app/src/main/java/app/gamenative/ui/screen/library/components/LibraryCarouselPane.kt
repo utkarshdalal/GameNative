@@ -86,6 +86,7 @@ private const val CAROUSEL_CARD_SIZE_MULTIPLIER = 1.22f
 private const val CAROUSEL_CARD_VERTICAL_OVERFLOW = 32f
 private const val CAROUSEL_BADGE_RESERVED_HEIGHT = 0f
 private const val CAROUSEL_MOUSE_WHEEL_SCROLL_MULTIPLIER = 72f
+private const val CAROUSEL_MOUSE_DRAG_SLOP_PX = 8f
 
 
 private fun Modifier.carouselMouseInput(listState: LazyListState): Modifier =
@@ -94,6 +95,7 @@ private fun Modifier.carouselMouseInput(listState: LazyListState): Modifier =
             awaitPointerEventScope {
                 var isDragging = false
                 var lastDragX = 0f
+                var pressedStartX: Float? = null
                 while (true) {
                     val event = awaitPointerEvent()
                     val mouseChange = event.changes.firstOrNull { it.type == PointerType.Mouse }
@@ -115,24 +117,33 @@ private fun Modifier.carouselMouseInput(listState: LazyListState): Modifier =
 
                         PointerEventType.Press -> {
                             if (mouseChange?.pressed == true) {
-                                lastDragX = mouseChange.position.x
-                                isDragging = true
+                                pressedStartX = mouseChange.position.x
+                                isDragging = false
                             }
                         }
 
                         PointerEventType.Move -> {
-                            if (isDragging && mouseChange != null) {
+                            if (mouseChange != null) {
                                 val currentX = mouseChange.position.x
-                                val delta = currentX - lastDragX
-                                lastDragX = currentX
-                                if (delta != 0f) {
-                                    listState.dispatchRawDelta(-delta)
+                                if (isDragging) {
+                                    val delta = currentX - lastDragX
+                                    lastDragX = currentX
+                                    if (delta != 0f) {
+                                        listState.dispatchRawDelta(-delta)
+                                    }
+                                } else {
+                                    val startX = pressedStartX
+                                    if (startX != null && abs(currentX - startX) > CAROUSEL_MOUSE_DRAG_SLOP_PX) {
+                                        isDragging = true
+                                        lastDragX = currentX
+                                    }
                                 }
                             }
                         }
 
                         PointerEventType.Release, PointerEventType.Exit -> {
                             isDragging = false
+                            pressedStartX = null
                         }
 
                         else -> Unit
