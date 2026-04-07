@@ -155,6 +155,7 @@
     <string name="intent_launch_service_pending">O jogo será iniciado quando o serviço estiver pronto</string>
     <string name="intent_launch_steam_login_failed">Falha no login do Steam — inicialização do jogo cancelada</string>
     <string name="intent_launch_service_timeout">Falha ao iniciar o serviço do jogo — inicialização do jogo cancelada</string>
+    <string name="back_press_exit_warning">Pressione voltar novamente para sair</string>
     <string name="game_executable_not_found_title">Não é possível iniciar</string>
     <string name="game_executable_not_found">O executável não pôde ser selecionado automaticamente. Defina o caminho do executável nas configurações do contêiner.</string>
     <string name="save_container_settings_title">Salvar configuração do contêiner?</string>
@@ -722,6 +723,8 @@
     <string name="settings_interface_external_links_subtitle">Links abrem com seu navegador principal</string>
     <string name="settings_interface_hide_statusbar_title">Ocultar barra de status fora do jogo</string>
     <string name="settings_interface_hide_statusbar_subtitle">Ocultar barra de status do Android na lista de jogos, configurações, etc. O app será reiniciado quando alterado.</string>
+    <string name="settings_interface_warn_before_exit_title">Avisar antes de sair</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Requer duplo toque em voltar para sair — o primeiro mostra um aviso</string>
     <string name="settings_interface_icon_style">Estilo de ícone</string>
     <string name="settings_interface_wifi_only_title">Baixar apenas por Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Impedir downloads usando dados móveis</string>

@@ -1086,10 +1086,13 @@ fun PluviaMain(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    var exitSnackbarVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         SnackbarManager.messages.collect { message ->
             snackbarHostState.showSnackbar(message)
+            // snackbar dismissed (timeout or new message) — reset exit flag
+            exitSnackbarVisible = false
         }
     }
 
@@ -1373,7 +1376,14 @@ fun PluviaMain(
                             )
                         },
                         onClickExit = {
-                            PluviaApp.events.emit(AndroidEvent.EndProcess)
+                            if (!PrefManager.warnBeforeExit) {
+                                PluviaApp.events.emit(AndroidEvent.EndProcess)
+                            } else if (exitSnackbarVisible) {
+                                PluviaApp.events.emit(AndroidEvent.EndProcess)
+                            } else {
+                                exitSnackbarVisible = true
+                                SnackbarManager.show(context.getString(R.string.back_press_exit_warning))
+                            }
                         },
                         onChat = {
                             navController.navigate(PluviaScreen.Chat.route(it))

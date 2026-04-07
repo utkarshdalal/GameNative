@@ -231,6 +231,7 @@
     <string name="intent_launch_service_pending">Il gioco verrà avviato quando il servizio è pronto</string>
     <string name="intent_launch_steam_login_failed">Accesso a Steam non riuscito — avvio del gioco annullato</string>
     <string name="intent_launch_service_timeout">Avvio del servizio di gioco non riuscito — avvio del gioco annullato</string>
+    <string name="back_press_exit_warning">Premi indietro di nuovo per uscire</string>
     <string name="game_executable_not_found_title">Impossibile avviare</string>
     <string name="game_executable_not_found">L\'eseguibile non è stato selezionato automaticamente. Imposta il percorso dell\'eseguibile nelle impostazioni del Container.</string>
     <string name="save_container_settings_title">Salvare Configurazione Container?</string>
@@ -896,6 +897,8 @@
     <string name="settings_interface_external_links_subtitle">I link si aprono con il tuo browser web principale</string>
     <string name="settings_interface_hide_statusbar_title">Nascondi barra di stato quando non in gioco</string>
     <string name="settings_interface_hide_statusbar_subtitle">Nascondi barra di stato Android nell\'elenco giochi, impostazioni, ecc. L\'app si riavvierà se modificato.</string>
+    <string name="settings_interface_warn_before_exit_title">Avvisa prima di uscire</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Richiede doppia pressione di indietro per uscire — la prima mostra un avviso</string>
     <string name="settings_interface_icon_style">Stile icona</string>
     <string name="settings_interface_wifi_only_title">Scarica solo tramite Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Impedisci download su rete cellulare</string>

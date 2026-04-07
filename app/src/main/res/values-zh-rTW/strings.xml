@@ -225,6 +225,7 @@
     <string name="intent_launch_service_pending">服務就緒後將啟動遊戲</string>
     <string name="intent_launch_steam_login_failed">Steam 登入失敗 — 遊戲啟動已取消</string>
     <string name="intent_launch_service_timeout">遊戲服務啟動失敗 — 遊戲啟動已取消</string>
+    <string name="back_press_exit_warning">再次按返回鍵退出</string>
     <string name="game_executable_not_found_title">無法啟動</string>
     <string name="game_executable_not_found">無法自動選擇可執行檔。請在容器配置中指定可執行檔路徑。</string>
     <string name="save_container_settings_title">保存容器配置?</string>
@@ -897,6 +898,8 @@
     <string name="settings_interface_external_links_subtitle">連結將以您的主要網頁瀏覽器開啟</string>
     <string name="settings_interface_hide_statusbar_title">在非遊戲狀態時隱藏狀態列</string>
     <string name="settings_interface_hide_statusbar_subtitle">在遊戲清單、設定等介面隱藏 Android 狀態列。變更後應用程式將重新啟動。</string>
+    <string name="settings_interface_warn_before_exit_title">退出前警告</string>
+    <string name="settings_interface_warn_before_exit_subtitle">需要雙擊返回鍵退出——第一次按下顯示警告</string>
     <string name="settings_interface_wifi_only_title">僅限透過 Wi-Fi/LAN 下載</string>
     <string name="settings_interface_wifi_only_subtitle">禁止使用行動數據下載</string>
     <string name="settings_interface_external_storage_title">寫入外部儲存裝置</string>

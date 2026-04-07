@@ -222,6 +222,7 @@
     <string name="intent_launch_service_pending">Гра запуститься після запуску сервісу</string>
     <string name="intent_launch_steam_login_failed">Помилка входу в Steam — запуск гри скасовано</string>
     <string name="intent_launch_service_timeout">Не вдалося запустити ігровий сервіс — запуск гри скасовано</string>
+    <string name="back_press_exit_warning">Натисніть назад ще раз для виходу</string>
     <string name="game_executable_not_found_title">Неможливо запустити</string>
     <string name="game_executable_not_found">Виконуваний файл не вдалося вибрати автоматично. Вкажіть шлях до виконуваного файлу в налаштуваннях контейнера.</string>
     <string name="save_container_settings_title">Зберегти налаштування контейнера?</string>
@@ -895,6 +896,8 @@
     <string name="settings_interface_external_links_subtitle">Посилання відкриваються у вашому основному браузері</string>
     <string name="settings_interface_hide_statusbar_title">Приховувати рядок стану, коли гра не запущена</string>
     <string name="settings_interface_hide_statusbar_subtitle">Приховує рядок стану Android у списку ігор, налаштуваннях тощо. Застосунок перезапуститься після зміни.</string>
+    <string name="settings_interface_warn_before_exit_title">Попереджати перед виходом</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Для виходу потрібне подвійне натискання назад — перше показує попередження</string>
     <string name="settings_interface_icon_style">Стиль значку</string>
     <string name="settings_interface_wifi_only_title">Завантаження тільки через Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Запобігає завантаженню через мобільні дані</string>
