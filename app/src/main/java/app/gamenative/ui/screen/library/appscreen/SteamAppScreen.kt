@@ -352,7 +352,7 @@ class SteamAppScreen : BaseAppScreen() {
                 if (event.appId == gameId) {
                     cloudSaveStatus.value = event.status
                     syncStateText.value = event.status.toDisplayString(context)
-                    if (event.status !in setOf(CloudSaveStatus.UPLOADING, CloudSaveStatus.DOWNLOADING, CloudSaveStatus.CHECKING)) {
+                    if (!event.status.isActive) {
                         cloudConnectivityVersion.value++
                     }
                 }
