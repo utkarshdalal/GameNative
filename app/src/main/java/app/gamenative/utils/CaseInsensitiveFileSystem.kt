@@ -78,16 +78,14 @@ class CaseInsensitiveFileSystem(
     override fun removeFileCache(path: Path) {
         val segments = path.segments
         if (segments.isEmpty()) return
-        
+
         val root = path.root ?: return
-        var currentPath = root
-        
-        // Remove cache entries for each segment in the path
-        for (segment in segments) {
-            val key = currentPath to segment.lowercase()
-            cache.remove(key)
-            currentPath = currentPath / segment
-        }
+
+        // Remove the cache entry for the file itself
+        val parentPath = path.parent ?: root
+        val fileName = segments.last()
+        val fileKey = parentPath to fileName.lowercase()
+        cache.remove(fileKey)
     }
 
     /**
