@@ -404,6 +404,11 @@ class SteamAppScreen : BaseAppScreen() {
                     }
                 }
                 val (status, conflictTimestamps) = SteamService.resolveCloudSaveStatus(gameId, prefixToPath)
+                // A sync may have started while resolveCloudSaveStatus was running — don't
+                // overwrite the live UPLOADING/DOWNLOADING status with a stale PENDING_UPLOAD.
+                if (SteamService.isSyncInProgress(gameId) || SteamService.getActiveCloudSyncPhase(gameId) != null) {
+                    return@LaunchedEffect
+                }
                 conflictTimestamps?.let { (local, remote) ->
                     conflictLocalTimestamp.value = local
                     conflictRemoteTimestamp.value = remote
