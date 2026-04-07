@@ -96,10 +96,10 @@ private fun Modifier.carouselMouseInput(listState: LazyListState): Modifier =
                 var lastDragX = 0f
                 while (true) {
                     val event = awaitPointerEvent()
-                    val isMouseEvent = event.changes.any { it.type == PointerType.Mouse }
+                    val mouseChange = event.changes.firstOrNull { it.type == PointerType.Mouse }
                     when (event.type) {
                         PointerEventType.Scroll -> {
-                            val scrollDelta = event.changes.firstOrNull()?.scrollDelta
+                            val scrollDelta = mouseChange?.scrollDelta
                             if (scrollDelta != null) {
                                 val dominantDelta =
                                     if (abs(scrollDelta.x) > abs(scrollDelta.y)) scrollDelta.x else scrollDelta.y
@@ -114,24 +114,24 @@ private fun Modifier.carouselMouseInput(listState: LazyListState): Modifier =
                         }
 
                         PointerEventType.Press -> {
-                            if (isMouseEvent) {
-                                lastDragX = event.changes.firstOrNull()?.position?.x ?: 0f
+                            if (mouseChange?.pressed == true) {
+                                lastDragX = mouseChange.position.x
                                 isDragging = true
                             }
                         }
 
                         PointerEventType.Move -> {
-                            if (isDragging && isMouseEvent) {
-                                val currentX = event.changes.firstOrNull()?.position?.x ?: lastDragX
+                            if (isDragging && mouseChange != null) {
+                                val currentX = mouseChange.position.x
                                 val delta = currentX - lastDragX
                                 lastDragX = currentX
                                 if (delta != 0f) {
-                                    launch { listState.dispatchRawDelta(-delta) }
+                                    listState.dispatchRawDelta(-delta)
                                 }
                             }
                         }
 
-                        PointerEventType.Release -> {
+                        PointerEventType.Release, PointerEventType.Exit -> {
                             isDragging = false
                         }
 
