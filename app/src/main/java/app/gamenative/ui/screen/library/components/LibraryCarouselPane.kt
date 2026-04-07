@@ -2,9 +2,6 @@ package app.gamenative.ui.screen.library.components
 
 import android.view.KeyEvent
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -94,8 +92,11 @@ private fun Modifier.carouselMouseInput(listState: LazyListState): Modifier =
     pointerInput(listState) {
         coroutineScope {
             awaitPointerEventScope {
+                var isDragging = false
+                var lastDragX = 0f
                 while (true) {
                     val event = awaitPointerEvent()
+                    val isMouseEvent = event.changes.any { it.type == PointerType.Mouse }
                     when (event.type) {
                         PointerEventType.Scroll -> {
                             val scrollDelta = event.changes.firstOrNull()?.scrollDelta
@@ -110,6 +111,28 @@ private fun Modifier.carouselMouseInput(listState: LazyListState): Modifier =
                                     }
                                 }
                             }
+                        }
+
+                        PointerEventType.Press -> {
+                            if (isMouseEvent) {
+                                lastDragX = event.changes.firstOrNull()?.position?.x ?: 0f
+                                isDragging = true
+                            }
+                        }
+
+                        PointerEventType.Move -> {
+                            if (isDragging && isMouseEvent) {
+                                val currentX = event.changes.firstOrNull()?.position?.x ?: lastDragX
+                                val delta = currentX - lastDragX
+                                lastDragX = currentX
+                                if (delta != 0f) {
+                                    launch { listState.dispatchRawDelta(-delta) }
+                                }
+                            }
+                        }
+
+                        PointerEventType.Release -> {
+                            isDragging = false
                         }
 
                         else -> Unit
@@ -330,19 +353,11 @@ internal fun LibraryCarouselPane(
                 if (state.appInfoList.isNotEmpty()) {
                     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-                    val mouseDragState = rememberDraggableState { delta ->
-                        listState.dispatchRawDelta(-delta)
-                    }
-
                     LazyRow(
                         state = listState,
                         modifier = Modifier
                             .fillMaxSize()
-                            .carouselMouseInput(listState)
-                            .draggable(
-                                state = mouseDragState,
-                                orientation = Orientation.Horizontal,
-                            ),
+                            .carouselMouseInput(listState),
                         flingBehavior = flingBehavior,
                         horizontalArrangement = Arrangement.spacedBy(carouselItemSpacing),
                         verticalAlignment = Alignment.CenterVertically,
