@@ -1200,10 +1200,6 @@ class GOGManager @Inject constructor(
         activeSyncs.remove(appId)
     }
 
-    fun isSyncInProgress(appId: String): Boolean {
-        return activeSyncs.contains(appId)
-    }
-
     fun getActiveCloudSyncPhase(appId: String): Boolean? {
         return activeCloudSyncPhases[appId]
     }

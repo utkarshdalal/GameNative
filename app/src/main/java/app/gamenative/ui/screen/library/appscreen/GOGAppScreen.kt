@@ -177,7 +177,7 @@ class GOGAppScreen : BaseAppScreen() {
                     }
                     cloudSaveStatus.value = event.status
                     syncStateText.value = event.status.toDisplayString(context)
-                    if (!event.status.isActive) {
+                    if (event.status == CloudSaveStatus.FAILED) {
                         cloudConnectivityVersion.value++
                     }
                 }
