@@ -371,6 +371,8 @@ class SteamAppScreen : BaseAppScreen() {
 
         LaunchedEffect(gameId, cloudConnectivityVersion.value) {
             if (hasCloudSaves) {
+                cloudSaveStatus.value = CloudSaveStatus.CHECKING
+                syncStateText.value = context.getString(R.string.cloud_saves_checking)
                 val activePhase = SteamService.getActiveCloudSyncPhase(gameId)
                 if (activePhase != null) {
                     cloudSaveStatus.value = if (activePhase) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING
@@ -379,8 +381,6 @@ class SteamAppScreen : BaseAppScreen() {
                     )
                     return@LaunchedEffect
                 }
-                cloudSaveStatus.value = CloudSaveStatus.CHECKING
-                syncStateText.value = context.getString(R.string.cloud_saves_checking)
                 val accountId = (SteamService.userSteamId?.accountID?.toLong()
                     ?: PrefManager.steamUserAccountId.toLong())
                 // Each Steam game has its own Wine container at home/xuser-STEAM_<id>/.wine.

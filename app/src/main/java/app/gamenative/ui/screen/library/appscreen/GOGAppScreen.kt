@@ -201,6 +201,8 @@ class GOGAppScreen : BaseAppScreen() {
 
             val safeLocations = locations.orEmpty()
             if (supportsCloudSaves) {
+                cloudSaveStatus.value = CloudSaveStatus.CHECKING
+                syncStateText.value = context.getString(R.string.cloud_saves_checking)
                 val activePhase = GOGService.getInstance()?.gogManager?.getActiveCloudSyncPhase(libraryItem.appId)
                 if (activePhase != null) {
                     cloudSaveStatus.value = if (activePhase) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING
@@ -209,8 +211,6 @@ class GOGAppScreen : BaseAppScreen() {
                     )
                     return@LaunchedEffect
                 }
-                cloudSaveStatus.value = CloudSaveStatus.CHECKING
-                syncStateText.value = context.getString(R.string.cloud_saves_checking)
 
                 val cloudSavesManager = GOGCloudSavesManager(context)
 
