@@ -447,7 +447,7 @@ class EpicService : Service() {
                         SnackbarManager.show("Download completed successfully!")
 
                         // Trigger a cloud save download so saves are ready before first launch.
-                        if (game.cloudSaveEnabled) {
+                        if (game.cloudSaveEnabled && !ContainerUtils.isLocalSavesOnly(context, "EPIC_$gameId")) {
                             instance.scope.launch {
                                 EpicCloudSavesManager.syncCloudSaves(
                                     context = context,

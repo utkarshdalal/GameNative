@@ -388,7 +388,7 @@ class GOGService : Service() {
                                 appId = appId,
                                 gameTitle = gameTitle,
                             )?.isNotEmpty() == true
-                            if (supportsCloudSaves) {
+                            if (supportsCloudSaves && !ContainerUtils.isLocalSavesOnly(context, appId)) {
                                 syncCloudSaves(context, appId, preferredAction = "download")
                             }
                         }
