@@ -41,6 +41,8 @@ object GameFixesRegistry {
         EPIC_Fix_59a0c86d02da42e8ba6444cb171e61bf,
     ).associateBy { it.gameSource to it.gameId }
 
+    private var fixesProvider: () -> Map<Pair<GameSource, String>, GameFix> = { fixes }
+
     fun applyFor(context: Context, appId: String, container: Container) {
         val source = ContainerUtils.extractGameSourceFromContainerId(appId)
         val gameId = ContainerUtils.extractGameIdFromContainerId(appId)?.toString() ?: return
@@ -53,7 +55,7 @@ object GameFixesRegistry {
             else -> gameId
         }
         Timber.i("GameFixesRegistry: Applying fixes for game: $source $catalogId if available")
-        val fix = fixes[source to catalogId] ?: return
+        val fix = fixesProvider()[source to catalogId] ?: return
         val (installPath, installPathWindows) = resolvePaths(context, source, gameId) ?: return
         fix.apply(context, catalogId, installPath, installPathWindows, container)
     }
@@ -79,5 +81,15 @@ object GameFixesRegistry {
             }
             else -> null
         }
+    }
+
+    /**
+     * Test-only hook to override the game-fixes provider.
+     * Not intended for production code paths.
+     *
+     * @param provider Fixes provider for tests; pass null to restore the default provider.
+     */
+    internal fun setFixesProviderForTests(provider: (() -> Map<Pair<GameSource, String>, GameFix>)?) {
+        fixesProvider = provider ?: { fixes }
     }
 }
