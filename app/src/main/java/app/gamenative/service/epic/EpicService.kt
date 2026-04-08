@@ -448,7 +448,6 @@ class EpicService : Service() {
 
                         // Trigger a cloud save download so saves are ready before first launch.
                         if (game.cloudSaveEnabled) {
-                            PluviaApp.events.emitJava(AndroidEvent.CloudStatusChanged(gameId, CloudSaveStatus.DOWNLOADING))
                             instance.scope.launch {
                                 EpicCloudSavesManager.syncCloudSaves(
                                     context = context,

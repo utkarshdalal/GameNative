@@ -9,6 +9,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -167,7 +168,8 @@ class GOGAppScreen : BaseAppScreen() {
         val conflictLocalTimestamp = remember(gameId) { mutableStateOf<Long?>(null) }
         val conflictRemoteTimestamp = remember(gameId) { mutableStateOf<Long?>(null) }
 
-        val cloudConnectivityVersion = remember { mutableStateOf(0) }
+        val cloudConnectivityVersion = remember { mutableIntStateOf(0) }
+        val cloudSavesManager = remember(context) { GOGCloudSavesManager(context) }
         DisposableEffect(gameId) {
             val onNetworkChanged: (AndroidEvent.NetworkAvailabilityChanged) -> Unit = { cloudConnectivityVersion.value++ }
             val onCloudStatusChanged: (AndroidEvent.CloudStatusChanged) -> Unit = { event ->
@@ -209,8 +211,6 @@ class GOGAppScreen : BaseAppScreen() {
                     syncStateText.value = activeStatus.toDisplayString(context)
                     return@LaunchedEffect
                 }
-
-                val cloudSavesManager = GOGCloudSavesManager(context)
 
                 // Collect (location, action) pairs for all save locations
                 val locationActions = safeLocations.map { location ->

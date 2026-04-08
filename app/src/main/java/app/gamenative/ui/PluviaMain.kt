@@ -1793,9 +1793,15 @@ fun preLaunchApp(
 
                 // Sync cloud saves (download latest saves before playing)
                 Timber.tag("GOG").d("[Cloud Saves] Starting pre-game download sync for $appId")
+                val preferredAction = when (preferredSave) {
+                    SaveLocation.Local  -> "upload"
+                    SaveLocation.Remote -> "download"
+                    SaveLocation.None   -> "none"
+                }
                 val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
                     context = context,
                     appId = appId,
+                    preferredAction = preferredAction,
                 )
 
                 if (!syncSuccess) {

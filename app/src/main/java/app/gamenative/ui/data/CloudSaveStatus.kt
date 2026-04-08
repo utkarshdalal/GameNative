@@ -3,7 +3,16 @@ package app.gamenative.ui.data
 import android.content.Context
 import app.gamenative.R
 
-enum class CloudSaveStatus { CHECKING, DOWNLOADING, UPLOADING, UP_TO_DATE, PENDING_DOWNLOAD, FAILED, CONFLICT, OFFLINE, PENDING_UPLOAD;
+enum class CloudSaveStatus {
+    CHECKING,
+    DOWNLOADING,
+    UPLOADING,
+    UP_TO_DATE,
+    PENDING_DOWNLOAD,
+    FAILED,
+    CONFLICT,
+    OFFLINE,
+    PENDING_UPLOAD;
 
     val isActive: Boolean get() = this == CHECKING || this == DOWNLOADING || this == UPLOADING
 }

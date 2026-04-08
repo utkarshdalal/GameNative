@@ -1192,14 +1192,6 @@ class GOGManager @Inject constructor(
         return activeSyncs.putIfAbsent(appId, CloudSaveStatus.CHECKING) == null
     }
 
-    /**
-     * End a sync operation for a game
-     * @param appId Game app ID
-     */
-    fun endSync(appId: String) {
-        activeSyncs.remove(appId)
-    }
-
     fun getActiveCloudSyncStatus(appId: String): CloudSaveStatus? {
         return activeSyncs[appId]
     }

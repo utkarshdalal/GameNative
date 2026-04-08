@@ -474,22 +474,26 @@ class GOGService : Service() {
                 } finally {
                     // Always end the sync, even if an exception occurred
                     getInstance()?.gogManager?.markCloudSyncFinished(appId)
-                    getInstance()?.gogManager?.endSync(appId)
                     Timber.tag("GOG").d("[Cloud Saves] Sync completed and lock released for $appId")
                 }
-                PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(numericId, if (syncSuccess) CloudSaveStatus.UP_TO_DATE else CloudSaveStatus.FAILED))
-                syncSuccess
+                // syncSuccess is null when the game has no cloud save locations — skip emitting
+                // a terminal status event so the UI doesn't flash FAILED for unsupported games.
+                if (syncSuccess != null) {
+                    PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(numericId, if (syncSuccess) CloudSaveStatus.UP_TO_DATE else CloudSaveStatus.FAILED))
+                }
+                syncSuccess == true
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "[Cloud Saves] Failed to sync cloud saves for App ID: $appId")
                 return@withContext false
             }
         }
 
+        // Returns true on success, false on failure, null if the game has no cloud save locations.
         private suspend fun doSyncCloudSavesForApp(
             context: Context,
             appId: String,
             preferredAction: String,
-        ): Boolean {
+        ): Boolean? {
             val instance = getInstance() ?: run {
                 Timber.tag("GOG").e("[Cloud Saves] Service instance not available")
                 return false
@@ -517,7 +521,7 @@ class GOGService : Service() {
             val saveLocations = instance.gogManager.getSaveDirectoryPath(context, appId, game.title)
             if (saveLocations.isNullOrEmpty()) {
                 Timber.tag("GOG").w("[Cloud Saves] No save locations found for game $appId (cloud saves may not be enabled)")
-                return false
+                return null
             }
             Timber.tag("GOG").i("[Cloud Saves] Found ${saveLocations.size} save location(s) for $appId")
 
