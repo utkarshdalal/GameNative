@@ -10,6 +10,7 @@ import app.gamenative.data.GOGCredentials
 import app.gamenative.data.GOGGame
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
+import app.gamenative.enums.SaveLocation
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
 import app.gamenative.ui.data.CloudSaveStatus
@@ -389,7 +390,7 @@ class GOGService : Service() {
                                 gameTitle = gameTitle,
                             )?.isNotEmpty() == true
                             if (supportsCloudSaves && !ContainerUtils.isLocalSavesOnly(context, appId)) {
-                                syncCloudSaves(context, appId, preferredAction = "download")
+                                syncCloudSaves(context, appId, SaveLocation.Remote)
                             }
                         }
                     }
@@ -441,16 +442,16 @@ class GOGService : Service() {
          * Sync GOG cloud saves for a game
          * @param context Android context
          * @param appId Game app ID (e.g., "gog_123456")
-         * @param preferredAction Preferred sync action: "download", "upload", or "none"
+         * @param preferredSave Preferred save location (SaveLocation.Remote to force download, SaveLocation.Local to force upload, SaveLocation.None for auto)
          * @return true if sync succeeded, false otherwise
          */
         suspend fun syncCloudSaves(
             context: Context,
             appId: String,
-            preferredAction: String = "none",
+            preferredSave: SaveLocation = SaveLocation.None,
         ): Boolean = withContext(Dispatchers.IO) {
             try {
-                Timber.tag("GOG").d("[Cloud Saves] syncCloudSaves called for $appId with action: $preferredAction")
+                Timber.tag("GOG").d("[Cloud Saves] syncCloudSaves called for $appId with action: $preferredSave")
 
                 // Check if there's already a sync in progress for this appId
                 val serviceInstance = getInstance()
@@ -467,7 +468,7 @@ class GOGService : Service() {
                 val numericId = ContainerUtils.extractGameIdFromContainerId(appId)
 
                 val syncSuccess = try {
-                    doSyncCloudSavesForApp(context, appId, preferredAction)
+                    doSyncCloudSavesForApp(context, appId, preferredSave)
                 } catch (e: Exception) {
                     Timber.tag("GOG").e(e, "[Cloud Saves] Failed to sync cloud saves for App ID: $appId")
                     false
@@ -492,7 +493,7 @@ class GOGService : Service() {
         private suspend fun doSyncCloudSavesForApp(
             context: Context,
             appId: String,
-            preferredAction: String,
+            preferredSave: SaveLocation,
         ): Boolean? {
             val instance = getInstance() ?: run {
                 Timber.tag("GOG").e("[Cloud Saves] Service instance not available")
@@ -559,7 +560,7 @@ class GOGService : Service() {
                     val timestampStr = instance.gogManager.getCloudSaveSyncTimestamp(appId, location.name)
                     val timestamp = timestampStr.toLongOrNull() ?: 0L
 
-                    Timber.tag("GOG").i("[Cloud Saves] Syncing '${location.name}' for game $gameId (clientId: ${location.clientId}, path: ${location.location}, timestamp: $timestamp, action: $preferredAction)")
+                    Timber.tag("GOG").i("[Cloud Saves] Syncing '${location.name}' for game $gameId (clientId: ${location.clientId}, path: ${location.location}, timestamp: $timestamp, action: $preferredSave)")
 
                     // Validate clientSecret is available
                     if (location.clientSecret.isEmpty()) {
@@ -575,7 +576,7 @@ class GOGService : Service() {
                         localPath = location.location,
                         dirname = location.name,
                         lastSyncTimestamp = timestamp,
-                        preferredAction = preferredAction,
+                        preferredSave = preferredSave,
                         onPhaseStarted = { isUploading ->
                             instance.gogManager.markCloudSyncStarted(appId, isUploading)
                             PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(gameId, if (isUploading) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING))
@@ -594,17 +595,17 @@ class GOGService : Service() {
                                 val files = saveDir.listFiles()
                                 if (files != null && files.isNotEmpty()) {
                                     val fileList = files.joinToString(", ") { it.name }
-                                    Timber.tag("GOG").i("[Cloud Saves] [$preferredAction] Files in '${location.name}': $fileList (${files.size} files)")
+                                    Timber.tag("GOG").i("[Cloud Saves] [$preferredSave] Files in '${location.name}': $fileList (${files.size} files)")
                                     // Log detailed file info
                                     files.forEach { file ->
                                         val size = if (file.isFile) "${file.length()} bytes" else "directory"
-                                        Timber.tag("GOG").d("[Cloud Saves] [$preferredAction]   - ${file.name} ($size)")
+                                        Timber.tag("GOG").d("[Cloud Saves] [$preferredSave]   - ${file.name} ($size)")
                                     }
                                 } else {
-                                    Timber.tag("GOG").w("[Cloud Saves] [$preferredAction] Directory '${location.name}' is empty at: ${location.location}")
+                                    Timber.tag("GOG").w("[Cloud Saves] [$preferredSave] Directory '${location.name}' is empty at: ${location.location}")
                                 }
                             } else {
-                                Timber.tag("GOG").w("[Cloud Saves] [$preferredAction] Directory not found: ${location.location}")
+                                Timber.tag("GOG").w("[Cloud Saves] [$preferredSave] Directory not found: ${location.location}")
                             }
                         } catch (e: Exception) {
                             Timber.tag("GOG").e(e, "[Cloud Saves] Failed to list files in directory: ${location.location}")

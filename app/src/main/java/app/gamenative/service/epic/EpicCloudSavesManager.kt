@@ -69,25 +69,19 @@ object EpicCloudSavesManager {
         appId: Int,
         preferredSave: SaveLocation = SaveLocation.None,
     ) {
-        val preferredAction = when (preferredSave) {
-            SaveLocation.Local -> "upload"
-            SaveLocation.Remote -> "download"
-            SaveLocation.None -> "auto"
-        }
-        syncCloudSaves(context, appId, preferredAction = preferredAction)
+        syncCloudSaves(context, appId, preferredSave)
     }
 
     /**
      * Sync cloud saves for a game (bidirectional sync with conflict detection)
-     * preferredAction = download -> Force downloads all files and overwrites current files
-     * preferredAction = upload -> Force uploads all files
-     * preferredAction = "auto" -> Timestamp check and uploads/downloads the files pending on the timestamp resolution
-     * @param preferredAction "download", "upload", or "auto" (default)
+     * preferredSave = SaveLocation.Remote -> Force downloads all files and overwrites current files
+     * preferredSave = SaveLocation.Local -> Force uploads all files
+     * preferredSave = SaveLocation.None -> Timestamp check and uploads/downloads the files pending on the timestamp resolution
      */
     suspend fun syncCloudSaves(
         context: Context,
         appId: Int,
-        preferredAction: String = "auto",
+        preferredSave: SaveLocation = SaveLocation.None,
     ): Boolean = withContext(Dispatchers.IO) {
         // Check if sync is already in progress for this appId
         syncMutex.withLock {
@@ -99,7 +93,7 @@ object EpicCloudSavesManager {
         }
 
         val finalStatus = try {
-            doSync(context, appId, preferredAction)
+            doSync(context, appId, preferredSave)
         } catch (e: Exception) {
             Timber.tag("Epic").e(e, "[Cloud Saves] Sync failed")
             CloudSaveStatus.FAILED
@@ -115,9 +109,9 @@ object EpicCloudSavesManager {
     private suspend fun doSync(
         context: Context,
         appId: Int,
-        preferredAction: String,
+        preferredSave: SaveLocation,
     ): CloudSaveStatus {
-        Timber.tag("Epic").i("[Cloud Saves] Starting sync for $appId (action: $preferredAction)")
+        Timber.tag("Epic").i("[Cloud Saves] Starting sync for $appId (action: $preferredSave)")
 
         val game = EpicService.getEpicGameOf(appId)
         if (game == null) {
@@ -139,7 +133,7 @@ object EpicCloudSavesManager {
         val creds = credentials.getOrNull()!!
         Timber.tag("Epic").d("[Cloud Saves] Using account: ${creds.accountId} (${creds.displayName})")
 
-        val action = determineSyncAction(context, creds.accountId, game, preferredAction)
+        val action = determineSyncAction(context, creds.accountId, game, preferredSave)
             ?: return CloudSaveStatus.FAILED
 
         Timber.tag("Epic").i("[Cloud Saves] Sync action determined: $action")
@@ -208,7 +202,7 @@ object EpicCloudSavesManager {
         context: Context,
         accountId: String? = null,
         game: EpicGame,
-        preferredAction: String = "auto",
+        preferredSave: SaveLocation = SaveLocation.None,
     ): SyncAction? = withContext(Dispatchers.IO) {
         try {
             if (!game.cloudSaveEnabled) return@withContext null
@@ -216,8 +210,8 @@ object EpicCloudSavesManager {
                 .getOrNull()?.accountId ?: return@withContext null
 
             // Force action if requested
-            if (preferredAction == "download") return@withContext SyncAction.DOWNLOAD
-            if (preferredAction == "upload") return@withContext SyncAction.UPLOAD
+            if (preferredSave == SaveLocation.Remote) return@withContext SyncAction.DOWNLOAD
+            if (preferredSave == SaveLocation.Local) return@withContext SyncAction.UPLOAD
 
             // Check local save directory
             val saveDir = resolveSaveDirectory(context, game, resolvedAccountId)

@@ -1,6 +1,7 @@
 package app.gamenative.service.gog
 
 import android.content.Context
+import app.gamenative.enums.SaveLocation
 import app.gamenative.utils.FileUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -141,7 +142,7 @@ class GOGCloudSavesManager(
      * @param clientId Game's client ID (from remote config)
      * @param clientSecret Game's client secret (from build metadata)
      * @param lastSyncTimestamp Timestamp of last sync (0 for initial sync)
-     * @param preferredAction User's preferred action (download, upload, or none)
+     * @param preferredSave User's preferred save location (SaveLocation.Remote to force download, SaveLocation.Local to force upload, SaveLocation.None for auto)
      * @return New sync timestamp, or 0 on failure
      */
     suspend fun syncSaves(
@@ -150,7 +151,7 @@ class GOGCloudSavesManager(
         clientId: String,
         clientSecret: String,
         lastSyncTimestamp: Long = 0,
-        preferredAction: String = "none",
+        preferredSave: SaveLocation = SaveLocation.None,
         onPhaseStarted: ((isUploading: Boolean) -> Unit)? = null,
     ): Long = withContext(Dispatchers.IO) {
         try {
@@ -158,7 +159,7 @@ class GOGCloudSavesManager(
             Timber.tag("GOG-CloudSaves").i("Cloud dirname: $dirname")
             Timber.tag("GOG-CloudSaves").i("Cloud client ID: $clientId")
             Timber.tag("GOG-CloudSaves").i("Last sync timestamp: $lastSyncTimestamp")
-            Timber.tag("GOG-CloudSaves").i("Preferred action: $preferredAction")
+            Timber.tag("GOG-CloudSaves").i("Preferred save: $preferredSave")
 
             // Ensure directory exists
             val syncDir = File(localPath)
@@ -220,8 +221,8 @@ class GOGCloudSavesManager(
                 }
             }
 
-            // Handle preferred action
-            if (preferredAction == "download" && downloadableCloud.isNotEmpty()) {
+            // Handle preferred save
+            if (preferredSave == SaveLocation.Remote && downloadableCloud.isNotEmpty()) {
                 Timber.tag("GOG-CloudSaves").i("Forcing download of ${downloadableCloud.size} file(s) (user requested)")
                 onPhaseStarted?.invoke(false)
                 downloadableCloud.forEach { file ->
@@ -230,7 +231,7 @@ class GOGCloudSavesManager(
                 return@withContext currentTimestamp()
             }
 
-            if (preferredAction == "upload" && localFiles.isNotEmpty()) {
+            if (preferredSave == SaveLocation.Local && localFiles.isNotEmpty()) {
                 Timber.tag("GOG-CloudSaves").i("Forcing upload of ${localFiles.size} file(s) (user requested)")
                 onPhaseStarted?.invoke(true)
                 localFiles.forEach { file ->

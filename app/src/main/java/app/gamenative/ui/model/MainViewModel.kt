@@ -13,6 +13,7 @@ import app.gamenative.di.IAppTheme
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
 import app.gamenative.enums.PathType
+import app.gamenative.enums.SaveLocation
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.ui.enums.Orientation
@@ -548,7 +549,7 @@ class MainViewModel @Inject constructor(
                     val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
                         context = context,
                         appId = appId,
-                        preferredAction = "upload",
+                        preferredSave = SaveLocation.Local,
                     )
                     if (syncSuccess) {
                         Timber.tag("GOG").i("[Cloud Saves] Upload sync completed successfully for $appId")
@@ -570,7 +571,7 @@ class MainViewModel @Inject constructor(
                     val syncSuccess = EpicCloudSavesManager.syncCloudSaves(
                         context = context,
                         appId = gameId,
-                        preferredAction = "upload",
+                        preferredSave = SaveLocation.Local,
                     )
                     if (syncSuccess) {
                         Timber.tag("Epic").i("[Cloud Saves] Upload sync completed successfully for $gameId")

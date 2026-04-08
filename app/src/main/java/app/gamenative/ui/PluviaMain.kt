@@ -1793,15 +1793,10 @@ fun preLaunchApp(
 
                 // Sync cloud saves (download latest saves before playing)
                 Timber.tag("GOG").d("[Cloud Saves] Starting pre-game download sync for $appId")
-                val preferredAction = when (preferredSave) {
-                    SaveLocation.Local  -> "upload"
-                    SaveLocation.Remote -> "download"
-                    SaveLocation.None   -> "none"
-                }
                 val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
                     context = context,
                     appId = appId,
-                    preferredAction = preferredAction,
+                    preferredSave = preferredSave,
                 )
 
                 if (!syncSuccess) {
@@ -1835,12 +1830,6 @@ fun preLaunchApp(
                 // Handle Cloud Saves
                 Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves before launch")
 
-                val preferredAction = when (preferredSave) {
-                    SaveLocation.Local  -> "upload"
-                    SaveLocation.Remote -> "download"
-                    SaveLocation.None   -> "auto"
-                }
-
                 // If no explicit preference, pre-check for conflict so we can ask the user
                 if (preferredSave == SaveLocation.None) {
                     val epicGame = EpicService.getEpicGameOf(gameId)
@@ -1869,11 +1858,11 @@ fun preLaunchApp(
                     }
                 }
 
-                Timber.tag("Epic").d("[Cloud Saves] Starting pre-game sync for $appId (action=$preferredAction)")
+                Timber.tag("Epic").d("[Cloud Saves] Starting pre-game sync for $appId (action=$preferredSave)")
                 val syncSuccess = EpicCloudSavesManager.syncCloudSaves(
                     context = context,
                     appId = gameId,
-                    preferredAction = preferredAction,
+                    preferredSave = preferredSave,
                 )
 
                 if (!syncSuccess) {

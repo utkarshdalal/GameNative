@@ -10,6 +10,7 @@ import app.gamenative.data.EpicGame
 import app.gamenative.data.EpicGameToken
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.enums.Marker
+import app.gamenative.enums.SaveLocation
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
 import app.gamenative.utils.ContainerUtils
@@ -449,7 +450,7 @@ class EpicService : Service() {
                                 EpicCloudSavesManager.syncCloudSaves(
                                     context = context,
                                     appId = gameId,
-                                    preferredAction = "download",
+                                    preferredSave = SaveLocation.Remote,
                                 )
                             }
                         }

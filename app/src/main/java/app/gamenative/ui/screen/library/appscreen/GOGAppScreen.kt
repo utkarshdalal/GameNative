@@ -303,12 +303,7 @@ class GOGAppScreen : BaseAppScreen() {
 
     override fun getForceCloudSync(context: Context, libraryItem: LibraryItem): ((SaveLocation) -> Unit) = { saveLocation ->
         CoroutineScope(Dispatchers.IO).launch {
-            val preferredAction = when (saveLocation) {
-                SaveLocation.Local -> "upload"
-                SaveLocation.Remote -> "download"
-                SaveLocation.None -> "none"
-            }
-            GOGService.syncCloudSaves(context, libraryItem.appId, preferredAction)
+            GOGService.syncCloudSaves(context, libraryItem.appId, saveLocation)
         }
     }
 
