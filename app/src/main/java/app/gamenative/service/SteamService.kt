@@ -2316,6 +2316,26 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         /**
+         * Builds a path-resolver that maps Steam path-type prefixes to absolute filesystem paths,
+         * remapping Wine-prefix paths to the game's per-container Wine prefix when one exists.
+         */
+        fun buildPrefixToPath(context: Context, appId: Int, accountId: Long): (String) -> String {
+            val sharedWinePrefix = "${ImageFs.find(context).rootDir.absolutePath}${ImageFs.WINEPREFIX}"
+            val containerWinePrefix = run {
+                val containerHome = File(ImageFs.find(context).rootDir, "home/${ImageFs.USER}-STEAM_$appId")
+                if (containerHome.exists()) "${containerHome.absolutePath}/.wine" else null
+            }
+            return { prefix ->
+                val resolved = PathType.from(prefix).toAbsPath(context, appId, accountId)
+                if (containerWinePrefix != null && resolved.startsWith(sharedWinePrefix)) {
+                    resolved.replaceFirst(sharedWinePrefix, containerWinePrefix)
+                } else {
+                    resolved
+                }
+            }
+        }
+
+        /**
          * High-level entry point for a manual cloud sync (e.g. triggered from the UI).
          * Resolves container-aware Wine prefix paths, emits [AndroidEvent.CloudStatusChanged],
          * then delegates to [forceSyncUserFiles].
@@ -2328,19 +2348,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val accountId = userSteamId?.accountID?.toLong() ?: return
             val container = ContainerUtils.getOrCreateContainer(context, "STEAM_$appId")
             ContainerManager(context).activateContainer(container)
-            val sharedWinePrefix = "${ImageFs.find(context).rootDir.absolutePath}${ImageFs.WINEPREFIX}"
-            val containerWinePrefix = run {
-                val containerHome = File(ImageFs.find(context).rootDir, "home/${ImageFs.USER}-STEAM_$appId")
-                if (containerHome.exists()) "${containerHome.absolutePath}/.wine" else null
-            }
-            val prefixToPath: (String) -> String = { prefix ->
-                val resolved = PathType.from(prefix).toAbsPath(context, appId, accountId)
-                if (containerWinePrefix != null && resolved.startsWith(sharedWinePrefix)) {
-                    resolved.replaceFirst(sharedWinePrefix, containerWinePrefix)
-                } else {
-                    resolved
-                }
-            }
+            val prefixToPath = buildPrefixToPath(context, appId, accountId)
 
             val result = forceSyncUserFiles(appId = appId, prefixToPath = prefixToPath, preferredSave = preferredSave).await()
             if (result.syncResult == SyncResult.InProgress) return

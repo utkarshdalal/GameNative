@@ -402,26 +402,7 @@ class SteamAppScreen : BaseAppScreen() {
                 }
                 val accountId = (SteamService.userSteamId?.accountID?.toLong()
                     ?: PrefManager.steamUserAccountId.toLong())
-                // Each Steam game has its own Wine container at home/xuser-STEAM_<id>/.wine.
-                // toAbsPath always resolves to the shared home/xuser/.wine, so we remap
-                // Wine-prefix-based paths to the game's actual container when it exists.
-                val sharedWinePrefix = "${ImageFs.find(context).rootDir.absolutePath}${ImageFs.WINEPREFIX}"
-                val containerWinePrefix = run {
-                    val containerHome = File(
-                        ImageFs.find(context).rootDir,
-                        "home/${ImageFs.USER}-STEAM_$gameId",
-                    )
-                    if (containerHome.exists()) "${containerHome.absolutePath}/.wine"
-                    else null
-                }
-                val prefixToPath: (String) -> String = { prefix ->
-                    val resolved = PathType.from(prefix).toAbsPath(context, gameId, accountId)
-                    if (containerWinePrefix != null && resolved.startsWith(sharedWinePrefix)) {
-                        resolved.replaceFirst(sharedWinePrefix, containerWinePrefix)
-                    } else {
-                        resolved
-                    }
-                }
+                val prefixToPath = SteamService.buildPrefixToPath(context, gameId, accountId)
                 val (status, conflictTimestamps) = SteamService.resolveCloudSaveStatus(gameId, prefixToPath)
                 // A sync may have started while resolveCloudSaveStatus was running — don't
                 // overwrite the live UPLOADING/DOWNLOADING status with a stale PENDING_UPLOAD.
