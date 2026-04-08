@@ -130,7 +130,6 @@ import java.util.EnumSet
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import kotlin.io.path.pathString
 import kotlin.time.Duration.Companion.seconds
@@ -372,47 +371,32 @@ class SteamService : Service(), IChallengeUrlChanged {
             return MarkerUtils.hasPartialInstall(dirPath)
         }
 
-        private val syncInProgressApps = ConcurrentHashMap<Int, AtomicBoolean>()
-        private val activeCloudSyncPhases = ConcurrentHashMap<Int, Boolean>()
-
-        private fun getSyncFlag(appId: Int): AtomicBoolean {
-            val existing = syncInProgressApps[appId]
-            if (existing != null) {
-                return existing
-            }
-            val created = AtomicBoolean(false)
-            val prior = syncInProgressApps.putIfAbsent(appId, created)
-            return prior ?: created
-        }
+        private val syncInProgressApps = ConcurrentHashMap<Int, CloudSaveStatus>()
 
         private fun tryAcquireSync(appId: Int): Boolean {
-            val flag = getSyncFlag(appId)
-            return flag.compareAndSet(false, true)
+            return syncInProgressApps.putIfAbsent(appId, CloudSaveStatus.CHECKING) == null
         }
 
         private fun releaseSync(appId: Int) {
-            val flag = syncInProgressApps[appId]
-            flag?.set(false)
-            if (flag != null && !flag.get()) {
-                syncInProgressApps.remove(appId, flag)
-            }
+            syncInProgressApps.remove(appId)
         }
 
         fun isSyncInProgress(appId: Int): Boolean {
-            return syncInProgressApps[appId]?.get() == true
+            return syncInProgressApps.containsKey(appId)
         }
 
-        fun getActiveCloudSyncPhase(appId: Int): Boolean? {
-            return activeCloudSyncPhases[appId]
+        fun getActiveCloudSyncStatus(appId: Int): CloudSaveStatus? {
+            return syncInProgressApps[appId]
         }
 
         private fun markCloudSyncStarted(appId: Int, isUploading: Boolean) {
-            activeCloudSyncPhases[appId] = isUploading
-            PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(appId, if (isUploading) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING))
+            val status = if (isUploading) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING
+            syncInProgressApps[appId] = status
+            PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(appId, status))
         }
 
         private fun markCloudSyncFinished(appId: Int, success: Boolean) {
-            activeCloudSyncPhases.remove(appId)
+            syncInProgressApps.remove(appId)
             PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(appId, if (success) CloudSaveStatus.UP_TO_DATE else CloudSaveStatus.FAILED))
         }
 
@@ -2812,7 +2796,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         // Add helper to detect if any downloads or cloud sync are in progress
         fun hasActiveOperations(): Boolean {
-            val anySyncInProgress = syncInProgressApps.values.any { it.get() }
+            val anySyncInProgress = syncInProgressApps.isNotEmpty()
             return anySyncInProgress || downloadJobs.values.any { it.getProgress() < 1f }
         }
 

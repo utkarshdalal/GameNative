@@ -373,12 +373,10 @@ class SteamAppScreen : BaseAppScreen() {
             if (hasCloudSaves) {
                 cloudSaveStatus.value = CloudSaveStatus.CHECKING
                 syncStateText.value = context.getString(R.string.cloud_saves_checking)
-                val activePhase = SteamService.getActiveCloudSyncPhase(gameId)
-                if (activePhase != null) {
-                    cloudSaveStatus.value = if (activePhase) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING
-                    syncStateText.value = context.getString(
-                        if (activePhase) R.string.cloud_saves_uploading else R.string.cloud_saves_downloading,
-                    )
+                val activeStatus = SteamService.getActiveCloudSyncStatus(gameId)
+                if (activeStatus != null) {
+                    cloudSaveStatus.value = activeStatus
+                    syncStateText.value = activeStatus.toDisplayString(context)
                     return@LaunchedEffect
                 }
                 val accountId = (SteamService.userSteamId?.accountID?.toLong()
@@ -406,7 +404,7 @@ class SteamAppScreen : BaseAppScreen() {
                 val (status, conflictTimestamps) = SteamService.resolveCloudSaveStatus(gameId, prefixToPath)
                 // A sync may have started while resolveCloudSaveStatus was running — don't
                 // overwrite the live UPLOADING/DOWNLOADING status with a stale PENDING_UPLOAD.
-                if (SteamService.isSyncInProgress(gameId) || SteamService.getActiveCloudSyncPhase(gameId) != null) {
+                if (SteamService.isSyncInProgress(gameId)) {
                     return@LaunchedEffect
                 }
                 conflictTimestamps?.let { (local, remote) ->
