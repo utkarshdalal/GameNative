@@ -7,15 +7,21 @@ import timber.log.Timber
 import java.io.File
 
 /**
- * ScummVM games ship their own launcher setup instead of a normal per-game exe,
- * this fix looks for the bundled scummVM executable and a game-local ini file, reads the
- * selected game section from that ini, and then rewrites the container launch command so
- * the game starts through ScummVM with the right config
+ * Some ScummVM releases ship with a shared ScummVM launcher instead of a game-specific exe.
+ * This fix finds the bundled ScummVM executable, reads the game-local ini, and rewrites the
+ * container launch command so the right game starts with the right config.
  */
 class ScummGameFix(
     override val gameSource: GameSource,
     override val gameId: String,
 ) : KeyedGameFix {
+    private val possibleExecutables = listOf(
+        "ScummVM/scummvm.exe",
+        "ScummVM_Windows/scummvm.exe",
+        "scummvm/scummvm.exe",
+        "scummvm.exe",
+    )
+
     override fun apply(
         context: Context,
         gameId: String,
@@ -24,12 +30,6 @@ class ScummGameFix(
         container: Container,
     ): Boolean {
         return try {
-            val possibleExecutables = listOf(
-                "ScummVM/scummvm.exe",
-                "ScummVM_Windows/scummvm.exe",
-                "scummvm/scummvm.exe",
-                "scummvm.exe"
-            )
             val scummvmExePath = possibleExecutables.firstOrNull { File(installPath, it).exists() } ?: return false
             val exeFile = File(installPath, scummvmExePath)
             val exeDir = exeFile.parentFile ?: File(installPath)
@@ -45,7 +45,7 @@ class ScummGameFix(
                 }
 
                 val relativeIniPath = localIni.absolutePath.substringAfter(installPath).trimStart(File.separatorChar, '/')
-                val windowsIniPath = "A:\\" + relativeIniPath.replace("/", "\\").replace("\\\\", "\\")
+                val windowsIniPath = buildWindowsIniPath(installPathWindows, relativeIniPath)
 
                 container.executablePath = scummvmExePath
                 container.execArgs = "-c \"$windowsIniPath\" $detectedGameId"
@@ -61,6 +61,12 @@ class ScummGameFix(
             Timber.tag("GameFixes").e(e, "Failed to apply ScummVM fix for $gameId")
             false
         }
+    }
+
+    private fun buildWindowsIniPath(installPathWindows: String, relativeIniPath: String): String {
+        val normalizedRoot = installPathWindows.trimEnd('\\', '/')
+        val normalizedRelative = relativeIniPath.replace("/", "\\").replace("\\\\", "\\")
+        return if (normalizedRelative.isEmpty()) normalizedRoot else "$normalizedRoot\\$normalizedRelative"
     }
 
     private fun disableUpdatesCheckInIni(iniFile: File) {
@@ -114,7 +120,7 @@ class ScummGameFix(
                         currentSection?.let { sections.add(it) }
                     }
                     currentSection != null && looksLikeLaunchableScummVmEntry(trimmed) -> {
-                        launchableSections.add(currentSection!!)
+                        currentSection?.let { launchableSections.add(it) }
                     }
                 }
             }
