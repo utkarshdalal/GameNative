@@ -368,15 +368,20 @@ class SteamAppScreen : BaseAppScreen() {
                     }
                 }
             }
+            val onCloudSaveStatusInvalidated: (AndroidEvent.CloudSaveStatusInvalidated) -> Unit = { event ->
+                if (event.appId == gameId) cloudConnectivityVersion.value++
+            }
             PluviaApp.events.on<SteamEvent.LogonEnded, Unit>(onLogonEnded)
             PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onDisconnected)
             PluviaApp.events.on<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
             PluviaApp.events.on<AndroidEvent.CloudStatusChanged, Unit>(onCloudStatusChanged)
+            PluviaApp.events.on<AndroidEvent.CloudSaveStatusInvalidated, Unit>(onCloudSaveStatusInvalidated)
             onDispose {
                 PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogonEnded)
                 PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onDisconnected)
                 PluviaApp.events.off<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
                 PluviaApp.events.off<AndroidEvent.CloudStatusChanged, Unit>(onCloudStatusChanged)
+                PluviaApp.events.off<AndroidEvent.CloudSaveStatusInvalidated, Unit>(onCloudSaveStatusInvalidated)
             }
         }
 

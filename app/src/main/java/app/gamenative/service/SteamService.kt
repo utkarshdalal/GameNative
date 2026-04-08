@@ -72,7 +72,9 @@ import `in`.dragonbra.javasteam.enums.EPersonaState
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.networking.steam3.ProtocolTypes
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesCloudSteamclient.CCloud_AppCloudStateChange_Notification
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesFamilygroupsSteamclient
+import `in`.dragonbra.javasteam.rpc.service.CloudClient
 import `in`.dragonbra.javasteam.rpc.service.FamilyGroups
 import `in`.dragonbra.javasteam.steam.authentication.AuthPollResult
 import `in`.dragonbra.javasteam.steam.authentication.AuthSessionDetails
@@ -95,6 +97,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamgameserver.SteamGameServer
 import `in`.dragonbra.javasteam.steam.handlers.steammasterserver.SteamMasterServer
 import `in`.dragonbra.javasteam.steam.handlers.steamscreenshots.SteamScreenshots
 import `in`.dragonbra.javasteam.steam.handlers.steamunifiedmessages.SteamUnifiedMessages
+import `in`.dragonbra.javasteam.steam.handlers.steamunifiedmessages.callback.ServiceMethodNotification
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.ChatMode
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.LogOnDetails
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.SteamUser
@@ -3309,6 +3312,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             _unifiedFriends = SteamUnifiedFriends(this)
             _steamFamilyGroups = steamClient!!.getHandler<SteamUnifiedMessages>()!!.createService<FamilyGroups>()
+            steamClient!!.getHandler<SteamUnifiedMessages>()!!.createService<CloudClient>()
 
             // subscribe to the callbacks we are interested in
             with(callbackSubscriptions) {
@@ -3320,6 +3324,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     add(subscribe(PersonaStateCallback::class.java, ::onPersonaStateReceived))
                     add(subscribe(LicenseListCallback::class.java, ::onLicenseList))
                     add(subscribe(PlayingSessionStateCallback::class.java, ::onPlayingSessionState))
+                    add(subscribe(ServiceMethodNotification::class.java, ::onCloudAppStateChange))
                 }
             }
 
@@ -3663,6 +3668,24 @@ class SteamService : Service(), IChallengeUrlChanged {
     private fun onPlayingSessionState(callback: PlayingSessionStateCallback) {
         Timber.d("onPlayingSessionState called with isPlayingBlocked = " + callback.isPlayingBlocked)
         _isPlayingBlocked.value = callback.isPlayingBlocked
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun onCloudAppStateChange(notification: ServiceMethodNotification<*>) {
+        if (notification.jobName != "CloudClient.NotifyAppStateChange#1") return
+
+        val body = (notification as ServiceMethodNotification<CCloud_AppCloudStateChange_Notification.Builder>)
+            .body.build()
+        val appId = body.appid
+        val remoteChangeNumber = body.appChangeNumber
+
+        scope.launch {
+            val localChangeNumber = changeNumbersDao.getByAppId(appId)?.changeNumber ?: -1L
+            if (remoteChangeNumber <= localChangeNumber) return@launch
+
+            Timber.i("Cloud push: appId=$appId remote=$remoteChangeNumber > local=$localChangeNumber")
+            PluviaApp.events.emit(AndroidEvent.CloudSaveStatusInvalidated(appId))
+        }
     }
 
     @OptIn(ExperimentalStdlibApi::class)
