@@ -854,6 +854,15 @@ object SteamAutoCloud {
                 // number or else that would mean that the user made changes locally and
                 // on a separate device and they must choose between the two
                 microsecAcLaunch = measureTime {
+                    // If the cloud has no files at all there is nothing to conflict with —
+                    // just upload local saves and we're done.
+                    if (appFileListChange.files.isEmpty()) {
+                        Timber.i("Cloud has no files, uploading local files")
+                        onPhaseStarted?.invoke(true)
+                        uploadUserFiles(parentScope).await()
+                        return@measureTime
+                    }
+
                     var hasLocalChanges: Boolean
 
                     microsecAcPrepUserFiles = measureTime {
