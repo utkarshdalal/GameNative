@@ -1,6 +1,7 @@
 package app.gamenative.utils
 
 import app.gamenative.data.GameSource
+import app.gamenative.enums.Marker
 import app.gamenative.service.gog.GOGManager
 import app.gamenative.service.gog.GOGService
 import com.winlator.container.Container
@@ -41,6 +42,9 @@ class GogScriptInterpreterStepTest {
     fun appliesTo_requiresGogAndGlibcAndMissingMarker() {
         every { container.containerVariant } returns Container.GLIBC
         assertTrue(GogScriptInterpreterStep.appliesTo(container, GameSource.GOG, gameDir.absolutePath))
+        MarkerUtils.addMarker(gameDir.absolutePath, Marker.GOG_SCRIPT_INSTALLED)
+        assertFalse(GogScriptInterpreterStep.appliesTo(container, GameSource.GOG, gameDir.absolutePath))
+        MarkerUtils.removeMarker(gameDir.absolutePath, Marker.GOG_SCRIPT_INSTALLED)
 
         assertFalse(GogScriptInterpreterStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
 

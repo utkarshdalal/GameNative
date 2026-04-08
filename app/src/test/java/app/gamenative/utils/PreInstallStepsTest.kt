@@ -47,6 +47,7 @@ class PreInstallStepsTest {
     @After
     fun tearDown() {
         PreInstallSteps.setStepsProviderForTests(null)
+        gameDir.deleteRecursively()
     }
 
     @Test

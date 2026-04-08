@@ -6,6 +6,7 @@ import com.winlator.container.Container
 import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
 import io.mockk.mockk
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -19,17 +20,36 @@ import java.io.File
 class RegistryKeyFixTest {
     private lateinit var context: Context
     private lateinit var container: Container
+    private lateinit var systemRegFile: File
+    private var hadOriginalSystemReg: Boolean = false
+    private var originalSystemRegContent: String = ""
 
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         container = mockk(relaxed = true)
+        val imageFs = ImageFs.find(context)
+        val winePrefixDir = File(imageFs.wineprefix)
+        winePrefixDir.mkdirs()
+        systemRegFile = File(winePrefixDir, "system.reg")
+        hadOriginalSystemReg = systemRegFile.exists()
+        if (hadOriginalSystemReg) {
+            originalSystemRegContent = systemRegFile.readText()
+        }
+    }
+
+    @After
+    fun tearDown() {
+        if (hadOriginalSystemReg) {
+            systemRegFile.parentFile?.mkdirs()
+            systemRegFile.writeText(originalSystemRegContent)
+        } else if (systemRegFile.exists()) {
+            systemRegFile.delete()
+        }
     }
 
     @Test
     fun apply_returnsFalse_whenSystemRegDoesNotExist() {
-        val imageFs = ImageFs.find(context)
-        val systemRegFile = File(imageFs.wineprefix, "system.reg")
         if (systemRegFile.exists()) {
             systemRegFile.delete()
         }
@@ -46,10 +66,6 @@ class RegistryKeyFixTest {
 
     @Test
     fun apply_writesMissingValues_andResolvesInstallPathPlaceholder() {
-        val imageFs = ImageFs.find(context)
-        val winePrefixDir = File(imageFs.wineprefix)
-        winePrefixDir.mkdirs()
-        val systemRegFile = File(winePrefixDir, "system.reg")
         if (!systemRegFile.exists()) {
             systemRegFile.writeText("REGEDIT4\n")
         }
@@ -74,10 +90,6 @@ class RegistryKeyFixTest {
 
     @Test
     fun apply_keepsExistingRegistryValue_andDoesNotOverwrite() {
-        val imageFs = ImageFs.find(context)
-        val winePrefixDir = File(imageFs.wineprefix)
-        winePrefixDir.mkdirs()
-        val systemRegFile = File(winePrefixDir, "system.reg")
         if (!systemRegFile.exists()) {
             systemRegFile.writeText("REGEDIT4\n")
         }

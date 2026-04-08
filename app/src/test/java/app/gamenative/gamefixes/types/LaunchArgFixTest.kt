@@ -53,6 +53,20 @@ class LaunchArgFixTest {
     }
 
     @Test
+    fun apply_applies_whenContainerExecArgsIsWhitespace() {
+        val fix = LaunchArgFix("-lang=eng")
+        every { container.execArgs } returns "   "
+        every { container.execArgs = any() } just runs
+        every { container.saveData() } just runs
+
+        val result = fix.apply(context, "1129934535", "/tmp/game", "A:\\", container)
+
+        assertTrue(result)
+        verify(exactly = 1) { container.execArgs = "-lang=eng" }
+        verify(exactly = 1) { container.saveData() }
+    }
+
+    @Test
     fun apply_returnsFalse_whenContainerSaveThrows() {
         val fix = LaunchArgFix("-lang=eng")
         every { container.execArgs } returns ""

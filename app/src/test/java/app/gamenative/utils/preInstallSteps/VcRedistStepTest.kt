@@ -44,7 +44,6 @@ class VcRedistStepTest {
         val installer = File(gameDir, "_CommonRedist/MSVC2017/VC_redist.x86.exe")
         installer.parentFile?.mkdirs()
         installer.writeText("dummy")
-        every { container.drives } returns "A:${gameDir.absolutePath}"
 
         val cmd = VcRedistStep.buildCommand(
             container = container,

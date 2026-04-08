@@ -20,6 +20,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,6 +60,9 @@ class LaunchDependenciesTest {
 
     @Test
     fun getLaunchDependencies_returnsEmpty_whenDependencyDoesNotApply() {
+        val fakeDependency = mockk<LaunchDependency>()
+        every { fakeDependency.appliesTo(container, GameSource.STEAM, 123) } returns false
+        sut.setDependenciesProviderForTests { listOf(fakeDependency) }
         val result = sut.getLaunchDependencies(container, GameSource.STEAM, 123)
 
         assertTrue(result.isEmpty())
@@ -66,6 +70,7 @@ class LaunchDependenciesTest {
 
     @Test
     fun ensureLaunchDependencies_installsWhenUnsatisfied_andAlwaysResetsLoadingUi() = runBlocking {
+        sut.setDependenciesProviderForTests { listOf(GogScriptInterpreterDependency) }
         every { GogScriptInterpreterDependency.appliesTo(container, GameSource.GOG, 7) } returns true
         every { GogScriptInterpreterDependency.isSatisfied(context, container, GameSource.GOG, 7) } returns false
         every { GogScriptInterpreterDependency.getLoadingMessage(context, container, GameSource.GOG, 7) } returns "Downloading dep"
@@ -107,6 +112,7 @@ class LaunchDependenciesTest {
 
     @Test
     fun ensureLaunchDependencies_skipsInstallWhenAlreadySatisfied_andStillResetsLoadingUi() = runBlocking {
+        sut.setDependenciesProviderForTests { listOf(GogScriptInterpreterDependency) }
         every { GogScriptInterpreterDependency.appliesTo(container, GameSource.GOG, 8) } returns true
         every { GogScriptInterpreterDependency.isSatisfied(context, container, GameSource.GOG, 8) } returns true
 
@@ -137,6 +143,7 @@ class LaunchDependenciesTest {
 
     @Test
     fun ensureLaunchDependencies_resetsLoadingUi_evenIfInstallFails() = runBlocking {
+        sut.setDependenciesProviderForTests { listOf(GogScriptInterpreterDependency) }
         every { GogScriptInterpreterDependency.appliesTo(container, GameSource.GOG, 9) } returns true
         every { GogScriptInterpreterDependency.isSatisfied(context, container, GameSource.GOG, 9) } returns false
         every { GogScriptInterpreterDependency.getLoadingMessage(context, container, GameSource.GOG, 9) } returns "Downloading dep"
@@ -153,6 +160,7 @@ class LaunchDependenciesTest {
         val messages = mutableListOf<String>()
         val progress = mutableListOf<Float>()
 
+        var thrown: IllegalStateException? = null
         try {
             sut.ensureLaunchDependencies(
                 context = context,
@@ -162,10 +170,12 @@ class LaunchDependenciesTest {
                 setLoadingMessage = { messages += it },
                 setLoadingProgress = { progress += it },
             )
-        } catch (_: IllegalStateException) {
-            // Expected in this test.
+            fail("Expected IllegalStateException to be thrown")
+        } catch (e: IllegalStateException) {
+            thrown = e
         }
 
+        assertTrue(thrown != null)
         assertEquals(context.getString(R.string.main_loading), messages.last())
         assertEquals(1f, progress.last())
     }

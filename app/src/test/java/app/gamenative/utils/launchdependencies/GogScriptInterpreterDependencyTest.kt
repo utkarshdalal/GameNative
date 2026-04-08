@@ -16,20 +16,24 @@ import io.mockk.slot
 import io.mockk.unmockkAll
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Rule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
-import kotlin.io.path.createTempDirectory
 
 @RunWith(RobolectricTestRunner::class)
 class GogScriptInterpreterDependencyTest {
     private lateinit var context: Context
     private lateinit var container: Container
+    @get:Rule
+    val tempFolder = TemporaryFolder()
 
     @Before
     fun setUp() {
@@ -62,7 +66,7 @@ class GogScriptInterpreterDependencyTest {
 
     @Test
     fun appliesTo_usesManifestFlag_whenGogInstallPathExists() {
-        val installDir = createTempDirectory(prefix = "gog-dep-apply").toFile()
+        val installDir = tempFolder.newFolder("gog-dep-apply")
         every { GOGService.getInstallPath("12") } returns installDir.absolutePath
         every { GOGManifestUtils.needsScriptInterpreter(any()) } returns true
 
@@ -73,7 +77,7 @@ class GogScriptInterpreterDependencyTest {
 
     @Test
     fun isSatisfied_returnsTrue_whenScriptInterpreterExists() {
-        val installDir = createTempDirectory(prefix = "gog-dep-satisfied").toFile()
+        val installDir = tempFolder.newFolder("gog-dep-satisfied")
         val interpreter = File(installDir, "_CommonRedist/ISI/scriptinterpreter.exe")
         interpreter.parentFile?.mkdirs()
         interpreter.writeText("ok")
@@ -85,8 +89,15 @@ class GogScriptInterpreterDependencyTest {
     }
 
     @Test
+    fun getLoadingMessage_returnsExpectedMessage() {
+        val message = GogScriptInterpreterDependency.getLoadingMessage(context, container, GameSource.GOG, 99)
+
+        assertEquals("Downloading GOG script interpreter", message)
+    }
+
+    @Test
     fun install_downloadsIsi_andForwardsProgress() = runBlocking {
-        val installDir = createTempDirectory(prefix = "gog-dep-install").toFile()
+        val installDir = tempFolder.newFolder("gog-dep-install")
         every { GOGService.getInstallPath("14") } returns installDir.absolutePath
 
         val service = mockk<GOGService>()
@@ -133,19 +144,20 @@ class GogScriptInterpreterDependencyTest {
 
     @Test
     fun install_skips_whenServiceUnavailable() = runBlocking {
-        val installDir = createTempDirectory(prefix = "gog-dep-no-service").toFile()
+        val installDir = tempFolder.newFolder("gog-dep-no-service")
         every { GOGService.getInstallPath("15") } returns installDir.absolutePath
         every { GOGService.getInstance() } returns null
 
-        GogScriptInterpreterDependency.install(
-            context = context,
-            container = container,
-            callbacks = LaunchDependencyCallbacks({}, {}),
-            gameSource = GameSource.GOG,
-            gameId = 15,
-        )
-
-        // Reaching this point means it exited gracefully.
-        assertTrue(true)
+        try {
+            GogScriptInterpreterDependency.install(
+                context = context,
+                container = container,
+                callbacks = LaunchDependencyCallbacks({}, {}),
+                gameSource = GameSource.GOG,
+                gameId = 15,
+            )
+        } catch (e: Exception) {
+            fail("Expected install to exit gracefully when service is unavailable, but threw: ${e.message}")
+        }
     }
 }
