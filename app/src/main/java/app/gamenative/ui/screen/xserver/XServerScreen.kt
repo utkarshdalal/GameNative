@@ -3401,6 +3401,25 @@ private fun exit(
     environment?.stopEnvironmentComponents()
     SteamService.keepAlive = false
     PluviaApp.clearActiveSuspendState()
+
+    // empty Wine/XDG trash in background after container stops
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val trashDir = File(container.rootDir, ".local/share/Trash")
+            val children = trashDir.listFiles()
+            if (children == null) {
+                Timber.w("Trash dir missing or unreadable: ${trashDir.path}")
+            } else if (children.isEmpty()) {
+                Timber.d("Trash empty")
+            } else {
+                Timber.d("Emptying trash (${children.size} items)")
+                val deleted = children.count { child -> FileUtils.delete(child) }
+                Timber.d("Trash cleanup done: $deleted/${children.size} items deleted")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error emptying Wine/XDG trash")
+        }
+    }
     // AppUtils.restartApplication(this)
     // PluviaApp.xServerState = null
     // PluviaApp.xServer = null
