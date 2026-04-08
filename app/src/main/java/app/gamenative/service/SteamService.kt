@@ -389,6 +389,16 @@ class SteamService : Service(), IChallengeUrlChanged {
             return syncInProgressApps[appId]
         }
 
+        fun isReadyForCloudOperations(): Boolean {
+            val service = instance ?: return false
+            return isConnected &&
+                isLoggedIn &&
+                !isStopping &&
+                !isLoggingOut &&
+                !isLoginInProgress &&
+                service._steamCloud != null
+        }
+
         private fun markCloudSyncStarted(appId: Int, isUploading: Boolean) {
             val status = if (isUploading) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING
             syncInProgressApps[appId] = status
@@ -2239,14 +2249,28 @@ class SteamService : Service(), IChallengeUrlChanged {
             appId: Int,
             prefixToPath: (String) -> String,
         ): Pair<CloudSaveStatus, Pair<Long, Long>?> = withContext(Dispatchers.IO) {
+            if (!isReadyForCloudOperations()) {
+                return@withContext CloudSaveStatus.OFFLINE to null
+            }
+
             val steamInstance = instance ?: return@withContext CloudSaveStatus.OFFLINE to null
             val steamCloud = steamInstance._steamCloud ?: return@withContext CloudSaveStatus.OFFLINE to null
             val appInfo = steamInstance.appDao.findApp(appId) ?: return@withContext CloudSaveStatus.OFFLINE to null
 
             val snapshot = try {
                 SteamAutoCloud.fetchSyncSnapshot(appInfo, steamInstance, steamCloud, prefixToPath)
+            } catch (e: AsyncJobFailedException) {
+                Timber.tag("SteamCloudSaveStatus").w(e, "[$appId] Steam job failed while fetching cloud status")
+                return@withContext CloudSaveStatus.OFFLINE to null
+            } catch (e: CancellationException) {
+                Timber.tag("SteamCloudSaveStatus").w(e, "[$appId] Cloud status fetch cancelled during Steam state transition")
+                return@withContext CloudSaveStatus.OFFLINE to null
             } catch (e: Exception) {
                 Timber.tag("SteamCloudSaveStatus").w(e, "[$appId] fetchSyncSnapshot failed")
+                return@withContext CloudSaveStatus.OFFLINE to null
+            }
+
+            if (!isReadyForCloudOperations()) {
                 return@withContext CloudSaveStatus.OFFLINE to null
             }
 

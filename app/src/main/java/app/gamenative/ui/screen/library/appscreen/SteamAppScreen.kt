@@ -344,10 +344,21 @@ class SteamAppScreen : BaseAppScreen() {
 
         DisposableEffect(gameId) {
             val onLogonEnded: (SteamEvent.LogonEnded) -> Unit = { event ->
-                if (event.loginResult == LoginResult.Success) cloudConnectivityVersion.value++
+                if (event.loginResult == LoginResult.Success) {
+                    cloudConnectivityVersion.value++
+                } else {
+                    cloudSaveStatus.value = CloudSaveStatus.OFFLINE
+                    syncStateText.value = CloudSaveStatus.OFFLINE.toDisplayString(context)
+                }
             }
-            val onDisconnected: (SteamEvent.Disconnected) -> Unit = { cloudConnectivityVersion.value++ }
-            val onRemotelyDisconnected: (SteamEvent.RemotelyDisconnected) -> Unit = { cloudConnectivityVersion.value++ }
+            val onDisconnected: (SteamEvent.Disconnected) -> Unit = {
+                cloudSaveStatus.value = CloudSaveStatus.OFFLINE
+                syncStateText.value = CloudSaveStatus.OFFLINE.toDisplayString(context)
+            }
+            val onRemotelyDisconnected: (SteamEvent.RemotelyDisconnected) -> Unit = {
+                cloudSaveStatus.value = CloudSaveStatus.OFFLINE
+                syncStateText.value = CloudSaveStatus.OFFLINE.toDisplayString(context)
+            }
             val onCloudStatusChanged: (AndroidEvent.CloudStatusChanged) -> Unit = { event ->
                 if (event.appId == gameId) {
                     cloudSaveStatus.value = event.status
@@ -371,6 +382,11 @@ class SteamAppScreen : BaseAppScreen() {
 
         LaunchedEffect(gameId, cloudConnectivityVersion.value) {
             if (hasCloudSaves) {
+                if (!SteamService.isReadyForCloudOperations()) {
+                    cloudSaveStatus.value = CloudSaveStatus.OFFLINE
+                    syncStateText.value = CloudSaveStatus.OFFLINE.toDisplayString(context)
+                    return@LaunchedEffect
+                }
                 cloudSaveStatus.value = CloudSaveStatus.CHECKING
                 syncStateText.value = context.getString(R.string.cloud_saves_checking)
                 val activeStatus = SteamService.getActiveCloudSyncStatus(gameId)
