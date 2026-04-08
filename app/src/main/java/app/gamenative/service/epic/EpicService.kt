@@ -7,14 +7,11 @@ import android.os.IBinder
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.EpicCredentials
 import app.gamenative.data.EpicGame
-import app.gamenative.data.LaunchInfo
-import app.gamenative.data.LibraryItem
 import app.gamenative.data.EpicGameToken
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
-import app.gamenative.ui.data.CloudSaveStatus
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
