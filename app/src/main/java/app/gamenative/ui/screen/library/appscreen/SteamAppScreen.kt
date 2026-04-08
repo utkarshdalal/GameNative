@@ -392,8 +392,10 @@ class SteamAppScreen : BaseAppScreen() {
                     syncStateText.value = CloudSaveStatus.OFFLINE.toDisplayString(context)
                     return@LaunchedEffect
                 }
-                cloudSaveStatus.value = CloudSaveStatus.CHECKING
-                syncStateText.value = context.getString(R.string.cloud_saves_checking)
+                if (cloudSaveStatus.value == null) {
+                    cloudSaveStatus.value = CloudSaveStatus.CHECKING
+                    syncStateText.value = context.getString(R.string.cloud_saves_checking)
+                }
                 val activeStatus = SteamService.getActiveCloudSyncStatus(gameId)
                 if (activeStatus != null) {
                     cloudSaveStatus.value = activeStatus
