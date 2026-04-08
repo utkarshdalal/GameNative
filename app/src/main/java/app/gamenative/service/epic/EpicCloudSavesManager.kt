@@ -103,73 +103,80 @@ object EpicCloudSavesManager {
             activeSyncs.add(appId)
         }
 
-        val result = try {
+        val finalStatus = try {
             doSync(context, appId, preferredAction)
         } catch (e: Exception) {
             Timber.tag("Epic").e(e, "[Cloud Saves] Sync failed")
-            false
+            CloudSaveStatus.FAILED
         } finally {
             syncMutex.withLock {
                 activeSyncs.remove(appId)
                 activeCloudSyncPhases.remove(appId)
             }
         }
-        PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(appId, if (result) CloudSaveStatus.UP_TO_DATE else CloudSaveStatus.FAILED))
-        result
+        PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(appId, finalStatus))
+        finalStatus == CloudSaveStatus.UP_TO_DATE
     }
 
     private suspend fun doSync(
         context: Context,
         appId: Int,
         preferredAction: String,
-    ): Boolean {
+    ): CloudSaveStatus {
         Timber.tag("Epic").i("[Cloud Saves] Starting sync for $appId (action: $preferredAction)")
 
         val game = EpicService.getEpicGameOf(appId)
         if (game == null) {
             Timber.tag("Epic").e("[Cloud Saves] Game not found: $appId")
-            return false
+            return CloudSaveStatus.FAILED
         }
 
         if (!game.cloudSaveEnabled) {
             Timber.tag("Epic").w("[Cloud Saves] Game does not support cloud saves: ${game.title}")
-            return false
+            return CloudSaveStatus.FAILED
         }
 
         val credentials = EpicAuthManager.getStoredCredentials(context)
         if (credentials.isFailure) {
             Timber.tag("Epic").e("[Cloud Saves] Not logged in to Epic: ${credentials.exceptionOrNull()?.message}")
-            return false
+            return CloudSaveStatus.FAILED
         }
 
         val creds = credentials.getOrNull()!!
         Timber.tag("Epic").d("[Cloud Saves] Using account: ${creds.accountId} (${creds.displayName})")
 
         val action = determineSyncAction(context, creds.accountId, game, preferredAction)
-            ?: return false
+            ?: return CloudSaveStatus.FAILED
 
         Timber.tag("Epic").i("[Cloud Saves] Sync action determined: $action")
 
-        syncMutex.withLock {
-            activeCloudSyncPhases[appId] = action == SyncAction.UPLOAD
-        }
-        PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(appId, if (action == SyncAction.UPLOAD) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING))
-
         val result = when (action) {
-            SyncAction.DOWNLOAD -> downloadSaves(context, appId, creds.accountId)
-            SyncAction.UPLOAD -> uploadSaves(context, creds.accountId, game)
+            SyncAction.DOWNLOAD -> {
+                syncMutex.withLock {
+                    activeCloudSyncPhases[appId] = false
+                }
+                PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(appId, CloudSaveStatus.DOWNLOADING))
+                downloadSaves(context, appId, creds.accountId)
+            }
+            SyncAction.UPLOAD -> {
+                syncMutex.withLock {
+                    activeCloudSyncPhases[appId] = true
+                }
+                PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(appId, CloudSaveStatus.UPLOADING))
+                uploadSaves(context, creds.accountId, game)
+            }
             SyncAction.CONFLICT -> {
                 Timber.tag("Epic").w("[Cloud Saves] Conflict requires user resolution — aborting sync")
-                false
+                return CloudSaveStatus.CONFLICT
             }
             SyncAction.NONE -> {
                 Timber.tag("Epic").i("[Cloud Saves] No sync needed")
-                true
+                return CloudSaveStatus.UP_TO_DATE
             }
         }
 
         if (result) Timber.tag("Epic").i("[Cloud Saves] Sync completed successfully")
-        return result
+        return if (result) CloudSaveStatus.UP_TO_DATE else CloudSaveStatus.FAILED
     }
 
     /**

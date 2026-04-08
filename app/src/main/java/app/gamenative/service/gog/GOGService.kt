@@ -378,10 +378,19 @@ class GOGService : Service() {
 
                         SnackbarManager.show("Download completed successfully!")
 
-                        // Trigger a cloud save download so saves are ready before first launch.
+                        // Trigger a cloud save download so saves are ready before first launch,
+                        // but only when this title actually exposes cloud save locations.
                         val appId = "GOG_$gameId"
                         instance.scope.launch {
-                            syncCloudSaves(context, appId, preferredAction = "download")
+                            val gameTitle = instance.gogManager.getGameFromDbById(gameId)?.title ?: return@launch
+                            val supportsCloudSaves = getSaveLocations(
+                                context = context,
+                                appId = appId,
+                                gameTitle = gameTitle,
+                            )?.isNotEmpty() == true
+                            if (supportsCloudSaves) {
+                                syncCloudSaves(context, appId, preferredAction = "download")
+                            }
                         }
                     }
                 } catch (e: Exception) {
