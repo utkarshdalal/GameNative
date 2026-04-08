@@ -461,8 +461,13 @@ class GOGService : Service() {
                 }
 
                 if (!serviceInstance.gogManager.startSync(appId)) {
-                    Timber.tag("GOG").w("[Cloud Saves] Sync already in progress for $appId, skipping duplicate sync")
-                    return@withContext false
+                    // A sync is already running (e.g. post-install download). Wait for it to
+                    // finish so the caller gets a valid result rather than a silent skip.
+                    Timber.tag("GOG").w("[Cloud Saves] Sync already in progress for $appId, waiting for it to complete")
+                    while (serviceInstance.gogManager.getActiveCloudSyncStatus(appId) != null) {
+                        delay(200)
+                    }
+                    return@withContext true
                 }
 
                 val numericId = ContainerUtils.extractGameIdFromContainerId(appId)

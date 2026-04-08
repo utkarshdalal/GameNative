@@ -779,7 +779,7 @@ object SteamAutoCloud {
                     microsecValidateState = measureTime {
                         updatedLocalFiles = getLocalUserFilesAsPrefixMap(appInfo, prefixToPath)
                         hasLocalChanges = hasHashConflicts(updatedLocalFiles, appFileListChange)
-                        filesManaged = updatedLocalFiles.size
+                        filesManaged = updatedLocalFiles.values.sumOf { it.size }
                     }.inWholeMicroseconds
 
                     // var retries = 0
