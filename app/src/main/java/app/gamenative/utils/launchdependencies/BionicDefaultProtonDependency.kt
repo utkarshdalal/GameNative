@@ -14,7 +14,7 @@ import timber.log.Timber
 import java.io.File
 
 /**
- * Ensures Proton (arm64ec or x86_64) is downloaded and extracted to imagefs_shared/proton for Bionic.
+ * Ensures Proton (arm64ec or x86_64) is downloaded and extracted into opt/<wineVersion> for Bionic.
  * Only runs when container variant is BIONIC and wine version is proton-9.0-arm64ec or proton-9.0-x86_64.
  */
 object BionicDefaultProtonDependency : LaunchDependency {
@@ -61,7 +61,7 @@ object BionicDefaultProtonDependency : LaunchDependency {
                     onDownloadProgress = { callbacks.setLoadingProgress(it) },
                     parentScope = this@coroutineScope,
                     context = context,
-                    archiveName,
+                    fileName = archiveName,
                 ).await()
             }
         }
