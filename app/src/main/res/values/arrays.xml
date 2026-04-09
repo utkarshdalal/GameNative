@@ -69,6 +69,7 @@
     <string-array name="audio_driver_entries">
         <item>ALSA</item>
         <item>PulseAudio</item>
+        <item>Disabled</item>
     </string-array>
     <string-array name="binding_type_entries">
         <item>Keyboard</item>

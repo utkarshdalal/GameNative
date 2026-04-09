@@ -261,6 +261,21 @@ class GOGDownloadManager @Inject constructor(
             }
             Timber.tag("GOG").d("Skipping ${beforeCount - gameFiles.size} existing file(s), downloading ${gameFiles.size}")
 
+            val beforeSupportCount = supportFiles.size
+            supportFiles = supportFiles.filter { file ->
+                val installRelativePath = getSupportInstallPath(file.path)
+                val outputFile = File(gameInstallDir, installRelativePath)
+                val expectedSize = file.chunks.sumOf { it.size }
+                !fileExistsWithCorrectSize(outputFile, expectedSize, file.md5)
+            }
+            val supportFilesForGameDirAssemble = supportFiles.map { file ->
+                val installRelativePath = getSupportInstallPath(file.path)
+                if (installRelativePath != file.path) file.copy(path = installRelativePath) else file
+            }
+            Timber.tag("GOG").d(
+                "Skipping ${beforeSupportCount - supportFiles.size} existing support file(s), downloading ${supportFiles.size}",
+            )
+
             // Calculate sizes separately for transparency
             val (baseGameFiles, _) = parser.separateSupportFiles(baseFiles)
             val baseGameSize = parser.calculateTotalSize(baseGameFiles)
@@ -285,15 +300,16 @@ class GOGDownloadManager @Inject constructor(
             )
 
             // Step 6: Calculate sizes and extract chunk hashes
-            val totalSize = parser.calculateTotalSize(gameFiles)
-            val chunkHashes = parser.extractChunkHashes(gameFiles)
+            val allDownloadFiles = gameFiles + supportFiles
+            val totalSize = parser.calculateTotalSize(allDownloadFiles)
+            val chunkHashes = parser.extractChunkHashes(allDownloadFiles)
 
             Timber.tag("GOG").d(
                 """
                 |Download stats:
                 |  Total compressed size: ${totalSize / 1_000_000.0} MB (${if (withDlcs) "including DLC" else "base game only"})
                 |  Unique chunks: ${chunkHashes.size}
-                |  Files: ${gameFiles.size}
+                |  Files: ${allDownloadFiles.size}
                 """.trimMargin(),
             )
 
@@ -308,7 +324,7 @@ class GOGDownloadManager @Inject constructor(
 
             Timber.tag("GOG").d("Mapping chunks to products. gameId parameter: $gameId, realGameId: $realGameId, manifest baseProductId: ${gameManifest.baseProductId}")
 
-            val filesToDownloadPaths = gameFiles.map { it.path }.toSet()
+            val filesToDownloadPaths = allDownloadFiles.map { it.path }.toSet()
             // Map each chunk to its product ID using depot info
             allFilesWithDepots.forEach { (file, depotProductId) ->
                 if (file.path !in filesToDownloadPaths) return@forEach
@@ -405,7 +421,8 @@ class GOGDownloadManager @Inject constructor(
             // Use installPath directly since it already includes the game-specific folder
             gameInstallDir.mkdirs()
 
-            val assembleResult = assembleFiles(gameFiles, chunkCacheDir, gameInstallDir, downloadInfo)
+            val filesToAssembleInGameDir = gameFiles + supportFilesForGameDirAssemble
+            val assembleResult = assembleFiles(filesToAssembleInGameDir, chunkCacheDir, gameInstallDir, downloadInfo)
             if (assembleResult.isFailure) {
                 MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 return@withContext assembleResult
@@ -1427,6 +1444,10 @@ class GOGDownloadManager @Inject constructor(
         val digest = MessageDigest.getInstance("MD5")
         digest.update(data)
         return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    private fun getSupportInstallPath(path: String): String {
+        return if (path.startsWith("app/")) path.removePrefix("app/") else path
     }
 
     /**

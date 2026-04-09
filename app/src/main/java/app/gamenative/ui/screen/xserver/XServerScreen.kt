@@ -1129,7 +1129,7 @@ fun XServerScreen(
                     if (!handled) handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
                 }
                 if (PluviaApp.touchpadView?.hasPointerCapture() != true && !PluviaApp.isOverlayPaused) {
-                    if (it.event != null) {
+                    if ((it.event != null) && (it.event.device != null)) {
                         val device = it.event.device
                         val isExternal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) device.isExternal else true
                         if (device.supportsSource(InputDevice.SOURCE_TOUCHPAD) &&
@@ -1477,27 +1477,9 @@ fun XServerScreen(
                                 if (!container.isDisableMouseInput && !container.isTouchscreenMode) renderer?.setCursorVisible(true)
                                 xServerState.value.winStarted = true
                             }
-                            when {
-                                window.id == frameRatingWindowId -> {
-                                    (context as? Activity)?.runOnUiThread {
-                                        frameRating?.update()
-                                    }
-                                }
-                                frameRatingWindowId == -1 -> {
-                                    // Fallback for non-Vulkan games that never set candidate properties.
-                                    val rating = frameRating ?: return
-                                    val targetExe = extractExecutableBasename(container.executablePath)
-                                    if (windowMatchesExecutable(window, targetExe)) {
-                                        frameRatingWindowId = window.id
-                                        Timber.i(
-                                            "FrameRating fallback (non-Vulkan) tracking attached via first content update to %s",
-                                            describeFrameRatingWindow(window),
-                                        )
-                                        (context as? Activity)?.runOnUiThread {
-                                            rating.visibility = View.VISIBLE
-                                        }
-                                        rating.update()
-                                    }
+                            if (window.id == frameRatingWindowId) {
+                                (context as? Activity)?.runOnUiThread {
+                                    frameRating?.update()
                                 }
                             }
                         }
@@ -3810,6 +3792,22 @@ private fun setupWineSystemFiles(
         containerDataChanged = true
     }
 
+    // OpenAL audio: extract native DLLs if WINEDLLOVERRIDES mentions openal32 or soft_oal
+    val dllOverrides = EnvVars(container.envVars).get("WINEDLLOVERRIDES")
+    val needsOpenalDlls = dllOverrides.contains("openal32") || dllOverrides.contains("soft_oal")
+    val openalState = if (needsOpenalDlls) "yes" else "no"
+    if (openalState != container.getExtra("openal_dlls") || firstTimeBoot) {
+        if (needsOpenalDlls) {
+            val windowsDir = File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
+            TarCompressorUtils.extract(
+                TarCompressorUtils.Type.ZSTD, context.assets,
+                "wincomponents/openal.tzst", windowsDir, onExtractFileListener,
+            )
+        }
+        container.putExtra("openal_dlls", openalState)
+        containerDataChanged = true
+    }
+
     if (container.isLaunchRealSteam){
         extractSteamFiles(context, container, onExtractFileListener)
     }
@@ -4484,6 +4482,8 @@ private fun changeWineAudioDriver(audioDriver: String, container: Container, ima
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "alsa")
             } else if (audioDriver == "pulseaudio") {
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse")
+            } else if (audioDriver == "disabled") {
+                registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "")
             }
         }
         container.putExtra("audioDriver", audioDriver)
