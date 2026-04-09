@@ -341,10 +341,6 @@
     <string name="end_process">Завершить процесс</string>
     <string name="environment_variables">Переменные окружения</string>
     <string name="epic_cancel_download_message">Вы уверены, что хотите отменить загрузку приложения?</string>
-    <string name="epic_cloud_sync_error">Ошибка синхронизации облачного сохранения: %1$s</string>
-    <string name="epic_cloud_sync_failed">Ошибка синхронизации облачного сохранения</string>
-    <string name="epic_cloud_sync_starting">Начало синхронизации облачного сохранения…</string>
-    <string name="epic_cloud_sync_success">Облачные сохранения успешно синхронизированы</string>
     <string name="epic_delete_download_message">Удалить все загруженные данные для этой игры?</string>
     <string name="epic_download_error">Ошибка загрузки: %1$s</string>
     <string name="epic_download_failed">Ошибка при запуске загрузки: %1$s</string>
@@ -539,9 +535,11 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="library_app_status">Статус приложения</string>
     <string name="library_app_type">Тип приложения</string>
     <string name="library_cancel_download_message">Вы уверены, что хотите отменить загрузку приложения?</string>
-    <string name="library_cloud_sync_failed">Ошибка синхронизации облака: %s</string>
+    <string name="library_cloud_sync_starting">Начало синхронизации облака…</string>
     <string name="library_cloud_sync_success">Синхронизация облака завершена успешно</string>
     <string name="library_cloud_sync_up_to_date">Файлы сохранения уже актуальны</string>
+    <string name="library_cloud_sync_failed">Ошибка синхронизации облака</string>
+    <string name="library_cloud_sync_error">Ошибка синхронизации облачного сохранения: %1$s</string>
     <string name="library_compatibility_unknown">Неизвестно</string>
     <string name="library_compatible">Совместимо</string>
     <string name="library_config_title">Конфигурация %s</string>
@@ -1050,9 +1048,6 @@ https://gamenative.app
     <string name="steam_2fa_email">Пожалуйста, введите код аутентификации, отправленный на %s</string>
     <string name="steam_2fa_incorrect">Предыдущий код был неправильным, пожалуйста, попробуйте снова.</string>
     <string name="steam_cancel_download_message">Вы уверены, что хотите отменить загрузку приложения?</string>
-    <string name="steam_cloud_sync_failed">Ошибка синхронизации облака: %s</string>
-    <string name="steam_cloud_sync_success">Синхронизация облака завершена успешно</string>
-    <string name="steam_cloud_sync_up_to_date">Файлы сохранения уже актуальны</string>
     <string name="steam_container_reset_success">Контейнер сброшен на значения по умолчанию</string>
     <string name="steam_continue">Продолжить</string>
     <string name="steam_delete_download_message">Удалить все загруженные данные для этой игры?</string>

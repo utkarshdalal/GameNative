@@ -756,6 +756,8 @@ class SteamAppScreen : BaseAppScreen() {
                         properties = mapOf("game_name" to appInfo.name),
                     )
                     CoroutineScope(Dispatchers.IO).launch {
+                        SnackbarManager.show(context.getString(R.string.library_cloud_sync_starting))
+
                         val steamId = SteamService.userSteamId
                         if (steamId == null) {
                             SnackbarManager.show(context.getString(R.string.steam_not_logged_in))
@@ -776,17 +778,17 @@ class SteamAppScreen : BaseAppScreen() {
 
                         when (syncResult.syncResult) {
                             SyncResult.Success -> {
-                                SnackbarManager.show(context.getString(R.string.steam_cloud_sync_success))
+                                SnackbarManager.show(context.getString(R.string.library_cloud_sync_success))
                             }
 
                             SyncResult.UpToDate -> {
-                                SnackbarManager.show(context.getString(R.string.steam_cloud_sync_up_to_date))
+                                SnackbarManager.show(context.getString(R.string.library_cloud_sync_up_to_date))
                             }
 
                             else -> {
                                 SnackbarManager.show(
                                     context.getString(
-                                        R.string.steam_cloud_sync_failed,
+                                        R.string.library_cloud_sync_error,
                                         syncResult.syncResult,
                                     ),
                                 )

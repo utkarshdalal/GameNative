@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">Assicurati che i tuoi salvataggi siano caricati sul cloud o sottoposti a backup prima della verifica, altrimenti potrebbero essere sovrascritti.</string>
     <string name="steam_update_title">Aggiorna</string>
     <string name="steam_update_message">Assicurati che i tuoi salvataggi siano caricati sul cloud o sottoposti a backup prima dell\'aggiornamento, altrimenti potrebbero essere sovrascritti.</string>
-    <string name="steam_cloud_sync_success">Sincronizzazione cloud completata con successo</string>
-    <string name="steam_cloud_sync_up_to_date">I file di salvataggio sono già aggiornati</string>
-    <string name="steam_cloud_sync_failed">Sincronizzazione cloud fallita: %s</string>
     <string name="steam_not_logged_in">Devi aver effettuato l\'accesso a Steam per utilizzare questa funzione</string>
     <string name="steam_storage_permission_required">Permesso di archiviazione richiesto</string>
     <string name="steam_container_reset_success">Container reimpostato ai valori predefiniti</string>
@@ -59,10 +56,6 @@
     <string name="steam_never">Mai</string>
     <string name="epic_cancel_download_message">Sei sicuro di voler annullare il download dell\'app?</string>
     <string name="epic_delete_download_message">Eliminare tutti i dati scaricati per questo gioco?</string>
-    <string name="epic_cloud_sync_starting">Avvio sincronizzazione salvataggi cloud…</string>
-    <string name="epic_cloud_sync_success">Salvataggi cloud sincronizzati con successo</string>
-    <string name="epic_cloud_sync_failed">Sincronizzazione salvataggi cloud non riuscita</string>
-    <string name="epic_cloud_sync_error">Errore sincronizzazione salvataggi cloud: %1$s</string>
     <string name="epic_uninstall_failed">Disinstallazione non riuscita: %1$s</string>
     <string name="epic_uninstall_error">Errore di disinstallazione: %1$s</string>
     <string name="steam_continue">Continua</string>
@@ -964,9 +957,11 @@
     <string name="library_export_cancelled">Esportazione annullata</string>
     <string name="library_shortcut_created">Scorciatoia creata</string>
     <string name="library_failed_to_create_shortcut">Impossibile creare scorciatoia: %s</string>
+    <string name="library_cloud_sync_starting">Avvio sincronizzazione salvataggi cloud…</string>
     <string name="library_cloud_sync_success">Sincronizzazione cloud completata con successo</string>
     <string name="library_cloud_sync_up_to_date">I file di salvataggio sono già aggiornati</string>
-    <string name="library_cloud_sync_failed">Sincronizzazione cloud fallita: %s</string>
+    <string name="library_cloud_sync_failed">Sincronizzazione cloud fallita</string>
+    <string name="library_cloud_sync_error">Errore sincronizzazione salvataggi cloud: %1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Serve internet per installare</string>

@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">验证前请确保存档已上传至云端或已备份，否则存档可能会被覆盖</string>
     <string name="steam_update_title">更新</string>
     <string name="steam_update_message">更新前请确保存档已上传至云端或已备份，否则存档可能会被覆盖</string>
-    <string name="steam_cloud_sync_success">云同步已成功完成</string>
-    <string name="steam_cloud_sync_up_to_date">游戏存档已是最新版本</string>
-    <string name="steam_cloud_sync_failed">云同步失败：%s</string>
     <string name="steam_storage_permission_required">需要存储权限</string>
     <string name="steam_container_reset_success">容器已重置为默认设置</string>
     <string name="steam_imagefs_installed">ImageFS 已安装，请重试编辑容器</string>
@@ -58,10 +55,6 @@
     <string name="steam_never">从不</string>
     <string name="epic_cancel_download_message">确定要取消下载应用程序吗？</string>
     <string name="epic_delete_download_message">删除此游戏的所有已下载数据？</string>
-    <string name="epic_cloud_sync_starting">正在开始云存档同步…</string>
-    <string name="epic_cloud_sync_success">云存档同步成功</string>
-    <string name="epic_cloud_sync_failed">云存档同步失败</string>
-    <string name="epic_cloud_sync_error">云存档同步错误：%1$s</string>
     <string name="epic_uninstall_failed">卸载失败：%1$s</string>
     <string name="epic_uninstall_error">卸载错误：%1$s</string>
     <string name="steam_continue">继续</string>
@@ -961,9 +954,11 @@
     <string name="library_export_cancelled">导出已取消</string>
     <string name="library_shortcut_created">快捷方式已创建</string>
     <string name="library_failed_to_create_shortcut">创建快捷方式失败：%s</string>
-    <string name="library_cloud_sync_success">云同步完成</string>
-    <string name="library_cloud_sync_up_to_date">存档文件已更新至最新版本</string>
-    <string name="library_cloud_sync_failed">云同步失败：%s</string>
+    <string name="library_cloud_sync_starting">正在同步云存档…</string>
+    <string name="library_cloud_sync_success">云存档同步完成</string>
+    <string name="library_cloud_sync_up_to_date">云存档同步已是最新状态</string>
+    <string name="library_cloud_sync_failed">云存档同步失败</string>
+    <string name="library_cloud_sync_error">云存档同步错误：%1$s</string>
 
     <!-- 库应用界面：UI标签 -->
     <string name="library_need_internet">需联网安装</string>

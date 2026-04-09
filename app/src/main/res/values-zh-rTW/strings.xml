@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">請確保您的存檔已上傳至雲端或已備份, 然後再進行驗證, 否則存檔可能會被覆蓋</string>
     <string name="steam_update_title">更新</string>
     <string name="steam_update_message">請確保您的存檔已上傳至雲端或已備份, 然後再進行驗證, 否則存檔可能會被覆蓋</string>
-    <string name="steam_cloud_sync_success">雲端同步已成功完成</string>
-    <string name="steam_cloud_sync_up_to_date">遊戲存檔已是最新版本</string>
-    <string name="steam_cloud_sync_failed">雲端同步失敗: %s</string>
     <string name="steam_storage_permission_required">需要存儲權限</string>
     <string name="steam_container_reset_success">容器重設為預設設定</string>
     <string name="steam_imagefs_installed">已安裝 ImageFS, 請嘗試再次編輯容器</string>
@@ -58,10 +55,6 @@
     <string name="steam_never">從不</string>
     <string name="epic_cancel_download_message">確定要取消下載應用程式嗎？</string>
     <string name="epic_delete_download_message">刪除此遊戲的所有已下載資料？</string>
-    <string name="epic_cloud_sync_starting">正在開始雲端存檔同步…</string>
-    <string name="epic_cloud_sync_success">雲端存檔同步成功</string>
-    <string name="epic_cloud_sync_failed">雲端存檔同步失敗</string>
-    <string name="epic_cloud_sync_error">雲端存檔同步錯誤：%1$s</string>
     <string name="epic_uninstall_failed">解除安裝失敗：%1$s</string>
     <string name="epic_uninstall_error">解除安裝錯誤：%1$s</string>
     <string name="steam_continue">繼續</string>
@@ -964,9 +957,11 @@
     <string name="library_export_cancelled">匯出已取消</string>
     <string name="library_shortcut_created">捷徑已建立</string>
     <string name="library_failed_to_create_shortcut">建立捷徑失敗: %s</string>
+    <string name="library_cloud_sync_starting">正在開始雲端存檔同步…</string>
     <string name="library_cloud_sync_success">雲端同步完成</string>
     <string name="library_cloud_sync_up_to_date">儲存檔案已更新至最新版本</string>
-    <string name="library_cloud_sync_failed">雲端同步失敗: %s</string>
+    <string name="library_cloud_sync_failed">雲端同步失敗</string>
+    <string name="library_cloud_sync_error">雲端存檔同步錯誤：%1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">需連網安裝</string>

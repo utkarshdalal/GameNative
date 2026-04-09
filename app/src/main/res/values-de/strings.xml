@@ -28,9 +28,6 @@
     <string name="steam_verify_files_message">Stelle bitte sicher, dass deine Spielstände vorher in die Cloud hochgeladen oder gesichert wurden, da sie sonst überschrieben werden können.</string>
     <string name="steam_update_title">Aktualisieren</string>
     <string name="steam_update_message">Stelle sicher, dass deine Speicherstände vor dem Aktualisieren in der Cloud gesichert oder gebackupt sind, um ein Überschreiben zu verhindern.</string>
-    <string name="steam_cloud_sync_success">Cloud-Synchronisierung erfolgreich abgeschlossen</string>
-    <string name="steam_cloud_sync_up_to_date">Spielstände sind bereits aktuell</string>
-    <string name="steam_cloud_sync_failed">Cloud-Synchronisierung fehlgeschlagen: %s</string>
     <string name="steam_not_logged_in">Du musst bei Steam angemeldet sein, um diese Funktion zu nutzen</string>
     <string name="steam_storage_permission_required">Speicherberechtigung erforderlich</string>
     <string name="steam_container_reset_success">Container auf Werkseinstellungen zurückgesetzt</string>
@@ -54,10 +51,6 @@
     <string name="steam_never">Nie</string>
     <string name="epic_cancel_download_message">Möchten Sie den Download der App wirklich abbrechen?</string>
     <string name="epic_delete_download_message">Alle heruntergeladenen Daten für dieses Spiel löschen?</string>
-    <string name="epic_cloud_sync_starting">Starte Cloud-Speicherstand-Synchronisation…</string>
-    <string name="epic_cloud_sync_success">Cloud-Spielstände erfolgreich synchronisiert</string>
-    <string name="epic_cloud_sync_failed">Cloud-Spielstand-Synchronisation fehlgeschlagen</string>
-    <string name="epic_cloud_sync_error">Fehler bei Cloud-Spielstand-Synchronisation: %1$s</string>
     <string name="epic_uninstall_failed">Deinstallation fehlgeschlagen: %1$s</string>
     <string name="epic_uninstall_error">Deinstallationsfehler: %1$s</string>
     <string name="steam_continue">Weiter</string>
@@ -925,9 +918,11 @@
     <string name="library_export_cancelled">Export abgebrochen</string>
     <string name="library_shortcut_created">Verknüpfung erstellt</string>
     <string name="library_failed_to_create_shortcut">Verknüpfung konnte nicht erstellt werden: %s</string>
+    <string name="library_cloud_sync_starting">Cloud-Synchronisierung wird gestartet…</string>
     <string name="library_cloud_sync_success">Cloud-Synchronisierung erfolgreich</string>
     <string name="library_cloud_sync_up_to_date">Spielstände sind aktuell</string>
-    <string name="library_cloud_sync_failed">Cloud-Synchronisierung fehlgeschlagen: %s</string>
+    <string name="library_cloud_sync_failed">Cloud-Synchronisierung fehlgeschlagen</string>
+    <string name="library_cloud_sync_error">Cloud-Synchronisierungsfehler: %1$s</string>
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Internetverbindung erforderlich</string>
     <string name="library_wifi_only_enabled">Installieren nur über WLAN/LAN aktiviert</string>

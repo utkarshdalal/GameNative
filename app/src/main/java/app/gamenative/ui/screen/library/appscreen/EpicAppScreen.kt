@@ -546,7 +546,7 @@ class EpicAppScreen : BaseAppScreen() {
                         val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
                         scope.launch {
                             try {
-                                SnackbarManager.show(context.getString(R.string.epic_cloud_sync_starting))
+                                SnackbarManager.show(context.getString(R.string.library_cloud_sync_starting))
 
                                 val result = withContext(Dispatchers.IO) {
                                     EpicCloudSavesManager.syncCloudSaves(
@@ -557,11 +557,20 @@ class EpicAppScreen : BaseAppScreen() {
                                 }
 
                                 SnackbarManager.show(
-                                    if (result) context.getString(R.string.epic_cloud_sync_success) else context.getString(R.string.epic_cloud_sync_failed),
+                                    if (result) {
+                                        context.getString(R.string.library_cloud_sync_success)
+                                    } else {
+                                        context.getString(R.string.library_cloud_sync_failed)
+                                    },
                                 )
                             } catch (e: Exception) {
                                 Timber.tag(TAG).e(e, "[Cloud Saves] Sync failed")
-                                SnackbarManager.show(context.getString(R.string.epic_cloud_sync_error, e.message ?: ""))
+                                SnackbarManager.show(
+                                    context.getString(
+                                        R.string.library_cloud_sync_error,
+                                        e.message ?: "",
+                                    ),
+                                )
                             }
                         }
                     },
