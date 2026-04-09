@@ -49,7 +49,8 @@ object BestConfigService {
         val bestConfig: JsonObject,
         val matchType: String, // "exact_gpu_match" | "gpu_family_match" | "fallback_match" | "no_match"
         val matchedGpu: String,
-        val matchedDeviceId: Int
+        val matchedDeviceId: Int,
+        val matchedStore: String,
     )
 
     /**
@@ -72,9 +73,10 @@ object BestConfigService {
      */
     suspend fun fetchBestConfig(
         gameName: String,
-        gpuName: String
+        gpuName: String,
+        gameStore: String,
     ): BestConfigResponse? = withContext(Dispatchers.IO) {
-        val cacheKey = "${gameName}_${gpuName}"
+        val cacheKey = "${gameName}_${gpuName}_${gameStore}"
 
         // Check cache first
         cache[cacheKey]?.let {
@@ -86,6 +88,7 @@ object BestConfigService {
             val requestBody = JSONObject().apply {
                 put("gameName", gameName)
                 put("gpuName", gpuName)
+                put("game_store", gameStore)
             }
 
             val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")
@@ -126,7 +129,8 @@ object BestConfigService {
                     bestConfig = bestConfig,
                     matchType = jsonResponse.getString("matchType"),
                     matchedGpu = jsonResponse.getString("matchedGpu"),
-                    matchedDeviceId = jsonResponse.getInt("matchedDeviceId")
+                    matchedDeviceId = jsonResponse.getInt("matchedDeviceId"),
+                    matchedStore = jsonResponse.optString("matchedStore", gameStore),
                 )
 
                 cache[cacheKey] = bestConfigResponse
@@ -171,8 +175,12 @@ object BestConfigService {
      * Filters config JSON based on match type.
      * For fallback_match, excludes containerVariant, graphicsDriver, dxwrapper, and dxwrapperConfig.
      */
-    fun filterConfigByMatchType(config: JsonObject, matchType: String): JsonObject {
+    fun filterConfigByMatchType(config: JsonObject, matchType: String, storeMatch: Boolean = true): JsonObject {
         val filtered = config.toMutableMap()
+
+        if (!storeMatch) {
+            filtered.remove("executablePath")
+        }
 
         if (matchType == "exact_gpu_match" || matchType == "gpu_family_match") {
             // Apply all fields
@@ -630,7 +638,13 @@ object BestConfigService {
      * First parses values (using PrefManager defaults for validation), then validates component versions.
      * Returns map with only fields present in config (no defaults), or empty map if validation fails.
      */
-    suspend fun parseConfigToContainerData(context: Context, configJson: JsonObject, matchType: String, applyKnownConfig: Boolean): Map<String, Any?>? {
+    suspend fun parseConfigToContainerData(
+        context: Context,
+        configJson: JsonObject,
+        matchType: String,
+        applyKnownConfig: Boolean,
+        storeMatch: Boolean = true,
+    ): Map<String, Any?>? {
         try {
             val originalJson = JSONObject(configJson.toString())
 
@@ -695,7 +709,7 @@ object BestConfigService {
 
                 // Step 1: Filter config based on match type
                 val updatedConfigJson = Json.parseToJsonElement(originalJson.toString()).jsonObject
-                val filteredConfig = filterConfigByMatchType(updatedConfigJson, matchType)
+                val filteredConfig = filterConfigByMatchType(updatedConfigJson, matchType, storeMatch)
                 val filteredJson = JSONObject(filteredConfig.toString())
 
                 // Step 2: Validate component versions against resource arrays

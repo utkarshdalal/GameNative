@@ -11,40 +11,47 @@ import java.util.concurrent.ConcurrentHashMap
  * when Steam depot manifests use different casing than what's already installed
  * (e.g. DLC referencing `_Work` when the base game created `_work`).
  *
- * Resolved segments are cached for the lifetime of this instance (one download
- * session) so repeated lookups for the same parent+segment are O(1).
+ * Two-level cache: full-path results are cached so repeat operations on the same
+ * path (common during chunk writes) skip per-segment resolution entirely.
+ * Per-segment results are cached in a nested map so different paths sharing a
+ * common prefix reuse earlier resolution work without allocating keys.
  */
 class CaseInsensitiveFileSystem(
     delegate: FileSystem = SYSTEM,
 ) : ForwardingFileSystem(delegate) {
 
-    // (parent, lowercased segment) → resolved child path.
-    // keyed by lowercase so all casing variants ("Saves", "saves", "SAVES") hit
-    // the same entry. computeIfAbsent is atomic on ConcurrentHashMap, so
-    // concurrent threads won't race to create duplicate directories.
-    private val cache = ConcurrentHashMap<Pair<Path, String>, Path>()
+    // full path → resolved path. most calls hit this and return immediately.
+    private val pathCache = ConcurrentHashMap<Path, Path>()
+
+    // parent → (lowercase segment → resolved child path).
+    // nested map avoids key concatenation/Pair allocation on every lookup.
+    private val segmentCache = ConcurrentHashMap<Path, ConcurrentHashMap<String, Path>>()
+
+    // segment string → its lowercase form. game paths reuse a small vocabulary
+    // of directory names, so this prevents repeated lowercase() allocation.
+    private val lowercasePool = ConcurrentHashMap<String, String>()
 
     override fun onPathParameter(path: Path, functionName: String, parameterName: String): Path {
+        pathCache[path]?.let { return it }
+
         val root = path.root ?: return path
         var resolved = root
         for (segment in path.segments) {
-            val key = resolved to segment.lowercase()
-            resolved = cache.computeIfAbsent(key) {
-                // fast path: exact casing exists
-                val exact = resolved / segment
+            val lower = lowercasePool.computeIfAbsent(segment) { it.lowercase() }
+            val parent = resolved
+            val children = segmentCache.computeIfAbsent(parent) { ConcurrentHashMap() }
+            resolved = children.computeIfAbsent(lower) {
+                val exact = parent / segment
                 if (delegate.metadataOrNull(exact) != null) {
                     exact
                 } else {
-                    // slow path: list parent and match case-insensitively.
-                    // if multiple entries match (e.g. leftover _Work + _work from a
-                    // prior bug), the first one returned by the filesystem wins —
-                    // non-deterministic but unavoidable without deeper heuristics.
-                    delegate.listOrNull(resolved)
+                    delegate.listOrNull(parent)
                         ?.firstOrNull { it.name.equals(segment, ignoreCase = true) }
                         ?: exact
                 }
             }
         }
+        pathCache[path] = resolved
         return resolved
     }
 }

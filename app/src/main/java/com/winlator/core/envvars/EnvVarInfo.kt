@@ -213,10 +213,7 @@ data class EnvVarInfo(
                 identifier = "MESA_EXTENSION_MAX_YEAR",
             ),
             "WRAPPER_MAX_IMAGE_COUNT" to EnvVarInfo(
-                identifier = "MESA_EXTENSION_MAX_YEAR",
-            ),
-            "MESA_GL_VERSION_OVERRIDE" to EnvVarInfo(
-                identifier = "MESA_EXTENSION_MAX_YEAR",
+                identifier = "WRAPPER_MAX_IMAGE_COUNT",
             ),
             "PULSE_LATENCY_MSEC" to EnvVarInfo(
                 identifier = "PULSE_LATENCY_MSEC",
@@ -227,6 +224,9 @@ data class EnvVarInfo(
             ),
             "DXVK_FRAME_RATE" to EnvVarInfo(
                 identifier = "DXVK_FRAME_RATE",
+            ),
+            "VKD3D_SHADER_MODEL" to EnvVarInfo(
+                identifier = "VKD3D_SHADER_MODEL",
             ),
             "WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER" to EnvVarInfo(
                 identifier = "WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER",
@@ -242,6 +242,55 @@ data class EnvVarInfo(
                 identifier = "GALLIUM_HUD",
                 selectionType = EnvVarSelectionType.MULTI_SELECT,
                 possibleValues = listOf("simple", "fps", "frametime"),
+            ),
+            "MESA_GL_VERSION_OVERRIDE" to EnvVarInfo(
+                identifier = "MESA_GL_VERSION_OVERRIDE",
+            ),
+            "MESA_VK_WSI_DEBUG" to EnvVarInfo(
+                identifier = "MESA_VK_WSI_DEBUG",
+            ),
+            "BOX64_MAX_THREADS" to EnvVarInfo(
+                identifier = "BOX64_MAX_THREADS",
+            ),
+            "VKD3D_FRAME_RATE" to EnvVarInfo(
+                identifier = "VKD3D_FRAME_RATE",
+            ),
+            "VKD3D_THREAD_COUNT" to EnvVarInfo(
+                identifier = "VKD3D_THREAD_COUNT",
+            ),
+            "VKD3D_SHADER_CACHE_PATH" to EnvVarInfo(
+                identifier = "VKD3D_SHADER_CACHE_PATH",
+            ),
+            "DXVK_CONFIG" to EnvVarInfo(
+                identifier = "DXVK_CONFIG",
+            ),
+            "VKD3D_CONFIG" to EnvVarInfo(
+                identifier = "VKD3D_CONFIG",
+            ),
+            "MESA_VK_PRESENT_MODE" to EnvVarInfo(
+                identifier = "MESA_VK_PRESENT_MODE",
+            ),
+            "DXVK_FILTER_DEVICE_NAME" to EnvVarInfo(
+                identifier = "DXVK_FILTER_DEVICE_NAME",
+                selectionType = EnvVarSelectionType.MULTI_SELECT,
+                possibleValues = listOf(
+                    "NVIDIA GeForce GTX 1080",
+                    "NVIDIA GeForce RTX 3060",
+                    "AMD Radeon RX 580",
+                    "Radeon HD 7900 Series",
+                ),
+            ),
+            // Wine DLL overrides — user types freely or picks a common preset
+            // More common DLL overrides can be added in future. Only audio related for now
+            "WINEDLLOVERRIDES" to EnvVarInfo(
+                identifier = "WINEDLLOVERRIDES",
+                selectionType = EnvVarSelectionType.SUGGESTIONS,
+                possibleValues = listOf(
+                    "openal32=native,builtin",
+                    "soft_oal=native",
+                    "openal32=native,builtin;soft_oal=native",
+                    "xaudio2_7=native,builtin",
+                ),
             ),
         )
     }

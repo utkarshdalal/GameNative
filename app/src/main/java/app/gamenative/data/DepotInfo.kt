@@ -21,6 +21,7 @@ data class DepotInfo(
     val encryptedManifests: Map<String, ManifestInfo>,
     val language: String = "",
     val realm: String = "",
+    val systemDefined: Boolean = false,
     val steamDeck: Boolean = false,
 ) {
     /** Windows or OS-untagged (neither Linux nor macOS) */

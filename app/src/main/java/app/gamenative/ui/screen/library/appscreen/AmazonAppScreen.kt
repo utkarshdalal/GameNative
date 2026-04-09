@@ -33,6 +33,7 @@ import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DateTimeUtils
+import app.gamenative.utils.MarkerUtils
 import com.winlator.container.ContainerData
 import com.winlator.core.StringUtils
 import kotlinx.coroutines.CoroutineScope
@@ -493,6 +494,9 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                             isVerifying = true
                             val productId = productIdOf(libraryItem)
                             CoroutineScope(Dispatchers.IO).launch {
+                                AmazonService.getInstallPath(productId)?.let { installPath ->
+                                    MarkerUtils.clearInstalledPrerequisiteMarkers(installPath)
+                                }
                                 val result = AmazonService.verifyGame(context, productId)
                                 withContext(Dispatchers.Main) {
                                     isVerifying = false

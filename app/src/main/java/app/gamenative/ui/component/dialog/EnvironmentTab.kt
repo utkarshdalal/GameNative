@@ -9,6 +9,8 @@ import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -153,10 +155,36 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                             colors = settingsTileColors(),
                         )
                     } else {
+                        var suggestionsExpanded by remember { mutableStateOf(false) }
+                        val hasSuggestions = selectedEnvVarInfo?.selectionType == EnvVarSelectionType.SUGGESTIONS
                         OutlinedTextField(
                             value = envVarValue,
                             onValueChange = { envVarValue = it },
                             label = { Text(text = stringResource(R.string.value)) },
+                            trailingIcon = if (hasSuggestions) {
+                                {
+                                    IconButton(onClick = { suggestionsExpanded = true }) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Outlined.ViewList,
+                                            contentDescription = "Presets",
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = suggestionsExpanded,
+                                        onDismissRequest = { suggestionsExpanded = false },
+                                    ) {
+                                        selectedEnvVarInfo!!.possibleValues.forEach { suggestion ->
+                                            DropdownMenuItem(
+                                                text = { Text(suggestion) },
+                                                onClick = {
+                                                    envVarValue = suggestion
+                                                    suggestionsExpanded = false
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                            } else null,
                         )
                     }
                 }

@@ -1104,7 +1104,11 @@ fun XServerScreen(
                         gameBack()
                         handled = true
                     } else {
-                        handled = keyboard?.onKeyEvent(it.event) == true
+                        if (it.event.device?.isVirtual == true) {
+                            handled = keyboard?.onVirtualKeyEvent(it.event) == true
+                        } else {
+                            handled = keyboard?.onKeyEvent(it.event) == true
+                        }
                     }
                 }
                 handled
@@ -1125,7 +1129,7 @@ fun XServerScreen(
                     if (!handled) handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
                 }
                 if (PluviaApp.touchpadView?.hasPointerCapture() != true && !PluviaApp.isOverlayPaused) {
-                    if (it.event != null) {
+                    if ((it.event != null) && (it.event.device != null)) {
                         val device = it.event.device
                         val isExternal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) device.isExternal else true
                         if (device.supportsSource(InputDevice.SOURCE_TOUCHPAD) &&
@@ -1400,23 +1404,71 @@ fun XServerScreen(
                     getxServer().windowManager.removeOnWindowModificationListener(it)
                 }
                 val wmListener = object : WindowManager.OnWindowModificationListener {
+                        private fun isFrameRatingCandidateProperty(propertyName: String): Boolean {
+                            return propertyName.contains("_UTIL_LAYER") ||
+                                propertyName.contains("_MESA_DRV") ||
+                                (container.containerVariant.equals(Container.GLIBC) && propertyName.contains("_NET_WM_SURFACE"))
+                        }
+
+                        private fun describeFrameRatingWindow(window: Window): String {
+                            return "id=${window.id}, name=${window.name}, class=${window.className}, pid=${window.processId}"
+                        }
+
                         private fun changeFrameRatingVisibility(window: Window, property: Property?) {
-                            if (frameRating == null) return
+                            val rating = frameRating ?: return
                             if (property != null) {
-                                if (frameRatingWindowId == -1 && (
-                                            property.nameAsString().contains("_UTIL_LAYER") ||
-                                            property.nameAsString().contains("_MESA_DRV") ||
-                                            container.containerVariant.equals(Container.GLIBC) && property.nameAsString().contains("_NET_WM_SURFACE"))) {
-                                    frameRatingWindowId = window.id
-                                    (context as? Activity)?.runOnUiThread {
-                                        frameRating?.visibility = View.VISIBLE
+                                val propertyName = property.nameAsString()
+                                if (!isFrameRatingCandidateProperty(propertyName)) return
+
+                                when {
+                                    frameRatingWindowId == -1 -> {
+                                        frameRatingWindowId = window.id
+                                        Timber.i(
+                                            "FrameRating tracking attached via property=%s to %s",
+                                            propertyName,
+                                            describeFrameRatingWindow(window),
+                                        )
+                                        (context as? Activity)?.runOnUiThread {
+                                            frameRating?.visibility = View.VISIBLE
+                                        }
+                                        rating.update()
                                     }
-                                    frameRating?.update()
+                                    frameRatingWindowId == window.id -> {
+                                        Timber.d(
+                                            "FrameRating received candidate property=%s for already tracked window %s",
+                                            propertyName,
+                                            describeFrameRatingWindow(window),
+                                        )
+                                    }
+                                    else -> {
+                                        Timber.d(
+                                            "FrameRating ignoring candidate property=%s for %s because tracking already points to windowId=%d",
+                                            propertyName,
+                                            describeFrameRatingWindow(window),
+                                            frameRatingWindowId,
+                                        )
+                                    }
                                 }
-                            } else if (frameRatingWindowId != -1) {
-                                frameRatingWindowId = -1
-                                (context as? Activity)?.runOnUiThread {
-                                    frameRating?.visibility = View.GONE
+                                return
+                            }
+
+                            when {
+                                frameRatingWindowId == window.id -> {
+                                    Timber.i(
+                                        "FrameRating tracking cleared because tracked window unmapped: %s",
+                                        describeFrameRatingWindow(window),
+                                    )
+                                    frameRatingWindowId = -1
+                                    (context as? Activity)?.runOnUiThread {
+                                        frameRating?.visibility = View.GONE
+                                    }
+                                }
+                                frameRatingWindowId != -1 -> {
+                                    Timber.d(
+                                        "FrameRating ignoring unmap for non-tracked window %s; still tracking windowId=%d",
+                                        describeFrameRatingWindow(window),
+                                        frameRatingWindowId,
+                                    )
                                 }
                             }
                         }
@@ -1433,6 +1485,13 @@ fun XServerScreen(
                         }
 
                         override fun onModifyWindowProperty(window: Window, property: Property) {
+                            if (frameRating != null && isFrameRatingCandidateProperty(property.nameAsString())) {
+                                Timber.d(
+                                    "FrameRating observed candidate property=%s on %s",
+                                    property.nameAsString(),
+                                    describeFrameRatingWindow(window),
+                                )
+                            }
                             changeFrameRatingVisibility(window, property)
                         }
 
@@ -2288,7 +2347,6 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
     }
 
     PluviaApp.touchpadView?.setSensitivity(profile.getCursorSpeed() * 1.0f)
-    PluviaApp.touchpadView?.setPointerButtonRightEnabled(false)
 
 
     // If the selected profile is a virtual gamepad, we must enable the P1 slot.
@@ -3734,6 +3792,22 @@ private fun setupWineSystemFiles(
         containerDataChanged = true
     }
 
+    // OpenAL audio: extract native DLLs if WINEDLLOVERRIDES mentions openal32 or soft_oal
+    val dllOverrides = EnvVars(container.envVars).get("WINEDLLOVERRIDES")
+    val needsOpenalDlls = dllOverrides.contains("openal32") || dllOverrides.contains("soft_oal")
+    val openalState = if (needsOpenalDlls) "yes" else "no"
+    if (openalState != container.getExtra("openal_dlls") || firstTimeBoot) {
+        if (needsOpenalDlls) {
+            val windowsDir = File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
+            TarCompressorUtils.extract(
+                TarCompressorUtils.Type.ZSTD, context.assets,
+                "wincomponents/openal.tzst", windowsDir, onExtractFileListener,
+            )
+        }
+        container.putExtra("openal_dlls", openalState)
+        containerDataChanged = true
+    }
+
     if (container.isLaunchRealSteam){
         extractSteamFiles(context, container, onExtractFileListener)
     }
@@ -4408,6 +4482,8 @@ private fun changeWineAudioDriver(audioDriver: String, container: Container, ima
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "alsa")
             } else if (audioDriver == "pulseaudio") {
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse")
+            } else if (audioDriver == "disabled") {
+                registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "")
             }
         }
         container.putExtra("audioDriver", audioDriver)
