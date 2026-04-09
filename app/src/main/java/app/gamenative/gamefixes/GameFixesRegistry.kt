@@ -40,6 +40,7 @@ object GameFixesRegistry {
         STEAM_Fix_3373660,
         EPIC_Fix_b1b4e0b67a044575820cb5e63028dcae,
         EPIC_Fix_dabb52e328834da7bbe99691e374cb84,
+        EPIC_Fix_e345fdb9186645a48d30c3f85a8951dc,
         EPIC_Fix_59a0c86d02da42e8ba6444cb171e61bf,
     ).associateBy { it.gameSource to it.gameId }
 
