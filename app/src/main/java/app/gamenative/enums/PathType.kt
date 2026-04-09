@@ -267,6 +267,8 @@ enum class PathType {
                 -> SteamUserData
                 "%${WinMyDocuments.name.lowercase()}%",
                 WinMyDocuments.name.lowercase(),
+                "steamclouddocuments",
+                "%steamclouddocuments%",
                 -> WinMyDocuments
                 "%${WinAppDataLocal.name.lowercase()}%",
                 WinAppDataLocal.name.lowercase(),

@@ -645,6 +645,45 @@ class KeyValueUtilsTest {
         assertEquals(PathType.Root, patterns[0].uploadRoot)
     }
 
+    /**
+     * Sonic Mania (App ID 584400) has a save pattern with `root: SteamCloudDocuments`, which is
+     * Steam's name for the user's Documents folder (WinMyDocuments in Wine). It must be recognized
+     * and pass the isWindows filter so the pattern is not silently dropped.
+     */
+    @Test
+    fun sonicManiaSteamCloudDocumentsRootIsRecognizedAsWinMyDocuments() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "584400"
+                "ufs"
+                {
+                    "quota"         "67108864"
+                    "maxnumfiles"   "64"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "SteamCloudDocuments"
+                            "path"      "SavesDir"
+                            "pattern"   "*.sav"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinMyDocuments, patterns[0].root)
+        assertEquals(true, patterns[0].root.isWindows)
+        assertEquals("SavesDir", patterns[0].path)
+        assertEquals("*.sav", patterns[0].pattern)
+        assertEquals(PathType.WinMyDocuments, patterns[0].uploadRoot)
+    }
+
     @Test
     fun generateSteamAppStampsCurrentUfsParseVersion() {
         val kvString = """
