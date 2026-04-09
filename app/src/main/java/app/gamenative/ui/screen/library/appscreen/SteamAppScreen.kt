@@ -24,7 +24,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -1390,7 +1390,7 @@ private fun SteamChangeBranchDialog(
                     expanded = branchExpanded,
                     onExpandedChange = { branchExpanded = it },
                 ) {
-                    OutlinedTextField(
+                    NoExtractOutlinedTextField(
                         value = selectedBranch,
                         onValueChange = {},
                         readOnly = true,
@@ -1418,7 +1418,7 @@ private fun SteamChangeBranchDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                OutlinedTextField(
+                NoExtractOutlinedTextField(
                     value = privateBranchPassword,
                     onValueChange = {
                         privateBranchPassword = it
