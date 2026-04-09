@@ -46,7 +46,6 @@ import app.gamenative.ui.screen.library.components.ambient.AmbientModeConstants.
 import app.gamenative.ui.screen.library.components.ambient.AmbientModeConstants.SHIMMER_PERIOD_MS
 import app.gamenative.ui.screen.library.components.ambient.AmbientModeConstants.SHIMMER_WIDTH_FRACTION
 import app.gamenative.ui.theme.BrandGradient
-import app.gamenative.utils.BrightnessManager
 import app.gamenative.utils.ShakeDetector
 import kotlinx.coroutines.delay
 
@@ -63,7 +62,6 @@ internal fun AmbientDownloadOverlay(
 ) {
     val activity = LocalActivity.current as? ComponentActivity ?: return
     val context = LocalContext.current
-    val brightnessManager = remember { BrightnessManager(activity, AmbientModeConstants.MIN_BRIGHTNESS) }
 
     var interactionCounter by remember { mutableIntStateOf(0) }
     var isIdle by remember { mutableStateOf(false) }
@@ -130,19 +128,6 @@ internal fun AmbientDownloadOverlay(
         ),
         label = "ambientAlpha",
     )
-
-    LaunchedEffect(isIdle) {
-        if (isIdle) {
-            delay(AmbientModeConstants.BRIGHTNESS_DIM_DELAY_MS)
-            brightnessManager.dim()
-        } else {
-            brightnessManager.restore()
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose { brightnessManager.restore() }
-    }
 
     if (ambientAlpha > 0f) {
         val infiniteTransition = rememberInfiniteTransition(label = "ambient")

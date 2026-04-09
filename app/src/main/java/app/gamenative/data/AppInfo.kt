@@ -15,4 +15,6 @@ data class AppInfo (
     val dlcDepots: List<Int> = emptyList<Int>(),
     @ColumnInfo("branch", defaultValue = "public")
     val branch: String = "public",
+    @ColumnInfo(name = "recovered_install_size_bytes", defaultValue = "0")
+    val recoveredInstallSizeBytes: Long = 0L,
 )

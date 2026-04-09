@@ -32,3 +32,40 @@ You can copy, modify, distribute and perform the work, even for commercial
 purposes, all without asking permission.
 
 Full license text: https://creativecommons.org/publicdomain/zero/1.0/
+
+---
+
+## OpenAL Soft
+
+**Library:** OpenAL Soft v1.25.1
+**Author:** kcat (Chris Robinson) and contributors
+**Source:** https://openal-soft.org/ / https://github.com/kcat/openal-soft
+**License:** LGPL-2.1 (GNU Lesser General Public License v2.1)
+
+Pre-compiled Windows DLLs (openal32.dll, soft_oal.dll) for both x86 and
+x86_64 architectures are included in `app/src/main/assets/wincomponents/openal.tzst`.
+These DLLs are extracted at runtime only when the user explicitly sets the
+`WINEDLLOVERRIDES` environment variable to reference openal32 or soft_oal.
+
+As required by LGPL-2.1, the complete source code for the version used is
+available at:
+  https://github.com/kcat/openal-soft/releases/tag/1.25.1
+
+Users may substitute their own build of OpenAL Soft by replacing the DLLs
+in the wineprefix `drive_c/windows/system32/` and `drive_c/windows/syswow64/`
+directories.
+
+### License Text: LGPL-2.1
+
+This library is free software; you can redistribute it and/or modify it
+under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation; either version 2.1 of the License, or (at
+your option) any later version.
+
+This library is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+for more details.
+
+Full license text: https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
+
