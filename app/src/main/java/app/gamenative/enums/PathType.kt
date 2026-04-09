@@ -14,6 +14,7 @@ enum class PathType {
     WinAppDataLocalLow,
     WinAppDataRoaming,
     WinSavedGames,
+    WinProgramData,
     LinuxHome,
     LinuxXdgDataHome,
     LinuxXdgConfigHome,
@@ -72,6 +73,11 @@ enum class PathType {
                 ImageFs.USER,
                 "Saved Games/",
             ).toString()
+            WinProgramData -> Paths.get(
+                ImageFs.find(context).rootDir.absolutePath,
+                ImageFs.WINEPREFIX,
+                "/drive_c/ProgramData/",
+            ).toString()
             Root -> Paths.get(
                 ImageFs.find(context).rootDir.absolutePath,
                 ImageFs.WINEPREFIX,
@@ -96,6 +102,7 @@ enum class PathType {
             WinAppDataLocalLow,
             WinAppDataRoaming,
             WinSavedGames,
+            WinProgramData,
             Root,
             -> true
             else -> false
@@ -264,6 +271,7 @@ enum class PathType {
                 -> GameInstall
                 "%${SteamUserData.name.lowercase()}%",
                 SteamUserData.name.lowercase(),
+                "steamuserbasestorage",
                 -> SteamUserData
                 "%${WinMyDocuments.name.lowercase()}%",
                 WinMyDocuments.name.lowercase(),
@@ -282,6 +290,9 @@ enum class PathType {
                 "%${WinSavedGames.name.lowercase()}%",
                 WinSavedGames.name.lowercase(),
                 -> WinSavedGames
+                "%${WinProgramData.name.lowercase()}%",
+                WinProgramData.name.lowercase(),
+                -> WinProgramData
                 "%${LinuxHome.name.lowercase()}%",
                 LinuxHome.name.lowercase(),
                 -> LinuxHome

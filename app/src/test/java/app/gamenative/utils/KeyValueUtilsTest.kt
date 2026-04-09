@@ -799,4 +799,170 @@ class KeyValueUtilsTest {
 
         assertEquals(CURRENT_UFS_PARSE_VERSION, steamApp.ufsParseVersion)
     }
+
+    @Test
+    fun winProgramDataRootIsRecognized() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "99999"
+                "ufs"
+                {
+                    "quota"         "10000000"
+                    "maxnumfiles"   "10"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "winprogramdata"
+                            "path"      "MyPublisher/MyGame"
+                            "pattern"   "*.sav"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinProgramData, patterns[0].root)
+        assertEquals(true, patterns[0].root.isWindows)
+        assertEquals("MyPublisher/MyGame", patterns[0].path)
+        assertEquals("*.sav", patterns[0].pattern)
+        assertEquals(PathType.WinProgramData, patterns[0].uploadRoot)
+    }
+
+    @Test
+    fun steamUserBaseStorageRootIsRecognizedAsSteamUserData() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "88888"
+                "ufs"
+                {
+                    "quota"         "10000000"
+                    "maxnumfiles"   "10"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "SteamUserBaseStorage"
+                            "path"      "saves"
+                            "pattern"   "*.dat"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.SteamUserData, patterns[0].root)
+        assertEquals(true, patterns[0].root.isWindows)
+        assertEquals("saves", patterns[0].path)
+        assertEquals("*.dat", patterns[0].pattern)
+        assertEquals(PathType.SteamUserData, patterns[0].uploadRoot)
+    }
+
+    /**
+     * A rootoverride using `oslist: "windows,linux"` instead of `os: "Windows"` must still
+     * be applied. Previously this was silently skipped because only the `os` field was checked.
+     */
+    @Test
+    fun rootOverrideWithOslistWindowsIsApplied() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "77777"
+                "ufs"
+                {
+                    "quota"         "10000000"
+                    "maxnumfiles"   "10"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "gameinstall"
+                            "path"      "saves"
+                            "pattern"   "*.sav"
+                        }
+                    }
+                    "rootoverrides"
+                    {
+                        "0"
+                        {
+                            "root"          "gameinstall"
+                            "oslist"        "windows,linux"
+                            "oscompare"     "="
+                            "useinstead"    "WinAppDataRoaming"
+                            "addpath"       "MyGame"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinAppDataRoaming, patterns[0].root)
+        assertEquals("MyGame/saves", patterns[0].path)
+        assertEquals("*.sav", patterns[0].pattern)
+        assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
+        assertEquals("saves", patterns[0].uploadPath)
+    }
+
+    @Test
+    fun rootOverrideWithOslistOnlyLinuxIsNotApplied() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "66666"
+                "ufs"
+                {
+                    "quota"         "10000000"
+                    "maxnumfiles"   "10"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "WinMyDocuments"
+                            "path"      "saves"
+                            "pattern"   "*.sav"
+                        }
+                    }
+                    "rootoverrides"
+                    {
+                        "0"
+                        {
+                            "root"          "WinMyDocuments"
+                            "oslist"        "linux"
+                            "oscompare"     "="
+                            "useinstead"    "LinuxHome"
+                            "addpath"       ".local/share/mygame"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinMyDocuments, patterns[0].root)
+        assertEquals("saves", patterns[0].path)
+        assertEquals("*.sav", patterns[0].pattern)
+        assertEquals(PathType.WinMyDocuments, patterns[0].uploadRoot)
+    }
+
 }
