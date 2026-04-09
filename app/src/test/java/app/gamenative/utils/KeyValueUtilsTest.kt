@@ -605,6 +605,46 @@ class KeyValueUtilsTest {
         assertEquals("", patterns[0].uploadPath)
     }
 
+    /**
+     * Stellar Blade (App ID 3489700) has a save pattern with `root: WindowsHome`, which is the
+     * Windows user home directory (C:\users\xuser\ in Wine). It must be recognized as PathType.Root
+     * and pass the isWindows filter so the pattern is not silently dropped.
+     */
+    @Test
+    fun stellarBladeWindowsHomeRootIsRecognizedAndPassesIsWindowsFilter() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "3489700"
+                "ufs"
+                {
+                    "quota"         "600000000"
+                    "maxnumfiles"   "20"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "WindowsHome"
+                            "path"      "Documents/StellarBlade/{64BitSteamID}"
+                            "pattern"   "*.sav"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.Root, patterns[0].root)
+        assertEquals(true, patterns[0].root.isWindows)
+        assertEquals("Documents/StellarBlade/{64BitSteamID}", patterns[0].path)
+        assertEquals("*.sav", patterns[0].pattern)
+        assertEquals(0, patterns[0].recursive)
+        assertEquals(PathType.Root, patterns[0].uploadRoot)
+    }
+
     @Test
     fun generateSteamAppStampsCurrentUfsParseVersion() {
         val kvString = """

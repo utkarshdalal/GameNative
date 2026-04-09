@@ -96,6 +96,7 @@ enum class PathType {
             WinAppDataLocalLow,
             WinAppDataRoaming,
             WinSavedGames,
+            Root,
             -> true
             else -> false
         }
@@ -294,6 +295,9 @@ enum class PathType {
                 "%${MacAppSupport.name.lowercase()}%",
                 MacAppSupport.name.lowercase(),
                 -> MacAppSupport
+                "windowshome",
+                "%windowshome%",
+                Root.name.lowercase(),
                 "%ROOT_MOD%",
                 "ROOT_MOD",
                 -> Root
