@@ -762,7 +762,11 @@ object ContainerUtils {
                     // If not cached, make request on background thread (not UI thread)
                     runBlocking(Dispatchers.IO) {
                         try {
-                            val bestConfig = BestConfigService.fetchBestConfig(gameName, gpuName)
+                            val bestConfig = BestConfigService.fetchBestConfig(
+                                gameName = gameName,
+                                gpuName = gpuName,
+                                gameStore = gameSource.name,
+                            )
                             if (bestConfig != null && bestConfig.matchType != "no_match") {
                                 Timber.i("Applying best config for $gameName (matchType: ${bestConfig.matchType})")
                                 val parsedConfig = BestConfigService.parseConfigToContainerData(
@@ -770,6 +774,7 @@ object ContainerUtils {
                                     bestConfig.bestConfig,
                                     bestConfig.matchType,
                                     true,
+                                    bestConfig.matchedStore.equals(gameSource.name, ignoreCase = true),
                                 )
                                 if (parsedConfig != null && parsedConfig.isNotEmpty()) {
                                     bestConfigMap = parsedConfig
