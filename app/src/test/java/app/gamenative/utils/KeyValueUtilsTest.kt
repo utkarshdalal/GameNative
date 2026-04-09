@@ -684,6 +684,107 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinMyDocuments, patterns[0].uploadRoot)
     }
 
+    /**
+     * Spiritfarer (App ID 972660) has `path: .` with a Windows rootoverride that adds
+     * `addpath: Thunder Lotus Games/Spiritfarer`. The dot means "no subdirectory" and must not
+     * be appended to the addpath (producing "Thunder Lotus Games/Spiritfarer/."), nor stored as
+     * uploadPath (producing cloud key "%GameInstall%.") — both break download path resolution.
+     */
+    @Test
+    fun spiritfarerDotPathWithAddpathIsNormalizedToEmpty() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "972660"
+                "ufs"
+                {
+                    "quota"         "100000000"
+                    "maxnumfiles"   "20"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "gameinstall"
+                            "path"      "."
+                            "pattern"   "*.sav"
+                        }
+                    }
+                    "rootoverrides"
+                    {
+                        "0"
+                        {
+                            "root"          "gameinstall"
+                            "os"            "Windows"
+                            "oscompare"     "="
+                            "useinstead"    "WinAppDataLocalLow"
+                            "addpath"       "Thunder Lotus Games/Spiritfarer"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinAppDataLocalLow, patterns[0].root)
+        assertEquals("Thunder Lotus Games/Spiritfarer", patterns[0].path)
+        assertEquals("*.sav", patterns[0].pattern)
+        assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
+        assertEquals("", patterns[0].uploadPath)
+    }
+
+    /**
+     * CrossCode (App ID 368340) has `path: .` with a Windows rootoverride that adds
+     * `addpath: CrossCode`. Same class of bug as Spiritfarer — dot must not be appended to
+     * the addpath or stored as uploadPath.
+     */
+    @Test
+    fun crossCodeDotPathWithAddpathIsNormalizedToEmpty() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "368340"
+                "ufs"
+                {
+                    "quota"         "100000000"
+                    "maxnumfiles"   "5"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "WinAppDataLocal"
+                            "path"      "."
+                            "pattern"   "cc.sav*"
+                        }
+                    }
+                    "rootoverrides"
+                    {
+                        "0"
+                        {
+                            "root"          "WinAppDataLocal"
+                            "os"            "Windows"
+                            "oscompare"     "="
+                            "useinstead"    "WinAppDataLocal"
+                            "addpath"       "CrossCode"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinAppDataLocal, patterns[0].root)
+        assertEquals("CrossCode", patterns[0].path)
+        assertEquals("cc.sav*", patterns[0].pattern)
+        assertEquals(PathType.WinAppDataLocal, patterns[0].uploadRoot)
+        assertEquals("", patterns[0].uploadPath)
+    }
+
     @Test
     fun generateSteamAppStampsCurrentUfsParseVersion() {
         val kvString = """

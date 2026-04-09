@@ -184,7 +184,10 @@ fun KeyValue.generateSteamApp(): SteamApp {
                     if (platforms.isNotEmpty() && "windows" !in platforms) return@mapNotNull null
 
                     val originalRoot = PathType.from(saveFile["root"].value)
-                    val originalPath = saveFile["path"].value.orEmpty()
+                    // Treat "." as empty: it means "root of this path type" with no subdirectory.
+                    // Keeping the literal dot causes addpath joins to produce "MyGame/." and
+                    // uploadPath = "." which breaks cloud key lookups in SteamAutoCloud.
+                    val originalPath = saveFile["path"].value.orEmpty().let { if (it == ".") "" else it }
                     val rootRemap = rootOverrides.find { it.fromRoot == originalRoot }
 
                     SaveFilePattern(
