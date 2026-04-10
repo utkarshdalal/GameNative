@@ -546,6 +546,12 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        fun getSharedPkg(): SteamLicense? {
+            return runBlocking(Dispatchers.IO) {
+                instance?.licenseDao?.findLicense(0)
+            }
+        }
+
         /**
          * Depot IDs the user's license actually grants for [appId].
          * Returns null when unknown (license not cached yet) so callers
@@ -553,7 +559,9 @@ class SteamService : Service(), IChallengeUrlChanged {
          */
         fun getLicensedDepotIds(appId: Int): Set<Int>? {
             val ids = getPkgInfoOf(appId)?.depotIds ?: return null
-            return ids.takeIf { it.isNotEmpty() }?.toSet()
+            val directDepotIds = ids.takeIf { it.isNotEmpty() }?.toSet() ?: emptySet()
+            val sharedDepotIds = getSharedPkg()?.depotIds?.takeIf { it.isNotEmpty() }?.toSet() ?: emptySet()
+            return directDepotIds + sharedDepotIds
         }
 
         /**
@@ -807,7 +815,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun getMainAppDepots(appId: Int, containerLanguage: String): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
- val hasSteamUnlockedBranch = runBlocking { getSteamUnlockedBranches(appId).isNotEmpty() }
+            val hasSteamUnlockedBranch = runBlocking { getSteamUnlockedBranches(appId).isNotEmpty() }
             val licensedDepots = getLicensedDepotIds(appId)
             return resolveDownloadableDepots(appInfo.depots, containerLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch)
         }
