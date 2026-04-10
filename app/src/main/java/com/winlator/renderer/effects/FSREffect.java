@@ -152,14 +152,14 @@ public class FSREffect extends Effect {
                 "    vec3 cF = texture2D(screenTexture, (fragCoord + vec2(1.0, 0.0))/resolution).rgb;\n" +
                 "    vec3 cH = texture2D(screenTexture, (fragCoord + vec2(0.0, 1.0))/resolution).rgb;\n" +
                 "    \n" +
-                "    float bL = cB.g + 0.5 * (cB.r + cB.b);\n" +
-                "    float dL = cD.g + 0.5 * (cD.r + cD.b);\n" +
-                "    float eL = pix.g + 0.5 * (pix.r + pix.b);\n" +
-                "    float fL = cF.g + 0.5 * (cF.r + cF.b);\n" +
-                "    float hL = cH.g + 0.5 * (cH.r + cH.b);\n" +
+                "    float rcasBL = cB.g + 0.5 * (cB.r + cB.b);\n" +
+                "    float rcasDL = cD.g + 0.5 * (cD.r + cD.b);\n" +
+                "    float rcasEL = pix.g + 0.5 * (pix.r + pix.b);\n" +
+                "    float rcasFL = cF.g + 0.5 * (cF.r + cF.b);\n" +
+                "    float rcasHL = cH.g + 0.5 * (cH.r + cH.b);\n" +
                 "    \n" +
-                "    float nz = 0.25 * (bL + dL + fL + hL) - eL;\n" +
-                "    nz = clamp(abs(nz) / (max(max(bL, dL), max(eL, max(fL, hL))) - min(min(bL, dL), min(eL, min(fL, hL))) + 1e-5), 0.0, 1.0);\n" +
+                "    float nz = 0.25 * (rcasBL + rcasDL + rcasFL + rcasHL) - rcasEL;\n" +
+                "    nz = clamp(abs(nz) / (max(max(rcasBL, rcasDL), max(rcasEL, max(rcasFL, rcasHL))) - min(min(rcasBL, rcasDL), min(rcasEL, min(rcasFL, rcasHL))) + 1e-5), 0.0, 1.0);\n" +
                 "    nz = 1.0 - 0.5 * nz;\n" +
                 "    \n" +
                 "    vec3 mn4 = min(min(cB, cD), min(cF, cH));\n" +

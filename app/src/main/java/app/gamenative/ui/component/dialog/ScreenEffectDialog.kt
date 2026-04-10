@@ -46,7 +46,8 @@ import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.effects.ColorEffect
 import com.winlator.renderer.effects.CRTEffect
 import com.winlator.renderer.effects.Effect
-import com.winlator.renderer.effects.FSREffect
+import com.winlator.renderer.effects.FSREASUEffect
+import com.winlator.renderer.effects.FSRRCASEffect
 import com.winlator.renderer.effects.FXAAEffect
 import com.winlator.renderer.effects.NTSCCombinedEffect
 import com.winlator.renderer.effects.ToonEffect
@@ -76,10 +77,13 @@ fun ScreenEffectDialog(
         mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
     }
     var enableFSR by remember(renderer) {
-        mutableStateOf(composer.getEffect(FSREffect::class.java) != null)
+        mutableStateOf(composer.getEffect(FSREASUEffect::class.java) != null)
     }
     var fsrSharpness by remember(renderer) {
-        mutableFloatStateOf(composer.getEffect(FSREffect::class.java)?.sharpness ?: 0.5f)
+        mutableFloatStateOf(composer.getEffect(FSRRCASEffect::class.java)?.sharpness ?: 0.5f)
+    }
+    var fsrResolutionScale by remember(renderer) {
+        mutableFloatStateOf(composer.getEffect(FSREASUEffect::class.java)?.resolutionScale ?: 0.67f)
     }
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
@@ -88,7 +92,7 @@ fun ScreenEffectDialog(
         mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, enableCRT, enableNTSC) {
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, fsrResolutionScale, enableCRT, enableNTSC) {
         val effects = mutableListOf<Effect>()
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
@@ -106,9 +110,12 @@ fun ScreenEffectDialog(
             effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
         }
         if (enableFSR) {
-            val fsrEffect = composer.getEffect(FSREffect::class.java) ?: FSREffect()
-            fsrEffect.sharpness = fsrSharpness
-            effects += fsrEffect
+            val easuEffect = composer.getEffect(FSREASUEffect::class.java) ?: FSREASUEffect()
+            easuEffect.resolutionScale = fsrResolutionScale
+            effects += easuEffect
+            val rcasEffect = composer.getEffect(FSRRCASEffect::class.java) ?: FSRRCASEffect()
+            rcasEffect.sharpness = fsrSharpness
+            effects += rcasEffect
         }
         if (enableCRT) {
             effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
@@ -128,6 +135,7 @@ fun ScreenEffectDialog(
         enableFXAA = false
         enableFSR = false
         fsrSharpness = 0.5f
+        fsrResolutionScale = 0.67f
         enableCRT = false
         enableNTSC = false
     }
@@ -250,14 +258,21 @@ fun ScreenEffectDialog(
                             onCheckedChange = { enableFSR = it },
                         )
                         if (enableFSR) {
-                            ScreenEffectSlider(
-                                label = "Sharpness",
-                                valueText = String.format("%.2f", fsrSharpness),
-                                value = fsrSharpness,
-                                valueRange = 0.0f..2.0f,
-                                onValueChange = { fsrSharpness = it },
-                            )
-                        }
+                             ScreenEffectSlider(
+                                 label = "Sharpness",
+                                 valueText = String.format("%.2f", fsrSharpness),
+                                 value = fsrSharpness,
+                                 valueRange = 0.0f..2.0f,
+                                 onValueChange = { fsrSharpness = it },
+                             )
+                             ScreenEffectSlider(
+                                 label = "Resolution Scale",
+                                 valueText = String.format("%.0f%%", fsrResolutionScale * 100),
+                                 value = fsrResolutionScale,
+                                 valueRange = 0.25f..1.0f,
+                                 onValueChange = { fsrResolutionScale = it },
+                             )
+                         }
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         SettingsSwitch(
                             colors = settingsTileColors(),

@@ -54,6 +54,9 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private int surfaceHeight;
     private boolean sceneInitialized = false;
     private final EffectComposer effectComposer;
+    private boolean internalRendering = false;
+    private int internalWidth;
+    private int internalHeight;
 
     public GLRenderer(XServerView xServerView, XServer xServer) {
         this.xServerView = xServerView;
@@ -136,6 +139,14 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     void drawScene() {
         boolean xrFrame = false;
         // if (XrActivity.isSupported()) xrFrame = XrActivity.getInstance().beginFrame(XrActivity.getImmersive(), XrActivity.getSBS());
+
+        if (internalRendering) {
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+            XForm.identity(tmpXForm2);
+            renderWindows();
+            if (cursorVisible) renderCursor();
+            return;
+        }
 
         if (viewportNeedsUpdate && magnifierEnabled) {
             if (fullscreen) {
@@ -294,6 +305,20 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         }
 
         quadVertices.disable();
+    }
+
+    public void prepareInternalRender(int width, int height) {
+        internalRendering = true;
+        internalWidth = width;
+        internalHeight = height;
+        viewTransformation.update(width, height, xServer.screenInfo.width, xServer.screenInfo.height);
+        viewportNeedsUpdate = false;
+    }
+
+    public void finishInternalRender() {
+        internalRendering = false;
+        viewTransformation.update(surfaceWidth, surfaceHeight, xServer.screenInfo.width, xServer.screenInfo.height);
+        viewportNeedsUpdate = true;
     }
 
     public void toggleFullscreen() {
