@@ -3807,6 +3807,19 @@ private fun setupWineSystemFiles(
         container.putExtra("openal_dlls", openalState)
         containerDataChanged = true
     }
+    val needsFAudioDlls = dllOverrides.contains("faudio")
+    val faudioState = if (needsFAudioDlls) "yes" else "no"
+    if (faudioState != container.getExtra("faudio_dlls") || firstTimeBoot) {
+        if (needsFAudioDlls) {
+            val windowsDir = File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
+            TarCompressorUtils.extract(
+                TarCompressorUtils.Type.ZSTD, context.assets,
+                "wincomponents/faudio.tzst", windowsDir, onExtractFileListener,
+            )
+        }
+        container.putExtra("faudio_dlls", faudioState)
+        containerDataChanged = true
+    }
 
     if (container.isLaunchRealSteam){
         extractSteamFiles(context, container, onExtractFileListener)
