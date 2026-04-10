@@ -75,7 +75,7 @@ fun SettingsTextFieldWithSuggestions(
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.None,
                         autoCorrectEnabled = false,
-                        keyboardType = KeyboardType.Text,
+                        keyboardType = KeyboardType.Unspecified,
                         imeAction = ImeAction.Unspecified,platformImeOptions = null,
                         showKeyboardOnFocus = null,
                         hintLocales = null
