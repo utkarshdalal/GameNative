@@ -71,6 +71,7 @@ import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.effects.ColorEffect
 import com.winlator.renderer.effects.CRTEffect
 import com.winlator.renderer.effects.Effect
+import com.winlator.renderer.effects.FSREffect
 import com.winlator.renderer.effects.FXAAEffect
 import com.winlator.renderer.effects.NTSCCombinedEffect
 import com.winlator.renderer.effects.ToonEffect
@@ -104,6 +105,12 @@ fun ScreenEffectsTabContent(
     var enableFXAA by remember(renderer) {
         mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
     }
+    var enableFSR by remember(renderer) {
+        mutableStateOf(composer.getEffect(FSREffect::class.java) != null)
+    }
+    var fsrSharpness by remember(renderer) {
+        mutableFloatStateOf(composer.getEffect(FSREffect::class.java)?.sharpness ?: 0.5f)
+    }
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
     }
@@ -111,7 +118,7 @@ fun ScreenEffectsTabContent(
         mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableCRT, enableNTSC) {
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, enableCRT, enableNTSC) {
         val effects = mutableListOf<Effect>()
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
@@ -127,6 +134,11 @@ fun ScreenEffectsTabContent(
         }
         if (enableFXAA) {
             effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
+        }
+        if (enableFSR) {
+            val fsrEffect = composer.getEffect(FSREffect::class.java) ?: FSREffect()
+            fsrEffect.sharpness = fsrSharpness
+            effects += fsrEffect
         }
         if (enableCRT) {
             effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
@@ -144,6 +156,8 @@ fun ScreenEffectsTabContent(
         gamma = 1.0f
         enableToon = false
         enableFXAA = false
+        enableFSR = false
+        fsrSharpness = 0.5f
         enableCRT = false
         enableNTSC = false
     }
@@ -204,6 +218,25 @@ fun ScreenEffectsTabContent(
             onToggle = { enableFXAA = !enableFXAA },
         )
         ScreenEffectToggleRow(
+            title = stringResource(R.string.screen_effects_fsr),
+            subtitle = stringResource(R.string.screen_effects_fsr_description),
+            enabled = enableFSR,
+            onToggle = { enableFSR = !enableFSR },
+        )
+        if (enableFSR) {
+            ScreenEffectAdjustmentRow(
+                title = "Sharpness",
+                valueText = String.format("%.2f", fsrSharpness),
+                progress = normalizedProgress(fsrSharpness, 0.0f, 2.0f),
+                onDecrease = {
+                    fsrSharpness = (fsrSharpness - 0.1f).coerceIn(0.0f, 2.0f)
+                },
+                onIncrease = {
+                    fsrSharpness = (fsrSharpness + 0.1f).coerceIn(0.0f, 2.0f)
+                },
+            )
+        }
+        ScreenEffectToggleRow(
             title = stringResource(R.string.screen_effects_crt),
             subtitle = stringResource(R.string.screen_effects_crt_description),
             enabled = enableCRT,
@@ -255,6 +288,12 @@ fun ScreenEffectsPanel(
     var enableFXAA by remember(renderer) {
         mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
     }
+    var enableFSR by remember(renderer) {
+        mutableStateOf(composer.getEffect(FSREffect::class.java) != null)
+    }
+    var fsrSharpness by remember(renderer) {
+        mutableFloatStateOf(composer.getEffect(FSREffect::class.java)?.sharpness ?: 0.5f)
+    }
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
     }
@@ -262,7 +301,7 @@ fun ScreenEffectsPanel(
         mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableCRT, enableNTSC) {
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, enableCRT, enableNTSC) {
         val effects = mutableListOf<Effect>()
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
@@ -278,6 +317,11 @@ fun ScreenEffectsPanel(
         }
         if (enableFXAA) {
             effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
+        }
+        if (enableFSR) {
+            val fsrEffect = composer.getEffect(FSREffect::class.java) ?: FSREffect()
+            fsrEffect.sharpness = fsrSharpness
+            effects += fsrEffect
         }
         if (enableCRT) {
             effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
@@ -295,6 +339,8 @@ fun ScreenEffectsPanel(
         gamma = 1.0f
         enableToon = false
         enableFXAA = false
+        enableFSR = false
+        fsrSharpness = 0.5f
         enableCRT = false
         enableNTSC = false
     }

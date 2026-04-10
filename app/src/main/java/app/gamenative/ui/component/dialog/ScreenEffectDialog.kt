@@ -46,6 +46,7 @@ import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.effects.ColorEffect
 import com.winlator.renderer.effects.CRTEffect
 import com.winlator.renderer.effects.Effect
+import com.winlator.renderer.effects.FSREffect
 import com.winlator.renderer.effects.FXAAEffect
 import com.winlator.renderer.effects.NTSCCombinedEffect
 import com.winlator.renderer.effects.ToonEffect
@@ -74,6 +75,12 @@ fun ScreenEffectDialog(
     var enableFXAA by remember(renderer) {
         mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
     }
+    var enableFSR by remember(renderer) {
+        mutableStateOf(composer.getEffect(FSREffect::class.java) != null)
+    }
+    var fsrSharpness by remember(renderer) {
+        mutableFloatStateOf(composer.getEffect(FSREffect::class.java)?.sharpness ?: 0.5f)
+    }
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
     }
@@ -81,7 +88,7 @@ fun ScreenEffectDialog(
         mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableCRT, enableNTSC) {
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, enableCRT, enableNTSC) {
         val effects = mutableListOf<Effect>()
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
@@ -97,6 +104,11 @@ fun ScreenEffectDialog(
         }
         if (enableFXAA) {
             effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
+        }
+        if (enableFSR) {
+            val fsrEffect = composer.getEffect(FSREffect::class.java) ?: FSREffect()
+            fsrEffect.sharpness = fsrSharpness
+            effects += fsrEffect
         }
         if (enableCRT) {
             effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
@@ -114,6 +126,8 @@ fun ScreenEffectDialog(
         gamma = 1.0f
         enableToon = false
         enableFXAA = false
+        enableFSR = false
+        fsrSharpness = 0.5f
         enableCRT = false
         enableNTSC = false
     }
@@ -230,6 +244,23 @@ fun ScreenEffectDialog(
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         SettingsSwitch(
                             colors = settingsTileColorsAlt(),
+                            title = { Text(stringResource(R.string.screen_effects_fsr)) },
+                            subtitle = { Text(stringResource(R.string.screen_effects_fsr_description)) },
+                            state = enableFSR,
+                            onCheckedChange = { enableFSR = it },
+                        )
+                        if (enableFSR) {
+                            ScreenEffectSlider(
+                                label = "Sharpness",
+                                valueText = String.format("%.2f", fsrSharpness),
+                                value = fsrSharpness,
+                                valueRange = 0.0f..2.0f,
+                                onValueChange = { fsrSharpness = it },
+                            )
+                        }
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        SettingsSwitch(
+                            colors = settingsTileColors(),
                             title = { Text(stringResource(R.string.screen_effects_crt)) },
                             subtitle = { Text(stringResource(R.string.screen_effects_crt_description)) },
                             state = enableCRT,
