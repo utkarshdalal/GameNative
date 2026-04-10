@@ -195,6 +195,7 @@
         <item>2512</item>
         <item>2601</item>
         <item>2603</item>
+        <item>2604</item>
     </string-array>
     <string-array name="dinput_mapper_type_entries">
         <item>Standard (Old Gamepads)</item>
