@@ -3,6 +3,7 @@ package app.gamenative.ui.component.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material3.DropdownMenu
@@ -21,6 +22,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
@@ -68,6 +72,14 @@ fun SettingsTextFieldWithSuggestions(
                     value = value,
                     onValueChange = onValueChange,
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.None,
+                        autoCorrectEnabled = false,
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Unspecified,platformImeOptions = null,
+                        showKeyboardOnFocus = null,
+                        hintLocales = null
+                    ),
                 )
                 IconButton(
                     enabled = enabled,
