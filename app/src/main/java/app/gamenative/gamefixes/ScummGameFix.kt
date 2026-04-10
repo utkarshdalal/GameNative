@@ -37,19 +37,27 @@ class ScummGameFix(
             val localIni = findScummVmIni(installPath, exeDir)
 
             if (localIni != null) {
-                disableUpdatesCheckInIni(localIni)
+                val relativeIniPath = localIni.absolutePath.substringAfter(installPath).trimStart(File.separatorChar, '/')
+                IniFileFix(
+                    relativePath = relativeIniPath,
+                    defaultValues = linkedMapOf("updates_check" to "0"),
+                ).apply(context, gameId, installPath, installPathWindows, container)
+
                 val detectedGameId = getGameIdFromIni(localIni)
                 if (detectedGameId == null) {
                     Timber.tag("GameFixes").e("Found .ini but could not detect Game ID in ${localIni.absolutePath}")
                     return false
                 }
 
-                val relativeIniPath = localIni.absolutePath.substringAfter(installPath).trimStart(File.separatorChar, '/')
                 val windowsIniPath = buildWindowsIniPath(installPathWindows, relativeIniPath)
 
-                container.executablePath = scummvmExePath
-                container.execArgs = "-c \"$windowsIniPath\" $detectedGameId"
-                container.saveData()
+                LaunchArgFix("-c \"$windowsIniPath\" $detectedGameId").apply(
+                    context = context,
+                    gameId = gameId,
+                    installPath = installPath,
+                    installPathWindows = installPathWindows,
+                    container = container,
+                )
 
                 Timber.tag("GameFixes").i("Detected and using local ScummVM config: $windowsIniPath (Game ID: $detectedGameId)")
                 true
@@ -67,38 +75,6 @@ class ScummGameFix(
         val normalizedRoot = installPathWindows.trimEnd('\\', '/')
         val normalizedRelative = relativeIniPath.replace("/", "\\").replace("\\\\", "\\")
         return if (normalizedRelative.isEmpty()) normalizedRoot else "$normalizedRoot\\$normalizedRelative"
-    }
-
-    private fun disableUpdatesCheckInIni(iniFile: File) {
-        try {
-            val lines = iniFile.readLines().toMutableList()
-            var updatesCheckFound = false
-            var scummvmSectionIndex = -1
-
-            for (i in lines.indices) {
-                val line = lines[i].trim()
-                if (line.startsWith("updates_check=", ignoreCase = true)) {
-                    lines[i] = "updates_check=0"
-                    updatesCheckFound = true
-                } else if (line.equals("[scummvm]", ignoreCase = true)) {
-                    scummvmSectionIndex = i
-                }
-            }
-
-            if (scummvmSectionIndex == -1) {
-                lines.add(0, "[scummvm]")
-                scummvmSectionIndex = 0
-            }
-
-            if (!updatesCheckFound) {
-                lines.add(scummvmSectionIndex + 1, "updates_check=0")
-            }
-
-            iniFile.writeText(lines.joinToString("\n"))
-            Timber.tag("GameFixes").i("Optimized ScummVM config in ${iniFile.name}: disabled updates check")
-        } catch (e: Exception) {
-            Timber.tag("GameFixes").w(e, "Failed to optimize ScummVM config in ${iniFile.name}")
-        }
     }
 
     private fun getGameIdFromIni(iniFile: File): String? {
