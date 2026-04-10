@@ -33,25 +33,25 @@ jobs:
 
           # Pick the file with the highest YYMM version.
           # Only considers files whose names start with 4 digits (e.g. 2604.wcp, 2508.1.wcp).
-          LATEST=$(python3 - <<'EOF'
-          import sys, json, re
+          LATEST=$(echo "$RESPONSE" | python3 - <<'EOF'
+import sys, json, re
 
-          data = json.loads(sys.stdin.read())
-          files = [f["name"] for f in data if f["type"] == "file" and f["name"].endswith(".wcp")]
+data = json.loads(sys.stdin.read())
+files = [f["name"] for f in data if f["type"] == "file" and f["name"].endswith(".wcp")]
 
-          best = None
-          best_ver = (-1, -1)
-          for name in files:
-              m = re.match(r'^(\d{4})(?:\.(\d+))?\.wcp$', name)
-              if m:
-                  ver = (int(m.group(1)), int(m.group(2) or 0))
-                  if ver > best_ver:
-                      best_ver = ver
-                      best = name
+best = None
+best_ver = (-1, -1)
+for name in files:
+    m = re.match(r'^(\d{4})(?:\.(\d+))?\.wcp$', name)
+    if m:
+        ver = (int(m.group(1)), int(m.group(2) or 0))
+        if ver > best_ver:
+            best_ver = ver
+            best = name
 
-          print(best or "")
-          EOF
-          <<< "$RESPONSE")
+print(best or "")
+EOF
+)
 
           if [[ -z "$LATEST" ]]; then
             echo "Could not determine latest .wcp file." >&2
