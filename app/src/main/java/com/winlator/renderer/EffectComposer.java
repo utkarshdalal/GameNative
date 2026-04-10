@@ -104,10 +104,11 @@ public class EffectComposer {
         ArrayList<Effect> snapshot = new ArrayList<>(effects);
         RenderTarget source;
         RenderTarget target = writeBuffer;
-        int startIndex;
 
         if (fsrUpscaling) {
-            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, readBuffer.getFramebuffer());
+            snapshot.remove(easuEffect);
+
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, snapshot.isEmpty() ? 0 : readBuffer.getFramebuffer());
             GLES20.glViewport(0, 0, surfaceWidth, surfaceHeight);
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
@@ -126,14 +127,12 @@ public class EffectComposer {
 
             source = readBuffer;
             target = writeBuffer;
-            startIndex = 1;
         } else {
             source = readBuffer;
             target = writeBuffer;
-            startIndex = 0;
         }
 
-        for (int i = startIndex; i < snapshot.size(); i++) {
+        for (int i = 0; i < snapshot.size(); i++) {
             boolean renderToScreen = i == snapshot.size() - 1;
             GLES20.glBindFramebuffer(
                 GLES20.GL_FRAMEBUFFER,
