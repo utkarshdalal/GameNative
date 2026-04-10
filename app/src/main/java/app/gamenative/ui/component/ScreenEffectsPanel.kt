@@ -112,9 +112,7 @@ fun ScreenEffectsTabContent(
     var fsrSharpness by remember(renderer) {
         mutableFloatStateOf(composer.getEffect(FSRRCASEffect::class.java)?.sharpness ?: 0.5f)
     }
-    var fsrResolutionScale by remember(renderer) {
-        mutableFloatStateOf(composer.getEffect(FSREASUEffect::class.java)?.resolutionScale ?: 0.67f)
-    }
+
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
     }
@@ -122,7 +120,7 @@ fun ScreenEffectsTabContent(
         mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, fsrResolutionScale, enableCRT, enableNTSC) {
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, enableCRT, enableNTSC) {
         val effects = mutableListOf<Effect>()
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
@@ -141,7 +139,6 @@ fun ScreenEffectsTabContent(
         }
         if (enableFSR) {
             val easuEffect = composer.getEffect(FSREASUEffect::class.java) ?: FSREASUEffect()
-            easuEffect.resolutionScale = fsrResolutionScale
             effects += easuEffect
             val rcasEffect = composer.getEffect(FSRRCASEffect::class.java) ?: FSRRCASEffect()
             rcasEffect.sharpness = fsrSharpness
@@ -165,7 +162,7 @@ fun ScreenEffectsTabContent(
         enableFXAA = false
         enableFSR = false
         fsrSharpness = 0.5f
-        fsrResolutionScale = 0.67f
+
         enableCRT = false
         enableNTSC = false
     }
@@ -243,17 +240,7 @@ fun ScreenEffectsTabContent(
                     fsrSharpness = (fsrSharpness + 0.1f).coerceIn(0.0f, 2.0f)
                 },
             )
-            ScreenEffectAdjustmentRow(
-                title = "Resolution Scale",
-                valueText = String.format("%.0f%%", fsrResolutionScale * 100),
-                progress = normalizedProgress(fsrResolutionScale, 0.25f, 1.0f),
-                onDecrease = {
-                    fsrResolutionScale = (fsrResolutionScale - 0.05f).coerceIn(0.25f, 1.0f)
-                },
-                onIncrease = {
-                    fsrResolutionScale = (fsrResolutionScale + 0.05f).coerceIn(0.25f, 1.0f)
-                },
-            )
+
         }
         ScreenEffectToggleRow(
             title = stringResource(R.string.screen_effects_crt),
@@ -313,9 +300,7 @@ fun ScreenEffectsPanel(
     var fsrSharpness by remember(renderer) {
         mutableFloatStateOf(composer.getEffect(FSRRCASEffect::class.java)?.sharpness ?: 0.5f)
     }
-    var fsrResolutionScale by remember(renderer) {
-        mutableFloatStateOf(composer.getEffect(FSREASUEffect::class.java)?.resolutionScale ?: 0.67f)
-    }
+
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
     }
@@ -323,7 +308,7 @@ fun ScreenEffectsPanel(
         mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, fsrResolutionScale, enableCRT, enableNTSC) {
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, enableCRT, enableNTSC) {
         val effects = mutableListOf<Effect>()
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
@@ -342,7 +327,6 @@ fun ScreenEffectsPanel(
         }
         if (enableFSR) {
             val easuEffect = composer.getEffect(FSREASUEffect::class.java) ?: FSREASUEffect()
-            easuEffect.resolutionScale = fsrResolutionScale
             effects += easuEffect
             val rcasEffect = composer.getEffect(FSRRCASEffect::class.java) ?: FSRRCASEffect()
             rcasEffect.sharpness = fsrSharpness
@@ -366,7 +350,7 @@ fun ScreenEffectsPanel(
         enableFXAA = false
         enableFSR = false
         fsrSharpness = 0.5f
-        fsrResolutionScale = 0.67f
+
         enableCRT = false
         enableNTSC = false
     }

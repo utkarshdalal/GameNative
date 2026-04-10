@@ -321,6 +321,14 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         viewportNeedsUpdate = true;
     }
 
+    public int getInternalWidth() {
+        return xServer.screenInfo.width;
+    }
+
+    public int getInternalHeight() {
+        return xServer.screenInfo.height;
+    }
+
     public void toggleFullscreen() {
         toggleFullscreen = true;
         xServerView.requestRender();

@@ -5,15 +5,6 @@ import com.winlator.renderer.material.ScreenMaterial;
 import com.winlator.renderer.material.ShaderMaterial;
 
 public class FSREASUEffect extends Effect {
-    private float resolutionScale = 0.67f;
-
-    public float getResolutionScale() {
-        return resolutionScale;
-    }
-
-    public void setResolutionScale(float scale) {
-        this.resolutionScale = Math.max(0.25f, Math.min(1.0f, scale));
-    }
 
     @Override
     protected ShaderMaterial createMaterial() {

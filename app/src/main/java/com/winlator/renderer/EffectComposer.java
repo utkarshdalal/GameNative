@@ -76,31 +76,24 @@ public class EffectComposer {
             }
         }
 
-        boolean fsrUpscaling = easuEffect != null && easuEffect.getResolutionScale() < 1.0f;
-        int renderWidth, renderHeight;
+        int internalWidth = renderer.getInternalWidth();
+        int internalHeight = renderer.getInternalHeight();
+        boolean fsrUpscaling = easuEffect != null
+                && (internalWidth < surfaceWidth || internalHeight < surfaceHeight);
 
         if (fsrUpscaling) {
-            float scale = easuEffect.getResolutionScale();
-            renderWidth = Math.max(1, Math.round(surfaceWidth * scale));
-            renderHeight = Math.max(1, Math.round(surfaceHeight * scale));
-        } else {
-            renderWidth = surfaceWidth;
-            renderHeight = surfaceHeight;
-        }
-
-        if (fsrUpscaling) {
-            sceneBuffer.allocateFramebuffer(renderWidth, renderHeight);
+            sceneBuffer.allocateFramebuffer(internalWidth, internalHeight);
             readBuffer.allocateFramebuffer(surfaceWidth, surfaceHeight);
             writeBuffer.allocateFramebuffer(surfaceWidth, surfaceHeight);
         } else {
-            readBuffer.allocateFramebuffer(renderWidth, renderHeight);
-            writeBuffer.allocateFramebuffer(renderWidth, renderHeight);
+            readBuffer.allocateFramebuffer(surfaceWidth, surfaceHeight);
+            writeBuffer.allocateFramebuffer(surfaceWidth, surfaceHeight);
         }
 
         if (fsrUpscaling) {
             GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, sceneBuffer.getFramebuffer());
-            GLES20.glViewport(0, 0, renderWidth, renderHeight);
-            renderer.prepareInternalRender(renderWidth, renderHeight);
+            GLES20.glViewport(0, 0, internalWidth, internalHeight);
+            renderer.prepareInternalRender(internalWidth, internalHeight);
             renderer.drawScene();
             renderer.finishInternalRender();
         } else {
@@ -122,7 +115,7 @@ public class EffectComposer {
             ShaderMaterial easuMaterial = easuEffect.getMaterial();
             renderer.getQuadVertices().bind(easuMaterial.programId);
             easuMaterial.setUniformVec2("resolution", surfaceWidth, surfaceHeight);
-            easuMaterial.setUniformVec2("inputResolution", renderWidth, renderHeight);
+            easuMaterial.setUniformVec2("inputResolution", internalWidth, internalHeight);
             easuMaterial.setUniformInt("screenTexture", 0);
 
             GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
@@ -155,6 +148,10 @@ public class EffectComposer {
 
             renderer.getQuadVertices().bind(material.programId);
             material.setUniformVec2("resolution", surfaceWidth, surfaceHeight);
+            if (effect instanceof FSREASUEffect) {
+                // Resolutions match — EASU becomes identity pass
+                material.setUniformVec2("inputResolution", surfaceWidth, surfaceHeight);
+            }
             material.setUniformInt("screenTexture", 0);
 
             GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
