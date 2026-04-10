@@ -22,57 +22,8 @@ jobs:
       - name: Find latest FEXCore .wcp
         id: check
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Fetch the file listing from the upstream repo via the GitHub API.
-          # Authenticate to avoid anonymous rate-limit (60 req/hr).
-          RESPONSE=$(curl -sf \
-            -H "Accept: application/vnd.github.v3+json" \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            "https://api.github.com/repos/StevenMXZ/Winlator-Contents/contents/FEXCore")
-
-          # Pick the file with the highest YYMM version.
-          # Only considers files whose names start with 4 digits (e.g. 2604.wcp, 2508.1.wcp).
-          LATEST=$(echo "$RESPONSE" | python3 - <<'EOF'
-import sys, json, re
-
-data = json.loads(sys.stdin.read())
-files = [f["name"] for f in data if f["type"] == "file" and f["name"].endswith(".wcp")]
-
-best = None
-best_ver = (-1, -1)
-for name in files:
-    m = re.match(r'^(\d{4})(?:\.(\d+))?\.wcp$', name)
-    if m:
-        ver = (int(m.group(1)), int(m.group(2) or 0))
-        if ver > best_ver:
-            best_ver = ver
-            best = name
-
-print(best or "")
-EOF
-)
-
-          if [[ -z "$LATEST" ]]; then
-            echo "Could not determine latest .wcp file." >&2
-            exit 1
-          fi
-
-          # Extract the YYMM version (first four digits) for the output filename.
-          VERSION=$(echo "$LATEST" | grep -oP '^\d{4}')
-          TZST_PATH="app/src/main/assets/fexcore/fexcore-${VERSION}.tzst"
-
-          echo "LATEST_FILE=$LATEST"  >> "$GITHUB_OUTPUT"
-          echo "VERSION=$VERSION"     >> "$GITHUB_OUTPUT"
-          echo "TZST_PATH=$TZST_PATH" >> "$GITHUB_OUTPUT"
-
-          if [[ -f "$TZST_PATH" ]]; then
-            echo "ALREADY_EXISTS=true" >> "$GITHUB_OUTPUT"
-            echo "fexcore-${VERSION}.tzst already present — nothing to do."
-          else
-            echo "ALREADY_EXISTS=false" >> "$GITHUB_OUTPUT"
-            echo "New release found: $LATEST → $TZST_PATH"
-          fi
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/check-latest-fexcore.py
 
       - name: Download ${{ steps.check.outputs.LATEST_FILE }}
         if: steps.check.outputs.ALREADY_EXISTS == 'false'
@@ -89,38 +40,9 @@ EOF
       - name: Update arrays.xml
         if: steps.check.outputs.ALREADY_EXISTS == 'false'
         run: |
-          VERSION="${{ steps.check.outputs.VERSION }}"
-          ARRAYS_XML="app/src/main/res/values/arrays.xml"
-
-          # Check if this version is already listed in arrays.xml.
-          if grep -qF "<item>${VERSION}</item>" "$ARRAYS_XML"; then
-            echo "Version $VERSION already present in arrays.xml — skipping XML update."
-          else
-            # Insert the new version as the last <item> of fexcore_version_entries.
-            # We find the closing </string-array> that follows the fexcore_version_entries
-            # block and insert directly before it.
-            python3 - "$ARRAYS_XML" "$VERSION" <<'PYEOF'
-          import sys, re
-
-          path, version = sys.argv[1], sys.argv[2]
-          with open(path, "r", encoding="utf-8") as f:
-              content = f.read()
-
-          # Find the fexcore_version_entries block and append the new item before its closing tag.
-          pattern = r'(name="fexcore_version_entries".*?)(</string-array>)'
-          replacement = r'\g<1>        <item>' + version + r'</item>\n    \g<2>'
-          new_content, count = re.subn(pattern, replacement, content, count=1, flags=re.DOTALL)
-
-          if count == 0:
-              print("ERROR: fexcore_version_entries array not found in arrays.xml", file=sys.stderr)
-              sys.exit(1)
-
-          with open(path, "w", encoding="utf-8") as f:
-              f.write(new_content)
-
-          print(f"Appended <item>{version}</item> to fexcore_version_entries.")
-          PYEOF
-          fi
+          python3 tools/update-arrays-xml.py \
+            app/src/main/res/values/arrays.xml \
+            "${{ steps.check.outputs.VERSION }}"
 
       - name: Create PR branch, commit, and open PR
         if: steps.check.outputs.ALREADY_EXISTS == 'false'
