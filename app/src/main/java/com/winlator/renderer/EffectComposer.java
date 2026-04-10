@@ -61,6 +61,7 @@ public class EffectComposer {
     }
 
     public synchronized void render() {
+        // 1. Setup global dimensions
         int surfaceWidth = renderer.getSurfaceWidth();
         int surfaceHeight = renderer.getSurfaceHeight();
         if (effects.isEmpty() || surfaceWidth <= 0 || surfaceHeight <= 0) {
@@ -81,6 +82,8 @@ public class EffectComposer {
         boolean fsrUpscaling = easuEffect != null
                 && (internalWidth < surfaceWidth || internalHeight < surfaceHeight);
 
+        // 3. Allocate framebuffers for the current frame
+        // If upscaling, we need a 'sceneBuffer' at internal resolution
         if (fsrUpscaling) {
             sceneBuffer.allocateFramebuffer(internalWidth, internalHeight);
             readBuffer.allocateFramebuffer(surfaceWidth, surfaceHeight);
@@ -90,24 +93,21 @@ public class EffectComposer {
             writeBuffer.allocateFramebuffer(surfaceWidth, surfaceHeight);
         }
 
+        // 4. Initial Scene Render
+        ArrayList<Effect> snapshot = new ArrayList<>(effects);
+        RenderTarget source;
+        RenderTarget target;
+
         if (fsrUpscaling) {
+            // A. Render game state to the low-res internal buffer
+            snapshot.remove(easuEffect);
             GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, sceneBuffer.getFramebuffer());
             GLES20.glViewport(0, 0, internalWidth, internalHeight);
             renderer.prepareInternalRender(internalWidth, internalHeight);
             renderer.drawScene();
             renderer.finishInternalRender();
-        } else {
-            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, readBuffer.getFramebuffer());
-            renderer.drawScene();
-        }
 
-        ArrayList<Effect> snapshot = new ArrayList<>(effects);
-        RenderTarget source;
-        RenderTarget target = writeBuffer;
-
-        if (fsrUpscaling) {
-            snapshot.remove(easuEffect);
-
+            // B. Perform spatial upscaling (EASU) to surface resolution readBuffer
             GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, snapshot.isEmpty() ? 0 : readBuffer.getFramebuffer());
             GLES20.glViewport(0, 0, surfaceWidth, surfaceHeight);
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
@@ -128,10 +128,16 @@ public class EffectComposer {
             source = readBuffer;
             target = writeBuffer;
         } else {
+            // Normal path: Render directly to native resolution readBuffer
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, readBuffer.getFramebuffer());
+            renderer.drawScene();
             source = readBuffer;
             target = writeBuffer;
         }
 
+        // 5. Generic Post-Processing Pipeline
+        // These effects always run at full surface resolution
+        // (Includes RCAS sharpening if FSR enabled)
         for (int i = 0; i < snapshot.size(); i++) {
             boolean renderToScreen = i == snapshot.size() - 1;
             GLES20.glBindFramebuffer(
