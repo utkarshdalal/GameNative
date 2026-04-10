@@ -210,6 +210,17 @@ fun GraphicsTabContent(state: ContainerConfigState) {
                     Text(text = "${state.sharpnessDenoise.value}%")
                 }
             }
+            val afLevels = listOf(0, 2, 4, 8, 16)
+            val afLabels = listOf("Off", "2x", "4x", "8x", "16x")
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = "Anisotropic Filtering") },
+                value = afLevels.indexOf(config.afLevel).takeIf { it >= 0 } ?: 3,
+                items = afLabels,
+                onItemSelected = { idx ->
+                    state.config.value = config.copy(afLevel = afLevels[idx])
+                },
+            )
         } else {
             // Non-bionic: existing driver/version UI and Vortek-specific options
             SettingsListDropdown(
@@ -238,6 +249,17 @@ fun GraphicsTabContent(state: ContainerConfigState) {
                 },
             )
             DxWrapperSection(state)
+            val afLevels = listOf(0, 2, 4, 8, 16)
+            val afLabels = listOf("Off", "2x", "4x", "8x", "16x")
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = "Anisotropic Filtering") },
+                value = afLevels.indexOf(config.afLevel).takeIf { it >= 0 } ?: 3,
+                items = afLabels,
+                onItemSelected = { idx ->
+                    state.config.value = config.copy(afLevel = afLevels[idx])
+                },
+            )
             // Vortek/Adreno specific settings
             run {
                 val driverType = StringUtils.parseIdentifier(state.graphicsDrivers.value.getOrNull(state.graphicsDriverIndex.value).orEmpty())

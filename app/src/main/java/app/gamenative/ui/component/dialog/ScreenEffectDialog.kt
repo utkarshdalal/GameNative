@@ -84,9 +84,6 @@ fun ScreenEffectDialog(
     var fsrSharpness by remember(renderer) {
         mutableFloatStateOf(composer.getEffect(FSRRCASEffect::class.java)?.sharpness ?: 0.5f)
     }
-    var afLevel by remember(renderer) {
-        mutableStateOf(container?.getExtra("afLevel", "8")?.toIntOrNull() ?: 8)
-    }
 
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
@@ -95,7 +92,7 @@ fun ScreenEffectDialog(
         mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, enableCRT, enableNTSC, afLevel) {
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, enableCRT, enableNTSC) {
         val effects = mutableListOf<Effect>()
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
@@ -127,11 +124,10 @@ fun ScreenEffectDialog(
         }
 
         composer.setEffects(effects)
-        // Persist FSR and AF state for this game container
+        // Persist FSR state for this game container
         container?.let {
             it.putExtra("fsrEnabled", enableFSR.toString())
             it.putExtra("fsrSharpness", fsrSharpness.toString())
-            it.putExtra("afLevel", afLevel.toString())
             it.saveData()
         }
     }
@@ -276,29 +272,6 @@ fun ScreenEffectDialog(
                              )
                          }
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        ScreenEffectSlider(
-                            label = "Anisotropic Filtering ($afLevel" + "x) [Needs Restart]",
-                            valueText = if (afLevel == 0) "Off" else "${afLevel}x",
-                            value = when(afLevel) {
-                                0 -> 0f
-                                2 -> 1f
-                                4 -> 2f
-                                8 -> 3f
-                                16 -> 4f
-                                else -> 0f
-                            },
-                            valueRange = 0f..4f,
-                            onValueChange = {
-                                afLevel = when(Math.round(it)) {
-                                    0 -> 0
-                                    1 -> 2
-                                    2 -> 4
-                                    3 -> 8
-                                    4 -> 16
-                                    else -> 0
-                                }
-                            },
-                        )
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         SettingsSwitch(
                             colors = settingsTileColors(),

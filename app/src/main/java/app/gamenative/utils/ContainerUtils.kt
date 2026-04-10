@@ -319,6 +319,7 @@ object ContainerUtils {
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
             fsrEnabled = container.getExtra("fsrEnabled", "false").toBoolean(),
             fsrSharpness = container.getExtra("fsrSharpness", "0.5").toFloatOrNull() ?: 0.5f,
+            afLevel = container.getExtra("afLevel", "8").toIntOrNull() ?: 8,
         )
     }
 
@@ -487,6 +488,7 @@ object ContainerUtils {
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
         container.putExtra("fsrEnabled", containerData.fsrEnabled.toString())
         container.putExtra("fsrSharpness", containerData.fsrSharpness.toString())
+        container.putExtra("afLevel", containerData.afLevel.toString())
         try {
             container.language = containerData.language
         } catch (e: Exception) {
