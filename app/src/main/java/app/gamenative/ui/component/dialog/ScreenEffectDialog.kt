@@ -46,8 +46,7 @@ import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.effects.ColorEffect
 import com.winlator.renderer.effects.CRTEffect
 import com.winlator.renderer.effects.Effect
-import com.winlator.renderer.effects.FSREASUEffect
-import com.winlator.renderer.effects.FSRRCASEffect
+import com.winlator.renderer.effects.FSREffect
 import com.winlator.renderer.effects.FXAAEffect
 import com.winlator.renderer.effects.NTSCCombinedEffect
 import com.winlator.renderer.effects.ToonEffect
@@ -77,13 +76,10 @@ fun ScreenEffectDialog(
         mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
     }
     var enableFSR by remember(renderer) {
-        mutableStateOf(composer.getEffect(FSREASUEffect::class.java) != null)
+        mutableStateOf(composer.getEffect(FSREffect::class.java) != null)
     }
     var fsrSharpness by remember(renderer) {
-        mutableFloatStateOf(composer.getEffect(FSRRCASEffect::class.java)?.sharpness ?: 0.5f)
-    }
-    var fsrRenderScale by remember(renderer) {
-        mutableFloatStateOf(composer.getEffect(FSREASUEffect::class.java)?.renderScale ?: FSREASUEffect.QUALITY_ULTRA)
+        mutableFloatStateOf(composer.getEffect(FSREffect::class.java)?.sharpness ?: 0.5f)
     }
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
@@ -92,17 +88,8 @@ fun ScreenEffectDialog(
         mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, fsrRenderScale, enableCRT, enableNTSC) {
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, enableCRT, enableNTSC) {
         val effects = mutableListOf<Effect>()
-
-        if (enableFSR) {
-            val easuEffect = composer.getEffect(FSREASUEffect::class.java) ?: FSREASUEffect()
-            easuEffect.renderScale = fsrRenderScale
-            effects += easuEffect
-            val rcasEffect = composer.getEffect(FSRRCASEffect::class.java) ?: FSRRCASEffect()
-            rcasEffect.sharpness = fsrSharpness
-            effects += rcasEffect
-        }
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
             val colorEffect = ColorEffect()
@@ -117,6 +104,11 @@ fun ScreenEffectDialog(
         }
         if (enableFXAA) {
             effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
+        }
+        if (enableFSR) {
+            val fsrEffect = composer.getEffect(FSREffect::class.java) ?: FSREffect()
+            fsrEffect.sharpness = fsrSharpness
+            effects += fsrEffect
         }
         if (enableCRT) {
             effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
@@ -136,7 +128,6 @@ fun ScreenEffectDialog(
         enableFXAA = false
         enableFSR = false
         fsrSharpness = 0.5f
-        fsrRenderScale = FSREASUEffect.QUALITY_ULTRA
         enableCRT = false
         enableNTSC = false
     }
@@ -259,13 +250,6 @@ fun ScreenEffectDialog(
                             onCheckedChange = { enableFSR = it },
                         )
                         if (enableFSR) {
-                            ScreenEffectSlider(
-                                label = "Render Scale",
-                                valueText = String.format("%.0f%%", fsrRenderScale * 100f),
-                                value = fsrRenderScale,
-                                valueRange = 0.33f..1.0f,
-                                onValueChange = { fsrRenderScale = it },
-                            )
                             ScreenEffectSlider(
                                 label = "Sharpness",
                                 valueText = String.format("%.2f", fsrSharpness),

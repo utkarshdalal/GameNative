@@ -3,7 +3,6 @@ package com.winlator.renderer;
 import android.opengl.GLES20;
 
 import com.winlator.renderer.effects.Effect;
-import com.winlator.renderer.effects.FSREASUEffect;
 import com.winlator.renderer.material.ShaderMaterial;
 
 import java.util.ArrayList;
@@ -67,24 +66,13 @@ public class EffectComposer {
             return;
         }
 
-        ArrayList<Effect> snapshot = new ArrayList<>(effects);
-
-        int sceneWidth = width;
-        int sceneHeight = height;
-        boolean fsrFirst = !snapshot.isEmpty() && snapshot.get(0) instanceof FSREASUEffect;
-        if (fsrFirst) {
-            FSREASUEffect easu = (FSREASUEffect) snapshot.get(0);
-            sceneWidth = Math.max(1, Math.round(width * easu.getRenderScale()));
-            sceneHeight = Math.max(1, Math.round(height * easu.getRenderScale()));
-        }
-
-        readBuffer.allocateFramebuffer(sceneWidth, sceneHeight);
+        readBuffer.allocateFramebuffer(width, height);
         writeBuffer.allocateFramebuffer(width, height);
 
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, readBuffer.getFramebuffer());
-        GLES20.glViewport(0, 0, sceneWidth, sceneHeight);
         renderer.drawScene();
 
+        ArrayList<Effect> snapshot = new ArrayList<>(effects);
         RenderTarget source = readBuffer;
         RenderTarget target = writeBuffer;
 
@@ -102,10 +90,6 @@ public class EffectComposer {
             ShaderMaterial material = effect.getMaterial();
 
             renderer.getQuadVertices().bind(material.programId);
-
-            if (effect instanceof FSREASUEffect) {
-                material.setUniformVec2("inputResolution", sceneWidth, sceneHeight);
-            }
             material.setUniformVec2("resolution", width, height);
             material.setUniformInt("screenTexture", 0);
 
@@ -116,9 +100,6 @@ public class EffectComposer {
             renderer.getQuadVertices().disable();
 
             if (!renderToScreen) {
-                if (i == 0 && fsrFirst) {
-                    source.allocateFramebuffer(width, height);
-                }
                 RenderTarget temp = source;
                 source = target;
                 target = temp;
