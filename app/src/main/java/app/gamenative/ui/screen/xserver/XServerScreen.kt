@@ -1404,94 +1404,70 @@ fun XServerScreen(
                     getxServer().windowManager.removeOnWindowModificationListener(it)
                 }
                 val wmListener = object : WindowManager.OnWindowModificationListener {
-                        private fun isFrameRatingCandidateProperty(propertyName: String): Boolean {
-                            return propertyName.contains("_UTIL_LAYER") ||
-                                propertyName.contains("_MESA_DRV") ||
-                                (container.containerVariant.equals(Container.GLIBC) && propertyName.contains("_NET_WM_SURFACE"))
-                        }
-
                         private fun describeFrameRatingWindow(window: Window): String {
                             return "id=${window.id}, name=${window.name}, class=${window.className}, pid=${window.processId}"
                         }
 
-                        private fun changeFrameRatingVisibility(window: Window, property: Property?) {
-                            val rating = frameRating ?: return
-                            if (property != null) {
-                                val propertyName = property.nameAsString()
-                                if (!isFrameRatingCandidateProperty(propertyName)) return
+                        private fun findTopmostApplicationWindow(window: Window): Window? {
+                            val children = window.children
+                            for (i in children.indices.reversed()) {
+                                val child = children[i]
+                                if (!child.attributes.isMapped()) continue
+                                val topmostInChild = findTopmostApplicationWindow(child)
+                                if (topmostInChild != null) return topmostInChild
+                                if (child.isApplicationWindow() && child.isRenderable()) {
+                                    return child
+                                }
+                            }
+                            return null
+                        }
 
-                                when {
-                                    frameRatingWindowId == -1 -> {
-                                        frameRatingWindowId = window.id
-                                        Timber.i(
-                                            "FrameRating tracking attached via property=%s to %s",
-                                            propertyName,
-                                            describeFrameRatingWindow(window),
-                                        )
-                                        (context as? Activity)?.runOnUiThread {
-                                            frameRating?.reset()
-                                            frameRating?.visibility = View.VISIBLE
-                                        }
-                                    }
-                                    frameRatingWindowId == window.id -> {
-                                        Timber.d(
-                                            "FrameRating received candidate property=%s for already tracked window %s",
-                                            propertyName,
-                                            describeFrameRatingWindow(window),
-                                        )
-                                    }
-                                    else -> {
-                                        Timber.d(
-                                            "FrameRating ignoring candidate property=%s for %s because tracking already points to windowId=%d",
-                                            propertyName,
-                                            describeFrameRatingWindow(window),
-                                            frameRatingWindowId,
-                                        )
-                                    }
+                        private fun refreshFrameRatingTracking(reason: String) {
+                            val rating = frameRating ?: return
+                            val topmost = findTopmostApplicationWindow(getxServer().windowManager.rootWindow)
+                            val nextId = topmost?.id ?: -1
+                            if (frameRatingWindowId == nextId) return
+
+                            if (topmost == null) {
+                                if (frameRatingWindowId != -1) {
+                                    Timber.i(
+                                        "FrameRating tracking cleared (%s); no topmost application window remains",
+                                        reason,
+                                    )
+                                }
+                                frameRatingWindowId = -1
+                                (context as? Activity)?.runOnUiThread {
+                                    rating.visibility = View.GONE
                                 }
                                 return
                             }
 
-                            when {
-                                frameRatingWindowId == window.id -> {
-                                    Timber.i(
-                                        "FrameRating tracking cleared because tracked window unmapped: %s",
-                                        describeFrameRatingWindow(window),
-                                    )
-                                    frameRatingWindowId = -1
-                                    (context as? Activity)?.runOnUiThread {
-                                        frameRating?.visibility = View.GONE
-                                    }
-                                }
-                                frameRatingWindowId != -1 -> {
-                                    Timber.d(
-                                        "FrameRating ignoring unmap for non-tracked window %s; still tracking windowId=%d",
-                                        describeFrameRatingWindow(window),
-                                        frameRatingWindowId,
-                                    )
-                                }
+                            frameRatingWindowId = nextId
+                            Timber.i(
+                                "FrameRating tracking attached (%s) to topmost app window %s",
+                                reason,
+                                describeFrameRatingWindow(topmost),
+                            )
+                            (context as? Activity)?.runOnUiThread {
+                                rating.reset()
+                                rating.visibility = View.VISIBLE
                             }
                         }
+
                         override fun onUpdateWindowContent(window: Window) {
                             if (!xServerState.value.winStarted && window.isApplicationWindow()) {
                                 if (!container.isDisableMouseInput && !container.isTouchscreenMode) renderer?.setCursorVisible(true)
                                 xServerState.value.winStarted = true
                             }
-                            if (window.id == frameRatingWindowId) {
-                                // FPS is now counted from GLRenderer.onDrawFrame() while the tracked window is visible.
-                                // Keep this callback only as a no-op marker that the tracked window is still active.
+                            if (frameRatingWindowId == -1 && window.isApplicationWindow()) {
+                                refreshFrameRatingTracking("content-update")
                             }
                         }
 
                         override fun onModifyWindowProperty(window: Window, property: Property) {
-                            if (frameRating != null && isFrameRatingCandidateProperty(property.nameAsString())) {
-                                Timber.d(
-                                    "FrameRating observed candidate property=%s on %s",
-                                    property.nameAsString(),
-                                    describeFrameRatingWindow(window),
-                                )
+                            if (window.id == frameRatingWindowId || window.isApplicationWindow()) {
+                                refreshFrameRatingTracking("property:${property.nameAsString()}")
                             }
-                            changeFrameRatingVisibility(window, property)
                         }
 
                         override fun onMapWindow(window: Window) {
@@ -1503,6 +1479,7 @@ fun XServerScreen(
                                         "\n\thasParent: ${window.parent != null}" +
                                         "\n\tchildrenSize: ${window.children.size}",
                             )
+                            refreshFrameRatingTracking("map-window")
                             win32AppWorkarounds?.applyWindowWorkarounds(window)
                             onWindowMapped?.invoke(context, window)
                         }
@@ -1516,9 +1493,19 @@ fun XServerScreen(
                                         "\n\thasParent: ${window.parent != null}" +
                                         "\n\tchildrenSize: ${window.children.size}",
                             )
-                            changeFrameRatingVisibility(window, null)
+                            refreshFrameRatingTracking("unmap-window")
                             startExitWatchForUnmappedGameWindow(window)
                             onWindowUnmapped?.invoke(window)
+                        }
+
+                        override fun onChangeWindowZOrder(window: Window) {
+                            refreshFrameRatingTracking("z-order")
+                        }
+
+                        override fun onUpdateWindowGeometry(window: Window, resized: Boolean) {
+                            if (window.id == frameRatingWindowId || window.isApplicationWindow()) {
+                                refreshFrameRatingTracking(if (resized) "geometry-resize" else "geometry-move")
+                            }
                         }
                     }
                 getxServer().windowManager.addOnWindowModificationListener(wmListener)
