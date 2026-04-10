@@ -81,6 +81,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.utils.MathUtils.normalizedProgress
 import com.winlator.renderer.GLRenderer
+import com.winlator.container.Container
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -216,6 +217,7 @@ fun QuickMenu(
     onDismiss: () -> Unit,
     onItemSelected: (Int) -> Boolean,
     renderer: GLRenderer? = null,
+    container: Container? = null,
     isPerformanceHudEnabled: Boolean = false,
     performanceHudConfig: PerformanceHudConfig = PerformanceHudConfig(),
     onPerformanceHudConfigChanged: (PerformanceHudConfig) -> Unit = {},
@@ -472,6 +474,7 @@ fun QuickMenu(
                                         if (renderer != null) {
                                             ScreenEffectsTabContent(
                                                 renderer = renderer,
+                                                container = container,
                                                 modifier = Modifier.fillMaxSize(),
                                                 firstItemFocusRequester = effectsItemFocusRequester,
                                                 scrollState = effectsScrollState,

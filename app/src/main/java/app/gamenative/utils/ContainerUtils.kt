@@ -317,6 +317,8 @@ object ContainerUtils {
             sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
             sharpnessLevel = container.getExtra("sharpnessLevel", "100").toIntOrNull() ?: 100,
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
+            fsrEnabled = container.getExtra("fsrEnabled", "false").toBoolean(),
+            fsrSharpness = container.getExtra("fsrSharpness", "0.5").toFloatOrNull() ?: 0.5f,
         )
     }
 
@@ -483,6 +485,8 @@ object ContainerUtils {
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
+        container.putExtra("fsrEnabled", containerData.fsrEnabled.toString())
+        container.putExtra("fsrSharpness", containerData.fsrSharpness.toString())
         try {
             container.language = containerData.language
         } catch (e: Exception) {

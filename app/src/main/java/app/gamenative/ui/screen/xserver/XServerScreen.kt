@@ -136,6 +136,8 @@ import com.winlator.widget.TouchpadView
 import com.winlator.widget.XServerView
 import com.winlator.winhandler.WinHandler
 import com.winlator.winhandler.WinHandler.PreferredInputApi
+import com.winlator.renderer.effects.FSREASUEffect
+import com.winlator.renderer.effects.FSRRCASEffect
 import com.winlator.winhandler.OnGetProcessInfoListener
 import com.winlator.winhandler.ProcessInfo
 import com.winlator.xconnector.UnixSocketConfig
@@ -1392,6 +1394,16 @@ fun XServerScreen(
                 win32AppWorkarounds = Win32AppWorkarounds(getxServer())
                 touchMouse = TouchMouse(getxServer())
                 keyboard = Keyboard(getxServer())
+
+                // Restore saved FSR state for this container
+                val fsrSaved = container.getExtra("fsrEnabled", "false").toBoolean()
+                if (fsrSaved) {
+                    val fsrSharpnessSaved = container.getExtra("fsrSharpness", "0.5").toFloatOrNull() ?: 0.5f
+                    val easuEffect = FSREASUEffect()
+                    val rcasEffect = FSRRCASEffect()
+                    rcasEffect.sharpness = fsrSharpnessSaved
+                    renderer.effectComposer.setEffects(listOf(easuEffect, rcasEffect))
+                }
                 if (!bootToContainer) {
                     renderer.setUnviewableWMClasses("explorer.exe")
                     // TODO: make 'force fullscreen' be an option of the app being launched
@@ -2036,6 +2048,7 @@ fun XServerScreen(
             onDismiss = dismissOverlayMenu,
             onItemSelected = onQuickMenuItemSelected,
             renderer = xServerView?.renderer,
+            container = container,
             isPerformanceHudEnabled = isPerformanceHudEnabled,
             performanceHudConfig = performanceHudConfig,
             onPerformanceHudConfigChanged = ::applyPerformanceHudConfig,

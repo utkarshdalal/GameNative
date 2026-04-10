@@ -94,6 +94,8 @@ data class ContainerData(
     val sharpnessEffect: String = "None",
     val sharpnessLevel: Int = 100,
     val sharpnessDenoise: Int = 100,
+    val fsrEnabled: Boolean = false,
+    val fsrSharpness: Float = 0.5f,
 ) {
     companion object {
         val Saver = mapSaver(
@@ -157,6 +159,8 @@ data class ContainerData(
                     "sharpnessEffect" to state.sharpnessEffect,
                     "sharpnessLevel" to state.sharpnessLevel,
                     "sharpnessDenoise" to state.sharpnessDenoise,
+                    "fsrEnabled" to state.fsrEnabled,
+                    "fsrSharpness" to state.fsrSharpness,
                 )
             },
             restore = { savedMap ->
@@ -219,6 +223,8 @@ data class ContainerData(
                     sharpnessEffect = (savedMap["sharpnessEffect"] as? String) ?: "None",
                     sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
+                    fsrEnabled = (savedMap["fsrEnabled"] as? Boolean) ?: false,
+                    fsrSharpness = (savedMap["fsrSharpness"] as? Float) ?: 0.5f,
                 )
             },
         )

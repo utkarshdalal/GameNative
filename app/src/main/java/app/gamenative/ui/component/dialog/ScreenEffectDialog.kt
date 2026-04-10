@@ -51,12 +51,14 @@ import com.winlator.renderer.effects.FSRRCASEffect
 import com.winlator.renderer.effects.FXAAEffect
 import com.winlator.renderer.effects.NTSCCombinedEffect
 import com.winlator.renderer.effects.ToonEffect
+import com.winlator.container.Container
 import kotlin.math.abs
 
 @Composable
 fun ScreenEffectDialog(
     renderer: GLRenderer,
     onDismiss: () -> Unit,
+    container: Container? = null,
 ) {
     val composer = renderer.effectComposer
     val initialColorEffect = composer.getEffect(ColorEffect::class.java)
@@ -122,6 +124,12 @@ fun ScreenEffectDialog(
         }
 
         composer.setEffects(effects)
+        // Persist FSR state for this game container
+        container?.let {
+            it.putExtra("fsrEnabled", enableFSR.toString())
+            it.putExtra("fsrSharpness", fsrSharpness.toString())
+            it.saveData()
+        }
     }
 
     fun resetEffects() {

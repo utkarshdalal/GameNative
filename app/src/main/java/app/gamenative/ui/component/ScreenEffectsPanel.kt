@@ -76,6 +76,7 @@ import com.winlator.renderer.effects.FSRRCASEffect
 import com.winlator.renderer.effects.FXAAEffect
 import com.winlator.renderer.effects.NTSCCombinedEffect
 import com.winlator.renderer.effects.ToonEffect
+import com.winlator.container.Container
 import kotlin.math.abs
 
 private const val SCREEN_EFFECT_PERCENT_STEP = 5f
@@ -84,6 +85,7 @@ private const val SCREEN_EFFECT_GAMMA_STEP = 0.1f
 @Composable
 fun ScreenEffectsTabContent(
     renderer: GLRenderer,
+    container: Container? = null,
     modifier: Modifier = Modifier,
     firstItemFocusRequester: FocusRequester? = null,
     scrollState: ScrollState = rememberScrollState(),
@@ -152,6 +154,12 @@ fun ScreenEffectsTabContent(
         }
 
         composer.setEffects(effects)
+        // Persist FSR state for this game container
+        container?.let {
+            it.putExtra("fsrEnabled", enableFSR.toString())
+            it.putExtra("fsrSharpness", fsrSharpness.toString())
+            it.saveData()
+        }
     }
 
     fun resetEffects() {
@@ -273,6 +281,7 @@ fun ScreenEffectsPanel(
     isVisible: Boolean,
     renderer: GLRenderer,
     onDismiss: () -> Unit,
+    container: Container? = null,
     modifier: Modifier = Modifier,
 ) {
     val composer = renderer.effectComposer
@@ -340,6 +349,12 @@ fun ScreenEffectsPanel(
         }
 
         composer.setEffects(effects)
+        // Persist FSR state for this game container
+        container?.let {
+            it.putExtra("fsrEnabled", enableFSR.toString())
+            it.putExtra("fsrSharpness", fsrSharpness.toString())
+            it.saveData()
+        }
     }
 
     fun resetEffects() {
