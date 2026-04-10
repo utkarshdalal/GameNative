@@ -114,6 +114,9 @@ fun ScreenEffectsTabContent(
     var fsrSharpness by remember(renderer) {
         mutableFloatStateOf(composer.getEffect(FSRRCASEffect::class.java)?.sharpness ?: 0.5f)
     }
+    var afLevel by remember(renderer) {
+        mutableStateOf(container?.getExtra("afLevel", "8")?.toIntOrNull() ?: 8)
+    }
 
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
@@ -122,7 +125,7 @@ fun ScreenEffectsTabContent(
         mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, enableCRT, enableNTSC) {
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, enableCRT, enableNTSC, afLevel) {
         val effects = mutableListOf<Effect>()
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
@@ -154,10 +157,11 @@ fun ScreenEffectsTabContent(
         }
 
         composer.setEffects(effects)
-        // Persist FSR state for this game container
+        // Persist FSR and AF state for this game container
         container?.let {
             it.putExtra("fsrEnabled", enableFSR.toString())
             it.putExtra("fsrSharpness", fsrSharpness.toString())
+            it.putExtra("afLevel", afLevel.toString())
             it.saveData()
         }
     }
@@ -309,6 +313,9 @@ fun ScreenEffectsPanel(
     var fsrSharpness by remember(renderer) {
         mutableFloatStateOf(composer.getEffect(FSRRCASEffect::class.java)?.sharpness ?: 0.5f)
     }
+    var afLevel by remember(renderer) {
+        mutableStateOf(container?.getExtra("afLevel", "8")?.toIntOrNull() ?: 8)
+    }
 
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
@@ -317,7 +324,7 @@ fun ScreenEffectsPanel(
         mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, enableCRT, enableNTSC) {
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableFSR, fsrSharpness, enableCRT, enableNTSC, afLevel) {
         val effects = mutableListOf<Effect>()
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
@@ -349,10 +356,11 @@ fun ScreenEffectsPanel(
         }
 
         composer.setEffects(effects)
-        // Persist FSR state for this game container
+        // Persist FSR and AF state for this game container
         container?.let {
             it.putExtra("fsrEnabled", enableFSR.toString())
             it.putExtra("fsrSharpness", fsrSharpness.toString())
+            it.putExtra("afLevel", afLevel.toString())
             it.saveData()
         }
     }
@@ -405,6 +413,37 @@ fun ScreenEffectsPanel(
                     ),
             )
         }
+
+        ScreenEffectAdjustmentRow(
+            title = "Anisotropic Filtering (Restart Required)",
+            valueText = if (afLevel == 0) "Off" else "${afLevel}x",
+            progress = when(afLevel) {
+                0 -> 0f
+                2 -> 0.25f
+                4 -> 0.5f
+                8 -> 0.75f
+                16 -> 1f
+                else -> 0f
+            },
+            onDecrease = {
+                afLevel = when(afLevel) {
+                    2 -> 0
+                    4 -> 2
+                    8 -> 4
+                    16 -> 8
+                    else -> 0
+                }
+            },
+            onIncrease = {
+                afLevel = when(afLevel) {
+                    0 -> 2
+                    2 -> 4
+                    4 -> 8
+                    8 -> 16
+                    else -> 16
+                }
+            },
+        )
 
         AnimatedVisibility(
             visible = isVisible,

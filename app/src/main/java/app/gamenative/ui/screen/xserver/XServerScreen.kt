@@ -4201,8 +4201,26 @@ private fun extractGraphicsDriverFiles(
         }
         if (dxwrapper.contains("dxvk")) {
             DXVKHelper.setEnvVars(context, dxwrapperConfig, envVars)
+            val afLevelStr = container.getExtra("afLevel", "8")
+            val afLevel = afLevelStr.toIntOrNull() ?: 8
+            if (afLevel > 0) {
+                var dxvkConfig = envVars.get("DXVK_CONFIG")
+                if (dxvkConfig.endsWith("\"")) {
+                    dxvkConfig = dxvkConfig.substring(0, dxvkConfig.length - 1)
+                }
+                dxvkConfig += "d3d9.samplerAnisotropy = $afLevel\n"
+                dxvkConfig += "d3d11.samplerAnisotropy = $afLevel\n"
+                dxvkConfig += "\""
+                envVars.put("DXVK_CONFIG", dxvkConfig)
+            }
         } else if (dxwrapper.contains("vkd3d")) {
             DXVKHelper.setVKD3DEnvVars(context, dxwrapperConfig, envVars)
+        }
+
+        val afLevelStrGlobal = container.getExtra("afLevel", "8")
+        val afLevelGlobal = afLevelStrGlobal.toIntOrNull() ?: 8
+        if (afLevelGlobal > 0) {
+            envVars.put("RADV_TEX_ANISO", afLevelGlobal.toString())
         }
 
         if (graphicsDriver == "turnip") {
