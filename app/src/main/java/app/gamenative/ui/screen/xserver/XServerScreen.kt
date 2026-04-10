@@ -1429,9 +1429,9 @@ fun XServerScreen(
                                             describeFrameRatingWindow(window),
                                         )
                                         (context as? Activity)?.runOnUiThread {
+                                            frameRating?.reset()
                                             frameRating?.visibility = View.VISIBLE
                                         }
-                                        rating.update()
                                     }
                                     frameRatingWindowId == window.id -> {
                                         Timber.d(
@@ -1478,9 +1478,8 @@ fun XServerScreen(
                                 xServerState.value.winStarted = true
                             }
                             if (window.id == frameRatingWindowId) {
-                                (context as? Activity)?.runOnUiThread {
-                                    frameRating?.update()
-                                }
+                                // FPS is now counted from GLRenderer.onDrawFrame() while the tracked window is visible.
+                                // Keep this callback only as a no-op marker that the tracked window is still active.
                             }
                         }
 
@@ -1879,6 +1878,7 @@ fun XServerScreen(
             }
             frameRating = FrameRating(context)
             frameRating?.setVisibility(View.GONE)
+            xServerView.renderer.setFrameRating(frameRating)
 
             if (isPerformanceHudEnabled) {
                 frameLayout.post {
