@@ -561,7 +561,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val ids = getPkgInfoOf(appId)?.depotIds ?: return null
             val directDepotIds = ids.takeIf { it.isNotEmpty() }?.toSet() ?: emptySet()
             val sharedDepotIds = getSharedPkg()?.depotIds?.takeIf { it.isNotEmpty() }?.toSet() ?: emptySet()
-            return directDepotIds + sharedDepotIds
+            return (directDepotIds + sharedDepotIds).takeIf { it.isNotEmpty() }
         }
 
         /**
