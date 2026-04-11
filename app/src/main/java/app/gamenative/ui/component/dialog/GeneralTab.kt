@@ -205,7 +205,6 @@ fun GeneralTabContent(
                         currentConfig.put("version", DefaultVersion.DXVK)
                         currentConfig.put("async", DefaultVersion.ASYNC)
                         currentConfig.put("asyncCache", DefaultVersion.ASYNC_CACHE)
-                        state.config.value = config.copy(dxwrapperConfig = currentConfig.toString())
 
                         state.config.value = config.copy(
                             containerVariant = newVariant,
@@ -213,6 +212,7 @@ fun GeneralTabContent(
                             graphicsDriver = defaultBionicDriver,
                             graphicsDriverVersion = "",
                             graphicsDriverConfig = newCfg.toString(),
+                            dxwrapper = "dxvk",
                             emulator = "Box64",
                             box64Version = "0.3.7",
                             dxwrapperConfig = currentConfig.toString(),

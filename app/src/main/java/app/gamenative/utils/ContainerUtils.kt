@@ -88,6 +88,11 @@ object ContainerUtils {
         }
     }
 
+    private fun shouldResetXclipseWrapperVersion(version: String): Boolean {
+        val normalized = version.trim()
+        return normalized.isEmpty() || normalized.startsWith("turnip", ignoreCase = true)
+    }
+
     private fun normalizeXclipseDefaults() {
         val legacyEnvProfile =
             PrefManager.envVars.contains("deck_emu", ignoreCase = true) ||
@@ -103,11 +108,13 @@ object ContainerUtils {
         }
 
         val graphicsConfig = KeyValueSet(PrefManager.graphicsDriverConfig)
-        if (graphicsConfig.get("version").isEmpty() ||
-            graphicsConfig.get("version").startsWith("turnip", ignoreCase = true) ||
-            graphicsConfig.get("version").startsWith("v", ignoreCase = true)
-        ) {
+        if (shouldResetXclipseWrapperVersion(graphicsConfig.get("version"))) {
             graphicsConfig.put("version", DefaultVersion.WRAPPER)
+        }
+        if (PrefManager.graphicsDriver.equals("Wrapper", ignoreCase = true) &&
+            shouldResetXclipseWrapperVersion(PrefManager.graphicsDriverVersion)
+        ) {
+            PrefManager.graphicsDriverVersion = ""
         }
         if (graphicsConfig.get("presentMode").isEmpty()) graphicsConfig.put("presentMode", "mailbox")
         if (graphicsConfig.get("resourceType").isEmpty()) graphicsConfig.put("resourceType", "auto")
