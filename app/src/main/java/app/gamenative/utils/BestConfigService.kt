@@ -8,6 +8,7 @@ import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.contents.ContentProfile
+import com.winlator.core.GPUInformation
 import com.winlator.fexcore.FEXCorePresetManager
 import com.winlator.core.KeyValueSet
 import kotlinx.coroutines.Dispatchers
@@ -729,10 +730,16 @@ object BestConfigService {
                     resultMap["graphicsDriver"] = filteredJson.optString("graphicsDriver", "")
                 }
                 if (filteredJson.has("graphicsDriverVersion") && !filteredJson.isNull("graphicsDriverVersion")) {
-                    resultMap["graphicsDriverVersion"] = filteredJson.optString("graphicsDriverVersion", "")
+                    val version = filteredJson.optString("graphicsDriverVersion", "")
+                    if (!version.contains("turnip") || !GPUInformation.isTurnipBlacklisted()) {
+                        resultMap["graphicsDriverVersion"] = version
+                    }
                 }
                 if (filteredJson.has("graphicsDriverConfig") && !filteredJson.isNull("graphicsDriverConfig")) {
-                    resultMap["graphicsDriverConfig"] = filteredJson.optString("graphicsDriverConfig", "")
+                    val config = filteredJson.optString("graphicsDriverConfig", "")
+                    if (!config.contains("turnip") || !GPUInformation.isTurnipBlacklisted()) {
+                        resultMap["graphicsDriverConfig"] = config
+                    }
                 }
                 if (filteredJson.has("dxwrapper") && !filteredJson.isNull("dxwrapper")) {
                     resultMap["dxwrapper"] = filteredJson.optString("dxwrapper", "")
