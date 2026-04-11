@@ -1607,6 +1607,12 @@ fun XServerScreen(
                                 contentsManager,
                                 onExtractFileListener,
                             )
+
+                            val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+                            if (gameSource == GameSource.STEAM) {
+                                SteamUtils.replaceXAudioDllsFromRedistributable(context, appId)
+                            }
+
                             extractArm64ecInputDLLs(context, container) // REQUIRED: Uses updated xinput1_3 main.c from x86_64 build, prevents crashes with 3+ players, avoids need for input shim dlls.
                             extractx86_64InputDlls(context, container)
                             extractGraphicsDriverFiles(
