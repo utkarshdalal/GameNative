@@ -159,6 +159,11 @@ public abstract class GPUInformation {
         return r.contains("adreno") && r.matches(".*\\b8(3[0-9]|4[0-9]|5[0-9])\\b.*");
     }
 
+    public static boolean isXclipseGPU(Context context) {
+        String renderer = getRenderer(context).toLowerCase(Locale.ENGLISH);
+        return renderer.contains("xclipse");
+    }
+
     public static boolean isTurnipCapable(Context context) {
         String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
         // match “adreno 610…699” or “adreno 710…799”

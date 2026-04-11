@@ -17,6 +17,7 @@ import com.winlator.container.ContainerManager
 import com.winlator.core.DefaultVersion
 import com.winlator.core.FileUtils
 import com.winlator.core.GPUInformation
+import com.winlator.core.KeyValueSet
 import com.winlator.core.WineRegistryEditor
 import com.winlator.core.WineThemeManager
 import com.winlator.fexcore.FEXCoreManager
@@ -33,6 +34,11 @@ import org.json.JSONObject
 import timber.log.Timber
 
 object ContainerUtils {
+    private const val XCLIPSE_ENV_VARS =
+        "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact " +
+            "MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB " +
+            "mesa_glthread=true WINEESYNC=1 TU_DEBUG=noconform,sysmem"
+
     data class GpuInfo(
         val deviceId: Int,
         val vendorId: Int,
@@ -41,7 +47,19 @@ object ContainerUtils {
 
     fun setContainerDefaults(context: Context) {
         // Override default driver and DXVK version based on Turnip capability
-        if (GPUInformation.isTurnipCapable(context)) {
+        if (GPUInformation.isXclipseGPU(context)) {
+            DefaultVersion.VARIANT = Container.BIONIC
+            DefaultVersion.WINE_VERSION = "proton-9.0-arm64ec"
+            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
+            DefaultVersion.DXVK = "1.11.1-sarek"
+            DefaultVersion.VKD3D = "2.14.1"
+            DefaultVersion.WRAPPER = "System"
+            DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
+            DefaultVersion.ASYNC = "0"
+            DefaultVersion.ASYNC_CACHE = "0"
+
+            normalizeXclipseDefaults()
+        } else if (GPUInformation.isTurnipCapable(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
             DefaultVersion.WINE_VERSION = "proton-9.0-arm64ec"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
@@ -67,6 +85,55 @@ object ContainerUtils {
             DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_LIGHT
             DefaultVersion.ASYNC_CACHE = "0"
+        }
+    }
+
+    private fun normalizeXclipseDefaults() {
+        val legacyEnvProfile =
+            PrefManager.envVars.contains("deck_emu", ignoreCase = true) ||
+                PrefManager.envVars.contains("DXVK_FRAME_RATE=60", ignoreCase = true) ||
+                PrefManager.envVars == Container.DEFAULT_ENV_VARS
+
+        if (PrefManager.graphicsDriver.equals("vortek", ignoreCase = true)) {
+            PrefManager.graphicsDriver = "Wrapper"
+        }
+
+        if (legacyEnvProfile) {
+            PrefManager.envVars = XCLIPSE_ENV_VARS
+        }
+
+        val graphicsConfig = KeyValueSet(PrefManager.graphicsDriverConfig)
+        if (graphicsConfig.get("version").isEmpty() ||
+            graphicsConfig.get("version").startsWith("turnip", ignoreCase = true) ||
+            graphicsConfig.get("version").startsWith("v", ignoreCase = true)
+        ) {
+            graphicsConfig.put("version", DefaultVersion.WRAPPER)
+        }
+        if (graphicsConfig.get("presentMode").isEmpty()) graphicsConfig.put("presentMode", "mailbox")
+        if (graphicsConfig.get("resourceType").isEmpty()) graphicsConfig.put("resourceType", "auto")
+        if (graphicsConfig.get("bcnEmulation").isEmpty()) graphicsConfig.put("bcnEmulation", "auto")
+        if (graphicsConfig.get("bcnEmulationType").isEmpty()) graphicsConfig.put("bcnEmulationType", "compute")
+        if (graphicsConfig.get("bcnEmulationCache").isEmpty()) graphicsConfig.put("bcnEmulationCache", "0")
+        if (graphicsConfig.get("gpuName").isEmpty()) graphicsConfig.put("gpuName", "Device")
+        PrefManager.graphicsDriverConfig = graphicsConfig.toString()
+
+        val dxConfig = KeyValueSet(PrefManager.dxWrapperConfig)
+        if (dxConfig.get("version").isEmpty() || dxConfig.get("version").equals("async-1.10.3", ignoreCase = true)) {
+            dxConfig.put("version", DefaultVersion.DXVK)
+        }
+        dxConfig.put("async", DefaultVersion.ASYNC)
+        dxConfig.put("asyncCache", DefaultVersion.ASYNC_CACHE)
+        PrefManager.dxWrapper = "dxvk"
+        PrefManager.dxWrapperConfig = dxConfig.toString()
+
+        if (PrefManager.audioDriver.equals(Container.DEFAULT_AUDIO_DRIVER, ignoreCase = true)) {
+            PrefManager.audioDriver = "alsa"
+        }
+
+        PrefManager.emulator = "Box64"
+        PrefManager.xinputEnabled = true
+        if (legacyEnvProfile && PrefManager.dinputEnabled) {
+            PrefManager.dinputEnabled = false
         }
     }
 

@@ -202,9 +202,9 @@ fun GeneralTabContent(
                             listOf("0", "512", "1024", "2048", "4096").indexOf("4096").coerceAtLeast(0)
 
                         val currentConfig = KeyValueSet(config.dxwrapperConfig)
-                        currentConfig.put("version", "async-1.10.3")
-                        currentConfig.put("async", "1")
-                        currentConfig.put("asyncCache", "0")
+                        currentConfig.put("version", DefaultVersion.DXVK)
+                        currentConfig.put("async", DefaultVersion.ASYNC)
+                        currentConfig.put("asyncCache", DefaultVersion.ASYNC_CACHE)
                         state.config.value = config.copy(dxwrapperConfig = currentConfig.toString())
 
                         state.config.value = config.copy(
@@ -213,6 +213,7 @@ fun GeneralTabContent(
                             graphicsDriver = defaultBionicDriver,
                             graphicsDriverVersion = "",
                             graphicsDriverConfig = newCfg.toString(),
+                            emulator = "Box64",
                             box64Version = "0.3.7",
                             dxwrapperConfig = currentConfig.toString(),
                         )
