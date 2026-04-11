@@ -189,7 +189,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                 imageFs.getRootDir().getPath() + "/usr/bin:" +
                 imageFs.getRootDir().getPath() + "/usr/local/bin");
 
-        envVars.put("LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib");
+        envVars.put("LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib" + ":" + imageFs.getWinePath() + "/lib");
         envVars.put("BOX64_LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib/x86_64-linux-gnu");
         envVars.put("ANDROID_SYSVSHM_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/etc/fonts");
@@ -300,7 +300,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                 imageFs.getRootDir().getPath() + "/usr/bin:" +
                 imageFs.getRootDir().getPath() + "/usr/local/bin");
 
-        envVars.put("LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib");
+        envVars.put("LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib" + ":" + imageFs.getWinePath() + "/lib");
         envVars.put("BOX64_LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib/x86_64-linux-gnu");
         envVars.put("ANDROID_SYSVSHM_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/etc/fonts");

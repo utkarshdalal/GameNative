@@ -252,7 +252,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("PATH", winePath + ":" +
                 rootDir.getPath() + "/usr/bin");
 
-        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
+        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + imageFs.getWinePath() + "/lib" + ":" + "/system/lib64");
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", rootDir.getPath() + "/usr/etc/fonts");
 
@@ -467,7 +467,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         envVars.put("PATH", winePath + ":" + rootDir.getPath() + "/usr/bin");
 
-        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
+        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + imageFs.getWinePath() + "/lib" + ":" + "/system/lib64");
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("WINE_NO_DUPLICATE_EXPLORER", "1");
         envVars.put("PREFIX", rootDir.getPath() + "/usr");
