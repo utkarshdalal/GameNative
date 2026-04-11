@@ -98,7 +98,7 @@ public abstract class GPUInformation {
             String gpuRenderer = Objects.toString(gl.glGetString(GL10.GL_RENDERER), "");
             String gpuVendor = Objects.toString(gl.glGetString(GL10.GL_VENDOR), "");
             String gpuVersion = Objects.toString(gl.glGetString(GL10.GL_VERSION), "");
-            if (isTurnipBlacklisted()) gpuRenderer += " - " + Build.MANUFACTURER;
+            if (GPUBlackist.isTurnipBlacklisted()) gpuRenderer += " - " + Build.MANUFACTURER;
 
             gpuInfo.put("renderer", gpuRenderer);
             gpuInfo.put("vendor", gpuVendor);
@@ -161,27 +161,10 @@ public abstract class GPUInformation {
         return r.contains("adreno") && r.matches(".*\\b8(3[0-9]|4[0-9]|5[0-9])\\b.*");
     }
 
-    public static boolean isTurnipBlacklisted() {
-        if ((Build.MANUFACTURER.compareToIgnoreCase("OCULUS") == 0) ||
-            (Build.MANUFACTURER.compareToIgnoreCase("META") == 0)) {
-            return switch (Build.PRODUCT) {
-                //Quest 1
-                case "monterey", "vr_monterey" -> false;
-                //Quest 2, Quest Pro
-                case "hollywood", "seacliff" -> false;
-                //Quest 3, Quest 3s
-                case "eureka", "stinson", "panther" -> true;
-                //future devices
-                default -> true;
-            };
-        }
-        return false;
-    }
-
     public static boolean isTurnipCapable(Context context) {
         String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
         // match “adreno 610…699” or “adreno 710…799”
-        return r.contains("adreno") && r.matches(".*\\b[67][0-9]{2}\\b.*") && !isTurnipBlacklisted();
+        return r.contains("adreno") && r.matches(".*\\b[67][0-9]{2}\\b.*") && !GPUBlackist.isTurnipBlacklisted();
     }
 
     /**

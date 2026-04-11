@@ -8,7 +8,7 @@ import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.contents.ContentProfile
-import com.winlator.core.GPUInformation
+import com.winlator.core.GPUBlackist
 import com.winlator.fexcore.FEXCorePresetManager
 import com.winlator.core.KeyValueSet
 import kotlinx.coroutines.Dispatchers
@@ -731,13 +731,13 @@ object BestConfigService {
                 }
                 if (filteredJson.has("graphicsDriverVersion") && !filteredJson.isNull("graphicsDriverVersion")) {
                     val version = filteredJson.optString("graphicsDriverVersion", "")
-                    if (!version.contains("turnip") || !GPUInformation.isTurnipBlacklisted()) {
+                    if (!version.contains("turnip", ignoreCase = true) || !GPUBlackist.isTurnipBlacklisted()) {
                         resultMap["graphicsDriverVersion"] = version
                     }
                 }
                 if (filteredJson.has("graphicsDriverConfig") && !filteredJson.isNull("graphicsDriverConfig")) {
                     val config = filteredJson.optString("graphicsDriverConfig", "")
-                    if (!config.contains("turnip") || !GPUInformation.isTurnipBlacklisted()) {
+                    if (!config.contains("turnip", ignoreCase = true) || !GPUBlackist.isTurnipBlacklisted()) {
                         resultMap["graphicsDriverConfig"] = config
                     }
                 }
