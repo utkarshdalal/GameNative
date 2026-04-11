@@ -120,8 +120,7 @@ class CaseInsensitiveFileSystem(
         val exact = parent / segment
         if (delegate.metadataOrNull(exact) != null) {
             log("Found exact match for '$segment', caching")
-            children[lower] = exact
-            return exact
+            return children.putIfAbsent(lower, exact) ?: exact
         }
 
         log("Case mismatch for '$segment', listing directory '$parent'")
@@ -149,7 +148,7 @@ class CaseInsensitiveFileSystem(
             log("Could not list directory '$parent'")
         }
 
-        val result = children[lower] ?: exact.also { children[lower] = it }
+        val result = children[lower] ?: (children.putIfAbsent(lower, exact) ?: exact)
         log("Resolved '$segment' to '$result'")
         return result
     }
