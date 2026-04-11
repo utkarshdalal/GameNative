@@ -94,6 +94,7 @@
     <string name="confirm_delete">Confirmer la suppression</string>
     <string name="destination_library">Bibliothèque</string>
     <string name="destination_downloads">Téléchargements et stockage</string>
+    <string name="downloads_section_title">Téléchargements</string>
 
     <string name="downloads_empty">Aucun téléchargement actif</string>
     <string name="downloads_overview_subtitle">Suivez les téléchargements actifs, en pause et repris</string>

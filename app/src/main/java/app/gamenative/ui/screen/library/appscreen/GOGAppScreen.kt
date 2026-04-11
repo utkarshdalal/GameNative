@@ -17,7 +17,6 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.data.GOGGame
 import app.gamenative.data.LibraryItem
-import app.gamenative.enums.Marker
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.MarkerUtils
@@ -411,16 +410,20 @@ class GOGAppScreen : BaseAppScreen() {
         Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
 
         if (previousLanguage != config.language) {
-            CoroutineScope(Dispatchers.IO).launch {
-                val gameId = libraryItem.gameId.toString()
-                if (!GOGService.isGameInstalled(gameId)) return@launch
-                if (GOGService.getDownloadInfo(gameId)?.isActive() == true) return@launch
+            triggerGOGVerifyDownload(context, libraryItem, config.language)
+        }
+    }
 
-                val installPath = GOGService.getInstallPath(gameId)
-                    ?: GOGConstants.getGameInstallPath(libraryItem.name)
+    private fun triggerGOGVerifyDownload(context: Context, libraryItem: LibraryItem, language: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val gameId = libraryItem.gameId.toString()
+            if (!GOGService.isGameInstalled(gameId)) return@launch
+            if (GOGService.getDownloadInfo(gameId)?.isActive() == true) return@launch
 
-                GOGService.downloadGame(context, gameId, installPath, config.language)
-            }
+            val installPath = GOGService.getInstallPath(gameId)
+                ?: GOGConstants.getGameInstallPath(libraryItem.name)
+
+            GOGService.downloadGame(context, gameId, installPath, language)
         }
     }
 
@@ -428,6 +431,39 @@ class GOGAppScreen : BaseAppScreen() {
         Timber.tag(TAG).d("supportsContainerConfig: returning true")
         // GOG games support container configuration like other Wine games
         return true
+    }
+
+    @Composable
+    override fun getSourceSpecificMenuOptions(
+        context: Context,
+        libraryItem: LibraryItem,
+        onEditContainer: () -> Unit,
+        onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
+        isInstalled: Boolean,
+    ): List<AppMenuOption> {
+        if (!isInstalled || isDownloading(context, libraryItem)) {
+            return emptyList()
+        }
+
+        return listOf(
+            AppMenuOption(
+                optionType = AppOptionMenuType.VerifyFiles,
+                onClick = {
+                    showInstallDialog(
+                        libraryItem.appId,
+                        app.gamenative.ui.component.dialog.state.MessageDialogState(
+                            visible = true,
+                            type = app.gamenative.ui.enums.DialogType.UPDATE_VERIFY_CONFIRM,
+                            title = context.getString(R.string.library_verify_files_title),
+                            message = context.getString(R.string.library_verify_files_message),
+                            confirmBtnText = context.getString(R.string.proceed),
+                            dismissBtnText = context.getString(R.string.cancel),
+                        ),
+                    )
+                },
+            ),
+        )
     }
 
     /**
@@ -597,6 +633,17 @@ class GOGAppScreen : BaseAppScreen() {
                                 SnackbarManager.show("Failed to delete download: ${result.exceptionOrNull()?.message}")
                             }
                         }
+                    }
+                }
+                app.gamenative.ui.enums.DialogType.UPDATE_VERIFY_CONFIRM -> {
+                    {
+                        BaseAppScreen.hideInstallDialog(appId)
+                        val gameId = libraryItem.gameId.toString()
+                        val installPath = GOGService.getInstallPath(gameId)
+                            ?: GOGConstants.getGameInstallPath(libraryItem.name)
+                        MarkerUtils.clearInstalledPrerequisiteMarkers(installPath)
+                        val language = loadContainerData(context, libraryItem).language
+                        triggerGOGVerifyDownload(context, libraryItem, language)
                     }
                 }
                 else -> null

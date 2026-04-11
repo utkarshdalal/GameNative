@@ -41,6 +41,7 @@
     <string name="confirm_delete">Confirmar Deleção</string>
     <string name="destination_library">Biblioteca</string>
     <string name="destination_downloads">Downloads e armazenamento</string>
+    <string name="downloads_section_title">Downloads</string>
 
     <string name="downloads_empty">Nenhum download ativo</string>
     <string name="downloads_overview_subtitle">Acompanhe downloads ativos, pausados e retomáveis</string>

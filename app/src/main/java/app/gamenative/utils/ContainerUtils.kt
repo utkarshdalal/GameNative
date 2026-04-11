@@ -774,6 +774,7 @@ object ContainerUtils {
                                     bestConfig.bestConfig,
                                     bestConfig.matchType,
                                     true,
+                                    bestConfig.matchedStore.equals(gameSource.name, ignoreCase = true),
                                 )
                                 if (parsedConfig != null && parsedConfig.isNotEmpty()) {
                                     bestConfigMap = parsedConfig

@@ -645,6 +645,7 @@ abstract class BaseAppScreen {
                 configJson = bestConfig.bestConfig,
                 matchType = bestConfig.matchType,
                 applyKnownConfig = true,
+                storeMatch = bestConfig.matchedStore.equals(libraryItem.gameSource.name, ignoreCase = true),
             )
             val missingContentDescription = BestConfigService.consumeLastMissingContentDescription()
 

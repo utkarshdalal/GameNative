@@ -86,6 +86,7 @@
     <string name="confirm_delete">Підтвердити видалення</string>
     <string name="destination_library">Бібліотека</string>
     <string name="destination_downloads">Завантаження й сховище</string>
+    <string name="downloads_section_title">Завантаження</string>
 
     <!-- Library Tabs -->
     <string name="downloads_empty">Немає активних завантажень</string>

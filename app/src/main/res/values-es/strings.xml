@@ -103,6 +103,7 @@
     <string name="confirm_delete">Confirmar eliminación</string>
     <string name="destination_library">Biblioteca</string>
     <string name="destination_downloads">Descargas y almacenamiento</string>
+    <string name="downloads_section_title">Descargas</string>
 
     <string name="downloads_empty">No hay descargas activas</string>
     <string name="downloads_overview_subtitle">Sigue las descargas activas, pausadas y reanudables</string>

@@ -49,6 +49,7 @@
     <string name="confirm_delete">Bekræft sletning</string>
     <string name="destination_library">Bibliotek</string>
     <string name="destination_downloads">Downloads &amp; lager</string>
+    <string name="downloads_section_title">Downloads</string>
 
     <string name="downloads_empty">Ingen aktive downloads</string>
     <string name="downloads_overview_subtitle">Følg aktive, pausede og genoptagelige downloads</string>

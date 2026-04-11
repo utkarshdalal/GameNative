@@ -1129,7 +1129,7 @@ fun XServerScreen(
                     if (!handled) handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
                 }
                 if (PluviaApp.touchpadView?.hasPointerCapture() != true && !PluviaApp.isOverlayPaused) {
-                    if (it.event != null) {
+                    if ((it.event != null) && (it.event.device != null)) {
                         val device = it.event.device
                         val isExternal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) device.isExternal else true
                         if (device.supportsSource(InputDevice.SOURCE_TOUCHPAD) &&

@@ -89,6 +89,7 @@
     <string name="confirm_delete">Löschen bestätigen</string>
     <string name="destination_library">Bibliothek</string>
     <string name="destination_downloads">Downloads &amp; Speicher</string>
+    <string name="downloads_section_title">Downloads</string>
 
     <string name="downloads_empty">Keine aktiven Downloads</string>
     <string name="downloads_overview_subtitle">Aktive, pausierte und fortsetzbare Downloads verfolgen</string>

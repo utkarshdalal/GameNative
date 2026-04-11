@@ -93,6 +93,7 @@
     <string name="confirm_delete">確認刪除</string>
     <string name="destination_library">遊戲庫</string>
     <string name="destination_downloads">下載與儲存</string>
+    <string name="downloads_section_title">下載</string>
 
     <!-- Library Tabs -->
     <string name="downloads_empty">目前沒有進行中的下載</string>

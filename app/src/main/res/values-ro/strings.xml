@@ -94,6 +94,7 @@
     <string name="confirm_delete">Confirmă ștergerea</string>
     <string name="destination_library">Bibliotecă</string>
     <string name="destination_downloads">Descărcări și stocare</string>
+    <string name="downloads_section_title">Descărcări</string>
 
     <string name="downloads_empty">Nicio descărcare activă</string>
     <string name="downloads_overview_subtitle">Urmărește descărcările active, întrerupte și reluabile</string>
