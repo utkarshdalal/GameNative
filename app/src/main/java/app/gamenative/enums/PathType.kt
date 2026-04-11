@@ -308,11 +308,12 @@ enum class PathType {
                 "%${MacAppSupport.name.lowercase()}%",
                 MacAppSupport.name.lowercase(),
                 -> MacAppSupport
+                "%${Root.name.lowercase()}%",
+                Root.name.lowercase(),
                 "windowshome",
                 "%windowshome%",
-                Root.name.lowercase(),
-                "%ROOT_MOD%",
-                "ROOT_MOD",
+                "%root_mod%",
+                "root_mod",
                 -> Root
                 else -> {
                     if (keyValue != null) {
