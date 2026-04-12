@@ -114,6 +114,8 @@ class XServerScreenUtils {
                             outFile.delete()
                         }
 
+                        val fos = FileOutputStream(outFile)
+
                         archive.extract(
                             intArrayOf(i), false,
                             object : IArchiveExtractCallback {
@@ -121,14 +123,16 @@ class XServerScreenUtils {
                                     if (extractAskMode != ExtractAskMode.EXTRACT) return null
 
                                     return ISequentialOutStream { data ->
-                                        FileOutputStream(outFile, true).use { it.write(data) }
+                                        fos.write(data)
                                         data.size // Return the number of bytes written
                                     }
                                 }
 
                                 override fun prepareOperation(extractAskMode: ExtractAskMode) {}
                                 override fun setOperationResult(extractOperationResult: ExtractOperationResult) {}
-                                override fun setCompleted(completeValue: Long) {}
+                                override fun setCompleted(completeValue: Long) {
+                                    fos.close()
+                                }
                                 override fun setTotal(total: Long) {}
                             }
                         )
