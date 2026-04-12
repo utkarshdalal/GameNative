@@ -29,15 +29,22 @@ class XServerScreenUtils {
     companion object {
         fun replaceXAudioDllsFromRedistributable(context: Context, appId: String) {
             val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
-            val appDirPath = when (gameSource) {
-                GameSource.STEAM -> {
-                    SteamService.getAppDirPath(gameId)
+            val appDirPath = try {
+                when (gameSource) {
+                    GameSource.STEAM -> {
+                        val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+                        SteamService.getAppDirPath(gameId)
+                    }
+                    GameSource.GOG -> GOGService.getInstallPath(appId)
+                    GameSource.EPIC -> {
+                        val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+                        EpicService.getInstallPath(gameId)
+                    }
+                    GameSource.AMAZON -> AmazonService.getInstallPath(appId)
+                    GameSource.CUSTOM_GAME -> CustomGameScanner.getFolderPathFromAppId(appId)
                 }
-                GameSource.GOG -> GOGService.getInstallPath(appId)
-                GameSource.EPIC -> EpicService.getInstallPath(gameId)
-                GameSource.AMAZON -> AmazonService.getInstallPath(appId)
-                GameSource.CUSTOM_GAME -> CustomGameScanner.getFolderPathFromAppId(appId)
+            } catch (_: Exception) {
+                null
             }
 
             // Not Support Type
