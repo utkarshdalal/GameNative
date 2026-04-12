@@ -65,6 +65,7 @@ class XServerScreenUtils {
                     maxDepth = 5,
                 ).map { file ->
                     directXDir = file.parent.toFile()
+                    return@map
                 }
             }
 
