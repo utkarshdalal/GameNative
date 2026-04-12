@@ -837,13 +837,34 @@ class SteamService : Service(), IChallengeUrlChanged {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
             val hasSteamUnlockedBranch = runBlocking { getSteamUnlockedBranches(appId).isNotEmpty() }
-            val licensedDepots = getLicensedDepotIds(appId)
+            val licensedDepots = getLicensedDepotIds(appId).orEmpty().toMutableSet()
+
+            // Use the dlcAppID of the ownedDlc, to find the licensed depotIds from steam_license
+            val mapDlcDepotIds = mutableMapOf<Int, List<Int>>()
+            ownedDlc.forEach { (dlcAppId, info) ->
+                val dlcDepotIds = getPkgInfoOf(dlcAppId)?.depotIds.orEmpty()
+                mapDlcDepotIds[dlcAppId] = dlcDepotIds
+
+                // Make sure licensedDepots contains the dlc depots
+                licensedDepots.addAll(dlcDepotIds)
+            }
 
             val baseDepots = resolveDownloadableDepots(appInfo.depots, preferredLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch)
             // parent app's arch applies to DLC arch selection
             val has64Bit = eligibleDepots(appInfo.depots, preferredLanguage, ownedDlc, licensedDepots)
                 .any { it.osArch == OSArch.Arch64 }
-            val map = baseDepots.toMutableMap()
+
+            // Find in the depots of mainApp, that if any of the depotID is actually belongs to another steam_app entry
+            // override the dlcAppId to the corresponding app id
+            // It should fix Don't Starve DLC list, and keeping existing DLC logic correct
+            // For existing DLC logic, two games checked Halo MCC, Cyberpunk 2077 to have correct data
+            val map = mutableMapOf<Int, DepotInfo>()
+            baseDepots.forEach { (depotId, info) ->
+                val foundDlcAppId = mapDlcDepotIds
+                    .filter { it.value.contains(info.depotId) }
+                    .keys.firstOrNull()
+                map[depotId] = info.copy(dlcAppId = foundDlcAppId ?: info.dlcAppId)
+            }
 
             val indirectDlcApps = getDownloadableDlcAppsOf(appId).orEmpty()
             indirectDlcApps.forEach { dlcApp ->
