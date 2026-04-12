@@ -46,6 +46,10 @@ import java.util.TimerTask;
 
 public class InputControlsView extends View {
     public static final float DEFAULT_OVERLAY_OPACITY = 0.4f;
+    public static final int GYRO_MODE_DISABLED = 0;
+    public static final int GYRO_MODE_LEFT_STICK = 1;
+    public static final int GYRO_MODE_RIGHT_STICK = 2;
+    public static final int GYRO_MODE_MOUSE = 3;
     private boolean editMode = false;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
@@ -87,6 +91,15 @@ public class InputControlsView extends View {
     // Container-level shooter mode (auto-replaces STICK elements)
     private boolean containerShooterMode = false;
     private boolean containerShooterModeRuntime = false; // runtime toggle state
+    private final GyroController gyroController;
+    private float baseThumbLX = 0f;
+    private float baseThumbLY = 0f;
+    private float baseThumbRX = 0f;
+    private float baseThumbRY = 0f;
+    private float gyroThumbLX = 0f;
+    private float gyroThumbLY = 0f;
+    private float gyroThumbRX = 0f;
+    private float gyroThumbRY = 0f;
 
     // Callback invoked when the SHOW_KEYBOARD binding is triggered
     private Runnable showKeyboardCallback;
@@ -96,6 +109,13 @@ public class InputControlsView extends View {
     @SuppressLint("ResourceType")
     public InputControlsView(Context context) {
         super(context);
+        gyroController = new GyroController(context, (x, y, rightStick, isMouse) -> {
+            if (isMouse) {
+                updateGyroMouse(x, y);
+            } else {
+                updateGyroStick(rightStick, x, y);
+            }
+        });
         setClickable(true);
         setFocusable(true);
         setFocusableInTouchMode(true);
@@ -110,6 +130,7 @@ public class InputControlsView extends View {
 
     public void setEditMode(boolean editMode) {
         this.editMode = editMode;
+        gyroController.setEditMode(editMode);
         invalidate(); // Trigger redraw to show/hide grid background immediately
     }
 
@@ -276,7 +297,11 @@ public class InputControlsView extends View {
             this.profile = profile;
             deselectAllElements();
         }
-        else this.profile = null;
+        else {
+            this.profile = null;
+            resetThumbContributions();
+        }
+        gyroController.setHasProfile(this.profile != null);
     }
 
     public boolean isShowTouchscreenControls() {
@@ -285,6 +310,26 @@ public class InputControlsView extends View {
 
     public void setShowTouchscreenControls(boolean showTouchscreenControls) {
         this.showTouchscreenControls = showTouchscreenControls;
+    }
+
+    public int getGyroMode() {
+        return gyroController.getMode();
+    }
+
+    public void setGyroMode(int mode) {
+        gyroController.setMode(mode);
+    }
+
+    public void setGyroSensitivity(float sensitivity) {
+        gyroController.setSensitivity(sensitivity);
+    }
+
+    public void setGyroInvertX(boolean invertX) {
+        gyroController.setInvertX(invertX);
+    }
+
+    public void setGyroInvertY(boolean invertY) {
+        gyroController.setInvertY(invertY);
     }
 
     public int getPrimaryColor() {
@@ -339,9 +384,16 @@ public class InputControlsView extends View {
 
     @Override
     protected void onDetachedFromWindow() {
+        gyroController.onDetachedFromWindow();
         if (mouseMoveTimer != null)
             mouseMoveTimer.cancel();
         super.onDetachedFromWindow();
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        gyroController.onAttachedToWindow();
     }
 
     public int getMaxHeight() {
@@ -955,6 +1007,7 @@ public class InputControlsView extends View {
 
     public void handleInputEvent(Binding binding, boolean isActionDown, float offset) {
         if (binding.isGamepad()) {
+            if (profile == null) return;
             WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
             GamepadState state = profile.getGamepadState();
 
@@ -970,16 +1023,20 @@ public class InputControlsView extends View {
                     state.setPressed(buttonIdx, isActionDown);
             }
             else if (binding == Binding.GAMEPAD_LEFT_THUMB_UP || binding == Binding.GAMEPAD_LEFT_THUMB_DOWN) {
-                state.thumbLY = isActionDown ? offset : 0;
+                baseThumbLY = isActionDown ? offset : 0;
+                state.thumbLY = Mathf.clamp(baseThumbLY + gyroThumbLY, -1f, 1f);
             }
             else if (binding == Binding.GAMEPAD_LEFT_THUMB_LEFT || binding == Binding.GAMEPAD_LEFT_THUMB_RIGHT) {
-                state.thumbLX = isActionDown ? offset : 0;
+                baseThumbLX = isActionDown ? offset : 0;
+                state.thumbLX = Mathf.clamp(baseThumbLX + gyroThumbLX, -1f, 1f);
             }
             else if (binding == Binding.GAMEPAD_RIGHT_THUMB_UP || binding == Binding.GAMEPAD_RIGHT_THUMB_DOWN) {
-                state.thumbRY = isActionDown ? offset : 0;
+                baseThumbRY = isActionDown ? offset : 0;
+                state.thumbRY = Mathf.clamp(baseThumbRY + gyroThumbRY, -1f, 1f);
             }
             else if (binding == Binding.GAMEPAD_RIGHT_THUMB_LEFT || binding == Binding.GAMEPAD_RIGHT_THUMB_RIGHT) {
-                state.thumbRX = isActionDown ? offset : 0;
+                baseThumbRX = isActionDown ? offset : 0;
+                state.thumbRX = Mathf.clamp(baseThumbRX + gyroThumbRX, -1f, 1f);
             }
             else if (binding == Binding.GAMEPAD_DPAD_UP || binding == Binding.GAMEPAD_DPAD_RIGHT ||
                      binding == Binding.GAMEPAD_DPAD_DOWN || binding == Binding.GAMEPAD_DPAD_LEFT) {
@@ -1029,6 +1086,55 @@ public class InputControlsView extends View {
                 }
             }
         }
+    }
+
+    private void updateGyroMouse(float x, float y) {
+        if (profile == null || xServer == null) return;
+        if (Math.abs(x) < 0.001f && Math.abs(y) < 0.001f) return;
+        float cursorSpeed = profile.getCursorSpeed();
+        int moveX = Mathf.roundPoint(x * 24f * cursorSpeed);
+        int moveY = Mathf.roundPoint(y * 24f * cursorSpeed);
+        if (moveX == 0 && moveY == 0) return;
+        if (xServer.isRelativeMouseMovement()) {
+            xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, moveX, moveY, 0);
+        } else {
+            xServer.injectPointerMoveDelta(moveX, moveY);
+        }
+    }
+
+    private void updateGyroStick(boolean rightStick, float x, float y) {
+        if (profile == null) return;
+        GamepadState state = profile.getGamepadState();
+        if (rightStick) {
+            gyroThumbRX = x;
+            gyroThumbRY = y;
+            state.thumbRX = Mathf.clamp(baseThumbRX + gyroThumbRX, -1f, 1f);
+            state.thumbRY = Mathf.clamp(baseThumbRY + gyroThumbRY, -1f, 1f);
+        } else {
+            gyroThumbLX = x;
+            gyroThumbLY = y;
+            state.thumbLX = Mathf.clamp(baseThumbLX + gyroThumbLX, -1f, 1f);
+            state.thumbLY = Mathf.clamp(baseThumbLY + gyroThumbLY, -1f, 1f);
+        }
+
+        WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
+        if (winHandler != null) {
+            ExternalController controller = winHandler.getCurrentController();
+            if (controller != null) controller.state.copy(state);
+            winHandler.sendGamepadState();
+            winHandler.sendVirtualGamepadState(state);
+        }
+    }
+
+    private void resetThumbContributions() {
+        baseThumbLX = 0f;
+        baseThumbLY = 0f;
+        baseThumbRX = 0f;
+        baseThumbRY = 0f;
+        gyroThumbLX = 0f;
+        gyroThumbLY = 0f;
+        gyroThumbRX = 0f;
+        gyroThumbRY = 0f;
     }
 
     public Bitmap getIcon(byte id) {

@@ -288,6 +288,13 @@
     <string name="screen_effects_close">Schließen</string>
     <string name="quick_menu_tab_general">Allgemein</string>
     <string name="quick_menu_tab_controller">Controller</string>
+    <string name="quick_menu_tab_gyro">Gyro</string>
+    <string name="controller_gyro_mode_subtitle">Geräte-Gyroskop einem Gamepad-Stick oder der Maus zuordnen</string>
+    <string name="controller_gyro_mapping">Zuordnen zu</string>
+    <string name="controller_gyro_sensitivity">Empfindlichkeit</string>
+    <string name="controller_gyro_sensitivity_value">%1$d%%</string>
+    <string name="controller_gyro_invert_x">Horizontalachse umkehren</string>
+    <string name="controller_gyro_invert_y">Vertikalachse umkehren</string>
     <string name="performance_hud">Leistungs-HUD</string>
     <string name="performance_hud_description">Leistungsoverlay im Spiel ein- oder ausblenden.</string>
     <string name="performance_hud_fps_limiter">FPS-Begrenzer</string>

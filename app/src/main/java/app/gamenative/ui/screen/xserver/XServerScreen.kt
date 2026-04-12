@@ -40,6 +40,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -210,6 +211,12 @@ private const val DEFAULT_FPS_LIMITER_MAX_HZ = 60
 private const val DEFAULT_FPS_LIMITER_TARGET_HZ = 60
 private const val FPS_LIMITER_ENABLED_EXTRA = "fpsLimiterEnabled"
 private const val FPS_LIMITER_TARGET_EXTRA = "fpsLimiterTarget"
+private const val PREF_CONTROLS_GYRO_MODE = "controls_gyro_mode"
+private const val PREF_CONTROLS_GYRO_SENSITIVITY = "controls_gyro_sensitivity"
+private const val GYRO_MODE_DISABLED = 0
+private const val GYRO_MODE_LEFT_STICK = 1
+private const val GYRO_MODE_RIGHT_STICK = 2
+private const val GYRO_MODE_MOUSE = 3
 
 private fun initialFpsLimiterEnabled(container: Container): Boolean =
     parseBooleanExtra(container.getExtra(FPS_LIMITER_ENABLED_EXTRA)) ?: true
@@ -237,6 +244,24 @@ private fun detectMaxRefreshRateHz(context: Context, attachedView: View?): Int {
         ?.roundToInt()
         ?.coerceAtLeast(5)
         ?: DEFAULT_FPS_LIMITER_MAX_HZ
+}
+
+private fun parseGyroMode(value: String?): Int {
+    return when (value?.lowercase(Locale.getDefault())) {
+        "left_stick" -> GYRO_MODE_LEFT_STICK
+        "right_stick" -> GYRO_MODE_RIGHT_STICK
+        "mouse" -> GYRO_MODE_MOUSE
+        else -> GYRO_MODE_DISABLED
+    }
+}
+
+private fun gyroModeToPrefValue(mode: Int): String {
+    return when (mode) {
+        GYRO_MODE_LEFT_STICK -> "left_stick"
+        GYRO_MODE_RIGHT_STICK -> "right_stick"
+        GYRO_MODE_MOUSE -> "mouse"
+        else -> "disabled"
+    }
 }
 
 private data class XServerViewReleaseBinding(
@@ -436,6 +461,18 @@ fun XServerScreen(
     var hasPhysicalMouse by remember { mutableStateOf(false) }
     var hasInternalTouchpad by remember { mutableStateOf(false) }
     var hasUpdatedScreenGamepad by remember { mutableStateOf(false) }
+    var controlsGyroMode by remember {
+        mutableStateOf(parseGyroMode(PrefManager.getString(PREF_CONTROLS_GYRO_MODE, "disabled")))
+    }
+    var controlsGyroLastTarget by remember {
+        val mode = parseGyroMode(PrefManager.getString(PREF_CONTROLS_GYRO_MODE, "disabled"))
+        mutableIntStateOf(if (mode != GYRO_MODE_DISABLED) mode else PrefManager.controlsGyroLastTarget.coerceIn(1, 3))
+    }
+    var controlsGyroSensitivity by remember {
+        mutableStateOf(PrefManager.getFloat(PREF_CONTROLS_GYRO_SENSITIVITY, 0.35f).coerceIn(0.1f, 2.0f))
+    }
+    var controlsGyroInvertX by remember { mutableStateOf(PrefManager.controlsGyroInvertX) }
+    var controlsGyroInvertY by remember { mutableStateOf(PrefManager.controlsGyroInvertY) }
     var isPerformanceHudEnabled by remember { mutableStateOf(PrefManager.showFps) }
     val shouldTrackDisplayedFrames = remember { AtomicBoolean(false) }
     var detectedMaxRefreshRateHz by remember { mutableIntStateOf(detectMaxRefreshRateHz(context, null)) }
@@ -1343,8 +1380,13 @@ fun XServerScreen(
             } else {
                 var handled = false
                 if (isGamepad && it.event != null) {
+                    // Physical handler and InputControlsView share the same joystick pipeline; do not
+                    // call both or axes/triggers are applied twice. Match onKeyEvent: physical first,
+                    // overlay only if nothing consumed (e.g. no PhysicalControllerHandler yet).
                     handled = physicalControllerHandler?.onGenericMotionEvent(it.event!!) == true
-                    if (!handled) handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
+                    if (!handled) {
+                        handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
+                    }
                     // Final fallback to WinHandler passthrough
                     if (!handled) handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
                 }
@@ -2026,6 +2068,10 @@ fun XServerScreen(
 
                 // Set container-level shooter mode
                 setContainerShooterMode(container.isShooterMode)
+                setGyroMode(controlsGyroMode)
+                setGyroSensitivity(controlsGyroSensitivity)
+                setGyroInvertX(controlsGyroInvertX)
+                setGyroInvertY(controlsGyroInvertY)
             }
             PluviaApp.inputControlsView = icView
 
@@ -2381,6 +2427,53 @@ fun XServerScreen(
             hasPhysicalController = hasPhysicalController,
             isTouchscreenModeActive = isTouchscreenModeActive,
             onTouchGestureSettingsClick = { showTouchGestureDialog = true },
+            gyroEnabled = controlsGyroMode != GYRO_MODE_DISABLED,
+            onGyroEnabledChanged = { enabled ->
+                if (enabled) {
+                    val target = controlsGyroLastTarget.coerceIn(GYRO_MODE_LEFT_STICK, GYRO_MODE_MOUSE)
+                    controlsGyroLastTarget = target
+                    controlsGyroMode = target
+                    PrefManager.controlsGyroLastTarget = target
+                    PrefManager.setGyroMode(gyroModeToPrefValue(target))
+                    PluviaApp.inputControlsView?.setGyroMode(target)
+                } else {
+                    val target = controlsGyroLastTarget.coerceIn(GYRO_MODE_LEFT_STICK, GYRO_MODE_MOUSE)
+                    controlsGyroLastTarget = target
+                    PrefManager.controlsGyroLastTarget = target
+                    controlsGyroMode = GYRO_MODE_DISABLED
+                    PrefManager.setGyroMode("disabled")
+                    PluviaApp.inputControlsView?.setGyroMode(GYRO_MODE_DISABLED)
+                }
+            },
+            gyroMapping = controlsGyroLastTarget.coerceIn(GYRO_MODE_LEFT_STICK, GYRO_MODE_MOUSE),
+            onGyroMappingChanged = { target ->
+                val t = target.coerceIn(GYRO_MODE_LEFT_STICK, GYRO_MODE_MOUSE)
+                controlsGyroLastTarget = t
+                PrefManager.controlsGyroLastTarget = t
+                if (controlsGyroMode != GYRO_MODE_DISABLED) {
+                    controlsGyroMode = t
+                    PrefManager.setGyroMode(gyroModeToPrefValue(t))
+                    PluviaApp.inputControlsView?.setGyroMode(t)
+                }
+            },
+            gyroSensitivity = controlsGyroSensitivity,
+            onGyroSensitivityChanged = { sensitivity ->
+                controlsGyroSensitivity = sensitivity
+                PrefManager.setFloat(PREF_CONTROLS_GYRO_SENSITIVITY, sensitivity)
+                PluviaApp.inputControlsView?.setGyroSensitivity(sensitivity)
+            },
+            gyroInvertX = controlsGyroInvertX,
+            gyroInvertY = controlsGyroInvertY,
+            onGyroInvertXChanged = { invert ->
+                controlsGyroInvertX = invert
+                PrefManager.controlsGyroInvertX = invert
+                PluviaApp.inputControlsView?.setGyroInvertX(invert)
+            },
+            onGyroInvertYChanged = { invert ->
+                controlsGyroInvertY = invert
+                PrefManager.controlsGyroInvertY = invert
+                PluviaApp.inputControlsView?.setGyroInvertY(invert)
+            },
             activeToggleIds = buildSet {
                 if (areControlsVisible) add(QuickMenuAction.INPUT_CONTROLS)
                 if (isTouchscreenModeActive) add(QuickMenuAction.TOUCHSCREEN_MODE)
@@ -2765,7 +2858,6 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
 private fun hideInputControls() {
     PluviaApp.inputControlsView?.setShowTouchscreenControls(false)
     PluviaApp.inputControlsView?.setVisibility(View.GONE)
-    PluviaApp.inputControlsView?.setProfile(null)
 
     PluviaApp.touchpadView?.setSensitivity(1.0f)
     PluviaApp.touchpadView?.setPointerButtonLeftEnabled(true)

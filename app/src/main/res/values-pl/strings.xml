@@ -307,6 +307,13 @@
     <string name="screen_effects_close">Zamknij</string>
     <string name="quick_menu_tab_general">Ogólne</string>
     <string name="quick_menu_tab_controller">Kontroler</string>
+    <string name="quick_menu_tab_gyro">Żyroskop</string>
+    <string name="controller_gyro_mode_subtitle">Mapuj żyroskop urządzenia na joystick pada lub mysz</string>
+    <string name="controller_gyro_mapping">Mapuj na</string>
+    <string name="controller_gyro_sensitivity">Czułość</string>
+    <string name="controller_gyro_sensitivity_value">%1$d%%</string>
+    <string name="controller_gyro_invert_x">Odwróć poziomo</string>
+    <string name="controller_gyro_invert_y">Odwróć pionowo</string>
     <string name="performance_hud">HUD wydajności</string>
     <string name="performance_hud_description">Pokaż lub ukryj nakładkę w grze.</string>
     <string name="performance_hud_fps_limiter">Ogranicznik FPS</string>

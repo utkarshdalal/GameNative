@@ -226,6 +226,13 @@
     <string name="screen_effects_close">Fechar</string>
     <string name="quick_menu_tab_general">Geral</string>
     <string name="quick_menu_tab_controller">Controle</string>
+    <string name="quick_menu_tab_gyro">Giroscópio</string>
+    <string name="controller_gyro_mode_subtitle">Mapeie o giroscópio do dispositivo para um analógico do controle ou mouse</string>
+    <string name="controller_gyro_mapping">Mapear para</string>
+    <string name="controller_gyro_sensitivity">Sensibilidade</string>
+    <string name="controller_gyro_sensitivity_value">%1$d%%</string>
+    <string name="controller_gyro_invert_x">Inverter horizontal</string>
+    <string name="controller_gyro_invert_y">Inverter vertical</string>
     <string name="performance_hud">HUD de desempenho</string>
     <string name="performance_hud_description">Mostrar ou ocultar a sobreposição no jogo.</string>
     <string name="performance_hud_fps_limiter">Limitador de FPS</string>

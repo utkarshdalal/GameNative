@@ -295,6 +295,13 @@
     <string name="screen_effects_close">Fermer</string>
     <string name="quick_menu_tab_general">Général</string>
     <string name="quick_menu_tab_controller">Contrôles</string>
+    <string name="quick_menu_tab_gyro">Gyroscope</string>
+    <string name="controller_gyro_mode_subtitle">Associer le gyroscope de l\'appareil à un joystick de manette ou à la souris</string>
+    <string name="controller_gyro_mapping">Affecter à</string>
+    <string name="controller_gyro_sensitivity">Sensibilité</string>
+    <string name="controller_gyro_sensitivity_value">%1$d%%</string>
+    <string name="controller_gyro_invert_x">Inverser l\'axe horizontal</string>
+    <string name="controller_gyro_invert_y">Inverser l\'axe vertical</string>
     <string name="performance_hud">HUD de performance</string>
     <string name="performance_hud_description">Afficher ou masquer la surcouche en jeu.</string>
     <string name="performance_hud_fps_limiter">Limiteur de FPS</string>

@@ -677,6 +677,38 @@ object PrefManager {
             setPref(PORTRAIT_MODE, value)
         }
 
+    private val CONTROLS_GYRO_MODE = stringPreferencesKey("controls_gyro_mode")
+    var controlsGyroMode: String
+        get() = getPref(CONTROLS_GYRO_MODE, "disabled")
+        set(value) {
+            setPref(CONTROLS_GYRO_MODE, value)
+        }
+
+    fun setGyroMode(value: String) {
+        controlsGyroMode = value
+    }
+
+    private val CONTROLS_GYRO_LAST_TARGET = intPreferencesKey("controls_gyro_last_target")
+    var controlsGyroLastTarget: Int
+        get() = getPref(CONTROLS_GYRO_LAST_TARGET, 1).coerceIn(1, 3)
+        set(value) {
+            setPref(CONTROLS_GYRO_LAST_TARGET, value.coerceIn(1, 3))
+        }
+
+    private val CONTROLS_GYRO_INVERT_X = booleanPreferencesKey("controls_gyro_invert_x")
+    var controlsGyroInvertX: Boolean
+        get() = getPref(CONTROLS_GYRO_INVERT_X, false)
+        set(value) {
+            setPref(CONTROLS_GYRO_INVERT_X, value)
+        }
+
+    private val CONTROLS_GYRO_INVERT_Y = booleanPreferencesKey("controls_gyro_invert_y")
+    var controlsGyroInvertY: Boolean
+        get() = getPref(CONTROLS_GYRO_INVERT_Y, false)
+        set(value) {
+            setPref(CONTROLS_GYRO_INVERT_Y, value)
+        }
+
     private val BOX_86_VERSION = stringPreferencesKey("box86_version")
     var box86Version: String
         get() = getPref(BOX_86_VERSION, DefaultVersion.BOX86)

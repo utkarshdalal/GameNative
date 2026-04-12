@@ -308,6 +308,13 @@
     <string name="screen_effects_close">닫기</string>
     <string name="quick_menu_tab_general">일반</string>
     <string name="quick_menu_tab_controller">컨트롤러</string>
+    <string name="quick_menu_tab_gyro">자이로</string>
+    <string name="controller_gyro_mode_subtitle">기기 자이로를 게임패드 스틱이나 마우스에 매핑합니다</string>
+    <string name="controller_gyro_mapping">매핑 대상</string>
+    <string name="controller_gyro_sensitivity">감도</string>
+    <string name="controller_gyro_sensitivity_value">%1$d%%</string>
+    <string name="controller_gyro_invert_x">가로 반전</string>
+    <string name="controller_gyro_invert_y">세로 반전</string>
     <string name="performance_hud">성능 HUD</string>
     <string name="performance_hud_description">게임 내 오버레이를 표시하거나 숨깁니다.</string>
     <string name="performance_hud_fps_limiter">FPS 제한기</string>

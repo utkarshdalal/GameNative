@@ -871,6 +871,13 @@ https://gamenative.app
     <string name="screen_effects_close">Закрыть</string>
     <string name="quick_menu_tab_general">Общие</string>
     <string name="quick_menu_tab_controller">Контроллер</string>
+    <string name="quick_menu_tab_gyro">Гироскоп</string>
+    <string name="controller_gyro_mode_subtitle">Назначить гироскоп устройства на стик геймпада или мышь</string>
+    <string name="controller_gyro_mapping">Назначить на</string>
+    <string name="controller_gyro_sensitivity">Чувствительность</string>
+    <string name="controller_gyro_sensitivity_value">%1$d%%</string>
+    <string name="controller_gyro_invert_x">Инвертировать по горизонтали</string>
+    <string name="controller_gyro_invert_y">Инвертировать по вертикали</string>
     <string name="performance_hud">HUD производительности</string>
     <string name="performance_hud_description">Показывать или скрывать игровое наложение.</string>
     <string name="performance_hud_fps_limiter">Ограничитель FPS</string>

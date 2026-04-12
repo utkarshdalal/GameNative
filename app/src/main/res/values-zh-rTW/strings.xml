@@ -293,6 +293,13 @@
     <string name="screen_effects_close">關閉</string>
     <string name="quick_menu_tab_general">一般</string>
     <string name="quick_menu_tab_controller">控制器</string>
+    <string name="quick_menu_tab_gyro">陀螺儀</string>
+    <string name="controller_gyro_mode_subtitle">將裝置陀螺儀映射到手把搖桿或滑鼠</string>
+    <string name="controller_gyro_mapping">映射到</string>
+    <string name="controller_gyro_sensitivity">靈敏度</string>
+    <string name="controller_gyro_sensitivity_value">%1$d%%</string>
+    <string name="controller_gyro_invert_x">水平反轉</string>
+    <string name="controller_gyro_invert_y">垂直反轉</string>
     <string name="performance_hud">效能 HUD</string>
     <string name="performance_hud_description">顯示或隱藏遊戲內疊加層。</string>
     <string name="performance_hud_fps_limiter">FPS 限制器</string>

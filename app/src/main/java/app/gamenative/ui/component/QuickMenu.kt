@@ -26,6 +26,7 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -253,6 +254,16 @@ fun QuickMenu(
     hasPhysicalController: Boolean = false,
     isTouchscreenModeActive: Boolean = false,
     onTouchGestureSettingsClick: () -> Unit = {},
+    gyroEnabled: Boolean = false,
+    onGyroEnabledChanged: (Boolean) -> Unit = {},
+    gyroMapping: Int = 1,
+    onGyroMappingChanged: (Int) -> Unit = {},
+    gyroSensitivity: Float = 0.35f,
+    onGyroSensitivityChanged: (Float) -> Unit = {},
+    gyroInvertX: Boolean = false,
+    gyroInvertY: Boolean = false,
+    onGyroInvertXChanged: (Boolean) -> Unit = {},
+    onGyroInvertYChanged: (Boolean) -> Unit = {},
     activeToggleIds: Set<Int> = emptySet(),
     // LSFG hot-reload state (tab only visible when isLsfgAvailable)
     isLsfgAvailable: Boolean = false,
@@ -626,7 +637,7 @@ fun QuickMenu(
                                         )
                                     }
 
-                                    else -> {
+                                    QuickMenuTab.CONTROLLER -> {
                                         Column(
                                             modifier = Modifier
                                                 .fillMaxSize()
@@ -650,6 +661,18 @@ fun QuickMenu(
                                                         onTouchGestureSettingsClick else null,
                                                 )
                                             }
+                                            ControllerGyroSection(
+                                                gyroEnabled = gyroEnabled,
+                                                onGyroEnabledChanged = onGyroEnabledChanged,
+                                                gyroMapping = gyroMapping,
+                                                onGyroMappingChanged = onGyroMappingChanged,
+                                                gyroSensitivity = gyroSensitivity,
+                                                onGyroSensitivityChanged = onGyroSensitivityChanged,
+                                                gyroInvertX = gyroInvertX,
+                                                onGyroInvertXChanged = onGyroInvertXChanged,
+                                                gyroInvertY = gyroInvertY,
+                                                onGyroInvertYChanged = onGyroInvertYChanged,
+                                            )
                                         }
                                     }
                                 }
@@ -731,6 +754,91 @@ private fun ToolsQuickMenuTab(
             }
         }
     }
+}
+
+@Composable
+private fun ControllerGyroSection(
+    gyroEnabled: Boolean,
+    onGyroEnabledChanged: (Boolean) -> Unit,
+    gyroMapping: Int,
+    onGyroMappingChanged: (Int) -> Unit,
+    gyroSensitivity: Float,
+    onGyroSensitivityChanged: (Float) -> Unit,
+    gyroInvertX: Boolean,
+    onGyroInvertXChanged: (Boolean) -> Unit,
+    gyroInvertY: Boolean,
+    onGyroInvertYChanged: (Boolean) -> Unit,
+) {
+    val accentColor = PluviaTheme.colors.accentPurple
+    Spacer(modifier = Modifier.height(8.dp))
+    QuickMenuToggleRow(
+        title = stringResource(R.string.quick_menu_tab_gyro),
+        subtitle = stringResource(R.string.controller_gyro_mode_subtitle),
+        enabled = gyroEnabled,
+        onToggle = { onGyroEnabledChanged(!gyroEnabled) },
+        accentColor = accentColor,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    Column(
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.controller_gyro_mapping),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Medium,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            QuickMenuChoiceChip(
+                text = stringResource(R.string.left_stick),
+                selected = gyroMapping == 1,
+                accentColor = accentColor,
+                onClick = { onGyroMappingChanged(1) },
+            )
+            QuickMenuChoiceChip(
+                text = stringResource(R.string.right_stick),
+                selected = gyroMapping == 2,
+                accentColor = accentColor,
+                onClick = { onGyroMappingChanged(2) },
+            )
+            QuickMenuChoiceChip(
+                text = stringResource(R.string.mouse),
+                selected = gyroMapping == 3,
+                accentColor = accentColor,
+                onClick = { onGyroMappingChanged(3) },
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(8.dp))
+    QuickMenuAdjustmentRow(
+        title = stringResource(R.string.controller_gyro_sensitivity),
+        valueText = stringResource(
+            R.string.controller_gyro_sensitivity_value,
+            (gyroSensitivity * 100f).roundToInt(),
+        ),
+        progress = normalizedProgress(gyroSensitivity, 0.1f, 2.0f),
+        onDecrease = { onGyroSensitivityChanged((gyroSensitivity - 0.05f).coerceIn(0.1f, 2.0f)) },
+        onIncrease = { onGyroSensitivityChanged((gyroSensitivity + 0.05f).coerceIn(0.1f, 2.0f)) },
+        accentColor = accentColor,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    QuickMenuToggleRow(
+        title = stringResource(R.string.controller_gyro_invert_x),
+        enabled = gyroInvertX,
+        onToggle = { onGyroInvertXChanged(!gyroInvertX) },
+        accentColor = accentColor,
+    )
+    QuickMenuToggleRow(
+        title = stringResource(R.string.controller_gyro_invert_y),
+        enabled = gyroInvertY,
+        onToggle = { onGyroInvertYChanged(!gyroInvertY) },
+        accentColor = accentColor,
+    )
+    Spacer(modifier = Modifier.height(12.dp))
 }
 
 @Composable
