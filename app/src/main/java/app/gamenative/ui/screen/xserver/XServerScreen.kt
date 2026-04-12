@@ -1398,7 +1398,10 @@ fun XServerScreen(
                 // Restore saved FSR state for this container
                 val fsrSaved = container.getExtra("fsrEnabled", "false").toBoolean()
                 if (fsrSaved) {
-                    val fsrSharpnessSaved = container.getExtra("fsrSharpness", "0.5").toFloatOrNull() ?: 0.5f
+                    val fsrSharpnessSaved = container.getExtra(
+                        "fsrSharpness",
+                        FSRRCASEffect.DEFAULT_SHARPNESS.toString(),
+                    ).toFloatOrNull() ?: FSRRCASEffect.DEFAULT_SHARPNESS
                     val easuEffect = FSREASUEffect()
                     val rcasEffect = FSRRCASEffect()
                     rcasEffect.sharpness = fsrSharpnessSaved

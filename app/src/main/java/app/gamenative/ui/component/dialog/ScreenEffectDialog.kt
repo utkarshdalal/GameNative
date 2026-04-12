@@ -82,7 +82,7 @@ fun ScreenEffectDialog(
         mutableStateOf(composer.getEffect(FSREASUEffect::class.java) != null)
     }
     var fsrSharpness by remember(renderer) {
-        mutableFloatStateOf(composer.getEffect(FSRRCASEffect::class.java)?.sharpness ?: 0.5f)
+        mutableFloatStateOf(composer.getEffect(FSRRCASEffect::class.java)?.sharpness ?: FSRRCASEffect.DEFAULT_SHARPNESS)
     }
 
     var enableCRT by remember(renderer) {
@@ -139,7 +139,7 @@ fun ScreenEffectDialog(
         enableToon = false
         enableFXAA = false
         enableFSR = false
-        fsrSharpness = 0.5f
+        fsrSharpness = FSRRCASEffect.DEFAULT_SHARPNESS
 
         enableCRT = false
         enableNTSC = false
@@ -267,7 +267,7 @@ fun ScreenEffectDialog(
                                  label = "Sharpness",
                                  valueText = String.format("%.2f", fsrSharpness),
                                  value = fsrSharpness,
-                                 valueRange = 0.0f..2.0f,
+                                  valueRange = FSRRCASEffect.MIN_SHARPNESS..FSRRCASEffect.MAX_SHARPNESS,
                                  onValueChange = { fsrSharpness = it },
                              )
                          }

@@ -6,6 +6,7 @@ import com.winlator.core.DefaultVersion
 import com.winlator.core.WineInfo
 import com.winlator.core.WineThemeManager
 import com.winlator.fexcore.FEXCorePreset
+import com.winlator.renderer.effects.FSRRCASEffect
 import kotlin.String
 
 data class ContainerData(
@@ -95,7 +96,7 @@ data class ContainerData(
     val sharpnessLevel: Int = 100,
     val sharpnessDenoise: Int = 100,
     val fsrEnabled: Boolean = false,
-    val fsrSharpness: Float = 0.5f,
+    val fsrSharpness: Float = FSRRCASEffect.DEFAULT_SHARPNESS,
     val afLevel: Int = 8,
 ) {
     companion object {
@@ -226,7 +227,7 @@ data class ContainerData(
                     sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                     fsrEnabled = (savedMap["fsrEnabled"] as? Boolean) ?: false,
-                    fsrSharpness = (savedMap["fsrSharpness"] as? Float) ?: 0.5f,
+                    fsrSharpness = (savedMap["fsrSharpness"] as? Float) ?: FSRRCASEffect.DEFAULT_SHARPNESS,
                     afLevel = (savedMap["afLevel"] as? Int) ?: 8,
                 )
             },

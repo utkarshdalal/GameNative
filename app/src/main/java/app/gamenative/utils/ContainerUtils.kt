@@ -22,6 +22,7 @@ import com.winlator.core.WineThemeManager
 import com.winlator.fexcore.FEXCoreManager
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
+import com.winlator.renderer.effects.FSRRCASEffect
 import com.winlator.winhandler.WinHandler.PreferredInputApi
 import com.winlator.xenvironment.ImageFs
 import java.io.File
@@ -318,7 +319,8 @@ object ContainerUtils {
             sharpnessLevel = container.getExtra("sharpnessLevel", "100").toIntOrNull() ?: 100,
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
             fsrEnabled = container.getExtra("fsrEnabled", "false").toBoolean(),
-            fsrSharpness = container.getExtra("fsrSharpness", "0.5").toFloatOrNull() ?: 0.5f,
+            fsrSharpness = container.getExtra("fsrSharpness", FSRRCASEffect.DEFAULT_SHARPNESS.toString()).toFloatOrNull()
+                ?: FSRRCASEffect.DEFAULT_SHARPNESS,
             afLevel = container.getExtra("afLevel", "8").toIntOrNull() ?: 8,
         )
     }

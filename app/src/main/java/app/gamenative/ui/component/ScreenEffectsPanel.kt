@@ -112,7 +112,7 @@ fun ScreenEffectsTabContent(
         mutableStateOf(composer.getEffect(FSREASUEffect::class.java) != null)
     }
     var fsrSharpness by remember(renderer) {
-        mutableFloatStateOf(composer.getEffect(FSRRCASEffect::class.java)?.sharpness ?: 0.5f)
+        mutableFloatStateOf(composer.getEffect(FSRRCASEffect::class.java)?.sharpness ?: FSRRCASEffect.DEFAULT_SHARPNESS)
     }
 
     var enableCRT by remember(renderer) {
@@ -169,7 +169,7 @@ fun ScreenEffectsTabContent(
         enableToon = false
         enableFXAA = false
         enableFSR = false
-        fsrSharpness = 0.5f
+        fsrSharpness = FSRRCASEffect.DEFAULT_SHARPNESS
 
         enableCRT = false
         enableNTSC = false
@@ -240,12 +240,12 @@ fun ScreenEffectsTabContent(
             ScreenEffectAdjustmentRow(
                 title = "Sharpness",
                 valueText = String.format("%.2f", fsrSharpness),
-                progress = normalizedProgress(fsrSharpness, 0.0f, 2.0f),
+                progress = normalizedProgress(fsrSharpness, FSRRCASEffect.MIN_SHARPNESS, FSRRCASEffect.MAX_SHARPNESS),
                 onDecrease = {
-                    fsrSharpness = (fsrSharpness - 0.1f).coerceIn(0.0f, 2.0f)
+                    fsrSharpness = (fsrSharpness - 0.1f).coerceIn(FSRRCASEffect.MIN_SHARPNESS, FSRRCASEffect.MAX_SHARPNESS)
                 },
                 onIncrease = {
-                    fsrSharpness = (fsrSharpness + 0.1f).coerceIn(0.0f, 2.0f)
+                    fsrSharpness = (fsrSharpness + 0.1f).coerceIn(FSRRCASEffect.MIN_SHARPNESS, FSRRCASEffect.MAX_SHARPNESS)
                 },
             )
 
@@ -307,7 +307,7 @@ fun ScreenEffectsPanel(
         mutableStateOf(composer.getEffect(FSREASUEffect::class.java) != null)
     }
     var fsrSharpness by remember(renderer) {
-        mutableFloatStateOf(composer.getEffect(FSRRCASEffect::class.java)?.sharpness ?: 0.5f)
+        mutableFloatStateOf(composer.getEffect(FSRRCASEffect::class.java)?.sharpness ?: FSRRCASEffect.DEFAULT_SHARPNESS)
     }
     var afLevel by remember(renderer) {
         mutableStateOf(container?.getExtra("afLevel", "8")?.toIntOrNull() ?: 8)
@@ -367,7 +367,7 @@ fun ScreenEffectsPanel(
         enableToon = false
         enableFXAA = false
         enableFSR = false
-        fsrSharpness = 0.5f
+        fsrSharpness = FSRRCASEffect.DEFAULT_SHARPNESS
 
         enableCRT = false
         enableNTSC = false
@@ -557,12 +557,12 @@ fun ScreenEffectsPanel(
                         ScreenEffectAdjustmentRow(
                             title = "Sharpness",
                             valueText = String.format("%.2f", fsrSharpness),
-                            progress = normalizedProgress(fsrSharpness, 0.0f, 2.0f),
+                            progress = normalizedProgress(fsrSharpness, FSRRCASEffect.MIN_SHARPNESS, FSRRCASEffect.MAX_SHARPNESS),
                             onDecrease = {
-                                fsrSharpness = (fsrSharpness - 0.1f).coerceIn(0.0f, 2.0f)
+                                fsrSharpness = (fsrSharpness - 0.1f).coerceIn(FSRRCASEffect.MIN_SHARPNESS, FSRRCASEffect.MAX_SHARPNESS)
                             },
                             onIncrease = {
-                                fsrSharpness = (fsrSharpness + 0.1f).coerceIn(0.0f, 2.0f)
+                                fsrSharpness = (fsrSharpness + 0.1f).coerceIn(FSRRCASEffect.MIN_SHARPNESS, FSRRCASEffect.MAX_SHARPNESS)
                             },
                         )
                     }
