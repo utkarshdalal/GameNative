@@ -633,7 +633,6 @@ fun XServerScreen(
                             withContext(Dispatchers.Main) {
                                 exit(
                                     winHandler,
-                                    PluviaApp.xEnvironment,
                                     frameRating,
                                     currentAppInfo,
                                     container,
@@ -949,7 +948,7 @@ fun XServerScreen(
                 imeInputReceiver?.hideKeyboard()
                 // Resume processes before exiting so they can receive SIGTERM cleanly.
                 forceResumeIfSuspended()
-                exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+                exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
                 true
             }
 
@@ -1051,7 +1050,7 @@ fun XServerScreen(
     DisposableEffect(lifecycleOwner, container) {
         val onActivityDestroyed: (AndroidEvent.ActivityDestroyed) -> Unit = {
             Timber.i("onActivityDestroyed")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+            exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
         }
         val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
             val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
@@ -1151,11 +1150,11 @@ fun XServerScreen(
         }
         val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
             Timber.i("onGuestProgramTerminated")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+            exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
         }
         val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
             Timber.i("onForceCloseApp")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+            exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
         }
         val debugCallback = Callback<String> { outputLine ->
             Timber.i(outputLine ?: "")
@@ -3359,7 +3358,6 @@ private fun getSteamlessTarget(
 
 private fun exit(
     winHandler: WinHandler?,
-    environment: XEnvironment?,
     frameRating: FrameRating?,
     appInfo: SteamApp?,
     container: Container,
@@ -3392,15 +3390,13 @@ private fun exit(
         container.saveData()
     }
 
-    PluviaApp.achievementWatcher?.stop()
-    PluviaApp.achievementWatcher = null
-    SteamService.clearCachedAchievements()
-
-    PluviaApp.touchpadView?.releasePointerCapture()
-    winHandler?.stop()
-    environment?.stopEnvironmentComponents()
-    SteamService.keepAlive = false
-    PluviaApp.clearActiveSuspendState()
+    // only needed in exit() — OS reclaims on process death, so onDestroy fallback skips this
+    try {
+        winHandler?.stop()
+    } catch (e: Exception) {
+        Timber.e(e, "winHandler.stop() failed during exit")
+    }
+    PluviaApp.shutdownEnvironment()
 
     // empty Wine/XDG trash in background after container stops
     CoroutineScope(Dispatchers.IO).launch {
@@ -3420,16 +3416,6 @@ private fun exit(
             Timber.e(e, "Error emptying Wine/XDG trash")
         }
     }
-    // AppUtils.restartApplication(this)
-    // PluviaApp.xServerState = null
-    // PluviaApp.xServer = null
-    // PluviaApp.xServerView = null
-    PluviaApp.xEnvironment = null
-    PluviaApp.inputControlsView = null
-    PluviaApp.inputControlsManager = null
-    PluviaApp.touchpadView = null
-    // PluviaApp.touchMouse = null
-    // PluviaApp.keyboard = null
     frameRating?.writeSessionSummary()
 
     if (MainActivity.wasLaunchedViaExternalIntent) {
