@@ -59,13 +59,14 @@ class XServerScreenUtils {
             // Check the common path first, otherwise scan the game dir for DXSETUP.exe
             var directXDir = File(appDirPath, "_CommonRedist/DirectX")
             if (!directXDir.exists()) {
-                FileUtils.findFilesRecursive(
+                val dxSetupFile = FileUtils.findFilesRecursive(
                     rootPath = appDir.toPath(),
                     pattern = "DXSETUP.exe",
                     maxDepth = 5,
-                ).map { file ->
-                    directXDir = file.parent.toFile()
-                    return@map
+                ).findFirst().orElse(null)
+                
+                if (dxSetupFile != null) {
+                    directXDir = dxSetupFile.parent.toFile()
                 }
             }
 
