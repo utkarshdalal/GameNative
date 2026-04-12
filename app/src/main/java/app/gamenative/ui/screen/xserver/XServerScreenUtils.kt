@@ -116,28 +116,26 @@ class XServerScreenUtils {
                             outFile.delete()
                         }
 
-                        val fos = FileOutputStream(outFile)
+                        FileOutputStream(outFile).use { fos ->
+                            archive.extract(
+                                intArrayOf(i), false,
+                                object : IArchiveExtractCallback {
+                                    override fun getStream(index: Int, extractAskMode: ExtractAskMode): ISequentialOutStream? {
+                                        if (extractAskMode != ExtractAskMode.EXTRACT) return null
 
-                        archive.extract(
-                            intArrayOf(i), false,
-                            object : IArchiveExtractCallback {
-                                override fun getStream(index: Int, extractAskMode: ExtractAskMode): ISequentialOutStream? {
-                                    if (extractAskMode != ExtractAskMode.EXTRACT) return null
-
-                                    return ISequentialOutStream { data ->
-                                        fos.write(data)
-                                        data.size // Return the number of bytes written
+                                        return ISequentialOutStream { data ->
+                                            fos.write(data)
+                                            data.size // Return the number of bytes written
+                                        }
                                     }
-                                }
 
-                                override fun prepareOperation(extractAskMode: ExtractAskMode) {}
-                                override fun setOperationResult(extractOperationResult: ExtractOperationResult) {}
-                                override fun setCompleted(completeValue: Long) {
-                                    fos.close()
+                                    override fun prepareOperation(extractAskMode: ExtractAskMode) {}
+                                    override fun setOperationResult(extractOperationResult: ExtractOperationResult) {}
+                                    override fun setCompleted(completeValue: Long) {}
+                                    override fun setTotal(total: Long) {}
                                 }
-                                override fun setTotal(total: Long) {}
-                            }
-                        )
+                            )
+                        }
 
                         Timber.tag("replaceXAudioDllsFromRedistributable").d("Extracted: ${outFile.name}")
                     }
