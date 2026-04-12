@@ -20,13 +20,6 @@ import com.winlator.xenvironment.ImageFs
 import `in`.dragonbra.javasteam.types.KeyValue
 import `in`.dragonbra.javasteam.util.HardwareUtils
 import kotlinx.coroutines.runBlocking
-import net.sf.sevenzipjbinding.ExtractAskMode
-import net.sf.sevenzipjbinding.ExtractOperationResult
-import net.sf.sevenzipjbinding.IArchiveExtractCallback
-import net.sf.sevenzipjbinding.IInArchive
-import net.sf.sevenzipjbinding.ISequentialOutStream
-import net.sf.sevenzipjbinding.SevenZip
-import net.sf.sevenzipjbinding.impl.RandomAccessFileInStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -43,10 +36,8 @@ import kotlin.io.path.name
 import timber.log.Timber
 import okhttp3.*
 import org.json.JSONObject
-import java.io.RandomAccessFile
 import java.net.URLEncoder
 import java.nio.file.attribute.FileTime
-import java.nio.channels.FileChannel
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.setLastModifiedTime
 
