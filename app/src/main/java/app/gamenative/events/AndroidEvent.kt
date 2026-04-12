@@ -27,5 +27,8 @@ interface AndroidEvent<T> : Event<T> {
     data class GOGAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>
     data class EpicAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>
     data object ServiceReady : AndroidEvent<Unit>
+    // used by components without ViewModel access (ProfileDialog, SystemMenu)
+    // to toggle offline state; PluviaMain listens and forwards to MainViewModel
+    data class SetOffline(val offline: Boolean) : AndroidEvent<Unit>
     // data class SetAppBarVisibility(val visible: Boolean) : AndroidEvent<Unit>
 }

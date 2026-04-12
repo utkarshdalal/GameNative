@@ -372,8 +372,8 @@ class MainViewModel @Inject constructor(
     }
 
     fun setCurrentScreen(currentScreen: String?) {
-        // Route matching accounts for query params and path params in templates
-        // e.g., "home?offline={offline}" should match Home, "chat/{id}" should match Chat
+        // route matching accounts for path params in templates
+        // e.g., "chat/{id}" should match Chat
         val screen = when {
             currentScreen == null -> PluviaScreen.LoginUser
             currentScreen == PluviaScreen.LoginUser.route -> PluviaScreen.LoginUser

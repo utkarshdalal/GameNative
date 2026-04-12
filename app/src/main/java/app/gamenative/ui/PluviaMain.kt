@@ -418,9 +418,9 @@ fun PluviaMain(
                             context, launchRequest.appId, launchRequest.containerConfig,
                         )
                     }
-                    val homeRoute = PluviaScreen.Home.route + "?offline={offline}"
-                    if (navController.currentDestination?.route != homeRoute) {
-                        navController.navigate(PluviaScreen.Home.route + "?offline=false") {
+                    viewModel.setOffline(false)
+                    if (navController.currentDestination?.route != PluviaScreen.Home.route) {
+                        navController.navigate(PluviaScreen.Home.route) {
                             popUpTo(navController.graph.startDestinationId) { saveState = false }
                         }
                     }
@@ -527,6 +527,8 @@ fun PluviaMain(
                 is MainViewModel.MainUiEvent.OnLogonEnded -> {
                     when (event.result) {
                         LoginResult.Success -> {
+                            // login succeeded — we're online regardless of current screen
+                            viewModel.setOffline(false)
                             val pending = MainActivity.peekPendingLaunchRequest()
                             if (pending != null && !needsDeferLaunch(context, pending.appId)) {
                                 processPendingLaunch("user is now logged in")
@@ -535,16 +537,6 @@ fun PluviaMain(
                                 val targetRoute = viewModel.getPersistedRoute() ?: PluviaScreen.Home.route
                                 if (currentRoute == PluviaScreen.LoginUser.route) {
                                     navController.navigateFromLoginIfNeeded(targetRoute, "LogonEnded")
-                                } else if (currentRoute == PluviaScreen.Home.route + "?offline={offline}") {
-                                    val isCurrentlyOffline = navController.currentBackStackEntry
-                                        ?.arguments?.getBoolean("offline") ?: false
-                                    if (isCurrentlyOffline) {
-                                        navController.navigate(PluviaScreen.Home.route + "?offline=false") {
-                                            popUpTo(PluviaScreen.Home.route + "?offline={offline}") {
-                                                inclusive = true
-                                            }
-                                        }
-                                    }
                                 }
                             }
                         }
@@ -693,14 +685,14 @@ fun PluviaMain(
             if (PlatformAuthUtils.isSignedInToAnyPlatform(context) && !SteamService.keepAlive) {
                 val baseRoute = viewModel.getPersistedRoute() ?: PluviaScreen.Home.route
                 val targetRoute = if (SteamService.isLoggedIn) {
+                    // don't clear offline here — user may have explicitly chosen
+                    // "Go Offline" via system menu/profile dialog
                     baseRoute
                 } else {
-                    // Non-Steam platforms: ensure offline param for Home
                     if (baseRoute.startsWith(PluviaScreen.Home.route)) {
-                        PluviaScreen.Home.route + "?offline=true"
-                    } else {
-                        baseRoute
+                        viewModel.setOffline(true)
                     }
+                    baseRoute
                 }
                 navController.navigateFromLoginIfNeeded(targetRoute, "ResumeSession")
             }
@@ -736,15 +728,23 @@ fun PluviaMain(
         )
     }
 
+    // event bus bridge: lets components without ViewModel access (ProfileDialog,
+    // SystemMenu) set offline state without threading callbacks through every layer
+    val onSetOffline: (AndroidEvent.SetOffline) -> Unit = { event ->
+        viewModel.setOffline(event.offline)
+    }
+
     LaunchedEffect(Unit) {
         PluviaApp.events.on<AndroidEvent.PromptSaveContainerConfig, Unit>(onPromptSaveConfig)
         PluviaApp.events.on<AndroidEvent.ShowGameFeedback, Unit>(onShowGameFeedback)
+        PluviaApp.events.on<AndroidEvent.SetOffline, Unit>(onSetOffline)
     }
 
     DisposableEffect(Unit) {
         onDispose {
             PluviaApp.events.off<AndroidEvent.PromptSaveContainerConfig, Unit>(onPromptSaveConfig)
             PluviaApp.events.off<AndroidEvent.ShowGameFeedback, Unit>(onShowGameFeedback)
+            PluviaApp.events.off<AndroidEvent.SetOffline, Unit>(onSetOffline)
         }
     }
 
@@ -1250,14 +1250,18 @@ fun PluviaMain(
 
             val startDestination = rememberSaveable {
                 when {
-                    SteamService.isLoggedIn -> PluviaScreen.Home.route + "?offline=false"
-                    // skip login screen if any service has stored credentials
+                    SteamService.isLoggedIn -> PluviaScreen.Home.route
                     (PrefManager.username.isNotEmpty() && PrefManager.refreshToken.isNotEmpty()) ||
                         GOGService.hasStoredCredentials(context) ||
                         EpicService.hasStoredCredentials(context) ||
-                        AmazonService.hasStoredCredentials(context) ->
-                        PluviaScreen.Home.route + "?offline=true"
+                        AmazonService.hasStoredCredentials(context) -> PluviaScreen.Home.route
                     else -> PluviaScreen.LoginUser.route
+                }
+            }
+            // set initial offline state outside rememberSaveable to avoid re-execution on recomposition
+            LaunchedEffect(startDestination) {
+                if (startDestination == PluviaScreen.Home.route) {
+                    viewModel.setOffline(!SteamService.isLoggedIn)
                 }
             }
 
@@ -1271,10 +1275,12 @@ fun PluviaMain(
                         connectionState = state.connectionState,
                         onRetryConnection = viewModel::retryConnection,
                         onContinueOffline = {
-                            navController.navigate(PluviaScreen.Home.route + "?offline=true")
+                            viewModel.setOffline(true)
+                            navController.navigate(PluviaScreen.Home.route)
                         },
                         onPlatformSignedIn = {
-                            navController.navigate(PluviaScreen.Home.route + "?offline=true") {
+                            viewModel.setOffline(true)
+                            navController.navigate(PluviaScreen.Home.route) {
                                 popUpTo(PluviaScreen.LoginUser.route) { inclusive = true }
                             }
                         },
@@ -1282,16 +1288,10 @@ fun PluviaMain(
                 }
                 /** Library, Downloads **/
                 composable(
-                    route = PluviaScreen.Home.route + "?offline={offline}",
+                    route = PluviaScreen.Home.route,
                     deepLinks = listOf(navDeepLink { uriPattern = "pluvia://home" }),
-                    arguments = listOf(
-                        navArgument("offline") {
-                            type = NavType.BoolType
-                            defaultValue = false // default when the query param isn’t present
-                        },
-                    ),
-                ) { backStackEntry ->
-                    val isOffline = backStackEntry.arguments?.getBoolean("offline") ?: false
+                ) {
+                    val isOffline by viewModel.isOffline.collectAsStateWithLifecycle()
 
                     // Show update/crash/support dialogs when Home is first displayed
                     // Skip when offline with Steam credentials (avoid flash when Steam reconnects)
@@ -1345,7 +1345,7 @@ fun PluviaMain(
                             viewModel.setLaunchedAppId(appId)
                             viewModel.setBootToContainer(asContainer)
                             viewModel.setTestGraphics(false)
-                            viewModel.setOffline(isOffline)
+
                             preLaunchApp(
                                 context = context,
                                 appId = appId,
@@ -1362,7 +1362,7 @@ fun PluviaMain(
                             viewModel.setLaunchedAppId(appId)
                             viewModel.setBootToContainer(true)
                             viewModel.setTestGraphics(true)
-                            viewModel.setOffline(isOffline)
+
                             preLaunchApp(
                                 context = context,
                                 appId = appId,
@@ -1394,11 +1394,13 @@ fun PluviaMain(
                         onLogout = {
                             SteamService.logOut()
                         },
+                        // callback instead of event bus because going online may
+                        // need navController to redirect to login
                         onGoOnline = {
-                            navController.navigate(
-                                if (!SteamService.isLoggedIn) PluviaScreen.LoginUser.route
-                                else PluviaScreen.Home.route
-                            )
+                            viewModel.setOffline(false)
+                            if (!SteamService.isLoggedIn) {
+                                navController.navigate(PluviaScreen.LoginUser.route)
+                            }
                         },
                         isOffline = isOffline,
                     )
