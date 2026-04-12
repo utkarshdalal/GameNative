@@ -482,8 +482,8 @@
     <string name="force_dlc">Forçar DLC</string>
     <string name="force_dlc_description">Ative somente se os DLCs não forem detectados ou os saves com DLC não estiverem funcionando</string>
     <string name="launch_steam_client_beta">Iniciar o cliente Steam (Beta)</string>
-    <string name="steam_offline_mode">Modo Offline do Steam</string>
-    <string name="steam_offline_mode_description">Iniciar jogos Steam no modo offline</string>
+    <string name="steam_offline_mode">Emular modo offline do Steam</string>
+    <string name="steam_offline_mode_description">O emulador Steam no jogo desativará a rede online</string>
     <string name="achievement_unlocked">Conquista desbloqueada</string>
     <string name="settings_achievement_notification_position">Posição da notificação de conquista</string>
     <string name="achievement_position_top_left">Superior esquerdo</string>

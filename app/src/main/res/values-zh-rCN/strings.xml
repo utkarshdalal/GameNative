@@ -640,8 +640,8 @@
     <string name="force_dlc">强制开启DLC</string>
     <string name="force_dlc_description">仅在未检测到 DLC 或包含 DLC 的存档无法运作时启用</string>
     <string name="launch_steam_client_beta">启动 Steam 客户端（Beta）</string>
-    <string name="steam_offline_mode">Steam 离线模式</string>
-    <string name="steam_offline_mode_description">以离线模式启动 Steam 游戏</string>
+    <string name="steam_offline_mode">模拟 Steam 离线模式</string>
+    <string name="steam_offline_mode_description">游戏内 Steam 模拟器将禁用在线网络功能</string>
     <string name="achievement_unlocked">成就已解锁</string>
     <string name="settings_achievement_notification_position">成就通知位置</string>
     <string name="achievement_position_top_left">左上</string>

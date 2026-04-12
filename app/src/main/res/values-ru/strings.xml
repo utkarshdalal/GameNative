@@ -1079,8 +1079,8 @@ https://gamenative.app
 	Доступное место: %3$s</string>
     <string name="steam_never">Никогда</string>
     <string name="steam_not_logged_in">Вы должны войти в Steam, чтобы использовать эту функцию</string>
-    <string name="steam_offline_mode">Автономный режим Steam</string>
-    <string name="steam_offline_mode_description">Запускать игры Steam в автономном режиме</string>
+    <string name="steam_offline_mode">Эмуляция автономного режима Steam</string>
+    <string name="steam_offline_mode_description">Эмулятор Steam в игре отключит онлайн-сеть</string>
     <string name="steam_reset_container_message">Это восстановит ваш контейнер к конфигурации по умолчанию.</string>
     <string name="steam_reset_container_title">Сбросить контейнер</string>
     <string name="steam_sign_in">Войти в Steam</string>

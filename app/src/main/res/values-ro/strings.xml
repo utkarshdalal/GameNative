@@ -650,8 +650,8 @@
 	<string name="force_dlc">Forțează DLC</string>
 	<string name="force_dlc_description">Activează doar dacă DLC‑urile nu sunt detectate sau salvările cu DLC nu funcționează</string>
 	<string name="launch_steam_client_beta">Pornește Steam Client (Beta)</string>
-	<string name="steam_offline_mode">Mod Offline Steam</string>
-	<string name="steam_offline_mode_description">Pornește jocurile Steam în mod offline</string>
+	<string name="steam_offline_mode">Emulează modul offline Steam</string>
+	<string name="steam_offline_mode_description">Emulatorul Steam din joc va dezactiva rețeaua online</string>
 	<string name="achievement_unlocked">Realizare deblocată</string>
 	<string name="settings_achievement_notification_position">Poziția notificării realizării</string>
 	<string name="achievement_position_top_left">Stânga sus</string>

@@ -622,8 +622,8 @@
     <string name="force_dlc">DLC erzwingen</string>
     <string name="force_dlc_description">Nur aktivieren, falls DLCs nicht erkannt werden oder Spielstände mit DLC nicht funktionieren</string>
     <string name="launch_steam_client_beta">Steam-Client starten (Beta)</string>
-    <string name="steam_offline_mode">Steam Offline-Modus</string>
-    <string name="steam_offline_mode_description">Steam-Spiele im Offlinemodus starten</string>
+    <string name="steam_offline_mode">Steam Offline-Modus emulieren</string>
+    <string name="steam_offline_mode_description">Der Steam-Emulator im Spiel deaktiviert die Online-Verbindung</string>
     <string name="achievement_unlocked">Erfolg freigeschaltet</string>
     <string name="settings_achievement_notification_position">Position der Erfolgsbenachrichtigung</string>
     <string name="achievement_position_top_left">Oben links</string>

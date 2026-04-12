@@ -650,8 +650,8 @@
     <string name="local_saves_only_description">Disable cloud save sync for this game and keep saves on device only</string>
     <string name="launch_steam_client_beta">Launch Steam Client (Beta)</string>
     <string name="launch_steam_client_description">Reduces performance and slows down launch\nAllows online play and fixes DRM and controller issues\nNot all games work</string>
-    <string name="steam_offline_mode">Steam Offline Mode</string>
-    <string name="steam_offline_mode_description">Launch Steam games in offline mode</string>
+    <string name="steam_offline_mode">Emulate Steam Offline Mode</string>
+    <string name="steam_offline_mode_description">The in-game Steam emulator will disable online networking</string>
     <string name="achievement_unlocked">Achievement Unlocked</string>
     <string name="settings_achievement_notification_position">Achievement Notification Position</string>
     <string name="achievement_position_top_left">Top Left</string>

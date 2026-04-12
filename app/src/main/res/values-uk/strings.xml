@@ -640,8 +640,8 @@
     <string name="force_dlc">Примусити DLC</string>
     <string name="force_dlc_description">Увімкнути лише тоді, якщо не виявлено DLC або не працюють збереження з DLC</string>
     <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
-    <string name="steam_offline_mode">Режим Офлайн Steam</string>
-    <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
+    <string name="steam_offline_mode">Емуляція офлайн-режиму Steam</string>
+    <string name="steam_offline_mode_description">Емулятор Steam у грі вимкне мережевий доступ</string>
     <string name="achievement_unlocked">Досягнення розблоковано</string>
     <string name="settings_achievement_notification_position">Позиція сповіщення про досягнення</string>
     <string name="achievement_position_top_left">Лівий верхній</string>

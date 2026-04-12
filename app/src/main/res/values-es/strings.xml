@@ -695,8 +695,8 @@
     <string name="force_dlc_description">Actívalo solo si los DLC no se detectan o los archivos de guardados con DLC no funcionan.</string>
     <string name="launch_steam_client_beta">Iniciar cliente de Steam (Beta)</string>
     <string name="launch_steam_client_description">Reduce el rendimiento y ralentiza el inicio.\nPermite el juego en línea y soluciona problemas de DRM y de mando.\nNo todos los juegos funcionan.</string>
-    <string name="steam_offline_mode">Modo sin conexión de Steam</string>
-    <string name="steam_offline_mode_description">Inicia juegos de Steam en modo sin conexión.</string>
+    <string name="steam_offline_mode">Emular modo sin conexión de Steam</string>
+    <string name="steam_offline_mode_description">El emulador de Steam en el juego desactivará la red en línea</string>
     <string name="achievement_unlocked">Logro desbloqueado</string>
     <string name="settings_achievement_notification_position">Posición de notificación de logro</string>
     <string name="achievement_position_top_left">Arriba izquierda</string>

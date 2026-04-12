@@ -645,8 +645,8 @@
     <string name="force_dlc">Forcer les DLC</string>
     <string name="force_dlc_description">N\'activer que si les DLC ne sont pas détectés ou si les sauvegardes avec DLC ne fonctionnent pas</string>
     <string name="launch_steam_client_beta">Lancer le client Steam (Bêta)</string>
-    <string name="steam_offline_mode">Mode Hors Ligne Steam</string>
-    <string name="steam_offline_mode_description">Lancer les jeux Steam en mode hors ligne</string>
+    <string name="steam_offline_mode">Émuler le mode hors ligne Steam</string>
+    <string name="steam_offline_mode_description">L\'émulateur Steam intégré au jeu désactivera le réseau en ligne</string>
     <string name="achievement_unlocked">Succès débloqué</string>
     <string name="settings_achievement_notification_position">Position de la notification de succès</string>
     <string name="achievement_position_top_left">En haut à gauche</string>

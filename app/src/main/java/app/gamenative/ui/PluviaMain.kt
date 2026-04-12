@@ -212,14 +212,7 @@ private fun resolveGameAppId(context: Context, appId: String): GameResolutionRes
 private fun needsDeferLaunch(context: Context, appId: String): Boolean {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     return when (gameSource) {
-        GameSource.STEAM -> {
-            if (SteamService.isLoggedIn) return false
-            try {
-                !ContainerUtils.getContainer(context, appId).isSteamOfflineMode()
-            } catch (_: Exception) {
-                true // no container → needs login
-            }
-        }
+        GameSource.STEAM -> !SteamService.isLoggedIn
         GameSource.GOG -> !GOGService.isRunning
         GameSource.EPIC -> !EpicService.isRunning
         GameSource.AMAZON -> !AmazonService.isRunning

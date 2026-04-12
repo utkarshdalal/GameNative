@@ -658,8 +658,8 @@
     <string name="force_dlc">Wymuś DLC</string>
     <string name="force_dlc_description">Włącz tylko jeśli DLC nie są wykrywane lub zapisy z DLC nie działają</string>
     <string name="launch_steam_client_beta">Uruchom Klienta Steam (Beta)</string>
-    <string name="steam_offline_mode">Tryb Offline Steam</string>
-    <string name="steam_offline_mode_description">Uruchamiaj gry Steam w trybie offline</string>
+    <string name="steam_offline_mode">Emuluj tryb offline Steam</string>
+    <string name="steam_offline_mode_description">Emulator Steam w grze wyłączy połączenie sieciowe</string>
     <string name="achievement_unlocked">Osiągnięcie odblokowane</string>
     <string name="settings_achievement_notification_position">Pozycja powiadomienia o osiągnięciu</string>
     <string name="achievement_position_top_left">Lewy górny</string>

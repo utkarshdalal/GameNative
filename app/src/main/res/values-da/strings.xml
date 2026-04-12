@@ -482,8 +482,8 @@
     <string name="force_dlc">Gennemtving DLC</string>
     <string name="force_dlc_description">Kun aktiver hvis DLC\'er ikke opdages, eller gemfiler med DLC ikke virker</string>
     <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
-    <string name="steam_offline_mode">Steam Offline-tilstand</string>
-    <string name="steam_offline_mode_description">Start Steam-spil i offline-tilstand</string>
+    <string name="steam_offline_mode">Emulér Steam offline-tilstand</string>
+    <string name="steam_offline_mode_description">Steam-emulatoren i spillet deaktiverer onlinenetværket</string>
     <string name="achievement_unlocked">Præstation låst op</string>
     <string name="settings_achievement_notification_position">Placering af præstationsnotifikation</string>
     <string name="achievement_position_top_left">Øverst til venstre</string>
