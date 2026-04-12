@@ -73,6 +73,9 @@ class XServerScreenUtils {
                 val rootDir = imageFs.rootDir
                 val windowsDir = File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
 
+                // Do this once at app startup or before the loop
+                SevenZip.initSevenZipFromPlatformJAR()
+
                 directXDir.walkTopDown()
                     .filter { file ->
                         val name = file.name.lowercase()
@@ -98,9 +101,6 @@ class XServerScreenUtils {
         }
 
         private fun extractDllsFromCab(cabFile: File, targetDir: File) {
-            // Do this once at app startup or before the loop
-            SevenZip.initSevenZipFromPlatformJAR()
-
             val raf = RandomAccessFile(cabFile, "r")
             val inStream = RandomAccessFileInStream(raf)
             val archive: IInArchive = SevenZip.openInArchive(null, inStream)
