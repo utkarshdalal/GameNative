@@ -63,10 +63,11 @@ public class FSRRCASEffect extends Effect {
         "\n" +
         "    vec3 mn4 = min(min(cB, cD), min(cF, cH));\n" +
         "    vec3 mx4 = max(max(cB, cD), max(cF, cH));\n" +
-        "    vec3 hitMin = mn4 / (4.0 * mx4 + 1e-5);\n" +
-        "    vec3 hitMax = (1.0 - mx4) / (4.0 * mn4 - 4.0);\n" +
+        "    vec3 hitMin = min(mn4, pix) / (4.0 * max(mx4, pix) + 1e-5);\n" +
+        "    vec3 hitMax = (1.0 - max(mx4, pix)) / (4.0 * min(mn4, pix) - 4.0 - 1e-5);\n" +
+        "    vec3 hit = max(-hitMin, hitMax);\n" +
         "    float con = exp2(-sharpness);\n" +
-        "    float lobe = max(-0.1875, min(max(max(hitMin.x, hitMin.y), max(hitMin.z, max(hitMax.x, max(hitMax.y, hitMax.z)))), 0.0)) * con * nz;\n" +
+        "    float lobe = max(-0.1875, min(min(hit.x, hit.y), hit.z)) * con * nz;\n" +
         "    vec3 rcas = (pix + lobe * (cB + cD + cF + cH)) / (1.0 + 4.0 * lobe);\n" +
         "\n" +
         "    gl_FragColor = vec4(rcas, 1.0);\n" +
