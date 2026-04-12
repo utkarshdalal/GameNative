@@ -1608,7 +1608,7 @@ fun XServerScreen(
                                 onExtractFileListener,
                             )
 
-                            if (!container.wineVersion.lowercase().contains("proton-9.0")) {
+                            if (container.wineVersion.lowercase().contains("proton-10")) {
                                 // Only proton 10 can apply this fix
                                 XServerScreenUtils.replaceXAudioDllsFromRedistributable(context, appId)
                             }
