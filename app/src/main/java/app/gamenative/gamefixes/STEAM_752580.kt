@@ -2,8 +2,6 @@ package app.gamenative.gamefixes
 
 import app.gamenative.data.GameSource
 
-private const val IMPERIVM_SETTINGS_MIGRATION = "imperivm_audio_settings_v1"
-
 val STEAM_Fix_752580: KeyedGameFix = KeyedIniFileFix(
     gameSource = GameSource.STEAM,
     gameId = "752580",
@@ -13,5 +11,4 @@ val STEAM_Fix_752580: KeyedGameFix = KeyedIniFileFix(
         "SoundFX" to "1",
         "Speech" to "1",
     ),
-    migrationKey = IMPERIVM_SETTINGS_MIGRATION,
 )
