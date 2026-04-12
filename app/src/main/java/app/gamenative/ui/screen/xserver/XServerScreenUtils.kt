@@ -43,7 +43,9 @@ class XServerScreenUtils {
                     GameSource.AMAZON -> AmazonService.getInstallPath(appId)
                     GameSource.CUSTOM_GAME -> CustomGameScanner.getFolderPathFromAppId(appId)
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Timber.tag("replaceXAudioDllsFromRedistributable")
+                    .w(e, "Failed to resolve install path for appId=%s source=%s", appId, gameSource)
                 null
             }
 
