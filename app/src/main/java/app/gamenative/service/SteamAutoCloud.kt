@@ -822,13 +822,19 @@ object SteamAutoCloud {
                         } == true
                     }.inWholeMicroseconds
 
-                    // If cache is absent but local files exist, the cache was either
-                    // cleared by an app update or never existed (first offline play).
-                    // Treat as conflict so the user can choose which save to keep.
-                    val isCacheCleared = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty()
-                    if (isCacheCleared) {
-                        hasLocalChanges = true
-                        conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                    val hasUncachedLocalFiles = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty()
+                    if (hasUncachedLocalFiles) {
+                        if (localAppChangeNumber < 0) {
+                            // first offline play: never synced, no cache, but local
+                            // files exist — cloud would silently overwrite them
+                            hasLocalChanges = true
+                            conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                        } else {
+                            // app update cleared the cache but a prior sync was
+                            // recorded — can't tell if local files changed
+                            hasLocalChanges = true
+                            conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                        }
                     }
 
                     if (!hasLocalChanges) {
