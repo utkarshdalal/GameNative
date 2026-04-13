@@ -94,6 +94,7 @@
     <string name="confirm_delete">Confirmer la suppression</string>
     <string name="destination_library">Bibliothèque</string>
     <string name="destination_downloads">Téléchargements et stockage</string>
+    <string name="downloads_section_title">Téléchargements</string>
 
     <string name="downloads_empty">Aucun téléchargement actif</string>
     <string name="downloads_overview_subtitle">Suivez les téléchargements actifs, en pause et repris</string>
@@ -227,6 +228,7 @@
     <string name="intent_launch_service_pending">Le jeu se lancera une fois le service prêt</string>
     <string name="intent_launch_steam_login_failed">Échec de la connexion Steam — lancement du jeu annulé</string>
     <string name="intent_launch_service_timeout">Échec du démarrage du service de jeu — lancement du jeu annulé</string>
+    <string name="back_press_exit_warning">Appuyez à nouveau sur retour pour quitter</string>
     <string name="game_executable_not_found_title">Impossible de lancer</string>
     <string name="game_executable_not_found">L\'exécutable n\'a pas pu être sélectionné automatiquement. Veuillez définir le chemin de l\'exécutable dans les paramètres du conteneur.</string>
     <string name="save_container_settings_title">Enregistrer la configuration du conteneur ?</string>
@@ -900,6 +902,8 @@
     <string name="settings_interface_external_links_subtitle">Les liens s\'ouvrent avec votre navigateur web principal</string>
     <string name="settings_interface_hide_statusbar_title">Masquer la barre d\'état hors jeu</string>
     <string name="settings_interface_hide_statusbar_subtitle">Masquer la barre d\'état Android dans la liste de jeux, les paramètres, etc. L\'application redémarrera lors du changement.</string>
+    <string name="settings_interface_warn_before_exit_title">Avertir avant de quitter</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Appui double sur retour requis pour quitter — le premier affiche un avertissement</string>
     <string name="settings_interface_icon_style">Style d\'icône</string>
     <string name="settings_interface_wifi_only_title">Télécharger uniquement via Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Empêcher les téléchargements sur données cellulaires</string>

@@ -262,6 +262,18 @@ fun SettingsGroupInterface(
             },
         )
 
+        var warnBeforeExit by rememberSaveable { mutableStateOf(PrefManager.warnBeforeExit) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_warn_before_exit_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_warn_before_exit_subtitle)) },
+            state = warnBeforeExit,
+            onCheckedChange = {
+                warnBeforeExit = it
+                PrefManager.warnBeforeExit = it
+            },
+        )
+
         // Language selection
         SettingsMenuLink(
             colors = settingsTileColorsAlt(),
