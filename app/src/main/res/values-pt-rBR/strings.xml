@@ -724,6 +724,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">Ocultar barra de status do Android na lista de jogos, configurações, etc. O app será reiniciado quando alterado.</string>
     <string name="settings_interface_warn_before_exit_title">Avisar antes de sair</string>
     <string name="settings_interface_warn_before_exit_subtitle">Requer duplo toque em voltar para sair — o primeiro mostra um aviso</string>
+    <string name="settings_interface_show_gamepad_hints_title">Mostrar dicas do controle</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Mostra a barra de dicas dos botões do controle na parte inferior da tela</string>
     <string name="settings_interface_icon_style">Estilo de ícone</string>
     <string name="settings_interface_wifi_only_title">Baixar apenas por Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Impedir downloads usando dados móveis</string>

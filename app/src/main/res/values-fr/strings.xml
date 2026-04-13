@@ -899,6 +899,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">Masquer la barre d\'état Android dans la liste de jeux, les paramètres, etc. L\'application redémarrera lors du changement.</string>
     <string name="settings_interface_warn_before_exit_title">Avertir avant de quitter</string>
     <string name="settings_interface_warn_before_exit_subtitle">Appui double sur retour requis pour quitter — le premier affiche un avertissement</string>
+    <string name="settings_interface_show_gamepad_hints_title">Afficher les indications de manette</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Affiche la barre d\'indications des boutons de la manette en bas de l\'écran</string>
     <string name="settings_interface_icon_style">Style d\'icône</string>
     <string name="settings_interface_wifi_only_title">Télécharger uniquement via Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Empêcher les téléchargements sur données cellulaires</string>

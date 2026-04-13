@@ -724,6 +724,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">Skjul Android-statuslinje i spilliste, indstillinger osv. Appen genstarter når den ændres.</string>
     <string name="settings_interface_warn_before_exit_title">Advar før afslutning</string>
     <string name="settings_interface_warn_before_exit_subtitle">Kræver dobbelt tilbagetryk for at afslutte — første tryk viser en advarsel</string>
+    <string name="settings_interface_show_gamepad_hints_title">Vis controller-tip</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Viser bjælken med controller-knaptip nederst på skærmen</string>
     <string name="settings_interface_icon_style">Ikonstil</string>
     <string name="settings_interface_wifi_only_title">Download kun via Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Forhindrer downloads på mobildata</string>

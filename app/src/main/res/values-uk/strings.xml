@@ -898,6 +898,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">Приховує рядок стану Android у списку ігор, налаштуваннях тощо. Застосунок перезапуститься після зміни.</string>
     <string name="settings_interface_warn_before_exit_title">Попереджати перед виходом</string>
     <string name="settings_interface_warn_before_exit_subtitle">Для виходу потрібне подвійне натискання назад — перше показує попередження</string>
+    <string name="settings_interface_show_gamepad_hints_title">Показувати підказки геймпада</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Показує панель підказок кнопок геймпада внизу екрана</string>
     <string name="settings_interface_icon_style">Стиль значку</string>
     <string name="settings_interface_wifi_only_title">Завантаження тільки через Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Запобігає завантаженню через мобільні дані</string>

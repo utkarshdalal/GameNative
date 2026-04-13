@@ -863,6 +863,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">Android-Statusleiste in Spieleliste, Einstellungen etc. ausblenden (Neustart nötig).</string>
     <string name="settings_interface_warn_before_exit_title">Vor dem Beenden warnen</string>
     <string name="settings_interface_warn_before_exit_subtitle">Doppeltes Zurückdrücken zum Beenden erforderlich — erstes Drücken zeigt eine Warnung</string>
+    <string name="settings_interface_show_gamepad_hints_title">Controller-Hinweise anzeigen</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Zeigt die Leiste mit Controller-Tastenhinweisen am unteren Bildschirmrand an</string>
     <string name="settings_interface_icon_style">Iconstil</string>
     <string name="settings_interface_wifi_only_title">Nur über WLAN/LAN herunterladen</string>
     <string name="settings_interface_wifi_only_subtitle">Verhindert Downloads über mobile Daten</string>

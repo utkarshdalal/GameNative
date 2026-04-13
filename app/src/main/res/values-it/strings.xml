@@ -895,6 +895,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">Nascondi barra di stato Android nell\'elenco giochi, impostazioni, ecc. L\'app si riavvierà se modificato.</string>
     <string name="settings_interface_warn_before_exit_title">Avvisa prima di uscire</string>
     <string name="settings_interface_warn_before_exit_subtitle">Richiede doppia pressione di indietro per uscire — la prima mostra un avviso</string>
+    <string name="settings_interface_show_gamepad_hints_title">Mostra suggerimenti del controller</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Mostra la barra dei suggerimenti dei pulsanti del controller nella parte inferiore dello schermo</string>
     <string name="settings_interface_icon_style">Stile icona</string>
     <string name="settings_interface_wifi_only_title">Scarica solo tramite Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Impedisci download su rete cellulare</string>

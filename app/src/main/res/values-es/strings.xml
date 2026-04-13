@@ -913,6 +913,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">Oculta la barra de estado de Android en la lista de juegos, ajustes, etc. La aplicación se reiniciará al cambiar.</string>
     <string name="settings_interface_warn_before_exit_title">Avisar antes de salir</string>
     <string name="settings_interface_warn_before_exit_subtitle">Requiere pulsar atrás dos veces para salir — la primera muestra un aviso</string>
+    <string name="settings_interface_show_gamepad_hints_title">Mostrar pistas del mando</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Muestra la barra de pistas de botones del mando en la parte inferior de la pantalla</string>
     <string name="settings_interface_icon_style">Estilo del icono</string>
     <string name="settings_interface_wifi_only_title">Descargar solo por Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Evita descargas con datos móviles.</string>

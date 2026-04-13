@@ -896,6 +896,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">在遊戲清單、設定等介面隱藏 Android 狀態列。變更後應用程式將重新啟動。</string>
     <string name="settings_interface_warn_before_exit_title">退出前警告</string>
     <string name="settings_interface_warn_before_exit_subtitle">需要雙擊返回鍵退出——第一次按下顯示警告</string>
+    <string name="settings_interface_show_gamepad_hints_title">顯示手把提示</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">在螢幕底部顯示手把按鍵提示列</string>
     <string name="settings_interface_wifi_only_title">僅限透過 Wi-Fi/LAN 下載</string>
     <string name="settings_interface_wifi_only_subtitle">禁止使用行動數據下載</string>
     <string name="settings_interface_external_storage_title">寫入外部儲存裝置</string>

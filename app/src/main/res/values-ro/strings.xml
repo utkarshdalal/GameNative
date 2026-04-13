@@ -904,6 +904,8 @@
 	<string name="settings_interface_hide_statusbar_subtitle">Ascunde bara de stare Android în lista de jocuri, setări etc. Aplicația se va reporni după modificare.</string>
 	<string name="settings_interface_warn_before_exit_title">Avertizare înainte de ieșire</string>
 	<string name="settings_interface_warn_before_exit_subtitle">Necesită dublu apăsare înapoi pentru a ieși — prima apăsare arată un avertisment</string>
+	<string name="settings_interface_show_gamepad_hints_title">Afișează indicii pentru controler</string>
+	<string name="settings_interface_show_gamepad_hints_subtitle">Afișează bara de indicii pentru butoanele controlerului în partea de jos a ecranului</string>
 	<string name="settings_interface_icon_style">Stil iconițe</string>
 	<string name="settings_interface_wifi_only_title">Descarcă doar prin Wi‑Fi/LAN</string>
 	<string name="settings_interface_wifi_only_subtitle">Previne descărcările pe date mobile</string>
