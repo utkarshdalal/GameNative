@@ -15,6 +15,8 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.format.DateTimeParseException
 import java.time.format.DateTimeFormatter
 import java.util.zip.GZIPOutputStream
 import java.util.concurrent.TimeUnit
@@ -395,42 +397,9 @@ class GOGCloudSavesManager(
                     return@withContext emptyList()
                 }
 
-                val items = try {
-                    JSONArray(responseBody)
-                } catch (e: Exception) {
-                    Timber.tag("GOG").e(e, "[Cloud Saves] Failed to parse JSON array response")
+                val files = parseCloudFilesResponse(responseBody, dirname) ?: run {
                     Timber.tag("GOG").e("[Cloud Saves] Response was: $responseBody")
                     return@withContext null
-                }
-
-                Timber.tag("GOG").d("[Cloud Saves] Found ${items.length()} total items in cloud storage")
-
-                val files = mutableListOf<CloudFile>()
-                for (i in 0 until items.length()) {
-                    val fileObj = items.getJSONObject(i)
-                    val name = fileObj.optString("name", "")
-                    val hash = fileObj.optString("hash", "")
-                    val lastModified = fileObj.optString("last_modified")
-
-                    Timber.tag("GOG").d("[Cloud Saves]   Examining item $i: name='$name', dirname='$dirname'")
-
-                    // Filter files that belong to this save location (name starts with dirname/)
-                    if (name.isNotEmpty() && hash.isNotEmpty() && name.startsWith("$dirname/")) {
-                        // GOG cloud storage returns ISO 8601 timestamps with a UTC offset, e.g.
-                        // "2026-04-02T20:34:00.123456+00:00". OffsetDateTime also accepts "Z".
-                        val timestamp = try {
-                            java.time.OffsetDateTime.parse(lastModified).toInstant().epochSecond
-                        } catch (e: java.time.format.DateTimeParseException) {
-                            null
-                        }
-
-                        // Remove the dirname prefix to get relative path
-                        val relativePath = name.removePrefix("$dirname/")
-                        files.add(CloudFile(relativePath, hash, lastModified, timestamp))
-                        Timber.tag("GOG").d("[Cloud Saves]     ✓ Matched: relativePath='$relativePath'")
-                    } else {
-                        Timber.tag("GOG").d("[Cloud Saves]     ✗ Skipped (doesn't match dirname or missing data)")
-                    }
                 }
 
                 Timber.tag("GOG").i("[Cloud Saves] Retrieved ${files.size} cloud files for dirname '$dirname'")
@@ -442,6 +411,52 @@ class GOGCloudSavesManager(
             null
         }
     }
+
+    internal fun parseCloudFilesResponse(responseBody: String, dirname: String): List<CloudFile>? {
+        val items = try {
+            JSONArray(responseBody)
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "[Cloud Saves] Failed to parse JSON array response")
+            return null
+        }
+
+        Timber.tag("GOG").d("[Cloud Saves] Found ${items.length()} total items in cloud storage")
+
+        val files = mutableListOf<CloudFile>()
+        for (i in 0 until items.length()) {
+            val fileObj = items.getJSONObject(i)
+            val name = fileObj.optString("name", "")
+            val hash = fileObj.optString("hash", "")
+            val lastModified = fileObj.optString("last_modified")
+
+            Timber.tag("GOG").d("[Cloud Saves]   Examining item $i: name='$name', dirname='$dirname'")
+
+            if (name.isNotEmpty() && hash.isNotEmpty() && name.startsWith("$dirname/")) {
+                val relativePath = name.removePrefix("$dirname/")
+                files.add(
+                    CloudFile(
+                        relativePath = relativePath,
+                        md5Hash = hash,
+                        updateTime = lastModified,
+                        updateTimestamp = parseCloudTimestamp(lastModified),
+                    ),
+                )
+                Timber.tag("GOG").d("[Cloud Saves]     ✓ Matched: relativePath='$relativePath'")
+            } else {
+                Timber.tag("GOG").d("[Cloud Saves]     ✗ Skipped (doesn't match dirname or missing data)")
+            }
+        }
+
+        return files
+    }
+
+    internal fun parseCloudTimestamp(lastModified: String): Long? =
+        try {
+            // GOG returns timestamps like "2026-04-02T20:34:00.123456+00:00".
+            OffsetDateTime.parse(lastModified).toInstant().epochSecond
+        } catch (_: DateTimeParseException) {
+            null
+        }
 
     /**
      * Upload file to GOG cloud storage
