@@ -871,7 +871,7 @@ object SteamUtils {
             ?: PrefManager.steamUserAccountId.takeIf { it != 0 }
 
         if (accountId == null) {
-            Timber.w("Cannot migrate GSE saves: no Steam account ID available")
+            Timber.tag("migrateGSESavesToSteamUserdata").w("Cannot migrate GSE saves: no Steam account ID available")
             return
         }
 
@@ -885,17 +885,27 @@ object SteamUtils {
             "${ImageFs.WINEPREFIX}/drive_c/Program Files (x86)/Steam/userdata/$accountId/$appId"
         )
 
-        if (!gseDir.exists() || !gseDir.isDirectory) {
-            Timber.d("No GSE save directory found for appId=$appId")
+        fun isDirectoryEmpty(file: File): Boolean {
+            return file.isDirectory && file.list()?.isEmpty() ?: true
+        }
+
+        if (
+            !gseDir.exists() ||
+            !gseDir.isDirectory ||
+            isDirectoryEmpty(gseDir) // No files inside gseDir
+        ) {
+            Timber.tag("migrateGSESavesToSteamUserdata").d("No GSE save directory found for appId=$appId")
             return
         }
+
+        Timber.tag("migrateGSESavesToSteamUserdata").i("Starting GSE Saves Migration for appId=$appId")
 
         if (!steamUserdataDir.exists()) {
             try {
                 Files.createDirectories(steamUserdataDir.toPath())
-                Timber.i("Created Steam userdata directory: ${steamUserdataDir.absolutePath}")
+                Timber.tag("migrateGSESavesToSteamUserdata").i("Created Steam userdata directory: ${steamUserdataDir.absolutePath}")
             } catch (e: IOException) {
-                Timber.e(e, "Failed to create Steam userdata directory")
+                Timber.tag("migrateGSESavesToSteamUserdata").e(e, "Failed to create Steam userdata directory")
                 return
             }
         }
@@ -919,11 +929,11 @@ object SteamUtils {
                         StandardCopyOption.ATOMIC_MOVE   // will throw if the FS can’t guarantee atomicity
                     )
 
-                    Timber.i("Migrated ${file.name} from GSE saves to Steam userdata")
+                    Timber.tag("migrateGSESavesToSteamUserdata").i("Migrated ${file.name} from GSE saves to Steam userdata")
                     migratedCount++
                 } catch (e: IOException) {
                     migrationFailed = true
-                    Timber.w(e, "Failed to migrate ${file.name}")
+                    Timber.tag("migrateGSESavesToSteamUserdata").w(e, "Failed to migrate ${file.name}")
                 }
             }
 
@@ -931,7 +941,7 @@ object SteamUtils {
             gseDir.deleteRecursively()
         }
 
-        Timber.i("Migration completed for appId=$appId. Migrated $migratedCount file(s)")
+        Timber.tag("migrateGSESavesToSteamUserdata").i("Migration completed for appId=$appId. Migrated $migratedCount file(s)")
     }
 
     /**
