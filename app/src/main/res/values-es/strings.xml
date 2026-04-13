@@ -1368,4 +1368,7 @@
     <string name="workshop_processing">Procesando mods…</string>
     <string name="workshop_failed_count">%1$d mod(s) del Workshop no se pudieron actualizar</string>
     <string name="workshop_download_failed">Error en la descarga</string>
+    <string name="easter_egg_dvd_mode">Agitado, no revuelto</string>
+    <string name="settings_dvd_mode_title">Modo rebote DVD</string>
+    <string name="settings_dvd_mode_subtitle">Mostrar icono rebotando por defecto durante las descargas</string>
 </resources>

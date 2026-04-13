@@ -33,8 +33,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
+import app.gamenative.R
 import app.gamenative.events.AndroidEvent
+import app.gamenative.ui.util.AchievementNotificationManager
 import app.gamenative.ui.screen.library.components.ambient.AmbientModeConstants.BAR_HEIGHT_DP
 import app.gamenative.ui.screen.library.components.ambient.AmbientModeConstants.DRIFT_AMPLITUDE_PX
 import app.gamenative.ui.screen.library.components.ambient.AmbientModeConstants.DRIFT_PERIOD_MS
@@ -74,6 +77,7 @@ internal fun AmbientDownloadOverlay(
 
     LaunchedEffect(interactionCounter) {
         delay(IDLE_TIMEOUT_MS)
+        if (PrefManager.dvdModeDefault) isDvdMode = true
         isIdle = true
     }
 
@@ -113,6 +117,13 @@ internal fun AmbientDownloadOverlay(
 
         val shakeDetector = ShakeDetector(context) {
             isDvdMode = !isDvdMode
+            if (!PrefManager.dvdModeUnlocked) {
+                PrefManager.dvdModeUnlocked = true
+                AchievementNotificationManager.show(
+                    name = context.getString(R.string.easter_egg_dvd_mode),
+                    iconUrl = "android.resource://${context.packageName}/${R.mipmap.ic_launcher}",
+                )
+            }
         }
         shakeDetector.start()
 

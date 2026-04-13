@@ -1184,4 +1184,15 @@ object PrefManager {
     var warnBeforeExit: Boolean
         get() = getPref(WARN_BEFORE_EXIT, false)
         set(value) { setPref(WARN_BEFORE_EXIT, value) }
+
+    // DVD bounce mode easter egg
+    private val DVD_MODE_UNLOCKED = booleanPreferencesKey("dvd_mode_unlocked")
+    var dvdModeUnlocked: Boolean
+        get() = getPref(DVD_MODE_UNLOCKED, false)
+        set(value) { setPref(DVD_MODE_UNLOCKED, value) }
+
+    private val DVD_MODE_DEFAULT = booleanPreferencesKey("dvd_mode_default")
+    var dvdModeDefault: Boolean
+        get() = getPref(DVD_MODE_DEFAULT, false)
+        set(value) { setPref(DVD_MODE_DEFAULT, value) }
 }

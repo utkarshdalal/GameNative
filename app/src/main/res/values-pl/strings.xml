@@ -1365,4 +1365,7 @@
     <string name="workshop_processing">Przetwarzanie modów…</string>
     <string name="workshop_failed_count">Nie udało się zaktualizować %1$d modów z Warsztatu</string>
     <string name="workshop_download_failed">Pobieranie nie powiodło się</string>
+    <string name="easter_egg_dvd_mode">Wstrząśnięte, nie mieszane</string>
+    <string name="settings_dvd_mode_title">Tryb odbijania DVD</string>
+    <string name="settings_dvd_mode_subtitle">Domyślnie pokazuj odbijającą się ikonę podczas pobierania</string>
 </resources>

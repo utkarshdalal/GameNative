@@ -226,6 +226,20 @@ fun SettingsGroupInterface(
             colors = settingsTileColorsAlt(),
         )
 
+        if (PrefManager.dvdModeUnlocked) {
+            var dvdModeDefault by rememberSaveable { mutableStateOf(PrefManager.dvdModeDefault) }
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.settings_dvd_mode_title)) },
+                subtitle = { Text(text = stringResource(R.string.settings_dvd_mode_subtitle)) },
+                state = dvdModeDefault,
+                onCheckedChange = {
+                    dvdModeDefault = it
+                    PrefManager.dvdModeDefault = it
+                },
+            )
+        }
+
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.settings_interface_external_links_title)) },

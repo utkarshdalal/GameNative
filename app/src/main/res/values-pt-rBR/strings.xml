@@ -1232,4 +1232,7 @@
     <string name="workshop_processing">Processando mods…</string>
     <string name="workshop_failed_count">%1$d mod(s) da Oficina não puderam ser atualizados</string>
     <string name="workshop_download_failed">Falha no download</string>
+    <string name="easter_egg_dvd_mode">Batido, não mexido</string>
+    <string name="settings_dvd_mode_title">Modo ricochete DVD</string>
+    <string name="settings_dvd_mode_subtitle">Mostrar ícone quicando por padrão durante downloads</string>
 </resources>

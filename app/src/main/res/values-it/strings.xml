@@ -1358,4 +1358,7 @@
     <string name="workshop_processing">Elaborazione mod…</string>
     <string name="workshop_failed_count">%1$d mod del Workshop non aggiornati</string>
     <string name="workshop_download_failed">Download non riuscito</string>
+    <string name="easter_egg_dvd_mode">Agitato, non mescolato</string>
+    <string name="settings_dvd_mode_title">Modalità rimbalzo DVD</string>
+    <string name="settings_dvd_mode_subtitle">Mostra icona rimbalzante di default durante i download</string>
 </resources>

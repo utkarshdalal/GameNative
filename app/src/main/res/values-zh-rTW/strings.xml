@@ -1358,4 +1358,7 @@
     <string name="workshop_processing">正在處理模組…</string>
     <string name="workshop_failed_count">%1$d 個創意工坊模組更新失敗</string>
     <string name="workshop_download_failed">下載失敗</string>
+    <string name="easter_egg_dvd_mode">搖勻，不要攪拌</string>
+    <string name="settings_dvd_mode_title">DVD 彈跳模式</string>
+    <string name="settings_dvd_mode_subtitle">下載時預設顯示彈跳圖示</string>
 </resources>

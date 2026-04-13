@@ -1361,4 +1361,7 @@
     <string name="workshop_processing">Обробка модів…</string>
     <string name="workshop_failed_count">Не вдалося оновити %1$d мод(ів) Майстерні</string>
     <string name="workshop_download_failed">Помилка завантаження</string>
+    <string name="easter_egg_dvd_mode">Збовтати, але не змішувати</string>
+    <string name="settings_dvd_mode_title">Режим відскоку DVD</string>
+    <string name="settings_dvd_mode_subtitle">За замовчуванням показувати стрибаючу іконку під час завантажень</string>
 </resources>

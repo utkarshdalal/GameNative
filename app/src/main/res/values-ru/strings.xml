@@ -1295,4 +1295,7 @@ https://gamenative.app
     <string name="workshop_processing">Обработка модов…</string>
     <string name="workshop_failed_count">Не удалось обновить %1$d мод(ов) Мастерской</string>
     <string name="workshop_download_failed">Ошибка загрузки</string>
+    <string name="easter_egg_dvd_mode">Взболтать, но не смешивать</string>
+    <string name="settings_dvd_mode_title">Режим отскока DVD</string>
+    <string name="settings_dvd_mode_subtitle">По умолчанию показывать прыгающую иконку при загрузках</string>
 </resources>

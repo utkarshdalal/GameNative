@@ -1232,4 +1232,7 @@
     <string name="workshop_processing">Behandler mods…</string>
     <string name="workshop_failed_count">%1$d workshop-mod(s) kunne ikke opdateres</string>
     <string name="workshop_download_failed">Download mislykkedes</string>
+    <string name="easter_egg_dvd_mode">Rystet, ikke rørt</string>
+    <string name="settings_dvd_mode_title">DVD-bounce-tilstand</string>
+    <string name="settings_dvd_mode_subtitle">Vis hoppende ikon som standard under downloads</string>
 </resources>

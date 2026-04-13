@@ -1302,4 +1302,7 @@
     <string name="workshop_processing">Mods werden verarbeitet…</string>
     <string name="workshop_failed_count">%1$d Workshop-Mod(s) konnten nicht aktualisiert werden</string>
     <string name="workshop_download_failed">Download fehlgeschlagen</string>
+    <string name="easter_egg_dvd_mode">Geschüttelt, nicht gerührt</string>
+    <string name="settings_dvd_mode_title">DVD-Bounce-Modus</string>
+    <string name="settings_dvd_mode_subtitle">Springendes Symbol während Downloads standardmäßig anzeigen</string>
 </resources>

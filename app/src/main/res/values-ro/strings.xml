@@ -1367,4 +1367,7 @@
     <string name="workshop_processing">Se procesează modurile…</string>
     <string name="workshop_failed_count">%1$d mod(uri) Workshop nu au putut fi actualizate</string>
     <string name="workshop_download_failed">Descărcarea a eșuat</string>
+    <string name="easter_egg_dvd_mode">Agitat, nu amestecat</string>
+    <string name="settings_dvd_mode_title">Mod ricoșeu DVD</string>
+    <string name="settings_dvd_mode_subtitle">Afișează implicit pictograma săltăreață în timpul descărcărilor</string>
 </resources>

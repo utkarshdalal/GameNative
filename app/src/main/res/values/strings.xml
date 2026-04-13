@@ -881,6 +881,9 @@
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>
+    <string name="easter_egg_dvd_mode">Shaken, Not Stirred</string>
+    <string name="settings_dvd_mode_title">DVD bounce mode</string>
+    <string name="settings_dvd_mode_subtitle">Show bouncing icon by default during downloads</string>
     <string name="settings_interface_external_links_title">Open web links externally</string>
     <string name="settings_interface_external_links_subtitle">Links open with your main web browser</string>
     <string name="settings_interface_hide_statusbar_title">Hide status bar when not in game</string>

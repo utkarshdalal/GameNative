@@ -1366,4 +1366,7 @@
     <string name="workshop_processing">모드 처리 중…</string>
     <string name="workshop_failed_count">%1$d개의 워크숍 모드를 업데이트하지 못했습니다</string>
     <string name="workshop_download_failed">다운로드 실패</string>
+    <string name="easter_egg_dvd_mode">젓지 말고 흔들어서</string>
+    <string name="settings_dvd_mode_title">DVD 바운스 모드</string>
+    <string name="settings_dvd_mode_subtitle">다운로드 중 기본적으로 튕기는 아이콘 표시</string>
 </resources>
