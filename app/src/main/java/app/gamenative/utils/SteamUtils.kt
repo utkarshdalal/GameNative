@@ -926,6 +926,7 @@ object SteamUtils {
                         file.toPath(),
                         targetFile,
                         StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.COPY_ATTRIBUTES, // Preserve file attributes like timestamp and permission
                         StandardCopyOption.ATOMIC_MOVE   // will throw if the FS can’t guarantee atomicity
                     )
 
