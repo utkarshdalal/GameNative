@@ -89,9 +89,13 @@ public class EffectComposer {
 
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, sceneBuffer.getFramebuffer());
         GLES20.glViewport(0, 0, sceneWidth, sceneHeight);
-        renderer.setRenderTargetSizeOverride(sceneWidth, sceneHeight);
+        if (scaledScene) {
+            renderer.setRenderTargetSizeOverride(sceneWidth, sceneHeight);
+        }
         renderer.drawScene();
-        renderer.clearRenderTargetSizeOverride();
+        if (scaledScene) {
+            renderer.clearRenderTargetSizeOverride();
+        }
 
         RenderTarget source = sceneBuffer;
         RenderTarget target = readBuffer;
