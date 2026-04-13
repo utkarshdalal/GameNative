@@ -909,14 +909,22 @@ object SteamUtils {
                 val relativePath = gseDir.toPath().relativize(file.toPath())
                 val targetFile = steamUserdataDir.toPath().resolve(relativePath)
                 try {
-                        Files.createDirectories(targetFile.parent)
-                        Files.copy(file.toPath(), targetFile, StandardCopyOption.REPLACE_EXISTING)
-                        Timber.i("Migrated ${file.name} from GSE saves to Steam userdata")
-                        migratedCount++
-                    } catch (e: IOException) {
-                        migrationFailed = true
-                        Timber.w(e, "Failed to migrate ${file.name}")
-                    }
+                    Files.createDirectories(targetFile.parent)
+
+                    // As Files.move use linux rename syscall (or simply mv command we know, no need to manually remove the target file)
+                    Files.move(
+                        file.toPath(),
+                        targetFile,
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE   // will throw if the FS can’t guarantee atomicity
+                    )
+
+                    Timber.i("Migrated ${file.name} from GSE saves to Steam userdata")
+                    migratedCount++
+                } catch (e: IOException) {
+                    migrationFailed = true
+                    Timber.w(e, "Failed to migrate ${file.name}")
+                }
             }
 
         if (!migrationFailed) {
