@@ -680,7 +680,9 @@ abstract class BaseAppScreen {
                     uiScope.launch(Dispatchers.IO) {
                         try {
                             val forced = BestConfigService.parseConfigToContainerData(
-                                context, configJson, matchType, true, forceApply = true,
+                                context, configJson, matchType, true,
+                                storeMatch = bestConfig.matchedStore.equals(libraryItem.gameSource.name, ignoreCase = true),
+                                forceApply = true,
                             )
                             if (forced != null && forced.isNotEmpty()) {
                                 val c = ContainerUtils.getOrCreateContainer(context, appId)
