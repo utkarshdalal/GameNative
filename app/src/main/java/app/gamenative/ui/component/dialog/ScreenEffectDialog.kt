@@ -47,6 +47,7 @@ import com.winlator.renderer.effects.ColorEffect
 import com.winlator.renderer.effects.CRTEffect
 import com.winlator.renderer.effects.Effect
 import com.winlator.renderer.effects.FXAAEffect
+import com.winlator.renderer.effects.VividEffect
 import com.winlator.renderer.effects.NTSCCombinedEffect
 import com.winlator.renderer.effects.ToonEffect
 import kotlin.math.abs
@@ -74,6 +75,9 @@ fun ScreenEffectDialog(
     var enableFXAA by remember(renderer) {
         mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
     }
+    var enableVivid by remember(renderer) {
+        mutableStateOf(composer.getEffect(VividEffect::class.java) != null)
+    }
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
     }
@@ -81,7 +85,7 @@ fun ScreenEffectDialog(
         mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableCRT, enableNTSC) {
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableVivid, enableCRT, enableNTSC) {
         val effects = mutableListOf<Effect>()
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
@@ -97,6 +101,9 @@ fun ScreenEffectDialog(
         }
         if (enableFXAA) {
             effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
+        }
+        if (enableVivid) {
+            effects += composer.getEffect(VividEffect::class.java) ?: VividEffect()
         }
         if (enableCRT) {
             effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
@@ -114,6 +121,7 @@ fun ScreenEffectDialog(
         gamma = 1.0f
         enableToon = false
         enableFXAA = false
+        enableVivid = false
         enableCRT = false
         enableNTSC = false
     }
@@ -230,6 +238,14 @@ fun ScreenEffectDialog(
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         SettingsSwitch(
                             colors = settingsTileColorsAlt(),
+                            title = { Text(stringResource(R.string.screen_effects_vivid)) },
+                            subtitle = { Text(stringResource(R.string.screen_effects_vivid_description)) },
+                            state = enableVivid,
+                            onCheckedChange = { enableVivid = it },
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        SettingsSwitch(
+                            colors = settingsTileColors(),
                             title = { Text(stringResource(R.string.screen_effects_crt)) },
                             subtitle = { Text(stringResource(R.string.screen_effects_crt_description)) },
                             state = enableCRT,

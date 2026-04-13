@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">Asigură-te că salvările sunt încărcate în cloud sau copiate în altă parte înainte de verificare, deoarece pot fi suprascrise.</string>
     <string name="steam_update_title">Actualizare</string>
     <string name="steam_update_message">Asigură-te că salvările sunt încărcate în cloud sau copiate în altă parte înainte de actualizare, deoarece pot fi suprascrise.</string>
-    <string name="steam_cloud_sync_success">Sincronizarea cloud s-a încheiat cu succes</string>
-    <string name="steam_cloud_sync_up_to_date">Fișierele de salvare sunt deja actualizate</string>
-    <string name="steam_cloud_sync_failed">Sincronizare cloud eșuată: %s</string>
     <string name="steam_not_logged_in">Trebuie să fii autentificat în Steam pentru a folosi această funcție</string>
     <string name="steam_storage_permission_required">Este necesară permisiunea de stocare</string>
     <string name="steam_container_reset_success">Container resetat la setările implicite</string>
@@ -59,10 +56,6 @@
     <string name="steam_never">Niciodată</string>
     <string name="epic_cancel_download_message">Sigur doriți să anulați descărcarea aplicației?</string>
     <string name="epic_delete_download_message">Ștergeți toate datele descărcate pentru acest joc?</string>
-    <string name="epic_cloud_sync_starting">Se pornește sincronizarea salvărilor din cloud…</string>
-    <string name="epic_cloud_sync_success">Salvările din cloud au fost sincronizate cu succes</string>
-    <string name="epic_cloud_sync_failed">Sincronizarea salvărilor din cloud a eșuat</string>
-    <string name="epic_cloud_sync_error">Eroare la sincronizarea salvărilor din cloud: %1$s</string>
     <string name="epic_uninstall_failed">Dezinstalarea a eșuat: %1$s</string>
     <string name="epic_uninstall_error">Eroare la dezinstalare: %1$s</string>
     <string name="steam_continue">Continuă</string>
@@ -292,6 +285,8 @@
     <string name="screen_effects_toon_description">Adaugă contururi întunecate pentru un aspect cel-shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Netezește marginile zimțate cu un efect ușor de anti-aliasing post-procesare.</string>
+    <string name="screen_effects_vivid">Vivid</string>
+    <string name="screen_effects_vivid_description">Adaugă bloom și un plus de contrast pentru o imagine mai puternică.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Adaugă linii de scanare și o ușoară aberație cromatică.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -976,9 +971,11 @@
 	<string name="library_export_cancelled">Export anulat</string>
 	<string name="library_shortcut_created">Shortcut creat</string>
 	<string name="library_failed_to_create_shortcut">Nu s-a putut crea shortcut-ul: %s</string>
+	<string name="library_cloud_sync_starting">Se pornește sincronizarea salvărilor din cloud…</string>
 	<string name="library_cloud_sync_success">Sincronizare cloud finalizată cu succes</string>
 	<string name="library_cloud_sync_up_to_date">Fișierele de salvare sunt deja la zi</string>
-	<string name="library_cloud_sync_failed">Sincronizare cloud eșuată: %s</string>
+	<string name="library_cloud_sync_failed">Sincronizare cloud eșuată</string>
+	<string name="library_cloud_sync_error">Eroare la sincronizarea salvărilor din cloud: %1$s</string>
 
 	<!-- LibraryAppScreen: UI Labels -->
 	<string name="library_need_internet">Este necesar internet pentru instalare</string>

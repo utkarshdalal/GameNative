@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">검증하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
     <string name="steam_update_title">업데이트</string>
     <string name="steam_update_message">업데이트하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
-    <string name="steam_cloud_sync_success">클라우드 동기화가 완료되었습니다</string>
-    <string name="steam_cloud_sync_up_to_date">저장 파일이 이미 최신 상태입니다</string>
-    <string name="steam_cloud_sync_failed">클라우드 동기화 실패: %s</string>
     <string name="steam_not_logged_in">이 기능을 사용하려면 Steam에 로그인해야 합니다</string>
     <string name="steam_storage_permission_required">저장소 권한이 필요합니다</string>
     <string name="steam_container_reset_success">컨테이너가 기본값으로 초기화되었습니다</string>
@@ -67,10 +64,6 @@
     <string name="epic_download_error">다운로드 오류: %1$s</string>
     <string name="epic_cancel_download_message">앱 다운로드를 취소하시겠습니까?</string>
     <string name="epic_delete_download_message">이 게임의 다운로드된 모든 데이터를 삭제하시겠습니까?</string>
-    <string name="epic_cloud_sync_starting">클라우드 저장 파일 동기화 시작…</string>
-    <string name="epic_cloud_sync_success">클라우드 저장 파일 동기화 완료</string>
-    <string name="epic_cloud_sync_failed">클라우드 저장 파일 동기화 실패</string>
-    <string name="epic_cloud_sync_error">클라우드 저장 파일 동기화 오류: %1$s</string>
     <string name="epic_uninstall_failed">제거 실패: %1$s</string>
     <string name="epic_uninstall_error">제거 오류: %1$s</string>
     <string name="steam_never">안 함</string>
@@ -303,6 +296,8 @@
     <string name="screen_effects_toon_description">셀 셰이딩 느낌을 위해 어두운 외곽선을 추가합니다.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">가벼운 후처리 안티앨리어싱으로 계단 현상을 완화합니다.</string>
+    <string name="screen_effects_vivid">생동감</string>
+    <string name="screen_effects_vivid_description">더 선명한 화면을 위해 bloom과 대비를 강화합니다.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">주사선과 은은한 색수차를 추가합니다.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -986,9 +981,11 @@
     <string name="library_export_cancelled">내보내기 취소됨</string>
     <string name="library_shortcut_created">바로가기가 생성되었습니다</string>
     <string name="library_failed_to_create_shortcut">바로가기 생성 실패: %s</string>
+    <string name="library_cloud_sync_starting">클라우드 저장 파일 동기화 시작…</string>
     <string name="library_cloud_sync_success">클라우드 동기화가 완료되었습니다</string>
     <string name="library_cloud_sync_up_to_date">저장 파일이 이미 최신 상태입니다</string>
-    <string name="library_cloud_sync_failed">클라우드 동기화 실패: %s</string>
+    <string name="library_cloud_sync_failed">클라우드 동기화 실패</string>
+    <string name="library_cloud_sync_error">클라우드 저장 파일 동기화 오류: %1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">설치하려면 인터넷이 필요합니다</string>

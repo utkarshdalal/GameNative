@@ -10,6 +10,7 @@ import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.EventDispatcher
 import app.gamenative.service.DownloadService
+import app.gamenative.service.SteamService
 import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.PlayIntegrity
@@ -28,13 +29,13 @@ import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
 import com.winlator.widget.XServerView
 import com.winlator.xenvironment.XEnvironment
+import timber.log.Timber
 import dagger.hilt.android.HiltAndroidApp
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
 typealias NavChangedListener = NavController.OnDestinationChangedListener
 
@@ -198,6 +199,33 @@ class PluviaApp : SplitCompatApplication() {
         fun setActiveSuspendPolicy(policy: String) {
             activeSuspendPolicy = Container.normalizeSuspendPolicy(policy)
             hasInitializedSuspendPolicyState = true
+        }
+
+        /**
+         * full environment teardown — shared by XServerScreen.exit() and
+         * MainActivity.onDestroy fallback so both paths clean up identically
+         */
+        fun shutdownEnvironment() {
+            val env = xEnvironment
+            Timber.i("shutdownEnvironment: env=%s", env != null)
+
+            // per-step catch so one failing teardown doesn't prevent the rest from running
+            runCatching { achievementWatcher?.stop() }
+                .onFailure { Timber.e(it, "shutdownEnvironment: achievementWatcher.stop") }
+            runCatching { SteamService.clearCachedAchievements() }
+                .onFailure { Timber.e(it, "shutdownEnvironment: clearCachedAchievements") }
+            runCatching { touchpadView?.releasePointerCapture() }
+                .onFailure { Timber.e(it, "shutdownEnvironment: releasePointerCapture") }
+            runCatching { env?.stopEnvironmentComponents() }
+                .onFailure { Timber.e(it, "shutdownEnvironment: stopEnvironmentComponents") }
+
+            xEnvironment = null
+            inputControlsView = null
+            inputControlsManager = null
+            touchpadView = null
+            achievementWatcher = null
+            SteamService.keepAlive = false
+            clearActiveSuspendState()
         }
 
         fun clearActiveSuspendState() {

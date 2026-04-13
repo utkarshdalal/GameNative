@@ -25,7 +25,7 @@ import `in`.dragonbra.javasteam.types.KeyValue
 import java.util.Date
 import timber.log.Timber
 
-const val CURRENT_UFS_PARSE_VERSION = 1
+const val CURRENT_UFS_PARSE_VERSION = 2
 
 /**
  * Extension functions relating to [KeyValue] as the receiver type.
@@ -164,7 +164,10 @@ fun KeyValue.generateSteamApp(): SteamApp {
 
             val rootOverrides = this["ufs"]["rootoverrides"].children.mapNotNull { rootOverride ->
                 val os = rootOverride["os"].value.orEmpty()
-                if (!os.equals("Windows", ignoreCase = true)) return@mapNotNull null
+                val oslist = rootOverride["oslist"].value.orEmpty()
+                val isWindowsOverride = os.equals("Windows", ignoreCase = true) ||
+                    oslist.split(",").any { it.trim().equals("windows", ignoreCase = true) }
+                if (!isWindowsOverride) return@mapNotNull null
                 val pathTransforms = rootOverride["pathtransforms"].children.map { transform ->
                     transform["find"].value.orEmpty() to transform["replace"].value.orEmpty()
                 }
@@ -184,7 +187,10 @@ fun KeyValue.generateSteamApp(): SteamApp {
                     if (platforms.isNotEmpty() && "windows" !in platforms) return@mapNotNull null
 
                     val originalRoot = PathType.from(saveFile["root"].value)
-                    val originalPath = saveFile["path"].value.orEmpty()
+                    // Treat "." as empty: it means "root of this path type" with no subdirectory.
+                    // Keeping the literal dot causes addpath joins to produce "MyGame/." and
+                    // uploadPath = "." which breaks cloud key lookups in SteamAutoCloud.
+                    val originalPath = saveFile["path"].value.orEmpty().let { if (it == ".") "" else it }
                     val rootRemap = rootOverrides.find { it.fromRoot == originalRoot }
 
                     SaveFilePattern(

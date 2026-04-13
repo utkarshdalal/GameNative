@@ -21,7 +21,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -247,7 +247,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     onExpandedChange = { typeExpanded = !typeExpanded },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                 ) {
-                    OutlinedTextField(
+                    NoExtractOutlinedTextField(
                         value = currentType.toString(),
                         onValueChange = {},
                         readOnly = true,
@@ -392,7 +392,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
 private fun InfoRow(label: String, value: String) {
     Column(modifier = Modifier.padding(bottom = 4.dp)) {
         Text(text = label, style = MaterialTheme.typography.labelMedium)
-        OutlinedTextField(value = value, onValueChange = {}, readOnly = true, modifier = Modifier.fillMaxWidth())
+        NoExtractOutlinedTextField(value = value, onValueChange = {}, readOnly = true, modifier = Modifier.fillMaxWidth())
     }
 }
 

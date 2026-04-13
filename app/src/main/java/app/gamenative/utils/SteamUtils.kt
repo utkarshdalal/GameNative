@@ -861,6 +861,91 @@ object SteamUtils {
     }
 
     /**
+     * Migrates save files from GSE Saves directory to Steam userdata directory.
+     * This function copies all files from the GSE saves location to the proper Steam userdata
+     * location and then removes the original GSE directory to complete the migration.
+     */
+    fun migrateGSESavesToSteamUserdata(context: Context, appId: Int) {
+        val imageFs = ImageFs.find(context)
+        val accountId = SteamService.userSteamId?.accountID?.toInt()
+            ?: PrefManager.steamUserAccountId.takeIf { it != 0 }
+
+        if (accountId == null) {
+            Timber.tag("migrateGSESavesToSteamUserdata").w("Cannot migrate GSE saves: no Steam account ID available")
+            return
+        }
+
+        val gseDir = File(
+            imageFs.rootDir,
+            "${ImageFs.WINEPREFIX}/drive_c/users/xuser/AppData/Roaming/GSE Saves/$appId"
+        )
+
+        val steamUserdataDir = File(
+            imageFs.rootDir,
+            "${ImageFs.WINEPREFIX}/drive_c/Program Files (x86)/Steam/userdata/$accountId/$appId"
+        )
+
+        fun isDirectoryEmpty(file: File): Boolean {
+            return file.isDirectory && file.list()?.isEmpty() ?: true
+        }
+
+        if (
+            !gseDir.exists() ||
+            !gseDir.isDirectory ||
+            isDirectoryEmpty(gseDir) // No files inside gseDir
+        ) {
+            Timber.tag("migrateGSESavesToSteamUserdata").d("No GSE save directory found for appId=$appId")
+            return
+        }
+
+        Timber.tag("migrateGSESavesToSteamUserdata").i("Starting GSE Saves Migration for appId=$appId")
+
+        if (!steamUserdataDir.exists()) {
+            try {
+                Files.createDirectories(steamUserdataDir.toPath())
+                Timber.tag("migrateGSESavesToSteamUserdata").i("Created Steam userdata directory: ${steamUserdataDir.absolutePath}")
+            } catch (e: IOException) {
+                Timber.tag("migrateGSESavesToSteamUserdata").e(e, "Failed to create Steam userdata directory")
+                return
+            }
+        }
+
+        var migratedCount = 0
+        var migrationFailed = false
+
+        gseDir.walkTopDown()
+            .filter { it.isFile }
+            .forEach { file ->
+                val relativePath = gseDir.toPath().relativize(file.toPath())
+                val targetFile = steamUserdataDir.toPath().resolve(relativePath)
+                try {
+                    Files.createDirectories(targetFile.parent)
+
+                    // As Files.move use linux rename syscall (or simply mv command we know, no need to manually remove the target file)
+                    Files.move(
+                        file.toPath(),
+                        targetFile,
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.COPY_ATTRIBUTES, // Preserve file attributes like timestamp and permission
+                        StandardCopyOption.ATOMIC_MOVE   // will throw if the FS can’t guarantee atomicity
+                    )
+
+                    Timber.tag("migrateGSESavesToSteamUserdata").i("Migrated ${file.name} from GSE saves to Steam userdata")
+                    migratedCount++
+                } catch (e: IOException) {
+                    migrationFailed = true
+                    Timber.tag("migrateGSESavesToSteamUserdata").w(e, "Failed to migrate ${file.name}")
+                }
+            }
+
+        if (!migrationFailed) {
+            gseDir.deleteRecursively()
+        }
+
+        Timber.tag("migrateGSESavesToSteamUserdata").i("Migration completed for appId=$appId. Migrated $migratedCount file(s)")
+    }
+
+    /**
      * Sibling folder "steam_settings" + empty "offline.txt" file, no-ops if they already exist.
      */
     private fun ensureSteamSettings(context: Context, dllPath: Path, appId: String, ticketBase64: String? = null, isOffline: Boolean = false) {
@@ -908,7 +993,6 @@ object SteamUtils {
 
         // Get appInfo to check if saveFilePatterns exist (used for both user and app configs)
         val appInfo = getAppInfoOf(steamAppId)
-        val hasSaveFilePatterns = appInfo?.ufs?.saveFilePatterns?.isNotEmpty() == true
 
         val iniContent = buildString {
             appendLine("[user::general]")
@@ -919,13 +1003,14 @@ object SteamUtils {
                 appendLine("ticket=$ticketBase64")
             }
 
-            // Only add [user::saves] section if no saveFilePatterns are defined
-            if (!hasSaveFilePatterns) {
-                val steamUserDataPath = "C:\\Program Files (x86)\\Steam\\userdata\\$accountId"
-                appendLine()
-                appendLine("[user::saves]")
-                appendLine("local_save_path=$steamUserDataPath")
-            }
+            // Migrate GSE Saves to Steam userdata
+            migrateGSESavesToSteamUserdata(context, steamAppId)
+
+            // Add [user::saves] section
+            val steamUserDataPath = "C:\\Program Files (x86)\\Steam\\userdata\\$accountId"
+            appendLine()
+            appendLine("[user::saves]")
+            appendLine("local_save_path=$steamUserDataPath")
         }
 
         if (Files.notExists(configsIni)) Files.createFile(configsIni)

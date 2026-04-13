@@ -3,6 +3,8 @@ package com.winlator.renderer;
 import android.opengl.GLES20;
 
 import com.winlator.renderer.effects.Effect;
+import com.winlator.renderer.effects.RenderScaleEffect;
+import com.winlator.renderer.effects.SourceTextureFilterEffect;
 import com.winlator.renderer.material.ShaderMaterial;
 
 import java.util.ArrayList;
@@ -10,6 +12,7 @@ import java.util.List;
 
 public class EffectComposer {
     private final ArrayList<Effect> effects = new ArrayList<>();
+    private final RenderTarget sceneBuffer = new RenderTarget();
     private final RenderTarget readBuffer = new RenderTarget();
     private final RenderTarget writeBuffer = new RenderTarget();
     private final GLRenderer renderer;
@@ -59,38 +62,72 @@ public class EffectComposer {
     }
 
     public synchronized void render() {
-        int width = renderer.getSurfaceWidth();
-        int height = renderer.getSurfaceHeight();
-        if (effects.isEmpty() || width <= 0 || height <= 0) {
+        int outputWidth = renderer.getSurfaceWidth();
+        int outputHeight = renderer.getSurfaceHeight();
+        if (effects.isEmpty() || outputWidth <= 0 || outputHeight <= 0) {
             renderer.drawScene();
             return;
         }
 
-        readBuffer.allocateFramebuffer(width, height);
-        writeBuffer.allocateFramebuffer(width, height);
-
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, readBuffer.getFramebuffer());
-        renderer.drawScene();
-
         ArrayList<Effect> snapshot = new ArrayList<>(effects);
-        RenderTarget source = readBuffer;
-        RenderTarget target = writeBuffer;
+        int sceneWidth = outputWidth;
+        int sceneHeight = outputHeight;
+        if (!snapshot.isEmpty() && snapshot.get(0) instanceof RenderScaleEffect) {
+            RenderScaleEffect renderScaleEffect = (RenderScaleEffect) snapshot.get(0);
+            sceneWidth = Math.max(1, renderScaleEffect.getRenderWidth(renderer, outputWidth));
+            sceneHeight = Math.max(1, renderScaleEffect.getRenderHeight(renderer, outputHeight));
+        }
+        boolean scaledScene = sceneWidth != outputWidth || sceneHeight != outputHeight;
+
+        sceneBuffer.setFilters(GLES20.GL_NEAREST, GLES20.GL_NEAREST);
+        readBuffer.setFilters(GLES20.GL_NEAREST, GLES20.GL_NEAREST);
+        writeBuffer.setFilters(GLES20.GL_NEAREST, GLES20.GL_NEAREST);
+
+        sceneBuffer.allocateFramebuffer(sceneWidth, sceneHeight);
+        readBuffer.allocateFramebuffer(outputWidth, outputHeight);
+        writeBuffer.allocateFramebuffer(outputWidth, outputHeight);
+
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, sceneBuffer.getFramebuffer());
+        GLES20.glViewport(0, 0, sceneWidth, sceneHeight);
+        if (scaledScene) {
+            renderer.setRenderTargetSizeOverride(sceneWidth, sceneHeight);
+        }
+        renderer.drawScene();
+        if (scaledScene) {
+            renderer.clearRenderTargetSizeOverride();
+        }
+
+        RenderTarget source = sceneBuffer;
+        RenderTarget target = readBuffer;
+        int sourceWidth = sceneWidth;
+        int sourceHeight = sceneHeight;
 
         for (int i = 0; i < snapshot.size(); i++) {
             boolean renderToScreen = i == snapshot.size() - 1;
-            GLES20.glBindFramebuffer(
-                GLES20.GL_FRAMEBUFFER,
-                renderToScreen ? 0 : target.getFramebuffer()
-            );
-            GLES20.glViewport(0, 0, width, height);
+            int targetFramebuffer = renderToScreen ? 0 : target.getFramebuffer();
+            int targetWidth = renderToScreen ? outputWidth : target.getWidth();
+            int targetHeight = renderToScreen ? outputHeight : target.getHeight();
+
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, targetFramebuffer);
+            GLES20.glViewport(0, 0, targetWidth, targetHeight);
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
             Effect effect = snapshot.get(i);
             effect.use(renderer);
             ShaderMaterial material = effect.getMaterial();
 
+            if (effect instanceof SourceTextureFilterEffect) {
+                SourceTextureFilterEffect textureFilterEffect = (SourceTextureFilterEffect) effect;
+                source.setFilters(textureFilterEffect.getSourceMinFilter(), textureFilterEffect.getSourceMagFilter());
+            }
+            else {
+                source.setFilters(GLES20.GL_NEAREST, GLES20.GL_NEAREST);
+            }
+
             renderer.getQuadVertices().bind(material.programId);
-            material.setUniformVec2("resolution", width, height);
+            material.setUniformVec2("resolution", targetWidth, targetHeight);
+            material.setUniformVec2("inputResolution", sourceWidth, sourceHeight);
+            material.setUniformVec2("outputResolution", targetWidth, targetHeight);
             material.setUniformInt("screenTexture", 0);
 
             GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
@@ -100,13 +137,17 @@ public class EffectComposer {
             renderer.getQuadVertices().disable();
 
             if (!renderToScreen) {
-                RenderTarget temp = source;
                 source = target;
-                target = temp;
+                sourceWidth = targetWidth;
+                sourceHeight = targetHeight;
+                target = target == readBuffer ? writeBuffer : readBuffer;
             }
         }
 
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+        if (scaledScene) {
+            GLES20.glViewport(0, 0, outputWidth, outputHeight);
+        }
         renderer.setViewportNeedsUpdate(true);
     }
 
@@ -114,6 +155,7 @@ public class EffectComposer {
         for (Effect effect : effects) {
             effect.destroy();
         }
+        sceneBuffer.invalidate();
         readBuffer.invalidate();
         writeBuffer.invalidate();
     }
@@ -123,6 +165,7 @@ public class EffectComposer {
             effect.destroy();
         }
         effects.clear();
+        sceneBuffer.destroy();
         readBuffer.destroy();
         writeBuffer.destroy();
     }

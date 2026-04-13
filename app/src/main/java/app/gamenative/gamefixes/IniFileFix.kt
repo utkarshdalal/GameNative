@@ -20,7 +20,6 @@ private fun updateIniValue(content: String, key: String, value: String): String 
 class IniFileFix(
     private val relativePath: String,
     private val defaultValues: Map<String, String>,
-    private val migrationKey: String? = null,
 ) : GameFix {
     override fun apply(
         context: Context,
@@ -29,10 +28,6 @@ class IniFileFix(
         installPathWindows: String,
         container: Container,
     ): Boolean {
-        if (migrationKey != null && container.getExtra(migrationKey) == "1") {
-            return false
-        }
-
         val iniFile = File(installPath, relativePath)
         if (!iniFile.isFile) {
             return false
@@ -51,20 +46,11 @@ class IniFileFix(
                 iniFile.writeText(updated, StandardCharsets.UTF_8)
             }
 
-            var migrationMarked = false
-            if (migrationKey != null) {
-                container.putExtra(migrationKey, "1")
-                container.saveData()
-                migrationMarked = true
-            }
-
             if (fileChanged) {
                 Timber.tag("GameFixes").i("Updated $relativePath for game $gameId")
-            } else if (migrationMarked) {
-                Timber.tag("GameFixes").d("Marked $relativePath migration as complete for game $gameId")
             }
 
-            fileChanged || migrationMarked
+            fileChanged
         }.getOrElse { error ->
             Timber.tag("GameFixes").w(error, "Failed to update $relativePath for game $gameId")
             false
@@ -77,5 +63,4 @@ class KeyedIniFileFix(
     override val gameId: String,
     relativePath: String,
     defaultValues: Map<String, String>,
-    migrationKey: String? = null,
-) : KeyedGameFix, GameFix by IniFileFix(relativePath, defaultValues, migrationKey)
+) : KeyedGameFix, GameFix by IniFileFix(relativePath, defaultValues)

@@ -16,8 +16,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -114,7 +114,7 @@ private fun TwoFactorTextField(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        OutlinedTextField(
+        NoExtractOutlinedTextField(
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester)
@@ -137,7 +137,6 @@ private fun TwoFactorTextField(
             },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Done,
             ),
             shape = RoundedCornerShape(8.dp),
             colors = OutlinedTextFieldDefaults.colors(

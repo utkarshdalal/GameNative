@@ -9,8 +9,8 @@ import timber.log.Timber
 import java.io.File
 
 object DownloadService {
-    private var lastUpdateTime: Long = 0
-    private var downloadDirectoryApps: MutableList<String>? = null
+    @Volatile private var lastUpdateTime: Long = 0
+    @Volatile private var downloadDirectoryApps: MutableList<String>? = null
     var baseDataDirPath: String = ""
         private set(value) {
             field = value
@@ -44,6 +44,12 @@ object DownloadService {
             .map { it.absolutePath }
     }
 
+    @Synchronized
+    fun invalidateCache() {
+        lastUpdateTime = 0
+    }
+
+    @Synchronized
     fun getDownloadDirectoryApps (): MutableList<String> {
         // What apps have folders in the download area?
         // Isn't checking for "complete" marker - incomplete is accepted

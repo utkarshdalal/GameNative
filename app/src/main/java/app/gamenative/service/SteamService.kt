@@ -816,8 +816,33 @@ class SteamService : Service(), IChallengeUrlChanged {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
             val hasSteamUnlockedBranch = runBlocking { getSteamUnlockedBranches(appId).isNotEmpty() }
-            val licensedDepots = getLicensedDepotIds(appId)
-            return resolveDownloadableDepots(appInfo.depots, containerLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch)
+            val licensedDepots = getLicensedDepotIds(appId).orEmpty().toMutableSet()
+
+            // Use the dlcAppID of the ownedDlc, to find the licensed depotIds from steam_license
+            val mapDlcDepotIds = mutableMapOf<Int, List<Int>>()
+            ownedDlc.forEach { (dlcAppId, info) ->
+                val dlcDepotIds = getPkgInfoOf(dlcAppId)?.depotIds.orEmpty()
+                mapDlcDepotIds[dlcAppId] = dlcDepotIds
+
+                // Make sure licensedDepots contains the dlc depots
+                licensedDepots.addAll(dlcDepotIds)
+            }
+
+            val baseDepots = resolveDownloadableDepots(appInfo.depots, containerLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch)
+
+            // Find in the depots of mainApp, that if any of the depotID is actually belongs to another steam_app entry
+            // override the dlcAppId to the corresponding app id
+            // It should fix Don't Starve DLC list, and keeping existing DLC logic correct
+            // For existing DLC logic, two games checked Halo MCC, Cyberpunk 2077 to have correct data
+            val map = mutableMapOf<Int, DepotInfo>()
+            baseDepots.forEach { (depotId, info) ->
+                val foundDlcAppId = mapDlcDepotIds
+                    .filter { it.value.contains(info.depotId) }
+                    .keys.firstOrNull()
+                map[depotId] = info.copy(dlcAppId = foundDlcAppId ?: info.dlcAppId)
+            }
+
+            return map
         }
 
         /**
@@ -837,13 +862,13 @@ class SteamService : Service(), IChallengeUrlChanged {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
             val hasSteamUnlockedBranch = runBlocking { getSteamUnlockedBranches(appId).isNotEmpty() }
-            val licensedDepots = getLicensedDepotIds(appId)
+            val licensedDepots = getLicensedDepotIds(appId).orEmpty().toMutableSet()
 
-            val baseDepots = resolveDownloadableDepots(appInfo.depots, preferredLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch)
+            val map = getMainAppDepots(appId, preferredLanguage).toMutableMap()
+
             // parent app's arch applies to DLC arch selection
             val has64Bit = eligibleDepots(appInfo.depots, preferredLanguage, ownedDlc, licensedDepots)
                 .any { it.osArch == OSArch.Arch64 }
-            val map = baseDepots.toMutableMap()
 
             val indirectDlcApps = getDownloadableDlcAppsOf(appId).orEmpty()
             indirectDlcApps.forEach { dlcApp ->
@@ -2062,7 +2087,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             return getAppInfoOf(appId)?.let { appInfo ->
                 appInfo.config.launch.filter { launchInfo ->
                     // since configOS was unreliable and configArch was even more unreliable
-                    launchInfo.executable.endsWith(".exe")
+                    launchInfo.executable.endsWith(".exe", ignoreCase = true)
                 }
             }.orEmpty()
         }
@@ -2142,6 +2167,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.w("Cannot launch app when sync already in progress for appId=$appId")
                 return@async PostSyncInfo(SyncResult.InProgress)
             }
+
+            // Migrate GSE Saves to Steam userdata
+            SteamUtils.migrateGSESavesToSteamUserdata(instance?.applicationContext!!, appId)
 
             try {
                 var syncResult = PostSyncInfo(SyncResult.UnknownFail)
@@ -2230,6 +2258,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.w("Cannot force sync when sync already in progress for appId=$appId")
                 return@async PostSyncInfo(SyncResult.InProgress)
             }
+
+            // Migrate GSE Saves to Steam userdata
+            SteamUtils.migrateGSESavesToSteamUserdata(instance?.applicationContext!!, appId)
 
             try {
                 var syncResult = PostSyncInfo(SyncResult.UnknownFail)
@@ -3222,6 +3253,16 @@ class SteamService : Service(), IChallengeUrlChanged {
         connectivityManager.unregisterNetworkCallback(networkCallback)
 
         scope.launch { stop() }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (!hasActiveOperations()) {
+            Timber.i("Task removed and no active work — stopping service")
+            stopSelf()
+        } else {
+            Timber.i("Task removed but active work exists — keeping service alive")
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

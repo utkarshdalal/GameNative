@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">Будь ласка, переконайтеся, що ваші збереження завантажено у хмару або створено їхню резервну копію перед перевіркою, оскільки інакше вони можуть бути перезаписані.</string>
     <string name="steam_update_title">Оновити</string>
     <string name="steam_update_message">Будь ласка, переконайтеся, що ваші збереження завантажено у хмару або створено їхню резервну копію перед оновленням, оскільки інакше вони можуть бути перезаписані.</string>
-    <string name="steam_cloud_sync_success">Успішна синхронізація з хмарою</string>
-    <string name="steam_cloud_sync_up_to_date">Файли збереження вже актуальні</string>
-    <string name="steam_cloud_sync_failed">Помилка синхронізації з хмарою: %s</string>
     <string name="steam_not_logged_in">Ви повинні увійти в Steam, щоб використовувати цю функцію</string>
     <string name="steam_storage_permission_required">Необхідний дозвіл на доступ до сховища</string>
     <string name="steam_container_reset_success">Контейнер скинуто до стандартних налаштувань</string>
@@ -285,6 +282,8 @@
     <string name="screen_effects_toon_description">Додає темні контури для вигляду cel-shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Згладжує зубчасті краї за допомогою легкого постпроцесного згладжування.</string>
+    <string name="screen_effects_vivid">Насичений</string>
+    <string name="screen_effects_vivid_description">Додає bloom і підсилює контраст для виразнішого зображення.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Додає рядки розгортки та легку хроматичну аберацію.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -967,9 +966,11 @@
     <string name="library_export_cancelled">Вивантаження скасовано</string>
     <string name="library_shortcut_created">Створено ярлик</string>
     <string name="library_failed_to_create_shortcut">Помилка створення ярлика: %s</string>
+    <string name="library_cloud_sync_starting">Запуск синхронізації з хмарою…</string>
     <string name="library_cloud_sync_success">Успішна синхронізація з хмарою</string>
     <string name="library_cloud_sync_up_to_date">Файли збереження вже актуальні</string>
-    <string name="library_cloud_sync_failed">Помилка синхронізації з хмарою: %s</string>
+    <string name="library_cloud_sync_failed">Помилка синхронізації з хмарою</string>
+    <string name="library_cloud_sync_error">Помилка синхронізації з хмарою: %1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Потрібне інтернет-з\'єднання для інсталяції</string>

@@ -40,7 +40,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.OutlinedTextField
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.CircularProgressIndicator
@@ -1226,7 +1226,7 @@ internal fun ExecutablePathDropdown(
         onExpandedChange = { expanded = it },
         modifier = modifier
     ) {
-        OutlinedTextField(
+        NoExtractOutlinedTextField(
             value = value,
             onValueChange = onValueChange,
             readOnly = true,

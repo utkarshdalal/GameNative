@@ -1531,12 +1531,12 @@ class SteamUtilsFileSearchTest {
 
         val userIniContent = userIni.readText()
 
-        // Verify [user::saves] section does NOT exist
-        assertFalse("configs.user.ini should not contain [user::saves] section",
+        // Verify [user::saves] section does exist
+        assertTrue("configs.user.ini should contain [user::saves] section",
             userIniContent.contains("[user::saves]"))
 
-        // Verify local_save_path does NOT exist
-        assertFalse("configs.user.ini should not contain local_save_path",
+        // Verify local_save_path does exist
+        assertTrue("configs.user.ini should contain local_save_path",
             userIniContent.contains("local_save_path="))
     }
 

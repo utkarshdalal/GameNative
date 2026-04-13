@@ -46,6 +46,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
 import java.io.OutputStream
 import java.net.SocketTimeoutException
+import java.nio.file.attribute.FileTime
 
 /**
  * [Steam Auto Cloud](https://partner.steamgames.com/doc/features/cloud#steam_auto-cloud)
@@ -259,10 +260,15 @@ object SteamAutoCloud {
         val getLocalUserFilesAsPrefixMap: () -> Map<String, List<UserFileInfo>> = {
             val savePatterns = appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
 
-            if (savePatterns.isNotEmpty()) {
-                val result = mutableMapOf<String, MutableList<UserFileInfo>>()
+            val result = mutableMapOf<String, MutableList<UserFileInfo>>()
 
+            if (savePatterns.isNotEmpty()) {
                 savePatterns.forEach { userFile ->
+                    if (userFile.root == PathType.SteamUserData) {
+                        // skip handling, use the logic below to scan SteamUserData
+                        return@forEach
+                    }
+
                     val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
 
                     Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
@@ -278,7 +284,15 @@ object SteamAutoCloud {
 
                         val relativePath = basePath.relativize(it).pathString
 
-                        UserFileInfo(userFile.root, userFile.substitutedPath, relativePath, Files.getLastModifiedTime(it).toMillis(), sha, cloudRoot = userFile.uploadRoot, cloudPath = userFile.uploadPath)
+                        UserFileInfo(
+                            root = userFile.root,
+                            path = userFile.substitutedPath,
+                            filename = relativePath,
+                            timestamp = Files.getLastModifiedTime(it).toMillis(),
+                            sha = sha,
+                            cloudRoot = userFile.uploadRoot,
+                            cloudPath = userFile.uploadPath
+                        )
                     }.collect(Collectors.toList())
 
                     Timber.i("Found ${files.size} file(s) in $basePath for pattern ${userFile.pattern}")
@@ -286,34 +300,47 @@ object SteamAutoCloud {
                     val prefixKey = Paths.get(userFile.prefix).pathString
                     result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
                 }
-
-                result
-            } else {
-                // Fallback: no UFS patterns; scan SteamUserData root recursively (depth 5)
-                val rootType = PathType.SteamUserData
-                val basePath = Paths.get(prefixToPath(rootType.toString()))
-
-                Timber.i("No UFS patterns; scanning $basePath recursively (depth 5) under ${rootType.name}")
-
-                val files = FileUtils.findFilesRecursive(
-                    rootPath = basePath,
-                    pattern = "*",
-                    maxDepth = 5,
-                ).map {
-                    val sha = streamingShaHash(it)
-
-                    val relativePath = basePath.relativize(it).pathString
-
-                    Timber.i("Found ${it.pathString}\n\tin %${rootType.name}%\n\twith sha [${sha.joinToString(", ")}]")
-
-                    // Store relative path in filename; empty path component
-                    UserFileInfo(rootType, "", relativePath, Files.getLastModifiedTime(it).toMillis(), sha)
-                }.collect(Collectors.toList())
-
-                Timber.i("Found ${files.size} file(s) in $basePath for fallback recursive scan")
-
-                mapOf(Paths.get("%${rootType.name}%").pathString to files)
             }
+
+            // Scan SteamUserData root recursively (depth 5)
+            val rootType = PathType.SteamUserData
+            val basePath = Paths.get(prefixToPath(rootType.toString()))
+
+            Timber.i("Scanning $basePath recursively (depth 5) under ${rootType.name}")
+
+            val files = FileUtils.findFilesRecursive(
+                rootPath = basePath,
+                pattern = "*",
+                maxDepth = 5,
+            ).map {
+                val sha = streamingShaHash(it)
+
+                val relativePath = basePath.relativize(it).pathString
+
+                Timber.i("Found ${it.pathString}\n\tin %${rootType.name}%\n\twith sha [${sha.joinToString(", ")}]")
+
+                // Store relative path in filename; empty path component
+                UserFileInfo(
+                    root = rootType,
+                    path = "",
+                    filename = relativePath,
+                    timestamp = Files.getLastModifiedTime(it).toMillis(),
+                    sha = sha,
+                    cloudRoot = rootType,
+                    cloudPath = ""
+                )
+            }.collect(Collectors.toList())
+
+            Timber.i("Found ${files.size} file(s) in $basePath")
+
+            mapOf(Paths.get("%${rootType.name}%").pathString to files)
+
+            if (files.isNotEmpty()) {
+                val prefixKey = "%${rootType.name}%"
+                result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
+            }
+
+            result
         }
 
         val fileChangeListToUserFiles: (AppFileChangeList) -> List<UserFileInfo> = { appFileListChange ->
@@ -408,6 +435,17 @@ object SteamAutoCloud {
                                                 lastReportedProgress = currentProgress
                                             }
                                         }
+                                    }
+
+                                    // Preserve file timestamp from steamcloud, could fix game save loading, tested Skyrim
+                                    try {
+                                        // Ensure your fileDownloadInfo actually contains a timestamp (Long)
+                                        fileDownloadInfo.timestamp.let { timestamp ->
+                                            val fileTime = FileTime.fromMillis(timestamp.time)
+                                            Files.setLastModifiedTime(actualFilePath, fileTime)
+                                        }
+                                    } catch (e: Exception) {
+                                        Timber.w("Failed to set lastModified for $actualFilePath: ${e.message}")
                                     }
 
                                     if (totalBytesRead != totalFileSize) {
@@ -514,9 +552,19 @@ object SteamAutoCloud {
                     val uploadInfo = steamCloud.beginFileUpload(
                         appId = appInfo.id,
                         filename = if (appInfo.ufs.saveFilePatterns.isEmpty()) {
-                            file.path + file.filename
+                            // For SteamUserData files, use just the filename without folder prefix
+                            if (file.root == PathType.SteamUserData) {
+                                file.filename
+                            } else {
+                                file.path + file.filename
+                            }
                         } else {
-                            file.prefixPath
+                            // For SteamUserData files, use just the filename to avoid folder prefix
+                            if (file.root == PathType.SteamUserData) {
+                                file.filename
+                            } else {
+                                file.prefixPath
+                            }
                         },
                         fileSize = fileSize,
                         rawFileSize = fileSize,
@@ -633,9 +681,19 @@ object SteamAutoCloud {
                         appId = appInfo.id,
                         fileSha = file.sha,
                         filename = if (appInfo.ufs.saveFilePatterns.isEmpty()) {
-                            file.path + file.filename
+                            // For SteamUserData files, use just the filename without folder prefix
+                            if (file.root == PathType.SteamUserData) {
+                                file.filename
+                            } else {
+                                file.path + file.filename
+                            }
                         } else {
-                            file.prefixPath
+                            // For SteamUserData files, use just the filename to avoid folder prefix
+                            if (file.root == PathType.SteamUserData) {
+                                file.filename
+                            } else {
+                                file.prefixPath
+                            }
                         },
                     ).await()
 
@@ -822,16 +880,19 @@ object SteamAutoCloud {
                         } == true
                     }.inWholeMicroseconds
 
-                    /*TODO: hasLocalChanges should be true if the user plays offline for the first time without ever pulling cloud saves
-                       If that happens, the next time they go online, their change number is -1, and saves are always overwritten by cloud*/
-
-                    // If cache is absent but local files exist and a prior sync was recorded,
-                    // the cache was cleared on upgrade due to a UFS path fix — treat as conflict
-                    // so the user can choose which save to keep rather than silently overwriting.
-                    val isUpgradeConflict = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty() && localAppChangeNumber >= 0
-                    if (isUpgradeConflict) {
-                        hasLocalChanges = true
-                        conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                    val hasUncachedLocalFiles = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty()
+                    if (hasUncachedLocalFiles) {
+                        if (localAppChangeNumber < 0) {
+                            // first offline play: never synced, no cache, but local
+                            // files exist — cloud would silently overwrite them
+                            hasLocalChanges = true
+                            conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                        } else {
+                            // app update cleared the cache but a prior sync was
+                            // recorded — can't tell if local files changed
+                            hasLocalChanges = true
+                            conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                        }
                     }
 
                     if (!hasLocalChanges) {

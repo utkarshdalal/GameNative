@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">Asegúrate de que tus archivos de guardado están en la nube o respaldados antes de verificar, ya que podrían sobrescribirse.</string>
     <string name="steam_update_title">Actualizar</string>
     <string name="steam_update_message">Asegúrate de que tus archivos de guardado están en la nube o respaldados antes de actualizar, ya que podrían sobrescribirse.</string>
-    <string name="steam_cloud_sync_success">Sincronización con la nube completada con éxito.</string>
-    <string name="steam_cloud_sync_up_to_date">Los archivos de guardado ya están actualizados.</string>
-    <string name="steam_cloud_sync_failed">Fallo en la sincronización con la nube: %s.</string>
     <string name="steam_not_logged_in">Debes iniciar sesión en Steam para usar esta función.</string>
     <string name="steam_storage_permission_required">Se requiere permiso de almacenamiento.</string>
     <string name="steam_container_reset_success">Contenedor restablecido a los valores por defecto.</string>
@@ -67,10 +64,6 @@
     <string name="epic_download_error">Error de descarga: %1$s.</string>
     <string name="epic_cancel_download_message">¿Deseas cancelar la descarga de la aplicación?</string>
     <string name="epic_delete_download_message">¿Deseas eliminar todos los datos descargados de este juego?</string>
-    <string name="epic_cloud_sync_starting">Iniciando sincronización en la nube…</string>
-    <string name="epic_cloud_sync_success">Partidas en la nube sincronizadas correctamente.</string>
-    <string name="epic_cloud_sync_failed">Error al sincronizar con la nube.</string>
-    <string name="epic_cloud_sync_error">Error de sincronización en la nube: %1$s.</string>
     <string name="epic_uninstall_failed">Error al desinstalar: %1$s.</string>
     <string name="epic_uninstall_error">Error de desinstalación: %1$s.</string>
     <string name="steam_never">Nunca</string>
@@ -305,6 +298,8 @@
     <string name="screen_effects_toon_description">Añade contornos oscuros para un aspecto cel shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Suaviza los bordes dentados con un ligero efecto de antialiasing en posprocesado.</string>
+    <string name="screen_effects_vivid">Vívido</string>
+    <string name="screen_effects_vivid_description">Añade bloom y un aumento de contraste para una imagen más intensa.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Añade líneas de exploración y una sutil aberración cromática.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -986,9 +981,11 @@
     <string name="library_export_cancelled">Exportación cancelada.</string>
     <string name="library_shortcut_created">Acceso directo creado.</string>
     <string name="library_failed_to_create_shortcut">Error al crear el acceso directo: %s.</string>
+    <string name="library_cloud_sync_starting">Iniciando sincronización en la nube…</string>
     <string name="library_cloud_sync_success">Sincronización con la nube completada con éxito.</string>
     <string name="library_cloud_sync_up_to_date">Los archivos de guardado ya están actualizados.</string>
-    <string name="library_cloud_sync_failed">Fallo en la sincronización con la nube: %s.</string>
+    <string name="library_cloud_sync_failed">Fallo en la sincronización con la nube.</string>
+    <string name="library_cloud_sync_error">Error de sincronización en la nube: %1$s.</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Necesitas conexión a internet para instalar.</string>

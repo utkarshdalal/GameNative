@@ -17,6 +17,8 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.data.GOGGame
 import app.gamenative.data.LibraryItem
+import app.gamenative.enums.Marker
+import app.gamenative.service.DownloadService
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.MarkerUtils
@@ -29,6 +31,7 @@ import com.winlator.container.ContainerData
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import app.gamenative.ui.util.SnackbarManager
@@ -77,6 +80,44 @@ class GOGAppScreen : BaseAppScreen() {
                 bytes >= mb -> String.format(Locale.US, "%.1f MB", bytes / mb)
                 bytes >= kb -> String.format(Locale.US, "%.1f KB", bytes / kb)
                 else -> "$bytes B"
+            }
+        }
+
+        internal suspend fun forceCloudSync(
+            context: Context,
+            appId: String,
+            syncCloudSaves: suspend (Context, String, String) -> Boolean = { syncContext, syncAppId, preferredAction ->
+                GOGService.syncCloudSaves(
+                    context = syncContext,
+                    appId = syncAppId,
+                    preferredAction = preferredAction,
+                )
+            },
+            showSnackbar: (String) -> Unit = SnackbarManager::show,
+            logError: (Throwable) -> Unit = { error ->
+                Timber.tag(TAG).e(error, "[Cloud Saves] Sync failed")
+            },
+        ) {
+            try {
+                showSnackbar(context.getString(R.string.library_cloud_sync_starting))
+
+                val result = withContext(Dispatchers.IO) {
+                    syncCloudSaves(context, appId, "auto")
+                }
+
+                if (result) {
+                    showSnackbar(context.getString(R.string.library_cloud_sync_success))
+                } else {
+                    showSnackbar(context.getString(R.string.library_cloud_sync_failed))
+                }
+            } catch (e: Exception) {
+                logError(e)
+                showSnackbar(
+                    context.getString(
+                        R.string.library_cloud_sync_error,
+                        e.message ?: "",
+                    ),
+                )
             }
         }
     }
@@ -353,6 +394,7 @@ class GOGAppScreen : BaseAppScreen() {
             try {
                 // Delegate to GOGService which calls GOGManager.deleteGame
                 val result = GOGService.deleteGame(context, libraryItem)
+                DownloadService.invalidateCache()
 
                 if (result.isSuccess) {
                     Timber.i("Successfully uninstalled GOG game: ${libraryItem.appId}")
@@ -446,7 +488,9 @@ class GOGAppScreen : BaseAppScreen() {
             return emptyList()
         }
 
-        return listOf(
+        val options = mutableListOf<AppMenuOption>()
+
+        options.add(
             AppMenuOption(
                 optionType = AppOptionMenuType.VerifyFiles,
                 onClick = {
@@ -464,6 +508,23 @@ class GOGAppScreen : BaseAppScreen() {
                 },
             ),
         )
+
+        options.add(
+            AppMenuOption(
+                optionType = AppOptionMenuType.ForceCloudSync,
+                onClick = {
+                    val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+                    scope.launch {
+                        forceCloudSync(
+                            context = context,
+                            appId = libraryItem.appId,
+                        )
+                    }
+                },
+            ),
+        )
+
+        return options
     }
 
     /**
@@ -626,6 +687,7 @@ class GOGAppScreen : BaseAppScreen() {
                             }
 
                             val result = GOGService.deleteGame(context, libraryItem)
+                            DownloadService.invalidateCache()
                             if (wasDownloading && !isInstalledAfterCancel) {
                                 SnackbarManager.show("Download cancelled")
                             }
