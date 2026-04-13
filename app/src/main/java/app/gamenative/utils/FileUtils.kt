@@ -145,7 +145,7 @@ object FileUtils {
                 Timber.i("Checking $fileName for pattern $pattern")
                 var startIndex = 0
                 !patternParts.map {
-                    val index = fileName.indexOf(it, startIndex)
+                    val index = fileName.indexOf(it, startIndex, ignoreCase = true)
                     if (index >= 0) {
                         startIndex = index + it.length
                     }
@@ -170,7 +170,7 @@ object FileUtils {
         fun matches(fileName: String): Boolean {
             var startIndex = 0
             for (part in patternParts) {
-                val index = fileName.indexOf(part, startIndex)
+                val index = fileName.indexOf(part, startIndex, ignoreCase = true)
                 if (index < 0) return false
                 startIndex = index + part.length
             }

@@ -286,6 +286,7 @@
     <string name="denuvo">Denuvo</string>
     <string name="describe_what_happened">Опишите, что произошло</string>
     <string name="destination_downloads">Загрузки и хранилище</string>
+    <string name="downloads_section_title">Загрузки</string>
     <string name="destination_library">Библиотека</string>
     <string name="developer">Разработчик</string>
     <string name="direct3d">Direct3D</string>
@@ -433,6 +434,7 @@
     <string name="intent_launch_service_pending">Игра запустится после запуска сервиса</string>
     <string name="intent_launch_steam_login_failed">Ошибка входа в Steam — запуск игры отменён</string>
     <string name="intent_launch_service_timeout">Не удалось запустить игровой сервис — запуск игры отменён</string>
+    <string name="back_press_exit_warning">Нажмите назад ещё раз для выхода</string>
     <string name="game_not_installed_title">Игра не установлена</string>
     <string name="game_options_cloud_saves">Облачные сохранения</string>
     <string name="game_options_container">Контейнер</string>
@@ -831,6 +833,8 @@ https://gamenative.app
     <string name="screen_effects_toon_description">Добавляет тёмные контуры для эффекта cel-shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Сглаживает зубчатые края лёгким постобрабатывающим антиалиасингом.</string>
+    <string name="screen_effects_vivid">Насыщенный</string>
+    <string name="screen_effects_vivid_description">Добавляет bloom и усиливает контраст для более выразительного изображения.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Добавляет строки развёртки и лёгкую хроматическую аберрацию.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -986,6 +990,8 @@ https://gamenative.app
     <string name="settings_interface_external_storage_title">Запись на внешнее хранилище</string>
     <string name="settings_interface_hide_statusbar_subtitle">Скрыть строку состояния Android в списке игр, настройках и т.д. Приложение перезагрузится при изменении.</string>
     <string name="settings_interface_hide_statusbar_title">Скрыть строку состояния, когда не в игре</string>
+    <string name="settings_interface_warn_before_exit_title">Предупреждать перед выходом</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Для выхода требуется двойное нажатие назад — первое показывает предупреждение</string>
     <string name="settings_interface_icon_style">Стиль значка</string>
     <string name="settings_interface_no_external_storage">Внешнее хранилище не обнаружено</string>
     <string name="settings_interface_restart_required_title">Требуется перезагрузка</string>

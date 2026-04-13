@@ -42,7 +42,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class ImageFsInstaller {
-    public static final byte LATEST_VERSION = 27;
+    public static final byte LATEST_VERSION = 28;
 
     private static void resetContainerImgVersions(Context context) {
         ContainerManager manager = new ContainerManager(context);
@@ -192,7 +192,7 @@ public abstract class ImageFsInstaller {
         // ➌  Make sure the new libs are world-readable / executable
         chmod(new File(imagefs, "generate_interfaces_file.exe"));
         chmod(new File(imagefs, "Steamless/Steamless.CLI.exe"));
-        chmod(new File(imagefs, "opt/mono-gecko-offline/wine-mono-9.0.0-x86.msi"));
+        chmod(new File(imagefs, "opt/mono-gecko-offline/wine-mono-11.0.0-x86.msi"));
     }
 
     private static void chmod(File f) { if (f.exists()) FileUtils.chmod(f, 0755);}

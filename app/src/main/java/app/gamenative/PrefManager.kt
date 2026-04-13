@@ -1180,4 +1180,8 @@ object PrefManager {
         get() = getPref(ACHIEVEMENT_NOTIFICATION_POSITION, "bottom_right")
         set(value) { setPref(ACHIEVEMENT_NOTIFICATION_POSITION, value) }
 
+    private val WARN_BEFORE_EXIT = booleanPreferencesKey("warn_before_exit")
+    var warnBeforeExit: Boolean
+        get() = getPref(WARN_BEFORE_EXIT, false)
+        set(value) { setPref(WARN_BEFORE_EXIT, value) }
 }

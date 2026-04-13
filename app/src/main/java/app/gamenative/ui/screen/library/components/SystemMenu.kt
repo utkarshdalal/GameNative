@@ -563,20 +563,20 @@ fun SystemMenu(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         SystemMenuItem(
-                            text = stringResource(R.string.app_downloads),
-                            icon = Icons.Default.Download,
+                            text = stringResource(R.string.settings_text),
+                            icon = Icons.Default.Settings,
                             onClick = {
-                                onDownloadsClick()
+                                onNavigateRoute(PluviaScreen.Settings.route)
                                 onDismiss()
                             },
                             focusRequester = firstItemFocusRequester,
                         )
 
                         SystemMenuItem(
-                            text = stringResource(R.string.settings_text),
-                            icon = Icons.Default.Settings,
+                            text = stringResource(R.string.app_downloads),
+                            icon = Icons.Default.Download,
                             onClick = {
-                                onNavigateRoute(PluviaScreen.Settings.route)
+                                onDownloadsClick()
                                 onDismiss()
                             },
                             focusRequester = firstItemFocusRequester,

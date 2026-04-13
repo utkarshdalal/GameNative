@@ -75,6 +75,7 @@ import com.winlator.renderer.effects.Effect
 import com.winlator.renderer.effects.FSR1EasuEffect
 import com.winlator.renderer.effects.FSR1RcasEffect
 import com.winlator.renderer.effects.FXAAEffect
+import com.winlator.renderer.effects.VividEffect
 import com.winlator.renderer.effects.NTSCCombinedEffect
 import com.winlator.renderer.effects.ScalingModeEffect
 import com.winlator.renderer.effects.ToonEffect
@@ -177,6 +178,9 @@ fun ScreenEffectsTabContent(
     var enableFXAA by remember(renderer) {
         mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
     }
+    var enableVivid by remember(renderer) {
+        mutableStateOf(composer.getEffect(VividEffect::class.java) != null)
+    }
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
     }
@@ -192,6 +196,7 @@ fun ScreenEffectsTabContent(
         fsrSharpnessLevel,
         enableToon,
         enableFXAA,
+        enableVivid,
         enableCRT,
         enableNTSC,
     ) {
@@ -228,6 +233,9 @@ fun ScreenEffectsTabContent(
         if (enableFXAA) {
             effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
         }
+        if (enableVivid) {
+            effects += composer.getEffect(VividEffect::class.java) ?: VividEffect()
+        }
         if (enableCRT) {
             effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
         }
@@ -246,6 +254,7 @@ fun ScreenEffectsTabContent(
         fsrSharpnessLevel = SCREEN_EFFECT_FSR_DEFAULT_LEVEL
         enableToon = false
         enableFXAA = false
+        enableVivid = false
         enableCRT = false
         enableNTSC = false
     }
@@ -347,6 +356,12 @@ fun ScreenEffectsTabContent(
             onToggle = { enableFXAA = !enableFXAA },
         )
         ScreenEffectToggleRow(
+            title = stringResource(R.string.screen_effects_vivid),
+            subtitle = stringResource(R.string.screen_effects_vivid_description),
+            enabled = enableVivid,
+            onToggle = { enableVivid = !enableVivid },
+        )
+        ScreenEffectToggleRow(
             title = stringResource(R.string.screen_effects_crt),
             subtitle = stringResource(R.string.screen_effects_crt_description),
             enabled = enableCRT,
@@ -398,6 +413,9 @@ fun ScreenEffectsPanel(
     var enableFXAA by remember(renderer) {
         mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
     }
+    var enableVivid by remember(renderer) {
+        mutableStateOf(composer.getEffect(VividEffect::class.java) != null)
+    }
     var enableCRT by remember(renderer) {
         mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
     }
@@ -405,7 +423,7 @@ fun ScreenEffectsPanel(
         mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableCRT, enableNTSC) {
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableVivid, enableCRT, enableNTSC) {
         val effects = mutableListOf<Effect>()
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
@@ -421,6 +439,9 @@ fun ScreenEffectsPanel(
         }
         if (enableFXAA) {
             effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
+        }
+        if (enableVivid) {
+            effects += composer.getEffect(VividEffect::class.java) ?: VividEffect()
         }
         if (enableCRT) {
             effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
@@ -438,6 +459,7 @@ fun ScreenEffectsPanel(
         gamma = 1.0f
         enableToon = false
         enableFXAA = false
+        enableVivid = false
         enableCRT = false
         enableNTSC = false
     }
@@ -615,6 +637,12 @@ fun ScreenEffectsPanel(
                         subtitle = stringResource(R.string.screen_effects_fxaa_description),
                         enabled = enableFXAA,
                         onToggle = { enableFXAA = !enableFXAA },
+                    )
+                    ScreenEffectToggleRow(
+                        title = stringResource(R.string.screen_effects_vivid),
+                        subtitle = stringResource(R.string.screen_effects_vivid_description),
+                        enabled = enableVivid,
+                        onToggle = { enableVivid = !enableVivid },
                     )
                     ScreenEffectToggleRow(
                         title = stringResource(R.string.screen_effects_crt),

@@ -103,6 +103,7 @@
     <string name="confirm_delete">Confirmar eliminación</string>
     <string name="destination_library">Biblioteca</string>
     <string name="destination_downloads">Descargas y almacenamiento</string>
+    <string name="downloads_section_title">Descargas</string>
 
     <string name="downloads_empty">No hay descargas activas</string>
     <string name="downloads_overview_subtitle">Sigue las descargas activas, pausadas y reanudables</string>
@@ -242,6 +243,7 @@
     <string name="intent_launch_service_pending">El juego se iniciará cuando el servicio esté listo</string>
     <string name="intent_launch_steam_login_failed">Error de inicio de sesión en Steam — lanzamiento del juego cancelado</string>
     <string name="intent_launch_service_timeout">El servicio del juego no pudo iniciarse — lanzamiento del juego cancelado</string>
+    <string name="back_press_exit_warning">Pulsa atrás de nuevo para salir</string>
     <string name="game_executable_not_found_title">No se puede iniciar</string>
     <string name="game_executable_not_found">No se pudo seleccionar automáticamente el ejecutable. Establece la ruta en los ajustes del contenedor.</string>
     <string name="save_container_settings_title">Guardar configuración del contenedor</string>
@@ -303,6 +305,8 @@
     <string name="screen_effects_toon_description">Añade contornos oscuros para un aspecto cel shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Suaviza los bordes dentados con un ligero efecto de antialiasing en posprocesado.</string>
+    <string name="screen_effects_vivid">Vívido</string>
+    <string name="screen_effects_vivid_description">Añade bloom y un aumento de contraste para una imagen más intensa.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Añade líneas de exploración y una sutil aberración cromática.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -914,6 +918,8 @@
     <string name="settings_interface_external_links_subtitle">Los enlaces se abrirán en tu navegador web principal.</string>
     <string name="settings_interface_hide_statusbar_title">Ocultar barra de estado fuera del juego</string>
     <string name="settings_interface_hide_statusbar_subtitle">Oculta la barra de estado de Android en la lista de juegos, ajustes, etc. La aplicación se reiniciará al cambiar.</string>
+    <string name="settings_interface_warn_before_exit_title">Avisar antes de salir</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Requiere pulsar atrás dos veces para salir — la primera muestra un aviso</string>
     <string name="settings_interface_icon_style">Estilo del icono</string>
     <string name="settings_interface_wifi_only_title">Descargar solo por Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Evita descargas con datos móviles.</string>
