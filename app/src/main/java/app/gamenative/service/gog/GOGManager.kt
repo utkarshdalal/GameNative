@@ -1083,8 +1083,8 @@ class GOGManager @Inject constructor(
                 // The remote config API returned no locations, meaning this game either has cloud
                 // saves disabled or no save paths configured. We don't fall back to the default
                 // GOG Galaxy path (%LOCALAPPDATA%/GOG.com/Galaxy/Applications/<clientId>/Storage/…)
-                // because clientSecret also comes from the API — without it, the token exchange
-                // always fails and we'd just show a false "Offline" status.
+                // because clientSecret also comes from the API — without it, cloud auth cannot
+                // succeed and the fallback path can never be used for a real sync.
                 Timber.tag("GOG").d("[Cloud Saves] No save locations from API for game $gameId, cloud saves not supported")
                 return@withContext null
             }
