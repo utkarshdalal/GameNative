@@ -3233,7 +3233,9 @@ private fun getWineStartCommand(
                     Timber.e("Could not locate game drive")
                     'D'
                 }
-                envVars.put("WINEPATH", "$drive:/${appLaunchInfo?.workingDir}")
+                if (appLaunchInfo != null){
+                    envVars.put("WINEPATH", "$drive:/${appLaunchInfo.workingDir}")
+                }
                 "\"$drive:/${executablePath}\""
             } else {
                 "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamclient_loader_x64.exe\""
