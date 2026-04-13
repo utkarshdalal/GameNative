@@ -31,6 +31,7 @@ import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Response
+import okhttp3.ResponseBody
 import java.util.Date
 import org.junit.After
 import org.junit.Assert.*
@@ -285,9 +286,8 @@ class SteamAutoCloudTest {
 
         // Create prefixToPath function that maps to our test directory structure
         val prefixToPath: (String) -> String = { prefix ->
-            val stripped = prefix.removePrefix("%").removeSuffix("%")
             when {
-                stripped == "WinMyDocuments" -> {
+                prefix == "WinMyDocuments" -> {
                     val imageFs = ImageFs.find(context)
                     val wineprefix = File(imageFs.wineprefix)
                     val dosDevices = File(wineprefix, "dosdevices")
@@ -318,7 +318,7 @@ class SteamAutoCloudTest {
         assertEquals("Should have 5 files managed", 5, result.filesManaged)
     }
 
-    @Test
+//    @Test
     fun testDownloadCloudSavesOnFirstBoot() = runBlocking {
         // Clear existing files and database state
         saveFilesDir.listFiles()?.forEach { it.delete() }
@@ -344,26 +344,23 @@ class SteamAutoCloudTest {
         val cloudFile2Sha = CryptoHelper.shaHash(cloudFile2Content)
         val cloudFile3Sha = CryptoHelper.shaHash(cloudFile3Content)
 
-        // Filenames must match save patterns so the post-download re-scan can find them.
-        // Pattern 2 matches *SaveData*.sav, pattern 3 matches SystemData_0.sav.
-        // Cloud prefix points to the pattern path dir, and files are placed in the
-        // SaveGames/ subdirectory matching the local structure.
+        // Create mock AppFileInfo instances
         val mockFile1 = mock<AppFileInfo>()
-        whenever(mockFile1.filename).thenReturn("SaveGames/AutoSaveData.sav")
+        whenever(mockFile1.filename).thenReturn("cloud_save_1.sav")
         whenever(mockFile1.shaFile).thenReturn(cloudFile1Sha)
         whenever(mockFile1.pathPrefixIndex).thenReturn(0)
         whenever(mockFile1.timestamp).thenReturn(Date())
         whenever(mockFile1.rawFileSize).thenReturn(cloudFile1Content.size)
 
         val mockFile2 = mock<AppFileInfo>()
-        whenever(mockFile2.filename).thenReturn("SaveGames/SaveData_0.sav")
+        whenever(mockFile2.filename).thenReturn("cloud_save_2.sav")
         whenever(mockFile2.shaFile).thenReturn(cloudFile2Sha)
         whenever(mockFile2.pathPrefixIndex).thenReturn(0)
         whenever(mockFile2.timestamp).thenReturn(Date())
         whenever(mockFile2.rawFileSize).thenReturn(cloudFile2Content.size)
 
         val mockFile3 = mock<AppFileInfo>()
-        whenever(mockFile3.filename).thenReturn("SaveGames/SystemData_0.sav")
+        whenever(mockFile3.filename).thenReturn("cloud_save_3.sav")
         whenever(mockFile3.shaFile).thenReturn(cloudFile3Sha)
         whenever(mockFile3.pathPrefixIndex).thenReturn(0)
         whenever(mockFile3.timestamp).thenReturn(Date())
@@ -408,9 +405,8 @@ class SteamAutoCloudTest {
         whenever(mockDownloadInfo3.rawFileSize).thenReturn(cloudFile3Content.size)
 
         // Mock clientFileDownload to return appropriate download info based on filename in the path
-        // must match all 5 JVM params (Kotlin default-param bridge) or relaxed mock returns uncompleted future
         var downloadCallCount = 0
-        every { mockSteamCloud.clientFileDownload(any(), any(), any(), any(), any()) } answers {
+        every { mockSteamCloud.clientFileDownload(any(), any()) } answers {
             downloadCallCount++
             when (downloadCallCount) {
                 1 -> CompletableFuture.completedFuture(mockDownloadInfo1)
@@ -426,28 +422,31 @@ class SteamAutoCloudTest {
         whenever(mockHttpClient.newCall(any())).thenReturn(mockCall)
 
         // Create mock responses with file content
+        val responseBody1 = ResponseBody.create(null, cloudFile1Content)
         val response1 = Response.Builder()
             .request(okhttp3.Request.Builder().url("https://test.example.com/download/file1").build())
             .protocol(Protocol.HTTP_1_1)
             .code(200)
             .message("OK")
-            .body(cloudFile1Content.toResponseBody())
+            .body(responseBody1)
             .build()
 
+        val responseBody2 = ResponseBody.create(null, cloudFile2Content)
         val response2 = Response.Builder()
             .request(okhttp3.Request.Builder().url("https://test.example.com/download/file2").build())
             .protocol(Protocol.HTTP_1_1)
             .code(200)
             .message("OK")
-            .body(cloudFile2Content.toResponseBody())
+            .body(responseBody2)
             .build()
 
+        val responseBody3 = ResponseBody.create(null, cloudFile3Content)
         val response3 = Response.Builder()
             .request(okhttp3.Request.Builder().url("https://test.example.com/download/file3").build())
             .protocol(Protocol.HTTP_1_1)
             .code(200)
             .message("OK")
-            .body(cloudFile3Content.toResponseBody())
+            .body(responseBody3)
             .build()
 
         // Return responses in order
@@ -470,9 +469,8 @@ class SteamAutoCloudTest {
 
         // Create prefixToPath function
         val prefixToPath: (String) -> String = { prefix ->
-            val stripped = prefix.removePrefix("%").removeSuffix("%")
             when {
-                stripped == "WinMyDocuments" -> {
+                prefix == "WinMyDocuments" -> {
                     val imageFs = ImageFs.find(context)
                     val wineprefix = File(imageFs.wineprefix)
                     val dosDevices = File(wineprefix, "dosdevices")
@@ -498,14 +496,14 @@ class SteamAutoCloudTest {
 
         // Verify result
         assertNotNull("Result should not be null", result)
-        assertEquals("Sync result should be Success", SyncResult.Success, result!!.syncResult)
-        assertEquals("Should download 3 files", 3, result.filesDownloaded)
+        assertEquals("Should download 3 files", 3, result!!.filesDownloaded)
+        assertEquals("Sync result should be Success", SyncResult.Success, result.syncResult)
         assertTrue("Bytes downloaded should be > 0", result.bytesDownloaded > 0)
 
-        // Files land in saveFilesDir (SaveGames/) because cloud filenames include the subdir
-        val expectedFile1 = File(saveFilesDir, "AutoSaveData.sav")
-        val expectedFile2 = File(saveFilesDir, "SaveData_0.sav")
-        val expectedFile3 = File(saveFilesDir, "SystemData_0.sav")
+        // Verify files were written to disk
+        val expectedFile1 = File(saveFilesDir, "cloud_save_1.sav")
+        val expectedFile2 = File(saveFilesDir, "cloud_save_2.sav")
+        val expectedFile3 = File(saveFilesDir, "cloud_save_3.sav")
 
         assertTrue("File 1 should exist", expectedFile1.exists())
         assertTrue("File 2 should exist", expectedFile2.exists())
@@ -518,7 +516,7 @@ class SteamAutoCloudTest {
         // Verify database change number was updated
         val changeNumber = db.appChangeNumbersDao().getByAppId(steamAppId)
         assertNotNull("Change number should exist", changeNumber)
-        assertEquals("Change number should match cloud", cloudChangeNumber.toLong(), changeNumber!!.changeNumber)
+        assertEquals("Change number should match cloud", cloudChangeNumber, changeNumber!!.changeNumber)
     }
 
     @Test
@@ -599,9 +597,8 @@ class SteamAutoCloudTest {
 
         // Create prefixToPath function
         val prefixToPath: (String) -> String = { prefix ->
-            val stripped = prefix.removePrefix("%").removeSuffix("%")
             when {
-                stripped == "WinMyDocuments" -> {
+                prefix == "WinMyDocuments" -> {
                     val imageFs = ImageFs.find(context)
                     val wineprefix = File(imageFs.wineprefix)
                     val dosDevices = File(wineprefix, "dosdevices")
@@ -862,9 +859,8 @@ class SteamAutoCloudTest {
 
         // Create prefixToPath function
         val prefixToPath: (String) -> String = { prefix ->
-            val stripped = prefix.removePrefix("%").removeSuffix("%")
             when {
-                stripped == "WinMyDocuments" -> {
+                prefix == "WinMyDocuments" -> {
                     val imageFs = ImageFs.find(context)
                     val wineprefix = File(imageFs.wineprefix)
                     val dosDevices = File(wineprefix, "dosdevices")
@@ -966,8 +962,13 @@ class SteamAutoCloudTest {
                 downloadInfo
             }
 
-        // Mock clientFileDownload — must match all 5 JVM params (Kotlin default-param bridge)
+        // Mock clientFileDownload to return appropriate download info based on filename in the path
         var downloadCallCount = -1
+        every { mockSteamCloud.clientFileDownload(any(), any()) } answers {
+            ++downloadCallCount
+            CompletableFuture.completedFuture(mockDownloadFiles[downloadCallCount])
+        }
+
         every { mockSteamCloud.clientFileDownload(any(), any(), any(), any(), any()) } answers {
             ++downloadCallCount
             CompletableFuture.completedFuture(mockDownloadFiles[downloadCallCount])
@@ -1041,7 +1042,7 @@ class SteamAutoCloudTest {
 
             val changeNumber = db.appChangeNumbersDao().getByAppId(steamAppId)
             assertNotNull("Change number should exist", changeNumber)
-            assertEquals("Change number should match cloud", cloudChangeNumber.toLong(), changeNumber!!.changeNumber)
+            assertEquals("Change number should match cloud", cloudChangeNumber, changeNumber!!.changeNumber)
         }
     }
 
@@ -1279,7 +1280,7 @@ class SteamAutoCloudTest {
             CompletableFuture.completedFuture(Unit)
 
         val prefixToPath: (String) -> String = { prefix ->
-            when (prefix.removePrefix("%").removeSuffix("%")) {
+            when (prefix) {
                 "WinAppDataRoaming" -> roamingRoot.absolutePath
                 else -> tempDir.absolutePath
             }
@@ -1388,7 +1389,7 @@ class SteamAutoCloudTest {
             CompletableFuture.completedFuture(Unit)
 
         val prefixToPath: (String) -> String = { prefix ->
-            when (prefix.removePrefix("%").removeSuffix("%")) {
+            when (prefix) {
                 "WinAppDataRoaming" -> roamingRoot.absolutePath
                 else -> tempDir.absolutePath
             }
@@ -1417,7 +1418,6 @@ class SteamAutoCloudTest {
             filesToUpload.any { it.startsWith("%WinAppDataRoaming%") }
         )
     }
-
     // ── Sync decision tests ──────────────────────────────────────────────
     // These test what happens when a user launches a game under various
     // combinations of local save state and cloud save state.
@@ -1606,6 +1606,118 @@ class SteamAutoCloudTest {
             result!!.syncResult,
         )
         assertTrue("Should have downloaded files", result.filesDownloaded > 0)
+    }
+
+    // ── Scenario 2b: First boot, cloud has multiple files → download all, verify on disk ──
+    // Replaces the disabled testDownloadCloudSavesOnFirstBoot which had several mock bugs.
+    @Test
+    fun firstBoot_multipleCloudFiles_downloadsAll() = runBlocking {
+        db.appChangeNumbersDao().deleteByAppId(steamAppId)
+        db.appFileChangeListsDao().deleteByAppId(steamAppId)
+        saveFilesDir.listFiles()?.forEach { it.delete() }
+
+        val file1Content = "save file alpha".toByteArray()
+        val file2Content = "save file beta".toByteArray()
+        val file3Content = "system data".toByteArray()
+
+        fun makeFileInfo(name: String, content: ByteArray): AppFileInfo {
+            val m = mock<AppFileInfo>()
+            whenever(m.filename).thenReturn(name)
+            whenever(m.shaFile).thenReturn(sha1(content))
+            whenever(m.pathPrefixIndex).thenReturn(0)
+            whenever(m.timestamp).thenReturn(Date())
+            whenever(m.rawFileSize).thenReturn(content.size)
+            return m
+        }
+
+        // filenames must match UFS save patterns so post-download re-scan finds them
+        val cloudFiles = listOf(
+            makeFileInfo("AutoSaveData.sav", file1Content),
+            makeFileInfo("SaveData_0.sav", file2Content),
+            makeFileInfo("SystemData_0.sav", file3Content),
+        )
+        val contents = listOf(file1Content, file2Content, file3Content)
+
+        val cloudFileChangeList = makeCloudFileChangeList(
+            cloudChangeNumber = 5,
+            files = cloudFiles,
+            pathPrefixes = listOf("%WinMyDocuments%/My Games/TestGame/Steam/76561198025127569/SaveGames"),
+        )
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(cloudFileChangeList)
+
+        // mock download info per file
+        val downloadInfos = contents.mapIndexed { i, content ->
+            mock<FileDownloadInfo>().also { d ->
+                whenever(d.urlHost).thenReturn("test.example.com")
+                whenever(d.urlPath).thenReturn("/download/file${i + 1}")
+                whenever(d.useHttps).thenReturn(true)
+                whenever(d.requestHeaders).thenReturn(emptyList())
+                whenever(d.fileSize).thenReturn(content.size)
+                whenever(d.rawFileSize).thenReturn(content.size)
+            }
+        }
+
+        // must match all 5 JVM params (Kotlin default-param bridge)
+        var dlCount = 0
+        every { mockSteamCloud.clientFileDownload(any(), any(), any(), any(), any()) } answers {
+            CompletableFuture.completedFuture(downloadInfos[dlCount++])
+        }
+
+        // mock HTTP responses
+        val mockHttpClient = mock<OkHttpClient>()
+        val mockCall = mock<Call>()
+        whenever(mockHttpClient.newCall(any())).thenReturn(mockCall)
+
+        var httpCount = 0
+        whenever(mockCall.execute()).thenAnswer {
+            val content = contents[httpCount++]
+            Response.Builder()
+                .request(okhttp3.Request.Builder().url("https://test.example.com/download/file$httpCount").build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body(content.toResponseBody())
+                .build()
+        }
+
+        val mockSteamClient = mockSteamService.steamClient!!
+        val mockConfig = mock<SteamConfiguration>()
+        whenever(mockSteamClient.configuration).thenReturn(mockConfig)
+        whenever(mockConfig.httpClient).thenReturn(mockHttpClient)
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.Success, result!!.syncResult)
+        assertEquals("Should download 3 files", 3, result.filesDownloaded)
+        assertTrue("Bytes downloaded should be > 0", result.bytesDownloaded > 0)
+
+        // verify files on disk
+        val expected1 = File(saveFilesDir, "AutoSaveData.sav")
+        val expected2 = File(saveFilesDir, "SaveData_0.sav")
+        val expected3 = File(saveFilesDir, "SystemData_0.sav")
+
+        assertTrue("File 1 should exist", expected1.exists())
+        assertTrue("File 2 should exist", expected2.exists())
+        assertTrue("File 3 should exist", expected3.exists())
+
+        assertEquals("File 1 content", file1Content.contentToString(), expected1.readBytes().contentToString())
+        assertEquals("File 2 content", file2Content.contentToString(), expected2.readBytes().contentToString())
+        assertEquals("File 3 content", file3Content.contentToString(), expected3.readBytes().contentToString())
+
+        // verify DB change number updated
+        val cn = db.appChangeNumbersDao().getByAppId(steamAppId)
+        assertNotNull("Change number should exist", cn)
+        assertEquals("Change number should match cloud", 5L, cn!!.changeNumber)
     }
 
     // ── Scenario 3: User plays offline on a train, comes home — cloud untouched ──
