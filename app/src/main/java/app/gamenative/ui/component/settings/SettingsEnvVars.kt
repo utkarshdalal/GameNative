@@ -75,7 +75,7 @@ fun SettingsEnvVars(
                     value = value,
                     suggestions = envVarInfo?.possibleValues ?: emptyList(),
                     onValueChange = {
-                        envVars.put(identifier, it)
+                        envVars.put(identifier, it.trim())
                         onEnvVarsChange(envVars)
                     },
                     action = envVarAction?.let {
@@ -106,16 +106,16 @@ fun SettingsEnvVars(
                         enabled = enabled,
                         title = { Text(identifier) },
                         value = value,
-                        onValueChange = {
-                            envVars.put(identifier, it)
-                            onEnvVarsChange(envVars)
-                        },
-                        action = envVarAction?.let {
-                            { envVarAction(identifier) }
-                        },
-                    )
-                }
+                    onValueChange = {
+                        envVars.put(identifier, it.trim())
+                        onEnvVarsChange(envVars)
+                    },
+                    action = envVarAction?.let {
+                        { envVarAction(identifier) }
+                    },
+                )
             }
         }
     }
+}
 }

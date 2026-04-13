@@ -95,7 +95,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                     Row {
                         NoExtractOutlinedTextField(
                             value = envVarName,
-                            onValueChange = { envVarName = it },
+                            onValueChange = { envVarName = it.trim() },
                             label = { Text(text = stringResource(R.string.name)) },
                             singleLine = true,
                             trailingIcon = {
@@ -160,7 +160,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                         val hasSuggestions = selectedEnvVarInfo?.selectionType == EnvVarSelectionType.SUGGESTIONS
                         NoExtractOutlinedTextField(
                             value = envVarValue,
-                            onValueChange = { envVarValue = it },
+                            onValueChange = { envVarValue = it.trim() },
                             label = { Text(text = stringResource(R.string.value)) },
                             singleLine = true,
                             trailingIcon = if (hasSuggestions) {
@@ -202,7 +202,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                     enabled = envVarName.isNotEmpty(),
                     onClick = {
                         val envVars = EnvVars(config.envVars)
-                        envVars.put(envVarName, envVarValue)
+                        envVars.put(envVarName.trim(), envVarValue.trim())
                         state.config.value = config.copy(envVars = envVars.toString())
                         state.showEnvVarCreateDialog.value = false
                     },

@@ -209,6 +209,18 @@ data class EnvVarInfo(
                     "memory", "gpuload", "version", "api", "cs", "compiler", "samplers",
                 ),
             ),
+            // Wine DLL overrides — user types freely or picks a common preset
+            // More common DLL overrides can be added in future. Only audio related for now
+            "WINEDLLOVERRIDES" to EnvVarInfo(
+                identifier = "WINEDLLOVERRIDES",
+                selectionType = EnvVarSelectionType.SUGGESTIONS,
+                possibleValues = listOf(
+                    "openal32=native,builtin",
+                    "soft_oal=native",
+                    "openal32=native,builtin;soft_oal=native",
+                    "xaudio2_7=native,builtin",
+                ),
+            ),
             "MESA_EXTENSION_MAX_YEAR" to EnvVarInfo(
                 identifier = "MESA_EXTENSION_MAX_YEAR",
             ),
@@ -270,26 +282,18 @@ data class EnvVarInfo(
             "MESA_VK_PRESENT_MODE" to EnvVarInfo(
                 identifier = "MESA_VK_PRESENT_MODE",
             ),
-            "DXVK_FILTER_DEVICE_NAME" to EnvVarInfo(
-                identifier = "DXVK_FILTER_DEVICE_NAME",
-                selectionType = EnvVarSelectionType.MULTI_SELECT,
-                possibleValues = listOf(
-                    "NVIDIA GeForce GTX 1080",
-                    "NVIDIA GeForce RTX 3060",
-                    "AMD Radeon RX 580",
-                    "Radeon HD 7900 Series",
-                ),
+            "MANGOHUD" to EnvVarInfo(
+                identifier = "MANGOHUD",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
             ),
-            // Wine DLL overrides — user types freely or picks a common preset
-            // More common DLL overrides can be added in future. Only audio related for now
-            "WINEDLLOVERRIDES" to EnvVarInfo(
-                identifier = "WINEDLLOVERRIDES",
+            "MANGOHUD_CONFIG" to EnvVarInfo(
+                identifier = "MANGOHUD_CONFIG",
                 selectionType = EnvVarSelectionType.SUGGESTIONS,
                 possibleValues = listOf(
-                    "openal32=native,builtin",
-                    "soft_oal=native",
-                    "openal32=native,builtin;soft_oal=native",
-                    "xaudio2_7=native,builtin",
+                    "fps",
+                    "fps_limit=60",
+                    "fps_only",
                 ),
             ),
         )
