@@ -46,6 +46,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
 import java.io.OutputStream
 import java.net.SocketTimeoutException
+import java.nio.file.attribute.FileTime
 
 /**
  * [Steam Auto Cloud](https://partner.steamgames.com/doc/features/cloud#steam_auto-cloud)
@@ -434,6 +435,17 @@ object SteamAutoCloud {
                                                 lastReportedProgress = currentProgress
                                             }
                                         }
+                                    }
+
+                                    // Preserve file timestamp from steamcloud, could fix game save loading, tested Skyrim
+                                    try {
+                                        // Ensure your fileDownloadInfo actually contains a timestamp (Long)
+                                        fileDownloadInfo.timestamp.let { timestamp ->
+                                            val fileTime = FileTime.fromMillis(timestamp.time)
+                                            Files.setLastModifiedTime(actualFilePath, fileTime)
+                                        }
+                                    } catch (e: Exception) {
+                                        Timber.w("Failed to set lastModified for $actualFilePath: ${e.message}")
                                     }
 
                                     if (totalBytesRead != totalFileSize) {
