@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face4
+import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -157,6 +159,22 @@ internal fun ListViewCard(
                 ) {
                     InstallStatusBadge(appInfo = appInfo, isRefreshing = isRefreshing)
 
+                    if (appInfo.isFavorite) {
+                        StatusPill(
+                            text = stringResource(R.string.favorite),
+                            icon = Icons.Filled.Star,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+
+                    if (appInfo.tags.isNotEmpty()) {
+                        StatusPill(
+                            text = appInfo.tags.first(),
+                            icon = Icons.Filled.Label,
+                            tint = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
+
                     // Family share indicator
                     if (appInfo.isShared) {
                         Row(
@@ -253,6 +271,34 @@ private fun InstallStatusBadge(
             text = text,
             style = MaterialTheme.typography.labelSmall,
             color = color,
+        )
+    }
+}
+
+@Composable
+private fun StatusPill(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    tint: androidx.compose.ui.graphics.Color,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(tint.copy(alpha = 0.14f))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(12.dp),
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = tint,
         )
     }
 }

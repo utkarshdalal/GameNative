@@ -47,11 +47,13 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.SdStorage
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.HorizontalDivider
@@ -320,6 +322,8 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
     return when (type) {
         AppOptionMenuType.StorePage -> Icons.AutoMirrored.Filled.OpenInNew
         AppOptionMenuType.CreateShortcut -> Icons.AutoMirrored.Filled.AddToHomeScreen
+        AppOptionMenuType.ToggleFavorite -> Icons.Default.Star
+        AppOptionMenuType.EditTags -> Icons.Default.Label
         AppOptionMenuType.ExportFrontend -> Icons.Default.Share
         AppOptionMenuType.RunContainer -> Icons.Default.PlayArrow
         AppOptionMenuType.EditContainer -> Icons.Default.Settings
@@ -358,6 +362,8 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
         when (option.optionType) {
             // Quick Actions
             AppOptionMenuType.EditContainer,
+            AppOptionMenuType.ToggleFavorite,
+            AppOptionMenuType.EditTags,
             AppOptionMenuType.RunContainer,
             AppOptionMenuType.CreateShortcut,
             AppOptionMenuType.ExportFrontend,

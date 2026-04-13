@@ -6,6 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import app.gamenative.data.ChangeNumbers
 import app.gamenative.data.AppInfo
+import app.gamenative.data.LibraryMetadata
 import app.gamenative.data.FileChangeLists
 import app.gamenative.data.SteamApp
 import app.gamenative.data.SteamLicense
@@ -21,6 +22,7 @@ import app.gamenative.db.converters.ByteArrayConverter
 import app.gamenative.db.converters.FriendConverter
 import app.gamenative.db.converters.LicenseConverter
 import app.gamenative.db.converters.PathTypeConverter
+import app.gamenative.db.converters.StringListConverter
 import app.gamenative.db.converters.UserFileInfoListConverter
 import app.gamenative.db.converters.GOGConverter
 import app.gamenative.db.dao.ChangeNumbersDao
@@ -32,6 +34,7 @@ import app.gamenative.db.dao.CachedLicenseDao
 import app.gamenative.db.dao.DownloadingAppInfoDao
 import app.gamenative.db.dao.EncryptedAppTicketDao
 import app.gamenative.db.dao.SteamUnlockedBranchDao
+import app.gamenative.db.dao.LibraryMetadataDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.db.dao.EpicGameDao
 import app.gamenative.db.dao.AmazonGameDao
@@ -50,10 +53,11 @@ const val DATABASE_NAME = "pluvia.db"
         GOGGame::class,
         EpicGame::class,
         AmazonGame::class,
+        LibraryMetadata::class,
         DownloadingAppInfo::class,
         SteamUnlockedBranch::class,
     ],
-    version = 19,
+    version = 20,
     // For db migration, visit https://developer.android.com/training/data-storage/room/migrating-db-versions for more information
     exportSchema = true, // It is better to handle db changes carefully, as GN is getting much more users.
     autoMigrations = [
@@ -72,6 +76,7 @@ const val DATABASE_NAME = "pluvia.db"
         // v16 users will fallback to destructive migration (only cached Steam data, re-fetched on login)
         AutoMigration(from = 17, to = 18), // Added workshop_mods, enabled_workshop_item_ids, workshop_download_pending to steam_app
         AutoMigration(from = 18, to = 19), // Added recovered_install_size_bytes to app_info
+        AutoMigration(from = 19, to = 20), // Added library_metadata table
     ]
 )
 @TypeConverters(
@@ -80,6 +85,7 @@ const val DATABASE_NAME = "pluvia.db"
     FriendConverter::class,
     LicenseConverter::class,
     PathTypeConverter::class,
+    StringListConverter::class,
     UserFileInfoListConverter::class,
     GOGConverter::class,
 )
@@ -108,4 +114,6 @@ abstract class PluviaDatabase : RoomDatabase() {
     abstract fun downloadingAppInfoDao(): DownloadingAppInfoDao
 
     abstract fun steamUnlockedBranchDao(): SteamUnlockedBranchDao
+
+    abstract fun libraryMetadataDao(): LibraryMetadataDao
 }

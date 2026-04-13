@@ -5,8 +5,10 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -20,7 +22,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import app.gamenative.PluviaApp
 import app.gamenative.R
@@ -38,6 +42,7 @@ import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
+import app.gamenative.utils.LibraryMetadataStore
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
 import kotlinx.coroutines.CancellationException
@@ -134,6 +139,7 @@ abstract class BaseAppScreen {
         private val installDialogStates = mutableStateMapOf<String, app.gamenative.ui.component.dialog.state.MessageDialogState>()
         private val exportConfigRequests = mutableStateMapOf<String, Boolean>()
         private val importConfigRequests = mutableStateMapOf<String, Boolean>()
+        private val editTagsRequests = mutableStateMapOf<String, Boolean>()
         private val knownConfigInstallStates = mutableStateMapOf<Int, KnownConfigInstallState>()
 
         fun showInstallDialog(appId: String, state: app.gamenative.ui.component.dialog.state.MessageDialogState) {
@@ -170,6 +176,18 @@ abstract class BaseAppScreen {
 
         fun shouldImportConfig(appId: String): Boolean {
             return importConfigRequests[appId] == true
+        }
+
+        fun requestEditTags(appId: String) {
+            editTagsRequests[appId] = true
+        }
+
+        fun clearEditTagsRequest(appId: String) {
+            editTagsRequests.remove(appId)
+        }
+
+        fun shouldEditTags(appId: String): Boolean {
+            return editTagsRequests[appId] == true
         }
 
         fun showKnownConfigInstallState(gameId: Int, state: KnownConfigInstallState) {
@@ -319,6 +337,13 @@ abstract class BaseAppScreen {
      */
     protected fun getGameId(libraryItem: LibraryItem): Int {
         return libraryItem.gameId
+    }
+
+    private fun sanitizeTags(raw: String): List<String> {
+        return raw.split(',', '\n', ';')
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
     }
 
     /**
@@ -725,6 +750,33 @@ abstract class BaseAppScreen {
     ): List<AppMenuOption> {
         val isInstalled = isInstalled(context, libraryItem)
         val menuOptions = mutableListOf<AppMenuOption>()
+        val scope = rememberCoroutineScope()
+        val gameName = getGameName(context, libraryItem)
+
+        menuOptions.add(
+            AppMenuOption(
+                optionType = AppOptionMenuType.ToggleFavorite,
+                onClick = {
+                    scope.launch(Dispatchers.IO) {
+                        val newValue = LibraryMetadataStore.toggleFavorite(libraryItem.appId)
+                        val message = if (newValue) {
+                            context.getString(R.string.library_game_favorited, gameName)
+                        } else {
+                            context.getString(R.string.library_game_unfavorited, gameName)
+                        }
+                        SnackbarManager.show(message)
+                    }
+                },
+            )
+        )
+        menuOptions.add(
+            AppMenuOption(
+                optionType = AppOptionMenuType.EditTags,
+                onClick = {
+                    requestEditTags(libraryItem.appId)
+                },
+            )
+        )
 
         // Always available: Edit Container
         menuOptions.add(getEditContainerOption(context, libraryItem, onEditContainer))
@@ -829,6 +881,12 @@ abstract class BaseAppScreen {
         var showConfigDialog by androidx.compose.runtime.remember {
             androidx.compose.runtime.mutableStateOf(false)
         }
+        var showTagsDialog by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableStateOf(false)
+        }
+        var tagsText by androidx.compose.runtime.remember(libraryItem.appId) {
+            androidx.compose.runtime.mutableStateOf(libraryItem.tags.joinToString(", "))
+        }
         var containerData by androidx.compose.runtime.remember {
             androidx.compose.runtime.mutableStateOf(ContainerData())
         }
@@ -867,6 +925,17 @@ abstract class BaseAppScreen {
             snapshotFlow { shouldExportConfig(appId) }
                 .collect { shouldRequest ->
                     exportConfigRequested = shouldRequest
+                }
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldEditTags(appId) }
+                .collect { shouldRequest ->
+                    if (shouldRequest) {
+                        tagsText = libraryItem.tags.joinToString(", ")
+                        showTagsDialog = true
+                        clearEditTagsRequest(appId)
+                    }
                 }
         }
 
@@ -1033,6 +1102,57 @@ abstract class BaseAppScreen {
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
+                },
+            )
+        }
+
+        if (showTagsDialog) {
+            AlertDialog(
+                onDismissRequest = { showTagsDialog = false },
+                title = {
+                    Text(text = stringResource(R.string.library_edit_tags_title))
+                },
+                text = {
+                    OutlinedTextField(
+                        value = tagsText,
+                        onValueChange = { tagsText = it },
+                        label = { Text(stringResource(R.string.library_tags_label)) },
+                        placeholder = { Text(stringResource(R.string.library_tags_hint)) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val parsedTags = sanitizeTags(tagsText)
+                            val displayName = displayInfo.name
+                            uiScope.launch(Dispatchers.IO) {
+                                LibraryMetadataStore.setTags(libraryItem.appId, parsedTags)
+                                SnackbarManager.show(
+                                    if (parsedTags.isEmpty()) {
+                                        context.getString(
+                                            R.string.library_tags_cleared,
+                                            displayName,
+                                        )
+                                    } else {
+                                        context.getString(
+                                            R.string.library_tags_saved,
+                                            displayName,
+                                            parsedTags.joinToString(", "),
+                                        )
+                                    },
+                                )
+                            }
+                            showTagsDialog = false
+                        },
+                    ) {
+                        Text(stringResource(R.string.save))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showTagsDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
                 },
             )
         }

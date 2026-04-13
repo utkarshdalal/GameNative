@@ -6,6 +6,8 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Diversity3
 import androidx.compose.material.icons.filled.InstallMobile
+import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -52,6 +54,16 @@ enum class AppFilter(
         code = 0x40,
         displayText = "Compatible",
         icon = Icons.Rounded.Verified,
+    ),
+    FAVORITES(
+        code = 0x80,
+        displayText = "Favorites",
+        icon = Icons.Default.Star,
+    ),
+    TAGGED(
+        code = 0x100,
+        displayText = "Tagged",
+        icon = Icons.Default.Label,
     ),
     // ALPHABETIC(
     //     code = 0x20,

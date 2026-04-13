@@ -7,10 +7,12 @@ import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.GOGGameDao
+import app.gamenative.db.dao.LibraryMetadataDao
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.EventDispatcher
 import app.gamenative.service.DownloadService
 import app.gamenative.utils.ContainerMigrator
+import app.gamenative.utils.LibraryMetadataStore
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.PlayIntegrity
 import java.io.File
@@ -43,6 +45,7 @@ class PluviaApp : SplitCompatApplication() {
 
     @Inject lateinit var gogGameDao: GOGGameDao
     @Inject lateinit var amazonGameDao: AmazonGameDao
+    @Inject lateinit var libraryMetadataDao: LibraryMetadataDao
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -70,6 +73,7 @@ class PluviaApp : SplitCompatApplication() {
 
         // Init our datastore preferences.
         PrefManager.init(this)
+        LibraryMetadataStore.init(libraryMetadataDao)
 
         // Initialize GOGConstants
         app.gamenative.service.gog.GOGConstants.init(this)

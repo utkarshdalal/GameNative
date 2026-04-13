@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.PhotoSizeSelectActual
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SortByAlpha
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -252,6 +253,33 @@ fun LibraryOptionsPanel(
 
                         Spacer(modifier = Modifier.height(20.dp))
 
+                        OptionSectionHeader(text = stringResource(R.string.library_quality_title))
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusGroup()
+                                .padding(horizontal = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            AppFilter.entries.forEach { appFilter ->
+                                if (appFilter in listOf(
+                                        AppFilter.FAVORITES,
+                                        AppFilter.TAGGED,
+                                    )
+                                ) {
+                                    OptionListItem(
+                                        text = appFilter.displayText,
+                                        selected = selectedFilters.contains(appFilter),
+                                        onClick = { onFilterChanged(appFilter) },
+                                        icon = appFilter.icon,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
                         OptionSectionHeader(text = stringResource(R.string.library_layout_title))
                         Column(
                             modifier = Modifier
@@ -351,6 +379,7 @@ private fun Preview_LibraryOptionsPanel() {
 
 private fun SortOption.icon(): ImageVector = when (this) {
     SortOption.INSTALLED_FIRST -> Icons.Default.Download
+    SortOption.FAVORITES_FIRST -> Icons.Default.Star
     SortOption.NAME_ASC -> Icons.Default.SortByAlpha
     SortOption.NAME_DESC -> Icons.Default.SortByAlpha
     SortOption.RECENTLY_PLAYED -> Icons.Default.Schedule

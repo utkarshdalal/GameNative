@@ -1157,6 +1157,7 @@
     <string name="library_source_not_logged_in_amazon">Sign in to Amazon to see your library</string>
     <string name="library_source_no_custom_games">No custom games added yet</string>
     <string name="library_layout_title">Layout</string>
+    <string name="library_quality_title">Library Quality</string>
     <string name="library_options">Options</string>
     <string name="back">Back</string>
     <string name="cloud">Cloud</string>
@@ -1168,11 +1169,22 @@
     <string name="options_panel_close">Close options</string>
     <string name="options_sort_by">Sort By</string>
     <string name="sort_installed_first">Installed First</string>
+    <string name="sort_favorites_first">Favorites First</string>
     <string name="sort_name_asc">Name (A-Z)</string>
     <string name="sort_name_desc">Name (Z-A)</string>
     <string name="sort_recently_played">Recently Played</string>
     <string name="sort_size_smallest">Size (Smallest)</string>
     <string name="sort_size_largest">Size (Largest)</string>
+    <string name="favorite">Favorite</string>
+    <string name="unfavorite">Unfavorite</string>
+    <string name="tags">Tags</string>
+    <string name="library_game_favorited">%1$s added to favorites</string>
+    <string name="library_game_unfavorited">%1$s removed from favorites</string>
+    <string name="library_edit_tags_title">Edit Tags</string>
+    <string name="library_tags_label">Tags</string>
+    <string name="library_tags_hint">Separate tags with commas</string>
+    <string name="library_tags_saved">%1$s tagged with %2$s</string>
+    <string name="library_tags_cleared">Tags cleared for %1$s</string>
 
     <!-- Game Options Panel -->
     <string name="game_options_title">Options</string>

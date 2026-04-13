@@ -11,6 +11,7 @@ enum class SortOption(
     val key: String,
 ) {
     INSTALLED_FIRST(displayTextRes = R.string.sort_installed_first, key = "installed_first"),
+    FAVORITES_FIRST(displayTextRes = R.string.sort_favorites_first, key = "favorites_first"),
     NAME_ASC(displayTextRes = R.string.sort_name_asc, key = "name_asc"),
     NAME_DESC(displayTextRes = R.string.sort_name_desc, key = "name_desc"),
     RECENTLY_PLAYED(displayTextRes = R.string.sort_recently_played, key = "recently_played"),

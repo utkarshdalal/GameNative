@@ -24,6 +24,7 @@ import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IntentLaunchManager
+import app.gamenative.utils.LibraryMetadataStore
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateInfo
 import com.materialkolor.PaletteStyle
@@ -471,6 +472,7 @@ class MainViewModel @Inject constructor(
             delay(100)
 
             apiJob.await()
+            LibraryMetadataStore.touchLastPlayed(appId)
 
             _uiEvent.send(MainUiEvent.LaunchApp)
         }

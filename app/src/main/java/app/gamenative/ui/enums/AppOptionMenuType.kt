@@ -3,6 +3,8 @@ package app.gamenative.ui.enums
 enum class AppOptionMenuType(val text: String) {
     StorePage("Open store page"),
     CreateShortcut("Create shortcut"),
+    ToggleFavorite("Toggle favorite"),
+    EditTags("Edit tags"),
     ExportFrontend("Export for frontend"),
     RunContainer("Open container"),
     EditContainer("Edit container"),
