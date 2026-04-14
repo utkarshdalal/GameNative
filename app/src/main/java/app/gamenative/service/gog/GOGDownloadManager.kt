@@ -630,7 +630,7 @@ class GOGDownloadManager @Inject constructor(
 
             // Gen 1: one main.bin URL per product; each file is fetched with Range: bytes=offset-(offset+size-1)
             val mainBinUrlByProduct = productUrlMap.mapValues { (_, urls) ->
-                (urls.firstOrNull()?.trimEnd('/') ?: "") + "/main.bin"
+                buildGen1MainBinUrl(urls.firstOrNull())
             }
 
             fun downloadOneFile(f: FileWithProduct, baseDir: File): Result<Unit> {
@@ -740,6 +740,18 @@ class GOGDownloadManager @Inject constructor(
             )
             Result.failure(e)
         }
+    }
+
+    internal fun buildGen1MainBinUrl(baseUrl: String?): String {
+        val safeBase = baseUrl?.trim().orEmpty()
+        require(safeBase.isNotEmpty()) { "Missing Gen 1 secure link URL" }
+
+        val queryIndex = safeBase.indexOf('?')
+        val pathBase = if (queryIndex >= 0) safeBase.substring(0, queryIndex) else safeBase
+        val querySuffix = if (queryIndex >= 0) safeBase.substring(queryIndex) else ""
+        val normalizedPathBase = pathBase.trimEnd('/')
+
+        return "$normalizedPathBase/main.bin$querySuffix"
     }
 
     /**
@@ -969,7 +981,7 @@ class GOGDownloadManager @Inject constructor(
                 val chunkHashes = parser.extractChunkHashes(depotFiles)
 
                 // Build chunk URL map using dependency base URLs
-                val chunkUrlMap = buildChunkUrlMap(chunkHashes, dependencyBaseUrls)
+                val chunkUrlMap = parser.buildChunkUrlMap(chunkHashes, dependencyBaseUrls)
 
                 // Create cache directory for this dependency
                 val depotCacheDir = File(installBaseDir, ".gog_dep_${depot.dependencyId}")
@@ -1046,28 +1058,6 @@ class GOGDownloadManager @Inject constructor(
             onProgress?.invoke(1f)
         }
         result
-    }
-
-    /**
-     * Build chunk URL map using base URLs
-     */
-    private fun buildChunkUrlMap(chunkHashes: List<String>, baseUrls: List<String>): Map<String, String> {
-        val chunkUrlMap = mutableMapOf<String, String>()
-        val baseUrl = baseUrls.firstOrNull() ?: return emptyMap()
-        // Ensure base URL ends with / for proper concatenation
-        val normalizedBaseUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
-
-        chunkHashes.forEach { hash ->
-            // Build GOG Galaxy path format: AA/BB/CCDD...
-            val galaxyPath = if (hash.length >= 4) {
-                "${hash.substring(0, 2)}/${hash.substring(2, 4)}/$hash"
-            } else {
-                hash
-            }
-            chunkUrlMap[hash] = "$normalizedBaseUrl$galaxyPath"
-        }
-
-        return chunkUrlMap
     }
 
     /**
