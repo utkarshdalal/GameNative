@@ -777,7 +777,10 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             }
             moveCursorTo((int) pt[0], (int) pt[1]);
             injectClick(TouchGestureConfig.ACTION_LEFT_CLICK);
-            delayedPress = () -> injectRelease(TouchGestureConfig.ACTION_LEFT_CLICK);
+            delayedPress = () -> {
+                injectRelease(TouchGestureConfig.ACTION_LEFT_CLICK);
+                delayedPress = null;
+            };
             postDelayed(delayedPress, CLICK_DELAYED_TIME);
         }
 
