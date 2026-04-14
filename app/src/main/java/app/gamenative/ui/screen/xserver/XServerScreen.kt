@@ -3778,9 +3778,11 @@ private fun setupWineSystemFiles(
 
     // val wincomponents = if (shortcut != null) shortcut.getExtra("wincomponents", container.winComponents) else container.winComponents
     val wincomponents = container.winComponents
-    if (!wincomponents.equals(container.getExtra("wincomponents"))) {
-        extractWinComponentFiles(context, firstTimeBoot, imageFs, container, containerManager, onExtractFileListener)
+    val wineVersionChanged = container.wineVersion != container.getExtra("wineVersion", container.wineVersion)
+    if (!wincomponents.equals(container.getExtra("wincomponents")) || wineVersionChanged) {
+        extractWinComponentFiles(context, firstTimeBoot || wineVersionChanged, imageFs, container, containerManager, onExtractFileListener)
         container.putExtra("wincomponents", wincomponents)
+        container.putExtra("wineVersion", container.wineVersion)
         containerDataChanged = true
     }
 
