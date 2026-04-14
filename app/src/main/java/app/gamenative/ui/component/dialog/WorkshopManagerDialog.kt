@@ -613,7 +613,8 @@ private fun FolderPickerDialog(
         val dir = currentDir ?: return@remember ""
         val rootDir = roots.find { it.label == currentRootLabel }?.dir ?: return@remember dir.name
         val rel = dir.absolutePath.removePrefix(rootDir.absolutePath).trimStart('/', '\\')
-        if (rel.isEmpty()) currentRootLabel else "$currentRootLabel / ${rel.replace('/', ' ').replace('\\', ' ').replace("  ", " / ")}"
+        val segments = rel.split(Regex("[/\\\\]+")).filterNot { it.isBlank() }
+        if (segments.isEmpty()) currentRootLabel else "$currentRootLabel / ${segments.joinToString(" / ")}"
     }
 
     Dialog(
