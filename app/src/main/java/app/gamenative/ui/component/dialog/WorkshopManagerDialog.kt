@@ -596,13 +596,18 @@ private fun FolderPickerDialog(
         val dir = currentDir
         if (dir != null && dir.isDirectory) {
             loading = true
-            subDirs = withContext(Dispatchers.IO) {
-                dir.listFiles()
-                    ?.filter { it.isDirectory && !it.name.startsWith(".") }
-                    ?.sortedBy { it.name.lowercase() }
-                    ?: emptyList()
+            try {
+                subDirs = withContext(Dispatchers.IO) {
+                    dir.listFiles()
+                        ?.filter { it.isDirectory && !it.name.startsWith(".") }
+                        ?.sortedBy { it.name.lowercase() }
+                        ?: emptyList()
+                }
+            } catch (_: Exception) {
+                subDirs = emptyList()
+            } finally {
+                loading = false
             }
-            loading = false
         } else {
             subDirs = emptyList()
         }
