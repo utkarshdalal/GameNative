@@ -769,6 +769,12 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
         // Simple tap — only if finger stayed within tap tolerance
         if (gestureConfig.getTapEnabled() && !movedBeyondTapThreshold) {
+            if (delayedPress != null) {
+                // If there's a new single tap within 'CLICK_DELAYED_TIME' ms
+                // Immediately release the previous down click
+                removeCallbacks(delayedPress);
+                injectRelease(TouchGestureConfig.ACTION_LEFT_CLICK);
+            }
             moveCursorTo((int) pt[0], (int) pt[1]);
             injectClick(TouchGestureConfig.ACTION_LEFT_CLICK);
             delayedPress = () -> injectRelease(TouchGestureConfig.ACTION_LEFT_CLICK);
