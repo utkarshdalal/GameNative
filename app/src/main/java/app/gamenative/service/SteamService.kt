@@ -43,6 +43,7 @@ import app.gamenative.enums.LoginResult
 import app.gamenative.enums.Marker
 import app.gamenative.enums.OS
 import app.gamenative.enums.OSArch
+import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
@@ -2034,6 +2035,28 @@ class SteamService : Service(), IChallengeUrlChanged {
                 instance?.downloadingAppInfoDao?.deleteApp(downloadInfo.gameId)
 
                 PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(downloadInfo.gameId))
+
+                // Trigger a cloud save download so saves are ready before first launch.
+                instance?.let { svc ->
+                    val appId = downloadInfo.gameId
+                    val steamId = userSteamId
+                    if (steamId != null && !ContainerUtils.isLocalSavesOnly(svc.applicationContext, "STEAM_$appId")) {
+                        svc.scope.launch {
+                            // Must activate the container before resolving save paths / downloading save files.
+                            val container = ContainerUtils.getOrCreateContainer(svc.applicationContext, "STEAM_$appId")
+                            ContainerManager(svc.applicationContext).activateContainer(container)
+
+                            val prefixToPath: (String) -> String = { prefix ->
+                                PathType.from(prefix).toAbsPath(svc.applicationContext, appId, steamId.accountID)
+                            }
+                            forceSyncUserFiles(
+                                appId = appId,
+                                prefixToPath = prefixToPath,
+                                preferredSave = SaveLocation.Remote,
+                            ).await()
+                        }
+                    }
+                }
 
                 // Clear persisted bytes file on successful completion
                 downloadInfo.clearPersistedBytesDownloaded(appDirPath)
