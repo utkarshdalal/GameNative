@@ -219,16 +219,8 @@ class GOGManifestParser @Inject constructor() {
         // Use the first (highest priority) CDN URL as base
         val baseCdnUrl = baseUrls.first()
 
-        // Build full URL for each chunk: baseUrl/aa/bb/aabbccdd...
-        // Where aa/bb are first 4 chars of MD5 hash
         return chunks.associateWith { chunkMd5 ->
-            if (chunkMd5.length >= 4) {
-                val first2 = chunkMd5.substring(0, 2)
-                val next2 = chunkMd5.substring(2, 4)
-                "$baseCdnUrl/$first2/$next2/$chunkMd5"
-            } else {
-                "$baseCdnUrl/$chunkMd5"
-            }
+            buildChunkUrl(baseCdnUrl, chunkMd5)
         }
     }
 
@@ -264,21 +256,37 @@ class GOGManifestParser @Inject constructor() {
             // Use the first (highest priority) CDN URL for this product
             val baseCdnUrl = productUrls.first()
 
-            // Build full URL for chunk: baseUrl/aa/bb/aabbccdd...
-            // Where aa/bb are first 4 chars of MD5 hash
-            val chunkUrl = if (chunkMd5.length >= 4) {
-                val first2 = chunkMd5.substring(0, 2)
-                val next2 = chunkMd5.substring(2, 4)
-                "$baseCdnUrl/$first2/$next2/$chunkMd5"
-            } else {
-                "$baseCdnUrl/$chunkMd5"
-            }
+            val chunkUrl = buildChunkUrl(baseCdnUrl, chunkMd5)
 
             chunkUrlMap[chunkMd5] = chunkUrl
         }
 
         Timber.tag(TAG).d("Built ${chunkUrlMap.size} chunk URLs from ${productUrlMap.size} product(s)")
         return chunkUrlMap
+    }
+
+    private fun buildChunkUrl(baseCdnUrl: String, chunkMd5: String): String {
+        val chunkPath = if (chunkMd5.length >= 4) {
+            val first2 = chunkMd5.substring(0, 2)
+            val next2 = chunkMd5.substring(2, 4)
+            "$first2/$next2/$chunkMd5"
+        } else {
+            chunkMd5
+        }
+
+        return appendPathBeforeQuery(baseCdnUrl, chunkPath)
+    }
+
+    /**
+     * Preserve secure-link query params (e.g. ?__token__=...) by inserting chunk paths before query.
+     */
+    private fun appendPathBeforeQuery(baseUrl: String, path: String): String {
+        val queryIndex = baseUrl.indexOf('?')
+        val pathBase = if (queryIndex >= 0) baseUrl.substring(0, queryIndex) else baseUrl
+        val querySuffix = if (queryIndex >= 0) baseUrl.substring(queryIndex) else ""
+        val normalizedPathBase = pathBase.trimEnd('/')
+        val normalizedPath = path.trimStart('/')
+        return "$normalizedPathBase/$normalizedPath$querySuffix"
     }
 
     /**

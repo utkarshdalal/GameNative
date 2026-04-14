@@ -19,6 +19,8 @@ import java.nio.file.Files
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -258,6 +260,43 @@ class GOGDownloadManagerTest {
 
         installPath.deleteRecursively()
         supportDir.deleteRecursively()
+    }
+
+    @Test
+    fun buildGen1MainBinUrl_insertsPathBeforeQueryToken() {
+        val baseUrl = "https://cdn.gog.com/store/1451150270?__token__=exp=123~acl=*"
+
+        val result = manager.buildGen1MainBinUrl(baseUrl)
+
+        assertEquals(
+            "https://cdn.gog.com/store/1451150270/main.bin?__token__=exp=123~acl=*",
+            result,
+        )
+    }
+
+    @Test
+    fun buildGen1MainBinUrl_appendsPathWithoutQuery() {
+        val result = manager.buildGen1MainBinUrl("https://cdn.gog.com/store/1451150270/")
+
+        assertEquals("https://cdn.gog.com/store/1451150270/main.bin", result)
+    }
+
+    @Test
+    fun buildGen1MainBinUrl_throwsWhenBaseUrlIsNull() {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            manager.buildGen1MainBinUrl(null)
+        }
+
+        assertTrue(exception.message?.contains("Missing Gen 1 secure link URL") == true)
+    }
+
+    @Test
+    fun buildGen1MainBinUrl_throwsWhenBaseUrlIsBlank() {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            manager.buildGen1MainBinUrl("   ")
+        }
+
+        assertTrue(exception.message?.contains("Missing Gen 1 secure link URL") == true)
     }
 
     private fun depotFile(path: String, support: Boolean): DepotFile {
