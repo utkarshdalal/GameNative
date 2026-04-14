@@ -85,6 +85,55 @@ enum class PathType {
         return if (!path.endsWith("/")) "$path/" else path
     }
 
+    /**
+     * Container-aware variant of [toAbsPath]. Resolves paths against the container's own wine
+     * prefix directory rather than the shared `home/xuser` symlink, so this is safe to call
+     * concurrently with any other game session — no container activation required.
+     */
+    fun toAbsPath(context: Context, appId: Int, accountId: Long, container: Container): String {
+        val containerRoot = container.rootDir.absolutePath
+        val path = when (this) {
+            GameInstall -> SteamService.getAppDirPath(appId)
+            SteamUserData -> Paths.get(
+                containerRoot, ".wine",
+                "drive_c/Program Files (x86)/Steam/userdata/$accountId/$appId/remote",
+            ).toString()
+            WinMyDocuments -> Paths.get(
+                containerRoot, ".wine",
+                "drive_c/users/", ImageFs.USER, "Documents/",
+            ).toString()
+            WinAppDataLocal -> Paths.get(
+                containerRoot, ".wine",
+                "drive_c/users/", ImageFs.USER, "AppData/Local/",
+            ).toString()
+            WinAppDataLocalLow -> Paths.get(
+                containerRoot, ".wine",
+                "drive_c/users/", ImageFs.USER, "AppData/LocalLow/",
+            ).toString()
+            WinAppDataRoaming -> Paths.get(
+                containerRoot, ".wine",
+                "drive_c/users/", ImageFs.USER, "AppData/Roaming/",
+            ).toString()
+            WinSavedGames -> Paths.get(
+                containerRoot, ".wine",
+                "drive_c/users/", ImageFs.USER, "Saved Games/",
+            ).toString()
+            WinProgramData -> Paths.get(
+                containerRoot, ".wine",
+                "drive_c/ProgramData/",
+            ).toString()
+            Root -> Paths.get(
+                containerRoot, ".wine",
+                "drive_c/users/", ImageFs.USER, "",
+            ).toString()
+            else -> {
+                Timber.e("Did not recognize or unsupported path type $this")
+                SteamService.getAppDirPath(appId)
+            }
+        }
+        return if (!path.endsWith("/")) "$path/" else path
+    }
+
     val isWindows: Boolean
         get() = when (this) {
             GameInstall,

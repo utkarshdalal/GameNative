@@ -441,21 +441,28 @@ class EpicService : Service() {
 
                     if (result.isSuccess) {
                         Timber.i("[Download] Completed successfully for game $gameId")
-                        downloadInfo.setProgress(1.0f)
-                        downloadInfo.setActive(false)
-
                         SnackbarManager.show("Download completed successfully!")
 
-                        // Trigger a cloud save download so saves are ready before first launch.
-                        if (game.cloudSaveEnabled && !ContainerUtils.isLocalSavesOnly(context, "EPIC_$gameId")) {
-                            instance.scope.launch {
+                        // Download cloud saves so they're ready before first launch.
+                        // Status message keeps isDownloading() true so Play stays hidden during sync.
+                        val epicAppId = "EPIC_$gameId"
+                        if (game.cloudSaveEnabled && !ContainerUtils.isLocalSavesOnly(context, epicAppId)) {
+                            downloadInfo.updateStatusMessage("Syncing saves...")
+                            try {
                                 EpicCloudSavesManager.syncCloudSaves(
                                     context = context,
                                     appId = gameId,
                                     preferredAction = "download",
                                 )
+                            } catch (e: Exception) {
+                                Timber.e(e, "[PostInstallSync] Cloud save sync failed for game $gameId")
                             }
+                            downloadInfo.updateStatusMessage(null)
                         }
+
+                        downloadInfo.setProgress(1.0f)
+                        downloadInfo.setActive(false)
+                        instance.activeDownloads.remove(appId)
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")

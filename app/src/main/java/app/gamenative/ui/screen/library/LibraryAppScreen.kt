@@ -576,7 +576,7 @@ internal fun AppScreenContent(
             val secondsPart = totalSeconds % 60
             "${minutesLeft}m ${secondsPart}s left"
         } else if (isDownloading && downloadProgress >= 1f) {
-            "Unpacking..."
+            downloadStatusMessage?.takeUnless { it.isBlank() } ?: "Unpacking..."
         } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
             downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
         } else {

@@ -371,22 +371,26 @@ class GOGService : Service() {
                         SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     } else {
                         Timber.i("[Download] Completed successfully for game $gameId")
-                        downloadInfo.setProgress(1.0f)
-                        downloadInfo.setActive(false)
-
                         SnackbarManager.show("Download completed successfully!")
 
-                        // Trigger a cloud save download so saves are ready before first launch,
-                        // but only when this title actually exposes cloud save locations.
+                        // Download cloud saves so they're ready before first launch.
+                        // Status message keeps isDownloading() true so Play stays hidden during sync.
                         val appId = "GOG_$gameId"
-                        instance.scope.launch {
-                            val game = instance.gogManager.getGameFromDbById(gameId) ?: return@launch
-                            val locations = instance.gogManager.getSaveDirectoryPath(context, appId, game.title)
-                            val supportsCloudSaves = !locations.isNullOrEmpty()
-                            if (supportsCloudSaves && !ContainerUtils.isLocalSavesOnly(context, appId)) {
+                        val gogGame = instance.gogManager.getGameFromDbById(gameId)
+                        val locations = if (gogGame != null) instance.gogManager.getSaveDirectoryPath(context, appId, gogGame.title) else null
+                        if (!locations.isNullOrEmpty() && !ContainerUtils.isLocalSavesOnly(context, appId)) {
+                            downloadInfo.updateStatusMessage("Syncing saves...")
+                            try {
                                 syncCloudSaves(context, appId, preferredAction = "download")
+                            } catch (e: Exception) {
+                                Timber.e(e, "[PostInstallSync] Cloud save sync failed for game $gameId")
                             }
+                            downloadInfo.updateStatusMessage(null)
                         }
+
+                        downloadInfo.setProgress(1.0f)
+                        downloadInfo.setActive(false)
+                        instance.activeDownloads.remove(gameId)
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "[Download] Exception for game $gameId")

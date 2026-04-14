@@ -302,9 +302,9 @@ class EpicAppScreen : BaseAppScreen() {
     }
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
-        val downloadInfo = EpicService.getDownloadInfo(libraryItem.gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
-        return isDownloading
+        val downloadInfo = EpicService.getDownloadInfo(libraryItem.gameId) ?: return false
+        val isSyncing = downloadInfo.getStatusMessageFlow().value != null
+        return isSyncing || (downloadInfo.getProgress() ?: 0f) < 1f
     }
 
     override fun getDownloadProgress(context: Context, libraryItem: LibraryItem): Float {

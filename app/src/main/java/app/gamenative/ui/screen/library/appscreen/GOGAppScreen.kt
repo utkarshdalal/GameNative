@@ -232,13 +232,11 @@ class GOGAppScreen : BaseAppScreen() {
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
         Timber.tag(TAG).d("isDownloading: checking appId=${libraryItem.appId}")
-        // Check if there's an active download for this GOG game
-        // GOGService expects numeric gameId
-        val downloadInfo = GOGService.getDownloadInfo(libraryItem.gameId.toString())
-        val progress = downloadInfo?.getProgress() ?: 0f
-        val isActive = downloadInfo?.isActive() ?: false
-        val downloading = downloadInfo != null && isActive && progress < 1f
-        Timber.tag(TAG).d("isDownloading: appId=${libraryItem.appId}, hasDownloadInfo=${downloadInfo != null}, active=$isActive, progress=$progress, result=$downloading")
+        val downloadInfo = GOGService.getDownloadInfo(libraryItem.gameId.toString()) ?: return false
+        val isSyncing = downloadInfo.getStatusMessageFlow().value != null
+        val progress = downloadInfo.getProgress() ?: 0f
+        val downloading = isSyncing || (downloadInfo.isActive() && progress < 1f)
+        Timber.tag(TAG).d("isDownloading: appId=${libraryItem.appId}, isSyncing=$isSyncing, active=${downloadInfo.isActive()}, progress=$progress, result=$downloading")
         return downloading
     }
 

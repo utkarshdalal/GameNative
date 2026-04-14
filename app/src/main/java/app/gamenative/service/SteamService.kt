@@ -1949,8 +1949,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                             completeAppDownload(di, dlcAppId, dlcDepotIds, emptyList(), appDirPath, branch)
                         }
 
-                        // Remove the job here
+                        // Remove the job here — Play button becomes visible after this
                         removeDownloadJob(appId)
+                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId))
 
                         // Remove the downloading app info
                         runBlocking {
@@ -2034,26 +2035,27 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // clean up DB record BEFORE notifying UI to avoid stale "Resume" button
                 instance?.downloadingAppInfoDao?.deleteApp(downloadInfo.gameId)
 
-                PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(downloadInfo.gameId))
-
-                // Trigger a cloud save download so saves are ready before first launch.
+                // Download cloud saves so they're ready before first launch.
+                // Uses the container's own path directly — no activation of the shared xuser
+                // symlink needed, so this is safe to run concurrently with any other game session.
                 instance?.let { svc ->
                     val appId = downloadInfo.gameId
                     val steamId = userSteamId
                     if (steamId != null && !ContainerUtils.isLocalSavesOnly(svc.applicationContext, "STEAM_$appId")) {
-                        svc.scope.launch {
-                            // Must activate the container before resolving save paths / downloading save files.
+                        downloadInfo.updateStatusMessage("Syncing saves...")
+                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(downloadInfo.gameId))
+                        try {
                             val container = ContainerUtils.getOrCreateContainer(svc.applicationContext, "STEAM_$appId")
-                            ContainerManager(svc.applicationContext).activateContainer(container)
-
                             val prefixToPath: (String) -> String = { prefix ->
-                                PathType.from(prefix).toAbsPath(svc.applicationContext, appId, steamId.accountID)
+                                PathType.from(prefix).toAbsPath(svc.applicationContext, appId, steamId.accountID, container)
                             }
                             forceSyncUserFiles(
                                 appId = appId,
                                 prefixToPath = prefixToPath,
                                 preferredSave = SaveLocation.Remote,
                             ).await()
+                        } catch (e: Exception) {
+                            Timber.e(e, "[PostInstallSync] Cloud save sync failed for app $appId")
                         }
                     }
                 }
