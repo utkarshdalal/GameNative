@@ -603,7 +603,8 @@ private fun FolderPickerDialog(
                         ?.sortedBy { it.name.lowercase() }
                         ?: emptyList()
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 subDirs = emptyList()
             } finally {
                 loading = false
