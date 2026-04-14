@@ -30,44 +30,41 @@ class ScummGameFix(
         container: Container,
     ): Boolean {
         return try {
-            val scummvmExePath = possibleExecutables.firstOrNull { File(installPath, it).exists() } ?: return false
-            val exeFile = File(installPath, scummvmExePath)
-            val exeDir = exeFile.parentFile ?: File(installPath)
-
-            val localIni = findScummVmIni(installPath, exeDir)
-
-            if (localIni != null) {
-                val relativeIniPath = localIni.absolutePath.substringAfter(installPath).trimStart(File.separatorChar, '/')
-                IniFileFix(
-                    relativePath = relativeIniPath,
-                    defaultValues = linkedMapOf("updates_check" to "0"),
-                ).apply(context, gameId, installPath, installPathWindows, container)
-
-                val detectedGameId = getGameIdFromIni(localIni)
-                if (detectedGameId == null) {
-                    Timber.tag("GameFixes").e("Found .ini but could not detect Game ID in ${localIni.absolutePath}")
-                    return false
-                }
-
-                val windowsIniPath = buildWindowsIniPath(installPathWindows, relativeIniPath)
-
-                LaunchArgFix("-c \"$windowsIniPath\" $detectedGameId").apply(
-                    context = context,
-                    gameId = gameId,
-                    installPath = installPath,
-                    installPathWindows = installPathWindows,
-                    container = container,
-                )
-
-                Timber.tag("GameFixes").i("Detected and using local ScummVM config: $windowsIniPath (Game ID: $detectedGameId)")
-                true
-            } else {
-                Timber.tag("GameFixes").w("No local .ini found for ScummVM game $gameId in ${exeDir.absolutePath} or root")
-                false
+            val localIni = resolveLocalIni(gameId, installPath) ?: return false
+            val relativeIniPath = localIni.absolutePath.substringAfter(installPath).trimStart(File.separatorChar, '/')
+            val detectedGameId = getGameIdFromIni(localIni) ?: run {
+                Timber.tag("GameFixes").e("Found .ini but could not detect Game ID in ${localIni.absolutePath}")
+                return false
             }
+            val windowsIniPath = buildWindowsIniPath(installPathWindows, relativeIniPath)
+
+            CompositeGameFix(
+                listOf(
+                    IniFileFix(
+                        relativePath = relativeIniPath,
+                        defaultValues = linkedMapOf(
+                            "updates_check" to "0"
+                        ),
+                    ),
+                    LaunchArgFix("-c \"$windowsIniPath\" $detectedGameId"),
+                ),
+            ).apply(context, gameId, installPath, installPathWindows, container)
+
+            Timber.tag("GameFixes").i("Detected and using local ScummVM config: $windowsIniPath (Game ID: $detectedGameId)")
+            true
         } catch (e: Exception) {
             Timber.tag("GameFixes").e(e, "Failed to apply ScummVM fix for $gameId")
             false
+        }
+    }
+
+    private fun resolveLocalIni(gameId: String, installPath: String): File? {
+        val scummvmExePath = possibleExecutables.firstOrNull { File(installPath, it).exists() } ?: return null
+        val exeFile = File(installPath, scummvmExePath)
+        val exeDir = exeFile.parentFile ?: File(installPath)
+        return findScummVmIni(installPath, exeDir) ?: run {
+            Timber.tag("GameFixes").w("No local .ini found for ScummVM game $gameId in ${exeDir.absolutePath} or root")
+            null
         }
     }
 
