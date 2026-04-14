@@ -1939,14 +1939,30 @@ class SteamService : Service(), IChallengeUrlChanged {
                         // Complete app download
                         if (mainAppDepots.isNotEmpty()) {
                             val mainAppDepotIds = mainAppDepots.keys.sorted()
-                            completeAppDownload(di, appId, mainAppDepotIds, mainAppDlcIds, appDirPath, branch)
+                            completeAppDownload(
+                                downloadInfo = di,
+                                downloadingAppId = appId,
+                                entitledDepotIds = mainAppDepotIds,
+                                selectedDlcAppIds = mainAppDlcIds,
+                                appDirPath = appDirPath,
+                                branch = branch,
+                                parentScope = this,
+                            )
                         }
 
                         // Complete dlc app download
                         calculatedDlcAppIds.forEach { dlcAppId ->
                             val dlcDepots = selectedDepots.filter { it.value.dlcAppId == dlcAppId }
                             val dlcDepotIds = dlcDepots.keys.sorted()
-                            completeAppDownload(di, dlcAppId, dlcDepotIds, emptyList(), appDirPath, branch)
+                            completeAppDownload(
+                                downloadInfo = di,
+                                downloadingAppId = dlcAppId,
+                                entitledDepotIds = dlcDepotIds,
+                                selectedDlcAppIds = emptyList(),
+                                appDirPath = appDirPath,
+                                branch = branch,
+                                parentScope = this,
+                            )
                         }
 
                         // Remove the job here — Play button becomes visible after this
@@ -1989,6 +2005,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             selectedDlcAppIds: List<Int>,
             appDirPath: String,
             branch: String = "public",
+            parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
         ) {
             Timber.i("Item $downloadingAppId download completed, saving database")
 
@@ -2043,6 +2060,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     val steamId = userSteamId
                     if (steamId != null && !ContainerUtils.isLocalSavesOnly(svc.applicationContext, "STEAM_$appId")) {
                         downloadInfo.updateStatusMessage("Syncing saves...")
+                        PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, true))
                         PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(downloadInfo.gameId))
                         try {
                             val container = ContainerUtils.getOrCreateContainer(svc.applicationContext, "STEAM_$appId")
@@ -2053,9 +2071,12 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 appId = appId,
                                 prefixToPath = prefixToPath,
                                 preferredSave = SaveLocation.Remote,
+                                parentScope = parentScope,
                             ).await()
                         } catch (e: Exception) {
                             Timber.e(e, "[PostInstallSync] Cloud save sync failed for app $appId")
+                        } finally {
+                            PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, false))
                         }
                     }
                 }

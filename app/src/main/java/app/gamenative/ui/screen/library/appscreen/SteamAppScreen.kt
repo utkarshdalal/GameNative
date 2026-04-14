@@ -423,6 +423,14 @@ class SteamAppScreen : BaseAppScreen() {
         PluviaApp.events.on<AndroidEvent.DownloadPausedDueToConnectivity, Unit>(connectivityListener)
         disposables += { PluviaApp.events.off<AndroidEvent.DownloadPausedDueToConnectivity, Unit>(connectivityListener) }
 
+        val postInstallSyncListener: (AndroidEvent.PostInstallSyncStatusChanged) -> Unit = { event ->
+            if (event.appId == appId) {
+                onStateChanged()
+            }
+        }
+        PluviaApp.events.on<AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener)
+        disposables += { PluviaApp.events.off<AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener) }
+
         return {
             progressDisposer?.invoke()
             disposables.forEach { it() }

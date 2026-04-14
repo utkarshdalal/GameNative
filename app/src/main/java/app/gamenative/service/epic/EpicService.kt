@@ -447,6 +447,9 @@ class EpicService : Service() {
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
                         val epicAppId = "EPIC_$gameId"
                         if (game.cloudSaveEnabled && !ContainerUtils.isLocalSavesOnly(context, epicAppId)) {
+                            downloadInfo.setPostInstallSyncing(true)
+                            downloadInfo.setActive(true)
+                            PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, true))
                             downloadInfo.updateStatusMessage("Syncing saves...")
                             try {
                                 EpicCloudSavesManager.syncCloudSaves(
@@ -454,10 +457,15 @@ class EpicService : Service() {
                                     appId = gameId,
                                     preferredAction = "download",
                                 )
+                            } catch (e: CancellationException) {
+                                throw e
                             } catch (e: Exception) {
                                 Timber.e(e, "[PostInstallSync] Cloud save sync failed for game $gameId")
+                            } finally {
+                                downloadInfo.setPostInstallSyncing(false)
+                                downloadInfo.updateStatusMessage(null)
+                                PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, false))
                             }
-                            downloadInfo.updateStatusMessage(null)
                         }
 
                         downloadInfo.setProgress(1.0f)
@@ -471,8 +479,14 @@ class EpicService : Service() {
 
                         SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     }
+                } catch (e: CancellationException) {
+                    downloadInfo.setPostInstallSyncing(false)
+                    downloadInfo.updateStatusMessage(null)
+                    throw e
                 } catch (e: Exception) {
                     Timber.e(e, "[Download] Exception for game $gameId")
+                    downloadInfo.setPostInstallSyncing(false)
+                    downloadInfo.updateStatusMessage(null)
                     downloadInfo.setProgress(-1.0f)
                     downloadInfo.setActive(false)
 

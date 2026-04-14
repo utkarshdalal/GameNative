@@ -98,9 +98,14 @@ class DownloadsViewModel @Inject constructor(
         scheduleRefreshDownloads()
     }
 
+    private val onPostInstallSyncStatusChanged: (AndroidEvent.PostInstallSyncStatusChanged) -> Unit = {
+        scheduleRefreshDownloads()
+    }
+
     init {
         PluviaApp.events.on<AndroidEvent.DownloadStatusChanged, Unit>(onDownloadStatusChanged)
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onLibraryInstallStatusChanged)
+        PluviaApp.events.on<AndroidEvent.PostInstallSyncStatusChanged, Unit>(onPostInstallSyncStatusChanged)
 
         viewModelScope.launch(Dispatchers.IO) {
             refreshRequests.collect {
@@ -114,6 +119,7 @@ class DownloadsViewModel @Inject constructor(
     override fun onCleared() {
         PluviaApp.events.off<AndroidEvent.DownloadStatusChanged, Unit>(onDownloadStatusChanged)
         PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(onLibraryInstallStatusChanged)
+        PluviaApp.events.off<AndroidEvent.PostInstallSyncStatusChanged, Unit>(onPostInstallSyncStatusChanged)
         clearObservedDownloads()
         super.onCleared()
     }
@@ -279,9 +285,10 @@ class DownloadsViewModel @Inject constructor(
         val key = downloadKey(gameSource, appId)
         val rawProgress = info.getProgress()
         val statusMessage = normalizeStatusMessage(info.getStatusMessageFlow().value)
+        val isRunning = info.isActive() || info.isPostInstallSyncing()
         val status = when {
             rawProgress < 0f || statusMessage?.startsWith("Failed", ignoreCase = true) == true -> DownloadItemStatus.FAILED
-            info.isActive() -> DownloadItemStatus.DOWNLOADING
+            isRunning -> DownloadItemStatus.DOWNLOADING
             else -> DownloadItemStatus.PAUSED
         }
 

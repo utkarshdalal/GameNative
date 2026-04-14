@@ -233,10 +233,11 @@ class GOGAppScreen : BaseAppScreen() {
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
         Timber.tag(TAG).d("isDownloading: checking appId=${libraryItem.appId}")
         val downloadInfo = GOGService.getDownloadInfo(libraryItem.gameId.toString()) ?: return false
-        val isSyncing = downloadInfo.getStatusMessageFlow().value != null
         val progress = downloadInfo.getProgress() ?: 0f
-        val downloading = isSyncing || (downloadInfo.isActive() && progress < 1f)
-        Timber.tag(TAG).d("isDownloading: appId=${libraryItem.appId}, isSyncing=$isSyncing, active=${downloadInfo.isActive()}, progress=$progress, result=$downloading")
+        val downloading = downloadInfo.isPostInstallSyncing() || (downloadInfo.isActive() && progress < 1f)
+        Timber.tag(TAG).d(
+            "isDownloading: appId=${libraryItem.appId}, postInstallSyncing=${downloadInfo.isPostInstallSyncing()}, active=${downloadInfo.isActive()}, progress=$progress, result=$downloading",
+        )
         return downloading
     }
 
@@ -615,6 +616,16 @@ class GOGAppScreen : BaseAppScreen() {
         app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
         disposables +=
             { app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener) }
+
+        val postInstallSyncListener: (app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged) -> Unit = { event ->
+            if (event.appId == libraryItem.gameId) {
+                Timber.tag(TAG).d("[OBSERVE] PostInstallSyncStatusChanged for ${libraryItem.appId}, isSyncing=${event.isSyncing}")
+                onStateChanged()
+            }
+        }
+        app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener)
+        disposables +=
+            { app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener) }
 
         // Return cleanup function
         return {
