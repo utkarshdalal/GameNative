@@ -30,10 +30,6 @@
     <string name="gog_install_confirmation_message">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tTilgængelig plads: %2$s</string>
     <string name="epic_cancel_download_message">Er du sikker på, at du vil annullere download af appen?</string>
     <string name="epic_delete_download_message">Slet alle downloadede data for dette spil?</string>
-    <string name="epic_cloud_sync_starting">Starter synkronisering af cloud-gemmer…</string>
-    <string name="epic_cloud_sync_success">Cloud-gemmer synkroniseret med succes</string>
-    <string name="epic_cloud_sync_failed">Synkronisering af cloud-gemmer mislykkedes</string>
-    <string name="epic_cloud_sync_error">Fejl ved synkronisering af cloud-gemmer: %1$s</string>
     <string name="epic_uninstall_failed">Afinstallation mislykkedes: %1$s</string>
     <string name="epic_uninstall_error">Afinstallationsfejl: %1$s</string>
     <string name="download_prompt_title">Installér app</string>
@@ -49,6 +45,7 @@
     <string name="confirm_delete">Bekræft sletning</string>
     <string name="destination_library">Bibliotek</string>
     <string name="destination_downloads">Downloads &amp; lager</string>
+    <string name="downloads_section_title">Downloads</string>
 
     <string name="downloads_empty">Ingen aktive downloads</string>
     <string name="downloads_overview_subtitle">Følg aktive, pausede og genoptagelige downloads</string>
@@ -155,6 +152,7 @@
     <string name="intent_launch_service_pending">Spillet starter, når tjenesten er klar</string>
     <string name="intent_launch_steam_login_failed">Steam-login mislykkedes — spilstart annulleret</string>
     <string name="intent_launch_service_timeout">Spiltjenesten kunne ikke starte — spilstart annulleret</string>
+    <string name="back_press_exit_warning">Tryk tilbage igen for at afslutte</string>
     <string name="game_executable_not_found_title">Kan ikke starte</string>
     <string name="game_executable_not_found">Den eksekverbare fil kunne ikke vælges automatisk. Angiv stien til den eksekverbare fil i containerindstillinger.</string>
     <string name="save_container_settings_title">Gem containerkonfiguration?</string>
@@ -216,6 +214,8 @@
     <string name="screen_effects_toon_description">Tilføjer mørke konturer for et cel-shadet udseende.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Udglatter takkede kanter med en let efterbehandlet anti-aliasing-effekt.</string>
+    <string name="screen_effects_vivid">Vivid</string>
+    <string name="screen_effects_vivid_description">Tilføjer bloom og øget kontrast for et mere slagkraftigt billede.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Tilføjer scanlines og let kromatisk aberration.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -722,6 +722,10 @@
     <string name="settings_interface_external_links_subtitle">Links åbnes med din primære webbrowser</string>
     <string name="settings_interface_hide_statusbar_title">Skjul statuslinje når ikke i spillet</string>
     <string name="settings_interface_hide_statusbar_subtitle">Skjul Android-statuslinje i spilliste, indstillinger osv. Appen genstarter når den ændres.</string>
+    <string name="settings_interface_warn_before_exit_title">Advar før afslutning</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Kræver dobbelt tilbagetryk for at afslutte — første tryk viser en advarsel</string>
+    <string name="settings_interface_show_gamepad_hints_title">Vis controller-tip</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Viser bjælken med controller-knaptip nederst på skærmen</string>
     <string name="settings_interface_icon_style">Ikonstil</string>
     <string name="settings_interface_wifi_only_title">Download kun via Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Forhindrer downloads på mobildata</string>
@@ -792,9 +796,11 @@
     <string name="library_export_cancelled">Eksport annulleret</string>
     <string name="library_shortcut_created">Genvej oprettet</string>
     <string name="library_failed_to_create_shortcut">Kunne ikke oprette genvej: %s</string>
+    <string name="library_cloud_sync_starting">Starter synkronisering af cloud-gemmer…</string>
     <string name="library_cloud_sync_success">Sky-synkronisering fuldført</string>
     <string name="library_cloud_sync_up_to_date">Gemfiler er allerede opdaterede</string>
-    <string name="library_cloud_sync_failed">Sky-synkronisering fejlede: %s</string>
+    <string name="library_cloud_sync_failed">Sky-synkronisering fejlede</string>
+    <string name="library_cloud_sync_error">Fejl ved synkronisering af cloud-gemmer: %1$s</string>
 
     <!-- TODO: Manual review - LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Internet påkrævet for installation</string>
@@ -1076,9 +1082,6 @@
     <string name="steam_verify_files_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før verificering, da de ellers kan blive overskrevet.</string>
     <string name="steam_update_title">Opdatering</string>
     <string name="steam_update_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før opdatering, da de ellers kan blive overskrevet.</string>
-    <string name="steam_cloud_sync_success">Sky-synkronisering fuldført</string>
-    <string name="steam_cloud_sync_up_to_date">Gemfiler er allerede opdaterede</string>
-    <string name="steam_cloud_sync_failed">Sky-synkronisering fejlede: %s</string>
     <string name="steam_storage_permission_required">Lagertilladelse påkrævet</string>
     <string name="steam_container_reset_success">Container nulstillet til standard</string>
     <string name="steam_imagefs_installed">ImageFS installeret. Prøv at redigere container igen.</string>

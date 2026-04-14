@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">Assicurati che i tuoi salvataggi siano caricati sul cloud o sottoposti a backup prima della verifica, altrimenti potrebbero essere sovrascritti.</string>
     <string name="steam_update_title">Aggiorna</string>
     <string name="steam_update_message">Assicurati che i tuoi salvataggi siano caricati sul cloud o sottoposti a backup prima dell\'aggiornamento, altrimenti potrebbero essere sovrascritti.</string>
-    <string name="steam_cloud_sync_success">Sincronizzazione cloud completata con successo</string>
-    <string name="steam_cloud_sync_up_to_date">I file di salvataggio sono già aggiornati</string>
-    <string name="steam_cloud_sync_failed">Sincronizzazione cloud fallita: %s</string>
     <string name="steam_not_logged_in">Devi aver effettuato l\'accesso a Steam per utilizzare questa funzione</string>
     <string name="steam_storage_permission_required">Permesso di archiviazione richiesto</string>
     <string name="steam_container_reset_success">Container reimpostato ai valori predefiniti</string>
@@ -59,10 +56,6 @@
     <string name="steam_never">Mai</string>
     <string name="epic_cancel_download_message">Sei sicuro di voler annullare il download dell\'app?</string>
     <string name="epic_delete_download_message">Eliminare tutti i dati scaricati per questo gioco?</string>
-    <string name="epic_cloud_sync_starting">Avvio sincronizzazione salvataggi cloud…</string>
-    <string name="epic_cloud_sync_success">Salvataggi cloud sincronizzati con successo</string>
-    <string name="epic_cloud_sync_failed">Sincronizzazione salvataggi cloud non riuscita</string>
-    <string name="epic_cloud_sync_error">Errore sincronizzazione salvataggi cloud: %1$s</string>
     <string name="epic_uninstall_failed">Disinstallazione non riuscita: %1$s</string>
     <string name="epic_uninstall_error">Errore di disinstallazione: %1$s</string>
     <string name="steam_continue">Continua</string>
@@ -94,6 +87,7 @@
     <string name="confirm_delete">Conferma Eliminazione</string>
     <string name="destination_library">Libreria</string>
     <string name="destination_downloads">Download e archiviazione</string>
+    <string name="downloads_section_title">Download</string>
 
     <string name="downloads_empty">Nessun download attivo</string>
     <string name="downloads_overview_subtitle">Monitora download attivi, in pausa e riprendibili</string>
@@ -231,6 +225,7 @@
     <string name="intent_launch_service_pending">Il gioco verrà avviato quando il servizio è pronto</string>
     <string name="intent_launch_steam_login_failed">Accesso a Steam non riuscito — avvio del gioco annullato</string>
     <string name="intent_launch_service_timeout">Avvio del servizio di gioco non riuscito — avvio del gioco annullato</string>
+    <string name="back_press_exit_warning">Premi indietro di nuovo per uscire</string>
     <string name="game_executable_not_found_title">Impossibile avviare</string>
     <string name="game_executable_not_found">L\'eseguibile non è stato selezionato automaticamente. Imposta il percorso dell\'eseguibile nelle impostazioni del Container.</string>
     <string name="save_container_settings_title">Salvare Configurazione Container?</string>
@@ -292,6 +287,8 @@
     <string name="screen_effects_toon_description">Aggiunge contorni scuri per un look cel-shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Smussa i bordi frastagliati con un leggero anti-aliasing in post-processo.</string>
+    <string name="screen_effects_vivid">Vivido</string>
+    <string name="screen_effects_vivid_description">Aggiunge bloom e un aumento del contrasto per una immagine più incisiva.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Aggiunge scanline e una sottile aberrazione cromatica.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -896,6 +893,10 @@
     <string name="settings_interface_external_links_subtitle">I link si aprono con il tuo browser web principale</string>
     <string name="settings_interface_hide_statusbar_title">Nascondi barra di stato quando non in gioco</string>
     <string name="settings_interface_hide_statusbar_subtitle">Nascondi barra di stato Android nell\'elenco giochi, impostazioni, ecc. L\'app si riavvierà se modificato.</string>
+    <string name="settings_interface_warn_before_exit_title">Avvisa prima di uscire</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Richiede doppia pressione di indietro per uscire — la prima mostra un avviso</string>
+    <string name="settings_interface_show_gamepad_hints_title">Mostra suggerimenti del controller</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Mostra la barra dei suggerimenti dei pulsanti del controller nella parte inferiore dello schermo</string>
     <string name="settings_interface_icon_style">Stile icona</string>
     <string name="settings_interface_wifi_only_title">Scarica solo tramite Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Impedisci download su rete cellulare</string>
@@ -964,9 +965,11 @@
     <string name="library_export_cancelled">Esportazione annullata</string>
     <string name="library_shortcut_created">Scorciatoia creata</string>
     <string name="library_failed_to_create_shortcut">Impossibile creare scorciatoia: %s</string>
+    <string name="library_cloud_sync_starting">Avvio sincronizzazione salvataggi cloud…</string>
     <string name="library_cloud_sync_success">Sincronizzazione cloud completata con successo</string>
     <string name="library_cloud_sync_up_to_date">I file di salvataggio sono già aggiornati</string>
-    <string name="library_cloud_sync_failed">Sincronizzazione cloud fallita: %s</string>
+    <string name="library_cloud_sync_failed">Sincronizzazione cloud fallita</string>
+    <string name="library_cloud_sync_error">Errore sincronizzazione salvataggi cloud: %1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Serve internet per installare</string>

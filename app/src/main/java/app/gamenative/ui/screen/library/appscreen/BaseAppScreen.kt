@@ -617,7 +617,11 @@ abstract class BaseAppScreen {
             val gameName = ContainerUtils.resolveGameName(libraryItem.appId)
             val gpuName = GPUInformation.getRenderer(context)
 
-            val bestConfig = BestConfigService.fetchBestConfig(gameName, gpuName)
+            val bestConfig = BestConfigService.fetchBestConfig(
+                gameName = gameName,
+                gpuName = gpuName,
+                gameStore = libraryItem.gameSource.name,
+            )
             if (bestConfig == null) {
                 SnackbarManager.show(context.getString(R.string.best_config_fetch_failed))
                 return
@@ -641,6 +645,7 @@ abstract class BaseAppScreen {
                 configJson = bestConfig.bestConfig,
                 matchType = bestConfig.matchType,
                 applyKnownConfig = true,
+                storeMatch = bestConfig.matchedStore.equals(libraryItem.gameSource.name, ignoreCase = true),
             )
             val missingContentDescription = BestConfigService.consumeLastMissingContentDescription()
 

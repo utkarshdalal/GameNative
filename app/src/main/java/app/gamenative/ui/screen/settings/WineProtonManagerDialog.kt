@@ -31,7 +31,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -642,7 +642,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         onExpandedChange = { isExpanded = !isExpanded },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        OutlinedTextField(
+                        NoExtractOutlinedTextField(
                             value = selectedWineKey,
                             onValueChange = {},
                             readOnly = true,
@@ -967,7 +967,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
 private fun InfoRow(label: String, value: String) {
     Column(modifier = Modifier.padding(bottom = 8.dp)) {
         Text(text = label, style = MaterialTheme.typography.labelMedium)
-        OutlinedTextField(
+        NoExtractOutlinedTextField(
             value = value,
             onValueChange = {},
             readOnly = true,

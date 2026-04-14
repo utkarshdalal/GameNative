@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">Будь ласка, переконайтеся, що ваші збереження завантажено у хмару або створено їхню резервну копію перед перевіркою, оскільки інакше вони можуть бути перезаписані.</string>
     <string name="steam_update_title">Оновити</string>
     <string name="steam_update_message">Будь ласка, переконайтеся, що ваші збереження завантажено у хмару або створено їхню резервну копію перед оновленням, оскільки інакше вони можуть бути перезаписані.</string>
-    <string name="steam_cloud_sync_success">Успішна синхронізація з хмарою</string>
-    <string name="steam_cloud_sync_up_to_date">Файли збереження вже актуальні</string>
-    <string name="steam_cloud_sync_failed">Помилка синхронізації з хмарою: %s</string>
     <string name="steam_not_logged_in">Ви повинні увійти в Steam, щоб використовувати цю функцію</string>
     <string name="steam_storage_permission_required">Необхідний дозвіл на доступ до сховища</string>
     <string name="steam_container_reset_success">Контейнер скинуто до стандартних налаштувань</string>
@@ -86,6 +83,7 @@
     <string name="confirm_delete">Підтвердити видалення</string>
     <string name="destination_library">Бібліотека</string>
     <string name="destination_downloads">Завантаження й сховище</string>
+    <string name="downloads_section_title">Завантаження</string>
 
     <!-- Library Tabs -->
     <string name="downloads_empty">Немає активних завантажень</string>
@@ -222,6 +220,7 @@
     <string name="intent_launch_service_pending">Гра запуститься після запуску сервісу</string>
     <string name="intent_launch_steam_login_failed">Помилка входу в Steam — запуск гри скасовано</string>
     <string name="intent_launch_service_timeout">Не вдалося запустити ігровий сервіс — запуск гри скасовано</string>
+    <string name="back_press_exit_warning">Натисніть назад ще раз для виходу</string>
     <string name="game_executable_not_found_title">Неможливо запустити</string>
     <string name="game_executable_not_found">Виконуваний файл не вдалося вибрати автоматично. Вкажіть шлях до виконуваного файлу в налаштуваннях контейнера.</string>
     <string name="save_container_settings_title">Зберегти налаштування контейнера?</string>
@@ -283,6 +282,8 @@
     <string name="screen_effects_toon_description">Додає темні контури для вигляду cel-shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Згладжує зубчасті краї за допомогою легкого постпроцесного згладжування.</string>
+    <string name="screen_effects_vivid">Насичений</string>
+    <string name="screen_effects_vivid_description">Додає bloom і підсилює контраст для виразнішого зображення.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Додає рядки розгортки та легку хроматичну аберацію.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -895,6 +896,10 @@
     <string name="settings_interface_external_links_subtitle">Посилання відкриваються у вашому основному браузері</string>
     <string name="settings_interface_hide_statusbar_title">Приховувати рядок стану, коли гра не запущена</string>
     <string name="settings_interface_hide_statusbar_subtitle">Приховує рядок стану Android у списку ігор, налаштуваннях тощо. Застосунок перезапуститься після зміни.</string>
+    <string name="settings_interface_warn_before_exit_title">Попереджати перед виходом</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Для виходу потрібне подвійне натискання назад — перше показує попередження</string>
+    <string name="settings_interface_show_gamepad_hints_title">Показувати підказки геймпада</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Показує панель підказок кнопок геймпада внизу екрана</string>
     <string name="settings_interface_icon_style">Стиль значку</string>
     <string name="settings_interface_wifi_only_title">Завантаження тільки через Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Запобігає завантаженню через мобільні дані</string>
@@ -963,9 +968,11 @@
     <string name="library_export_cancelled">Вивантаження скасовано</string>
     <string name="library_shortcut_created">Створено ярлик</string>
     <string name="library_failed_to_create_shortcut">Помилка створення ярлика: %s</string>
+    <string name="library_cloud_sync_starting">Запуск синхронізації з хмарою…</string>
     <string name="library_cloud_sync_success">Успішна синхронізація з хмарою</string>
     <string name="library_cloud_sync_up_to_date">Файли збереження вже актуальні</string>
-    <string name="library_cloud_sync_failed">Помилка синхронізації з хмарою: %s</string>
+    <string name="library_cloud_sync_failed">Помилка синхронізації з хмарою</string>
+    <string name="library_cloud_sync_error">Помилка синхронізації з хмарою: %1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Потрібне інтернет-з\'єднання для інсталяції</string>

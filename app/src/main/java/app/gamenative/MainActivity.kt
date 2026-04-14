@@ -144,6 +144,12 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
 
+        // stale keepAlive from a prior crash/swipe — no container is actually running
+        if (SteamService.keepAlive && PluviaApp.xEnvironment == null) {
+            Timber.w("onCreate: clearing stale keepAlive — no container running")
+            PluviaApp.shutdownEnvironment()
+        }
+
         // Apply immersive mode based on user preference
         applyImmersiveMode()
 
@@ -265,9 +271,20 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        // emit before super so Compose DisposableEffects (which unregister
+        // listeners during super.onDestroy's lifecycle transition) still fire
+        if (!isChangingConfigurations) {
+            PluviaApp.events.emit(AndroidEvent.ActivityDestroyed)
 
-        PluviaApp.events.emit(AndroidEvent.ActivityDestroyed)
+            // if exit() didn't run (listener already unregistered, race, etc.)
+            // force-clear so the app isn't stuck on next launch
+            if (SteamService.keepAlive) {
+                Timber.w("onDestroy: keepAlive still set after ActivityDestroyed — forcing cleanup")
+                PluviaApp.shutdownEnvironment()
+            }
+        }
+
+        super.onDestroy()
 
         PluviaApp.events.off<AndroidEvent.SetSystemUIVisibility, Unit>(onSetSystemUi)
         PluviaApp.events.off<AndroidEvent.StartOrientator, Unit>(onStartOrientator)

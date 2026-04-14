@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">验证前请确保存档已上传至云端或已备份，否则存档可能会被覆盖</string>
     <string name="steam_update_title">更新</string>
     <string name="steam_update_message">更新前请确保存档已上传至云端或已备份，否则存档可能会被覆盖</string>
-    <string name="steam_cloud_sync_success">云同步已成功完成</string>
-    <string name="steam_cloud_sync_up_to_date">游戏存档已是最新版本</string>
-    <string name="steam_cloud_sync_failed">云同步失败：%s</string>
     <string name="steam_storage_permission_required">需要存储权限</string>
     <string name="steam_container_reset_success">容器已重置为默认设置</string>
     <string name="steam_imagefs_installed">ImageFS 已安装，请重试编辑容器</string>
@@ -58,10 +55,6 @@
     <string name="steam_never">从不</string>
     <string name="epic_cancel_download_message">确定要取消下载应用程序吗？</string>
     <string name="epic_delete_download_message">删除此游戏的所有已下载数据？</string>
-    <string name="epic_cloud_sync_starting">正在开始云存档同步…</string>
-    <string name="epic_cloud_sync_success">云存档同步成功</string>
-    <string name="epic_cloud_sync_failed">云存档同步失败</string>
-    <string name="epic_cloud_sync_error">云存档同步错误：%1$s</string>
     <string name="epic_uninstall_failed">卸载失败：%1$s</string>
     <string name="epic_uninstall_error">卸载错误：%1$s</string>
     <string name="steam_continue">继续</string>
@@ -93,6 +86,7 @@
     <string name="confirm_delete">确认删除</string>
     <string name="destination_library">游戏库</string>
     <string name="destination_downloads">下载和存储</string>
+    <string name="downloads_section_title">下载</string>
 
     <!-- Library Tabs -->
     <string name="downloads_empty">暂无活动下载</string>
@@ -225,6 +219,7 @@
     <string name="intent_launch_service_pending">服务就绪后将启动游戏</string>
     <string name="intent_launch_steam_login_failed">Steam 登录失败 — 游戏启动已取消</string>
     <string name="intent_launch_service_timeout">游戏服务启动失败 — 游戏启动已取消</string>
+    <string name="back_press_exit_warning">再次按返回键退出</string>
     <string name="game_executable_not_found_title">无法启动</string>
     <string name="game_executable_not_found">无法自动选择可执行文件。请在容器设置中指定可执行文件路径。</string>
     <string name="save_container_settings_title">保存容器配置？</string>
@@ -286,6 +281,8 @@
     <string name="screen_effects_toon_description">添加深色描边，呈现 cel-shading 风格外观。</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">通过轻量级后处理抗锯齿平滑锯齿边缘。</string>
+    <string name="screen_effects_vivid">鲜艳</string>
+    <string name="screen_effects_vivid_description">增加泛光和对比度增强，让画面更有冲击力。</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">添加扫描线和轻微色差效果。</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -895,6 +892,10 @@
     <string name="settings_interface_external_links_subtitle">链接将以您的主要网页浏览器打开</string>
     <string name="settings_interface_hide_statusbar_title">在非游戏状态时隐藏状态栏</string>
     <string name="settings_interface_hide_statusbar_subtitle">在游戏列表、设置等界面隐藏 Android 状态栏。更改后应用程序将重新启动。</string>
+    <string name="settings_interface_warn_before_exit_title">退出前警告</string>
+    <string name="settings_interface_warn_before_exit_subtitle">需要双击返回键退出——第一次按下显示警告</string>
+    <string name="settings_interface_show_gamepad_hints_title">显示手柄提示</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">在屏幕底部显示手柄按键提示栏</string>
     <string name="settings_interface_wifi_only_title">仅限通过 Wi-Fi/LAN 下载</string>
     <string name="settings_interface_wifi_only_subtitle">禁止使用移动数据下载</string>
     <string name="settings_interface_external_storage_title">写入外部存储设备</string>
@@ -961,9 +962,11 @@
     <string name="library_export_cancelled">导出已取消</string>
     <string name="library_shortcut_created">快捷方式已创建</string>
     <string name="library_failed_to_create_shortcut">创建快捷方式失败：%s</string>
-    <string name="library_cloud_sync_success">云同步完成</string>
-    <string name="library_cloud_sync_up_to_date">存档文件已更新至最新版本</string>
-    <string name="library_cloud_sync_failed">云同步失败：%s</string>
+    <string name="library_cloud_sync_starting">正在同步云存档…</string>
+    <string name="library_cloud_sync_success">云存档同步完成</string>
+    <string name="library_cloud_sync_up_to_date">云存档同步已是最新状态</string>
+    <string name="library_cloud_sync_failed">云存档同步失败</string>
+    <string name="library_cloud_sync_error">云存档同步错误：%1$s</string>
 
     <!-- 库应用界面：UI标签 -->
     <string name="library_need_internet">需联网安装</string>

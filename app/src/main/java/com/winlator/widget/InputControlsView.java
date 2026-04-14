@@ -848,6 +848,7 @@ public class InputControlsView extends View {
                     }
 
                     touchpadView.setPointerButtonLeftEnabled(true);
+                    touchpadView.setPointerButtonRightEnabled(true);
                     for (ControlElement element : profile.getElements()) {
                         if (element.handleTouchDown(pointerId, x, y)) {
                             performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
@@ -855,6 +856,9 @@ public class InputControlsView extends View {
                         }
                         if (element.getBindingAt(0) == Binding.MOUSE_LEFT_BUTTON) {
                             touchpadView.setPointerButtonLeftEnabled(false);
+                        }
+                        if (element.getBindingAt(0) == Binding.MOUSE_RIGHT_BUTTON) {
+                            touchpadView.setPointerButtonRightEnabled(false);
                         }
                     }
                     if (!handled) touchpadView.onTouchEvent(event);

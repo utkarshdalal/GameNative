@@ -28,9 +28,6 @@
     <string name="steam_verify_files_message">Stelle bitte sicher, dass deine Spielstände vorher in die Cloud hochgeladen oder gesichert wurden, da sie sonst überschrieben werden können.</string>
     <string name="steam_update_title">Aktualisieren</string>
     <string name="steam_update_message">Stelle sicher, dass deine Speicherstände vor dem Aktualisieren in der Cloud gesichert oder gebackupt sind, um ein Überschreiben zu verhindern.</string>
-    <string name="steam_cloud_sync_success">Cloud-Synchronisierung erfolgreich abgeschlossen</string>
-    <string name="steam_cloud_sync_up_to_date">Spielstände sind bereits aktuell</string>
-    <string name="steam_cloud_sync_failed">Cloud-Synchronisierung fehlgeschlagen: %s</string>
     <string name="steam_not_logged_in">Du musst bei Steam angemeldet sein, um diese Funktion zu nutzen</string>
     <string name="steam_storage_permission_required">Speicherberechtigung erforderlich</string>
     <string name="steam_container_reset_success">Container auf Werkseinstellungen zurückgesetzt</string>
@@ -54,10 +51,6 @@
     <string name="steam_never">Nie</string>
     <string name="epic_cancel_download_message">Möchten Sie den Download der App wirklich abbrechen?</string>
     <string name="epic_delete_download_message">Alle heruntergeladenen Daten für dieses Spiel löschen?</string>
-    <string name="epic_cloud_sync_starting">Starte Cloud-Speicherstand-Synchronisation…</string>
-    <string name="epic_cloud_sync_success">Cloud-Spielstände erfolgreich synchronisiert</string>
-    <string name="epic_cloud_sync_failed">Cloud-Spielstand-Synchronisation fehlgeschlagen</string>
-    <string name="epic_cloud_sync_error">Fehler bei Cloud-Spielstand-Synchronisation: %1$s</string>
     <string name="epic_uninstall_failed">Deinstallation fehlgeschlagen: %1$s</string>
     <string name="epic_uninstall_error">Deinstallationsfehler: %1$s</string>
     <string name="steam_continue">Weiter</string>
@@ -89,6 +82,7 @@
     <string name="confirm_delete">Löschen bestätigen</string>
     <string name="destination_library">Bibliothek</string>
     <string name="destination_downloads">Downloads &amp; Speicher</string>
+    <string name="downloads_section_title">Downloads</string>
 
     <string name="downloads_empty">Keine aktiven Downloads</string>
     <string name="downloads_overview_subtitle">Aktive, pausierte und fortsetzbare Downloads verfolgen</string>
@@ -220,6 +214,7 @@
     <string name="intent_launch_service_pending">Spiel wird gestartet, sobald der Dienst bereit ist</string>
     <string name="intent_launch_steam_login_failed">Steam-Anmeldung fehlgeschlagen — Spielstart abgebrochen</string>
     <string name="intent_launch_service_timeout">Spieldienst konnte nicht gestartet werden — Spielstart abgebrochen</string>
+    <string name="back_press_exit_warning">Erneut zurück drücken zum Beenden</string>
     <string name="game_executable_not_found_title">Start nicht möglich</string>
     <string name="game_executable_not_found">Die ausführbare Datei konnte nicht automatisch ausgewählt werden. Bitte lege den Pfad in den Containereinstellungen fest.</string>
     <string name="save_container_settings_title">Container-Konfiguration speichern?</string>
@@ -281,6 +276,8 @@
     <string name="screen_effects_toon_description">Fügt dunkle Konturen für einen Cel-Shading-Look hinzu.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Glättet gezackte Kanten mit einem leichten Post-Process-Anti-Aliasing-Effekt.</string>
+    <string name="screen_effects_vivid">Lebendig</string>
+    <string name="screen_effects_vivid_description">Fügt Bloom und einen Kontrastschub für ein kräftigeres Bild hinzu.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Fügt Scanlines und eine leichte chromatische Aberration hinzu.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -864,6 +861,10 @@
     <string name="settings_interface_external_links_subtitle">Links werden im Standardbrowser geöffnet</string>
     <string name="settings_interface_hide_statusbar_title">Statusleiste außerhalb der Spiele verbergen</string>
     <string name="settings_interface_hide_statusbar_subtitle">Android-Statusleiste in Spieleliste, Einstellungen etc. ausblenden (Neustart nötig).</string>
+    <string name="settings_interface_warn_before_exit_title">Vor dem Beenden warnen</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Doppeltes Zurückdrücken zum Beenden erforderlich — erstes Drücken zeigt eine Warnung</string>
+    <string name="settings_interface_show_gamepad_hints_title">Controller-Hinweise anzeigen</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Zeigt die Leiste mit Controller-Tastenhinweisen am unteren Bildschirmrand an</string>
     <string name="settings_interface_icon_style">Iconstil</string>
     <string name="settings_interface_wifi_only_title">Nur über WLAN/LAN herunterladen</string>
     <string name="settings_interface_wifi_only_subtitle">Verhindert Downloads über mobile Daten</string>
@@ -925,9 +926,11 @@
     <string name="library_export_cancelled">Export abgebrochen</string>
     <string name="library_shortcut_created">Verknüpfung erstellt</string>
     <string name="library_failed_to_create_shortcut">Verknüpfung konnte nicht erstellt werden: %s</string>
+    <string name="library_cloud_sync_starting">Cloud-Synchronisierung wird gestartet…</string>
     <string name="library_cloud_sync_success">Cloud-Synchronisierung erfolgreich</string>
     <string name="library_cloud_sync_up_to_date">Spielstände sind aktuell</string>
-    <string name="library_cloud_sync_failed">Cloud-Synchronisierung fehlgeschlagen: %s</string>
+    <string name="library_cloud_sync_failed">Cloud-Synchronisierung fehlgeschlagen</string>
+    <string name="library_cloud_sync_error">Cloud-Synchronisierungsfehler: %1$s</string>
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Internetverbindung erforderlich</string>
     <string name="library_wifi_only_enabled">Installieren nur über WLAN/LAN aktiviert</string>

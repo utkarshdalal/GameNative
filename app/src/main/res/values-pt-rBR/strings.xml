@@ -41,6 +41,7 @@
     <string name="confirm_delete">Confirmar Deleção</string>
     <string name="destination_library">Biblioteca</string>
     <string name="destination_downloads">Downloads e armazenamento</string>
+    <string name="downloads_section_title">Downloads</string>
 
     <string name="downloads_empty">Nenhum download ativo</string>
     <string name="downloads_overview_subtitle">Acompanhe downloads ativos, pausados e retomáveis</string>
@@ -119,10 +120,6 @@
     <string name="title_ubuntufs">Ubuntu FS</string>
     <string name="epic_cancel_download_message">Tem certeza de que deseja cancelar o download do aplicativo?</string>
     <string name="epic_delete_download_message">Excluir todos os dados baixados deste jogo?</string>
-    <string name="epic_cloud_sync_starting">Iniciando sincronização de salvamentos na nuvem…</string>
-    <string name="epic_cloud_sync_success">Salvamentos na nuvem sincronizados com sucesso</string>
-    <string name="epic_cloud_sync_failed">Falha na sincronização de salvamentos na nuvem</string>
-    <string name="epic_cloud_sync_error">Erro na sincronização de salvamentos na nuvem: %1$s</string>
     <string name="epic_uninstall_failed">Falha na desinstalação: %1$s</string>
     <string name="epic_uninstall_error">Erro na desinstalação: %1$s</string>
 
@@ -155,6 +152,7 @@
     <string name="intent_launch_service_pending">O jogo será iniciado quando o serviço estiver pronto</string>
     <string name="intent_launch_steam_login_failed">Falha no login do Steam — inicialização do jogo cancelada</string>
     <string name="intent_launch_service_timeout">Falha ao iniciar o serviço do jogo — inicialização do jogo cancelada</string>
+    <string name="back_press_exit_warning">Pressione voltar novamente para sair</string>
     <string name="game_executable_not_found_title">Não é possível iniciar</string>
     <string name="game_executable_not_found">O executável não pôde ser selecionado automaticamente. Defina o caminho do executável nas configurações do contêiner.</string>
     <string name="save_container_settings_title">Salvar configuração do contêiner?</string>
@@ -216,6 +214,8 @@
     <string name="screen_effects_toon_description">Adiciona contornos escuros para um visual cel-shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Suaviza serrilhados com um leve anti-aliasing por pós-processamento.</string>
+    <string name="screen_effects_vivid">Vívido</string>
+    <string name="screen_effects_vivid_description">Adiciona bloom e aumento de contraste para uma imagem mais marcante.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Adiciona scanlines e uma sutil aberração cromática.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -722,6 +722,10 @@
     <string name="settings_interface_external_links_subtitle">Links abrem com seu navegador principal</string>
     <string name="settings_interface_hide_statusbar_title">Ocultar barra de status fora do jogo</string>
     <string name="settings_interface_hide_statusbar_subtitle">Ocultar barra de status do Android na lista de jogos, configurações, etc. O app será reiniciado quando alterado.</string>
+    <string name="settings_interface_warn_before_exit_title">Avisar antes de sair</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Requer duplo toque em voltar para sair — o primeiro mostra um aviso</string>
+    <string name="settings_interface_show_gamepad_hints_title">Mostrar dicas do controle</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Mostra a barra de dicas dos botões do controle na parte inferior da tela</string>
     <string name="settings_interface_icon_style">Estilo de ícone</string>
     <string name="settings_interface_wifi_only_title">Baixar apenas por Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Impedir downloads usando dados móveis</string>
@@ -792,9 +796,11 @@
     <string name="library_export_cancelled">Exportação cancelada</string>
     <string name="library_shortcut_created">Atalho criado</string>
     <string name="library_failed_to_create_shortcut">Falha ao criar atalho: %s</string>
+    <string name="library_cloud_sync_starting">Iniciando sincronização de salvamentos na nuvem…</string>
     <string name="library_cloud_sync_success">Sincronização na nuvem concluída com sucesso</string>
     <string name="library_cloud_sync_up_to_date">Os arquivos de save já estão atualizados</string>
-    <string name="library_cloud_sync_failed">Sincronização na nuvem falhou: %s</string>
+    <string name="library_cloud_sync_failed">Sincronização na nuvem falhou</string>
+    <string name="library_cloud_sync_error">Erro na sincronização de salvamentos na nuvem: %1$s</string>
 
     <!-- TODO: Revisão manual - LibraryAppScreen: Rótulos de UI -->
     <string name="library_need_internet">Internet necessária para instalar</string>
@@ -1076,9 +1082,6 @@
     <string name="steam_verify_files_message">Certifique-se de que seus saves foram enviados para a nuvem ou foram feitos backups antes de verificar, caso contrário, eles podem ser sobrescritos.</string>
     <string name="steam_update_title">Atualização</string>
     <string name="steam_update_message">Certifique-se de que seus saves foram enviados para a nuvem ou foram feitos backups antes de atualizar, caso contrário, eles podem ser sobrescritos.</string>
-    <string name="steam_cloud_sync_success">Sincronização na nuvem concluída com sucesso</string>
-    <string name="steam_cloud_sync_up_to_date">Os arquivos de save já estão atualizados</string>
-    <string name="steam_cloud_sync_failed">Sincronização na nuvem falhou: %s</string>
     <string name="steam_storage_permission_required">Permissão de armazenamento necessária</string>
     <string name="steam_container_reset_success">Contêiner redefinido para padrões</string>
     <string name="steam_imagefs_installed">ImageFS instalado. Por favor, tente editar o contêiner novamente.</string>

@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">Please ensure your saves are uploaded to the cloud or backed up before verifying, as they may be overwritten otherwise.</string>
     <string name="steam_update_title">Update</string>
     <string name="steam_update_message">Please ensure your saves are uploaded to the cloud or backed up before updating, as they may be overwritten otherwise.</string>
-    <string name="steam_cloud_sync_success">Cloud sync completed successfully</string>
-    <string name="steam_cloud_sync_up_to_date">Save files are already up to date</string>
-    <string name="steam_cloud_sync_failed">Cloud sync failed: %s</string>
     <string name="steam_not_logged_in">You must be logged into Steam to use this feature</string>
     <string name="steam_storage_permission_required">Storage permission required</string>
     <string name="steam_container_reset_success">Container reset to defaults</string>
@@ -67,10 +64,6 @@
     <string name="epic_download_error">Download error: %1$s</string>
     <string name="epic_cancel_download_message">Are you sure you want to cancel the download of the app?</string>
     <string name="epic_delete_download_message">Delete all downloaded data for this game?</string>
-    <string name="epic_cloud_sync_starting">Starting cloud save sync…</string>
-    <string name="epic_cloud_sync_success">Cloud saves synced successfully</string>
-    <string name="epic_cloud_sync_failed">Cloud save sync failed</string>
-    <string name="epic_cloud_sync_error">Cloud save sync error: %1$s</string>
     <string name="epic_uninstall_failed">Uninstall failed: %1$s</string>
     <string name="epic_uninstall_error">Uninstall error: %1$s</string>
     <string name="steam_never">Never</string>
@@ -104,6 +97,7 @@
     <string name="confirm_delete">Confirm Deletion</string>
     <string name="destination_library">Library</string>
     <string name="destination_downloads">Downloads &amp; Storage</string>
+    <string name="downloads_section_title">Downloads</string>
     <string name="downloads_empty">No active downloads</string>
     <string name="downloads_overview_subtitle">Track active, paused, and resumable downloads</string>
     <string name="downloads_cancel_confirm">Cancel download and delete files for %1$s?</string>
@@ -194,6 +188,7 @@
     <string name="intent_launch_service_pending">Game will launch when service is ready</string>
     <string name="intent_launch_steam_login_failed">Steam login failed — game launch cancelled</string>
     <string name="intent_launch_service_timeout">Game service failed to start — game launch cancelled</string>
+    <string name="back_press_exit_warning">Press back again to exit</string>
     <string name="game_executable_not_found_title">Cannot Launch</string>
     <string name="game_executable_not_found">The executable could not be auto-selected. Please set the executable path in container settings.</string>
     <string name="save_container_settings_title">Save Container Configuration?</string>
@@ -246,8 +241,27 @@
     <string name="quick_menu_back">Back</string>
     <string name="screen_effects">Screen Effects</string>
     <string name="screen_effects_live_preview">Changes apply instantly to the current game.</string>
+    <string name="screen_effects_scaling">Scaling</string>
     <string name="screen_effects_color_adjustments">Color adjustments</string>
     <string name="screen_effects_shader_toggles">Shader effects</string>
+    <string name="screen_effects_scaling_mode">Scaling mode</string>
+    <string name="screen_effects_scaling_mode_none">None</string>
+    <string name="screen_effects_scaling_mode_nearest">Nearest</string>
+    <string name="screen_effects_scaling_mode_linear">Linear</string>
+    <string name="screen_effects_scaling_mode_fill">Fill</string>
+    <string name="screen_effects_scaling_mode_stretch">Stretch</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">Official AMD FidelityFX Super Resolution 1.0 using EASU + RCAS with a lower internal render resolution and full-resolution upscale.</string>
+    <string name="screen_effects_fsr_quality">FSR quality</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">Ultra Quality</string>
+    <string name="screen_effects_fsr_quality_quality">Quality</string>
+    <string name="screen_effects_fsr_quality_balanced">Balanced</string>
+    <string name="screen_effects_fsr_quality_performance">Performance</string>
+    <string name="screen_effects_fsr_sharpness">FSR sharpness</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">Launch sharpness</string>
+    <string name="screen_effects_launch_sharpness_note">CAS and DLS are applied through vkBasalt and take effect the next time you launch the game.</string>
     <string name="screen_effects_brightness">Brightness</string>
     <string name="screen_effects_contrast">Contrast</string>
     <string name="screen_effects_gamma">Gamma</string>
@@ -255,6 +269,8 @@
     <string name="screen_effects_toon_description">Adds dark outlines for a cel-shaded look.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Smooths jagged edges with a light post-process anti-aliasing pass.</string>
+    <string name="screen_effects_vivid">Vivid</string>
+    <string name="screen_effects_vivid_description">Adds a bloom and contrast boost for a punchier image.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Adds scanlines and subtle chromatic aberration.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -871,6 +887,10 @@
     <string name="settings_interface_hide_statusbar_subtitle">Hide Android status bar in game list, settings, etc. App will restart when changed.</string>
     <string name="settings_interface_swap_face_buttons_title">Swap face buttons</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Swap A↔B and X↔Y button icons</string>
+    <string name="settings_interface_warn_before_exit_title">Warn before exiting</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Require double back press to exit — first press shows a warning</string>
+    <string name="settings_interface_show_gamepad_hints_title">Show controller hints</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Show the controller button hints bar at the bottom of the screen</string>
     <string name="settings_interface_icon_style">Icon style</string>
     <string name="settings_interface_wifi_only_title">Download only over Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Prevent downloads on cellular data</string>
@@ -988,9 +1008,11 @@
     <string name="library_export_cancelled">Export cancelled</string>
     <string name="library_shortcut_created">Shortcut created</string>
     <string name="library_failed_to_create_shortcut">Failed to create shortcut: %s</string>
+    <string name="library_cloud_sync_starting">Starting cloud save sync…</string>
     <string name="library_cloud_sync_success">Cloud sync completed successfully</string>
     <string name="library_cloud_sync_up_to_date">Save files are already up to date</string>
-    <string name="library_cloud_sync_failed">Cloud sync failed: %s</string>
+    <string name="library_cloud_sync_failed">Cloud sync failed</string>
+    <string name="library_cloud_sync_error">Cloud sync error: %1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Need internet to install</string>

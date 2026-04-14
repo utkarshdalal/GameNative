@@ -212,14 +212,7 @@ private fun resolveGameAppId(context: Context, appId: String): GameResolutionRes
 private fun needsDeferLaunch(context: Context, appId: String): Boolean {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     return when (gameSource) {
-        GameSource.STEAM -> {
-            if (SteamService.isLoggedIn) return false
-            try {
-                !ContainerUtils.getContainer(context, appId).isSteamOfflineMode()
-            } catch (_: Exception) {
-                true // no container → needs login
-            }
-        }
+        GameSource.STEAM -> !SteamService.isLoggedIn
         GameSource.GOG -> !GOGService.isRunning
         GameSource.EPIC -> !EpicService.isRunning
         GameSource.AMAZON -> !AmazonService.isRunning
@@ -304,6 +297,9 @@ fun PluviaMain(
     // Track if connection banner was dismissed by user
     var connectionBannerDismissed by rememberSaveable { mutableStateOf(false) }
 
+    // suppress CONNECTING banner during first attempt; DISCONNECTED always shows
+    var initialConnectDone by rememberSaveable { mutableStateOf(SteamService.isConnected) }
+
     // Track previous connection state to detect actual changes (not just recomposition)
     val previousConnectionState = remember { mutableStateOf(state.connectionState) }
 
@@ -312,6 +308,10 @@ fun PluviaMain(
         if (previousConnectionState.value != state.connectionState) {
             connectionBannerDismissed = false
             previousConnectionState.value = state.connectionState
+        }
+        // first attempt resolved (connected or failed)
+        if (state.connectionState != ConnectionState.CONNECTING) {
+            initialConnectDone = true
         }
     }
 
@@ -1086,10 +1086,13 @@ fun PluviaMain(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    var exitSnackbarVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         SnackbarManager.messages.collect { message ->
             snackbarHostState.showSnackbar(message)
+            // snackbar dismissed (timeout or new message) — reset exit flag
+            exitSnackbarVisible = false
         }
     }
 
@@ -1224,7 +1227,7 @@ fun PluviaMain(
             }
 
             // Connection status banner (overlay) - dismissible so users can access navigation
-            if (state.currentScreen != PluviaScreen.LoginUser && !connectionBannerDismissed && !SteamService.isConnected &&
+            if (state.currentScreen != PluviaScreen.LoginUser && !connectionBannerDismissed && initialConnectDone && !state.isSteamConnected &&
                 PrefManager.refreshToken.isNotEmpty() && PrefManager.username.isNotEmpty()) {
                 Box(modifier = Modifier.zIndex(5f)) {
                     ConnectionStatusBanner(
@@ -1373,7 +1376,14 @@ fun PluviaMain(
                             )
                         },
                         onClickExit = {
-                            PluviaApp.events.emit(AndroidEvent.EndProcess)
+                            if (!PrefManager.warnBeforeExit) {
+                                PluviaApp.events.emit(AndroidEvent.EndProcess)
+                            } else if (exitSnackbarVisible) {
+                                PluviaApp.events.emit(AndroidEvent.EndProcess)
+                            } else {
+                                exitSnackbarVisible = true
+                                SnackbarManager.show(context.getString(R.string.back_press_exit_warning))
+                            }
                         },
                         onChat = {
                             navController.navigate(PluviaScreen.Chat.route(it))

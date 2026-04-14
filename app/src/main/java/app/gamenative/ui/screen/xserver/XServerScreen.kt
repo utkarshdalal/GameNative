@@ -633,7 +633,6 @@ fun XServerScreen(
                             withContext(Dispatchers.Main) {
                                 exit(
                                     winHandler,
-                                    PluviaApp.xEnvironment,
                                     frameRating,
                                     currentAppInfo,
                                     container,
@@ -949,7 +948,7 @@ fun XServerScreen(
                 imeInputReceiver?.hideKeyboard()
                 // Resume processes before exiting so they can receive SIGTERM cleanly.
                 forceResumeIfSuspended()
-                exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+                exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
                 true
             }
 
@@ -1051,7 +1050,7 @@ fun XServerScreen(
     DisposableEffect(lifecycleOwner, container) {
         val onActivityDestroyed: (AndroidEvent.ActivityDestroyed) -> Unit = {
             Timber.i("onActivityDestroyed")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+            exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
         }
         val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
             val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
@@ -1104,7 +1103,11 @@ fun XServerScreen(
                         gameBack()
                         handled = true
                     } else {
-                        handled = keyboard?.onKeyEvent(it.event) == true
+                        if (it.event.device?.isVirtual == true) {
+                            handled = keyboard?.onVirtualKeyEvent(it.event) == true
+                        } else {
+                            handled = keyboard?.onKeyEvent(it.event) == true
+                        }
                     }
                 }
                 handled
@@ -1125,7 +1128,7 @@ fun XServerScreen(
                     if (!handled) handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
                 }
                 if (PluviaApp.touchpadView?.hasPointerCapture() != true && !PluviaApp.isOverlayPaused) {
-                    if (it.event != null) {
+                    if ((it.event != null) && (it.event.device != null)) {
                         val device = it.event.device
                         val isExternal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) device.isExternal else true
                         if (device.supportsSource(InputDevice.SOURCE_TOUCHPAD) &&
@@ -1147,11 +1150,11 @@ fun XServerScreen(
         }
         val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
             Timber.i("onGuestProgramTerminated")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+            exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
         }
         val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
             Timber.i("onForceCloseApp")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+            exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
         }
         val debugCallback = Callback<String> { outputLine ->
             Timber.i(outputLine ?: "")
@@ -1400,40 +1403,70 @@ fun XServerScreen(
                     getxServer().windowManager.removeOnWindowModificationListener(it)
                 }
                 val wmListener = object : WindowManager.OnWindowModificationListener {
-                        private fun changeFrameRatingVisibility(window: Window, property: Property?) {
-                            if (frameRating == null) return
-                            if (property != null) {
-                                if (frameRatingWindowId == -1 && (
-                                            property.nameAsString().contains("_UTIL_LAYER") ||
-                                            property.nameAsString().contains("_MESA_DRV") ||
-                                            container.containerVariant.equals(Container.GLIBC) && property.nameAsString().contains("_NET_WM_SURFACE"))) {
-                                    frameRatingWindowId = window.id
-                                    (context as? Activity)?.runOnUiThread {
-                                        frameRating?.visibility = View.VISIBLE
-                                    }
-                                    frameRating?.update()
-                                }
-                            } else if (frameRatingWindowId != -1) {
-                                frameRatingWindowId = -1
-                                (context as? Activity)?.runOnUiThread {
-                                    frameRating?.visibility = View.GONE
+                        private fun describeFrameRatingWindow(window: Window): String {
+                            return "id=${window.id}, name=${window.name}, class=${window.className}, pid=${window.processId}"
+                        }
+
+                        private fun findTopmostApplicationWindow(window: Window): Window? {
+                            val children = window.children
+                            for (i in children.indices.reversed()) {
+                                val child = children[i]
+                                if (!child.attributes.isMapped()) continue
+                                val topmostInChild = findTopmostApplicationWindow(child)
+                                if (topmostInChild != null) return topmostInChild
+                                if (child.isApplicationWindow() && child.isRenderable()) {
+                                    return child
                                 }
                             }
+                            return null
                         }
+
+                        private fun refreshFrameRatingTracking(reason: String) {
+                            val rating = frameRating ?: return
+                            val topmost = findTopmostApplicationWindow(getxServer().windowManager.rootWindow)
+                            val nextId = topmost?.id ?: -1
+                            if (frameRatingWindowId == nextId) return
+
+                            if (topmost == null) {
+                                if (frameRatingWindowId != -1) {
+                                    Timber.i(
+                                        "FrameRating tracking cleared (%s); no topmost application window remains",
+                                        reason,
+                                    )
+                                }
+                                frameRatingWindowId = -1
+                                (context as? Activity)?.runOnUiThread {
+                                    rating.visibility = View.GONE
+                                }
+                                return
+                            }
+
+                            frameRatingWindowId = nextId
+                            Timber.i(
+                                "FrameRating tracking attached (%s) to topmost app window %s",
+                                reason,
+                                describeFrameRatingWindow(topmost),
+                            )
+                            (context as? Activity)?.runOnUiThread {
+                                rating.reset()
+                                rating.visibility = View.VISIBLE
+                            }
+                        }
+
                         override fun onUpdateWindowContent(window: Window) {
                             if (!xServerState.value.winStarted && window.isApplicationWindow()) {
                                 if (!container.isDisableMouseInput && !container.isTouchscreenMode) renderer?.setCursorVisible(true)
                                 xServerState.value.winStarted = true
                             }
-                            if (window.id == frameRatingWindowId) {
-                                (context as? Activity)?.runOnUiThread {
-                                    frameRating?.update()
-                                }
+                            if (frameRatingWindowId == -1 && window.isApplicationWindow()) {
+                                refreshFrameRatingTracking("content-update")
                             }
                         }
 
                         override fun onModifyWindowProperty(window: Window, property: Property) {
-                            changeFrameRatingVisibility(window, property)
+                            if (window.id == frameRatingWindowId || window.isApplicationWindow()) {
+                                refreshFrameRatingTracking("property:${property.nameAsString()}")
+                            }
                         }
 
                         override fun onMapWindow(window: Window) {
@@ -1445,6 +1478,7 @@ fun XServerScreen(
                                         "\n\thasParent: ${window.parent != null}" +
                                         "\n\tchildrenSize: ${window.children.size}",
                             )
+                            refreshFrameRatingTracking("map-window")
                             win32AppWorkarounds?.applyWindowWorkarounds(window)
                             onWindowMapped?.invoke(context, window)
                         }
@@ -1458,9 +1492,19 @@ fun XServerScreen(
                                         "\n\thasParent: ${window.parent != null}" +
                                         "\n\tchildrenSize: ${window.children.size}",
                             )
-                            changeFrameRatingVisibility(window, null)
+                            refreshFrameRatingTracking("unmap-window")
                             startExitWatchForUnmappedGameWindow(window)
                             onWindowUnmapped?.invoke(window)
+                        }
+
+                        override fun onChangeWindowZOrder(window: Window) {
+                            refreshFrameRatingTracking("z-order")
+                        }
+
+                        override fun onUpdateWindowGeometry(window: Window, resized: Boolean) {
+                            if (window.id == frameRatingWindowId || window.isApplicationWindow()) {
+                                refreshFrameRatingTracking(if (resized) "geometry-resize" else "geometry-move")
+                            }
                         }
                     }
                 getxServer().windowManager.addOnWindowModificationListener(wmListener)
@@ -1541,13 +1585,11 @@ fun XServerScreen(
                                 null
                             }
 
-                            val sharpnessEffect: String = container.getExtra("sharpnessEffect", "None")
-                            if (sharpnessEffect != "None") {
-                                val sharpnessLevel = container.getExtra("sharpnessLevel", "100").toDouble()
-                                val sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toDouble()
-                                vkbasaltConfig =
-                                    "effects=" + sharpnessEffect.lowercase(Locale.getDefault()) + ";" + "casSharpness=" + sharpnessLevel / 100 + ";" + "dlsSharpness=" + sharpnessLevel / 100 + ";" + "dlsDenoise=" + sharpnessDenoise / 100 + ";" + "enableOnLaunch=True"
-                            }
+                            vkbasaltConfig = buildVkBasaltConfig(
+                                effect = container.getExtra("sharpnessEffect", "None"),
+                                sharpnessLevel = container.getExtra("sharpnessLevel", "100").toIntOrNull() ?: 100,
+                                sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
+                            )
 
                             Timber.i("Doing things once")
                             val envVars = EnvVars()
@@ -1820,6 +1862,7 @@ fun XServerScreen(
             }
             frameRating = FrameRating(context)
             frameRating?.setVisibility(View.GONE)
+            xServerView.renderer.setFrameRating(frameRating)
 
             if (isPerformanceHudEnabled) {
                 frameLayout.post {
@@ -2288,7 +2331,6 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
     }
 
     PluviaApp.touchpadView?.setSensitivity(profile.getCursorSpeed() * 1.0f)
-    PluviaApp.touchpadView?.setPointerButtonRightEnabled(false)
 
 
     // If the selected profile is a virtual gamepad, we must enable the P1 slot.
@@ -3230,7 +3272,7 @@ private fun getWineStartCommand(
         val normalizedPath = executablePath.replace('/', '\\')
         envVars.put("WINEPATH", "A:\\")
         "\"A:\\${normalizedPath}\""
-    } else if (appLaunchInfo == null) {
+    } else if (container.executablePath.isEmpty()) {
         // For Steam games, we need appLaunchInfo
         Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
         "\"wfm.exe\""
@@ -3264,7 +3306,9 @@ private fun getWineStartCommand(
                     Timber.e("Could not locate game drive")
                     'D'
                 }
-                envVars.put("WINEPATH", "$drive:/${appLaunchInfo.workingDir}")
+                if (appLaunchInfo != null){
+                    envVars.put("WINEPATH", "$drive:/${appLaunchInfo.workingDir}")
+                }
                 "\"$drive:/${executablePath}\""
             } else {
                 "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamclient_loader_x64.exe\""
@@ -3301,7 +3345,6 @@ private fun getSteamlessTarget(
 
 private fun exit(
     winHandler: WinHandler?,
-    environment: XEnvironment?,
     frameRating: FrameRating?,
     appInfo: SteamApp?,
     container: Container,
@@ -3334,25 +3377,32 @@ private fun exit(
         container.saveData()
     }
 
-    PluviaApp.achievementWatcher?.stop()
-    PluviaApp.achievementWatcher = null
-    SteamService.clearCachedAchievements()
+    // only needed in exit() — OS reclaims on process death, so onDestroy fallback skips this
+    try {
+        winHandler?.stop()
+    } catch (e: Exception) {
+        Timber.e(e, "winHandler.stop() failed during exit")
+    }
+    PluviaApp.shutdownEnvironment()
 
-    PluviaApp.touchpadView?.releasePointerCapture()
-    winHandler?.stop()
-    environment?.stopEnvironmentComponents()
-    SteamService.keepAlive = false
-    PluviaApp.clearActiveSuspendState()
-    // AppUtils.restartApplication(this)
-    // PluviaApp.xServerState = null
-    // PluviaApp.xServer = null
-    // PluviaApp.xServerView = null
-    PluviaApp.xEnvironment = null
-    PluviaApp.inputControlsView = null
-    PluviaApp.inputControlsManager = null
-    PluviaApp.touchpadView = null
-    // PluviaApp.touchMouse = null
-    // PluviaApp.keyboard = null
+    // empty Wine/XDG trash in background after container stops
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val trashDir = File(container.rootDir, ".local/share/Trash")
+            val children = trashDir.listFiles()
+            if (children == null) {
+                Timber.w("Trash dir missing or unreadable: ${trashDir.path}")
+            } else if (children.isEmpty()) {
+                Timber.d("Trash empty")
+            } else {
+                Timber.d("Emptying trash (${children.size} items)")
+                val deleted = children.count { child -> FileUtils.delete(child) }
+                Timber.d("Trash cleanup done: $deleted/${children.size} items deleted")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error emptying Wine/XDG trash")
+        }
+    }
     frameRating?.writeSessionSummary()
 
     if (MainActivity.wasLaunchedViaExternalIntent) {
@@ -3459,7 +3509,7 @@ private fun unpackExecutableFile(
     if (needsUnpacking || containerVariantChanged){
         try {
             PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Mono..."))
-            val monoCmd = "wine msiexec /i Z:\\opt\\mono-gecko-offline\\wine-mono-9.0.0-x86.msi && wineserver -k"
+            val monoCmd = "wine msiexec /i Z:\\opt\\mono-gecko-offline\\wine-mono-11.0.0-x86.msi && wineserver -k"
             Timber.i("Install mono command $monoCmd")
             val monoOutput = guestProgramLauncherComponent.execShellCommand(monoCmd)
             output.append(monoOutput)
@@ -3731,6 +3781,22 @@ private fun setupWineSystemFiles(
     if (!wincomponents.equals(container.getExtra("wincomponents"))) {
         extractWinComponentFiles(context, firstTimeBoot, imageFs, container, containerManager, onExtractFileListener)
         container.putExtra("wincomponents", wincomponents)
+        containerDataChanged = true
+    }
+
+    // OpenAL audio: extract native DLLs if WINEDLLOVERRIDES mentions openal32 or soft_oal
+    val dllOverrides = EnvVars(container.envVars).get("WINEDLLOVERRIDES")
+    val needsOpenalDlls = dllOverrides.contains("openal32") || dllOverrides.contains("soft_oal")
+    val openalState = if (needsOpenalDlls) "yes" else "no"
+    if (openalState != container.getExtra("openal_dlls") || firstTimeBoot) {
+        if (needsOpenalDlls) {
+            val windowsDir = File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
+            TarCompressorUtils.extract(
+                TarCompressorUtils.Type.ZSTD, context.assets,
+                "wincomponents/openal.tzst", windowsDir, onExtractFileListener,
+            )
+        }
+        container.putExtra("openal_dlls", openalState)
         containerDataChanged = true
     }
 
@@ -4364,6 +4430,21 @@ private fun extractGraphicsDriverFiles(
     }
 }
 
+private fun buildVkBasaltConfig(
+    effect: String,
+    sharpnessLevel: Int,
+    sharpnessDenoise: Int,
+): String {
+    val normalizedEffect = effect.trim().lowercase(Locale.getDefault())
+    val normalizedSharpness = sharpnessLevel.coerceIn(0, 100) / 100.0
+    val normalizedDenoise = sharpnessDenoise.coerceIn(0, 100) / 100.0
+    return when (normalizedEffect) {
+        "cas" -> "effects=cas;casSharpness=$normalizedSharpness;enableOnLaunch=True"
+        "dls" -> "effects=dls;dlsSharpness=$normalizedSharpness;dlsDenoise=$normalizedDenoise;enableOnLaunch=True"
+        else -> ""
+    }
+}
+
 private fun extractSteamFiles(
     context: Context,
     container: Container,
@@ -4408,6 +4489,8 @@ private fun changeWineAudioDriver(audioDriver: String, container: Container, ima
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "alsa")
             } else if (audioDriver == "pulseaudio") {
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse")
+            } else if (audioDriver == "disabled") {
+                registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "")
             }
         }
         container.putExtra("audioDriver", audioDriver)

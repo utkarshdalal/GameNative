@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">請確保您的存檔已上傳至雲端或已備份, 然後再進行驗證, 否則存檔可能會被覆蓋</string>
     <string name="steam_update_title">更新</string>
     <string name="steam_update_message">請確保您的存檔已上傳至雲端或已備份, 然後再進行驗證, 否則存檔可能會被覆蓋</string>
-    <string name="steam_cloud_sync_success">雲端同步已成功完成</string>
-    <string name="steam_cloud_sync_up_to_date">遊戲存檔已是最新版本</string>
-    <string name="steam_cloud_sync_failed">雲端同步失敗: %s</string>
     <string name="steam_storage_permission_required">需要存儲權限</string>
     <string name="steam_container_reset_success">容器重設為預設設定</string>
     <string name="steam_imagefs_installed">已安裝 ImageFS, 請嘗試再次編輯容器</string>
@@ -58,10 +55,6 @@
     <string name="steam_never">從不</string>
     <string name="epic_cancel_download_message">確定要取消下載應用程式嗎？</string>
     <string name="epic_delete_download_message">刪除此遊戲的所有已下載資料？</string>
-    <string name="epic_cloud_sync_starting">正在開始雲端存檔同步…</string>
-    <string name="epic_cloud_sync_success">雲端存檔同步成功</string>
-    <string name="epic_cloud_sync_failed">雲端存檔同步失敗</string>
-    <string name="epic_cloud_sync_error">雲端存檔同步錯誤：%1$s</string>
     <string name="epic_uninstall_failed">解除安裝失敗：%1$s</string>
     <string name="epic_uninstall_error">解除安裝錯誤：%1$s</string>
     <string name="steam_continue">繼續</string>
@@ -93,6 +86,7 @@
     <string name="confirm_delete">確認刪除</string>
     <string name="destination_library">遊戲庫</string>
     <string name="destination_downloads">下載與儲存</string>
+    <string name="downloads_section_title">下載</string>
 
     <!-- Library Tabs -->
     <string name="downloads_empty">目前沒有進行中的下載</string>
@@ -225,6 +219,7 @@
     <string name="intent_launch_service_pending">服務就緒後將啟動遊戲</string>
     <string name="intent_launch_steam_login_failed">Steam 登入失敗 — 遊戲啟動已取消</string>
     <string name="intent_launch_service_timeout">遊戲服務啟動失敗 — 遊戲啟動已取消</string>
+    <string name="back_press_exit_warning">再次按返回鍵退出</string>
     <string name="game_executable_not_found_title">無法啟動</string>
     <string name="game_executable_not_found">無法自動選擇可執行檔。請在容器配置中指定可執行檔路徑。</string>
     <string name="save_container_settings_title">保存容器配置?</string>
@@ -286,6 +281,8 @@
     <string name="screen_effects_toon_description">加入深色描邊，呈現 cel-shading 風格外觀。</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">以輕量的後處理抗鋸齒平滑鋸齒邊緣。</string>
+    <string name="screen_effects_vivid">鮮豔</string>
+    <string name="screen_effects_vivid_description">加入泛光與對比增強，讓畫面更有張力。</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">加入掃描線與細微的色差效果。</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -897,6 +894,10 @@
     <string name="settings_interface_external_links_subtitle">連結將以您的主要網頁瀏覽器開啟</string>
     <string name="settings_interface_hide_statusbar_title">在非遊戲狀態時隱藏狀態列</string>
     <string name="settings_interface_hide_statusbar_subtitle">在遊戲清單、設定等介面隱藏 Android 狀態列。變更後應用程式將重新啟動。</string>
+    <string name="settings_interface_warn_before_exit_title">退出前警告</string>
+    <string name="settings_interface_warn_before_exit_subtitle">需要雙擊返回鍵退出——第一次按下顯示警告</string>
+    <string name="settings_interface_show_gamepad_hints_title">顯示手把提示</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">在螢幕底部顯示手把按鍵提示列</string>
     <string name="settings_interface_wifi_only_title">僅限透過 Wi-Fi/LAN 下載</string>
     <string name="settings_interface_wifi_only_subtitle">禁止使用行動數據下載</string>
     <string name="settings_interface_external_storage_title">寫入外部儲存裝置</string>
@@ -964,9 +965,11 @@
     <string name="library_export_cancelled">匯出已取消</string>
     <string name="library_shortcut_created">捷徑已建立</string>
     <string name="library_failed_to_create_shortcut">建立捷徑失敗: %s</string>
+    <string name="library_cloud_sync_starting">正在開始雲端存檔同步…</string>
     <string name="library_cloud_sync_success">雲端同步完成</string>
     <string name="library_cloud_sync_up_to_date">儲存檔案已更新至最新版本</string>
-    <string name="library_cloud_sync_failed">雲端同步失敗: %s</string>
+    <string name="library_cloud_sync_failed">雲端同步失敗</string>
+    <string name="library_cloud_sync_error">雲端存檔同步錯誤：%1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">需連網安裝</string>

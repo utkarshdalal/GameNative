@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">검증하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
     <string name="steam_update_title">업데이트</string>
     <string name="steam_update_message">업데이트하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
-    <string name="steam_cloud_sync_success">클라우드 동기화가 완료되었습니다</string>
-    <string name="steam_cloud_sync_up_to_date">저장 파일이 이미 최신 상태입니다</string>
-    <string name="steam_cloud_sync_failed">클라우드 동기화 실패: %s</string>
     <string name="steam_not_logged_in">이 기능을 사용하려면 Steam에 로그인해야 합니다</string>
     <string name="steam_storage_permission_required">저장소 권한이 필요합니다</string>
     <string name="steam_container_reset_success">컨테이너가 기본값으로 초기화되었습니다</string>
@@ -67,10 +64,6 @@
     <string name="epic_download_error">다운로드 오류: %1$s</string>
     <string name="epic_cancel_download_message">앱 다운로드를 취소하시겠습니까?</string>
     <string name="epic_delete_download_message">이 게임의 다운로드된 모든 데이터를 삭제하시겠습니까?</string>
-    <string name="epic_cloud_sync_starting">클라우드 저장 파일 동기화 시작…</string>
-    <string name="epic_cloud_sync_success">클라우드 저장 파일 동기화 완료</string>
-    <string name="epic_cloud_sync_failed">클라우드 저장 파일 동기화 실패</string>
-    <string name="epic_cloud_sync_error">클라우드 저장 파일 동기화 오류: %1$s</string>
     <string name="epic_uninstall_failed">제거 실패: %1$s</string>
     <string name="epic_uninstall_error">제거 오류: %1$s</string>
     <string name="steam_never">안 함</string>
@@ -103,6 +96,7 @@
     <string name="confirm_delete">삭제 확인</string>
     <string name="destination_library">라이브러리</string>
     <string name="destination_downloads">다운로드 및 저장소</string>
+    <string name="downloads_section_title">다운로드</string>
 
     <string name="downloads_empty">진행 중인 다운로드 없음</string>
     <string name="downloads_overview_subtitle">진행 중, 일시 중지됨, 다시 시작 가능한 다운로드를 추적합니다</string>
@@ -240,6 +234,7 @@
     <string name="intent_launch_service_pending">서비스 준비 시 게임이 실행됩니다</string>
     <string name="intent_launch_steam_login_failed">Steam 로그인 실패 — 게임 실행이 취소되었습니다</string>
     <string name="intent_launch_service_timeout">게임 서비스 시작 실패 — 게임 실행이 취소되었습니다</string>
+    <string name="back_press_exit_warning">뒤로 한 번 더 누르면 종료됩니다</string>
     <string name="game_executable_not_found_title">실행할 수 없음</string>
     <string name="game_executable_not_found">실행 파일을 자동으로 선택할 수 없습니다. 컨테이너 설정에서 실행 파일 경로를 지정하세요.</string>
     <string name="save_container_settings_title">컨테이너 구성을 저장하시겠습니까?</string>
@@ -301,6 +296,8 @@
     <string name="screen_effects_toon_description">셀 셰이딩 느낌을 위해 어두운 외곽선을 추가합니다.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">가벼운 후처리 안티앨리어싱으로 계단 현상을 완화합니다.</string>
+    <string name="screen_effects_vivid">생동감</string>
+    <string name="screen_effects_vivid_description">더 선명한 화면을 위해 bloom과 대비를 강화합니다.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">주사선과 은은한 색수차를 추가합니다.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -914,6 +911,10 @@
     <string name="settings_interface_external_links_subtitle">링크가 기본 웹 브라우저로 열립니다</string>
     <string name="settings_interface_hide_statusbar_title">게임이 아닐 때 상태 표시줄 숨기기</string>
     <string name="settings_interface_hide_statusbar_subtitle">게임 목록, 설정 등에서 Android 상태 표시줄을 숨깁니다. 변경 시 앱이 재시작됩니다.</string>
+    <string name="settings_interface_warn_before_exit_title">종료 전 경고</string>
+    <string name="settings_interface_warn_before_exit_subtitle">종료하려면 뒤로 두 번 눌러야 합니다 — 첫 번째는 경고를 표시합니다</string>
+    <string name="settings_interface_show_gamepad_hints_title">컨트롤러 힌트 표시</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">화면 하단에 컨트롤러 버튼 힌트 바를 표시합니다</string>
     <string name="settings_interface_icon_style">아이콘 스타일</string>
     <string name="settings_interface_wifi_only_title">Wi-Fi/LAN으로만 다운로드</string>
     <string name="settings_interface_wifi_only_subtitle">셀룰러 데이터로 다운로드 방지</string>
@@ -982,9 +983,11 @@
     <string name="library_export_cancelled">내보내기 취소됨</string>
     <string name="library_shortcut_created">바로가기가 생성되었습니다</string>
     <string name="library_failed_to_create_shortcut">바로가기 생성 실패: %s</string>
+    <string name="library_cloud_sync_starting">클라우드 저장 파일 동기화 시작…</string>
     <string name="library_cloud_sync_success">클라우드 동기화가 완료되었습니다</string>
     <string name="library_cloud_sync_up_to_date">저장 파일이 이미 최신 상태입니다</string>
-    <string name="library_cloud_sync_failed">클라우드 동기화 실패: %s</string>
+    <string name="library_cloud_sync_failed">클라우드 동기화 실패</string>
+    <string name="library_cloud_sync_error">클라우드 저장 파일 동기화 오류: %1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">설치하려면 인터넷이 필요합니다</string>

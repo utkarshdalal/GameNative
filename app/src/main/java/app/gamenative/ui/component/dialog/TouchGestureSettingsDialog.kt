@@ -3,6 +3,7 @@ package app.gamenative.ui.component.dialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -231,7 +232,7 @@ private fun DelayTextField(
 ) {
     var text by remember(value) { mutableStateOf(value.toString()) }
 
-    OutlinedTextField(
+    NoExtractOutlinedTextField(
         value = text,
         onValueChange = { newText ->
             // Allow only digits

@@ -31,6 +31,16 @@ public class Texture {
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, this.minFilter);
     }
 
+    public void setFilters(int minFilter, int magFilter) {
+        this.minFilter = minFilter;
+        this.magFilter = magFilter;
+        if (textureId > 0) {
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
+            setTextureParameters();
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+        }
+    }
+
     public void allocateTexture(short width, short height, ByteBuffer data) {
         generateTextureId();
 

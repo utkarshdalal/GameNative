@@ -642,5 +642,15 @@ class EpicService : Service() {
         instance = null
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (!hasActiveOperations()) {
+            Timber.tag("Epic").i("Task removed and no active work — stopping service")
+            stopSelf()
+        } else {
+            Timber.tag("Epic").i("Task removed but active work exists — keeping service alive")
+        }
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 }

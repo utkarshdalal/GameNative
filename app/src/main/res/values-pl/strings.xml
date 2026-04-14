@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">Upewnij się, że Twoje zapisy są przesłane do chmury lub utworzono ich kopię zapasową przed weryfikacją, w przeciwnym razie mogą zostać nadpisane.</string>
     <string name="steam_update_title">Aktualizuj</string>
     <string name="steam_update_message">Upewnij się, że Twoje zapisy są przesłane do chmury lub utworzono ich kopię zapasową przed aktualizacją, w przeciwnym razie mogą zostać nadpisane.</string>
-    <string name="steam_cloud_sync_success">Synchronizacja z chmurą zakończona pomyślnie</string>
-    <string name="steam_cloud_sync_up_to_date">Pliki zapisu są już aktualne</string>
-    <string name="steam_cloud_sync_failed">Synchronizacja z chmurą nie powiodła się: %s</string>
     <string name="steam_not_logged_in">Musisz być zalogowany do Steam, aby użyć tej funkcji</string>
     <string name="steam_storage_permission_required">Wymagane uprawnienie do pamięci</string>
     <string name="steam_container_reset_success">Kontener zresetowany do domyślnych</string>
@@ -67,10 +64,6 @@
     <string name="epic_download_error">Błąd pobierania: %1$s</string>
     <string name="epic_cancel_download_message">Czy na pewno chcesz anulować pobieranie aplikacji?</string>
     <string name="epic_delete_download_message">Usunąć wszystkie pobrane dane dla tej gry?</string>
-    <string name="epic_cloud_sync_starting">Rozpoczynanie synchronizacji zapisów w chmurze…</string>
-    <string name="epic_cloud_sync_success">Zapisy w chmurze zsynchronizowane pomyślnie</string>
-    <string name="epic_cloud_sync_failed">Synchronizacja zapisów w chmurze nie powiodła się</string>
-    <string name="epic_cloud_sync_error">Błąd synchronizacji zapisów w chmurze: %1$s</string>
     <string name="epic_uninstall_failed">Odinstalowywanie nie powiodło się: %1$s</string>
     <string name="epic_uninstall_error">Błąd odinstalowywania: %1$s</string>
     <string name="steam_never">Nigdy</string>
@@ -103,6 +96,7 @@
     <string name="confirm_delete">Potwierdź usunięcie</string>
     <string name="destination_library">Biblioteka</string>
     <string name="destination_downloads">Pobrane i pamięć</string>
+    <string name="downloads_section_title">Pobrane</string>
 
     <string name="downloads_empty">Brak aktywnych pobrań</string>
     <string name="downloads_overview_subtitle">Śledź aktywne, wstrzymane i wznawialne pobrania</string>
@@ -239,6 +233,7 @@
     <string name="intent_launch_service_pending">Gra zostanie uruchomiona po uruchomieniu usługi</string>
     <string name="intent_launch_steam_login_failed">Logowanie do Steam nie powiodło się — uruchomienie gry anulowane</string>
     <string name="intent_launch_service_timeout">Nie udało się uruchomić usługi gry — uruchomienie gry anulowane</string>
+    <string name="back_press_exit_warning">Naciśnij wstecz ponownie, aby wyjść</string>
     <string name="game_executable_not_found_title">Nie można uruchomić</string>
     <string name="game_executable_not_found">Nie udało się automatycznie wybrać pliku wykonywalnego. Ustaw ścieżkę do pliku wykonywalnego w ustawieniach kontenera.</string>
     <string name="save_container_settings_title">Zapisać konfigurację kontenera?</string>
@@ -300,6 +295,8 @@
     <string name="screen_effects_toon_description">Dodaje ciemne kontury dla wyglądu cel-shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Wygładza postrzępione krawędzie lekkim antyaliasingiem w postprocessingu.</string>
+    <string name="screen_effects_vivid">Żywy</string>
+    <string name="screen_effects_vivid_description">Dodaje bloom i zwiększa kontrast, aby obraz był bardziej wyrazisty.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Dodaje linie skanowania i subtelną aberrację chromatyczną.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -913,6 +910,10 @@
     <string name="settings_interface_external_links_subtitle">Linki otwierają się w głównej przeglądarce</string>
     <string name="settings_interface_hide_statusbar_title">Ukryj pasek stanu poza grą</string>
     <string name="settings_interface_hide_statusbar_subtitle">Ukryj pasek stanu Androida w liście gier, ustawieniach itp. Aplikacja uruchomi się ponownie po zmianie.</string>
+    <string name="settings_interface_warn_before_exit_title">Ostrzegaj przed wyjściem</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Wymaga podwójnego naciśnięcia wstecz, aby wyjść — pierwsze naciśnięcie pokazuje ostrzeżenie</string>
+    <string name="settings_interface_show_gamepad_hints_title">Pokazuj podpowiedzi kontrolera</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Pokazuje pasek podpowiedzi przycisków kontrolera u dołu ekranu</string>
     <string name="settings_interface_icon_style">Styl ikony</string>
     <string name="settings_interface_wifi_only_title">Pobieraj tylko przez Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Zapobiegaj pobieraniu przez dane komórkowe</string>
@@ -981,9 +982,11 @@
     <string name="library_export_cancelled">Eksport anulowany</string>
     <string name="library_shortcut_created">Utworzono skrót</string>
     <string name="library_failed_to_create_shortcut">Nie udało się utworzyć skrótu: %s</string>
+    <string name="library_cloud_sync_starting">Rozpoczynanie synchronizacji zapisów w chmurze…</string>
     <string name="library_cloud_sync_success">Synchronizacja z chmurą zakończona pomyślnie</string>
     <string name="library_cloud_sync_up_to_date">Pliki zapisu są już aktualne</string>
-    <string name="library_cloud_sync_failed">Synchronizacja z chmurą nie powiodła się: %s</string>
+    <string name="library_cloud_sync_failed">Synchronizacja z chmurą nie powiodła się</string>
+    <string name="library_cloud_sync_error">Błąd synchronizacji zapisów w chmurze: %1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Wymagany internet do instalacji</string>

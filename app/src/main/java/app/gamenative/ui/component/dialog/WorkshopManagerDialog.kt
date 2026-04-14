@@ -42,7 +42,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -246,7 +246,7 @@ fun WorkshopManagerDialog(
 
                 // Search bar
                 if (!isLoading && !fetchFailed && workshopItems.isNotEmpty()) {
-                    OutlinedTextField(
+                    NoExtractOutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         modifier = Modifier

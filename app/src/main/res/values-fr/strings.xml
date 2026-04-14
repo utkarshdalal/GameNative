@@ -29,9 +29,6 @@
     <string name="steam_verify_files_message">Veuillez vous assurer que vos sauvegardes sont téléchargées dans le cloud ou sauvegardées avant de vérifier, car elles peuvent être écrasées.</string>
     <string name="steam_update_title">Mettre à jour</string>
     <string name="steam_update_message">Veuillez vous assurer que vos sauvegardes sont téléchargées dans le cloud ou sauvegardées avant de mettre à jour, car elles peuvent être écrasées.</string>
-    <string name="steam_cloud_sync_success">Synchronisation cloud terminée avec succès</string>
-    <string name="steam_cloud_sync_up_to_date">Les fichiers de sauvegarde sont déjà à jour</string>
-    <string name="steam_cloud_sync_failed">Échec de la synchronisation cloud : %s</string>
     <string name="steam_not_logged_in">Vous devez être connecté à Steam pour utiliser cette fonctionnalité</string>
     <string name="steam_storage_permission_required">Autorisation de stockage requise</string>
     <string name="steam_container_reset_success">Conteneur réinitialisé aux paramètres par défaut</string>
@@ -59,10 +56,6 @@
     <string name="steam_never">Jamais</string>
     <string name="epic_cancel_download_message">Êtes-vous sûr de vouloir annuler le téléchargement de l\'application?</string>
     <string name="epic_delete_download_message">Supprimer toutes les données téléchargées pour ce jeu?</string>
-    <string name="epic_cloud_sync_starting">Démarrage de la synchronisation des sauvegardes cloud…</string>
-    <string name="epic_cloud_sync_success">Sauvegardes cloud synchronisées avec succès</string>
-    <string name="epic_cloud_sync_failed">Échec de la synchronisation des sauvegardes cloud</string>
-    <string name="epic_cloud_sync_error">Erreur de synchronisation des sauvegardes cloud: %1$s</string>
     <string name="epic_uninstall_failed">Échec de la désinstallation: %1$s</string>
     <string name="epic_uninstall_error">Erreur de désinstallation: %1$s</string>
     <string name="steam_continue">Continuer</string>
@@ -94,6 +87,7 @@
     <string name="confirm_delete">Confirmer la suppression</string>
     <string name="destination_library">Bibliothèque</string>
     <string name="destination_downloads">Téléchargements et stockage</string>
+    <string name="downloads_section_title">Téléchargements</string>
 
     <string name="downloads_empty">Aucun téléchargement actif</string>
     <string name="downloads_overview_subtitle">Suivez les téléchargements actifs, en pause et repris</string>
@@ -227,6 +221,7 @@
     <string name="intent_launch_service_pending">Le jeu se lancera une fois le service prêt</string>
     <string name="intent_launch_steam_login_failed">Échec de la connexion Steam — lancement du jeu annulé</string>
     <string name="intent_launch_service_timeout">Échec du démarrage du service de jeu — lancement du jeu annulé</string>
+    <string name="back_press_exit_warning">Appuyez à nouveau sur retour pour quitter</string>
     <string name="game_executable_not_found_title">Impossible de lancer</string>
     <string name="game_executable_not_found">L\'exécutable n\'a pas pu être sélectionné automatiquement. Veuillez définir le chemin de l\'exécutable dans les paramètres du conteneur.</string>
     <string name="save_container_settings_title">Enregistrer la configuration du conteneur ?</string>
@@ -288,6 +283,8 @@
     <string name="screen_effects_toon_description">Ajoute des contours sombres pour un rendu cel-shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Lisse les bords irréguliers avec un léger anti-aliasing en post-traitement.</string>
+    <string name="screen_effects_vivid">Vif</string>
+    <string name="screen_effects_vivid_description">Ajoute du bloom et un boost de contraste pour une image plus percutante.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Ajoute des lignes de balayage et une subtile aberration chromatique.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -900,6 +897,10 @@
     <string name="settings_interface_external_links_subtitle">Les liens s\'ouvrent avec votre navigateur web principal</string>
     <string name="settings_interface_hide_statusbar_title">Masquer la barre d\'état hors jeu</string>
     <string name="settings_interface_hide_statusbar_subtitle">Masquer la barre d\'état Android dans la liste de jeux, les paramètres, etc. L\'application redémarrera lors du changement.</string>
+    <string name="settings_interface_warn_before_exit_title">Avertir avant de quitter</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Appui double sur retour requis pour quitter — le premier affiche un avertissement</string>
+    <string name="settings_interface_show_gamepad_hints_title">Afficher les indications de manette</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Affiche la barre d\'indications des boutons de la manette en bas de l\'écran</string>
     <string name="settings_interface_icon_style">Style d\'icône</string>
     <string name="settings_interface_wifi_only_title">Télécharger uniquement via Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Empêcher les téléchargements sur données cellulaires</string>
@@ -968,9 +969,11 @@
     <string name="library_export_cancelled">Exportation annulée</string>
     <string name="library_shortcut_created">Raccourci créé</string>
     <string name="library_failed_to_create_shortcut">Échec de la création du raccourci : %s</string>
+    <string name="library_cloud_sync_starting">Démarrage de la synchronisation des sauvegardes cloud…</string>
     <string name="library_cloud_sync_success">Synchronisation cloud terminée avec succès</string>
     <string name="library_cloud_sync_up_to_date">Les fichiers de sauvegarde sont déjà à jour</string>
-    <string name="library_cloud_sync_failed">Échec de la synchronisation cloud : %s</string>
+    <string name="library_cloud_sync_failed">Échec de la synchronisation cloud</string>
+    <string name="library_cloud_sync_error">Erreur de synchronisation des sauvegardes cloud: %1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Connexion internet nécessaire pour installer</string>

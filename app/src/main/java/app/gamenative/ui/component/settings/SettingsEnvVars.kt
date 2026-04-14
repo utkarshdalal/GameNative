@@ -67,6 +67,22 @@ fun SettingsEnvVars(
                     },
                 )
             }
+            EnvVarSelectionType.SUGGESTIONS -> {
+                SettingsTextFieldWithSuggestions(
+                    colors = colors,
+                    enabled = enabled,
+                    title = { Text(identifier) },
+                    value = value,
+                    suggestions = envVarInfo?.possibleValues ?: emptyList(),
+                    onValueChange = {
+                        envVars.put(identifier, it)
+                        onEnvVarsChange(envVars)
+                    },
+                    action = envVarAction?.let {
+                        { envVarAction(identifier) }
+                    },
+                )
+            }
             EnvVarSelectionType.NONE -> {
                 if (envVarInfo?.possibleValues?.isNotEmpty() == true) {
                     SettingsListDropdown(
