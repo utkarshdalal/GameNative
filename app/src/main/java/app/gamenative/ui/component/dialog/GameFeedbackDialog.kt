@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.dialog.state.GameFeedbackDialogState
 import timber.log.Timber
 
@@ -120,7 +121,7 @@ fun GameFeedbackDialog(
                     }
 
                     // Feedback text box
-                    OutlinedTextField(
+                    NoExtractOutlinedTextField(
                         value = state.feedbackText,
                         onValueChange = { onStateChange(state.copy(feedbackText = it)) },
                         label = { Text(stringResource(R.string.describe_what_happened)) },
@@ -128,7 +129,7 @@ fun GameFeedbackDialog(
                             .fillMaxWidth()
                             .heightIn(min = 100.dp)
                             .padding(bottom = 16.dp),
-                        maxLines = 5
+                        maxLines = 5,
                     )
 
                     // Discord support link

@@ -33,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.BrandGradient
 import kotlin.math.sin
 import kotlin.random.Random
 import kotlinx.coroutines.delay
@@ -185,11 +186,7 @@ fun BootingSplash(
                                 blurRadius = 20f,
                             ),
                             brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    PluviaTheme.colors.accentCyan,
-                                    PluviaTheme.colors.accentPurple,
-                                    PluviaTheme.colors.accentPink,
-                                ),
+                                colors = BrandGradient,
                             ),
                         ),
                     )
@@ -238,7 +235,7 @@ fun BootingSplash(
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     lineHeight = 20.sp,
                                 ),
-                                color = PluviaTheme.colors.borderDefault,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -274,11 +271,7 @@ private fun ProgressBar(
                 .clip(RoundedCornerShape(2.dp))
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(
-                            PluviaTheme.colors.accentCyan,
-                            PluviaTheme.colors.accentPurple,
-                            PluviaTheme.colors.accentPink,
-                        ),
+                        colors = BrandGradient,
                     ),
                 ),
         )

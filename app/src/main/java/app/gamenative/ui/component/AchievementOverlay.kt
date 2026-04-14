@@ -40,6 +40,15 @@ import app.gamenative.ui.util.AchievementNotificationManager
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import kotlinx.coroutines.delay
+import app.gamenative.PrefManager
+
+
+internal val ACHIEVEMENT_NOTIFICATION_POSITION: Map<String, Int> = mapOf(
+    "top_left" to R.string.achievement_position_top_left,
+    "top_right" to R.string.achievement_position_top_right,
+    "bottom_left" to R.string.achievement_position_bottom_left,
+    "bottom_right" to R.string.achievement_position_bottom_right,
+)
 
 @Composable
 fun BoxScope.AchievementOverlay() {
@@ -57,13 +66,23 @@ fun BoxScope.AchievementOverlay() {
         }
     }
 
+    val isLeftAligned = PrefManager.achievementNotificationPosition in setOf("top_left", "bottom_left")
+
     AnimatedVisibility(
         visible = visible,
         modifier = Modifier
-            .align(Alignment.BottomEnd)
+            .align(
+                when (PrefManager.achievementNotificationPosition) {
+                    "top_left" -> Alignment.TopStart
+                    "top_right" -> Alignment.TopEnd
+                    "bottom_left" -> Alignment.BottomStart
+                    "bottom_right" -> Alignment.BottomEnd
+                    else -> Alignment.BottomEnd
+                }
+            )
             .padding(16.dp),
-        enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-        exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
+        enter = slideInHorizontally(initialOffsetX = { if (isLeftAligned) -it else it }) + fadeIn(), // Slide in from left if left aligned, otherwise from right
+        exit = slideOutHorizontally(targetOffsetX = { if (isLeftAligned) -it else it }) + fadeOut(),
     ) {
         current?.let { notification ->
             AchievementNotificationContent(notification)
@@ -75,7 +94,7 @@ fun BoxScope.AchievementOverlay() {
 private fun AchievementNotificationContent(notification: AchievementNotification) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         shadowElevation = 6.dp,
         tonalElevation = 2.dp,
     ) {
@@ -99,9 +118,8 @@ private fun AchievementNotificationContent(notification: AchievementNotification
             Column {
                 Text(
                     text = stringResource(R.string.achievement_unlocked),
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = notification.name,

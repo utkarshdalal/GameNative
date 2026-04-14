@@ -5,6 +5,8 @@ import android.content.Context
 import android.provider.Settings
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.LaunchInfo
+import app.gamenative.data.ManifestInfo
 import app.gamenative.data.SteamApp
 import app.gamenative.enums.Marker
 import app.gamenative.enums.SpecialGameSaveMapping
@@ -35,9 +37,16 @@ import timber.log.Timber
 import okhttp3.*
 import org.json.JSONObject
 import java.net.URLEncoder
+import java.nio.file.attribute.FileTime
 import java.util.concurrent.TimeUnit
+import kotlin.io.path.setLastModifiedTime
 
 object SteamUtils {
+
+    fun getDownloadBytes(manifest: ManifestInfo?): Long {
+        if (manifest == null) return 0L
+        return if (manifest.download > 0L) manifest.download else manifest.size
+    }
 
     internal val http = Net.http.newBuilder()
         .readTimeout(5, TimeUnit.MINUTES)
@@ -329,16 +338,19 @@ object SteamUtils {
         Timber.i("Finished restoreSteamclientFiles for appId: $steamAppId. Restored $restoredCount file(s)")
     }
 
-    internal fun writeColdClientIni(steamAppId: Int, container: Container) {
-        val gameName = getAppDirName(getAppInfoOf(steamAppId))
-        val executablePath = container.executablePath.replace("/", "\\")
-        val exePath = "steamapps\\common\\$gameName\\$executablePath"
-        val exeCommandLine = container.execArgs
-        val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
-        iniFile.parentFile?.mkdirs()
+    internal fun generateColdClientIni(
+        gameName: String,
+        executablePath: String,
+        exeCommandLine: String,
+        steamAppId: Int,
+        workingDir: String?,
+        isUnpackFiles: Boolean,
+    ): String {
+        val exePath = "steamapps\\common\\$gameName\\${executablePath.replace("/", "\\")}"
+        val exeRunDir = if (workingDir.isNullOrEmpty()) exePath.substringBeforeLast("\\") else ""
 
         // Only include DllsToInjectFolder if unpackFiles is enabled
-        val injectionSection = if (container.isUnpackFiles) {
+        val injectionSection = if (isUnpackFiles) {
             """
                 [Injection]
                 IgnoreLoaderArchDifference=1
@@ -351,12 +363,11 @@ object SteamUtils {
             """
         }
 
-        iniFile.writeText(
-            """
+        return """
                 [SteamClient]
 
                 Exe=$exePath
-                ExeRunDir=
+                ExeRunDir=$exeRunDir
                 ExeCommandLine=$exeCommandLine
                 AppId=$steamAppId
 
@@ -365,7 +376,23 @@ object SteamUtils {
                 SteamClient64Dll=steamclient64.dll
 
                 $injectionSection
-            """.trimIndent(),
+            """.trimIndent()
+    }
+
+    internal fun writeColdClientIni(steamAppId: Int, container: Container, launchInfo: LaunchInfo? = null) {
+        val gameName = getAppDirName(getAppInfoOf(steamAppId))
+        val workingDir = launchInfo?.workingDir
+        val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
+        iniFile.parentFile?.mkdirs()
+        iniFile.writeText(
+            generateColdClientIni(
+                gameName = gameName,
+                executablePath = container.executablePath,
+                exeCommandLine = container.execArgs,
+                steamAppId = steamAppId,
+                workingDir = workingDir,
+                isUnpackFiles = container.isUnpackFiles,
+            )
         )
     }
 
@@ -560,16 +587,17 @@ object SteamUtils {
                 Timber.i("Created symlink from ${steamGameLink.absolutePath} to ${gameDir.absolutePath}")
             }
 
-            // Get build ID and depot information
-            val buildId = appInfo.branches["public"]?.buildId ?: 0L
+            val installedBranch = SteamService.getInstalledApp(steamAppId)?.branch ?: "public"
+            val buildId = (appInfo.branches[installedBranch] ?: appInfo.branches["public"])?.buildId ?: 0L
             val downloadableDepots = SteamService.getDownloadableDepots(steamAppId)
 
-            // Separate depots into regular depots (with manifests) and shared depots (without manifests)
             val regularDepots = mutableMapOf<Int, DepotInfo>()
             val sharedDepots = mutableMapOf<Int, DepotInfo>()
 
             downloadableDepots.forEach { (depotId, depotInfo) ->
-                val manifest = depotInfo.manifests["public"]
+                val manifest = depotInfo.manifests[installedBranch]
+                    ?: depotInfo.manifests["public"]
+                    ?: depotInfo.manifests.values.firstOrNull()
                 if (manifest != null && manifest.gid != 0L) {
                     regularDepots[depotId] = depotInfo
                 } else {
@@ -608,7 +636,9 @@ object SteamUtils {
                     appendLine("\t\"InstalledDepots\"")
                     appendLine("\t{")
                     regularDepots.forEach { (depotId, depotInfo) ->
-                        val manifest = depotInfo.manifests["public"]
+                        val manifest = depotInfo.manifests[installedBranch]
+                            ?: depotInfo.manifests["public"]
+                            ?: depotInfo.manifests.values.firstOrNull()
                         appendLine("\t\t\"$depotId\"")
                         appendLine("\t\t{")
                         appendLine("\t\t\t\"manifest\"\t\t\"${manifest?.gid ?: "0"}\"")
@@ -734,10 +764,35 @@ object SteamUtils {
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
     }
 
+    fun findSteamApiDllRootFile(file: File, depth: Int): File? {
+        if (depth < 0) return null
+        val (files, directories) = file.walkTopDown().maxDepth(1).partition { it.isFile }
+
+        val steamApi = files.firstOrNull {
+            it.toPath().name.startsWith("steam_api", true)
+            && (
+                it.toPath().name.endsWith(".dll", true)
+                || it.toPath().name.endsWith(".dll.orig", true)
+            )
+        }
+
+        if (steamApi != null)
+            return steamApi.parentFile
+
+        return directories.filter { it != file }.firstNotNullOfOrNull { findSteamApiDllRootFile(it, depth - 1) }
+    }
+
     fun putBackSteamDlls(appDirPath: String) {
         val rootPath = Paths.get(appDirPath)
 
-        rootPath.toFile().walkTopDown().maxDepth(10).forEach { file ->
+        val dllRootFile = findSteamApiDllRootFile(rootPath.toFile(), 10)
+
+        if (dllRootFile == null) {
+            Timber.w("Failed to find steam_api.dll/steam_api64.dll on a Steam game")
+            return
+        }
+
+        dllRootFile.walkTopDown().maxDepth(1).forEach { file ->
             val path = file.toPath()
             if (!file.isFile || !path.name.startsWith("steam_api", ignoreCase = true) || !path.name.endsWith(".orig", ignoreCase = true)) return@forEach
 
@@ -808,6 +863,95 @@ object SteamUtils {
     }
 
     /**
+     * Migrates save files from GSE Saves directory to Steam userdata directory.
+     * This function copies all files from the GSE saves location to the proper Steam userdata
+     * location and then removes the original GSE directory to complete the migration.
+     */
+    fun migrateGSESavesToSteamUserdata(context: Context, appId: Int) {
+        val imageFs = ImageFs.find(context)
+        val accountId = SteamService.userSteamId?.accountID?.toInt()
+            ?: PrefManager.steamUserAccountId.takeIf { it != 0 }
+
+        if (accountId == null) {
+            Timber.tag("migrateGSESavesToSteamUserdata").w("Cannot migrate GSE saves: no Steam account ID available")
+            return
+        }
+
+        val gseDir = File(
+            imageFs.rootDir,
+            "${ImageFs.WINEPREFIX}/drive_c/users/xuser/AppData/Roaming/GSE Saves/$appId"
+        )
+
+        val steamUserdataDir = File(
+            imageFs.rootDir,
+            "${ImageFs.WINEPREFIX}/drive_c/Program Files (x86)/Steam/userdata/$accountId/$appId"
+        )
+
+        fun isDirectoryEmpty(file: File): Boolean {
+            return file.isDirectory && file.list()?.isEmpty() ?: true
+        }
+
+        if (
+            !gseDir.exists() ||
+            !gseDir.isDirectory ||
+            isDirectoryEmpty(gseDir) // No files inside gseDir
+        ) {
+            Timber.tag("migrateGSESavesToSteamUserdata").d("No GSE save directory found for appId=$appId")
+            return
+        }
+
+        Timber.tag("migrateGSESavesToSteamUserdata").i("Starting GSE Saves Migration for appId=$appId")
+
+        if (!steamUserdataDir.exists()) {
+            try {
+                Files.createDirectories(steamUserdataDir.toPath())
+                Timber.tag("migrateGSESavesToSteamUserdata").i("Created Steam userdata directory: ${steamUserdataDir.absolutePath}")
+            } catch (e: IOException) {
+                Timber.tag("migrateGSESavesToSteamUserdata").e(e, "Failed to create Steam userdata directory")
+                return
+            }
+        }
+
+        var migratedCount = 0
+        var migrationFailed = false
+
+        gseDir.walkTopDown()
+            .filter { it.isFile }
+            .forEach { file ->
+                val relativePath = gseDir.toPath().relativize(file.toPath())
+                val targetFile = steamUserdataDir.toPath().resolve(relativePath)
+                try {
+                    Files.createDirectories(targetFile.parent)
+
+                    val fileTimestamp = file.lastModified()
+
+                    // As Files.move use linux rename syscall (or simply mv command we know, no need to manually remove the target file)
+                    Files.move(
+                        file.toPath(),
+                        targetFile,
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE   // will throw if the FS can’t guarantee atomicity
+                    )
+
+                    // Preserve file timestamp
+                    targetFile.setLastModifiedTime(FileTime.fromMillis(fileTimestamp))
+
+                    Timber.tag("migrateGSESavesToSteamUserdata").i("Migrated ${file.name} from GSE saves to Steam userdata")
+                    migratedCount++
+                } catch (e: Exception) {
+                    migrationFailed = true
+                    Timber.tag("migrateGSESavesToSteamUserdata").w(e, "Failed to migrate ${file.name}")
+                }
+            }
+
+        if (!migrationFailed) {
+            gseDir.deleteRecursively()
+        }
+
+        Timber.tag("migrateGSESavesToSteamUserdata").i("Migration completed for appId=$appId. Migrated $migratedCount file(s)")
+    }
+
+    /**
      * Sibling folder "steam_settings" + empty "offline.txt" file, no-ops if they already exist.
      */
     private fun ensureSteamSettings(context: Context, dllPath: Path, appId: String, ticketBase64: String? = null, isOffline: Boolean = false) {
@@ -855,7 +999,6 @@ object SteamUtils {
 
         // Get appInfo to check if saveFilePatterns exist (used for both user and app configs)
         val appInfo = getAppInfoOf(steamAppId)
-        val hasSaveFilePatterns = appInfo?.ufs?.saveFilePatterns?.isNotEmpty() == true
 
         val iniContent = buildString {
             appendLine("[user::general]")
@@ -866,13 +1009,14 @@ object SteamUtils {
                 appendLine("ticket=$ticketBase64")
             }
 
-            // Only add [user::saves] section if no saveFilePatterns are defined
-            if (!hasSaveFilePatterns) {
-                val steamUserDataPath = "C:\\Program Files (x86)\\Steam\\userdata\\$accountId"
-                appendLine()
-                appendLine("[user::saves]")
-                appendLine("local_save_path=$steamUserDataPath")
-            }
+            // Migrate GSE Saves to Steam userdata
+            migrateGSESavesToSteamUserdata(context, steamAppId)
+
+            // Add [user::saves] section
+            val steamUserDataPath = "C:\\Program Files (x86)\\Steam\\userdata\\$accountId"
+            appendLine()
+            appendLine("[user::saves]")
+            appendLine("local_save_path=$steamUserDataPath")
         }
 
         if (Files.notExists(configsIni)) Files.createFile(configsIni)
@@ -910,8 +1054,17 @@ object SteamUtils {
                 }
             }
 
-            // Add cloud save config sections if appInfo exists
+            // Add app paths and cloud save config sections if appInfo exists
             if (appInfo != null) {
+                // Some games required this path to be setup for detecting dlc, e.g. Vampire Survivors
+                val gameDir = File(SteamService.getAppDirPath(steamAppId))
+                val gameName = gameDir.name
+                val actualInstallDir = appInfo.config.installDir.ifEmpty { gameName }
+                appendLine()
+                appendLine("[app::paths]")
+                appendLine("$steamAppId=./steamapps/common/$actualInstallDir")
+
+                // Setup for cloud save
                 appendLine()
                 append(generateCloudSaveConfig(appInfo))
             }

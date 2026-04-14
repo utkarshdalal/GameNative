@@ -167,7 +167,7 @@ class GOGService : Service() {
         // ==========================================================================
 
         fun hasActiveOperations(): Boolean {
-            return syncInProgress || backgroundSyncJob?.isActive == true
+            return syncInProgress || backgroundSyncJob?.isActive == true || hasActiveDownload()
         }
 
         private fun setSyncInProgress(inProgress: Boolean) {
@@ -192,6 +192,52 @@ class GOGService : Service() {
 
         fun getDownloadInfo(gameId: String): DownloadInfo? {
             return getInstance()?.activeDownloads?.get(gameId)
+        }
+
+        fun getActiveDownloads(): Map<String, DownloadInfo> =
+            getInstance()?.activeDownloads?.let { HashMap(it) } ?: emptyMap()
+
+        private fun hasPartialDownload(game: GOGGame): Boolean {
+            if (game.isInstalled) return false
+            val title = game.title.ifBlank { return false }
+            val installPath = GOGConstants.getGameInstallPath(title)
+            return app.gamenative.utils.MarkerUtils.hasPartialInstall(installPath)
+        }
+
+        fun hasPartialDownload(gameId: String, fallbackTitle: String? = null): Boolean {
+            getGOGGameOf(gameId)?.let { return hasPartialDownload(it) }
+            val title = fallbackTitle?.ifBlank { null } ?: return false
+            val installPath = GOGConstants.getGameInstallPath(title)
+            return app.gamenative.utils.MarkerUtils.hasPartialInstall(installPath)
+        }
+
+        private fun getPartialInstallPaths(): Set<String> {
+            val roots = buildList {
+                add(GOGConstants.internalGOGGamesPath)
+                if (app.gamenative.PrefManager.externalStoragePath.isNotBlank()) {
+                    add(GOGConstants.externalGOGGamesPath)
+                }
+            }.distinct()
+
+            return roots.asSequence()
+                .flatMap { root -> app.gamenative.utils.MarkerUtils.findResumablePartialInstalls(root).asSequence() }
+                .toSet()
+        }
+
+        suspend fun getPartialDownloads(): List<String> {
+            val instance = getInstance() ?: return emptyList()
+            val partialInstallPaths = getPartialInstallPaths()
+            if (partialInstallPaths.isEmpty()) return emptyList()
+
+            return instance.gogManager.getNonInstalledGames()
+                .asSequence()
+                .filter { game -> !instance.activeDownloads.containsKey(game.id) }
+                .filter { game ->
+                    val title = game.title.ifBlank { return@filter false }
+                    partialInstallPaths.contains(GOGConstants.getGameInstallPath(title))
+                }
+                .map { it.id }
+                .toList()
         }
 
         fun cleanupDownload(gameId: String) {
@@ -294,6 +340,12 @@ class GOGService : Service() {
 
             // Create DownloadInfo for progress tracking
             val downloadInfo = DownloadInfo(jobCount = 1, gameId = 0, downloadingAppIds = CopyOnWriteArrayList<Int>())
+            downloadInfo.setPersistencePath(installPath)
+
+            val persistedBytes = downloadInfo.loadPersistedBytesDownloaded(installPath)
+            if (persistedBytes > 0L) {
+                downloadInfo.initializeBytesDownloaded(persistedBytes)
+            }
 
             // Track in activeDownloads first
             instance.activeDownloads[gameId] = downloadInfo
@@ -553,6 +605,7 @@ class GOGService : Service() {
         // Initialize notification helper for foreground service
         notificationHelper = NotificationHelper(applicationContext)
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
+        PluviaApp.events.emit(AndroidEvent.ServiceReady)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -640,6 +693,16 @@ class GOGService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         notificationHelper.cancel()
         instance = null
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (!hasActiveOperations()) {
+            Timber.tag("GOG").i("Task removed and no active work — stopping service")
+            stopSelf()
+        } else {
+            Timber.tag("GOG").i("Task removed but active work exists — keeping service alive")
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

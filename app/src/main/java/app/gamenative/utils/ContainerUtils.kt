@@ -112,6 +112,7 @@ object ContainerUtils {
             language = PrefManager.containerLanguage,
             containerVariant = PrefManager.containerVariant,
             forceDlc = PrefManager.forceDlc,
+            localSavesOnly = PrefManager.localSavesOnly,
             steamOfflineMode = PrefManager.steamOfflineMode,
             useLegacyDRM = PrefManager.useLegacyDRM,
             unpackFiles = PrefManager.unpackFiles,
@@ -194,6 +195,7 @@ object ContainerUtils {
 		PrefManager.dinputEnabled = containerData.enableDInput
 		PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
         PrefManager.forceDlc = containerData.forceDlc
+        PrefManager.localSavesOnly = containerData.localSavesOnly
         PrefManager.steamOfflineMode = containerData.steamOfflineMode
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
         PrefManager.unpackFiles = containerData.unpackFiles
@@ -290,6 +292,7 @@ object ContainerUtils {
             sdlControllerAPI = container.isSdlControllerAPI,
             useSteamInput = useSteamInput,
             forceDlc = container.isForceDlc,
+            localSavesOnly = container.isLocalSavesOnly,
             steamOfflineMode = container.isSteamOfflineMode(),
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
@@ -468,6 +471,7 @@ object ContainerUtils {
         container.setExternalDisplayMode(containerData.externalDisplayMode)
         container.setExternalDisplaySwap(containerData.externalDisplaySwap)
         container.setForceDlc(containerData.forceDlc)
+        container.setLocalSavesOnly(containerData.localSavesOnly)
         container.setSteamOfflineMode(containerData.steamOfflineMode)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
@@ -745,21 +749,24 @@ object ContainerUtils {
             }
         }
 
-        // Check for cached best config (only for Steam games, only if no custom config provided)
+        // Check for cached best config (store-backed games only, only if no custom config provided)
         var bestConfigMap: Map<String, Any?>? = null
-        if (gameSource == GameSource.STEAM && customConfig == null && PrefManager.autoApplyKnownConfig) {
+
+        if (supportsKnownConfigAutoApply(gameSource) && customConfig == null && PrefManager.autoApplyKnownConfig) {
             try {
-                val gameId = extractGameIdFromContainerId(appId)
-                val appInfo = SteamService.getAppInfoOf(gameId)
-                if (appInfo != null) {
-                    val gameName = appInfo.name
+                val gameName = resolveGameName(appId)
+                if (gameName != "Unknown" && gameName.isNotBlank()) {
                     val gpuName = GPUInformation.getRenderer(context)
 
                     // Check cache first (synchronous, fast)
                     // If not cached, make request on background thread (not UI thread)
                     runBlocking(Dispatchers.IO) {
                         try {
-                            val bestConfig = BestConfigService.fetchBestConfig(gameName, gpuName)
+                            val bestConfig = BestConfigService.fetchBestConfig(
+                                gameName = gameName,
+                                gpuName = gpuName,
+                                gameStore = gameSource.name,
+                            )
                             if (bestConfig != null && bestConfig.matchType != "no_match") {
                                 Timber.i("Applying best config for $gameName (matchType: ${bestConfig.matchType})")
                                 val parsedConfig = BestConfigService.parseConfigToContainerData(
@@ -767,6 +774,7 @@ object ContainerUtils {
                                     bestConfig.bestConfig,
                                     bestConfig.matchType,
                                     true,
+                                    bestConfig.matchedStore.equals(gameSource.name, ignoreCase = true),
                                 )
                                 if (parsedConfig != null && parsedConfig.isNotEmpty()) {
                                     bestConfigMap = parsedConfig
@@ -1104,6 +1112,23 @@ object ContainerUtils {
         }
     }
 
+    fun isLocalSavesOnly(context: Context, appId: String): Boolean {
+        if (!hasContainer(context, appId)) return false
+        val container = getContainer(context, appId)
+        return container.isLocalSavesOnly
+    }
+
+    fun supportsKnownConfigAutoApply(gameSource: GameSource): Boolean = when (gameSource) {
+        GameSource.STEAM,
+        GameSource.GOG,
+        GameSource.EPIC,
+        GameSource.AMAZON,
+        -> true
+
+        GameSource.CUSTOM_GAME,
+        -> false
+    }
+
     /**
      * Resolves the display name for a game from its container ID,
      * looking up the appropriate store service.
@@ -1159,12 +1184,14 @@ object ContainerUtils {
 
             Timber.d("Scanning for executables in A: drive: $aDrivePath")
 
-            // Recursively scan for .exe files using listFiles with depth limit
+            // Recursively scan for .exe files using listFiles with depth limit.
+            // Symlinked directories are skipped to avoid cycles (e.g. GOG ISI rootdir -> game root).
             fun scanRecursive(dir: File, baseDir: File, depth: Int = 0, maxDepth: Int = 10) {
                 if (depth > maxDepth) return
 
                 dir.listFiles()?.forEach { file ->
                     if (file.isDirectory) {
+                        if (FileUtils.isSymlink(file)) return@forEach
                         scanRecursive(file, baseDir, depth + 1, maxDepth)
                     } else if (file.isFile && file.name.lowercase().endsWith(".exe")) {
                         // Convert to relative Windows path format

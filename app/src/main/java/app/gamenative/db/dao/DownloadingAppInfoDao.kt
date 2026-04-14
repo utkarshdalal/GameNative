@@ -11,6 +11,9 @@ interface DownloadingAppInfoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(appInfo: DownloadingAppInfo)
 
+    @Query("SELECT * FROM downloading_app_info")
+    suspend fun getAll(): List<DownloadingAppInfo>
+
     @Query("SELECT * FROM downloading_app_info WHERE appId = :appId")
     suspend fun getDownloadingApp(appId: Int): DownloadingAppInfo?
 

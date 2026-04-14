@@ -85,6 +85,7 @@ data class ContainerData(
     /** Preferred game language (Goldberg) **/
     val language: String = "english",
     val forceDlc: Boolean = false,
+    val localSavesOnly: Boolean = false,
     val steamOfflineMode: Boolean = false,
     val useLegacyDRM: Boolean = false,
     val unpackFiles: Boolean = false,
@@ -147,6 +148,7 @@ data class ContainerData(
                     "useDRI3" to state.useDRI3,
                     "language" to state.language,
                     "forceDlc" to state.forceDlc,
+                    "localSavesOnly" to state.localSavesOnly,
                     "steamOfflineMode" to state.steamOfflineMode,
                     "useLegacyDRM" to state.useLegacyDRM,
                     "unpackFiles" to state.unpackFiles,
@@ -208,6 +210,7 @@ data class ContainerData(
                     useDRI3 = (savedMap["useDRI3"] as? Boolean) ?: true,
                     language = (savedMap["language"] as? String) ?: "english",
                     forceDlc = (savedMap["forceDlc"] as? Boolean) ?: false,
+                    localSavesOnly = (savedMap["localSavesOnly"] as? Boolean) ?: false,
                     steamOfflineMode = (savedMap["steamOfflineMode"] as? Boolean) ?: false,
                     useLegacyDRM = (savedMap["useLegacyDRM"] as? Boolean) ?: false,
                     unpackFiles = (savedMap["unpackFiles"] as? Boolean) ?: false,

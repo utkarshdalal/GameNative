@@ -26,9 +26,12 @@ object XnaFrameworkStep : PreInstallStep {
     ): String? {
         val searchDirs = listOf(
             File(gameDirPath, "_CommonRedist/xnafx"),
+            File(gameDirPath, "_CommonRedist/XNA_40"),
             File(gameDirPath, "redist"),
             File(gameDirPath, "Redist"),
-        ).filter { it.exists() && it.isDirectory }
+        )
+            .filter { it.exists() && it.isDirectory }
+            .distinctBy { it.absolutePath.lowercase() } // Avoid duplicate directories
 
         if (searchDirs.isEmpty()) {
             Timber.tag("XnaFrameworkStep").i("No XNA Framework search directories found for game at $gameDirPath")

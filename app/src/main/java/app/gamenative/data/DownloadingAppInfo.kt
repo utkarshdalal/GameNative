@@ -10,5 +10,8 @@ data class DownloadingAppInfo (
     val appId: Int,
 
     @ColumnInfo("dlcAppIds")
-    val dlcAppIds: List<Int> = emptyList<Int>()
-){}
+    val dlcAppIds: List<Int> = emptyList<Int>(),
+
+    @ColumnInfo("branch", defaultValue = "public")
+    val branch: String = "public",
+)

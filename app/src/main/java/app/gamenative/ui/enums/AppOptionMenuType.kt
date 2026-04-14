@@ -19,9 +19,12 @@ enum class AppOptionMenuType(val text: String) {
     MoveToExternalStorage("Move to external storage"),
     MoveToInternalStorage("Move to internal storage"),
     ForceCloudSync("Force cloud sync"),
+    BrowseOnlineSaves("Browse online saves"),
     ForceDownloadRemote("Force download remote saves"),
     ForceUploadLocal("Force upload local saves"),
     FetchSteamGridDBImages("Fetch game images"),
     TestGraphics("Test graphics"),
-    ManageGameContent("Manage DLC");
+    ManageGameContent("Manage DLC"),
+    ManageWorkshop("Manage Workshop"),
+    ChangeBranch("Change branch");
 }

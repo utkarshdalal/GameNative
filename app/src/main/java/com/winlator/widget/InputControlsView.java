@@ -17,12 +17,12 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
-import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.util.Log;
 
+import androidx.compose.ui.input.pointer.PointerIcon;
 import androidx.core.graphics.ColorUtils;
 
 import app.gamenative.R;
@@ -94,8 +94,8 @@ public class InputControlsView extends View {
         setClickable(true);
         setFocusable(true);
         setFocusableInTouchMode(true);
+        setDefaultFocusHighlightEnabled(false);
         setBackgroundColor(0x00000000);
-        setPointerIcon(PointerIcon.load(getResources(), R.drawable.hidden_pointer_arrow));
         setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
@@ -848,6 +848,7 @@ public class InputControlsView extends View {
                     }
 
                     touchpadView.setPointerButtonLeftEnabled(true);
+                    touchpadView.setPointerButtonRightEnabled(true);
                     for (ControlElement element : profile.getElements()) {
                         if (element.handleTouchDown(pointerId, x, y)) {
                             performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
@@ -855,6 +856,9 @@ public class InputControlsView extends View {
                         }
                         if (element.getBindingAt(0) == Binding.MOUSE_LEFT_BUTTON) {
                             touchpadView.setPointerButtonLeftEnabled(false);
+                        }
+                        if (element.getBindingAt(0) == Binding.MOUSE_RIGHT_BUTTON) {
+                            touchpadView.setPointerButtonRightEnabled(false);
                         }
                     }
                     if (!handled) touchpadView.onTouchEvent(event);

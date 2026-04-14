@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -67,6 +69,8 @@ internal fun AppItem(
     isRefreshing: Boolean = false,
     imageRefreshCounter: Long = 0L,
     compatibilityStatus: GameCompatibilityStatus? = null,
+    showFocusGlow: Boolean = true,
+    enableFocusScale: Boolean = true,
 ) {
     val context = LocalContext.current
     var hideText by remember { mutableStateOf(true) }
@@ -88,19 +92,23 @@ internal fun AppItem(
 
     // More subtle scale for list view, slightly larger for grid views
     val targetScale = when {
-        !isFocused -> 1f
+        !enableFocusScale || !isFocused -> 1f
         paneType == PaneType.LIST -> 1.015f
         else -> 1.03f
     }
 
-    val scale by animateFloatAsState(
-        targetValue = targetScale,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "focusScale",
-    )
+    val scale by if (enableFocusScale) {
+        animateFloatAsState(
+            targetValue = targetScale,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium,
+            ),
+            label = "focusScale",
+        )
+    } else {
+        rememberUpdatedState(1f)
+    }
 
     when (paneType) {
         PaneType.LIST -> ListViewCard(
@@ -132,19 +140,30 @@ internal fun AppItem(
                 alpha = 0.1f
             },
             compatibilityStatus = compatibilityStatus,
+            showFocusGlow = showFocusGlow,
             context = context,
         )
     }
 }
 
 @Composable
-fun GameSourceIcon(gameSource: GameSource, modifier: Modifier = Modifier, iconSize: Int = 12) {
-    when (gameSource) {
-        GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", modifier = modifier.size(iconSize.dp).alpha(0.7f))
-        GameSource.CUSTOM_GAME -> Icon(imageVector = Icons.Filled.Folder, contentDescription = "Custom Game", modifier = modifier.size(iconSize.dp).alpha(0.7f))
-        GameSource.GOG -> Icon(painter = painterResource(R.drawable.ic_gog), contentDescription = "Gog", modifier = modifier.size(iconSize.dp).alpha(0.7f))
-        GameSource.EPIC -> Icon(painter = painterResource(R.drawable.ic_epic), contentDescription = "Epic", modifier = modifier.size(iconSize.dp).alpha(0.7f))
-        GameSource.AMAZON -> Icon(imageVector = Icons.Filled.Amazon, contentDescription = "Amazon", modifier = modifier.size(iconSize.dp).alpha(0.7f))
+fun GameSourceIcon(
+    gameSource: GameSource,
+    modifier: Modifier = Modifier,
+    iconSize: Int = 12,
+    alignmentBoxSize: Int = 20,
+) {
+    Box(
+        modifier = modifier.size(alignmentBoxSize.dp),
+        contentAlignment = androidx.compose.ui.Alignment.Center,
+    ) {
+        when (gameSource) {
+            GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
+            GameSource.CUSTOM_GAME -> Icon(imageVector = Icons.Filled.Folder, contentDescription = "Custom Game", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
+            GameSource.GOG -> Icon(painter = painterResource(R.drawable.ic_gog), contentDescription = "Gog", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
+            GameSource.EPIC -> Icon(painter = painterResource(R.drawable.ic_epic), contentDescription = "Epic", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
+            GameSource.AMAZON -> Icon(imageVector = Icons.Filled.Amazon, contentDescription = "Amazon", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
+        }
     }
 }
 

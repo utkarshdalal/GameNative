@@ -51,7 +51,7 @@ public class WinHandler {
 
     private static final String TAG = "WinHandler";
     private final ControllerManager controllerManager;
-    public static final int MAX_PLAYERS = 1;
+    public static final int MAX_PLAYERS = 4;
     private final MappedByteBuffer[] extraGamepadBuffers = new MappedByteBuffer[MAX_PLAYERS - 1];
     private final ExternalController[] extraControllers = new ExternalController[MAX_PLAYERS - 1];
     private MappedByteBuffer gamepadBuffer;
@@ -77,14 +77,13 @@ public class WinHandler {
 
     private InputControlsView inputControlsView;
     private Thread rumblePollerThread;
-    private short lastLowFreq = 0;  // Use 'short' instead of uint16_t
-    private short lastHighFreq = 0; // Use 'short' instead of uint16_t
-    private boolean isRumbling = false;
+    private final short[] lastLowFreqs = new short[MAX_PLAYERS];
+    private final short[] lastHighFreqs = new short[MAX_PLAYERS];
+    private final boolean[] isRumbling = new boolean[MAX_PLAYERS];
     private boolean isShowingAssignDialog = false;
     private Context activity;
     private final java.util.Set<Integer> ignoredDeviceIds = new java.util.HashSet<>();
 
-    // Add method to set InputControlsView
     public void setInputControlsView(InputControlsView view) {
         this.inputControlsView = view;
     }
@@ -142,6 +141,30 @@ public class WinHandler {
                 Log.i(TAG, "Initialized Player " + (i + 2) + " with: " + extraDevice.getName());
             }
         }
+    }
+
+    public MappedByteBuffer getBufferForSlot(int slot) {
+        if (slot == 0) return gamepadBuffer;
+        if (slot > 0 && slot <= extraGamepadBuffers.length) return extraGamepadBuffers[slot - 1];
+        return null;
+    }
+
+    public ExternalController getControllerForSlot(int slot) {
+        if (slot == 0) return currentController;
+        if (slot > 0 && slot <= extraControllers.length) return extraControllers[slot - 1];
+        return null;
+    }
+
+    public void setControllerForSlot(int slot, ExternalController controller) {
+        if (slot < 0 || slot >= MAX_PLAYERS) return;
+        ExternalController old = getControllerForSlot(slot);
+        if (old != null && old != controller) {
+            stopVibrationForSlot(slot, old);
+            lastLowFreqs[slot] = 0;
+            lastHighFreqs[slot] = 0;
+        }
+        if (slot == 0) { currentController = controller; return; }
+        if (slot > 0 && slot <= extraControllers.length) extraControllers[slot - 1] = controller;
     }
 
     private boolean sendPacket(int port) {
@@ -572,26 +595,37 @@ public class WinHandler {
     }
 
     private void startRumblePoller() {
+        // poller skips case where controller is null and we
+        // do NOT vibrate phone as of now to prevent issues with docked users.
+        // TODO: add phone vibration option in upcoming ux when no controller device connected
         rumblePollerThread = new Thread(() -> {
             while (running) {
-                // --- MODIFIED: Get the current profile state on EVERY loop iteration ---
                 try {
-                    // Always poll for rumble if gamepad buffer exists, regardless of controller state
-                    // This ensures vibration works with built-in controllers (like Ayn Odin 2)
-                    // even when virtual gamepad mode is disabled
-                    if (gamepadBuffer != null) {
-                        // Read the rumble values from the shared memory file.
-                        short lowFreq = gamepadBuffer.getShort(32);
-                        short highFreq = gamepadBuffer.getShort(34);
-                        // Check if the rumble state has changed
-                        if (lowFreq != lastLowFreq || highFreq != lastHighFreq) {
-                            lastLowFreq = lowFreq;
-                            lastHighFreq = highFreq;
+                    for (int slot = 0; slot < MAX_PLAYERS; slot++) {
+                        MappedByteBuffer buffer = getBufferForSlot(slot);
+                        if (buffer == null) continue;
+
+                        short lowFreq = buffer.getShort(32);
+                        short highFreq = buffer.getShort(34);
+
+                        if (lowFreq != lastLowFreqs[slot] || highFreq != lastHighFreqs[slot]) {
+                            ExternalController controller = getControllerForSlot(slot);
+
+                            // case: disable vibration, attempt to disable safely
                             if (lowFreq == 0 && highFreq == 0) {
-                                stopVibration();
-                            } else {
-                                startVibration(lowFreq, highFreq);
+                                lastLowFreqs[slot] = lowFreq;
+                                lastHighFreqs[slot] = highFreq;
+                                stopVibrationForSlot(slot, controller);
+
+                            // case: controller exists and vibration exists
+                            } else if (controller != null) {
+                                // Only mark as delivered when we can actually vibrate
+                                lastLowFreqs[slot] = lowFreq;
+                                lastHighFreqs[slot] = highFreq;
+                                startVibrationForSlot(slot, controller, lowFreq, highFreq);
                             }
+                            // else: controller not yet adopted for this slot — don't update
+                            // lastFreqs so the poller retries on the next tick
                         }
                     }
                 } catch (Exception e) {
@@ -607,65 +641,34 @@ public class WinHandler {
         rumblePollerThread.start();
     }
 
-    private void startVibration(short lowFreq, short highFreq) {
-        // --- Step 1: Calculate the base amplitude once at the top ---
+    private void startVibrationForSlot(int slot, ExternalController controller, short lowFreq, short highFreq) {
         int unsignedLowFreq = lowFreq & 0xFFFF;
         int unsignedHighFreq = highFreq & 0xFFFF;
         int dominantRumble = Math.max(unsignedLowFreq, unsignedHighFreq);
-        // This is the raw amplitude for a physical X-Input device
         int amplitude = Math.round((float) dominantRumble / 65535.0f * 254.0f) + 1;
         if (amplitude > 255) amplitude = 255;
-        // If amplitude is negligible, just stop and exit.
         if (amplitude <= 1) {
-            stopVibration();
+            stopVibrationForSlot(slot, controller);
             return;
         }
-        isRumbling = true; // We know we are going to try to rumble.
-        // --- Step 2: Attempt to vibrate the physical controller first ---
-        if (currentController != null) {
-            InputDevice device = InputDevice.getDevice(currentController.getDeviceId());
-            if (device != null) {
-                Vibrator controllerVibrator = device.getVibrator();
-                if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
-                    // Vibrate the physical controller and then we are done.
-                    controllerVibrator.vibrate(VibrationEffect.createOneShot(50, amplitude));
-                    return;
-                }
-            }
-        }
-        // --- Step 3: Fallback to phone vibration if physical controller fails or doesn't exist ---
-        Log.w("WinHandler", "No physical controller vibrator found, falling back to device vibration.");
-        Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
-        if (phoneVibrator != null && phoneVibrator.hasVibrator()) {
-            // --- HAPTIC CURVE LOGIC to make phone vibration feel better ---
-            float normalizedAmplitude = (float) amplitude / 255.0f;
-            float curvedAmplitude = (float) Math.pow(normalizedAmplitude, 0.6f);
-            int finalPhoneAmplitude = (int) (curvedAmplitude * 255);
-            if (finalPhoneAmplitude > 255) finalPhoneAmplitude = 255;
-            if (finalPhoneAmplitude <= 1) finalPhoneAmplitude = 0;
-            if (finalPhoneAmplitude > 0) {
-                phoneVibrator.vibrate(VibrationEffect.createOneShot(50, finalPhoneAmplitude));
-            }
-        }
+        if (controller == null) return;
+        InputDevice device = InputDevice.getDevice(controller.getDeviceId());
+        if (device == null) return;
+        Vibrator controllerVibrator = device.getVibrator();
+        if (controllerVibrator == null || !controllerVibrator.hasVibrator()) return;
+        isRumbling[slot] = true;
+        controllerVibrator.vibrate(VibrationEffect.createOneShot(50, amplitude));
     }
-    private void stopVibration() {
-        if (!isRumbling) return; // Simplified check
-        // Attempt to stop the physical controller's vibration if it exists
-        if (currentController != null) {
-            InputDevice device = InputDevice.getDevice(currentController.getDeviceId());
-            if (device != null) {
-                Vibrator vibrator = device.getVibrator();
-                if (vibrator != null && vibrator.hasVibrator()) {
-                    vibrator.cancel();
-                }
-            }
-        }
-        // Always attempt to stop the phone's vibration
-        Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
-        if (phoneVibrator != null) {
-            phoneVibrator.cancel();
-        }
-        isRumbling = false;
+
+    private void stopVibrationForSlot(int slot, ExternalController controller) {
+        if (!isRumbling[slot]) return;
+        isRumbling[slot] = false;  // handle before early returns - disconnected or null controller leaves slot, assures to disable
+        if (controller == null) return;
+        InputDevice device = InputDevice.getDevice(controller.getDeviceId());
+        if (device == null) return;
+        Vibrator controllerVibrator = device.getVibrator();
+        if (controllerVibrator == null || !controllerVibrator.hasVibrator()) return;
+        controllerVibrator.cancel();
     }
 
     public void sendGamepadState() {
@@ -695,80 +698,70 @@ public class WinHandler {
         }
     }
 
-    public boolean onGenericMotionEvent(MotionEvent event) {
-        boolean handled = false;
-        ExternalController externalController = this.currentController;
-        // Adopt newly connected controller if deviceId mismatches
-        if ((externalController == null || externalController.getDeviceId() != event.getDeviceId()) && ExternalController.isJoystickDevice(event)) {
+    /**
+     * Resolves (or adopts) an ExternalController for the given device into the correct player slot.
+     * Returns the slot index (0-3) or -1 if the device is not a game controller.
+     */
+    private int resolveControllerSlot(int deviceId) {
+        int slot = controllerManager.autoAssignDevice(deviceId);
+        if (slot < 0) return -1;
+
+        ExternalController controller = getControllerForSlot(slot);
+        if (controller == null || controller.getDeviceId() != deviceId) {
             ExternalController adopted = null;
-            // Try to get controller from profile first (has saved bindings)
             if (inputControlsView != null) {
                 ControlsProfile profile = inputControlsView.getProfile();
                 if (profile != null) {
-                    adopted = profile.getController(event.getDeviceId());
+                    adopted = profile.getController(deviceId);
                 }
             }
-            // Fallback to creating new controller if profile doesn't have one
             if (adopted == null) {
-                adopted = ExternalController.getController(event.getDeviceId());
+                adopted = ExternalController.getController(deviceId);
             }
-            if (adopted != null && "*".equals(adopted.getId())) {
-                this.currentController = adopted;
-                externalController = adopted;
-                Timber.d("WinHandler.onGenericMotionEvent: adopted controller %s(#%d)", adopted.getName(), adopted.getDeviceId());
-            }
-        }
-        if (externalController != null && externalController.getDeviceId() == event.getDeviceId() && (handled = this.currentController.updateStateFromMotionEvent(event))) {
-            if (handled) {
-                sendGamepadState();
-                sendMemoryFileState();
+            if (adopted != null) {
+                setControllerForSlot(slot, adopted);
+                Timber.d("WinHandler: adopted controller %s(#%d) to slot %d", adopted.getName(), adopted.getDeviceId(), slot);
             }
         }
-        return handled;
+        return slot;
+    }
+
+    public boolean onGenericMotionEvent(MotionEvent event) {
+        if (!ExternalController.isJoystickDevice(event)) return false;
+
+        int slot = resolveControllerSlot(event.getDeviceId());
+        if (slot < 0) return false;
+
+        ExternalController controller = getControllerForSlot(slot);
+        if (controller != null && controller.updateStateFromMotionEvent(event)) {
+            MappedByteBuffer buffer = getBufferForSlot(slot);
+            if (buffer != null) sendMemoryFileState(controller, buffer);
+            if (slot == 0) sendGamepadState();
+            return true;
+        }
+        return false;
     }
 
     public boolean onKeyEvent(KeyEvent event) {
-        MappedByteBuffer buffer = null;
-        boolean handled = false;
-        ExternalController externalController = this.currentController;
-        buffer = gamepadBuffer;
-        // If this is a gamepad event but our controller is null or mismatched, adopt it
         InputDevice device = event.getDevice();
-        if ((externalController == null || externalController.getDeviceId() != event.getDeviceId())
-                && device != null && ExternalController.isGameController(device)
-                && event.getRepeatCount() == 0) {
-            ExternalController adopted = null;
-            // Try to get controller from profile first (has saved bindings)
-            if (inputControlsView != null) {
-                ControlsProfile profile = inputControlsView.getProfile();
-                if (profile != null) {
-                    adopted = profile.getController(event.getDeviceId());
-                }
-            }
-            // Fallback to creating new controller if profile doesn't have one
-            if (adopted == null) {
-                adopted = ExternalController.getController(event.getDeviceId());
-            }
-            if (adopted != null && "*".equals(adopted.getId())) {
-                this.currentController = adopted;
-                externalController = adopted;
-                Timber.d("WinHandler.onKeyEvent: adopted controller %s(#%d)", adopted.getName(), adopted.getDeviceId());
-            }
+        if (device == null || !ExternalController.isGameController(device) || event.getRepeatCount() != 0) {
+            return false;
         }
 
+        int slot = resolveControllerSlot(event.getDeviceId());
+        if (slot < 0) return false;
 
-        if (externalController != null && externalController.getDeviceId() == event.getDeviceId() && event.getRepeatCount() == 0) {
-            int action = event.getAction();
-            if (action == KeyEvent.ACTION_DOWN) {
-                handled = this.currentController.updateStateFromKeyEvent(event);
-            } else if (action == KeyEvent.ACTION_UP) {
-                handled = this.currentController.updateStateFromKeyEvent(event);
-            }
-            sendMemoryFileState(this.currentController, buffer);
-            if (handled) {
-                sendGamepadState();
-            }
+        ExternalController controller = getControllerForSlot(slot);
+        if (controller == null) return false;
+
+        boolean handled = false;
+        int action = event.getAction();
+        if (action == KeyEvent.ACTION_DOWN || action == KeyEvent.ACTION_UP) {
+            handled = controller.updateStateFromKeyEvent(event);
         }
+        MappedByteBuffer buffer = getBufferForSlot(slot);
+        if (buffer != null) sendMemoryFileState(controller, buffer);
+        if (handled && slot == 0) sendGamepadState();
         return handled;
     }
 
@@ -785,11 +778,7 @@ public class WinHandler {
     }
 
 
-    private void sendMemoryFileState() {
-        sendMemoryFileState(currentController, gamepadBuffer);
-    }
-
-    private void sendMemoryFileState(ExternalController controller, MappedByteBuffer buffer) {
+    public void sendMemoryFileState(ExternalController controller, MappedByteBuffer buffer) {
         if (buffer == null || controller == null) {
             return;
         }

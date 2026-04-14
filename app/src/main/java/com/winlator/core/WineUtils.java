@@ -11,6 +11,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -20,13 +21,17 @@ import java.util.Locale;
 import timber.log.Timber;
 
 public abstract class WineUtils {
-    public static void createDosdevicesSymlinks(Container container) {
+    public static void createDosdevicesSymlinks(Context context, Container container) throws IOException {
         String dosdevicesPath = (new File(container.getRootDir(), ".wine/dosdevices")).getPath();
         File[] files = (new File(dosdevicesPath)).listFiles();
         if (files != null) for (File file : files) if (file.getName().matches("[a-z]:")) file.delete();
 
         FileUtils.symlink("../drive_c", dosdevicesPath+"/c:");
-        FileUtils.symlink(container.getRootDir().getPath() + "/../..", dosdevicesPath+"/z:");
+        // Z: must point at the resolved imagefs root so the guest sees only opt, home, usr, etc.,
+        // not the parent directory (files) which would expose imagefs_shared, etc.
+        File imagefsRoot = ImageFs.find(context).getRootDir();
+        String zTarget = imagefsRoot.getAbsoluteFile().getCanonicalPath();
+        FileUtils.symlink(zTarget, dosdevicesPath + "/z:");
 
 
         // Auto-fix containers missing D: and E: drives

@@ -361,14 +361,33 @@ public class ExternalController {
     }
 
     public static boolean isGameController(InputDevice device) {
-        if (device == null) {
-            return false;
+        if (device == null) return false;
+        if (device.isVirtual()) return false;
+
+        boolean isGamepad = device.supportsSource(InputDevice.SOURCE_GAMEPAD);
+        boolean isJoystick = device.supportsSource(InputDevice.SOURCE_JOYSTICK);
+
+        boolean hasAxes =
+                device.getMotionRange(android.view.MotionEvent.AXIS_X) != null ||
+                        device.getMotionRange(android.view.MotionEvent.AXIS_Y) != null;
+
+        boolean[] hasGamepadKeysArray = device.hasKeys(
+                KeyEvent.KEYCODE_BUTTON_A,
+                KeyEvent.KEYCODE_BUTTON_B,
+                KeyEvent.KEYCODE_BUTTON_X,
+                KeyEvent.KEYCODE_BUTTON_Y
+        );
+
+        boolean hasGamepadKeys = false;
+        for (boolean hasKey : hasGamepadKeysArray) {
+            if (hasKey) {
+                hasGamepadKeys = true;
+                break;
+            }
         }
-        int sources = device.getSources();
-        if (device.isVirtual()) {
-            return false;
-    }
-        return (sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD || (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
+
+        return (isGamepad && hasGamepadKeys) ||
+                (isJoystick && hasAxes);
     }
 
     public static float getCenteredAxis(MotionEvent event, int axis, int historyPos) {
