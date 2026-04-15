@@ -1214,15 +1214,20 @@ object SteamAutoCloud {
                 return null
             }
 
-            hashCacheDao.insert(
-                SteamFileHashCache(
-                    appId = appInfo.id,
-                    absPath = actualFilePath.pathString,
-                    sizeBytes = Files.size(actualFilePath),
-                    mtimeMillis = Files.getLastModifiedTime(actualFilePath).toMillis(),
-                    sha = file.shaFile,
-                ),
-            )
+            val actualSize = Files.size(actualFilePath)
+            if (actualSize != totalFileSize) {
+                Timber.w("Downloaded size for $prefixedPath was $actualSize, expected $totalFileSize - skipping cache seed")
+            } else {
+                hashCacheDao.insert(
+                    SteamFileHashCache(
+                        appId = appInfo.id,
+                        absPath = actualFilePath.pathString,
+                        sizeBytes = actualSize,
+                        mtimeMillis = Files.getLastModifiedTime(actualFilePath).toMillis(),
+                        sha = streamingShaHash(actualFilePath),
+                    ),
+                )
+            }
 
             val finishedFiles = completedFiles.incrementAndGet()
             val finalProgress = if (totalRawBytes > 0L) {
