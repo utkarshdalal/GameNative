@@ -3904,7 +3904,16 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                                 // Insert a stub row (or update) of SteamApps to the database.
                                 appIds.forEach { appid ->
-                                    val steamApp = appDao.findApp(appid)?.copy(packageId = pkg.id)
+                                    val steamApp = appDao.findApp(appid)?.let { existingApp ->
+                                        val currentLicense = licenseDao.findLicense(existingApp.packageId)
+                                        existingApp.copy(
+                                            packageId = if (currentLicense != null && ELicenseFlags.code(currentLicense.licenseFlags) and 8 == 0) {
+                                                existingApp.packageId
+                                            } else {
+                                                pkg.id
+                                            },
+                                        )
+                                    }
                                     if (steamApp != null) {
                                         appDao.update(steamApp)
                                     } else {
