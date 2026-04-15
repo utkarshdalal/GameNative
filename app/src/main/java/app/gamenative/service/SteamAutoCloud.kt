@@ -10,6 +10,7 @@ import app.gamenative.data.SteamFileHashCache
 import app.gamenative.data.UserFileInfo
 import app.gamenative.data.UserFilesDownloadResult
 import app.gamenative.data.UserFilesUploadResult
+import app.gamenative.db.dao.SteamFileHashCacheDao
 import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
@@ -33,6 +34,7 @@ import java.nio.file.FileSystemException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Date
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Collectors
 import java.util.zip.ZipInputStream
 import kotlin.io.path.name
@@ -110,7 +112,7 @@ object SteamAutoCloud {
     internal suspend fun getCachedShaOrHash(
         appId: Int,
         path: Path,
-        hashCacheDao: app.gamenative.db.dao.SteamFileHashCacheDao,
+        hashCacheDao: SteamFileHashCacheDao,
     ): HashLookupResult {
         val absPath = path.pathString
         val sizeBytes = Files.size(path)
@@ -242,8 +244,8 @@ object SteamAutoCloud {
             Paths.get(getFilePrefix(file, fileList), file.filename).pathString
         }
 
-        var hashCacheHits = 0
-        var hashCacheMisses = 0
+        val hashCacheHits = AtomicInteger(0)
+        val hashCacheMisses = AtomicInteger(0)
 
         val getFullFilePath: (AppFileInfo, AppFileChangeList) -> Path = getFullFilePath@{ file, fileList ->
             val gameInstallPrefix = "%${PathType.GameInstall.name}%"
@@ -343,7 +345,7 @@ object SteamAutoCloud {
                         pattern = userFile.pattern,
                         maxDepth = 5,
                     ).map {
-                        val hashLookup = runBlocking {
+                        val hashLookup = runBlocking(Dispatchers.IO) {
                             getCachedShaOrHash(
                                 appId = appInfo.id,
                                 path = it,
@@ -351,9 +353,9 @@ object SteamAutoCloud {
                             )
                         }
                         if (hashLookup.wasCacheHit) {
-                            hashCacheHits++
+                            hashCacheHits.incrementAndGet()
                         } else {
-                            hashCacheMisses++
+                            hashCacheMisses.incrementAndGet()
                         }
                         val sha = hashLookup.sha
 
@@ -390,7 +392,7 @@ object SteamAutoCloud {
                 pattern = "*",
                 maxDepth = 5,
             ).map {
-                val hashLookup = runBlocking {
+                val hashLookup = runBlocking(Dispatchers.IO) {
                     getCachedShaOrHash(
                         appId = appInfo.id,
                         path = it,
@@ -398,9 +400,9 @@ object SteamAutoCloud {
                     )
                 }
                 if (hashLookup.wasCacheHit) {
-                    hashCacheHits++
+                    hashCacheHits.incrementAndGet()
                 } else {
-                    hashCacheMisses++
+                    hashCacheMisses.incrementAndGet()
                 }
                 val sha = hashLookup.sha
 
@@ -431,7 +433,7 @@ object SteamAutoCloud {
 
             Timber.i(
                 "Local save hash cache stats for ${appInfo.id} (${appInfo.name}): " +
-                    "hits=$hashCacheHits, misses=$hashCacheMisses, files=${hashCacheHits + hashCacheMisses}",
+                    "hits=${hashCacheHits.get()}, misses=${hashCacheMisses.get()}, files=${hashCacheHits.get() + hashCacheMisses.get()}",
             )
 
             result
@@ -1039,8 +1041,8 @@ object SteamAutoCloud {
             filesDownloaded = filesDownloaded,
             filesDeleted = filesDeleted,
             filesManaged = filesManaged,
-            hashCacheHits = hashCacheHits,
-            hashCacheMisses = hashCacheMisses,
+            hashCacheHits = hashCacheHits.get(),
+            hashCacheMisses = hashCacheMisses.get(),
             bytesUploaded = bytesUploaded,
             bytesDownloaded = bytesDownloaded,
             microsecTotal = microsecTotal,

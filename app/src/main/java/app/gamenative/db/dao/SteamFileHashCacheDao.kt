@@ -14,9 +14,6 @@ interface SteamFileHashCacheDao {
     @Query("SELECT * FROM steam_file_hash_cache WHERE appId = :appId AND absPath = :absPath")
     suspend fun getByAppIdAndPath(appId: Int, absPath: String): SteamFileHashCache?
 
-    @Query("SELECT * FROM steam_file_hash_cache WHERE appId = :appId")
-    suspend fun getAllByAppId(appId: Int): List<SteamFileHashCache>
-
     @Query("DELETE FROM steam_file_hash_cache WHERE appId = :appId")
     suspend fun deleteByAppId(appId: Int)
 }

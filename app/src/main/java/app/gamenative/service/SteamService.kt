@@ -1247,6 +1247,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         appInfoDao.deleteApp(appId)
                         changeNumbersDao.deleteByAppId(appId)
                         fileChangeListsDao.deleteByAppId(appId)
+                        db.steamFileHashCacheDao().deleteByAppId(appId)
                         downloadingAppInfoDao.deleteApp(appId)
                         appDao.clearWorkshopState(appId)
 

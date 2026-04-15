@@ -396,6 +396,17 @@ class SteamAutoCloudTest {
         assertArrayEquals("Updated cache should store new SHA", sha.sha, cachedEntry!!.sha)
     }
 
+    @Test(expected = java.nio.file.NoSuchFileException::class)
+    fun getCachedShaOrHash_throwsWhenFileDoesNotExist() = runBlocking {
+        val nonExistent = File(saveFilesDir, "does_not_exist.sav").toPath()
+        SteamAutoCloud.getCachedShaOrHash(
+            appId = steamAppId,
+            path = nonExistent,
+            hashCacheDao = db.steamFileHashCacheDao(),
+        )
+        Unit
+    }
+
 //    @Test
     fun testDownloadCloudSavesOnFirstBoot() = runBlocking {
         // Clear existing files and database state
