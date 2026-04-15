@@ -8,6 +8,7 @@ import app.gamenative.data.FileChangeLists
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
+import app.gamenative.data.SteamFileHashCache
 import app.gamenative.data.UFS
 import app.gamenative.db.PluviaDatabase
 import app.gamenative.enums.AppType
@@ -34,6 +35,7 @@ import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody
 import java.util.Date
+import java.nio.file.Files
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -54,6 +56,7 @@ import org.robolectric.RobolectricTestRunner
 import java.io.File
 import java.io.IOException
 import java.lang.reflect.Field
+import java.nio.file.Path
 import java.util.EnumSet
 import java.util.concurrent.CompletableFuture
 
@@ -328,6 +331,69 @@ class SteamAutoCloudTest {
         assertEquals("Should upload 5 files (4 from pattern 2 + 1 from pattern 3)", 5, result!!.filesUploaded)
         assertTrue("Uploads should be completed", result.uploadsCompleted)
         assertEquals("Should have 5 files managed", 5, result.filesManaged)
+    }
+
+    @Test
+    fun getCachedShaOrHash_reusesCachedShaWhenMetadataMatches() = runBlocking {
+        val hashFile = File(saveFilesDir, "cached_hash_test.sav")
+        hashFile.writeBytes("cache me".toByteArray())
+        val path = hashFile.toPath()
+        val sizeBytes = Files.size(path)
+        val mtimeMillis = Files.getLastModifiedTime(path).toMillis()
+        val cachedSha = ByteArray(20) { 7 }
+
+        db.steamFileHashCacheDao().insert(
+            SteamFileHashCache(
+                appId = steamAppId,
+                absPath = path.toString(),
+                sizeBytes = sizeBytes,
+                mtimeMillis = mtimeMillis,
+                sha = cachedSha,
+            ),
+        )
+
+        val sha = SteamAutoCloud.getCachedShaOrHash(
+            appId = steamAppId,
+            path = path,
+            hashCacheDao = db.steamFileHashCacheDao(),
+        )
+
+        assertTrue("Should report cache hit", sha.wasCacheHit)
+        assertArrayEquals("Should reuse cached SHA when size and mtime match", cachedSha, sha.sha)
+    }
+
+    @Test
+    fun getCachedShaOrHash_rehashesWhenMetadataChanges() = runBlocking {
+        val hashFile = File(saveFilesDir, "rehash_test.sav")
+        hashFile.writeBytes("old-data".toByteArray())
+        val path = hashFile.toPath()
+        val originalSizeBytes = Files.size(path)
+        val originalMtimeMillis = Files.getLastModifiedTime(path).toMillis()
+        val cachedSha = ByteArray(20) { 3 }
+
+        db.steamFileHashCacheDao().insert(
+            SteamFileHashCache(
+                appId = steamAppId,
+                absPath = path.toString(),
+                sizeBytes = originalSizeBytes,
+                mtimeMillis = originalMtimeMillis,
+                sha = cachedSha,
+            ),
+        )
+
+        hashFile.writeBytes("new-data-with-different-size".toByteArray())
+
+        val sha = SteamAutoCloud.getCachedShaOrHash(
+            appId = steamAppId,
+            path = path,
+            hashCacheDao = db.steamFileHashCacheDao(),
+        )
+
+        assertFalse("Should report cache miss when metadata changes", sha.wasCacheHit)
+        assertFalse("Should not reuse cached SHA when metadata changes", cachedSha.contentEquals(sha.sha))
+        val cachedEntry = db.steamFileHashCacheDao().getByAppIdAndPath(steamAppId, path.toString())
+        assertNotNull("Cache entry should be updated", cachedEntry)
+        assertArrayEquals("Updated cache should store new SHA", sha.sha, cachedEntry!!.sha)
     }
 
 //    @Test
@@ -2314,7 +2380,6 @@ class SteamAutoCloudTest {
         assertEquals(SyncResult.Success, result!!.syncResult)
         assertTrue("Should have downloaded files", result.filesDownloaded > 0)
     }
-
     @Test
     fun synced_cloudAdvanced_metadataFailure_doesNotCancelSiblingDownloads() = runBlocking {
         val localCn = 5L

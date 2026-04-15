@@ -6,6 +6,7 @@ import app.gamenative.R
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
+import app.gamenative.data.SteamFileHashCache
 import app.gamenative.data.UserFileInfo
 import app.gamenative.data.UserFilesDownloadResult
 import app.gamenative.data.UserFilesUploadResult
@@ -44,6 +45,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.TimeoutCancellationException
@@ -66,6 +68,11 @@ import java.util.concurrent.atomic.AtomicLong
 object SteamAutoCloud {
 
     private const val MAX_USER_FILE_RETRIES = 3
+
+    internal data class HashLookupResult(
+        val sha: ByteArray,
+        val wasCacheHit: Boolean,
+    )
 
     /** Computes SHA-1 hash by streaming the file in chunks to avoid OOM on large files. */
     private fun streamingShaHash(path: Path): ByteArray {
@@ -98,6 +105,39 @@ object SteamAutoCloud {
             progress(bytesRead.toLong(), total)
         }
         return total
+    }
+
+    internal suspend fun getCachedShaOrHash(
+        appId: Int,
+        path: Path,
+        hashCacheDao: app.gamenative.db.dao.SteamFileHashCacheDao,
+    ): HashLookupResult {
+        val absPath = path.pathString
+        val sizeBytes = Files.size(path)
+        val mtimeMillis = Files.getLastModifiedTime(path).toMillis()
+        val cached = hashCacheDao.getByAppIdAndPath(appId, absPath)
+
+        if (cached != null && cached.sizeBytes == sizeBytes && cached.mtimeMillis == mtimeMillis) {
+            return HashLookupResult(
+                sha = cached.sha,
+                wasCacheHit = true,
+            )
+        }
+
+        val sha = streamingShaHash(path)
+        hashCacheDao.insert(
+            SteamFileHashCache(
+                appId = appId,
+                absPath = absPath,
+                sizeBytes = sizeBytes,
+                mtimeMillis = mtimeMillis,
+                sha = sha,
+            ),
+        )
+        return HashLookupResult(
+            sha = sha,
+            wasCacheHit = false,
+        )
     }
 
     fun syncUserFiles(
@@ -202,6 +242,9 @@ object SteamAutoCloud {
             Paths.get(getFilePrefix(file, fileList), file.filename).pathString
         }
 
+        var hashCacheHits = 0
+        var hashCacheMisses = 0
+
         val getFullFilePath: (AppFileInfo, AppFileChangeList) -> Path = getFullFilePath@{ file, fileList ->
             val gameInstallPrefix = "%${PathType.GameInstall.name}%"
             if (file.filename.startsWith(gameInstallPrefix)) {
@@ -279,6 +322,7 @@ object SteamAutoCloud {
             }
 
         val getLocalUserFilesAsPrefixMap: () -> Map<String, List<UserFileInfo>> = {
+            val hashCacheDao = steamInstance.db.steamFileHashCacheDao()
             val savePatterns = appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
 
             val result = mutableMapOf<String, MutableList<UserFileInfo>>()
@@ -299,7 +343,19 @@ object SteamAutoCloud {
                         pattern = userFile.pattern,
                         maxDepth = 5,
                     ).map {
-                        val sha = streamingShaHash(it)
+                        val hashLookup = runBlocking {
+                            getCachedShaOrHash(
+                                appId = appInfo.id,
+                                path = it,
+                                hashCacheDao = hashCacheDao,
+                            )
+                        }
+                        if (hashLookup.wasCacheHit) {
+                            hashCacheHits++
+                        } else {
+                            hashCacheMisses++
+                        }
+                        val sha = hashLookup.sha
 
                         Timber.i("Found ${it.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
 
@@ -334,7 +390,19 @@ object SteamAutoCloud {
                 pattern = "*",
                 maxDepth = 5,
             ).map {
-                val sha = streamingShaHash(it)
+                val hashLookup = runBlocking {
+                    getCachedShaOrHash(
+                        appId = appInfo.id,
+                        path = it,
+                        hashCacheDao = hashCacheDao,
+                    )
+                }
+                if (hashLookup.wasCacheHit) {
+                    hashCacheHits++
+                } else {
+                    hashCacheMisses++
+                }
+                val sha = hashLookup.sha
 
                 val relativePath = basePath.relativize(it).pathString
 
@@ -360,6 +428,11 @@ object SteamAutoCloud {
                 val prefixKey = "%${rootType.name}%"
                 result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
             }
+
+            Timber.i(
+                "Local save hash cache stats for ${appInfo.id} (${appInfo.name}): " +
+                    "hits=$hashCacheHits, misses=$hashCacheMisses, files=${hashCacheHits + hashCacheMisses}",
+            )
 
             result
         }
@@ -966,6 +1039,8 @@ object SteamAutoCloud {
             filesDownloaded = filesDownloaded,
             filesDeleted = filesDeleted,
             filesManaged = filesManaged,
+            hashCacheHits = hashCacheHits,
+            hashCacheMisses = hashCacheMisses,
             bytesUploaded = bytesUploaded,
             bytesDownloaded = bytesDownloaded,
             microsecTotal = microsecTotal,
