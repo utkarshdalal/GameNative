@@ -1213,6 +1213,16 @@ object SteamAutoCloud {
                 return null
             }
 
+            steamInstance.db.steamFileHashCacheDao().insert(
+                SteamFileHashCache(
+                    appId = appInfo.id,
+                    absPath = actualFilePath.pathString,
+                    sizeBytes = Files.size(actualFilePath),
+                    mtimeMillis = Files.getLastModifiedTime(actualFilePath).toMillis(),
+                    sha = file.shaFile,
+                ),
+            )
+
             val finishedFiles = completedFiles.incrementAndGet()
             val finalProgress = if (totalRawBytes > 0L) {
                 (downloadedRawBytes.get().toFloat() / totalRawBytes).coerceIn(0f, 1f)
