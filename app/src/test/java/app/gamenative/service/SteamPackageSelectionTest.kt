@@ -113,6 +113,51 @@ class SteamPackageSelectionTest {
     }
 
     @Test
+    fun `autogrant only license is selected for free to play games`() {
+        val autoGrant = makeLicense(
+            packageId = 0,
+            createdAtMs = 1_000L,
+            paymentMethod = EPaymentMethod.AutoGrant,
+            licenseType = ELicenseType.SinglePurchase,
+        )
+
+        val selected = SteamService.selectPreferredPackageId(
+            existingPackageId = SteamService.INVALID_PKG_ID,
+            incomingPackageId = autoGrant.packageId,
+            licensesByPackageId = mapOf(autoGrant.packageId to autoGrant),
+        )
+
+        assertEquals(autoGrant.packageId, selected)
+    }
+
+    @Test
+    fun `durable purchase beats autogrant when both are present`() {
+        val autoGrant = makeLicense(
+            packageId = 0,
+            createdAtMs = 2_000L,
+            paymentMethod = EPaymentMethod.AutoGrant,
+            licenseType = ELicenseType.SinglePurchase,
+        )
+        val purchased = makeLicense(
+            packageId = 100,
+            createdAtMs = 1_000L,
+            paymentMethod = EPaymentMethod.CreditCard,
+            licenseType = ELicenseType.SinglePurchase,
+        )
+
+        val selected = SteamService.selectPreferredPackageId(
+            existingPackageId = autoGrant.packageId,
+            incomingPackageId = purchased.packageId,
+            licensesByPackageId = mapOf(
+                autoGrant.packageId to autoGrant,
+                purchased.packageId to purchased,
+            ),
+        )
+
+        assertEquals(purchased.packageId, selected)
+    }
+
+    @Test
     fun `package id breaks complete ties deterministically`() {
         val first = makeLicense(
             packageId = 100,
