@@ -1949,6 +1949,17 @@ class SteamAutoCloudTest {
         assertEquals("File 2 content", file2Content.contentToString(), expected2.readBytes().contentToString())
         assertEquals("File 3 content", file3Content.contentToString(), expected3.readBytes().contentToString())
 
+        // verify downloads seeded the hash cache with the correct SHA
+        val cache1 = db.steamFileHashCacheDao().getByAppIdAndPath(steamAppId, expected1.toPath().toString())
+        val cache2 = db.steamFileHashCacheDao().getByAppIdAndPath(steamAppId, expected2.toPath().toString())
+        val cache3 = db.steamFileHashCacheDao().getByAppIdAndPath(steamAppId, expected3.toPath().toString())
+        assertNotNull("Cache entry for file 1 should exist", cache1)
+        assertNotNull("Cache entry for file 2 should exist", cache2)
+        assertNotNull("Cache entry for file 3 should exist", cache3)
+        assertArrayEquals("File 1 cache SHA should match file content", sha1(file1Content), cache1!!.sha)
+        assertArrayEquals("File 2 cache SHA should match file content", sha1(file2Content), cache2!!.sha)
+        assertArrayEquals("File 3 cache SHA should match file content", sha1(file3Content), cache3!!.sha)
+
         // verify DB change number updated
         val cn = db.appChangeNumbersDao().getByAppId(steamAppId)
         assertNotNull("Change number should exist", cn)
