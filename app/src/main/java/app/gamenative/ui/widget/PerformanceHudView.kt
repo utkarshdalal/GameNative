@@ -20,6 +20,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import app.gamenative.PrefManager
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.utils.DateTimeUtils.formatRuntimeHours
@@ -282,6 +283,7 @@ class PerformanceHudView(
         val cpuPercent = readCpuUsagePercent()
         val gpuPercent = readGpuUsagePercent()
         val batterySnapshot = collectBatterySnapshot()
+        val powerMultiplier = if (PrefManager.dualCellEnabled) 2.0 else 1.0
         return HudSnapshot(
             fpsValue = currentFps,
             cpuValue = cpuPercent?.toFloat(),
@@ -292,7 +294,7 @@ class PerformanceHudView(
             ram = "RAM ${readUsedRamText()}",
             battery = batterySnapshot.percent?.let { "BAT $it%" },
             power = batterySnapshot.powerWatts?.let { watts ->
-                String.format(Locale.US, "PWR %.1fW", watts)
+                String.format(Locale.US, "PWR %.1fW", watts * powerMultiplier)
             },
             runtime = batterySnapshot.runtimeText,
             batteryTemp = batterySnapshot.temperatureC?.let { "BAT TEMP ${it}°C" },

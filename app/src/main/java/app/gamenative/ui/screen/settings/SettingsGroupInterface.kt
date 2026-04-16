@@ -112,6 +112,7 @@ fun SettingsGroupInterface(
     var showStatusBarLoadingDialog by rememberSaveable { mutableStateOf(false) }
     var hideStatusBar by rememberSaveable { mutableStateOf(PrefManager.hideStatusBarWhenNotInGame) }
     var swapFaceButtons by rememberSaveable { mutableStateOf(PrefManager.swapFaceButtons) }
+    var dualCellEnabled by rememberSaveable { mutableStateOf(PrefManager.dualCellEnabled) }
 
     // Controller/gamepad hints visibility
     var showGamepadHints by rememberSaveable { mutableStateOf(PrefManager.showGamepadHints) }
@@ -274,6 +275,17 @@ fun SettingsGroupInterface(
             onCheckedChange = {
                 warnBeforeExit = it
                 PrefManager.warnBeforeExit = it
+            },
+        )
+
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = "Dual Cell") },
+            subtitle = { Text(text = "When enabled, battery power draw in the HUD is displayed as 2x") },
+            state = dualCellEnabled,
+            onCheckedChange = {
+                dualCellEnabled = it
+                PrefManager.dualCellEnabled = it
             },
         )
 

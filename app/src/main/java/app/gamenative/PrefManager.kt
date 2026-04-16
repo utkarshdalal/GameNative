@@ -1192,4 +1192,9 @@ object PrefManager {
     var warnBeforeExit: Boolean
         get() = getPref(WARN_BEFORE_EXIT, false)
         set(value) { setPref(WARN_BEFORE_EXIT, value) }
+
+    private val DUAL_CELL_ENABLED = booleanPreferencesKey("dual_cell_enabled")
+    var dualCellEnabled: Boolean
+        get() = getPref(DUAL_CELL_ENABLED, false)
+        set(value) { setPref(DUAL_CELL_ENABLED, value) }
 }
