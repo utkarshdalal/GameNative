@@ -51,9 +51,9 @@ internal fun VideoHero(
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var showFallback by remember { mutableStateOf(true) }
+    var showFallback by remember(videoUrl) { mutableStateOf(true) }
 
-    val exoPlayer = remember {
+    val exoPlayer = remember(videoUrl) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(videoUrl))
             repeatMode = Player.REPEAT_MODE_ALL
@@ -63,19 +63,14 @@ internal fun VideoHero(
         }
     }
 
-    DisposableEffect(exoPlayer) {
+    DisposableEffect(exoPlayer, lifecycleOwner) {
         val listener = object : Player.Listener {
             override fun onRenderedFirstFrame() {
                 showFallback = false
             }
         }
         exoPlayer.addListener(listener)
-        onDispose {
-            exoPlayer.removeListener(listener)
-        }
-    }
 
-    DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> exoPlayer.pause()
@@ -84,7 +79,9 @@ internal fun VideoHero(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
+
         onDispose {
+            exoPlayer.removeListener(listener)
             lifecycleOwner.lifecycle.removeObserver(observer)
             exoPlayer.release()
         }
