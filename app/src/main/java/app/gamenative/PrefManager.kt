@@ -1026,9 +1026,9 @@ object PrefManager {
             }
         }
         set(value) {
-            setPref(PARENTAL_ALLOWED_APP_IDS, when (value) {
-                null -> ""
-                emptySet<Int>() -> "[]"
+            setPref(PARENTAL_ALLOWED_APP_IDS, when {
+                value == null -> ""
+                value.isEmpty() -> "[]"
                 else -> value.joinToString(",")
             })
         }
