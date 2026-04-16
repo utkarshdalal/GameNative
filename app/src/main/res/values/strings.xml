@@ -1401,6 +1401,13 @@
     <string name="recommended_buy_button">Check It Out</string>
     <string name="recommended_support_message">Purchasing through this link helps support the development of GameNative.</string>
     <string name="recommended_about_heading">About This Game</string>
+    <string name="recommended_review_count">Based on %1$s reviews</string>
+    <string name="review_overwhelmingly_positive">Overwhelmingly Positive</string>
+    <string name="review_very_positive">Very Positive</string>
+    <string name="review_mostly_positive">Mostly Positive</string>
+    <string name="review_mixed">Mixed</string>
+    <string name="review_mostly_negative">Mostly Negative</string>
+    <string name="review_overwhelmingly_negative">Overwhelmingly Negative</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Show curated indie game picks in your library. Keeping this on helps support indie developers and GameNative.</string>
 </resources>

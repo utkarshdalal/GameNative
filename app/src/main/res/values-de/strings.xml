@@ -1310,6 +1310,13 @@
     <string name="recommended_buy_button">Spiel ansehen</string>
     <string name="recommended_support_message">Ein Kauf über diesen Link unterstützt die Entwicklung von GameNative.</string>
     <string name="recommended_about_heading">Über dieses Spiel</string>
+    <string name="recommended_review_count">Basierend auf %1$s Bewertungen</string>
+    <string name="review_overwhelmingly_positive">Überwältigend positiv</string>
+    <string name="review_very_positive">Sehr positiv</string>
+    <string name="review_mostly_positive">Größtenteils positiv</string>
+    <string name="review_mixed">Gemischt</string>
+    <string name="review_mostly_negative">Größtenteils negativ</string>
+    <string name="review_overwhelmingly_negative">Überwältigend negativ</string>
     <string name="settings_interface_show_recommendations_title">Spielempfehlungen anzeigen</string>
     <string name="settings_interface_show_recommendations_subtitle">Zeigt kuratierte Indie-Spiele in deiner Bibliothek. Aktiviert lassen unterstützt Indie-Entwickler und GameNative.</string>
 </resources>

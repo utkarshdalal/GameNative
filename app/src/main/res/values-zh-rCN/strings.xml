@@ -1363,6 +1363,13 @@
     <string name="recommended_buy_button">查看游戏</string>
     <string name="recommended_support_message">通过此链接购买有助于支持 GameNative 的开发。</string>
     <string name="recommended_about_heading">关于本游戏</string>
+    <string name="recommended_review_count">基于 %1$s 条评价</string>
+    <string name="review_overwhelmingly_positive">好评如潮</string>
+    <string name="review_very_positive">特别好评</string>
+    <string name="review_mostly_positive">多半好评</string>
+    <string name="review_mixed">褒贬不一</string>
+    <string name="review_mostly_negative">多半差评</string>
+    <string name="review_overwhelmingly_negative">差评如潮</string>
     <string name="settings_interface_show_recommendations_title">显示游戏推荐</string>
     <string name="settings_interface_show_recommendations_subtitle">在游戏库中显示精选独立游戏。保持开启有助于支持独立开发者和 GameNative。</string>
 </resources>

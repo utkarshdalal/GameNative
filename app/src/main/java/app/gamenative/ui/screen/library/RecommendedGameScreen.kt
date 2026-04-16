@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -129,6 +131,65 @@ internal fun RecommendedGameScreen(
                 .fillMaxWidth()
                 .padding(16.dp),
         ) {
+            // Review score
+            if (game.reviewScore != null) {
+                val scoreColor = when {
+                    game.reviewScore >= 70 -> Color(0xFF4CAF50)
+                    game.reviewScore >= 40 -> Color(0xFFB9A074)
+                    else -> MaterialTheme.colorScheme.error
+                }
+                val summaryResId = when {
+                    game.reviewScore >= 95 -> R.string.review_overwhelmingly_positive
+                    game.reviewScore >= 80 -> R.string.review_very_positive
+                    game.reviewScore >= 70 -> R.string.review_mostly_positive
+                    game.reviewScore >= 40 -> R.string.review_mixed
+                    game.reviewScore >= 20 -> R.string.review_mostly_negative
+                    else -> R.string.review_overwhelmingly_negative
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                scoreColor.copy(alpha = 0.15f),
+                                RoundedCornerShape(8.dp),
+                            )
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "${game.reviewScore}%",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = scoreColor,
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = stringResource(summaryResId),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        if (game.reviewCount != null) {
+                            Text(
+                                text = stringResource(
+                                    R.string.recommended_review_count,
+                                    String.format("%,d", game.reviewCount),
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+
             // Buy button
             Button(
                 onClick = {

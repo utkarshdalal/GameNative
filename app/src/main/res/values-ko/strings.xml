@@ -1374,6 +1374,13 @@
     <string name="recommended_buy_button">게임 보기</string>
     <string name="recommended_support_message">이 링크를 통해 구매하시면 GameNative 개발을 지원하는 데 도움이 됩니다.</string>
     <string name="recommended_about_heading">이 게임에 대하여</string>
+    <string name="recommended_review_count">%1$s개의 리뷰 기반</string>
+    <string name="review_overwhelmingly_positive">압도적으로 긍정적</string>
+    <string name="review_very_positive">매우 긍정적</string>
+    <string name="review_mostly_positive">대체로 긍정적</string>
+    <string name="review_mixed">복합적</string>
+    <string name="review_mostly_negative">대체로 부정적</string>
+    <string name="review_overwhelmingly_negative">압도적으로 부정적</string>
     <string name="settings_interface_show_recommendations_title">게임 추천 표시</string>
     <string name="settings_interface_show_recommendations_subtitle">라이브러리에 엄선된 인디 게임을 표시합니다. 이 기능을 켜두면 인디 개발자와 GameNative를 지원하는 데 도움이 됩니다.</string>
 </resources>

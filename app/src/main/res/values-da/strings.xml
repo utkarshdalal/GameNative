@@ -1240,6 +1240,13 @@
     <string name="recommended_buy_button">Se spillet</string>
     <string name="recommended_support_message">Køb via dette link hjælper med at støtte udviklingen af GameNative.</string>
     <string name="recommended_about_heading">Om dette spil</string>
+    <string name="recommended_review_count">Baseret på %1$s anmeldelser</string>
+    <string name="review_overwhelmingly_positive">Overvældende positiv</string>
+    <string name="review_very_positive">Meget positiv</string>
+    <string name="review_mostly_positive">Overvejende positiv</string>
+    <string name="review_mixed">Blandet</string>
+    <string name="review_mostly_negative">Overvejende negativ</string>
+    <string name="review_overwhelmingly_negative">Overvældende negativ</string>
     <string name="settings_interface_show_recommendations_title">Vis spilanbefalinger</string>
     <string name="settings_interface_show_recommendations_subtitle">Vis udvalgte indie-spil i dit bibliotek. At holde dette aktiveret hjælper med at støtte indie-udviklere og GameNative.</string>
 </resources>

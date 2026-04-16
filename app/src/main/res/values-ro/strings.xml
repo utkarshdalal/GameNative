@@ -1375,6 +1375,13 @@
     <string name="recommended_buy_button">Vezi jocul</string>
     <string name="recommended_support_message">Cumpărarea prin acest link ajută la susținerea dezvoltării GameNative.</string>
     <string name="recommended_about_heading">Despre acest joc</string>
+    <string name="recommended_review_count">Pe baza a %1$s recenzii</string>
+    <string name="review_overwhelmingly_positive">Copleșitor de pozitiv</string>
+    <string name="review_very_positive">Foarte pozitiv</string>
+    <string name="review_mostly_positive">Majoritar pozitiv</string>
+    <string name="review_mixed">Mixt</string>
+    <string name="review_mostly_negative">Majoritar negativ</string>
+    <string name="review_overwhelmingly_negative">Copleșitor de negativ</string>
     <string name="settings_interface_show_recommendations_title">Afișează recomandări de jocuri</string>
     <string name="settings_interface_show_recommendations_subtitle">Afișează jocuri indie selectate în biblioteca ta. Păstrând această opțiune activată, sprijini dezvoltatorii indie și GameNative.</string>
 </resources>

@@ -1303,6 +1303,13 @@ https://gamenative.app
     <string name="recommended_buy_button">Посмотреть игру</string>
     <string name="recommended_support_message">Покупка по этой ссылке помогает поддержать разработку GameNative.</string>
     <string name="recommended_about_heading">Об этой игре</string>
+    <string name="recommended_review_count">На основе %1$s отзывов</string>
+    <string name="review_overwhelmingly_positive">Крайне положительные</string>
+    <string name="review_very_positive">Очень положительные</string>
+    <string name="review_mostly_positive">В основном положительные</string>
+    <string name="review_mixed">Смешанные</string>
+    <string name="review_mostly_negative">В основном отрицательные</string>
+    <string name="review_overwhelmingly_negative">Крайне отрицательные</string>
     <string name="settings_interface_show_recommendations_title">Показывать рекомендации игр</string>
     <string name="settings_interface_show_recommendations_subtitle">Показывает подобранные инди-игры в вашей библиотеке. Оставляя это включённым, вы поддерживаете инди-разработчиков и GameNative.</string>
 </resources>

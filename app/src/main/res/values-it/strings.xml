@@ -1366,6 +1366,13 @@
     <string name="recommended_buy_button">Scopri il gioco</string>
     <string name="recommended_support_message">Acquistare tramite questo link aiuta a sostenere lo sviluppo di GameNative.</string>
     <string name="recommended_about_heading">Informazioni sul gioco</string>
+    <string name="recommended_review_count">Basato su %1$s recensioni</string>
+    <string name="review_overwhelmingly_positive">Estremamente positivo</string>
+    <string name="review_very_positive">Molto positivo</string>
+    <string name="review_mostly_positive">Perlopiù positivo</string>
+    <string name="review_mixed">Nella media</string>
+    <string name="review_mostly_negative">Perlopiù negativo</string>
+    <string name="review_overwhelmingly_negative">Estremamente negativo</string>
     <string name="settings_interface_show_recommendations_title">Mostra consigli di gioco</string>
     <string name="settings_interface_show_recommendations_subtitle">Mostra giochi indie selezionati nella tua libreria. Mantenere attiva questa opzione aiuta a sostenere gli sviluppatori indie e GameNative.</string>
 </resources>
