@@ -117,8 +117,13 @@ internal fun RecommendedGameScreen(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                val subtitleText = if (game.releaseDate != null) {
+                    "${game.developer} • ${game.releaseDate}"
+                } else {
+                    game.developer
+                }
                 Text(
-                    text = game.developer,
+                    text = subtitleText,
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.White.copy(alpha = 0.8f),
                 )

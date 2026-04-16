@@ -12,6 +12,7 @@ data class RecommendedGame(
     val capsuleImageUrl: String,
     val iconUrl: String? = null,
     val videoUrl: String? = null,
+    val releaseDate: String? = null,
     val reviewScore: Int? = null,
     val reviewCount: Int? = null,
     val affiliateUrl: String,
