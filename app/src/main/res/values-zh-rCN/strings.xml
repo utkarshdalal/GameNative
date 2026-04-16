@@ -1357,4 +1357,12 @@
     <string name="workshop_processing">正在处理模组…</string>
     <string name="workshop_failed_count">%1$d 个创意工坊模组更新失败</string>
     <string name="workshop_download_failed">下载失败</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">推荐</string>
+    <string name="recommended_buy_button">查看游戏</string>
+    <string name="recommended_support_message">通过此链接购买有助于支持 GameNative 的开发。</string>
+    <string name="recommended_about_heading">关于本游戏</string>
+    <string name="settings_interface_show_recommendations_title">显示游戏推荐</string>
+    <string name="settings_interface_show_recommendations_subtitle">在游戏库中显示精选独立游戏。保持开启有助于支持独立开发者和 GameNative。</string>
 </resources>

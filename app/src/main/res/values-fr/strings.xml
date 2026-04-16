@@ -1364,4 +1364,12 @@
     <string name="workshop_processing">Traitement des mods…</string>
     <string name="workshop_failed_count">%1$d mod(s) Workshop n\'ont pas pu être mis à jour</string>
     <string name="workshop_download_failed">Échec du téléchargement</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Recommandé</string>
+    <string name="recommended_buy_button">Voir le jeu</string>
+    <string name="recommended_support_message">Acheter via ce lien aide à soutenir le développement de GameNative.</string>
+    <string name="recommended_about_heading">À propos de ce jeu</string>
+    <string name="settings_interface_show_recommendations_title">Afficher les recommandations de jeux</string>
+    <string name="settings_interface_show_recommendations_subtitle">Affiche des jeux indés sélectionnés dans votre bibliothèque. Garder cette option activée aide à soutenir les développeurs indés et GameNative.</string>
 </resources>

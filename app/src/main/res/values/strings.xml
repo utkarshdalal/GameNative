@@ -1395,4 +1395,12 @@
     <string name="workshop_processing">Processing mods…</string>
     <string name="workshop_failed_count">%1$d workshop mod(s) failed to update</string>
     <string name="workshop_download_failed">Download failed</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Recommended</string>
+    <string name="recommended_buy_button">Check It Out</string>
+    <string name="recommended_support_message">Purchasing through this link helps support the development of GameNative.</string>
+    <string name="recommended_about_heading">About This Game</string>
+    <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
+    <string name="settings_interface_show_recommendations_subtitle">Show curated indie game picks in your library. Keeping this on helps support indie developers and GameNative.</string>
 </resources>

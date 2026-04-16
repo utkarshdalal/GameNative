@@ -1367,4 +1367,12 @@
     <string name="workshop_processing">Przetwarzanie modów…</string>
     <string name="workshop_failed_count">Nie udało się zaktualizować %1$d modów z Warsztatu</string>
     <string name="workshop_download_failed">Pobieranie nie powiodło się</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Polecane</string>
+    <string name="recommended_buy_button">Zobacz grę</string>
+    <string name="recommended_support_message">Zakup przez ten link pomaga wspierać rozwój GameNative.</string>
+    <string name="recommended_about_heading">O tej grze</string>
+    <string name="settings_interface_show_recommendations_title">Pokaż rekomendacje gier</string>
+    <string name="settings_interface_show_recommendations_subtitle">Wyświetla wyselekcjonowane gry indie w twojej bibliotece. Pozostawienie tego włączonego wspiera niezależnych deweloperów i GameNative.</string>
 </resources>

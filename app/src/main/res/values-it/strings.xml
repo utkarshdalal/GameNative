@@ -1360,4 +1360,12 @@
     <string name="workshop_processing">Elaborazione mod…</string>
     <string name="workshop_failed_count">%1$d mod del Workshop non aggiornati</string>
     <string name="workshop_download_failed">Download non riuscito</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Consigliato</string>
+    <string name="recommended_buy_button">Scopri il gioco</string>
+    <string name="recommended_support_message">Acquistare tramite questo link aiuta a sostenere lo sviluppo di GameNative.</string>
+    <string name="recommended_about_heading">Informazioni sul gioco</string>
+    <string name="settings_interface_show_recommendations_title">Mostra consigli di gioco</string>
+    <string name="settings_interface_show_recommendations_subtitle">Mostra giochi indie selezionati nella tua libreria. Mantenere attiva questa opzione aiuta a sostenere gli sviluppatori indie e GameNative.</string>
 </resources>

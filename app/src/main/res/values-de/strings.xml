@@ -1304,4 +1304,12 @@
     <string name="workshop_processing">Mods werden verarbeitet…</string>
     <string name="workshop_failed_count">%1$d Workshop-Mod(s) konnten nicht aktualisiert werden</string>
     <string name="workshop_download_failed">Download fehlgeschlagen</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Empfohlen</string>
+    <string name="recommended_buy_button">Spiel ansehen</string>
+    <string name="recommended_support_message">Ein Kauf über diesen Link unterstützt die Entwicklung von GameNative.</string>
+    <string name="recommended_about_heading">Über dieses Spiel</string>
+    <string name="settings_interface_show_recommendations_title">Spielempfehlungen anzeigen</string>
+    <string name="settings_interface_show_recommendations_subtitle">Zeigt kuratierte Indie-Spiele in deiner Bibliothek. Aktiviert lassen unterstützt Indie-Entwickler und GameNative.</string>
 </resources>

@@ -1369,4 +1369,12 @@
     <string name="workshop_processing">Se procesează modurile…</string>
     <string name="workshop_failed_count">%1$d mod(uri) Workshop nu au putut fi actualizate</string>
     <string name="workshop_download_failed">Descărcarea a eșuat</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Recomandat</string>
+    <string name="recommended_buy_button">Vezi jocul</string>
+    <string name="recommended_support_message">Cumpărarea prin acest link ajută la susținerea dezvoltării GameNative.</string>
+    <string name="recommended_about_heading">Despre acest joc</string>
+    <string name="settings_interface_show_recommendations_title">Afișează recomandări de jocuri</string>
+    <string name="settings_interface_show_recommendations_subtitle">Afișează jocuri indie selectate în biblioteca ta. Păstrând această opțiune activată, sprijini dezvoltatorii indie și GameNative.</string>
 </resources>

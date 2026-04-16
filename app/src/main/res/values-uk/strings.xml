@@ -1363,4 +1363,12 @@
     <string name="workshop_processing">Обробка модів…</string>
     <string name="workshop_failed_count">Не вдалося оновити %1$d мод(ів) Майстерні</string>
     <string name="workshop_download_failed">Помилка завантаження</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Рекомендовано</string>
+    <string name="recommended_buy_button">Переглянути гру</string>
+    <string name="recommended_support_message">Покупка за цим посиланням допомагає підтримувати розробку GameNative.</string>
+    <string name="recommended_about_heading">Про цю гру</string>
+    <string name="settings_interface_show_recommendations_title">Показувати рекомендації ігор</string>
+    <string name="settings_interface_show_recommendations_subtitle">Показує підібрані інді-ігри у вашій бібліотеці. Залишаючи це увімкненим, ви підтримуєте інді-розробників та GameNative.</string>
 </resources>

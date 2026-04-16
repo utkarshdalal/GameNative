@@ -1297,4 +1297,12 @@ https://gamenative.app
     <string name="workshop_processing">Обработка модов…</string>
     <string name="workshop_failed_count">Не удалось обновить %1$d мод(ов) Мастерской</string>
     <string name="workshop_download_failed">Ошибка загрузки</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Рекомендуемое</string>
+    <string name="recommended_buy_button">Посмотреть игру</string>
+    <string name="recommended_support_message">Покупка по этой ссылке помогает поддержать разработку GameNative.</string>
+    <string name="recommended_about_heading">Об этой игре</string>
+    <string name="settings_interface_show_recommendations_title">Показывать рекомендации игр</string>
+    <string name="settings_interface_show_recommendations_subtitle">Показывает подобранные инди-игры в вашей библиотеке. Оставляя это включённым, вы поддерживаете инди-разработчиков и GameNative.</string>
 </resources>
