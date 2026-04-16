@@ -539,6 +539,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     // ── Primary finger down ──────────────────────────────────────────
     private void handleTsDown(MotionEvent event) {
+        flushPendingTapRelease();
+
         float[] pt = XForm.transformPoint(xform, event.getX(), event.getY());
         int x = (int) pt[0];
         int y = (int) pt[1];
@@ -769,12 +771,6 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
         // Simple tap — only if finger stayed within tap tolerance
         if (gestureConfig.getTapEnabled() && !movedBeyondTapThreshold) {
-            if (delayedPress != null) {
-                // If there's a new single tap within 'CLICK_DELAYED_TIME' ms
-                // Immediately release the previous down click
-                removeCallbacks(delayedPress);
-                injectRelease(TouchGestureConfig.ACTION_LEFT_CLICK);
-            }
             moveCursorTo((int) pt[0], (int) pt[1]);
             injectClick(TouchGestureConfig.ACTION_LEFT_CLICK);
             delayedPress = () -> {
@@ -810,6 +806,16 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
+
+    private void flushPendingTapRelease() {
+        if (delayedPress != null) {
+            // If there's a new single tap within 'CLICK_DELAYED_TIME' ms
+            // Immediately release the previous down click
+            removeCallbacks(delayedPress);
+            injectRelease(TouchGestureConfig.ACTION_LEFT_CLICK);
+            delayedPress = null;
+        }
+    }
 
     private void cancelLongPressTimer() {
         if (longPressRunnable != null) {
