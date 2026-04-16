@@ -56,6 +56,9 @@ object Net {
         }
         return http.newBuilder()
             .dispatcher(dispatcher)
+            .readTimeout(5, TimeUnit.MINUTES)
+            .callTimeout(0, TimeUnit.MILLISECONDS)
+            .protocols(listOf(Protocol.HTTP_1_1))
             .build()
     }
 }
