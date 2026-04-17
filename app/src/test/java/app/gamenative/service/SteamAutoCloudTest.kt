@@ -52,6 +52,7 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
 import java.io.File
+import java.io.IOException
 import java.lang.reflect.Field
 import java.util.EnumSet
 import java.util.concurrent.CompletableFuture
@@ -2199,6 +2200,87 @@ class SteamAutoCloudTest {
         assertNotNull(result)
         assertEquals(SyncResult.Success, result!!.syncResult)
         assertTrue("Should have downloaded files", result.filesDownloaded > 0)
+    }
+
+    @Test
+    fun synced_cloudAdvanced_metadataFailure_doesNotCancelSiblingDownloads() = runBlocking {
+        val localCn = 5L
+        cacheCurrentLocalFiles(localCn)
+
+        val successfulCloudContent = "fresh autosave from cloud".toByteArray()
+        val successfulFile = mock<AppFileInfo>()
+        whenever(successfulFile.filename).thenReturn("SaveGames/AutoSaveData.sav")
+        whenever(successfulFile.shaFile).thenReturn(sha1(successfulCloudContent))
+        whenever(successfulFile.pathPrefixIndex).thenReturn(0)
+        whenever(successfulFile.timestamp).thenReturn(Date())
+        whenever(successfulFile.rawFileSize).thenReturn(successfulCloudContent.size)
+
+        val metadataFailureFile = mock<AppFileInfo>()
+        whenever(metadataFailureFile.filename).thenReturn("SaveGames/SaveData_0.sav")
+        whenever(metadataFailureFile.shaFile).thenReturn(sha1("savedata0 content".toByteArray()))
+        whenever(metadataFailureFile.pathPrefixIndex).thenReturn(0)
+        whenever(metadataFailureFile.timestamp).thenReturn(Date())
+        whenever(metadataFailureFile.rawFileSize).thenReturn("savedata0 content".toByteArray().size)
+
+        val pathPrefix = "%WinMyDocuments%/My Games/TestGame/Steam/76561198025127569"
+        val cloudFileChangeList = makeCloudFileChangeList(
+            cloudChangeNumber = localCn + 1,
+            files = listOf(successfulFile, metadataFailureFile),
+            pathPrefixes = listOf(pathPrefix),
+        )
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(cloudFileChangeList)
+
+        val successfulDownloadInfo = mock<FileDownloadInfo>()
+        whenever(successfulDownloadInfo.urlHost).thenReturn("test.example.com")
+        whenever(successfulDownloadInfo.urlPath).thenReturn("/download/autosave")
+        whenever(successfulDownloadInfo.useHttps).thenReturn(true)
+        whenever(successfulDownloadInfo.requestHeaders).thenReturn(emptyList())
+        whenever(successfulDownloadInfo.fileSize).thenReturn(successfulCloudContent.size)
+        whenever(successfulDownloadInfo.rawFileSize).thenReturn(successfulCloudContent.size)
+
+        every { mockSteamCloud.clientFileDownload(any(), any(), any(), any(), any()) } answers {
+            when (val path = secondArg<String>()) {
+                "$pathPrefix/SaveGames/AutoSaveData.sav" -> CompletableFuture.completedFuture(successfulDownloadInfo)
+                "$pathPrefix/SaveGames/SaveData_0.sav" -> CompletableFuture<FileDownloadInfo>().also {
+                    it.completeExceptionally(IOException("metadata lookup failed"))
+                }
+                else -> error("Unexpected path: $path")
+            }
+        }
+
+        val mockHttpClient = mock<OkHttpClient>()
+        every { Net.httpForParallelDownloads(any()) } returns mockHttpClient
+        val successfulCall = mock<Call>()
+        whenever(mockHttpClient.newCall(any())).thenReturn(successfulCall)
+        whenever(successfulCall.execute()).thenReturn(
+            Response.Builder()
+                .request(okhttp3.Request.Builder().url("https://test.example.com/download/autosave").build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body(successfulCloudContent.toResponseBody())
+                .build(),
+        )
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.Success, result!!.syncResult)
+        assertEquals("Only the healthy file should count as downloaded", 1, result.filesDownloaded)
+        assertEquals(
+            "Successful sibling download should still update local file",
+            successfulCloudContent.contentToString(),
+            File(saveFilesDir, "AutoSaveData.sav").readBytes().contentToString(),
+        )
     }
 
     // ── Scenario 16: DB cache wiped by destructive migration, local == remote ──

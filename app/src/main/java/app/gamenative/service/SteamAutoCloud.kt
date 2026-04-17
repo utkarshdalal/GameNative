@@ -28,6 +28,7 @@ import java.io.InputStream
 import java.io.RandomAccessFile
 import java.security.MessageDigest
 import java.nio.file.Files
+import java.nio.file.FileSystemException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Date
@@ -406,34 +407,43 @@ object SteamAutoCloud {
                     )
                 }
 
-                coroutineScope {
-                    fileList.files.map { file ->
-                        async {
-                            semaphore.withPermit {
-                                val result = downloadSingleFile(
-                                    appInfo = appInfo,
-                                    steamCloud = steamCloud,
-                                    file = file,
-                                    fileList = fileList,
-                                    getFilePrefixPath = getFilePrefixPath,
-                                    getFullFilePath = getFullFilePath,
-                                    buildUrl = buildUrl,
-                                    httpClient = downloadHttpClient,
-                                    totalRawBytes = totalRawBytes,
-                                    downloadedRawBytes = downloadedRawBytes,
-                                    lastReportedPercent = lastReportedPercent,
-                                    completedFiles = completedFiles,
-                                    totalFiles = totalFiles,
-                                    progressMessage = progressMessage,
-                                    onProgress = onProgress,
-                                )
-                                if (result != null) {
-                                    filesDownloaded.addAndGet(result.filesDownloaded)
-                                    bytesDownloaded.addAndGet(result.bytesDownloaded)
+                try {
+                    coroutineScope {
+                        fileList.files.map { file ->
+                            async {
+                                semaphore.withPermit {
+                                    val result = downloadSingleFile(
+                                        appInfo = appInfo,
+                                        steamCloud = steamCloud,
+                                        file = file,
+                                        fileList = fileList,
+                                        getFilePrefixPath = getFilePrefixPath,
+                                        getFullFilePath = getFullFilePath,
+                                        buildUrl = buildUrl,
+                                        httpClient = downloadHttpClient,
+                                        totalRawBytes = totalRawBytes,
+                                        downloadedRawBytes = downloadedRawBytes,
+                                        lastReportedPercent = lastReportedPercent,
+                                        completedFiles = completedFiles,
+                                        totalFiles = totalFiles,
+                                        progressMessage = progressMessage,
+                                        onProgress = onProgress,
+                                    )
+                                    if (result != null) {
+                                        filesDownloaded.addAndGet(result.filesDownloaded)
+                                        bytesDownloaded.addAndGet(result.bytesDownloaded)
+                                    }
                                 }
                             }
-                        }
-                    }.awaitAll()
+                        }.awaitAll()
+                    }
+                } finally {
+                    runCatching {
+                        downloadHttpClient.dispatcher.executorService.shutdown()
+                    }
+                    runCatching {
+                        downloadHttpClient.connectionPool.evictAll()
+                    }
                 }
 
                 if (totalFiles > 0 && filesDownloaded.get() == totalFiles) {
@@ -987,7 +997,14 @@ object SteamAutoCloud {
 
         Timber.i("$prefixedPath -> $actualFilePath")
 
-        val fileDownloadInfo = steamCloud.clientFileDownload(appInfo.id, prefixedPath).await()
+        val fileDownloadInfo = try {
+            steamCloud.clientFileDownload(appInfo.id, prefixedPath).await()
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to fetch download info for %s", prefixedPath)
+            return null
+        }
 
         if (fileDownloadInfo.urlHost.isEmpty()) {
             Timber.w("URL host of $prefixedPath was empty")
@@ -1108,7 +1125,6 @@ object SteamAutoCloud {
             }
 
             if (!downloaded) {
-                Files.deleteIfExists(actualFilePath)
                 return null
             }
 
