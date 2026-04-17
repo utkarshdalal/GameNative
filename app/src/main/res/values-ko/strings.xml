@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">초기화</string>
     <string name="steam_verify_files_title">파일 검증</string>
     <string name="steam_verify_files_message">검증하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
+    <string name="steam_cloud_sync_downloading_save_files">저장 파일 다운로드 중 %1$d/%2$d</string>
     <string name="steam_update_title">업데이트</string>
     <string name="steam_update_message">업데이트하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
     <string name="steam_not_logged_in">이 기능을 사용하려면 Steam에 로그인해야 합니다</string>

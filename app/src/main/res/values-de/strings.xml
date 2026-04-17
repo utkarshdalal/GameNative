@@ -26,6 +26,7 @@
     <string name="base_app_reset_container_confirm">Zurücksetzen</string>
     <string name="steam_verify_files_title">Dateien überprüfen</string>
     <string name="steam_verify_files_message">Stelle bitte sicher, dass deine Spielstände vorher in die Cloud hochgeladen oder gesichert wurden, da sie sonst überschrieben werden können.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Speicherstände werden heruntergeladen %1$d/%2$d</string>
     <string name="steam_update_title">Aktualisieren</string>
     <string name="steam_update_message">Stelle sicher, dass deine Speicherstände vor dem Aktualisieren in der Cloud gesichert oder gebackupt sind, um ein Überschreiben zu verhindern.</string>
     <string name="steam_not_logged_in">Du musst bei Steam angemeldet sein, um diese Funktion zu nutzen</string>

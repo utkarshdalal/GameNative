@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">Resetează</string>
     <string name="steam_verify_files_title">Verificare fișiere</string>
     <string name="steam_verify_files_message">Asigură-te că salvările sunt încărcate în cloud sau copiate în altă parte înainte de verificare, deoarece pot fi suprascrise.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Se descarcă fișierele de salvare %1$d/%2$d</string>
     <string name="steam_update_title">Actualizare</string>
     <string name="steam_update_message">Asigură-te că salvările sunt încărcate în cloud sau copiate în altă parte înainte de actualizare, deoarece pot fi suprascrise.</string>
     <string name="steam_not_logged_in">Trebuie să fii autentificat în Steam pentru a folosi această funcție</string>

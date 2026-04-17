@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">Restablecer</string>
     <string name="steam_verify_files_title">Verificar archivos</string>
     <string name="steam_verify_files_message">Asegúrate de que tus archivos de guardado están en la nube o respaldados antes de verificar, ya que podrían sobrescribirse.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Descargando archivos de guardado %1$d/%2$d</string>
     <string name="steam_update_title">Actualizar</string>
     <string name="steam_update_message">Asegúrate de que tus archivos de guardado están en la nube o respaldados antes de actualizar, ya que podrían sobrescribirse.</string>
     <string name="steam_not_logged_in">Debes iniciar sesión en Steam para usar esta función.</string>

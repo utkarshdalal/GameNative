@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">Скинути</string>
     <string name="steam_verify_files_title">Перевірити файли</string>
     <string name="steam_verify_files_message">Будь ласка, переконайтеся, що ваші збереження завантажено у хмару або створено їхню резервну копію перед перевіркою, оскільки інакше вони можуть бути перезаписані.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Завантаження файлів збережень %1$d/%2$d</string>
     <string name="steam_update_title">Оновити</string>
     <string name="steam_update_message">Будь ласка, переконайтеся, що ваші збереження завантажено у хмару або створено їхню резервну копію перед оновленням, оскільки інакше вони можуть бути перезаписані.</string>
     <string name="steam_not_logged_in">Ви повинні увійти в Steam, щоб використовувати цю функцію</string>

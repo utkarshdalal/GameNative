@@ -32,6 +32,7 @@
     <string name="delete_prompt_title">Deletar App</string>
     <string name="cancel_download_prompt_title">Cancelar Download</string>
     <string name="acknowledge">OK</string>
+    <string name="steam_cloud_sync_downloading_save_files">Baixando arquivos de salvamento %1$d/%2$d</string>
     <string name="yes">Sim</string>
     <string name="no">Não</string>
     <string name="not_enough_space">Sem espaço suficiente</string>

@@ -36,6 +36,7 @@
     <string name="delete_prompt_title">Slet app</string>
     <string name="cancel_download_prompt_title">Annullér download</string>
     <string name="acknowledge">OK</string>
+    <string name="steam_cloud_sync_downloading_save_files">Downloader gemfiler %1$d/%2$d</string>
     <string name="yes">Ja</string>
     <string name="no">Nej</string>
     <string name="not_enough_space">Ikke nok plads</string>

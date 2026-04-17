@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">Réinitialiser</string>
     <string name="steam_verify_files_title">Vérifier les fichiers</string>
     <string name="steam_verify_files_message">Veuillez vous assurer que vos sauvegardes sont téléchargées dans le cloud ou sauvegardées avant de vérifier, car elles peuvent être écrasées.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Téléchargement des fichiers de sauvegarde %1$d/%2$d</string>
     <string name="steam_update_title">Mettre à jour</string>
     <string name="steam_update_message">Veuillez vous assurer que vos sauvegardes sont téléchargées dans le cloud ou sauvegardées avant de mettre à jour, car elles peuvent être écrasées.</string>
     <string name="steam_not_logged_in">Vous devez être connecté à Steam pour utiliser cette fonctionnalité</string>

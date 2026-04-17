@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">Reimposta</string>
     <string name="steam_verify_files_title">Verifica File</string>
     <string name="steam_verify_files_message">Assicurati che i tuoi salvataggi siano caricati sul cloud o sottoposti a backup prima della verifica, altrimenti potrebbero essere sovrascritti.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Download dei file di salvataggio %1$d/%2$d</string>
     <string name="steam_update_title">Aggiorna</string>
     <string name="steam_update_message">Assicurati che i tuoi salvataggi siano caricati sul cloud o sottoposti a backup prima dell\'aggiornamento, altrimenti potrebbero essere sovrascritti.</string>
     <string name="steam_not_logged_in">Devi aver effettuato l\'accesso a Steam per utilizzare questa funzione</string>

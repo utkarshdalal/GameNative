@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">Resetuj</string>
     <string name="steam_verify_files_title">Zweryfikuj pliki</string>
     <string name="steam_verify_files_message">Upewnij się, że Twoje zapisy są przesłane do chmury lub utworzono ich kopię zapasową przed weryfikacją, w przeciwnym razie mogą zostać nadpisane.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Pobieranie plików zapisów %1$d/%2$d</string>
     <string name="steam_update_title">Aktualizuj</string>
     <string name="steam_update_message">Upewnij się, że Twoje zapisy są przesłane do chmury lub utworzono ich kopię zapasową przed aktualizacją, w przeciwnym razie mogą zostać nadpisane.</string>
     <string name="steam_not_logged_in">Musisz być zalogowany do Steam, aby użyć tej funkcji</string>

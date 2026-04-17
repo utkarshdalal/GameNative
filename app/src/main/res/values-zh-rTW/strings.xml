@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">重置</string>
     <string name="steam_verify_files_title">驗證檔案</string>
     <string name="steam_verify_files_message">請確保您的存檔已上傳至雲端或已備份, 然後再進行驗證, 否則存檔可能會被覆蓋</string>
+    <string name="steam_cloud_sync_downloading_save_files">正在下載存檔檔案 %1$d/%2$d</string>
     <string name="steam_update_title">更新</string>
     <string name="steam_update_message">請確保您的存檔已上傳至雲端或已備份, 然後再進行驗證, 否則存檔可能會被覆蓋</string>
     <string name="steam_storage_permission_required">需要存儲權限</string>

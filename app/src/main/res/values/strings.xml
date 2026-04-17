@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">Reset</string>
     <string name="steam_verify_files_title">Verify Files</string>
     <string name="steam_verify_files_message">Please ensure your saves are uploaded to the cloud or backed up before verifying, as they may be overwritten otherwise.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Downloading save files %1$d/%2$d</string>
     <string name="steam_update_title">Update</string>
     <string name="steam_update_message">Please ensure your saves are uploaded to the cloud or backed up before updating, as they may be overwritten otherwise.</string>
     <string name="steam_not_logged_in">You must be logged into Steam to use this feature</string>

@@ -21,6 +21,7 @@
     <string name="abc_toolbar_collapse_description">Свернуть</string>
     <string name="about">О программе</string>
     <string name="acknowledge">ОК</string>
+    <string name="steam_cloud_sync_downloading_save_files">Загрузка файлов сохранения %1$d/%2$d</string>
     <string name="action_add_game">Добавить игру</string>
     <string name="action_details">Подробности</string>
     <string name="action_refresh">Обновить</string>

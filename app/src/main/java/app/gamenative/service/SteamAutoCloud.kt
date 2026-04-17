@@ -1,6 +1,8 @@
 package app.gamenative.service
 
 import androidx.room.withTransaction
+import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
@@ -14,6 +16,7 @@ import app.gamenative.service.SteamService.Companion.FileChanges
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import app.gamenative.utils.FileUtils
+import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileChangeList
@@ -37,7 +40,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeout
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -47,6 +54,8 @@ import timber.log.Timber
 import java.io.OutputStream
 import java.net.SocketTimeoutException
 import java.nio.file.attribute.FileTime
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * [Steam Auto Cloud](https://partner.steamgames.com/doc/features/cloud#steam_auto-cloud)
@@ -74,8 +83,8 @@ object SteamAutoCloud {
     private inline fun InputStream.copyTo(
         out: OutputStream,
         bufferSize: Int = 8 * 1024,
-        progress: (Long) -> Unit,
-    ) {
+        progress: (chunkBytes: Long, totalBytes: Long) -> Unit,
+    ): Long {
         val buf = ByteArray(bufferSize)
         var bytesRead: Int
         var total = 0L
@@ -83,8 +92,9 @@ object SteamAutoCloud {
             if (bytesRead == 0) continue
             out.write(buf, 0, bytesRead)
             total += bytesRead
-            progress(total)
+            progress(bytesRead.toLong(), total)
         }
+        return total
     }
 
     fun syncUserFiles(
@@ -372,33 +382,63 @@ object SteamAutoCloud {
 
         val downloadFiles: (AppFileChangeList, CoroutineScope) -> Deferred<UserFilesDownloadResult> = { fileList, parentScope ->
             parentScope.async {
-                var filesDownloaded = 0
-                var bytesDownloaded = 0L
+                val filesDownloaded = AtomicInteger(0)
+                val bytesDownloaded = AtomicLong(0L)
                 val totalFiles = fileList.files.size
-
-                fileList.files.forEach { file ->
-                    val result = downloadSingleFile(
-                        appInfo = appInfo,
-                        steamCloud = steamCloud,
-                        steamInstance = steamInstance,
-                        file = file,
-                        fileList = fileList,
-                        getFilePrefixPath = getFilePrefixPath,
-                        getFullFilePath = getFullFilePath,
-                        buildUrl = buildUrl,
-                        onProgress = onProgress,
+                val parallelism = PrefManager.downloadSpeed.coerceAtLeast(1)
+                // A new client (and its Dispatcher thread pool) is created intentionally per sync,
+                // since cloud saves are downloaded at most once per game launch.
+                val downloadHttpClient = Net.httpForParallelDownloads(parallelism)
+                val semaphore = Semaphore(parallelism)
+                val completedFiles = AtomicInteger(0)
+                val totalRawBytes = fileList.files.sumOf { it.rawFileSize.toLong() }
+                // downloadedRawBytes tracks bytes as they stream in (per-chunk) for live progress.
+                // bytesDownloaded accumulates rawFileSize per completed file for final accounting.
+                val downloadedRawBytes = AtomicLong(0L)
+                val lastReportedPercent = AtomicInteger(-1)
+                val progressMessage: (Int) -> String = { finishedFiles ->
+                    steamInstance.getString(
+                        R.string.steam_cloud_sync_downloading_save_files,
+                        finishedFiles,
+                        totalFiles,
                     )
-                    if (result != null) {
-                        filesDownloaded += result.filesDownloaded
-                        bytesDownloaded += result.bytesDownloaded
-                    }
+                }
+
+                coroutineScope {
+                    fileList.files.map { file ->
+                        async {
+                            semaphore.withPermit {
+                                val result = downloadSingleFile(
+                                    appInfo = appInfo,
+                                    steamCloud = steamCloud,
+                                    file = file,
+                                    fileList = fileList,
+                                    getFilePrefixPath = getFilePrefixPath,
+                                    getFullFilePath = getFullFilePath,
+                                    buildUrl = buildUrl,
+                                    httpClient = downloadHttpClient,
+                                    totalRawBytes = totalRawBytes,
+                                    downloadedRawBytes = downloadedRawBytes,
+                                    lastReportedPercent = lastReportedPercent,
+                                    completedFiles = completedFiles,
+                                    totalFiles = totalFiles,
+                                    progressMessage = progressMessage,
+                                    onProgress = onProgress,
+                                )
+                                if (result != null) {
+                                    filesDownloaded.addAndGet(result.filesDownloaded)
+                                    bytesDownloaded.addAndGet(result.bytesDownloaded)
+                                }
+                            }
+                        }
+                    }.awaitAll()
                 }
 
                 if (totalFiles > 0) {
                     onProgress?.invoke("Download complete", 1.0f)
                 }
 
-                UserFilesDownloadResult(filesDownloaded, bytesDownloaded)
+                UserFilesDownloadResult(filesDownloaded.get(), bytesDownloaded.get())
             }
         }
 
@@ -926,13 +966,19 @@ object SteamAutoCloud {
     private suspend fun downloadSingleFile(
         appInfo: SteamApp,
         steamCloud: SteamCloud,
-        steamInstance: SteamService,
         file: AppFileInfo,
         fileList: AppFileChangeList,
         getFilePrefixPath: (AppFileInfo, AppFileChangeList) -> String,
         getFullFilePath: (AppFileInfo, AppFileChangeList) -> Path,
         buildUrl: (Boolean, String, String) -> String,
-        onProgress: ((message: String, progress: Float) -> Unit)?,
+        httpClient: okhttp3.OkHttpClient,
+        totalRawBytes: Long,
+        downloadedRawBytes: AtomicLong,
+        lastReportedPercent: AtomicInteger,
+        completedFiles: AtomicInteger,
+        totalFiles: Int,
+        progressMessage: (Int) -> String,
+        onProgress: ((message: String, progress: Float) -> Unit)?, // invoked from IO thread
     ): UserFilesDownloadResult? {
         val prefixedPath = getFilePrefixPath(file, fileList)
         val actualFilePath = getFullFilePath(file, fileList)
@@ -946,7 +992,6 @@ object SteamAutoCloud {
             return null
         }
 
-        onProgress?.invoke("Downloading ${file.filename}", -1f)
         val httpUrl = with(fileDownloadInfo) {
             buildUrl(useHttps, urlHost, urlPath)
         }
@@ -965,10 +1010,12 @@ object SteamAutoCloud {
             .headers(headers)
             .build()
 
-        val httpClient = steamInstance.steamClient!!.configuration.httpClient
-
         val response = withTimeout(SteamService.requestTimeout) {
             httpClient.newCall(request).execute()
+        }
+
+        if (response == null) {
+            return null
         }
 
         if (!response.isSuccessful) {
@@ -979,21 +1026,26 @@ object SteamAutoCloud {
 
         try {
             val totalFileSize = fileDownloadInfo.rawFileSize.toLong()
-            var totalBytesRead = 0L
-            var lastReportedProgress = -1f
-            val progressThreshold = 0.01f // Update every 1%
 
             val copyToFile: (InputStream) -> Unit = { input ->
                 Files.createDirectories(actualFilePath.parent)
 
                 FileOutputStream(actualFilePath.toString()).use { fs ->
-                    input.copyTo(fs, 8 * 1024) { bytesRead ->
-                        totalBytesRead = bytesRead
-                        if (totalFileSize > 0) {
-                            val currentProgress = (totalBytesRead.toFloat() / totalFileSize).coerceIn(0f, 1f)
-                            if (currentProgress - lastReportedProgress >= progressThreshold || currentProgress >= 1f) {
-                                onProgress?.invoke("Downloading ${file.filename}", currentProgress)
-                                lastReportedProgress = currentProgress
+                    val totalBytesRead = input.copyTo(fs, 8 * 1024) { chunkBytes, _ ->
+                        if (totalRawBytes > 0L) {
+                            val currentPercent = (
+                                downloadedRawBytes.addAndGet(chunkBytes) * 100 / totalRawBytes
+                                ).toInt().coerceIn(0, 100)
+                            while (true) {
+                                val previousPercent = lastReportedPercent.get()
+                                if (currentPercent <= previousPercent) break
+                                if (lastReportedPercent.compareAndSet(previousPercent, currentPercent)) {
+                                    onProgress?.invoke(
+                                        progressMessage(completedFiles.get()),
+                                        currentPercent / 100f,
+                                    )
+                                    break
+                                }
                             }
                         }
                     }
@@ -1040,11 +1092,21 @@ object SteamAutoCloud {
                 }
             }
 
-            return UserFilesDownloadResult(1, fileDownloadInfo.fileSize.toLong())
+            val finishedFiles = completedFiles.incrementAndGet()
+            val finalProgress = if (totalRawBytes > 0L) {
+                (downloadedRawBytes.get().toFloat() / totalRawBytes).coerceIn(0f, 1f)
+            } else {
+                finishedFiles.toFloat() / totalFiles
+            }
+            onProgress?.invoke(progressMessage(finishedFiles), finalProgress)
+
+            return UserFilesDownloadResult(1, fileDownloadInfo.rawFileSize.toLong())
         } catch (e: FileSystemException) {
             Timber.w("Could not download $actualFilePath: %s", e.message)
             return null
         } catch (e: SocketTimeoutException) {
+            // Distinct from the outer SocketTimeoutException catch above: that one covers the
+            // connection/response phase; this one covers a timeout during the streaming read.
             Timber.w("Could not download $actualFilePath: %s", e.message)
             return null
         } finally {
