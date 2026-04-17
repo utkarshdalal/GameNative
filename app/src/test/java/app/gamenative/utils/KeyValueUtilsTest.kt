@@ -605,6 +605,186 @@ class KeyValueUtilsTest {
         assertEquals("", patterns[0].uploadPath)
     }
 
+    /**
+     * Stellar Blade (App ID 3489700) has a save pattern with `root: WindowsHome`, which is the
+     * Windows user home directory (C:\users\xuser\ in Wine). It must be recognized as PathType.Root
+     * and pass the isWindows filter so the pattern is not silently dropped.
+     */
+    @Test
+    fun stellarBladeWindowsHomeRootIsRecognizedAndPassesIsWindowsFilter() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "3489700"
+                "ufs"
+                {
+                    "quota"         "600000000"
+                    "maxnumfiles"   "20"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "WindowsHome"
+                            "path"      "Documents/StellarBlade/{64BitSteamID}"
+                            "pattern"   "*.sav"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.Root, patterns[0].root)
+        assertEquals(true, patterns[0].root.isWindows)
+        assertEquals("Documents/StellarBlade/{64BitSteamID}", patterns[0].path)
+        assertEquals("*.sav", patterns[0].pattern)
+        assertEquals(0, patterns[0].recursive)
+        assertEquals(PathType.Root, patterns[0].uploadRoot)
+    }
+
+    /**
+     * Sonic Mania (App ID 584400) has a save pattern with `root: SteamCloudDocuments`, which is
+     * Steam's name for the user's Documents folder (WinMyDocuments in Wine). It must be recognized
+     * and pass the isWindows filter so the pattern is not silently dropped.
+     */
+    @Test
+    fun sonicManiaSteamCloudDocumentsRootIsRecognizedAsWinMyDocuments() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "584400"
+                "ufs"
+                {
+                    "quota"         "67108864"
+                    "maxnumfiles"   "64"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "SteamCloudDocuments"
+                            "path"      "SavesDir"
+                            "pattern"   "*.sav"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinMyDocuments, patterns[0].root)
+        assertEquals(true, patterns[0].root.isWindows)
+        assertEquals("SavesDir", patterns[0].path)
+        assertEquals("*.sav", patterns[0].pattern)
+        assertEquals(PathType.WinMyDocuments, patterns[0].uploadRoot)
+    }
+
+    /**
+     * Spiritfarer (App ID 972660) has `path: .` with a Windows rootoverride that adds
+     * `addpath: Thunder Lotus Games/Spiritfarer`. The dot means "no subdirectory" and must not
+     * be appended to the addpath (producing "Thunder Lotus Games/Spiritfarer/."), nor stored as
+     * uploadPath (producing cloud key "%GameInstall%.") — both break download path resolution.
+     */
+    @Test
+    fun spiritfarerDotPathWithAddpathIsNormalizedToEmpty() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "972660"
+                "ufs"
+                {
+                    "quota"         "100000000"
+                    "maxnumfiles"   "20"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "gameinstall"
+                            "path"      "."
+                            "pattern"   "*.sav"
+                        }
+                    }
+                    "rootoverrides"
+                    {
+                        "0"
+                        {
+                            "root"          "gameinstall"
+                            "os"            "Windows"
+                            "oscompare"     "="
+                            "useinstead"    "WinAppDataLocalLow"
+                            "addpath"       "Thunder Lotus Games/Spiritfarer"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinAppDataLocalLow, patterns[0].root)
+        assertEquals("Thunder Lotus Games/Spiritfarer", patterns[0].path)
+        assertEquals("*.sav", patterns[0].pattern)
+        assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
+        assertEquals("", patterns[0].uploadPath)
+    }
+
+    /**
+     * CrossCode (App ID 368340) has `path: .` with a Windows rootoverride that adds
+     * `addpath: CrossCode`. Same class of bug as Spiritfarer — dot must not be appended to
+     * the addpath or stored as uploadPath.
+     */
+    @Test
+    fun crossCodeDotPathWithAddpathIsNormalizedToEmpty() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "368340"
+                "ufs"
+                {
+                    "quota"         "100000000"
+                    "maxnumfiles"   "5"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "WinAppDataLocal"
+                            "path"      "."
+                            "pattern"   "cc.sav*"
+                        }
+                    }
+                    "rootoverrides"
+                    {
+                        "0"
+                        {
+                            "root"          "WinAppDataLocal"
+                            "os"            "Windows"
+                            "oscompare"     "="
+                            "useinstead"    "WinAppDataLocal"
+                            "addpath"       "CrossCode"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinAppDataLocal, patterns[0].root)
+        assertEquals("CrossCode", patterns[0].path)
+        assertEquals("cc.sav*", patterns[0].pattern)
+        assertEquals(PathType.WinAppDataLocal, patterns[0].uploadRoot)
+        assertEquals("", patterns[0].uploadPath)
+    }
+
     @Test
     fun generateSteamAppStampsCurrentUfsParseVersion() {
         val kvString = """
@@ -619,4 +799,170 @@ class KeyValueUtilsTest {
 
         assertEquals(CURRENT_UFS_PARSE_VERSION, steamApp.ufsParseVersion)
     }
+
+    @Test
+    fun winProgramDataRootIsRecognized() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "99999"
+                "ufs"
+                {
+                    "quota"         "10000000"
+                    "maxnumfiles"   "10"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "winprogramdata"
+                            "path"      "MyPublisher/MyGame"
+                            "pattern"   "*.sav"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinProgramData, patterns[0].root)
+        assertEquals(true, patterns[0].root.isWindows)
+        assertEquals("MyPublisher/MyGame", patterns[0].path)
+        assertEquals("*.sav", patterns[0].pattern)
+        assertEquals(PathType.WinProgramData, patterns[0].uploadRoot)
+    }
+
+    @Test
+    fun steamUserBaseStorageRootIsRecognizedAsSteamUserData() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "88888"
+                "ufs"
+                {
+                    "quota"         "10000000"
+                    "maxnumfiles"   "10"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "SteamUserBaseStorage"
+                            "path"      "saves"
+                            "pattern"   "*.dat"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.SteamUserData, patterns[0].root)
+        assertEquals(true, patterns[0].root.isWindows)
+        assertEquals("saves", patterns[0].path)
+        assertEquals("*.dat", patterns[0].pattern)
+        assertEquals(PathType.SteamUserData, patterns[0].uploadRoot)
+    }
+
+    /**
+     * A rootoverride using `oslist: "windows,linux"` instead of `os: "Windows"` must still
+     * be applied. Previously this was silently skipped because only the `os` field was checked.
+     */
+    @Test
+    fun rootOverrideWithOslistWindowsIsApplied() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "77777"
+                "ufs"
+                {
+                    "quota"         "10000000"
+                    "maxnumfiles"   "10"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "gameinstall"
+                            "path"      "saves"
+                            "pattern"   "*.sav"
+                        }
+                    }
+                    "rootoverrides"
+                    {
+                        "0"
+                        {
+                            "root"          "gameinstall"
+                            "oslist"        "windows,linux"
+                            "oscompare"     "="
+                            "useinstead"    "WinAppDataRoaming"
+                            "addpath"       "MyGame"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinAppDataRoaming, patterns[0].root)
+        assertEquals("MyGame/saves", patterns[0].path)
+        assertEquals("*.sav", patterns[0].pattern)
+        assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
+        assertEquals("saves", patterns[0].uploadPath)
+    }
+
+    @Test
+    fun rootOverrideWithOslistOnlyLinuxIsNotApplied() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "66666"
+                "ufs"
+                {
+                    "quota"         "10000000"
+                    "maxnumfiles"   "10"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "WinMyDocuments"
+                            "path"      "saves"
+                            "pattern"   "*.sav"
+                        }
+                    }
+                    "rootoverrides"
+                    {
+                        "0"
+                        {
+                            "root"          "WinMyDocuments"
+                            "oslist"        "linux"
+                            "oscompare"     "="
+                            "useinstead"    "LinuxHome"
+                            "addpath"       ".local/share/mygame"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinMyDocuments, patterns[0].root)
+        assertEquals("saves", patterns[0].path)
+        assertEquals("*.sav", patterns[0].pattern)
+        assertEquals(PathType.WinMyDocuments, patterns[0].uploadRoot)
+    }
+
 }

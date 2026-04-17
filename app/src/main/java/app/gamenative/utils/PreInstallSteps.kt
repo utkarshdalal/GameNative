@@ -2,7 +2,6 @@ package app.gamenative.utils
 
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
-import app.gamenative.service.gog.GOGService
 import com.winlator.container.Container
 import java.io.File
 
@@ -33,7 +32,9 @@ object PreInstallSteps {
         UbisoftConnectStep,
     )
 
-    private val allMarkers = steps.map { it.marker }.distinct()
+    private var stepsProvider: () -> List<PreInstallStep> = { steps }
+    private fun currentSteps(): List<PreInstallStep> = stepsProvider()
+    private fun allMarkers(): List<Marker> = currentSteps().map { it.marker }.distinct()
 
     /**
      * Returns a list of pre-install commands (marker + guest executable). Each entry is a
@@ -53,7 +54,7 @@ object PreInstallSteps {
 
         val commands = mutableListOf<PreInstallCommand>()
 
-        for (step in steps) {
+        for (step in currentSteps()) {
             if (step.appliesTo(
                     container = container,
                     gameSource = gameSource,
@@ -83,7 +84,7 @@ object PreInstallSteps {
     fun markAllDone(container: Container) {
         val gameDir = getGameDir(container) ?: return
         val gameDirPath = gameDir.absolutePath
-        for (marker in allMarkers) {
+        for (marker in allMarkers()) {
             MarkerUtils.addMarker(gameDirPath, marker)
         }
     }
@@ -95,7 +96,7 @@ object PreInstallSteps {
     }
 
     private fun resetMarkers(gameDirPath: String) {
-        for (marker in allMarkers) {
+        for (marker in allMarkers()) {
             MarkerUtils.removeMarker(gameDirPath, marker)
         }
     }
@@ -110,5 +111,15 @@ object PreInstallSteps {
             if (drive[0].equals("A", ignoreCase = true)) return File(drive[1])
         }
         return null
+    }
+
+    /**
+     * Test-only hook to override the pre-install step provider.
+     * Not intended for production code paths.
+     *
+     * @param provider Steps provider for tests; pass null to restore the default provider.
+     */
+    internal fun setStepsProviderForTests(provider: (() -> List<PreInstallStep>)?) {
+        stepsProvider = provider ?: { steps }
     }
 }

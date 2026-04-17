@@ -167,7 +167,7 @@ class GOGService : Service() {
         // ==========================================================================
 
         fun hasActiveOperations(): Boolean {
-            return syncInProgress || backgroundSyncJob?.isActive == true
+            return syncInProgress || backgroundSyncJob?.isActive == true || hasActiveDownload()
         }
 
         private fun setSyncInProgress(inProgress: Boolean) {
@@ -693,6 +693,16 @@ class GOGService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         notificationHelper.cancel()
         instance = null
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (!hasActiveOperations()) {
+            Timber.tag("GOG").i("Task removed and no active work — stopping service")
+            stopSelf()
+        } else {
+            Timber.tag("GOG").i("Task removed but active work exists — keeping service alive")
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

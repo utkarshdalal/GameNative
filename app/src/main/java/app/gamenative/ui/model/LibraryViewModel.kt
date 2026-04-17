@@ -34,6 +34,8 @@ import app.gamenative.ui.enums.LibraryTab.Companion.next
 import app.gamenative.ui.enums.LibraryTab.Companion.previous
 import app.gamenative.ui.enums.SortOption
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.data.RecommendationRepository
+import app.gamenative.data.RecommendedGame
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.unaccent
@@ -80,6 +82,10 @@ class LibraryViewModel @Inject constructor(
         onFilterApps(paginationCurrentPage)
     }
 
+    private val onRecommendationToggleChanged: (AndroidEvent.RecommendationToggleChanged) -> Unit = {
+        onFilterApps(paginationCurrentPage)
+    }
+
     // How many items loaded on one page of results
     @Volatile private var paginationCurrentPage: Int = 0
     @Volatile private var lastPageInCurrentFilter: Int = 0
@@ -92,6 +98,9 @@ class LibraryViewModel @Inject constructor(
 
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
+
+    // Cached recommendation (fetched once at startup)
+    @Volatile private var cachedRecommendation: RecommendedGame? = null
 
     // Track debounce job for search
     private var searchDebounceJob: Job? = null
@@ -166,12 +175,21 @@ class LibraryViewModel @Inject constructor(
 
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
         PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
+        PluviaApp.events.on<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
+
+        viewModelScope.launch(Dispatchers.IO) {
+            cachedRecommendation = RecommendationRepository.getCurrentRecommendation(context)
+            if (cachedRecommendation != null) {
+                onFilterApps(paginationCurrentPage)
+            }
+        }
     }
 
     override fun onCleared() {
         searchDebounceJob?.cancel()
         PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
         PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
+        PluviaApp.events.off<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
         super.onCleared()
     }
 
@@ -685,7 +703,28 @@ class LibraryViewModel @Inject constructor(
             lastPageInCurrentFilter = if (totalFound == 0) 0 else (totalFound - 1) / pageSize
             // Calculate how many items to show: (pagesLoaded * pageSize)
             val endIndex = min((paginationPage + 1) * pageSize, totalFound)
-            val pagedList = combined.take(endIndex)
+            var pagedList = combined.take(endIndex)
+
+            // Prepend recommendation as first item on ALL tab when enabled and not searching
+            val rec = cachedRecommendation
+            if (rec != null
+                && PrefManager.showRecommendations
+                && currentTab == LibraryTab.ALL
+                && currentState.searchQuery.isEmpty()
+            ) {
+                val recItem = LibraryItem(
+                    index = -1,
+                    appId = "RECOMMENDED_${rec.id}",
+                    name = rec.name,
+                    heroImageUrl = rec.heroImageUrl,
+                    capsuleImageUrl = rec.capsuleImageUrl,
+                    iconHash = rec.iconUrl ?: rec.capsuleImageUrl,
+                    isRecommended = true,
+                    recommendedGameId = rec.id,
+                    gameSource = GameSource.STEAM,
+                )
+                pagedList = listOf(recItem) + pagedList.map { it.copy(index = it.index + 1) }
+            }
 
             Timber.tag("LibraryViewModel").d("Filtered list size (with Custom Games): $totalFound")
 

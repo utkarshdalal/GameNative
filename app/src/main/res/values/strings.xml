@@ -241,8 +241,27 @@
     <string name="quick_menu_back">Back</string>
     <string name="screen_effects">Screen Effects</string>
     <string name="screen_effects_live_preview">Changes apply instantly to the current game.</string>
+    <string name="screen_effects_scaling">Scaling</string>
     <string name="screen_effects_color_adjustments">Color adjustments</string>
     <string name="screen_effects_shader_toggles">Shader effects</string>
+    <string name="screen_effects_scaling_mode">Scaling mode</string>
+    <string name="screen_effects_scaling_mode_none">None</string>
+    <string name="screen_effects_scaling_mode_nearest">Nearest</string>
+    <string name="screen_effects_scaling_mode_linear">Linear</string>
+    <string name="screen_effects_scaling_mode_fill">Fill</string>
+    <string name="screen_effects_scaling_mode_stretch">Stretch</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">Official AMD FidelityFX Super Resolution 1.0 using EASU + RCAS with a lower internal render resolution and full-resolution upscale.</string>
+    <string name="screen_effects_fsr_quality">FSR quality</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">Ultra Quality</string>
+    <string name="screen_effects_fsr_quality_quality">Quality</string>
+    <string name="screen_effects_fsr_quality_balanced">Balanced</string>
+    <string name="screen_effects_fsr_quality_performance">Performance</string>
+    <string name="screen_effects_fsr_sharpness">FSR sharpness</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">Launch sharpness</string>
+    <string name="screen_effects_launch_sharpness_note">CAS and DLS are applied through vkBasalt and take effect the next time you launch the game.</string>
     <string name="screen_effects_brightness">Brightness</string>
     <string name="screen_effects_contrast">Contrast</string>
     <string name="screen_effects_gamma">Gamma</string>
@@ -859,6 +878,8 @@
     <string name="settings_info_libraries_subtitle">See what technologies make GameNative possible</string>
     <string name="settings_info_privacy_title">Privacy Policy</string>
     <string name="settings_info_privacy_subtitle">Opens a link to GameNative\'s privacy policy</string>
+    <string name="settings_info_usage_analytics_title">Usage analytics</string>
+    <string name="settings_info_usage_analytics_subtitle">We never track personal information. Disabling this stops non-essential analytics, however core game performance data is still collected as a legitimate interest to improve compatibility.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>
@@ -870,6 +891,8 @@
     <string name="settings_interface_swap_face_buttons_subtitle">Swap A↔B and X↔Y button icons</string>
     <string name="settings_interface_warn_before_exit_title">Warn before exiting</string>
     <string name="settings_interface_warn_before_exit_subtitle">Require double back press to exit — first press shows a warning</string>
+    <string name="settings_interface_show_gamepad_hints_title">Show controller hints</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Show the controller button hints bar at the bottom of the screen</string>
     <string name="settings_interface_icon_style">Icon style</string>
     <string name="settings_interface_wifi_only_title">Download only over Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Prevent downloads on cellular data</string>
@@ -1404,4 +1427,18 @@
     <string name="option_test_graphics">Test graphics</string>
     <string name="option_manage_dlc">Manage DLC</string>
     <string name="option_manage_workshop">Manage Workshop</string>
+    <!-- Recommendations -->
+    <string name="recommended_badge">Recommended</string>
+    <string name="recommended_buy_button">Check It Out</string>
+    <string name="recommended_support_message">Purchasing through this link helps support the development of GameNative.</string>
+    <string name="recommended_about_heading">About This Game</string>
+    <string name="recommended_review_count">Based on %1$s reviews</string>
+    <string name="review_overwhelmingly_positive">Overwhelmingly Positive</string>
+    <string name="review_very_positive">Very Positive</string>
+    <string name="review_mostly_positive">Mostly Positive</string>
+    <string name="review_mixed">Mixed</string>
+    <string name="review_mostly_negative">Mostly Negative</string>
+    <string name="review_overwhelmingly_negative">Overwhelmingly Negative</string>
+    <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
+    <string name="settings_interface_show_recommendations_subtitle">Show curated indie game picks in your library. Keeping this on helps support indie developers and GameNative.</string>
 </resources>

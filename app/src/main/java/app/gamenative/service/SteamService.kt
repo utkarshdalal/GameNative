@@ -3255,6 +3255,16 @@ class SteamService : Service(), IChallengeUrlChanged {
         scope.launch { stop() }
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (!hasActiveOperations()) {
+            Timber.i("Task removed and no active work — stopping service")
+            stopSelf()
+        } else {
+            Timber.i("Task removed but active work exists — keeping service alive")
+        }
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun connectToSteam() {

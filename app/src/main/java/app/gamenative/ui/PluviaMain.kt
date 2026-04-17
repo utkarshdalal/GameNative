@@ -212,14 +212,7 @@ private fun resolveGameAppId(context: Context, appId: String): GameResolutionRes
 private fun needsDeferLaunch(context: Context, appId: String): Boolean {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     return when (gameSource) {
-        GameSource.STEAM -> {
-            if (SteamService.isLoggedIn) return false
-            try {
-                !ContainerUtils.getContainer(context, appId).isSteamOfflineMode()
-            } catch (_: Exception) {
-                true // no container → needs login
-            }
-        }
+        GameSource.STEAM -> !SteamService.isLoggedIn
         GameSource.GOG -> !GOGService.isRunning
         GameSource.EPIC -> !EpicService.isRunning
         GameSource.AMAZON -> !AmazonService.isRunning
@@ -1609,6 +1602,31 @@ fun preLaunchApp(
 
         // set up Ubuntu file system — download required files and install
         SplitCompat.install(context)
+
+        try {
+            LaunchDependencies().ensureLaunchDependencies(
+                context = context,
+                container = container,
+                gameSource = gameSource,
+                gameId = gameId,
+                setLoadingMessage = setLoadingMessage,
+                setLoadingProgress = setLoadingProgress,
+            )
+        } catch (e: Exception) {
+            Timber.tag("preLaunchApp").e(e, "ensureLaunchDependencies failed")
+            setLoadingDialogVisible(false)
+            setMessageDialogState(
+                MessageDialogState(
+                    visible = true,
+                    type = DialogType.SYNC_FAIL,
+                    title = context.getString(R.string.launch_dependency_failed_title),
+                    message = e.message ?: context.getString(R.string.launch_dependency_failed_message),
+                    dismissBtnText = context.getString(R.string.ok),
+                ),
+            )
+            return@launch
+        }
+
         try {
             if (!SteamService.isImageFsInstallable(context, container.containerVariant)) {
                 setLoadingMessage("Downloading first-time files")
@@ -1628,45 +1646,6 @@ fun preLaunchApp(
                     this,
                     context = context,
                 ).await()
-            } else {
-                if (container.wineVersion.contains("proton-9.0-arm64ec") &&
-                    !SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz")
-                ) {
-                    setLoadingMessage("Downloading arm64ec Proton")
-                    SteamService.downloadFile(
-                        onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                        this,
-                        context = context,
-                        "proton-9.0-arm64ec.txz",
-                    ).await()
-                } else if (container.wineVersion.contains("proton-9.0-x86_64") &&
-                    !SteamService.isFileInstallable(context, "proton-9.0-x86_64.txz")
-                ) {
-                    setLoadingMessage("Downloading x86_64 Proton")
-                    SteamService.downloadFile(
-                        onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                        this,
-                        context = context,
-                        "proton-9.0-x86_64.txz",
-                    ).await()
-                }
-                if (container.wineVersion.contains("proton-9.0-x86_64") || container.wineVersion.contains("proton-9.0-arm64ec")) {
-                    val protonVersion = container.wineVersion
-                    val imageFs = ImageFs.find(context)
-                    val outFile = File(imageFs.rootDir, "/opt/$protonVersion")
-                    val binDir = File(outFile, "bin")
-                    if (!binDir.exists() || !binDir.isDirectory) {
-                        Timber.i("Extracting $protonVersion to /opt/")
-                        setLoadingMessage("Extracting $protonVersion")
-                        setLoadingProgress(-1f)
-                        val downloaded = File(imageFs.getFilesDir(), "$protonVersion.txz")
-                        TarCompressorUtils.extract(
-                            TarCompressorUtils.Type.XZ,
-                            downloaded,
-                            outFile,
-                        )
-                    }
-                }
             }
 
             if (!container.isUseLegacyDRM && !container.isLaunchRealSteam &&
@@ -1706,30 +1685,6 @@ fun preLaunchApp(
                     type = DialogType.SYNC_FAIL,
                     title = context.getString(R.string.download_failed_title),
                     message = e.message ?: context.getString(R.string.download_failed_message),
-                    dismissBtnText = context.getString(R.string.ok),
-                ),
-            )
-            return@launch
-        }
-
-        try {
-            LaunchDependencies().ensureLaunchDependencies(
-                context = context,
-                container = container,
-                gameSource = gameSource,
-                gameId = gameId,
-                setLoadingMessage = setLoadingMessage,
-                setLoadingProgress = setLoadingProgress,
-            )
-        } catch (e: Exception) {
-            Timber.tag("preLaunchApp").e(e, "ensureLaunchDependencies failed")
-            setLoadingDialogVisible(false)
-            setMessageDialogState(
-                MessageDialogState(
-                    visible = true,
-                    type = DialogType.SYNC_FAIL,
-                    title = context.getString(R.string.launch_dependency_failed_title),
-                    message = e.message ?: context.getString(R.string.launch_dependency_failed_message),
                     dismissBtnText = context.getString(R.string.ok),
                 ),
             )

@@ -948,6 +948,14 @@ object PrefManager {
             setPref(SWAP_FACE_BUTTONS, value)
         }
 
+    // Whether to show the on-screen gamepad hints/action bar in the UI
+    private val SHOW_GAMEPAD_HINTS = booleanPreferencesKey("show_gamepad_hints")
+    var showGamepadHints: Boolean
+        get() = getPref(SHOW_GAMEPAD_HINTS, true)
+        set(value) {
+            setPref(SHOW_GAMEPAD_HINTS, value)
+        }
+
     private val ITEMS_PER_PAGE = intPreferencesKey("items_per_page")
     var itemsPerPage: Int
         get() = getPref(ITEMS_PER_PAGE, 50)
@@ -1039,6 +1047,14 @@ object PrefManager {
         get() = getPref(AMAZON_INSTALLED_GAMES_COUNT, 0)
         set(value) {
             setPref(AMAZON_INSTALLED_GAMES_COUNT, value)
+        }
+
+    // Show game recommendations in library
+    private val SHOW_RECOMMENDATIONS = booleanPreferencesKey("show_recommendations")
+    var showRecommendations: Boolean
+        get() = getPref(SHOW_RECOMMENDATIONS, true)
+        set(value) {
+            setPref(SHOW_RECOMMENDATIONS, value)
         }
 
     // Show dialog when adding custom game folder
@@ -1184,4 +1200,9 @@ object PrefManager {
     var warnBeforeExit: Boolean
         get() = getPref(WARN_BEFORE_EXIT, false)
         set(value) { setPref(WARN_BEFORE_EXIT, value) }
+
+    private val USAGE_ANALYTICS_ENABLED = booleanPreferencesKey("usage_analytics_enabled")
+    var usageAnalyticsEnabled: Boolean
+        get() = getPref(USAGE_ANALYTICS_ENABLED, true)
+        set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
 }

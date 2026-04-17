@@ -127,7 +127,6 @@ class GOGAppScreen : BaseAppScreen() {
         context: Context,
         libraryItem: LibraryItem,
     ): GameDisplayInfo {
-        Timber.tag(TAG).d("getGameDisplayInfo: appId=${libraryItem.appId}, name=${libraryItem.name}")
         // Extract numeric gameId for GOGService calls
         val gameId = libraryItem.gameId.toString()
 
@@ -175,7 +174,6 @@ class GOGAppScreen : BaseAppScreen() {
                 val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ")
                 val timestampMillis = java.time.ZonedDateTime.parse(rawReleaseDate, formatter).toInstant().toEpochMilli()
                 val timestampSeconds = timestampMillis / 1000
-                Timber.tag(TAG).d("Parsed release date '$rawReleaseDate' -> $timestampSeconds seconds (${java.util.Date(timestampMillis)})")
                 timestampSeconds
             } catch (e: Exception) {
                 Timber.tag(TAG).d("Release date not parseable (ignored): $rawReleaseDate")
@@ -208,16 +206,13 @@ class GOGAppScreen : BaseAppScreen() {
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
         )
-        Timber.tag(TAG).d("Returning GameDisplayInfo: name=${displayInfo.name}, iconUrl=${displayInfo.iconUrl}, heroImageUrl=${displayInfo.heroImageUrl}, developer=${displayInfo.developer}, installLocation=${displayInfo.installLocation}")
         return displayInfo
     }
 
     override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean {
-        Timber.tag(TAG).d("isInstalled: checking appId=${libraryItem.appId}")
         return try {
             // GOGService expects numeric gameId
             val installed = GOGService.isGameInstalled(libraryItem.gameId.toString())
-            Timber.tag(TAG).d("isInstalled: appId=${libraryItem.appId}, result=$installed")
             installed
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to check install status for ${libraryItem.appId}")
@@ -266,8 +261,12 @@ class GOGAppScreen : BaseAppScreen() {
         val downloadInfo = GOGService.getDownloadInfo(gameId)
         val isDownloading = isDownloading(context, libraryItem)
         val installed = isInstalled(context, libraryItem)
+        val hasPartial = hasPartialDownload(context, libraryItem)
 
-        Timber.tag(TAG).d("onDownloadInstallClick: appId=${libraryItem.appId}, isDownloading=$isDownloading, installed=$installed")
+        Timber.tag(TAG).d(
+            "onDownloadInstallClick: appId=${libraryItem.appId}, " +
+                "isDownloading=$isDownloading, installed=$installed, hasPartial=$hasPartial",
+        )
 
         if (isDownloading) {
             // Cancel ongoing download
@@ -278,6 +277,10 @@ class GOGAppScreen : BaseAppScreen() {
             // Already installed: launch game
             Timber.tag(TAG).i("GOG game already installed, launching: ${libraryItem.appId}")
             onClickPlay(false)
+        } else if (hasPartial) {
+            // Match Steam behavior: resume immediately for partial downloads.
+            Timber.tag(TAG).i("Resuming partial GOG download for: ${libraryItem.appId}")
+            performDownload(context, libraryItem, onClickPlay)
         } else {
             // Show install confirmation dialog
             showGOGInstallConfirmationDialog(context, libraryItem)
@@ -353,13 +356,17 @@ class GOGAppScreen : BaseAppScreen() {
         val gameId = libraryItem.gameId.toString()
         val downloadInfo = GOGService.getDownloadInfo(gameId)
         val isDownloading = isDownloading(context, libraryItem)
+        val hasPartial = hasPartialDownload(context, libraryItem)
 
         if (isDownloading) {
             Timber.tag(TAG).i("Cancelling GOG download: ${libraryItem.appId}")
             downloadInfo?.cancel()
             GOGService.cleanupDownload(gameId)
+        } else if (hasPartial) {
+            Timber.tag(TAG).i("Resuming partial GOG download via pause/resume: ${libraryItem.appId}")
+            performDownload(context, libraryItem) {}
         } else {
-            // Partial data only: "Resume" means start/restart install – show install confirmation
+            // Fresh start: show install confirmation dialog.
             showGOGInstallConfirmationDialog(context, libraryItem)
         }
     }

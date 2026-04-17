@@ -46,6 +46,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
 import java.io.OutputStream
 import java.net.SocketTimeoutException
+import java.nio.file.attribute.FileTime
 
 /**
  * [Steam Auto Cloud](https://partner.steamgames.com/doc/features/cloud#steam_auto-cloud)
@@ -434,6 +435,17 @@ object SteamAutoCloud {
                                                 lastReportedProgress = currentProgress
                                             }
                                         }
+                                    }
+
+                                    // Preserve file timestamp from steamcloud, could fix game save loading, tested Skyrim
+                                    try {
+                                        // Ensure your fileDownloadInfo actually contains a timestamp (Long)
+                                        fileDownloadInfo.timestamp.let { timestamp ->
+                                            val fileTime = FileTime.fromMillis(timestamp.time)
+                                            Files.setLastModifiedTime(actualFilePath, fileTime)
+                                        }
+                                    } catch (e: Exception) {
+                                        Timber.w("Failed to set lastModified for $actualFilePath: ${e.message}")
                                     }
 
                                     if (totalBytesRead != totalFileSize) {
@@ -868,19 +880,53 @@ object SteamAutoCloud {
                         } == true
                     }.inWholeMicroseconds
 
-                    /*TODO: hasLocalChanges should be true if the user plays offline for the first time without ever pulling cloud saves
-                       If that happens, the next time they go online, their change number is -1, and saves are always overwritten by cloud*/
+                    val hasUncachedLocalFiles = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty()
+                    var rehydratedSilently = false
+                    if (hasUncachedLocalFiles) {
+                        // no cache but local files exist. before declaring conflict,
+                        // check if local state is byte-identical to remote — this is
+                        // the "cache-wiped by destructive migration, nothing actually
+                        // changed" case and should be silent. key by absolute filesystem
+                        // path: cloud stores files as (pathPrefixIndex, basename) while
+                        // local scan stores filename as subdir-relative path with a
+                        // single pattern prefix, so basename-only keys won't match for
+                        // nested files.
+                        // windows paths are case-insensitive; steam cloud and wine may
+                        // disagree on case. lowercase the keys so content-identical
+                        // files compare equal regardless.
+                        val localByPath = allLocalUserFiles.associate {
+                            it.getAbsPath(prefixToPath).toString().lowercase() to it.sha
+                        }
+                        val remoteByPath = appFileListChange.files.associate {
+                            getFullFilePath(it, appFileListChange).toString().lowercase() to it.shaFile
+                        }
+                        val localMatchesRemote = localByPath.keys == remoteByPath.keys &&
+                            localByPath.all { (path, sha) ->
+                                sha.contentEquals(remoteByPath[path])
+                            }
 
-                    // If cache is absent but local files exist and a prior sync was recorded,
-                    // the cache was cleared on upgrade due to a UFS path fix — treat as conflict
-                    // so the user can choose which save to keep rather than silently overwriting.
-                    val isUpgradeConflict = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty() && localAppChangeNumber >= 0
-                    if (isUpgradeConflict) {
-                        hasLocalChanges = true
-                        conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                        if (localMatchesRemote) {
+                            Timber.i("Cache absent but local matches remote — rehydrating cache silently")
+                            with(steamInstance) {
+                                db.withTransaction {
+                                    fileChangeListsDao.insert(appInfo.id, allLocalUserFiles)
+                                    changeNumbersDao.insert(appInfo.id, cloudAppChangeNumber)
+                                }
+                            }
+                            syncResult = SyncResult.UpToDate
+                            filesManaged = allLocalUserFiles.size
+                            rehydratedSilently = true
+                        } else {
+                            hasLocalChanges = true
+                            conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                            remoteTimestamp = appFileListChange.files.map { it.timestamp.time }.maxOrNull() ?: 0L
+                            localTimestamp = allLocalUserFiles.map { it.timestamp }.maxOrNull() ?: 0L
+                        }
                     }
 
-                    if (!hasLocalChanges) {
+                    if (rehydratedSilently) {
+                        // nothing to do — cache is now consistent with cloud
+                    } else if (!hasLocalChanges) {
                         // we can safely download the new changes since no changes have been
                         // made locally
 
