@@ -1,6 +1,5 @@
 package app.gamenative.ui.util
 
-import app.gamenative.PrefManager
 import com.winlator.container.Container
 import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.effects.ColorEffect
@@ -52,63 +51,39 @@ data class ScreenEffectsConfig(
     }
 }
 
-/** Load config from container extras, falling back to global PrefManager defaults. */
+/** Load config from container extras, falling back to hardcoded defaults. */
 fun loadScreenEffectsConfig(container: Container?): ScreenEffectsConfig {
+    if (container == null) return ScreenEffectsConfig()
     return ScreenEffectsConfig(
-        brightness = container?.getExtra(ScreenEffectsConfig.KEY_BRIGHTNESS)?.toFloatOrNull()
-            ?: PrefManager.screenEffectsBrightness,
-        contrast = container?.getExtra(ScreenEffectsConfig.KEY_CONTRAST)?.toFloatOrNull()
-            ?: PrefManager.screenEffectsContrast,
-        gamma = container?.getExtra(ScreenEffectsConfig.KEY_GAMMA)?.toFloatOrNull()
-            ?: PrefManager.screenEffectsGamma,
-        scalingMode = container?.getExtra(ScreenEffectsConfig.KEY_SCALING_MODE)?.toIntOrNull()
-            ?: PrefManager.screenEffectsScalingMode,
-        fsrSharpnessLevel = container?.getExtra(ScreenEffectsConfig.KEY_FSR_SHARPNESS)?.toIntOrNull()
-            ?: PrefManager.screenEffectsFsrSharpnessLevel,
-        enableToon = container?.getExtra(ScreenEffectsConfig.KEY_ENABLE_TOON)?.toBooleanStrictOrNull()
-            ?: PrefManager.screenEffectsEnableToon,
-        enableFXAA = container?.getExtra(ScreenEffectsConfig.KEY_ENABLE_FXAA)?.toBooleanStrictOrNull()
-            ?: PrefManager.screenEffectsEnableFXAA,
-        enableVivid = container?.getExtra(ScreenEffectsConfig.KEY_ENABLE_VIVID)?.toBooleanStrictOrNull()
-            ?: PrefManager.screenEffectsEnableVivid,
-        enableCRT = container?.getExtra(ScreenEffectsConfig.KEY_ENABLE_CRT)?.toBooleanStrictOrNull()
-            ?: PrefManager.screenEffectsEnableCRT,
-        enableNTSC = container?.getExtra(ScreenEffectsConfig.KEY_ENABLE_NTSC)?.toBooleanStrictOrNull()
-            ?: PrefManager.screenEffectsEnableNTSC,
+        brightness = container.getExtra(ScreenEffectsConfig.KEY_BRIGHTNESS)?.toFloatOrNull() ?: 0f,
+        contrast = container.getExtra(ScreenEffectsConfig.KEY_CONTRAST)?.toFloatOrNull() ?: 0f,
+        gamma = container.getExtra(ScreenEffectsConfig.KEY_GAMMA)?.toFloatOrNull() ?: 1f,
+        scalingMode = container.getExtra(ScreenEffectsConfig.KEY_SCALING_MODE)?.toIntOrNull() ?: ScreenEffectsConfig.SCALING_MODE_NONE,
+        fsrSharpnessLevel = container.getExtra(ScreenEffectsConfig.KEY_FSR_SHARPNESS)?.toIntOrNull() ?: ScreenEffectsConfig.FSR_DEFAULT_LEVEL,
+        enableToon = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_TOON)?.toBooleanStrictOrNull() ?: false,
+        enableFXAA = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_FXAA)?.toBooleanStrictOrNull() ?: false,
+        enableVivid = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_VIVID)?.toBooleanStrictOrNull() ?: false,
+        enableCRT = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_CRT)?.toBooleanStrictOrNull() ?: false,
+        enableNTSC = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_NTSC)?.toBooleanStrictOrNull() ?: false,
     )
 }
 
 /**
  * Persist config to container extras.
- * Also updates global PrefManager defaults so new games inherit the last-used settings.
  * Callers should debounce [container.saveData] calls.
  */
 fun persistScreenEffectsConfig(container: Container?, config: ScreenEffectsConfig) {
-    // Update global defaults
-    PrefManager.screenEffectsBrightness = config.brightness
-    PrefManager.screenEffectsContrast = config.contrast
-    PrefManager.screenEffectsGamma = config.gamma
-    PrefManager.screenEffectsScalingMode = config.scalingMode
-    PrefManager.screenEffectsFsrSharpnessLevel = config.fsrSharpnessLevel
-    PrefManager.screenEffectsEnableToon = config.enableToon
-    PrefManager.screenEffectsEnableFXAA = config.enableFXAA
-    PrefManager.screenEffectsEnableVivid = config.enableVivid
-    PrefManager.screenEffectsEnableCRT = config.enableCRT
-    PrefManager.screenEffectsEnableNTSC = config.enableNTSC
-
-    // Update per-container extras
-    if (container != null) {
-        container.putExtra(ScreenEffectsConfig.KEY_BRIGHTNESS, config.brightness)
-        container.putExtra(ScreenEffectsConfig.KEY_CONTRAST, config.contrast)
-        container.putExtra(ScreenEffectsConfig.KEY_GAMMA, config.gamma)
-        container.putExtra(ScreenEffectsConfig.KEY_SCALING_MODE, config.scalingMode)
-        container.putExtra(ScreenEffectsConfig.KEY_FSR_SHARPNESS, config.fsrSharpnessLevel)
-        container.putExtra(ScreenEffectsConfig.KEY_ENABLE_TOON, config.enableToon)
-        container.putExtra(ScreenEffectsConfig.KEY_ENABLE_FXAA, config.enableFXAA)
-        container.putExtra(ScreenEffectsConfig.KEY_ENABLE_VIVID, config.enableVivid)
-        container.putExtra(ScreenEffectsConfig.KEY_ENABLE_CRT, config.enableCRT)
-        container.putExtra(ScreenEffectsConfig.KEY_ENABLE_NTSC, config.enableNTSC)
-    }
+    if (container == null) return
+    container.putExtra(ScreenEffectsConfig.KEY_BRIGHTNESS, config.brightness)
+    container.putExtra(ScreenEffectsConfig.KEY_CONTRAST, config.contrast)
+    container.putExtra(ScreenEffectsConfig.KEY_GAMMA, config.gamma)
+    container.putExtra(ScreenEffectsConfig.KEY_SCALING_MODE, config.scalingMode)
+    container.putExtra(ScreenEffectsConfig.KEY_FSR_SHARPNESS, config.fsrSharpnessLevel)
+    container.putExtra(ScreenEffectsConfig.KEY_ENABLE_TOON, config.enableToon)
+    container.putExtra(ScreenEffectsConfig.KEY_ENABLE_FXAA, config.enableFXAA)
+    container.putExtra(ScreenEffectsConfig.KEY_ENABLE_VIVID, config.enableVivid)
+    container.putExtra(ScreenEffectsConfig.KEY_ENABLE_CRT, config.enableCRT)
+    container.putExtra(ScreenEffectsConfig.KEY_ENABLE_NTSC, config.enableNTSC)
 }
 
 fun fsrQuickMenuLevelToStops(level: Int): Float {
