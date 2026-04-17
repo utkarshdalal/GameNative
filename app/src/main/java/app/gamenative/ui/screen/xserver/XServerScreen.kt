@@ -2534,42 +2534,6 @@ private fun shiftXEnvironmentToContext(
     return environment
 }
 
-private fun hardKillStaleWineProcessesBeforeLaunch() {
-    val deadlineMs = System.currentTimeMillis() + 5_000
-    val staleWinePids = ProcessHelper.listRunningWineProcesses()
-        .mapNotNull { it.toIntOrNull() }
-        .distinct()
-
-    if (staleWinePids.isEmpty()) {
-        return
-    }
-
-    Timber.w(
-        "Found %d stale Wine process(es) before launch; hard-killing them: %s",
-        staleWinePids.size,
-        staleWinePids.joinToString(),
-    )
-    ProcessHelper.killAllWineProcesses()
-
-    var remainingWinePids: List<Int>
-    do {
-        Thread.sleep(100)
-        remainingWinePids = ProcessHelper.listRunningWineProcesses()
-            .mapNotNull { it.toIntOrNull() }
-            .distinct()
-    } while (remainingWinePids.isNotEmpty() && System.currentTimeMillis() < deadlineMs)
-
-    if (remainingWinePids.isNotEmpty()) {
-        Timber.w(
-            "Wine processes still present after hard-kill attempt: %s",
-            remainingWinePids.joinToString(),
-        )
-        throw IllegalStateException(
-            "Wine processes still present after hard-kill attempt: ${remainingWinePids.joinToString()}"
-        )
-    }
-}
-
 private fun setupXEnvironment(
     context: Context,
     appId: String,
@@ -2587,7 +2551,7 @@ private fun setupXEnvironment(
     onGameLaunchError: ((String) -> Unit)? = null,
     navigateBack: () -> Unit,
 ): XEnvironment {
-    hardKillStaleWineProcessesBeforeLaunch()
+    ProcessHelper.hardKillStaleWineProcesses()
 
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val lc_all = container!!.lC_ALL

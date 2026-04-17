@@ -53,6 +53,35 @@ public abstract class ProcessHelper {
         }
     }
 
+    public static void hardKillStaleWineProcesses() throws InterruptedException {
+        long deadlineMs = System.currentTimeMillis() + 5000;
+        List<String> stalePids = listRunningWineProcesses();
+
+        if (stalePids.isEmpty()) {
+            return;
+        }
+
+        Log.w("ProcessHelper", String.format(
+            "Found %d stale Wine process(es) before launch; hard-killing: %s",
+            stalePids.size(), String.join(", ", stalePids)));
+
+        killAllWineProcesses();
+
+        List<String> remaining;
+        do {
+            Thread.sleep(100);
+            remaining = listRunningWineProcesses();
+        } while (!remaining.isEmpty() && System.currentTimeMillis() < deadlineMs);
+
+        if (!remaining.isEmpty()) {
+            Log.w("ProcessHelper", String.format(
+                "Wine processes still present after hard-kill: %s",
+                String.join(", ", remaining)));
+            throw new IllegalStateException(
+                "Wine processes still present after hard-kill attempt: " + String.join(", ", remaining));
+        }
+    }
+
     public static void pauseAllWineProcesses() {
         for (String process : listRunningWineProcesses()) {
             suspendProcess(Integer.parseInt(process));
