@@ -895,6 +895,8 @@
 	<string name="settings_info_libraries_subtitle">Vezi tehnologiile care fac GameNative posibil</string>
 	<string name="settings_info_privacy_title">Politica de confidențialitate</string>
 	<string name="settings_info_privacy_subtitle">Deschide linkul către politica de confidențialitate GameNative</string>
+	<string name="settings_info_usage_analytics_title">Analiză utilizare</string>
+	<string name="settings_info_usage_analytics_subtitle">Nu urmărim niciodată informații personale. Dezactivarea oprește analizele neesențiale, însă datele de bază privind performanța jocurilor sunt în continuare colectate ca interes legitim pentru a îmbunătăți compatibilitatea.</string>
 
 	<!-- Settings: Interface Group -->
 	<string name="settings_interface_title">Interfață</string>
@@ -904,6 +906,8 @@
 	<string name="settings_interface_hide_statusbar_subtitle">Ascunde bara de stare Android în lista de jocuri, setări etc. Aplicația se va reporni după modificare.</string>
 	<string name="settings_interface_warn_before_exit_title">Avertizare înainte de ieșire</string>
 	<string name="settings_interface_warn_before_exit_subtitle">Necesită dublu apăsare înapoi pentru a ieși — prima apăsare arată un avertisment</string>
+	<string name="settings_interface_show_gamepad_hints_title">Afișează indicii pentru controler</string>
+	<string name="settings_interface_show_gamepad_hints_subtitle">Afișează bara de indicii pentru butoanele controlerului în partea de jos a ecranului</string>
 	<string name="settings_interface_icon_style">Stil iconițe</string>
 	<string name="settings_interface_wifi_only_title">Descarcă doar prin Wi‑Fi/LAN</string>
 	<string name="settings_interface_wifi_only_subtitle">Previne descărcările pe date mobile</string>
@@ -1367,4 +1371,24 @@
     <string name="workshop_processing">Se procesează modurile…</string>
     <string name="workshop_failed_count">%1$d mod(uri) Workshop nu au putut fi actualizate</string>
     <string name="workshop_download_failed">Descărcarea a eșuat</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Recomandat</string>
+    <string name="recommended_buy_button">Vezi jocul</string>
+    <string name="recommended_support_message">Cumpărarea prin acest link ajută la susținerea dezvoltării GameNative.</string>
+    <string name="recommended_about_heading">Despre acest joc</string>
+    <string name="recommended_review_count">Pe baza a %1$s recenzii</string>
+    <string name="review_overwhelmingly_positive">Copleșitor de pozitiv</string>
+    <string name="review_very_positive">Foarte pozitiv</string>
+    <string name="review_mostly_positive">Majoritar pozitiv</string>
+    <string name="review_mixed">Mixt</string>
+    <string name="review_mostly_negative">Majoritar negativ</string>
+    <string name="review_overwhelmingly_negative">Copleșitor de negativ</string>
+    <string name="settings_interface_show_recommendations_title">Afișează recomandări de jocuri</string>
+    <string name="settings_interface_show_recommendations_subtitle">Afișează jocuri indie selectate în biblioteca ta. Păstrând această opțiune activată, sprijini dezvoltatorii indie și GameNative.</string>
+     <string name="steam_save_export_success">Salvari exportate</string>
+     <string name="steam_save_export_no_saves_found">Nu s-au găsit fișiere de salvare</string>
+     <string name="steam_save_export_failed">Exportul salvărilor a eșuat: %s</string>
+     <string name="steam_save_import_success">Salvari importate</string>
+     <string name="steam_save_import_failed">Importul salvărilor a eșuat: %s</string>
 </resources>

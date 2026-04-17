@@ -976,6 +976,8 @@ https://gamenative.app
     <string name="settings_info_libraries_title">Используемые библиотеки</string>
     <string name="settings_info_privacy_subtitle">Открывает ссылку на политику конфиденциальности GameNative</string>
     <string name="settings_info_privacy_title">Политика конфиденциальности</string>
+    <string name="settings_info_usage_analytics_title">Аналитика использования</string>
+    <string name="settings_info_usage_analytics_subtitle">Мы никогда не отслеживаем личную информацию. Отключение останавливает несущественную аналитику, однако основные данные о производительности игр по-прежнему собираются как законный интерес для улучшения совместимости.</string>
     <string name="settings_info_send_tip_subtitle">Внесите вклад в продолжающуюся разработку</string>
     <string name="settings_info_send_tip_title">Отправить чаевые</string>
     <string name="settings_info_source_subtitle">Просмотреть исходный код этого проекта</string>
@@ -990,6 +992,8 @@ https://gamenative.app
     <string name="settings_interface_hide_statusbar_title">Скрыть строку состояния, когда не в игре</string>
     <string name="settings_interface_warn_before_exit_title">Предупреждать перед выходом</string>
     <string name="settings_interface_warn_before_exit_subtitle">Для выхода требуется двойное нажатие назад — первое показывает предупреждение</string>
+    <string name="settings_interface_show_gamepad_hints_title">Показывать подсказки геймпада</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Показывает панель подсказок кнопок геймпада в нижней части экрана</string>
     <string name="settings_interface_icon_style">Стиль значка</string>
     <string name="settings_interface_no_external_storage">Внешнее хранилище не обнаружено</string>
     <string name="settings_interface_restart_required_title">Требуется перезагрузка</string>
@@ -1295,4 +1299,24 @@ https://gamenative.app
     <string name="workshop_processing">Обработка модов…</string>
     <string name="workshop_failed_count">Не удалось обновить %1$d мод(ов) Мастерской</string>
     <string name="workshop_download_failed">Ошибка загрузки</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Рекомендуемое</string>
+    <string name="recommended_buy_button">Посмотреть игру</string>
+    <string name="recommended_support_message">Покупка по этой ссылке помогает поддержать разработку GameNative.</string>
+    <string name="recommended_about_heading">Об этой игре</string>
+    <string name="recommended_review_count">На основе %1$s отзывов</string>
+    <string name="review_overwhelmingly_positive">Крайне положительные</string>
+    <string name="review_very_positive">Очень положительные</string>
+    <string name="review_mostly_positive">В основном положительные</string>
+    <string name="review_mixed">Смешанные</string>
+    <string name="review_mostly_negative">В основном отрицательные</string>
+    <string name="review_overwhelmingly_negative">Крайне отрицательные</string>
+    <string name="settings_interface_show_recommendations_title">Показывать рекомендации игр</string>
+    <string name="settings_interface_show_recommendations_subtitle">Показывает подобранные инди-игры в вашей библиотеке. Оставляя это включённым, вы поддерживаете инди-разработчиков и GameNative.</string>
+     <string name="steam_save_export_success">Сохранения экспортированы</string>
+     <string name="steam_save_export_no_saves_found">Сохранения не найдены</string>
+     <string name="steam_save_export_failed">Не удалось экспортировать сохранения: %s</string>
+     <string name="steam_save_import_success">Сохранения импортированы</string>
+     <string name="steam_save_import_failed">Не удалось импортировать сохранения: %s</string>
 </resources>

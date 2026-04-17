@@ -855,6 +855,8 @@
     <string name="settings_info_libraries_subtitle">Welche Technologien GameNative möglich machen</string>
     <string name="settings_info_privacy_title">Datenschutzerklärung</string>
     <string name="settings_info_privacy_subtitle">Öffnet die Datenschutzerklärung von GameNative</string>
+    <string name="settings_info_usage_analytics_title">Nutzungsanalysen</string>
+    <string name="settings_info_usage_analytics_subtitle">Wir erfassen niemals persönliche Daten. Durch Deaktivierung werden nicht wesentliche Analysen gestoppt, jedoch werden grundlegende Spiel-Performance-Daten weiterhin als berechtigtes Interesse zur Verbesserung der Kompatibilität erfasst.</string>
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Oberfläche</string>
     <string name="settings_interface_external_links_title">Weblinks extern öffnen</string>
@@ -863,6 +865,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">Android-Statusleiste in Spieleliste, Einstellungen etc. ausblenden (Neustart nötig).</string>
     <string name="settings_interface_warn_before_exit_title">Vor dem Beenden warnen</string>
     <string name="settings_interface_warn_before_exit_subtitle">Doppeltes Zurückdrücken zum Beenden erforderlich — erstes Drücken zeigt eine Warnung</string>
+    <string name="settings_interface_show_gamepad_hints_title">Controller-Hinweise anzeigen</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Zeigt die Leiste mit Controller-Tastenhinweisen am unteren Bildschirmrand an</string>
     <string name="settings_interface_icon_style">Iconstil</string>
     <string name="settings_interface_wifi_only_title">Nur über WLAN/LAN herunterladen</string>
     <string name="settings_interface_wifi_only_subtitle">Verhindert Downloads über mobile Daten</string>
@@ -1302,4 +1306,24 @@
     <string name="workshop_processing">Mods werden verarbeitet…</string>
     <string name="workshop_failed_count">%1$d Workshop-Mod(s) konnten nicht aktualisiert werden</string>
     <string name="workshop_download_failed">Download fehlgeschlagen</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Empfohlen</string>
+    <string name="recommended_buy_button">Spiel ansehen</string>
+    <string name="recommended_support_message">Ein Kauf über diesen Link unterstützt die Entwicklung von GameNative.</string>
+    <string name="recommended_about_heading">Über dieses Spiel</string>
+    <string name="recommended_review_count">Basierend auf %1$s Bewertungen</string>
+    <string name="review_overwhelmingly_positive">Überwältigend positiv</string>
+    <string name="review_very_positive">Sehr positiv</string>
+    <string name="review_mostly_positive">Größtenteils positiv</string>
+    <string name="review_mixed">Gemischt</string>
+    <string name="review_mostly_negative">Größtenteils negativ</string>
+    <string name="review_overwhelmingly_negative">Überwältigend negativ</string>
+    <string name="settings_interface_show_recommendations_title">Spielempfehlungen anzeigen</string>
+    <string name="settings_interface_show_recommendations_subtitle">Zeigt kuratierte Indie-Spiele in deiner Bibliothek. Aktiviert lassen unterstützt Indie-Entwickler und GameNative.</string>
+     <string name="steam_save_export_success">Spielstände exportiert</string>
+     <string name="steam_save_export_no_saves_found">Keine Spielstände gefunden</string>
+     <string name="steam_save_export_failed">Spielstände konnten nicht exportiert werden: %s</string>
+     <string name="steam_save_import_success">Spielstände importiert</string>
+     <string name="steam_save_import_failed">Spielstände konnten nicht importiert werden: %s</string>
 </resources>

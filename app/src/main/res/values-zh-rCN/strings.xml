@@ -885,6 +885,8 @@
     <string name="settings_info_libraries_subtitle">了解哪些技术让 GameNative 成为可能</string>
     <string name="settings_info_privacy_title">隐私政策</string>
     <string name="settings_info_privacy_subtitle">打开链接至 GameNative 的隐私政策</string>
+    <string name="settings_info_usage_analytics_title">使用分析</string>
+    <string name="settings_info_usage_analytics_subtitle">我们绝不追踪个人信息。关闭此选项将停止非必要的分析，但核心游戏性能数据仍会作为合法权益继续收集，以改善兼容性。</string>
 
     <!-- 设置：界面组 -->
     <string name="settings_interface_title">界面</string>
@@ -894,6 +896,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">在游戏列表、设置等界面隐藏 Android 状态栏。更改后应用程序将重新启动。</string>
     <string name="settings_interface_warn_before_exit_title">退出前警告</string>
     <string name="settings_interface_warn_before_exit_subtitle">需要双击返回键退出——第一次按下显示警告</string>
+    <string name="settings_interface_show_gamepad_hints_title">显示手柄提示</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">在屏幕底部显示手柄按键提示栏</string>
     <string name="settings_interface_wifi_only_title">仅限通过 Wi-Fi/LAN 下载</string>
     <string name="settings_interface_wifi_only_subtitle">禁止使用移动数据下载</string>
     <string name="settings_interface_external_storage_title">写入外部存储设备</string>
@@ -1355,4 +1359,24 @@
     <string name="workshop_processing">正在处理模组…</string>
     <string name="workshop_failed_count">%1$d 个创意工坊模组更新失败</string>
     <string name="workshop_download_failed">下载失败</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">推荐</string>
+    <string name="recommended_buy_button">查看游戏</string>
+    <string name="recommended_support_message">通过此链接购买有助于支持 GameNative 的开发。</string>
+    <string name="recommended_about_heading">关于本游戏</string>
+    <string name="recommended_review_count">基于 %1$s 条评价</string>
+    <string name="review_overwhelmingly_positive">好评如潮</string>
+    <string name="review_very_positive">特别好评</string>
+    <string name="review_mostly_positive">多半好评</string>
+    <string name="review_mixed">褒贬不一</string>
+    <string name="review_mostly_negative">多半差评</string>
+    <string name="review_overwhelmingly_negative">差评如潮</string>
+    <string name="settings_interface_show_recommendations_title">显示游戏推荐</string>
+    <string name="settings_interface_show_recommendations_subtitle">在游戏库中显示精选独立游戏。保持开启有助于支持独立开发者和 GameNative。</string>
+     <string name="steam_save_export_success">存档已导出</string>
+     <string name="steam_save_export_no_saves_found">未找到存档文件</string>
+     <string name="steam_save_export_failed">导出存档失败：%s</string>
+     <string name="steam_save_import_success">存档已导入</string>
+     <string name="steam_save_import_failed">导入存档失败：%s</string>
 </resources>

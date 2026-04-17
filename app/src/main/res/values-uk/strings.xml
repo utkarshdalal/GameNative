@@ -889,6 +889,8 @@
     <string name="settings_info_libraries_subtitle">Дізнайтеся, завдяки яким технологіям працює GameNative</string>
     <string name="settings_info_privacy_title">Політика конфіденційності</string>
     <string name="settings_info_privacy_subtitle">Відкриває посилання на Політику конфіденційності GameNative</string>
+    <string name="settings_info_usage_analytics_title">Аналітика використання</string>
+    <string name="settings_info_usage_analytics_subtitle">Ми ніколи не відстежуємо особисту інформацію. Вимкнення зупиняє несуттєву аналітику, однак основні дані про продуктивність ігор все одно збираються як законний інтерес для покращення сумісності.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Інтерфейс</string>
@@ -898,6 +900,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">Приховує рядок стану Android у списку ігор, налаштуваннях тощо. Застосунок перезапуститься після зміни.</string>
     <string name="settings_interface_warn_before_exit_title">Попереджати перед виходом</string>
     <string name="settings_interface_warn_before_exit_subtitle">Для виходу потрібне подвійне натискання назад — перше показує попередження</string>
+    <string name="settings_interface_show_gamepad_hints_title">Показувати підказки геймпада</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Показує панель підказок кнопок геймпада внизу екрана</string>
     <string name="settings_interface_icon_style">Стиль значку</string>
     <string name="settings_interface_wifi_only_title">Завантаження тільки через Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Запобігає завантаженню через мобільні дані</string>
@@ -1361,4 +1365,24 @@
     <string name="workshop_processing">Обробка модів…</string>
     <string name="workshop_failed_count">Не вдалося оновити %1$d мод(ів) Майстерні</string>
     <string name="workshop_download_failed">Помилка завантаження</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Рекомендовано</string>
+    <string name="recommended_buy_button">Переглянути гру</string>
+    <string name="recommended_support_message">Покупка за цим посиланням допомагає підтримувати розробку GameNative.</string>
+    <string name="recommended_about_heading">Про цю гру</string>
+    <string name="recommended_review_count">На основі %1$s відгуків</string>
+    <string name="review_overwhelmingly_positive">Надзвичайно позитивні</string>
+    <string name="review_very_positive">Дуже позитивні</string>
+    <string name="review_mostly_positive">Переважно позитивні</string>
+    <string name="review_mixed">Змішані</string>
+    <string name="review_mostly_negative">Переважно негативні</string>
+    <string name="review_overwhelmingly_negative">Надзвичайно негативні</string>
+    <string name="settings_interface_show_recommendations_title">Показувати рекомендації ігор</string>
+    <string name="settings_interface_show_recommendations_subtitle">Показує підібрані інді-ігри у вашій бібліотеці. Залишаючи це увімкненим, ви підтримуєте інді-розробників та GameNative.</string>
+     <string name="steam_save_export_success">Збереження експортовано</string>
+     <string name="steam_save_export_no_saves_found">Збереження не знайдено</string>
+     <string name="steam_save_export_failed">Не вдалося експортувати збереження: %s</string>
+     <string name="steam_save_import_success">Збереження імпортовано</string>
+     <string name="steam_save_import_failed">Не вдалося імпортувати збереження: %s</string>
 </resources>
