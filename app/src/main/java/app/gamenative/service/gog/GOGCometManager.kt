@@ -23,6 +23,7 @@ object GOGCometManager {
     private const val TAG = "GOGComet"
 
     const val SESSION_METADATA_ACTIVE = "gog_comet_active"
+    const val CONTAINER_EXTRA_ENABLED = "useGogComet"
 
     private const val RELEASE_TAG = "v0.2.0"
     private const val CACHE_DIR = "gog_comet/$RELEASE_TAG"
@@ -37,6 +38,10 @@ object GOGCometManager {
     private const val PREFIX_GALAXY_COMM_WINDOWS_PATH = "C:\\ProgramData\\GOG.com\\Galaxy\\redists\\GalaxyCommunication.exe"
 
     private const val COMET_IDLE_WAIT_SECONDS = 20
+
+    fun isEnabled(container: Container): Boolean {
+        return container.getExtra(CONTAINER_EXTRA_ENABLED, "false").toBoolean()
+    }
 
     suspend fun prepareLaunchSupport(
         context: Context,

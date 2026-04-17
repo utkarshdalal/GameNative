@@ -3011,7 +3011,7 @@ private fun setupXEnvironment(
                 configDirectory = configDirectory,
             ).also { it.start() }
         }
-    } else if (gameSource == GameSource.GOG) {
+    } else if (gameSource == GameSource.GOG && GOGCometManager.isEnabled(container)) {
         val gameplayDatabase: File? = runBlocking {
             GOGCometManager.getGameplayDatabaseFile(
                 context = context,

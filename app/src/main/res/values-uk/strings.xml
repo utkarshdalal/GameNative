@@ -1393,4 +1393,6 @@
      <string name="steam_save_import_failed">Не вдалося імпортувати збереження: %s</string>
     <string name="option_import_saves">Імпортувати збереження</string>
     <string name="option_export_saves">Експортувати збереження</string>
+    <string name="use_gog_comet_beta">Використовувати GOG Comet (Бета)</string>
+    <string name="use_gog_comet_description">Використовує Comet під час запуску підтримуваних ігор GOG\nУвімкне хмарні збереження та досягнення GOG\nМоже знизити сумісність</string>
 </resources>

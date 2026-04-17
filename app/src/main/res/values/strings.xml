@@ -1447,4 +1447,6 @@
     <string name="review_overwhelmingly_negative">Overwhelmingly Negative</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Show curated indie game picks in your library. Keeping this on helps support indie developers and GameNative.</string>
+    <string name="use_gog_comet_beta">Use GOG Comet (Beta)</string>
+    <string name="use_gog_comet_description">Uses Comet when launching supported GOG games\nEnables GOG cloud saves and achievements\nMay reduce compatibility</string>
 </resources>

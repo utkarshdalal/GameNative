@@ -366,6 +366,13 @@ fun GeneralTabContent(
             state = config.launchRealSteam,
             onCheckedChange = { state.config.value = config.copy(launchRealSteam = it) },
         )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.use_gog_comet_beta)) },
+            subtitle = { Text(text = stringResource(R.string.use_gog_comet_description)) },
+            state = config.useGogComet,
+            onCheckedChange = { state.config.value = config.copy(useGogComet = it) },
+        )
         val steamTypeItems = listOf("Normal", "Light", "Ultra Light")
         val currentSteamTypeIndex = when (config.steamType.lowercase()) {
             Container.STEAM_TYPE_LIGHT -> 1

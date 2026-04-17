@@ -1390,4 +1390,6 @@
      <string name="steam_save_import_failed">匯入存檔失敗：%s</string>
     <string name="option_import_saves">匯入存檔</string>
     <string name="option_export_saves">匯出存檔</string>
+    <string name="use_gog_comet_beta">使用 GOG Comet（Beta）</string>
+    <string name="use_gog_comet_description">在啟動受支援的 GOG 遊戲時使用 Comet\n啟用 GOG 雲端存檔與成就\n可能會降低相容性</string>
 </resources>

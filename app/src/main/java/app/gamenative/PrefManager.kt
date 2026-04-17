@@ -461,6 +461,13 @@ object PrefManager {
             setPref(LAUNCH_REAL_STEAM, value)
         }
 
+    private val USE_GOG_COMET = booleanPreferencesKey("use_gog_comet")
+    var useGogComet: Boolean
+        get() = getPref(USE_GOG_COMET, false)
+        set(value) {
+            setPref(USE_GOG_COMET, value)
+        }
+
     private val FORCE_DLC = booleanPreferencesKey("force_dlc")
     var forceDlc: Boolean
         get() = getPref(FORCE_DLC, false)

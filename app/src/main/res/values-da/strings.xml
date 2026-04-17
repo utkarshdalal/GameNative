@@ -1264,4 +1264,6 @@
      <string name="steam_save_import_failed">Kunne ikke importere gemte filer: %s</string>
     <string name="option_import_saves">Importér gemte spil</string>
     <string name="option_export_saves">Eksportér gemte spil</string>
+    <string name="use_gog_comet_beta">Brug GOG Comet (Beta)</string>
+    <string name="use_gog_comet_description">Bruger Comet ved opstart af understøttede GOG-spil\nAktiverer GOG cloud saves og achievements\nKan reducere kompatibiliteten</string>
 </resources>

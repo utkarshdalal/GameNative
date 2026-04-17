@@ -7,6 +7,7 @@ import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
+import app.gamenative.service.gog.GOGCometManager
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.BestConfigService
@@ -100,6 +101,7 @@ object ContainerUtils {
             execArgs = PrefManager.execArgs,
             showFPS = false,
             launchRealSteam = PrefManager.launchRealSteam,
+            useGogComet = PrefManager.useGogComet,
             cpuList = PrefManager.cpuList,
             cpuListWoW64 = PrefManager.cpuListWoW64,
             wow64Mode = PrefManager.wow64Mode,
@@ -159,6 +161,7 @@ object ContainerUtils {
         PrefManager.drives = containerData.drives
         PrefManager.execArgs = containerData.execArgs
         PrefManager.launchRealSteam = containerData.launchRealSteam
+        PrefManager.useGogComet = containerData.useGogComet
         PrefManager.cpuList = containerData.cpuList
         PrefManager.cpuListWoW64 = containerData.cpuListWoW64
         PrefManager.wow64Mode = containerData.wow64Mode
@@ -272,6 +275,7 @@ object ContainerUtils {
             executablePath = container.executablePath,
             showFPS = false,
             launchRealSteam = container.isLaunchRealSteam,
+            useGogComet = container.getExtra(GOGCometManager.CONTAINER_EXTRA_ENABLED, "false").toBoolean(),
             allowSteamUpdates = container.isAllowSteamUpdates,
             steamType = container.getSteamType(),
             cpuList = container.cpuList,
@@ -445,6 +449,7 @@ object ContainerUtils {
         container.executablePath = containerData.executablePath
         container.isShowFPS = false
         container.isLaunchRealSteam = containerData.launchRealSteam
+        container.putExtra(GOGCometManager.CONTAINER_EXTRA_ENABLED, containerData.useGogComet)
         container.isAllowSteamUpdates = containerData.allowSteamUpdates
         container.setSteamType(containerData.steamType)
         container.cpuList = containerData.cpuList
@@ -816,6 +821,7 @@ object ContainerUtils {
                 execArgs = PrefManager.execArgs,
                 showFPS = false,
                 launchRealSteam = PrefManager.launchRealSteam,
+                useGogComet = PrefManager.useGogComet,
                 wow64Mode = PrefManager.wow64Mode,
                 startupSelection = PrefManager.startupSelection.toByte(),
                 box86Version = PrefManager.box86Version,

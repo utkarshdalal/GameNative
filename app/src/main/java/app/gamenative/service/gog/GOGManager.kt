@@ -683,6 +683,10 @@ class GOGManager @Inject constructor(
     }
 
     suspend fun willUseCometLaunch(appId: String, container: Container): Boolean = withContext(Dispatchers.IO) {
+        if (!GOGCometManager.isEnabled(container)) {
+            return@withContext false
+        }
+
         val resolvedLaunch = resolveLaunchTarget(appId, container)
             .getOrElse { error ->
                 Timber.tag("GOG").d(error, "Comet preflight unavailable for $appId")
@@ -702,6 +706,10 @@ class GOGManager @Inject constructor(
         container: Container,
         guestProgramLauncherComponent: GuestProgramLauncherComponent,
     ): Boolean {
+        if (!GOGCometManager.isEnabled(container)) {
+            return false
+        }
+
         val preparedLaunch = runBlocking {
             GOGCometManager.prepareLaunchSupport(
                 context = context,
