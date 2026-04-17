@@ -45,12 +45,14 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
+import java.io.IOException
 import java.io.OutputStream
 import java.net.SocketTimeoutException
 import java.nio.file.attribute.FileTime
@@ -1010,8 +1012,16 @@ object SteamAutoCloud {
             .headers(headers)
             .build()
 
-        val response = withTimeout(SteamService.requestTimeout) {
-            httpClient.newCall(request).execute()
+        val response = try {
+            withTimeout(SteamService.requestTimeout) {
+                httpClient.newCall(request).execute()
+            }
+        } catch (e: SocketTimeoutException) {
+            Timber.w("Could not download $actualFilePath: %s", e.message)
+            null
+        } catch (e: IOException) {
+            Timber.w("Could not download $actualFilePath: %s", e.message)
+            null
         }
 
         if (response == null) {
@@ -1020,7 +1030,6 @@ object SteamAutoCloud {
 
         if (!response.isSuccessful) {
             Timber.w("File download of $prefixedPath was unsuccessful")
-            response.close()
             return null
         }
 
@@ -1052,7 +1061,6 @@ object SteamAutoCloud {
 
                     // Preserve file timestamp from steamcloud, could fix game save loading, tested Skyrim
                     try {
-                        // Ensure your fileDownloadInfo actually contains a timestamp (Long)
                         fileDownloadInfo.timestamp.let { timestamp ->
                             val fileTime = FileTime.fromMillis(timestamp.time)
                             Files.setLastModifiedTime(actualFilePath, fileTime)
@@ -1067,7 +1075,7 @@ object SteamAutoCloud {
                 }
             }
 
-            withTimeout(SteamService.responseTimeout) {
+            val downloaded = withTimeout(SteamService.responseTimeout) {
                 if (fileDownloadInfo.fileSize != fileDownloadInfo.rawFileSize) {
                     response.body?.byteStream()?.use { inputStream ->
                         ZipInputStream(inputStream).use { zipInput ->
@@ -1075,7 +1083,7 @@ object SteamAutoCloud {
 
                             if (entry == null) {
                                 Timber.w("Downloaded user file $prefixedPath has no zip entries")
-                                return@withTimeout
+                                return@withTimeout false
                             }
 
                             copyToFile(zipInput)
@@ -1084,12 +1092,17 @@ object SteamAutoCloud {
                                 Timber.e("Downloaded user file $prefixedPath has more than one zip entry")
                             }
                         }
-                    }
+                    } ?: return@withTimeout false
                 } else {
                     response.body?.byteStream()?.use { inputStream ->
                         copyToFile(inputStream)
-                    }
+                    } ?: return@withTimeout false
                 }
+                true
+            }
+
+            if (!downloaded) {
+                return null
             }
 
             val finishedFiles = completedFiles.incrementAndGet()
@@ -1107,6 +1120,9 @@ object SteamAutoCloud {
         } catch (e: SocketTimeoutException) {
             // Distinct from the outer SocketTimeoutException catch above: that one covers the
             // connection/response phase; this one covers a timeout during the streaming read.
+            Timber.w("Could not download $actualFilePath: %s", e.message)
+            return null
+        } catch (e: IOException) {
             Timber.w("Could not download $actualFilePath: %s", e.message)
             return null
         } finally {
