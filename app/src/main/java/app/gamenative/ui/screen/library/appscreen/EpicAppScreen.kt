@@ -17,7 +17,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import app.gamenative.PluviaApp
 import app.gamenative.R
+import app.gamenative.events.AndroidEvent
 import app.gamenative.data.EpicGame
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.DownloadService
@@ -126,7 +128,7 @@ class EpicAppScreen : BaseAppScreen() {
 
         // Listen for install status changes to refresh game data
         DisposableEffect(gameId) {
-            val installListener: (app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
+            val installListener: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
                 if (event.appId == gameId) {
                     Timber.tag(TAG).d("Install status changed, refreshing game data for $gameId")
                     val game = EpicService.getEpicGameOf(gameId)
@@ -136,9 +138,9 @@ class EpicAppScreen : BaseAppScreen() {
                     }
                 }
             }
-            app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
+            PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
             onDispose {
-                app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
+                PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
             }
         }
 
@@ -652,7 +654,7 @@ class EpicAppScreen : BaseAppScreen() {
         }
 
         // Listen for download status changes
-        val downloadStatusListener: (app.gamenative.events.AndroidEvent.DownloadStatusChanged) -> Unit = { event ->
+        val downloadStatusListener: (AndroidEvent.DownloadStatusChanged) -> Unit = { event ->
             Timber.tag(TAG).d("[OBSERVE] DownloadStatusChanged event received: event.appId=${event.appId}, libraryItem.gameId=${libraryItem.gameId}, match=${event.appId == libraryItem.gameId}")
             if (event.appId == libraryItem.gameId) {
                 Timber.tag(TAG).d("[OBSERVE] Download status changed for ${libraryItem.gameId}, isDownloading=${event.isDownloading}")
@@ -694,31 +696,31 @@ class EpicAppScreen : BaseAppScreen() {
                 onStateChanged()
             }
         }
-        app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.DownloadStatusChanged, Unit>(downloadStatusListener)
+        PluviaApp.events.on<AndroidEvent.DownloadStatusChanged, Unit>(downloadStatusListener)
         disposables +=
-            { app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.DownloadStatusChanged, Unit>(downloadStatusListener) }
+            { PluviaApp.events.off<AndroidEvent.DownloadStatusChanged, Unit>(downloadStatusListener) }
 
         // Listen for install status changes
-        val installListener: (app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
+        val installListener: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
             Timber.tag(TAG).d("[OBSERVE] LibraryInstallStatusChanged event received: event.appId=${event.appId}, libraryItem.appId=${libraryItem.appId}, match=${event.appId == libraryItem.gameId}")
             if (event.appId == libraryItem.gameId) {
                 Timber.tag(TAG).d("[OBSERVE] Install status changed for ${libraryItem.appId}, calling onStateChanged()")
                 onStateChanged()
             }
         }
-        app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
+        PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
         disposables +=
-            { app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener) }
+            { PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener) }
 
-        val postInstallSyncListener: (app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged) -> Unit = { event ->
+        val postInstallSyncListener: (AndroidEvent.PostInstallSyncStatusChanged) -> Unit = { event ->
             if (event.appId == libraryItem.gameId) {
                 Timber.tag(TAG).d("[OBSERVE] PostInstallSyncStatusChanged for ${libraryItem.appId}, isSyncing=${event.isSyncing}")
                 onStateChanged()
             }
         }
-        app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener)
+        PluviaApp.events.on<AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener)
         disposables +=
-            { app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener) }
+            { PluviaApp.events.off<AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener) }
 
         // Return cleanup function
         return {
@@ -802,8 +804,8 @@ class EpicAppScreen : BaseAppScreen() {
                             DownloadService.invalidateCache()
                             withContext(Dispatchers.Main) {
                                 BaseAppScreen.hideInstallDialog(appId)
-                                app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false))
-                                app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId))
+                                PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(gameId, false))
+                                PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
                             }
                         }
                     }

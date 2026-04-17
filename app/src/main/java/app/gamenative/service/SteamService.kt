@@ -2005,7 +2005,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             selectedDlcAppIds: List<Int>,
             appDirPath: String,
             branch: String = "public",
-            parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+            parentScope: CoroutineScope,
         ) {
             Timber.i("Item $downloadingAppId download completed, saving database")
 
@@ -2061,7 +2061,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                     if (steamId != null && !ContainerUtils.isLocalSavesOnly(svc.applicationContext, "STEAM_$appId")) {
                         downloadInfo.updateStatusMessage("Syncing saves...")
                         PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, true))
-                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(downloadInfo.gameId))
                         try {
                             val container = ContainerUtils.getOrCreateContainer(svc.applicationContext, "STEAM_$appId")
                             val prefixToPath: (String) -> String = { prefix ->
@@ -2073,6 +2072,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 preferredSave = SaveLocation.Remote,
                                 parentScope = parentScope,
                             ).await()
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             Timber.e(e, "[PostInstallSync] Cloud save sync failed for app $appId")
                         } finally {

@@ -148,8 +148,6 @@ data class DownloadInfo(
 
     fun isPostInstallSyncing(): Boolean = postInstallSyncing.value
 
-    fun getPostInstallSyncingFlow(): StateFlow<Boolean> = postInstallSyncing
-
     private fun addSpeedSample(timestampMs: Long) {
         speedSamples.add(SpeedSample(timestampMs, bytesDownloaded))
         trimOldSamples(timestampMs)

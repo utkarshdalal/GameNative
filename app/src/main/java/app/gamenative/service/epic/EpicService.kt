@@ -448,7 +448,6 @@ class EpicService : Service() {
                         val epicAppId = "EPIC_$gameId"
                         if (game.cloudSaveEnabled && !ContainerUtils.isLocalSavesOnly(context, epicAppId)) {
                             downloadInfo.setPostInstallSyncing(true)
-                            downloadInfo.setActive(true)
                             PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, true))
                             downloadInfo.updateStatusMessage("Syncing saves...")
                             try {
@@ -470,7 +469,6 @@ class EpicService : Service() {
 
                         downloadInfo.setProgress(1.0f)
                         downloadInfo.setActive(false)
-                        instance.activeDownloads.remove(appId)
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")

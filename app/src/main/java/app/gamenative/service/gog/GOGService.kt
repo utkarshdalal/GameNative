@@ -380,7 +380,6 @@ class GOGService : Service() {
                         val locations = if (gogGame != null) instance.gogManager.getSaveDirectoryPath(context, appId, gogGame.title) else null
                         if (!locations.isNullOrEmpty() && !ContainerUtils.isLocalSavesOnly(context, appId)) {
                             downloadInfo.setPostInstallSyncing(true)
-                            downloadInfo.setActive(true)
                             PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId.toIntOrNull() ?: 0, true))
                             downloadInfo.updateStatusMessage("Syncing saves...")
                             try {
@@ -398,7 +397,6 @@ class GOGService : Service() {
 
                         downloadInfo.setProgress(1.0f)
                         downloadInfo.setActive(false)
-                        instance.activeDownloads.remove(gameId)
                     }
                 } catch (e: CancellationException) {
                     downloadInfo.setPostInstallSyncing(false)

@@ -19,7 +19,6 @@ class DownloadInfoTest {
         info.setPostInstallSyncing(true)
 
         assertTrue(info.isPostInstallSyncing())
-        assertTrue(info.getPostInstallSyncingFlow().value)
     }
 
     @Test
@@ -34,7 +33,6 @@ class DownloadInfoTest {
         info.cancel()
 
         assertFalse(info.isPostInstallSyncing())
-        assertFalse(info.getPostInstallSyncingFlow().value)
         assertFalse(info.isActive())
     }
 }
