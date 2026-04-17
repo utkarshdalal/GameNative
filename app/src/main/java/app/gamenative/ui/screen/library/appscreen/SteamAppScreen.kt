@@ -77,6 +77,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.ui.component.dialog.state.GameManagerDialogState
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.ui.util.SteamSaveTransfer
 import app.gamenative.utils.ContainerUtils.getContainer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -645,6 +646,62 @@ class SteamAppScreen : BaseAppScreen() {
             AppOptionMenuType.ResetToDefaults,
             onClick = { showResetConfirmDialog = true },
         )
+    }
+
+    override fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean {
+        return libraryItem.gameSource == app.gamenative.data.GameSource.STEAM
+    }
+
+    private suspend fun activateSaveTransferContainer(context: Context, appId: String): Throwable? {
+        return try {
+            withContext(Dispatchers.IO) {
+                val containerManager = ContainerManager(context)
+                val container = ContainerUtils.getOrCreateContainer(context, appId)
+                containerManager.activateContainer(container)
+            }
+            null
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "Failed to activate save transfer container for $appId")
+            t
+        }
+    }
+
+    override suspend fun exportSaves(
+        context: Context,
+        libraryItem: LibraryItem,
+        uri: Uri,
+    ): Boolean {
+        val activationError = activateSaveTransferContainer(context, libraryItem.appId)
+        if (activationError != null) {
+            SnackbarManager.show(
+                context.getString(
+                    R.string.steam_save_export_failed,
+                    activationError.message ?: "Unknown error",
+                ),
+            )
+            return false
+        }
+        return SteamSaveTransfer.exportSaves(context, libraryItem.gameId, uri)
+    }
+
+    override suspend fun importSaves(
+        context: Context,
+        libraryItem: LibraryItem,
+        uri: Uri,
+    ): Boolean {
+        val activationError = activateSaveTransferContainer(context, libraryItem.appId)
+        if (activationError != null) {
+            SnackbarManager.show(
+                context.getString(
+                    R.string.steam_save_import_failed,
+                    activationError.message ?: "Unknown error",
+                ),
+            )
+            return false
+        }
+        return SteamSaveTransfer.importSaves(context, libraryItem.gameId, uri)
     }
 
     @Composable

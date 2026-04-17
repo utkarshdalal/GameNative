@@ -1384,4 +1384,9 @@
     <string name="review_overwhelmingly_negative">Przytłaczająco negatywne</string>
     <string name="settings_interface_show_recommendations_title">Pokaż rekomendacje gier</string>
     <string name="settings_interface_show_recommendations_subtitle">Wyświetla wyselekcjonowane gry indie w twojej bibliotece. Pozostawienie tego włączonego wspiera niezależnych deweloperów i GameNative.</string>
+     <string name="steam_save_export_success">Zapisy wyeksportowane</string>
+     <string name="steam_save_export_no_saves_found">Nie znaleziono plików zapisów</string>
+     <string name="steam_save_export_failed">Nie udało się wyeksportować zapisów: %s</string>
+     <string name="steam_save_import_success">Zapisy zaimportowane</string>
+     <string name="steam_save_import_failed">Nie udało się zaimportować zapisów: %s</string>
 </resources>

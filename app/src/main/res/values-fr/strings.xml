@@ -1381,4 +1381,9 @@
     <string name="review_overwhelmingly_negative">Extrêmement négatif</string>
     <string name="settings_interface_show_recommendations_title">Afficher les recommandations de jeux</string>
     <string name="settings_interface_show_recommendations_subtitle">Affiche des jeux indés sélectionnés dans votre bibliothèque. Garder cette option activée aide à soutenir les développeurs indés et GameNative.</string>
+     <string name="steam_save_export_success">Sauvegardes exportées</string>
+     <string name="steam_save_export_no_saves_found">Aucune sauvegarde trouvée</string>
+     <string name="steam_save_export_failed">Échec de l\'exportation des sauvegardes : %s</string>
+     <string name="steam_save_import_success">Sauvegardes importées</string>
+     <string name="steam_save_import_failed">Échec de l\'importation des sauvegardes : %s</string>
 </resources>

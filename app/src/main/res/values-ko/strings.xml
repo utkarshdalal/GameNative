@@ -1385,4 +1385,9 @@
     <string name="review_overwhelmingly_negative">압도적으로 부정적</string>
     <string name="settings_interface_show_recommendations_title">게임 추천 표시</string>
     <string name="settings_interface_show_recommendations_subtitle">라이브러리에 엄선된 인디 게임을 표시합니다. 이 기능을 켜두면 인디 개발자와 GameNative를 지원하는 데 도움이 됩니다.</string>
+     <string name="steam_save_export_success">세이브 데이터 내보내기 완료</string>
+     <string name="steam_save_export_no_saves_found">세이브 파일을 찾을 수 없음</string>
+     <string name="steam_save_export_failed">세이브 데이터 내보내기 실패: %s</string>
+     <string name="steam_save_import_success">세이브 데이터 가져오기 완료</string>
+     <string name="steam_save_import_failed">세이브 데이터 가져오기 실패: %s</string>
 </resources>

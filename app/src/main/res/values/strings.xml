@@ -1157,6 +1157,11 @@
     <string name="best_config_missing_content">%s missing</string>
     <string name="import_config">Import config</string>
     <string name="export_config">Export config</string>
+    <string name="steam_save_export_success">Saves exported</string>
+    <string name="steam_save_export_no_saves_found">No save files found</string>
+    <string name="steam_save_export_failed">Failed to export saves: %s</string>
+    <string name="steam_save_import_success">Saves imported</string>
+    <string name="steam_save_import_failed">Failed to import saves: %s</string>
     <string name="library_app_type">App Type</string>
     <string name="library_app_status">App Status</string>
     <string name="library_layout">Layout</string>

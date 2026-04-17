@@ -1387,4 +1387,9 @@
     <string name="review_overwhelmingly_negative">Abrumadoramente negativo</string>
     <string name="settings_interface_show_recommendations_title">Mostrar recomendaciones de juegos</string>
     <string name="settings_interface_show_recommendations_subtitle">Muestra juegos indie seleccionados en tu biblioteca. Mantenerlo activado ayuda a apoyar a los desarrolladores indie y a GameNative.</string>
+     <string name="steam_save_export_success">Partidas guardadas exportadas</string>
+     <string name="steam_save_export_no_saves_found">No se encontraron partidas guardadas</string>
+     <string name="steam_save_export_failed">Error al exportar partidas: %s</string>
+     <string name="steam_save_import_success">Partidas guardadas importadas</string>
+     <string name="steam_save_import_failed">Error al importar partidas: %s</string>
 </resources>

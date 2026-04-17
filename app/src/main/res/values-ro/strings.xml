@@ -1386,4 +1386,9 @@
     <string name="review_overwhelmingly_negative">Copleșitor de negativ</string>
     <string name="settings_interface_show_recommendations_title">Afișează recomandări de jocuri</string>
     <string name="settings_interface_show_recommendations_subtitle">Afișează jocuri indie selectate în biblioteca ta. Păstrând această opțiune activată, sprijini dezvoltatorii indie și GameNative.</string>
+     <string name="steam_save_export_success">Salvari exportate</string>
+     <string name="steam_save_export_no_saves_found">Nu s-au găsit fișiere de salvare</string>
+     <string name="steam_save_export_failed">Exportul salvărilor a eșuat: %s</string>
+     <string name="steam_save_import_success">Salvari importate</string>
+     <string name="steam_save_import_failed">Importul salvărilor a eșuat: %s</string>
 </resources>

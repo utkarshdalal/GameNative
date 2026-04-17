@@ -1321,4 +1321,9 @@
     <string name="review_overwhelmingly_negative">Überwältigend negativ</string>
     <string name="settings_interface_show_recommendations_title">Spielempfehlungen anzeigen</string>
     <string name="settings_interface_show_recommendations_subtitle">Zeigt kuratierte Indie-Spiele in deiner Bibliothek. Aktiviert lassen unterstützt Indie-Entwickler und GameNative.</string>
+     <string name="steam_save_export_success">Spielstände exportiert</string>
+     <string name="steam_save_export_no_saves_found">Keine Spielstände gefunden</string>
+     <string name="steam_save_export_failed">Spielstände konnten nicht exportiert werden: %s</string>
+     <string name="steam_save_import_success">Spielstände importiert</string>
+     <string name="steam_save_import_failed">Spielstände konnten nicht importiert werden: %s</string>
 </resources>

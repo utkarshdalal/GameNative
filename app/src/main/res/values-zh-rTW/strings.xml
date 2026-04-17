@@ -1377,4 +1377,9 @@
     <string name="review_overwhelmingly_negative">壓倒性負評</string>
     <string name="settings_interface_show_recommendations_title">顯示遊戲推薦</string>
     <string name="settings_interface_show_recommendations_subtitle">在遊戲庫中顯示精選獨立遊戲。保持開啟有助於支持獨立開發者和 GameNative。</string>
+     <string name="steam_save_export_success">存檔已匯出</string>
+     <string name="steam_save_export_no_saves_found">未找到存檔檔案</string>
+     <string name="steam_save_export_failed">匯出存檔失敗：%s</string>
+     <string name="steam_save_import_success">存檔已匯入</string>
+     <string name="steam_save_import_failed">匯入存檔失敗：%s</string>
 </resources>

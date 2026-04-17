@@ -134,6 +134,8 @@ abstract class BaseAppScreen {
         private val installDialogStates = mutableStateMapOf<String, app.gamenative.ui.component.dialog.state.MessageDialogState>()
         private val exportConfigRequests = mutableStateMapOf<String, Boolean>()
         private val importConfigRequests = mutableStateMapOf<String, Boolean>()
+        private val exportSavesRequests = mutableStateMapOf<String, Boolean>()
+        private val importSavesRequests = mutableStateMapOf<String, Boolean>()
         private val knownConfigInstallStates = mutableStateMapOf<Int, KnownConfigInstallState>()
 
         fun showInstallDialog(appId: String, state: app.gamenative.ui.component.dialog.state.MessageDialogState) {
@@ -170,6 +172,30 @@ abstract class BaseAppScreen {
 
         fun shouldImportConfig(appId: String): Boolean {
             return importConfigRequests[appId] == true
+        }
+
+        fun requestExportSaves(appId: String) {
+            exportSavesRequests[appId] = true
+        }
+
+        fun clearExportSavesRequest(appId: String) {
+            exportSavesRequests.remove(appId)
+        }
+
+        fun shouldExportSaves(appId: String): Boolean {
+            return exportSavesRequests[appId] == true
+        }
+
+        fun requestImportSaves(appId: String) {
+            importSavesRequests[appId] = true
+        }
+
+        fun clearImportSavesRequest(appId: String) {
+            importSavesRequests.remove(appId)
+        }
+
+        fun shouldImportSaves(appId: String): Boolean {
+            return importSavesRequests[appId] == true
         }
 
         fun showKnownConfigInstallState(gameId: Int, state: KnownConfigInstallState) {
@@ -459,6 +485,48 @@ abstract class BaseAppScreen {
         )
     }
 
+    @Composable
+    protected open fun getExportSavesOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        if (!supportsSaveTransfer(libraryItem)) return null
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ExportSaves,
+            onClick = {
+                requestExportSaves(libraryItem.appId)
+            },
+        )
+    }
+
+    @Composable
+    protected open fun getImportSavesOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        if (!supportsSaveTransfer(libraryItem)) return null
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ImportSaves,
+            onClick = {
+                requestImportSaves(libraryItem.appId)
+            },
+        )
+    }
+
+    protected open fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean = false
+
+    protected open suspend fun exportSaves(
+        context: Context,
+        libraryItem: LibraryItem,
+        uri: android.net.Uri,
+    ): Boolean = false
+
+    protected open suspend fun importSaves(
+        context: Context,
+        libraryItem: LibraryItem,
+        uri: android.net.Uri,
+    ): Boolean = false
+
     /**
      * Get config-related menu options (e.g. Export config, Import config).
      * By default returns only Export config when supported; sources can override
@@ -469,7 +537,7 @@ abstract class BaseAppScreen {
         context: Context,
         libraryItem: LibraryItem,
     ): List<AppMenuOption> {
-        return if (supportsContainerConfig()) {
+        val configOptions = if (supportsContainerConfig()) {
             listOfNotNull(
                 getUseKnownConfigOption(context, libraryItem),
                 getExportConfigOption(context, libraryItem),
@@ -478,6 +546,11 @@ abstract class BaseAppScreen {
         } else {
             emptyList()
         }
+
+        return configOptions + listOfNotNull(
+            getExportSavesOption(context, libraryItem),
+            getImportSavesOption(context, libraryItem),
+        )
     }
 
     /**
@@ -953,6 +1026,83 @@ abstract class BaseAppScreen {
             if (importConfigRequested) {
                 importConfigLauncher.launch(
                     arrayOf("application/json", "text/json", "text/plain"),
+                )
+            }
+        }
+
+        var exportSavesRequested by remember(appId) {
+            mutableStateOf(shouldExportSaves(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldExportSaves(appId) }
+                .collect { shouldRequest ->
+                    exportSavesRequested = shouldRequest
+                }
+        }
+
+        val exportSavesLauncher =
+            rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.CreateDocument("application/zip"),
+            ) { uri ->
+                if (uri == null) {
+                    clearExportSavesRequest(appId)
+                    return@rememberLauncherForActivityResult
+                }
+
+                uiScope.launch {
+                    try {
+                        exportSaves(context, libraryItem, uri)
+                    } finally {
+                        clearExportSavesRequest(appId)
+                    }
+                }
+            }
+
+        LaunchedEffect(exportSavesRequested) {
+            if (exportSavesRequested) {
+                val gameName = displayInfo.name.ifBlank { "game" }
+                exportSavesLauncher.launch("${gameName}_saves.zip")
+            }
+        }
+
+        var importSavesRequested by remember(appId) {
+            mutableStateOf(shouldImportSaves(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldImportSaves(appId) }
+                .collect { shouldRequest ->
+                    importSavesRequested = shouldRequest
+                }
+        }
+
+        val importSavesLauncher =
+            rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocument(),
+            ) { uri ->
+                if (uri == null) {
+                    clearImportSavesRequest(appId)
+                    return@rememberLauncherForActivityResult
+                }
+
+                uiScope.launch {
+                    try {
+                        importSaves(context, libraryItem, uri)
+                    } finally {
+                        clearImportSavesRequest(appId)
+                    }
+                }
+            }
+
+        LaunchedEffect(importSavesRequested) {
+            if (importSavesRequested) {
+                importSavesLauncher.launch(
+                    arrayOf(
+                        "application/zip",
+                        "application/x-zip-compressed",
+                        "application/octet-stream",
+                    ),
                 )
             }
         }

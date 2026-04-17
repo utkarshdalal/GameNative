@@ -1377,4 +1377,9 @@
     <string name="review_overwhelmingly_negative">Estremamente negativo</string>
     <string name="settings_interface_show_recommendations_title">Mostra consigli di gioco</string>
     <string name="settings_interface_show_recommendations_subtitle">Mostra giochi indie selezionati nella tua libreria. Mantenere attiva questa opzione aiuta a sostenere gli sviluppatori indie e GameNative.</string>
+     <string name="steam_save_export_success">Salvataggi esportati</string>
+     <string name="steam_save_export_no_saves_found">Nessun salvataggio trovato</string>
+     <string name="steam_save_export_failed">Esportazione salvataggi fallita: %s</string>
+     <string name="steam_save_import_success">Salvataggi importati</string>
+     <string name="steam_save_import_failed">Importazione salvataggi fallita: %s</string>
 </resources>

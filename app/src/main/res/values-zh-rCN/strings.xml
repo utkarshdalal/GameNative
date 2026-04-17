@@ -1374,4 +1374,9 @@
     <string name="review_overwhelmingly_negative">差评如潮</string>
     <string name="settings_interface_show_recommendations_title">显示游戏推荐</string>
     <string name="settings_interface_show_recommendations_subtitle">在游戏库中显示精选独立游戏。保持开启有助于支持独立开发者和 GameNative。</string>
+     <string name="steam_save_export_success">存档已导出</string>
+     <string name="steam_save_export_no_saves_found">未找到存档文件</string>
+     <string name="steam_save_export_failed">导出存档失败：%s</string>
+     <string name="steam_save_import_success">存档已导入</string>
+     <string name="steam_save_import_failed">导入存档失败：%s</string>
 </resources>

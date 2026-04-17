@@ -1314,4 +1314,9 @@ https://gamenative.app
     <string name="review_overwhelmingly_negative">Крайне отрицательные</string>
     <string name="settings_interface_show_recommendations_title">Показывать рекомендации игр</string>
     <string name="settings_interface_show_recommendations_subtitle">Показывает подобранные инди-игры в вашей библиотеке. Оставляя это включённым, вы поддерживаете инди-разработчиков и GameNative.</string>
+     <string name="steam_save_export_success">Сохранения экспортированы</string>
+     <string name="steam_save_export_no_saves_found">Сохранения не найдены</string>
+     <string name="steam_save_export_failed">Не удалось экспортировать сохранения: %s</string>
+     <string name="steam_save_import_success">Сохранения импортированы</string>
+     <string name="steam_save_import_failed">Не удалось импортировать сохранения: %s</string>
 </resources>

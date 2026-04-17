@@ -1380,4 +1380,9 @@
     <string name="review_overwhelmingly_negative">Надзвичайно негативні</string>
     <string name="settings_interface_show_recommendations_title">Показувати рекомендації ігор</string>
     <string name="settings_interface_show_recommendations_subtitle">Показує підібрані інді-ігри у вашій бібліотеці. Залишаючи це увімкненим, ви підтримуєте інді-розробників та GameNative.</string>
+     <string name="steam_save_export_success">Збереження експортовано</string>
+     <string name="steam_save_export_no_saves_found">Збереження не знайдено</string>
+     <string name="steam_save_export_failed">Не вдалося експортувати збереження: %s</string>
+     <string name="steam_save_import_success">Збереження імпортовано</string>
+     <string name="steam_save_import_failed">Не вдалося імпортувати збереження: %s</string>
 </resources>

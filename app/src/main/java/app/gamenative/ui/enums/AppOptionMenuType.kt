@@ -13,6 +13,8 @@ enum class AppOptionMenuType(val text: String) {
     UseKnownConfig("Use known config"),
     ImportConfig("Import config"),
     ExportConfig("Export config"),
+    ImportSaves("Import saves"),
+    ExportSaves("Export saves"),
     Uninstall("Uninstall"),
     VerifyFiles("Verify files"),
     Update("Update"),
