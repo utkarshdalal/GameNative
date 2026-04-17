@@ -1379,4 +1379,6 @@
      <string name="steam_save_export_failed">导出存档失败：%s</string>
      <string name="steam_save_import_success">存档已导入</string>
      <string name="steam_save_import_failed">导入存档失败：%s</string>
+    <string name="option_import_saves">导入存档</string>
+    <string name="option_export_saves">导出存档</string>
 </resources>

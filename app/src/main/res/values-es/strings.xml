@@ -1392,4 +1392,6 @@
      <string name="steam_save_export_failed">Error al exportar partidas: %s</string>
      <string name="steam_save_import_success">Partidas guardadas importadas</string>
      <string name="steam_save_import_failed">Error al importar partidas: %s</string>
+    <string name="option_import_saves">Importar partidas guardadas</string>
+    <string name="option_export_saves">Exportar partidas guardadas</string>
 </resources>

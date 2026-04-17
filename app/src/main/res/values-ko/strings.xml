@@ -1390,4 +1390,6 @@
      <string name="steam_save_export_failed">세이브 데이터 내보내기 실패: %s</string>
      <string name="steam_save_import_success">세이브 데이터 가져오기 완료</string>
      <string name="steam_save_import_failed">세이브 데이터 가져오기 실패: %s</string>
+    <string name="option_import_saves">세이브 가져오기</string>
+    <string name="option_export_saves">세이브 내보내기</string>
 </resources>

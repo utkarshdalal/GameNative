@@ -1256,4 +1256,6 @@
      <string name="steam_save_export_failed">Kunne ikke eksportere gemte filer: %s</string>
      <string name="steam_save_import_success">Gemte filer importeret</string>
      <string name="steam_save_import_failed">Kunne ikke importere gemte filer: %s</string>
+    <string name="option_import_saves">Importér gemte spil</string>
+    <string name="option_export_saves">Eksportér gemte spil</string>
 </resources>

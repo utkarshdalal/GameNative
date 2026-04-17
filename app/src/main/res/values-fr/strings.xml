@@ -1386,4 +1386,6 @@
      <string name="steam_save_export_failed">Échec de l\'exportation des sauvegardes : %s</string>
      <string name="steam_save_import_success">Sauvegardes importées</string>
      <string name="steam_save_import_failed">Échec de l\'importation des sauvegardes : %s</string>
+    <string name="option_import_saves">Importer les sauvegardes</string>
+    <string name="option_export_saves">Exporter les sauvegardes</string>
 </resources>

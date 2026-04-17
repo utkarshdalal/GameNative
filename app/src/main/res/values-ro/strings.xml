@@ -1391,4 +1391,6 @@
      <string name="steam_save_export_failed">Exportul salvărilor a eșuat: %s</string>
      <string name="steam_save_import_success">Salvari importate</string>
      <string name="steam_save_import_failed">Importul salvărilor a eșuat: %s</string>
+    <string name="option_import_saves">Importă salvări</string>
+    <string name="option_export_saves">Exportă salvări</string>
 </resources>

@@ -1379,4 +1379,29 @@
     <string name="workshop_processing">Processing mods…</string>
     <string name="workshop_failed_count">%1$d workshop mod(s) failed to update</string>
     <string name="workshop_download_failed">Download failed</string>
+
+    <!-- App option menu labels -->
+    <string name="option_open_store_page">Open store page</string>
+    <string name="option_export_for_frontend">Export for frontend</string>
+    <string name="option_open_container">Open container</string>
+    <string name="option_edit_container">Edit container</string>
+    <string name="option_reset_to_defaults">Reset container</string>
+    <string name="option_get_support">Get support</string>
+    <string name="option_submit_feedback">Submit feedback</string>
+    <string name="option_reset_drm">Reset DRM</string>
+    <string name="option_use_known_config">Use known config</string>
+    <string name="option_import_saves">Import saves</string>
+    <string name="option_export_saves">Export saves</string>
+    <string name="option_verify_files">Verify files</string>
+    <string name="option_update">Update</string>
+    <string name="option_move_to_external_storage">Move to external storage</string>
+    <string name="option_move_to_internal_storage">Move to internal storage</string>
+    <string name="option_force_cloud_sync">Force cloud sync</string>
+    <string name="option_browse_online_saves">Browse online saves</string>
+    <string name="option_force_download_remote">Force download remote saves</string>
+    <string name="option_force_upload_local">Force upload local saves</string>
+    <string name="option_fetch_game_images">Fetch game images</string>
+    <string name="option_test_graphics">Test graphics</string>
+    <string name="option_manage_dlc">Manage DLC</string>
+    <string name="option_manage_workshop">Manage Workshop</string>
 </resources>

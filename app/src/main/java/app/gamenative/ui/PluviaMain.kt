@@ -1572,7 +1572,7 @@ fun preLaunchApp(
                         title = context.getString(R.string.game_executable_not_found_title),
                         message = context.getString(R.string.game_executable_not_found),
                         dismissBtnText = context.getString(R.string.ok),
-                        actionBtnText = AppOptionMenuType.EditContainer.text,
+                        actionBtnText = context.getString(AppOptionMenuType.EditContainer.title),
                     ),
                 )
                 return@launch

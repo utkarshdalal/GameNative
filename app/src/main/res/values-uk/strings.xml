@@ -1385,4 +1385,6 @@
      <string name="steam_save_export_failed">Не вдалося експортувати збереження: %s</string>
      <string name="steam_save_import_success">Збереження імпортовано</string>
      <string name="steam_save_import_failed">Не вдалося імпортувати збереження: %s</string>
+    <string name="option_import_saves">Імпортувати збереження</string>
+    <string name="option_export_saves">Експортувати збереження</string>
 </resources>

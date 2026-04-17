@@ -1319,4 +1319,6 @@ https://gamenative.app
      <string name="steam_save_export_failed">Не удалось экспортировать сохранения: %s</string>
      <string name="steam_save_import_success">Сохранения импортированы</string>
      <string name="steam_save_import_failed">Не удалось импортировать сохранения: %s</string>
+    <string name="option_import_saves">Импортировать сохранения</string>
+    <string name="option_export_saves">Экспортировать сохранения</string>
 </resources>
