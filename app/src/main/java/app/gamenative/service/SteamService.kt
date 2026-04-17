@@ -1256,6 +1256,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             appInfoDao.deleteApp(dlcAppId)
                             changeNumbersDao.deleteByAppId(dlcAppId)
                             fileChangeListsDao.deleteByAppId(dlcAppId)
+                            db.steamFileHashCacheDao().deleteByAppId(dlcAppId)
                         }
                     }
                 }
