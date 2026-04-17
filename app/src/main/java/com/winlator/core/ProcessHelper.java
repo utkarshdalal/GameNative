@@ -117,7 +117,28 @@ public abstract class ProcessHelper {
 
     public static List<ProcessInfo> listSubProcesses() {
         List<ProcessInfo> processes = new ArrayList<>();
-        String myUser = getCurrentProcessUser();
+        String myUser = null;
+
+        try {
+            java.lang.Process idProcess = Runtime.getRuntime().exec("id");
+            try (
+                InputStreamReader isr = new InputStreamReader(idProcess.getInputStream());
+                BufferedReader idReader = new BufferedReader(isr);
+            ) {
+                String idOutput = idReader.readLine();
+                if (idOutput != null) {
+                    int startIndex = idOutput.indexOf('(');
+                    int endIndex = idOutput.indexOf(')');
+                    if (startIndex != -1 && endIndex != -1) {
+                        myUser = idOutput.substring(startIndex + 1, endIndex);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            Log.e("ProcessHelper", "Failed to retrieve user id in order to list processes: " + e);
+            return processes;
+        }
+
         if (myUser == null) return processes;
 
         try {
@@ -150,28 +171,6 @@ public abstract class ProcessHelper {
         }
 
         return processes;
-    }
-
-    private static String getCurrentProcessUser() {
-        try {
-            java.lang.Process idProcess = Runtime.getRuntime().exec("id");
-            try (
-                InputStreamReader isr = new InputStreamReader(idProcess.getInputStream());
-                BufferedReader idReader = new BufferedReader(isr);
-            ) {
-                String idOutput = idReader.readLine();
-                if (idOutput != null) {
-                    int startIndex = idOutput.indexOf('(');
-                    int endIndex = idOutput.indexOf(')');
-                    if (startIndex != -1 && endIndex != -1) {
-                        return idOutput.substring(startIndex + 1, endIndex);
-                    }
-                }
-            }
-        } catch (IOException e) {
-            Log.e("ProcessHelper", "Failed to retrieve process user: " + e);
-        }
-        return null;
     }
 
     private static void createDebugThread(final InputStream inputStream) {
