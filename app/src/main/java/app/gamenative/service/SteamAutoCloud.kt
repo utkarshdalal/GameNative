@@ -436,7 +436,7 @@ object SteamAutoCloud {
                     }.awaitAll()
                 }
 
-                if (totalFiles > 0) {
+                if (totalFiles > 0 && filesDownloaded.get() == totalFiles) {
                     onProgress?.invoke("Download complete", 1.0f)
                 }
 
@@ -1016,6 +1016,9 @@ object SteamAutoCloud {
             withTimeout(SteamService.requestTimeout) {
                 httpClient.newCall(request).execute()
             }
+        } catch (e: TimeoutCancellationException) {
+            Timber.w(e, "Timed out downloading %s", actualFilePath)
+            null
         } catch (e: SocketTimeoutException) {
             Timber.w("Could not download $actualFilePath: %s", e.message)
             null
@@ -1030,13 +1033,14 @@ object SteamAutoCloud {
 
         if (!response.isSuccessful) {
             Timber.w("File download of $prefixedPath was unsuccessful")
+            response.close()
             return null
         }
 
         try {
             val totalFileSize = fileDownloadInfo.rawFileSize.toLong()
 
-            val copyToFile: (InputStream) -> Unit = { input ->
+            val copyToFile: (InputStream) -> Boolean = { input ->
                 Files.createDirectories(actualFilePath.parent)
 
                 FileOutputStream(actualFilePath.toString()).use { fs ->
@@ -1071,7 +1075,9 @@ object SteamAutoCloud {
 
                     if (totalBytesRead != totalFileSize) {
                         Timber.w("Bytes read from stream of $prefixedPath does not match expected size")
+                        return@use false
                     }
+                    true
                 }
             }
 
@@ -1086,7 +1092,7 @@ object SteamAutoCloud {
                                 return@withTimeout false
                             }
 
-                            copyToFile(zipInput)
+                            if (!copyToFile(zipInput)) return@withTimeout false
 
                             if (zipInput.nextEntry != null) {
                                 Timber.e("Downloaded user file $prefixedPath has more than one zip entry")
@@ -1095,13 +1101,14 @@ object SteamAutoCloud {
                     } ?: return@withTimeout false
                 } else {
                     response.body?.byteStream()?.use { inputStream ->
-                        copyToFile(inputStream)
+                        if (!copyToFile(inputStream)) return@withTimeout false
                     } ?: return@withTimeout false
                 }
                 true
             }
 
             if (!downloaded) {
+                Files.deleteIfExists(actualFilePath)
                 return null
             }
 
@@ -1114,6 +1121,9 @@ object SteamAutoCloud {
             onProgress?.invoke(progressMessage(finishedFiles), finalProgress)
 
             return UserFilesDownloadResult(1, fileDownloadInfo.rawFileSize.toLong())
+        } catch (e: TimeoutCancellationException) {
+            Timber.w(e, "Timed out downloading %s", actualFilePath)
+            return null
         } catch (e: FileSystemException) {
             Timber.w("Could not download $actualFilePath: %s", e.message)
             return null
