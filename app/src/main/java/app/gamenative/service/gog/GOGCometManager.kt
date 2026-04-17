@@ -13,14 +13,16 @@ import timber.log.Timber
 import java.io.File
 
 /**
- * Downloads Comet's Windows helpers once, deploys them into a Wine prefix, and writes a small
- * batch launcher that starts Comet before the GOG game executable.
+ * Downloads Comet's Windows helpers once, deploys them into a Wine prefix, and prepares the
+ * Windows-side command needed to start Comet before the actual game launch.
  *
  * This mirrors Heroic's integration approach, but keeps everything inside the Wine prefix so it
  * works on Android where the native Linux Comet build is not usable.
  */
 object GOGCometManager {
     private const val TAG = "GOGComet"
+
+    const val SESSION_METADATA_ACTIVE = "gog_comet_active"
 
     private const val RELEASE_TAG = "v0.2.0"
     private const val CACHE_DIR = "gog_comet/$RELEASE_TAG"
@@ -32,16 +34,14 @@ object GOGCometManager {
     private const val PREFIX_GALAXY_REDIST_DIR = "GOG.com/Galaxy/redists"
 
     private const val PREFIX_COMET_WINDOWS_PATH = "C:\\ProgramData\\GameNative\\Comet\\comet.exe"
-    private const val PREFIX_LAUNCHER_WINDOWS_PATH = "C:\\ProgramData\\GameNative\\Comet\\launch_gog_with_comet.bat"
     private const val PREFIX_GALAXY_COMM_WINDOWS_PATH = "C:\\ProgramData\\GOG.com\\Galaxy\\redists\\GalaxyCommunication.exe"
 
     private const val COMET_IDLE_WAIT_SECONDS = 20
 
-    suspend fun prepareLaunchCommand(
+    suspend fun prepareLaunchSupport(
         context: Context,
         container: Container,
-        gameWindowsPath: String,
-    ): Result<String> = withContext(Dispatchers.IO) {
+    ): Result<PreparedCometLaunch> = withContext(Dispatchers.IO) {
         try {
             val credentials = GOGAuthManager.getStoredCredentials(context).getOrElse { error ->
                 return@withContext Result.failure(error)
@@ -52,12 +52,16 @@ object GOGCometManager {
             }
 
             val cachedFiles = ensureCachedFiles(context)
-            val deployedFiles = deployToPrefix(container, cachedFiles)
-            writeLaunchScript(deployedFiles.launcherScript, gameWindowsPath, credentials)
+            deployToPrefix(container, cachedFiles)
 
-            Result.success("cmd /c $PREFIX_LAUNCHER_WINDOWS_PATH")
+            Result.success(
+                PreparedCometLaunch(
+                    ensureGalaxyServiceCommand = buildGalaxyServiceCommand(),
+                    startCometCommand = buildCometStartCommand(credentials, sanitizeUsername(credentials.username)),
+                ),
+            )
         } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "Failed to prepare Comet launch command")
+            Timber.tag(TAG).e(e, "Failed to prepare Comet launch support")
             Result.failure(e)
         }
     }
@@ -72,8 +76,8 @@ object GOGCometManager {
                 return@withContext Result.failure(error)
             }
 
-            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
-                ?: return@withContext Result.failure(IllegalArgumentException("Invalid GOG appId: $appId"))
+            val gameId = runCatching { ContainerUtils.extractGameIdFromContainerId(appId) }
+                .getOrElse { return@withContext Result.failure(IllegalArgumentException("Invalid GOG appId: $appId", it)) }
             val installPath = GOGService.getInstallPath(gameId.toString())
                 ?: return@withContext Result.failure(IllegalStateException("No install path for $appId"))
             val infoJson = GOGService.getInstance()?.gogManager?.readInfoFile(appId, installPath)
@@ -112,7 +116,7 @@ object GOGCometManager {
         )
     }
 
-    private fun deployToPrefix(container: Container, cachedFiles: CachedCometFiles): PrefixCometFiles {
+    private fun deployToPrefix(container: Container, cachedFiles: CachedCometFiles) {
         val prefixProgramData = File(container.getRootDir(), ".wine/drive_c/ProgramData")
         val prefixCometDir = File(prefixProgramData, PREFIX_COMET_DIR)
         val prefixGalaxyDir = File(prefixProgramData, PREFIX_GALAXY_REDIST_DIR)
@@ -122,41 +126,9 @@ object GOGCometManager {
 
         val prefixCometExe = File(prefixCometDir, "comet.exe")
         val prefixGalaxyCommunicationExe = File(prefixGalaxyDir, "GalaxyCommunication.exe")
-        val launcherScript = File(prefixCometDir, "launch_gog_with_comet.bat")
 
         copyIfChanged(cachedFiles.cometExe, prefixCometExe)
         copyIfChanged(cachedFiles.galaxyCommunicationExe, prefixGalaxyCommunicationExe)
-
-        return PrefixCometFiles(
-            launcherScript = launcherScript,
-        )
-    }
-
-    private fun writeLaunchScript(
-        launcherScript: File,
-        gameWindowsPath: String,
-        credentials: GOGCredentials,
-    ) {
-        launcherScript.parentFile?.mkdirs()
-
-        val safeUsername = sanitizeUsername(credentials.username)
-        val quotedUsername = quoteBatchArgument(safeUsername)
-        val quotedGamePath = quoteBatchArgument(gameWindowsPath)
-
-        val script = buildString {
-            appendLine("@echo off")
-            appendLine("setlocal")
-            appendLine("set COMET_IDLE_WAIT=$COMET_IDLE_WAIT_SECONDS")
-            appendLine("sc query GalaxyCommunication >nul 2>&1 || sc create GalaxyCommunication binpath= $PREFIX_GALAXY_COMM_WINDOWS_PATH >nul 2>&1")
-            appendLine(
-                "start \"\" /B $PREFIX_COMET_WINDOWS_PATH --access-token ${escapeBatchValue(credentials.accessToken)} " +
-                    "--refresh-token ${escapeBatchValue(credentials.refreshToken)} " +
-                    "--user-id ${escapeBatchValue(credentials.userId)} --username $quotedUsername --quit"
-            )
-            appendLine(quotedGamePath)
-        }
-
-        launcherScript.writeText(script, Charsets.UTF_8)
     }
 
     private fun sanitizeUsername(username: String?): String {
@@ -167,26 +139,27 @@ object GOGCometManager {
         return safe.ifEmpty { "GOG User" }
     }
 
-    private fun quoteBatchArgument(value: String): String = "\"${escapeBatchValue(value)}\""
+    private fun buildGalaxyServiceCommand(): String {
+        return "cmd.exe /c sc query GalaxyCommunication >nul 2>&1 || sc create GalaxyCommunication binpath= ${quoteWindowsArgument(PREFIX_GALAXY_COMM_WINDOWS_PATH)} >nul 2>&1"
+    }
 
-    /**
-     * Escapes the handful of CMD metacharacters that could break our generated batch file.
-     */
-    private fun escapeBatchValue(value: String): String = buildString(value.length + 8) {
-        value.forEach { ch ->
-            when (ch) {
-                '^' -> append("^^")
-                '%' -> append("%%")
-                '&' -> append("^&")
-                '|' -> append("^|")
-                '<' -> append("^<")
-                '>' -> append("^>")
-                '!' -> append("^^!")
-                '"' -> append("\"")
-                else -> append(ch)
-            }
+    private fun buildCometStartCommand(credentials: GOGCredentials, username: String): String {
+        return buildString {
+            append("cmd.exe /c start \"\" /B ")
+            append(quoteWindowsArgument(PREFIX_COMET_WINDOWS_PATH))
+            append(" --access-token ")
+            append(quoteWindowsArgument(credentials.accessToken))
+            append(" --refresh-token ")
+            append(quoteWindowsArgument(credentials.refreshToken))
+            append(" --user-id ")
+            append(quoteWindowsArgument(credentials.userId))
+            append(" --username ")
+            append(quoteWindowsArgument(username))
+            append(" --quit")
         }
     }
+
+    private fun quoteWindowsArgument(value: String): String = "\"${value}\""
 
     private fun isCached(file: File): Boolean = file.exists() && file.length() > 0
 
@@ -231,12 +204,13 @@ object GOGCometManager {
         Timber.tag(TAG).i("Downloaded $assetName to ${destination.absolutePath}")
     }
 
+    data class PreparedCometLaunch(
+        val ensureGalaxyServiceCommand: String,
+        val startCometCommand: String,
+    )
+
     private data class CachedCometFiles(
         val cometExe: File,
         val galaxyCommunicationExe: File,
-    )
-
-    private data class PrefixCometFiles(
-        val launcherScript: File,
     )
 }

@@ -682,6 +682,50 @@ class GOGManager @Inject constructor(
         }
     }
 
+    suspend fun willUseCometLaunch(appId: String, container: Container): Boolean = withContext(Dispatchers.IO) {
+        val resolvedLaunch = resolveLaunchTarget(appId, container)
+            .getOrElse { error ->
+                Timber.tag("GOG").d(error, "Comet preflight unavailable for $appId")
+                return@withContext false
+            }
+
+        GOGCometManager.prepareLaunchSupport(
+            context = context,
+            container = container,
+        ).isSuccess.also { supported ->
+            if (!supported) Timber.tag("GOG").d("Comet support unavailable for $appId (${resolvedLaunch.windowsPath})")
+        }
+    }
+
+    fun startCometForLaunch(
+        appId: String,
+        container: Container,
+        guestProgramLauncherComponent: GuestProgramLauncherComponent,
+    ): Boolean {
+        val preparedLaunch = runBlocking {
+            GOGCometManager.prepareLaunchSupport(
+                context = context,
+                container = container,
+            )
+        }.getOrElse { error ->
+            Timber.tag("GOG").w(error, "Failed to prepare Comet launch support for $appId")
+            return false
+        }
+
+        return try {
+            Timber.tag("GOG").i("Starting hidden Comet helper for $appId")
+            guestProgramLauncherComponent.execShellCommand(preparedLaunch.ensureGalaxyServiceCommand, false)
+            guestProgramLauncherComponent.execShellCommand(preparedLaunch.startCometCommand, false)
+            Thread.sleep(1000)
+            container.putSessionMetadata(GOGCometManager.SESSION_METADATA_ACTIVE, true)
+            container.saveData()
+            true
+        } catch (e: Exception) {
+            Timber.tag("GOG").w(e, "Failed starting Comet helper for $appId")
+            false
+        }
+    }
+
     fun getGogWineStartCommand(
         libraryItem: LibraryItem,
         container: Container,
@@ -691,104 +735,100 @@ class GOGManager @Inject constructor(
         guestProgramLauncherComponent: GuestProgramLauncherComponent,
         gameId: Int,
     ): String {
-        // Verify installation
-        val (isValid, errorMessage) = verifyInstallation(gameId.toString())
-        if (!isValid) {
-            Timber.e("Installation verification failed: $errorMessage")
-            return "\"explorer.exe\""
-        }
-
-        val game = runBlocking { getGameFromDbById(gameId.toString()) }
-        if (game == null) {
-            Timber.e("Game not found for ID: $gameId")
-            return "\"explorer.exe\""
-        }
-
-        val gameInstallPath = getGameInstallPath(gameId.toString(), game.title)
-        val gameDir = File(gameInstallPath)
-
-        if (!gameDir.exists()) {
-            Timber.e("Game directory does not exist: $gameInstallPath")
-            return "\"explorer.exe\""
-        }
-
-        // Use container's configured executable path if available, otherwise auto-detect
-        val executablePath = if (container.executablePath.isNotEmpty()) {
-            Timber.d("Using configured executable path from container: ${container.executablePath}")
-            container.executablePath
-        } else {
-            val detectedPath = runBlocking { getInstalledExe(libraryItem) }
-            Timber.d("Auto-detected executable path: $detectedPath")
-            if (detectedPath.isNotEmpty()) {
-                container.executablePath = detectedPath
-                container.saveData()
+        val resolvedLaunch = runBlocking { resolveLaunchTarget(libraryItem.appId, container) }
+            .getOrElse { error ->
+                Timber.e(error, "Failed to resolve GOG launch target for ${libraryItem.appId}")
+                return "\"explorer.exe\""
             }
-            detectedPath
-        }
 
-        if (executablePath.isEmpty()) {
-            Timber.w("No executable found, opening file manager")
-            return "\"explorer.exe\""
-        }
-
-        // Find the drive letter that's mapped to this game's install path
-        var gogDriveLetter: String? = null
-        for (drive in com.winlator.container.Container.drivesIterator(container.drives)) {
-            if (drive[1] == gameInstallPath) {
-                gogDriveLetter = drive[0]
-                Timber.d("Found GOG game mapped to ${drive[0]}: drive")
-                break
-            }
-        }
-
-        if (gogDriveLetter == null) {
-            Timber.e("GOG game directory not mapped to any drive: $gameInstallPath")
-            return "\"explorer.exe\""
-        }
-
-        val gameInstallDir = File(gameInstallPath)
-        val execFile = File(gameInstallPath, executablePath)
-        // Handle potential IllegalArgumentException if paths don't share a common ancestor
-        val relativePath = try {
-            execFile.relativeTo(gameInstallDir).path.replace('/', '\\')
-        } catch (e: IllegalArgumentException) {
-            Timber.e(e, "Failed to compute relative path from $gameInstallDir to $execFile")
-            return "\"explorer.exe\""
-        }
-
-        val windowsPath = "$gogDriveLetter:\\$relativePath"
-
-        // Set working directory
-        val execWorkingDir = execFile.parentFile
+        val execWorkingDir = resolvedLaunch.execFile.parentFile
         if (execWorkingDir != null) {
             guestProgramLauncherComponent.workingDir = execWorkingDir
-            envVars.put("WINEPATH", "$gogDriveLetter:\\")
+            envVars.put("WINEPATH", "${resolvedLaunch.driveLetter}:\\")
         } else {
-            guestProgramLauncherComponent.workingDir = gameDir
+            guestProgramLauncherComponent.workingDir = resolvedLaunch.gameDir
         }
 
-        val cometLaunchCommand = runBlocking {
-            GOGCometManager.prepareLaunchCommand(
-                context = context,
-                container = container,
-                gameWindowsPath = windowsPath,
-            )
-        }
-
-        val preparedCometCommand = cometLaunchCommand.getOrNull()
-        if (preparedCometCommand != null) {
-            Timber.tag("GOG").i("Launching GOG game with Comet support")
-            Timber.d("GOG Wine command: $preparedCometCommand")
-            return preparedCometCommand
-        }
-
-        Timber.tag("GOG").w(
-            cometLaunchCommand.exceptionOrNull(),
-            "Failed to prepare Comet support, falling back to direct GOG launch",
-        )
-        Timber.d("GOG Wine command: \"$windowsPath\"")
-        return "\"$windowsPath\""
+        Timber.d("GOG Wine command: \"${resolvedLaunch.windowsPath}\"")
+        return "\"${resolvedLaunch.windowsPath}\""
     }
+
+    private suspend fun resolveLaunchTarget(appId: String, container: Container): Result<ResolvedGogLaunchTarget> =
+        withContext(Dispatchers.IO) {
+            try {
+                val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+                val (isValid, errorMessage) = verifyInstallation(gameId.toString())
+                if (!isValid) {
+                    return@withContext Result.failure(IllegalStateException("Installation verification failed: $errorMessage"))
+                }
+
+                val game = getGameFromDbById(gameId.toString())
+                    ?: return@withContext Result.failure(IllegalStateException("Game not found for ID: $gameId"))
+
+                val gameInstallPath = getGameInstallPath(gameId.toString(), game.title)
+                val gameDir = File(gameInstallPath)
+                if (!gameDir.exists()) {
+                    return@withContext Result.failure(IllegalStateException("Game directory does not exist: $gameInstallPath"))
+                }
+
+                val executablePath = if (container.executablePath.isNotEmpty()) {
+                    Timber.d("Using configured executable path from container: ${container.executablePath}")
+                    container.executablePath
+                } else {
+                    val detectedPath = getInstalledExe(
+                        LibraryItem(
+                            appId = appId,
+                            name = game.title,
+                            gameSource = GameSource.GOG,
+                        ),
+                    )
+                    Timber.d("Auto-detected executable path: $detectedPath")
+                    if (detectedPath.isNotEmpty()) {
+                        container.executablePath = detectedPath
+                        container.saveData()
+                    }
+                    detectedPath
+                }
+
+                if (executablePath.isEmpty()) {
+                    return@withContext Result.failure(IllegalStateException("No executable found for $appId"))
+                }
+
+                val gogDriveLetter = Container.drivesIterator(container.drives)
+                    .firstOrNull { it[1] == gameInstallPath }
+                    ?.get(0)
+                    ?: return@withContext Result.failure(
+                        IllegalStateException("GOG game directory not mapped to any drive: $gameInstallPath"),
+                    )
+
+                val execFile = File(gameInstallPath, executablePath)
+                val relativePath = try {
+                    execFile.relativeTo(gameDir).path.replace('/', '\\')
+                } catch (e: IllegalArgumentException) {
+                    return@withContext Result.failure(
+                        IllegalStateException("Failed to compute relative path from $gameDir to $execFile", e),
+                    )
+                }
+
+                Result.success(
+                    ResolvedGogLaunchTarget(
+                        gameDir = gameDir,
+                        execFile = execFile,
+                        driveLetter = gogDriveLetter,
+                        windowsPath = "$gogDriveLetter:\\$relativePath",
+                    ),
+                )
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    private data class ResolvedGogLaunchTarget(
+        val gameDir: File,
+        val execFile: File,
+        val driveLetter: String,
+        val windowsPath: String,
+    )
 
     /**
      * Creates the GOG scriptinterpreter rootdir symlink when present. /DIR and /supportDir use

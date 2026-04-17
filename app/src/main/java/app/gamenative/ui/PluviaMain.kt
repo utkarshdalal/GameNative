@@ -1759,26 +1759,31 @@ fun preLaunchApp(
             return@launch
         }
 
-        // For GOG Games, sync cloud saves before launch (executable already verified above via GOGService.getLaunchExecutable)
+        // For GOG games, prefer Comet-managed sync when Comet launch is active.
         val isGOGGame = gameSource == GameSource.GOG
         if (isGOGGame) {
             if (isLocalSavesOnly) {
                 Timber.tag("GOG").i("[Cloud Saves] Local saves only enabled for $appId — skipping pre-game cloud sync")
             } else {
-                Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves before launch")
-
-                // Sync cloud saves (download latest saves before playing)
-                Timber.tag("GOG").d("[Cloud Saves] Starting pre-game download sync for $appId")
-                val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
-                    context = context,
-                    appId = appId,
-                )
-
-                if (!syncSuccess) {
-                    Timber.tag("GOG").w("[Cloud Saves] Download sync failed for $appId, proceeding with launch anyway")
-                    // Don't block launch on sync failure - log warning and continue
+                val willUseCometLaunch = app.gamenative.service.gog.GOGService.willUseCometLaunch(appId, container)
+                if (willUseCometLaunch) {
+                    Timber.tag("GOG").i("[Cloud Saves] Comet launch active for $appId — skipping app-side pre-game cloud sync")
                 } else {
-                    Timber.tag("GOG").i("[Cloud Saves] Download sync completed successfully for $appId")
+                    Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves before launch")
+
+                    // Sync cloud saves (download latest saves before playing)
+                    Timber.tag("GOG").d("[Cloud Saves] Starting pre-game download sync for $appId")
+                    val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
+                        context = context,
+                        appId = appId,
+                    )
+
+                    if (!syncSuccess) {
+                        Timber.tag("GOG").w("[Cloud Saves] Download sync failed for $appId, proceeding with launch anyway")
+                        // Don't block launch on sync failure - log warning and continue
+                    } else {
+                        Timber.tag("GOG").i("[Cloud Saves] Download sync completed successfully for $appId")
+                    }
                 }
             }
 

@@ -541,6 +541,16 @@ class MainViewModel @Inject constructor(
         }
 
         if (gameSource == GameSource.GOG) {
+            val container = ContainerUtils.getContainer(context, appId)
+            val usedCometLaunch = container.getSessionMetadata(
+                app.gamenative.service.gog.GOGCometManager.SESSION_METADATA_ACTIVE,
+                "false",
+            ).toBoolean()
+            if (usedCometLaunch) {
+                Timber.tag("GOG").i("[Cloud Saves] Comet launch was active for $appId — skipping app-side post-game cloud sync")
+                return
+            }
+
             Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves after close")
             viewModelScope.launch(Dispatchers.IO) {
                 try {

@@ -316,6 +316,18 @@ class GOGService : Service() {
             return getInstance()?.gogManager?.getLaunchExecutable(appId, container) ?: ""
         }
 
+        suspend fun willUseCometLaunch(appId: String, container: com.winlator.container.Container): Boolean {
+            return getInstance()?.gogManager?.willUseCometLaunch(appId, container) ?: false
+        }
+
+        fun startCometForLaunch(
+            appId: String,
+            container: com.winlator.container.Container,
+            guestProgramLauncherComponent: com.winlator.xenvironment.components.GuestProgramLauncherComponent,
+        ): Boolean {
+            return getInstance()?.gogManager?.startCometForLaunch(appId, container, guestProgramLauncherComponent) ?: false
+        }
+
         fun getGogWineStartCommand(
             libraryItem: LibraryItem,
             container: com.winlator.container.Container,

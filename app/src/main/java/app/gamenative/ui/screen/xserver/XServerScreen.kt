@@ -2786,7 +2786,24 @@ private fun setupXEnvironment(
                 containerVariantChanged = containerVariantChanged,
                 onError = onGameLaunchError
             )
-            if (preInstallCommands.isNotEmpty()) {
+
+            val launchingFinalGame = guestProgramLauncherComponent.guestExecutable == gameExecutable
+            if (launchingFinalGame && gameSource == GameSource.GOG) {
+                try {
+                    val startedComet = GOGService.startCometForLaunch(
+                        appId = appId,
+                        container = container,
+                        guestProgramLauncherComponent = guestProgramLauncherComponent,
+                    )
+                    if (startedComet) {
+                        Timber.tag("GOG").i("Started hidden Comet helper before launching $appId")
+                    }
+                } catch (e: Exception) {
+                    Timber.tag("GOG").w(e, "Failed to start hidden Comet helper for $appId")
+                }
+            }
+
+            if (preInstallCommands.isNotEmpty() && !launchingFinalGame) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
             } else {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
