@@ -6,11 +6,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -52,20 +54,31 @@ fun TouchGestureSettingsDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+        ),
     ) {
         Scaffold(
+            modifier = Modifier.fillMaxSize(),
             topBar = {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.gesture_settings_title)) },
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(R.string.gesture_settings_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, contentDescription = "Close")
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                         }
                     },
                     actions = {
-                        TextButton(onClick = { onSave(config) }) {
-                            Text(stringResource(android.R.string.ok))
+                        IconButton(onClick = { onSave(config) }) {
+                            Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                         }
                     },
                 )
@@ -75,145 +88,137 @@ fun TouchGestureSettingsDialog(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 8.dp),
+                    .verticalScroll(rememberScrollState()),
             ) {
                 // ── 1. Tap (fixed: Left Click) ──────────────────────────
-                OutlinedCard(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    SettingsSwitch(
-                        colors = settingsTileColorsAlt(),
-                        title = { Text(stringResource(R.string.gesture_tap)) },
-                        subtitle = { Text(stringResource(R.string.gesture_tap_subtitle)) },
-                        state = config.tapEnabled,
-                        onCheckedChange = { config = config.copy(tapEnabled = it) },
-                    )
-                }
+                SettingsSwitch(
+                    colors = settingsTileColorsAlt(),
+                    title = { Text(stringResource(R.string.gesture_tap)) },
+                    subtitle = { Text(stringResource(R.string.gesture_tap_subtitle)) },
+                    state = config.tapEnabled,
+                    onCheckedChange = { config = config.copy(tapEnabled = it) },
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
                 // ── 2. Drag (fixed: Drag Left Click) ────────────────────
-                OutlinedCard(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    SettingsSwitch(
-                        colors = settingsTileColorsAlt(),
-                        title = { Text(stringResource(R.string.gesture_drag)) },
-                        subtitle = { Text(stringResource(R.string.gesture_drag_subtitle)) },
-                        state = config.dragEnabled,
-                        onCheckedChange = { config = config.copy(dragEnabled = it) },
-                    )
-                }
+                SettingsSwitch(
+                    colors = settingsTileColorsAlt(),
+                    title = { Text(stringResource(R.string.gesture_drag)) },
+                    subtitle = { Text(stringResource(R.string.gesture_drag_subtitle)) },
+                    state = config.dragEnabled,
+                    onCheckedChange = { config = config.copy(dragEnabled = it) },
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
                 // ── 3. Long Press (customisable action + delay) ──────────
-                OutlinedCard(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    SettingsSwitch(
-                        colors = settingsTileColorsAlt(),
-                        title = { Text(stringResource(R.string.gesture_long_press)) },
-                        subtitle = { Text(mouseActionLabel(config.longPressAction)) },
-                        state = config.longPressEnabled,
-                        onCheckedChange = { config = config.copy(longPressEnabled = it) },
+                SettingsSwitch(
+                    colors = settingsTileColorsAlt(),
+                    title = { Text(stringResource(R.string.gesture_long_press)) },
+                    subtitle = { Text(mouseActionLabel(config.longPressAction)) },
+                    state = config.longPressEnabled,
+                    onCheckedChange = { config = config.copy(longPressEnabled = it) },
+                )
+                if (config.longPressEnabled) {
+                    SettingsListDropdown(
+                        colors = settingsTileColors(),
+                        title = { Text(stringResource(R.string.gesture_action_label)) },
+                        value = COMMON_MOUSE_ACTIONS.indexOf(config.longPressAction).coerceAtLeast(0),
+                        items = COMMON_MOUSE_ACTIONS.map { mouseActionLabel(it) },
+                        onItemSelected = { index ->
+                            config = config.copy(longPressAction = COMMON_MOUSE_ACTIONS[index])
+                        },
                     )
-                    if (config.longPressEnabled) {
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        SettingsListDropdown(
-                            colors = settingsTileColors(),
-                            title = { Text(stringResource(R.string.gesture_action_label)) },
-                            value = COMMON_MOUSE_ACTIONS.indexOf(config.longPressAction).coerceAtLeast(0),
-                            items = COMMON_MOUSE_ACTIONS.map { mouseActionLabel(it) },
-                            onItemSelected = { index ->
-                                config = config.copy(longPressAction = COMMON_MOUSE_ACTIONS[index])
-                            },
-                        )
-                        DelayTextField(
-                            label = stringResource(R.string.gesture_long_press_delay),
-                            value = config.longPressDelay,
-                            onValueChange = { config = config.copy(longPressDelay = it) },
-                        )
-                    }
+                    DelayTextField(
+                        label = stringResource(R.string.gesture_long_press_delay),
+                        value = config.longPressDelay,
+                        onValueChange = { config = config.copy(longPressDelay = it) },
+                    )
                 }
+
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
                 // ── 4. Double-Tap (fixed action, customisable delay) ─────
-                OutlinedCard(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    SettingsSwitch(
-                        colors = settingsTileColorsAlt(),
-                        title = { Text(stringResource(R.string.gesture_double_tap)) },
-                        subtitle = { Text(stringResource(R.string.gesture_double_tap_subtitle)) },
-                        state = config.doubleTapEnabled,
-                        onCheckedChange = { config = config.copy(doubleTapEnabled = it) },
+                SettingsSwitch(
+                    colors = settingsTileColorsAlt(),
+                    title = { Text(stringResource(R.string.gesture_double_tap)) },
+                    subtitle = { Text(stringResource(R.string.gesture_double_tap_subtitle)) },
+                    state = config.doubleTapEnabled,
+                    onCheckedChange = { config = config.copy(doubleTapEnabled = it) },
+                )
+                if (config.doubleTapEnabled) {
+                    DelayTextField(
+                        label = stringResource(R.string.gesture_double_tap_delay),
+                        value = config.doubleTapDelay,
+                        onValueChange = { config = config.copy(doubleTapDelay = it) },
                     )
-                    if (config.doubleTapEnabled) {
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        DelayTextField(
-                            label = stringResource(R.string.gesture_double_tap_delay),
-                            value = config.doubleTapDelay,
-                            onValueChange = { config = config.copy(doubleTapDelay = it) },
-                        )
-                    }
                 }
+
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
                 // ── 5. Two-Finger Drag (customisable action) ─────────────
-                OutlinedCard(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    SettingsSwitch(
-                        colors = settingsTileColorsAlt(),
-                        title = { Text(stringResource(R.string.gesture_two_finger_drag)) },
-                        subtitle = { Text(panActionLabel(config.twoFingerDragAction)) },
-                        state = config.twoFingerDragEnabled,
-                        onCheckedChange = { config = config.copy(twoFingerDragEnabled = it) },
+                SettingsSwitch(
+                    colors = settingsTileColorsAlt(),
+                    title = { Text(stringResource(R.string.gesture_two_finger_drag)) },
+                    subtitle = { Text(panActionLabel(config.twoFingerDragAction)) },
+                    state = config.twoFingerDragEnabled,
+                    onCheckedChange = { config = config.copy(twoFingerDragEnabled = it) },
+                )
+                if (config.twoFingerDragEnabled) {
+                    SettingsListDropdown(
+                        colors = settingsTileColors(),
+                        title = { Text(stringResource(R.string.gesture_action_label)) },
+                        value = PAN_ACTIONS.indexOf(config.twoFingerDragAction).coerceAtLeast(0),
+                        items = PAN_ACTIONS.map { panActionLabel(it) },
+                        onItemSelected = { index ->
+                            config = config.copy(twoFingerDragAction = PAN_ACTIONS[index])
+                        },
                     )
-                    if (config.twoFingerDragEnabled) {
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        SettingsListDropdown(
-                            colors = settingsTileColors(),
-                            title = { Text(stringResource(R.string.gesture_action_label)) },
-                            value = PAN_ACTIONS.indexOf(config.twoFingerDragAction).coerceAtLeast(0),
-                            items = PAN_ACTIONS.map { panActionLabel(it) },
-                            onItemSelected = { index ->
-                                config = config.copy(twoFingerDragAction = PAN_ACTIONS[index])
-                            },
-                        )
-                    }
                 }
+
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
                 // ── 6. Pinch In/Out (customisable action) ────────────────
-                OutlinedCard(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    SettingsSwitch(
-                        colors = settingsTileColorsAlt(),
-                        title = { Text(stringResource(R.string.gesture_pinch)) },
-                        subtitle = { Text(zoomActionLabel(config.pinchAction)) },
-                        state = config.pinchEnabled,
-                        onCheckedChange = { config = config.copy(pinchEnabled = it) },
+                SettingsSwitch(
+                    colors = settingsTileColorsAlt(),
+                    title = { Text(stringResource(R.string.gesture_pinch)) },
+                    subtitle = { Text(zoomActionLabel(config.pinchAction)) },
+                    state = config.pinchEnabled,
+                    onCheckedChange = { config = config.copy(pinchEnabled = it) },
+                )
+                if (config.pinchEnabled) {
+                    SettingsListDropdown(
+                        colors = settingsTileColors(),
+                        title = { Text(stringResource(R.string.gesture_action_label)) },
+                        value = ZOOM_ACTIONS.indexOf(config.pinchAction).coerceAtLeast(0),
+                        items = ZOOM_ACTIONS.map { zoomActionLabel(it) },
+                        onItemSelected = { index ->
+                            config = config.copy(pinchAction = ZOOM_ACTIONS[index])
+                        },
                     )
-                    if (config.pinchEnabled) {
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        SettingsListDropdown(
-                            colors = settingsTileColors(),
-                            title = { Text(stringResource(R.string.gesture_action_label)) },
-                            value = ZOOM_ACTIONS.indexOf(config.pinchAction).coerceAtLeast(0),
-                            items = ZOOM_ACTIONS.map { zoomActionLabel(it) },
-                            onItemSelected = { index ->
-                                config = config.copy(pinchAction = ZOOM_ACTIONS[index])
-                            },
-                        )
-                    }
                 }
 
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
                 // ── 7. Two-Finger Tap (customisable action) ──────────────
-                OutlinedCard(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    SettingsSwitch(
-                        colors = settingsTileColorsAlt(),
-                        title = { Text(stringResource(R.string.gesture_two_finger_tap)) },
-                        subtitle = { Text(mouseActionLabel(config.twoFingerTapAction)) },
-                        state = config.twoFingerTapEnabled,
-                        onCheckedChange = { config = config.copy(twoFingerTapEnabled = it) },
+                SettingsSwitch(
+                    colors = settingsTileColorsAlt(),
+                    title = { Text(stringResource(R.string.gesture_two_finger_tap)) },
+                    subtitle = { Text(mouseActionLabel(config.twoFingerTapAction)) },
+                    state = config.twoFingerTapEnabled,
+                    onCheckedChange = { config = config.copy(twoFingerTapEnabled = it) },
+                )
+                if (config.twoFingerTapEnabled) {
+                    SettingsListDropdown(
+                        colors = settingsTileColors(),
+                        title = { Text(stringResource(R.string.gesture_action_label)) },
+                        value = COMMON_MOUSE_ACTIONS.indexOf(config.twoFingerTapAction).coerceAtLeast(0),
+                        items = COMMON_MOUSE_ACTIONS.map { mouseActionLabel(it) },
+                        onItemSelected = { index ->
+                            config = config.copy(twoFingerTapAction = COMMON_MOUSE_ACTIONS[index])
+                        },
                     )
-                    if (config.twoFingerTapEnabled) {
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        SettingsListDropdown(
-                            colors = settingsTileColors(),
-                            title = { Text(stringResource(R.string.gesture_action_label)) },
-                            value = COMMON_MOUSE_ACTIONS.indexOf(config.twoFingerTapAction).coerceAtLeast(0),
-                            items = COMMON_MOUSE_ACTIONS.map { mouseActionLabel(it) },
-                            onItemSelected = { index ->
-                                config = config.copy(twoFingerTapAction = COMMON_MOUSE_ACTIONS[index])
-                            },
-                        )
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
