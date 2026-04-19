@@ -381,6 +381,42 @@ class StatsAchievementsGenerator {
         }
     }
 
+    /**
+     * Merges earned state from [result] into each directory in [gseSaveDirs] as a
+     * Goldberg-compatible achievements.json. Existing files are merged so that
+     * locally-earned achievements are never downgraded (earned: true → false).
+     */
+    fun writeGseAchievementFiles(result: ProcessingResult, gseSaveDirs: List<File>) {
+        for (gseDir in gseSaveDirs) {
+            try {
+                if (!gseDir.exists()) gseDir.mkdirs()
+                val achFile = File(gseDir, "achievements.json")
+                val existing = if (achFile.exists()) {
+                    try {
+                        org.json.JSONObject(achFile.readText(Charsets.UTF_8))
+                    } catch (e: Exception) {
+                        Timber.w(e, "Failed to parse existing GSE achievements.json in ${gseDir.absolutePath}, starting fresh")
+                        org.json.JSONObject()
+                    }
+                } else {
+                    org.json.JSONObject()
+                }
+                for (ach in result.achievements) {
+                    val entry = existing.optJSONObject(ach.name) ?: org.json.JSONObject()
+                    if (!entry.optBoolean("earned", false)) {
+                        entry.put("earned", ach.unlocked == true)
+                        entry.put("earned_time", ach.unlockTimestamp?.toLong() ?: 0L)
+                    }
+                    existing.put(ach.name, entry)
+                }
+                achFile.writeText(existing.toString(2), Charsets.UTF_8)
+                Timber.tag("GenerateAchievements").d("Wrote GSE save achievements.json to ${gseDir.absolutePath}")
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to write GSE save achievements.json to ${gseDir.absolutePath}")
+            }
+        }
+    }
+
     fun generateStatsAchievements(schema: ByteArray, configDirectory: String, achievementBlocks: List<AchievementBlocks>): ProcessingResult {
         val parsedSchema = parseSchema(schema)
         val result = applyEarnedState(parsedSchema, achievementBlocks)
