@@ -210,11 +210,18 @@ data class EnvVarInfo(
                 ),
             ),
             // Wine DLL overrides — user types freely or picks a common preset
-            // More common DLL overrides can be added in future. Only audio related for now
             "WINEDLLOVERRIDES" to EnvVarInfo(
                 identifier = "WINEDLLOVERRIDES",
                 selectionType = EnvVarSelectionType.SUGGESTIONS,
                 possibleValues = listOf(
+                    // Category header: Input
+                    "---Input",
+                    "dinput8=n,b;dinput=n,b",
+                    "xinput1_3=n,b;xinput1_4=n,b;xinput9_1_0=n,b",
+                    "xinput9_1_0=n,b;windows.gaming.input=n,b",
+                    "xinput1_1=n,b;xinput1_2=n,b",
+                    // Category header: Audio
+                    "---Audio",
                     "openal32=native,builtin",
                     "soft_oal=native",
                     "openal32=native,builtin;soft_oal=native",

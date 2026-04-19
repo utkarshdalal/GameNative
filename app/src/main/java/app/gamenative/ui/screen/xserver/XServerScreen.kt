@@ -2660,6 +2660,8 @@ private fun setupXEnvironment(
         // Set steam type for selecting appropriate box64rc
         guestProgramLauncherComponent.setSteamType(container.getSteamType())
 
+        // Auto-detect loose input DLLs and persist to container settings
+        ContainerUtils.autoApplyInputDllOverrides(container)
         envVars.putAll(container.envVars)
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
         val graphicsDriverConfig = KeyValueSet(container.getGraphicsDriverConfig())
@@ -3709,6 +3711,7 @@ private fun extractx86_64InputDlls(context: Context, container: Container) {
         Log.d("XServerDisplayActivity", "Extracting input dlls to " + wineFolder.getPath())
     } else Log.d("XServerDisplayActivity", "Wine version is not proton-9.0-x86_64, skipping input dlls extraction")
 }
+
 
 private fun setupWineSystemFiles(
     context: Context,
