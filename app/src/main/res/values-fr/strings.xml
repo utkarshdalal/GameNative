@@ -441,6 +441,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Enregistre un instantané du logcat uniquement pour le PID de cette application</string>
     <string name="settings_save_logcat_title">Enregistrer le logcat</string>
+    <string name="settings_achievement_show_notification">Afficher les notifications de succès</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Gestion des drapeaux sur les opcodes CALL/RET<br /><br />

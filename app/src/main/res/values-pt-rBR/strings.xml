@@ -1134,6 +1134,7 @@
     <!-- Adições de configurações -->
     <string name="settings_save_logcat_subtitle">Salva um snapshot do logcat apenas para o PID deste aplicativo</string>
     <string name="settings_save_logcat_title">Salvar logcat</string>
+    <string name="settings_achievement_show_notification">Mostrar notificações de conquistas</string>
 
     <!-- Adições diversas -->
     <string name="calculating_space_requirements">Calculando requisitos de espaço...</string>

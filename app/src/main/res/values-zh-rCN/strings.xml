@@ -439,6 +439,7 @@
     <!-- 设置 -->
     <string name="settings_save_logcat_subtitle">保存此应用 PID 的 logcat 快照</string>
     <string name="settings_save_logcat_title">保存 logcat</string>
+    <string name="settings_achievement_show_notification">显示成就通知</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         CALL/RET 操作码的标志处理方式<br /><br />

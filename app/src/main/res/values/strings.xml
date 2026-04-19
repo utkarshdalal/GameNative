@@ -461,7 +461,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Saves a snapshot of the logcat only for this app\'s PID</string>
     <string name="settings_save_logcat_title">Save logcat</string>
-
+    <string name="settings_achievement_show_notification">Show Achievement Notifications</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Handling of flags on CALL/RET opcodes<br /><br />
         <b>0</b> : Treats CALL/RET as if it never needed flags (faster, unstable)<br />

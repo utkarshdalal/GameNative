@@ -443,6 +443,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Salvează un snapshot al logcat doar pentru PID-ul acestei aplicații</string>
     <string name="settings_save_logcat_title">Salvează logcat</string>
+    <string name="settings_achievement_show_notification">Afișați notificările de realizări</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
             Gestionarea flag-urilor pentru opcode‑urile CALL/RET<br /><br />
             <b>0</b> : Tratează CALL/RET ca și cum nu ar avea nevoie de flag-uri (mai rapid, instabil)<br />

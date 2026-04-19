@@ -429,6 +429,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Speichert einen Logcat-Snapshot nur für diese App</string>
     <string name="settings_save_logcat_title">Logcat speichern</string>
+    <string name="settings_achievement_show_notification">Errungenschaften-Benachrichtigungen anzeigen</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Behandlung von Flags bei CALL/RET-Befehlen<br /><br />
         <b>0</b> : Behandelt CALL/RET als ob nie Flags benötigt werden (schneller, instabil)<br />

@@ -85,7 +85,10 @@ class AchievementWatcher(
                 hasNewUnlocks = true
                 val displayName = displayNameMap[name] ?: name
                 val iconUrl = iconUrlMap[name]
-                AchievementNotificationManager.show(displayName, iconUrl)
+
+                if(PrefManager.achievementShowNotification) {
+                    AchievementNotificationManager.show(displayName, iconUrl)
+                }
                 Timber.tag("achievements").i("Achievement unlocked: $name ($displayName)")
             }
         } catch (e: Exception) {

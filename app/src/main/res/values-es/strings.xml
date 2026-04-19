@@ -489,6 +489,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Guarda una instantánea del logcat solo para el PID de esta aplicación.</string>
     <string name="settings_save_logcat_title">Guardar logcat</string>
+    <string name="settings_achievement_show_notification">Mostrar notificaciones de logros</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Manejo de banderas en opcodes CALL/RET<br /><br />
