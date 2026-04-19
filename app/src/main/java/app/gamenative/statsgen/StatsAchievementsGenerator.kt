@@ -1,6 +1,7 @@
 package app.gamenative.statsgen
 
 import java.io.File
+import timber.log.Timber
 
 class StatsAchievementsGenerator {
     private val vdfParser = VdfParser()
@@ -192,6 +193,10 @@ class StatsAchievementsGenerator {
                 outputAch["progress"] = ach.progress
             }
 
+            if(ach.unlocked == true){ 
+                Timber.tag("ach").i("Achievement ${ach.name} is unlocked: ${ach.unlocked}, unlockTimestamp: ${ach.unlockTimestamp}, formattedUnlockTime: ${ach.formattedUnlockTime}")
+            }
+
             ach.unlocked?.let { outputAch["earned"] = it }
             ach.unlockTimestamp?.let { outputAch["earned_time"] = it }
             ach.formattedUnlockTime?.let { outputAch["formattedUnlockTime"] = it }
@@ -257,7 +262,7 @@ class StatsAchievementsGenerator {
 
             val orderedKeys = listOf(
                 "hidden", "displayName", "description", "icon", "icon_gray", "name",
-                "unlocked", "unlockTimestamp", "formattedUnlockTime",
+                "earned", "earned_time", "formattedUnlockTime",
             )
 
             for ((index, ach) in outputAchievements.withIndex()) {
@@ -290,10 +295,10 @@ class StatsAchievementsGenerator {
                                     jsonBuilder.append("\"$escapedText\"")
                                 }
                             }
-                            "hidden", "unlockTimestamp" -> {
+                            "hidden", "earned_time" -> {
                                 jsonBuilder.append("    \"$key\": $value")
                             }
-                            "unlocked" -> {
+                            "earned" -> {
                                 jsonBuilder.append("    \"$key\": ${value.toString().lowercase()}")
                             }
                             else -> {
