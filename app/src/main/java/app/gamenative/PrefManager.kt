@@ -52,6 +52,11 @@ object PrefManager {
     private lateinit var dataStore: DataStore<Preferences>
 
     fun init(context: Context) {
+        // Pre-create the datastore directory so DataStore doesn't throw FileNotFoundException
+        // (ENOENT) on first launch before the directory exists — DataStore 1.1.x bug on
+        // some Android 13 devices where the missing-file path isn't handled gracefully.
+        runCatching { context.applicationContext.filesDir.resolve("datastore").mkdirs() }
+
         dataStore = context.datastore
 
         // Note: Should remove after a few release versions. we've moved to encrypted values.
@@ -120,7 +125,15 @@ object PrefManager {
 
     @Suppress("SameParameterValue")
     private fun <T> getPref(key: Preferences.Key<T>, defaultValue: T): T = runBlocking {
-        dataStore.data.first()[key] ?: defaultValue
+        try {
+            dataStore.data.first()[key] ?: defaultValue
+        } catch (e: Exception) {
+            // DataStore 1.1.x bug: on some Android 13 devices a missing preferences file
+            // propagates as FileNotFoundException instead of returning emptyPreferences().
+            // Return the default so the app doesn't crash on a fresh install.
+            Timber.w(e, "PrefManager: failed to read pref '${key.name}', returning default")
+            defaultValue
+        }
     }
 
     @Suppress("SameParameterValue")

@@ -38,6 +38,9 @@ object PrefManager {
     @JvmStatic
     fun init(context: Context) {
         if (dataStore == null) {
+            // Pre-create the datastore directory so DataStore doesn't throw FileNotFoundException
+            // (ENOENT) on first launch — DataStore 1.1.x bug on some Android 13 devices.
+            runCatching { context.applicationContext.filesDir.resolve("datastore").mkdirs() }
             dataStore = context.datastore
         }
     }
@@ -66,7 +69,14 @@ object PrefManager {
     }
 
     private fun <T> getPref(key: Preferences.Key<T>, defaultValue: T): T = runBlocking {
-        dataStore!!.data.first()[key] ?: defaultValue
+        try {
+            dataStore!!.data.first()[key] ?: defaultValue
+        } catch (e: Exception) {
+            // DataStore 1.1.x bug: missing file can propagate as FileNotFoundException
+            // instead of returning emptyPreferences() on some Android 13 devices.
+            Timber.w(e, "WinlatorPrefManager: failed to read pref '${key.name}', returning default")
+            defaultValue
+        }
     }
 
     private fun <T> setPref(key: Preferences.Key<T>, value: T): CompletableFuture<Unit> {
