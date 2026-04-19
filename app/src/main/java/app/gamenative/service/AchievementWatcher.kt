@@ -9,6 +9,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import app.gamenative.PrefManager
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File

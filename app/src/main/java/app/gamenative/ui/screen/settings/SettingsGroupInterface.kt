@@ -217,7 +217,8 @@ fun SettingsGroupInterface(
             title = { Text(text = stringResource(R.string.settings_achievement_show_notification)) },
             state = showAchievementNotifications,
             onCheckedChange = {
-                PrefManager.showAchievementNotifications = it
+                showAchievementNotifications = it
+                PrefManager.achievementShowNotification = it
             },
         )
         // Achievement notification position
