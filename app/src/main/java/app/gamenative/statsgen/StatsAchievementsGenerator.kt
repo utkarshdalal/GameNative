@@ -225,10 +225,6 @@ class StatsAchievementsGenerator {
                 outputAch["progress"] = ach.progress
             }
 
-            if(ach.unlocked == true){ 
-                Timber.tag("ach").i("Achievement ${ach.name} is unlocked: ${ach.unlocked}, unlockTimestamp: ${ach.unlockTimestamp}, formattedUnlockTime: ${ach.formattedUnlockTime}")
-            }
-
             ach.unlocked?.let { outputAch["earned"] = it }
             ach.unlockTimestamp?.let { outputAch["earned_time"] = it }
             ach.formattedUnlockTime?.let { outputAch["formattedUnlockTime"] = it }
