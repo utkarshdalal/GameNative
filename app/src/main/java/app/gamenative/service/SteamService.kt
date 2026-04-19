@@ -2853,10 +2853,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()
             val schemaArray = userStats.schema.toByteArray()
             val generator = StatsAchievementsGenerator()
-
-            val parsed = generator.parseSchema(schemaArray)
-            val result = generator.applyEarnedState(parsed, userStats.achievementBlocks ?: emptyList())
-            generator.writeConfigFiles(result, configDirectory)
+            val result = generator.generateStatsAchievements(schemaArray, configDirectory, userStats.achievementBlocks ?: emptyList())
 
             cachedAchievements = result.achievements
             cachedAchievementsAppId = appId

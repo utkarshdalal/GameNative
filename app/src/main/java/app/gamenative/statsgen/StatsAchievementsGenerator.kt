@@ -381,8 +381,9 @@ class StatsAchievementsGenerator {
         }
     }
 
-    fun generateStatsAchievements(schema: ByteArray, configDirectory: String): ProcessingResult {
-        val result = parseSchema(schema)
+    fun generateStatsAchievements(schema: ByteArray, configDirectory: String, achievementBlocks: List<AchievementBlocks>): ProcessingResult {
+        val parsedSchema = parseSchema(schema)
+        val result = applyEarnedState(parsedSchema, achievementBlocks)
         writeConfigFiles(result, configDirectory)
         return result
     }
