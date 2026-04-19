@@ -2858,7 +2858,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             cachedAchievements = result.achievements
             cachedAchievementsAppId = appId
 
-            // Create AchievementFile for each GSE save directory so that they can be unlocked by Goldberg
+            // Create AchievementFile for each GSE save directory so that they can be tracked by goldberg
             generator.writeGseAchievementFiles(result, getGseSaveDirs(instance!!, appId))
 
             val nameToBlockBit = result.nameToBlockBit
