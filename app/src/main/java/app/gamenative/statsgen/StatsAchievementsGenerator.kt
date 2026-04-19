@@ -1,5 +1,6 @@
 package app.gamenative.statsgen
 
+import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.AchievementBlocks
 import java.io.File
 import timber.log.Timber
 
@@ -158,6 +159,37 @@ class StatsAchievementsGenerator {
             copyDefaultLockedImg = achievementsOut.any { it.iconGray.isNullOrEmpty() },
             nameToBlockBit = nameToBlockBit,
         )
+    }
+
+    /**
+     * Merges earned state from the raw [achievementBlocks] (from [UserStatsCallback.achievementBlocks])
+     * into the parsed [result] using the [ProcessingResult.nameToBlockBit] map produced by [parseSchema].
+     *
+     * Each achievement's (blockId, bitIndex) is looked up in the raw blocks to retrieve its
+     * individual unlock timestamp, avoiding the bitIndex=0 bug present in getExpandedAchievements().
+     */
+    fun applyEarnedState(
+        result: ProcessingResult,
+        achievementBlocks: List<AchievementBlocks>,
+    ): ProcessingResult {
+        if (achievementBlocks.isEmpty()) return result
+
+        // blockId -> ordered list of unlock timestamps (one per bit, 0 = locked)
+        val blockUnlockTimes: Map<Int, List<Int>> = achievementBlocks.associate { block ->
+            block.achievementId to block.unlockTime
+        }
+
+        val enriched = result.achievements.map { ach ->
+            val (blockId, bitIndex) = result.nameToBlockBit[ach.name] ?: return@map ach
+            val unlockTimes = blockUnlockTimes[blockId] ?: return@map ach.copy(unlocked = false)
+            val timestamp = unlockTimes.getOrElse(bitIndex) { 0 }
+            if (timestamp != 0) {
+                ach.copy(unlocked = true, unlockTimestamp = timestamp)
+            } else {
+                ach.copy(unlocked = false)
+            }
+        }
+        return result.copy(achievements = enriched)
     }
 
     fun writeConfigFiles(result: ProcessingResult, configDirectory: String) {
