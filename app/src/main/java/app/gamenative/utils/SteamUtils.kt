@@ -37,7 +37,9 @@ import timber.log.Timber
 import okhttp3.*
 import org.json.JSONObject
 import java.net.URLEncoder
+import java.nio.file.attribute.FileTime
 import java.util.concurrent.TimeUnit
+import kotlin.io.path.setLastModifiedTime
 
 object SteamUtils {
 
@@ -921,18 +923,22 @@ object SteamUtils {
                 try {
                     Files.createDirectories(targetFile.parent)
 
+                    val fileTimestamp = file.lastModified()
+
                     // As Files.move use linux rename syscall (or simply mv command we know, no need to manually remove the target file)
                     Files.move(
                         file.toPath(),
                         targetFile,
                         StandardCopyOption.REPLACE_EXISTING,
-                        StandardCopyOption.COPY_ATTRIBUTES, // Preserve file attributes like timestamp and permission
                         StandardCopyOption.ATOMIC_MOVE   // will throw if the FS can’t guarantee atomicity
                     )
 
+                    // Preserve file timestamp
+                    targetFile.setLastModifiedTime(FileTime.fromMillis(fileTimestamp))
+
                     Timber.tag("migrateGSESavesToSteamUserdata").i("Migrated ${file.name} from GSE saves to Steam userdata")
                     migratedCount++
-                } catch (e: IOException) {
+                } catch (e: Exception) {
                     migrationFailed = true
                     Timber.tag("migrateGSESavesToSteamUserdata").w(e, "Failed to migrate ${file.name}")
                 }

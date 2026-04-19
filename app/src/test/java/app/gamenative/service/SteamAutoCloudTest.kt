@@ -2168,5 +2168,85 @@ class SteamAutoCloudTest {
         assertEquals(SyncResult.Success, result!!.syncResult)
         assertTrue("Should have downloaded files", result.filesDownloaded > 0)
     }
+
+    // ── Scenario 16: DB cache wiped by destructive migration, local == remote ──
+    // Repro of the "every steam game reports conflict post-update" bug. When
+    // fallbackToDestructiveMigration wipes file_change_lists but local save files
+    // are byte-identical to the cloud manifest, we must rehydrate the cache
+    // silently and NOT show a conflict dialog.
+    @Test
+    fun dbCleared_localMatchesRemote_rehydratesSilently_noConflict() = runBlocking {
+        db.appChangeNumbersDao().deleteByAppId(steamAppId)
+        db.appFileChangeListsDao().deleteByAppId(steamAppId)
+
+        // the 5 files created in setUp() — cloud manifest must match exactly.
+        // local scan basePath = %WinMyDocuments%/My Games/TestGame/Steam/{id},
+        // files live under SaveGames/ → filename (relativized) includes that prefix.
+        val localFiles = mapOf(
+            "SaveGames/AutoSaveData.sav" to "autosave content".toByteArray(),
+            "SaveGames/SaveData_0.sav" to "savedata0 content".toByteArray(),
+            "SaveGames/ContinueSaveData.sav" to "continue content".toByteArray(),
+            "SaveGames/SaveData_1.sav" to "savedata1 content".toByteArray(),
+            "SaveGames/SystemData_0.sav" to "systemdata content".toByteArray(),
+        )
+
+        assertTrue("Precondition: local save files exist", saveFilesDir.listFiles()!!.isNotEmpty())
+
+        val cloudFiles = localFiles.map { (name, content) ->
+            val m = mock<AppFileInfo>()
+            whenever(m.filename).thenReturn(name)
+            whenever(m.shaFile).thenReturn(sha1(content))
+            whenever(m.pathPrefixIndex).thenReturn(0)
+            whenever(m.timestamp).thenReturn(Date())
+            whenever(m.rawFileSize).thenReturn(content.size)
+            m
+        }
+
+        val cloudFileChangeList = makeCloudFileChangeList(
+            cloudChangeNumber = 5,
+            files = cloudFiles,
+            pathPrefixes = listOf("%WinMyDocuments%/My Games/TestGame/Steam/76561198025127569"),
+        )
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(cloudFileChangeList)
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(
+            "local matches remote exactly — should be UpToDate, not Conflict",
+            SyncResult.UpToDate,
+            result!!.syncResult,
+        )
+        assertNull(
+            "no conflict dialog — conflictUfsVersion must be null",
+            result.conflictUfsVersion,
+        )
+        assertEquals("no downloads", 0, result.filesDownloaded)
+        assertEquals("no uploads", 0, result.filesUploaded)
+
+        // cache must be rehydrated so next launch doesn't trip the same path
+        val rehydrated = db.appFileChangeListsDao().getByAppId(steamAppId)
+        assertNotNull("cache should be rehydrated", rehydrated)
+        assertEquals(
+            "rehydrated cache should contain all 5 local files",
+            5,
+            rehydrated!!.userFileInfo.size,
+        )
+        val rehydratedCn = db.appChangeNumbersDao().getByAppId(steamAppId)
+        assertEquals(
+            "rehydrated change number should match cloud",
+            5L,
+            rehydratedCn!!.changeNumber,
+        )
+    }
 }
 

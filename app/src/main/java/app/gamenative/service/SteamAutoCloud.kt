@@ -881,21 +881,52 @@ object SteamAutoCloud {
                     }.inWholeMicroseconds
 
                     val hasUncachedLocalFiles = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty()
+                    var rehydratedSilently = false
                     if (hasUncachedLocalFiles) {
-                        if (localAppChangeNumber < 0) {
-                            // first offline play: never synced, no cache, but local
-                            // files exist — cloud would silently overwrite them
-                            hasLocalChanges = true
-                            conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                        // no cache but local files exist. before declaring conflict,
+                        // check if local state is byte-identical to remote — this is
+                        // the "cache-wiped by destructive migration, nothing actually
+                        // changed" case and should be silent. key by absolute filesystem
+                        // path: cloud stores files as (pathPrefixIndex, basename) while
+                        // local scan stores filename as subdir-relative path with a
+                        // single pattern prefix, so basename-only keys won't match for
+                        // nested files.
+                        // windows paths are case-insensitive; steam cloud and wine may
+                        // disagree on case. lowercase the keys so content-identical
+                        // files compare equal regardless.
+                        val localByPath = allLocalUserFiles.associate {
+                            it.getAbsPath(prefixToPath).toString().lowercase() to it.sha
+                        }
+                        val remoteByPath = appFileListChange.files.associate {
+                            getFullFilePath(it, appFileListChange).toString().lowercase() to it.shaFile
+                        }
+                        val localMatchesRemote = localByPath.keys == remoteByPath.keys &&
+                            localByPath.all { (path, sha) ->
+                                sha.contentEquals(remoteByPath[path])
+                            }
+
+                        if (localMatchesRemote) {
+                            Timber.i("Cache absent but local matches remote — rehydrating cache silently")
+                            with(steamInstance) {
+                                db.withTransaction {
+                                    fileChangeListsDao.insert(appInfo.id, allLocalUserFiles)
+                                    changeNumbersDao.insert(appInfo.id, cloudAppChangeNumber)
+                                }
+                            }
+                            syncResult = SyncResult.UpToDate
+                            filesManaged = allLocalUserFiles.size
+                            rehydratedSilently = true
                         } else {
-                            // app update cleared the cache but a prior sync was
-                            // recorded — can't tell if local files changed
                             hasLocalChanges = true
                             conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                            remoteTimestamp = appFileListChange.files.map { it.timestamp.time }.maxOrNull() ?: 0L
+                            localTimestamp = allLocalUserFiles.map { it.timestamp }.maxOrNull() ?: 0L
                         }
                     }
 
-                    if (!hasLocalChanges) {
+                    if (rehydratedSilently) {
+                        // nothing to do — cache is now consistent with cloud
+                    } else if (!hasLocalChanges) {
                         // we can safely download the new changes since no changes have been
                         // made locally
 

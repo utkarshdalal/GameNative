@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.QuestionMark
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -110,6 +111,13 @@ private fun getBadgeStyle(status: GameCompatibilityStatus): BadgeStyle {
             backgroundColor = colors.compatibilityBadBackground.copy(alpha = 0.9f),
             iconTint = colors.compatibilityBad,
             labelResId = R.string.library_not_compatible,
+        )
+
+        GameCompatibilityStatus.RECOMMENDED -> BadgeStyle(
+            icon = Icons.Rounded.Star,
+            backgroundColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+            iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+            labelResId = R.string.recommended_badge,
         )
     }
 }

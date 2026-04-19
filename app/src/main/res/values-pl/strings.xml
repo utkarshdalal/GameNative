@@ -903,6 +903,8 @@
     <string name="settings_info_libraries_subtitle">Zobacz, jakie technologie umożliwiają działanie GameNative</string>
     <string name="settings_info_privacy_title">Polityka prywatności</string>
     <string name="settings_info_privacy_subtitle">Otwiera link do polityki prywatności GameNative</string>
+    <string name="settings_info_usage_analytics_title">Analityka użytkowania</string>
+    <string name="settings_info_usage_analytics_subtitle">Nigdy nie śledzimy danych osobowych. Wyłączenie tego zatrzymuje nieistotne analizy, jednak podstawowe dane o wydajności gier są nadal zbierane jako uzasadniony interes w celu poprawy kompatybilności.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfejs</string>
@@ -1367,4 +1369,19 @@
     <string name="workshop_processing">Przetwarzanie modów…</string>
     <string name="workshop_failed_count">Nie udało się zaktualizować %1$d modów z Warsztatu</string>
     <string name="workshop_download_failed">Pobieranie nie powiodło się</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Polecane</string>
+    <string name="recommended_buy_button">Zobacz grę</string>
+    <string name="recommended_support_message">Zakup przez ten link pomaga wspierać rozwój GameNative.</string>
+    <string name="recommended_about_heading">O tej grze</string>
+    <string name="recommended_review_count">Na podstawie %1$s recenzji</string>
+    <string name="review_overwhelmingly_positive">Przytłaczająco pozytywne</string>
+    <string name="review_very_positive">Bardzo pozytywne</string>
+    <string name="review_mostly_positive">W większości pozytywne</string>
+    <string name="review_mixed">Mieszane</string>
+    <string name="review_mostly_negative">W większości negatywne</string>
+    <string name="review_overwhelmingly_negative">Przytłaczająco negatywne</string>
+    <string name="settings_interface_show_recommendations_title">Pokaż rekomendacje gier</string>
+    <string name="settings_interface_show_recommendations_subtitle">Wyświetla wyselekcjonowane gry indie w twojej bibliotece. Pozostawienie tego włączonego wspiera niezależnych deweloperów i GameNative.</string>
 </resources>

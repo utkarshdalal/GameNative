@@ -878,6 +878,8 @@
     <string name="settings_info_libraries_subtitle">See what technologies make GameNative possible</string>
     <string name="settings_info_privacy_title">Privacy Policy</string>
     <string name="settings_info_privacy_subtitle">Opens a link to GameNative\'s privacy policy</string>
+    <string name="settings_info_usage_analytics_title">Usage analytics</string>
+    <string name="settings_info_usage_analytics_subtitle">We never track personal information. Disabling this stops non-essential analytics, however core game performance data is still collected as a legitimate interest to improve compatibility.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>
@@ -1395,4 +1397,19 @@
     <string name="workshop_processing">Processing mods…</string>
     <string name="workshop_failed_count">%1$d workshop mod(s) failed to update</string>
     <string name="workshop_download_failed">Download failed</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Recommended</string>
+    <string name="recommended_buy_button">Check It Out</string>
+    <string name="recommended_support_message">Purchasing through this link helps support the development of GameNative.</string>
+    <string name="recommended_about_heading">About This Game</string>
+    <string name="recommended_review_count">Based on %1$s reviews</string>
+    <string name="review_overwhelmingly_positive">Overwhelmingly Positive</string>
+    <string name="review_very_positive">Very Positive</string>
+    <string name="review_mostly_positive">Mostly Positive</string>
+    <string name="review_mixed">Mixed</string>
+    <string name="review_mostly_negative">Mostly Negative</string>
+    <string name="review_overwhelmingly_negative">Overwhelmingly Negative</string>
+    <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
+    <string name="settings_interface_show_recommendations_subtitle">Show curated indie game picks in your library. Keeping this on helps support indie developers and GameNative.</string>
 </resources>

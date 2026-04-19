@@ -715,6 +715,8 @@
     <string name="settings_info_libraries_subtitle">Se hvilke teknologier der gør GameNative mulig</string>
     <string name="settings_info_privacy_title">Privatlivspolitik</string>
     <string name="settings_info_privacy_subtitle">Åbner et link til GameNatives privatlivspolitik</string>
+    <string name="settings_info_usage_analytics_title">Brugsanalyse</string>
+    <string name="settings_info_usage_analytics_subtitle">Vi sporer aldrig personlige oplysninger. Deaktivering stopper ikke-essentiel analyse, men grundlæggende spilydelsesdata indsamles stadig som en berettiget interesse for at forbedre kompatibilitet.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Grænseflade</string>
@@ -1234,4 +1236,19 @@
     <string name="workshop_processing">Behandler mods…</string>
     <string name="workshop_failed_count">%1$d workshop-mod(s) kunne ikke opdateres</string>
     <string name="workshop_download_failed">Download mislykkedes</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Anbefalet</string>
+    <string name="recommended_buy_button">Se spillet</string>
+    <string name="recommended_support_message">Køb via dette link hjælper med at støtte udviklingen af GameNative.</string>
+    <string name="recommended_about_heading">Om dette spil</string>
+    <string name="recommended_review_count">Baseret på %1$s anmeldelser</string>
+    <string name="review_overwhelmingly_positive">Overvældende positiv</string>
+    <string name="review_very_positive">Meget positiv</string>
+    <string name="review_mostly_positive">Overvejende positiv</string>
+    <string name="review_mixed">Blandet</string>
+    <string name="review_mostly_negative">Overvejende negativ</string>
+    <string name="review_overwhelmingly_negative">Overvældende negativ</string>
+    <string name="settings_interface_show_recommendations_title">Vis spilanbefalinger</string>
+    <string name="settings_interface_show_recommendations_subtitle">Vis udvalgte indie-spil i dit bibliotek. At holde dette aktiveret hjælper med at støtte indie-udviklere og GameNative.</string>
 </resources>

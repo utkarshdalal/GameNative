@@ -36,7 +36,6 @@ import com.winlator.fexcore.FEXCorePresetManager;
 import com.winlator.sysvshm.SysVSHMConnectionHandler;
 import com.winlator.sysvshm.SysVSHMRequestHandler;
 import com.winlator.sysvshm.SysVSharedMemory;
-import com.winlator.winhandler.WinHandler;
 import com.winlator.xconnector.UnixSocketConfig;
 import com.winlator.xconnector.XConnectorEpoll;
 import com.winlator.xenvironment.ImageFs;
@@ -179,9 +178,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     private int execGuestProgram() {
 
-        // Always pre-create all 4 mem files so controllers can be hot-plugged during gameplay.
-        // Unused gamepads just read zeroes (no-op in evshim).
-        final int enabledPlayerCount = WinHandler.MAX_PLAYERS;
+        final int MAX_PLAYERS = 1; // old static method
+
+        // Get the number of enabled players directly from ControllerManager.
+        final int enabledPlayerCount = MAX_PLAYERS;
         for (int i = 0; i < enabledPlayerCount; i++) {
             String memPath;
             if (i == 0) {

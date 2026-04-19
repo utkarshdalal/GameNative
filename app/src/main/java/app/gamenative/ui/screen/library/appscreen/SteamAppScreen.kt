@@ -458,10 +458,12 @@ class SteamAppScreen : BaseAppScreen() {
     ) {
         val gameId = libraryItem.gameId
         val appInfo = SteamService.getAppInfoOf(gameId)
-        PostHog.capture(
-            event = "container_opened",
-            properties = mapOf("game_name" to (appInfo?.name ?: "")),
-        )
+        if (PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(
+                event = "container_opened",
+                properties = mapOf("game_name" to (appInfo?.name ?: "")),
+            )
+        }
         super.onRunContainerClick(context, libraryItem, onClickPlay)
     }
 
@@ -752,10 +754,12 @@ class SteamAppScreen : BaseAppScreen() {
             AppMenuOption(
                 AppOptionMenuType.ForceCloudSync,
                 onClick = {
-                    PostHog.capture(
-                        event = "cloud_sync_forced",
-                        properties = mapOf("game_name" to appInfo.name),
-                    )
+                    if (PrefManager.usageAnalyticsEnabled) {
+                        PostHog.capture(
+                            event = "cloud_sync_forced",
+                            properties = mapOf("game_name" to appInfo.name),
+                        )
+                    }
                     CoroutineScope(Dispatchers.IO).launch {
                         SnackbarManager.show(context.getString(R.string.library_cloud_sync_starting))
 

@@ -890,6 +890,8 @@
     <string name="settings_info_libraries_subtitle">Voir les technologies qui rendent GameNative possible</string>
     <string name="settings_info_privacy_title">Politique de confidentialité</string>
     <string name="settings_info_privacy_subtitle">Ouvre un lien vers la politique de confidentialité de GameNative</string>
+    <string name="settings_info_usage_analytics_title">Analyses d\'utilisation</string>
+    <string name="settings_info_usage_analytics_subtitle">Nous ne collectons jamais de données personnelles. La désactivation arrête les analyses non essentielles, cependant les données de performance de jeu sont toujours collectées dans le cadre d\'un intérêt légitime pour améliorer la compatibilité.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>
@@ -1364,4 +1366,19 @@
     <string name="workshop_processing">Traitement des mods…</string>
     <string name="workshop_failed_count">%1$d mod(s) Workshop n\'ont pas pu être mis à jour</string>
     <string name="workshop_download_failed">Échec du téléchargement</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Recommandé</string>
+    <string name="recommended_buy_button">Voir le jeu</string>
+    <string name="recommended_support_message">Acheter via ce lien aide à soutenir le développement de GameNative.</string>
+    <string name="recommended_about_heading">À propos de ce jeu</string>
+    <string name="recommended_review_count">Basé sur %1$s avis</string>
+    <string name="review_overwhelmingly_positive">Extrêmement positif</string>
+    <string name="review_very_positive">Très positif</string>
+    <string name="review_mostly_positive">Plutôt positif</string>
+    <string name="review_mixed">Mitigé</string>
+    <string name="review_mostly_negative">Plutôt négatif</string>
+    <string name="review_overwhelmingly_negative">Extrêmement négatif</string>
+    <string name="settings_interface_show_recommendations_title">Afficher les recommandations de jeux</string>
+    <string name="settings_interface_show_recommendations_subtitle">Affiche des jeux indés sélectionnés dans votre bibliothèque. Garder cette option activée aide à soutenir les développeurs indés et GameNative.</string>
 </resources>

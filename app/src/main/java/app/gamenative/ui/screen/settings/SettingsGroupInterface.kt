@@ -288,6 +288,28 @@ fun SettingsGroupInterface(
             },
         )
 
+        var showRecommendations by rememberSaveable { mutableStateOf(PrefManager.showRecommendations) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_show_recommendations_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_show_recommendations_subtitle)) },
+            state = showRecommendations,
+            onCheckedChange = {
+                showRecommendations = it
+                PrefManager.showRecommendations = it
+                PluviaApp.events.emit(AndroidEvent.RecommendationToggleChanged)
+                if (PrefManager.usageAnalyticsEnabled) {
+                    com.posthog.PostHog.capture(
+                        event = "\$set",
+                        properties = mapOf("\$set" to mapOf("recommendation_enabled" to it)),
+                    )
+                    if (!it) {
+                        com.posthog.PostHog.capture("recommendation_disabled")
+                    }
+                }
+            },
+        )
+
         // Language selection
         SettingsMenuLink(
             colors = settingsTileColorsAlt(),

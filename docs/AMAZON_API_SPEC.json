@@ -1,0 +1,1195 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Amazon Games API",
+    "description": "REST API specification for Amazon Games platform integration including device authentication, library entitlements, game downloads, and update checks. Based on GameNative implementation.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "GameNative",
+      "url": "https://github.com/GameNative"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.amazon.com",
+      "description": "Amazon Auth API \u2014 device registration, token refresh, deregistration"
+    },
+    {
+      "url": "https://gaming.amazon.com",
+      "description": "Amazon Gaming Distribution API \u2014 entitlements, download specs, version checks"
+    },
+    {
+      "url": "https://www.amazon.com",
+      "description": "Amazon Web \u2014 OAuth2/OpenID sign-in flow"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Device registration, token refresh, and deregistration via api.amazon.com. Uses PKCE device auth flow with device type A2UMVHOX7UP4V7."
+    },
+    {
+      "name": "OAuth",
+      "description": "OAuth2/OpenID Connect sign-in initiation via www.amazon.com. Redirects user to Amazon login page and returns an authorization code."
+    },
+    {
+      "name": "Library",
+      "description": "Game entitlement listing via gaming.amazon.com. Paginated with maxResults=50."
+    },
+    {
+      "name": "Downloads",
+      "description": "Game download spec retrieval and version checking via gaming.amazon.com. Returns time-limited downloadUrl used to fetch manifest and file content from the CDN."
+    },
+    {
+      "name": "CDN",
+      "description": "Game content delivery. Base URL is the dynamic downloadUrl returned by GetGameDownload. Manifest at /manifest.proto (binary protobuf), files at /files/{hashHex} keyed by SHA-256 hash. No explicit auth header \u2014 authentication is embedded in the downloadUrl itself."
+    }
+  ],
+  "paths": {
+    "/ap/signin": {
+      "get": {
+        "tags": [
+          "OAuth"
+        ],
+        "summary": "Initiate OAuth2/OpenID sign-in",
+        "description": "Initiates the Amazon OpenID Connect + OAuth 2.0 device auth flow. Redirects user to Amazon login page. After successful login, Amazon returns an authorization code in the callback URL. Client uses PKCE (S256) for security. The returned code is passed to POST /auth/register for device registration.",
+        "operationId": "initiateOAuth",
+        "servers": [
+          {
+            "url": "https://www.amazon.com"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "openid.ns",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "http://specs.openid.net/auth/2.0"
+            }
+          },
+          {
+            "name": "openid.claimed_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "http://specs.openid.net/auth/2.0/identifier_select"
+            }
+          },
+          {
+            "name": "openid.identity",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "http://specs.openid.net/auth/2.0/identifier_select"
+            }
+          },
+          {
+            "name": "openid.mode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "checkid_setup"
+            }
+          },
+          {
+            "name": "openid.oa2.scope",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "device_auth_access"
+            }
+          },
+          {
+            "name": "openid.ns.oa2",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "http://www.amazon.com/ap/ext/oauth/2"
+            }
+          },
+          {
+            "name": "openid.oa2.response_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "code"
+            }
+          },
+          {
+            "name": "openid.oa2.code_challenge_method",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "S256"
+            }
+          },
+          {
+            "name": "openid.oa2.client_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Format: device:<hex_encoded_deviceSerial#A2UMVHOX7UP4V7>"
+          },
+          {
+            "name": "openid.oa2.code_challenge",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Base64url-encoded SHA-256 of the PKCE code_verifier"
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "en_US"
+            }
+          },
+          {
+            "name": "marketPlaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "ATVPDKIKX0DER"
+            }
+          },
+          {
+            "name": "openid.return_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "https://www.amazon.com"
+            }
+          },
+          {
+            "name": "openid.pape.max_auth_age",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          },
+          {
+            "name": "openid.ns.pape",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "http://specs.openid.net/extensions/pape/1.0"
+            }
+          },
+          {
+            "name": "openid.assoc_handle",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "amzn_sonic_games_launcher"
+            }
+          },
+          {
+            "name": "pageId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "amzn_sonic_games_launcher"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "HTML Amazon login page"
+          },
+          "302": {
+            "description": "Redirect to openid.return_to with authorization code in query params after successful login"
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Register device and obtain tokens",
+        "description": "Registers a device using a PKCE authorization code obtained from the OAuth sign-in flow. Returns Bearer access and refresh tokens. Uses device type A2UMVHOX7UP4V7. client_id is hex-encoded deviceSerial#DEVICE_TYPE.",
+        "operationId": "registerDevice",
+        "servers": [
+          {
+            "url": "https://api.amazon.com"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRegistrationRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0"
+            }
+          },
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "application/json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Device registered. Tokens are nested inside response.success.tokens.bearer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRegistrationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request \u2014 invalid code or PKCE mismatch"
+          }
+        }
+      }
+    },
+    "/auth/token": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Refresh access token",
+        "description": "Exchanges a refresh token for a new access token. Refresh token remains the same. Called when stored token is within 5 minutes of expiry.",
+        "operationId": "refreshToken",
+        "servers": [
+          {
+            "url": "https://api.amazon.com"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRefreshRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0"
+            }
+          },
+          {
+            "name": "x-amzn-identity-auth-domain",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "api.amazon.com"
+            }
+          },
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "application/json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "New access token. Refresh token is unchanged.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenRefreshResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid refresh token"
+          }
+        }
+      }
+    },
+    "/auth/deregister": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Deregister device",
+        "description": "Deregisters the device from Amazon. Called during logout. Non-fatal \u2014 failures are logged but do not block logout.",
+        "operationId": "deregisterDevice",
+        "servers": [
+          {
+            "url": "https://api.amazon.com"
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requested_extensions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": [
+                      "device_info",
+                      "customer_info"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0"
+            }
+          },
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "application/json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Device deregistered successfully"
+          },
+          "400": {
+            "description": "Error (non-fatal \u2014 client continues logout regardless)"
+          }
+        }
+      }
+    },
+    "/api/distribution/entitlements": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Get user game entitlements",
+        "description": "Returns owned game entitlements for the authenticated user. Paginated with maxResults=50. Continues fetching until nextToken is absent. entitlementId (not productId) is required for GetGameDownload.",
+        "operationId": "getEntitlements",
+        "servers": [
+          {
+            "url": "https://gaming.amazon.com"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Amz-Target",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "com.amazon.animusdistributionservice.entitlement.AnimusEntitlementsService.GetEntitlements"
+            }
+          },
+          {
+            "name": "x-amzn-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Bearer access token"
+          },
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "com.amazon.agslauncher.win/3.0.9202.1"
+            }
+          },
+          {
+            "name": "Content-Encoding",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "amz-1.0"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetEntitlementsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Paginated entitlement list. Fetch subsequent pages by passing nextToken.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEntitlementsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/distribution/v2/public": {
+      "post": {
+        "tags": [
+          "Downloads"
+        ],
+        "summary": "Gaming distribution service \u2014 operation dispatched by X-Amz-Target",
+        "description": "Multiplex endpoint: the operation is selected by the X-Amz-Target header. Supported operations:\n\n**GetGameDownload** (target: `...AnimusDistributionService.GetGameDownload`): Returns a time-limited `downloadUrl` and `versionId` for a game. Requires `entitlementId` (from GetEntitlements), NOT the product ID. Called before every download to get a fresh URL.\n\n**GetLiveVersionIds** (target: `...AnimusDistributionService.GetLiveVersionIds`): Checks for available updates for a list of product IDs. Returns a map of productId \u2192 live versionId. Client compares against locally stored versionId to detect updates.",
+        "operationId": "gamingDistributionService",
+        "servers": [
+          {
+            "url": "https://gaming.amazon.com"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Amz-Target",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "com.amazon.animusdistributionservice.external.AnimusDistributionService.GetGameDownload",
+                "com.amazon.animusdistributionservice.external.AnimusDistributionService.GetLiveVersionIds"
+              ]
+            },
+            "description": "Selects the operation to perform"
+          },
+          {
+            "name": "x-amzn-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Bearer access token"
+          },
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "com.amazon.agslauncher.win/3.0.9202.1"
+            }
+          },
+          {
+            "name": "Content-Encoding",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "amz-1.0"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/GetGameDownloadRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GetLiveVersionIdsRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response depends on X-Amz-Target:\n- GetGameDownload: `{downloadUrl, versionId}`\n- GetLiveVersionIds: `{adgProductIdToVersionIdMap}`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/GetGameDownloadResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GetLiveVersionIdsResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/distribution/v2/public/download/channel/{channelId}": {
+      "get": {
+        "tags": [
+          "Downloads"
+        ],
+        "summary": "Get SDK/launcher download spec",
+        "description": "Returns the download URL and version ID for the Amazon Games SDK/launcher. Channel ID is hardcoded to 87d38116-4cbf-4af0-a371-a5b498975346. Response format identical to GetGameDownload.",
+        "operationId": "getSdkDownloadSpec",
+        "servers": [
+          {
+            "url": "https://gaming.amazon.com"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "channelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "87d38116-4cbf-4af0-a371-a5b498975346",
+            "description": "SDK/launcher channel ID (hardcoded: 87d38116-4cbf-4af0-a371-a5b498975346)"
+          },
+          {
+            "name": "x-amzn-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Bearer access token"
+          },
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "com.amazon.agslauncher.win/3.0.9202.1"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SDK download spec \u2014 same format as GetGameDownload response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetGameDownloadResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manifest.proto": {
+      "get": {
+        "tags": [
+          "CDN"
+        ],
+        "summary": "Download game manifest (protobuf)",
+        "description": "Downloads the binary protobuf manifest for a game. Base URL is the dynamic `downloadUrl` returned by GetGameDownload \u2014 this path is appended to it. No explicit auth header: authentication is embedded in the downloadUrl. Parsed by AmazonManifest.parse() to get file list with sizes and SHA-256 hashes. Also used by fetchDownloadSize to sum total download size.",
+        "operationId": "downloadManifest",
+        "servers": [
+          {
+            "url": "https://{cdnHost}",
+            "variables": {
+              "cdnHost": {
+                "default": "<dynamic from GetGameDownload>",
+                "description": "Host extracted from GetGameDownload downloadUrl"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary protobuf manifest. Parsed fields: allFiles[].unixPath, allFiles[].size, allFiles[].hashAlgorithm (0=SHA-256), allFiles[].hashBytes",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files/{hashHex}": {
+      "get": {
+        "tags": [
+          "CDN"
+        ],
+        "summary": "Download game file by hash",
+        "description": "Downloads a single game file identified by its SHA-256 hash (hex-encoded). Base URL is the dynamic `downloadUrl` returned by GetGameDownload. Files are keyed by hash, not by filename. Implements 3-attempt retry with exponential backoff (1s, 2s, 4s). SHA-256 verified post-download when hashAlgorithm == 0. Skips if file already exists with correct size (resume support).",
+        "operationId": "downloadGameFile",
+        "servers": [
+          {
+            "url": "https://{cdnHost}",
+            "variables": {
+              "cdnHost": {
+                "default": "<dynamic from GetGameDownload>",
+                "description": "Host extracted from GetGameDownload downloadUrl"
+              }
+            }
+          }
+        ],
+        "parameters": [
+          {
+            "name": "hashHex",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Hex-encoded SHA-256 hash of the file content (from manifest)"
+          },
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "nile/0.1 Amazon"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Raw file bytes. SHA-256 verified against manifest hash after download.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Amazon Bearer access token from /auth/register or /auth/token"
+      }
+    },
+    "schemas": {
+      "DeviceRegistrationRequest": {
+        "type": "object",
+        "required": [
+          "auth_data",
+          "registration_data",
+          "requested_extensions",
+          "requested_token_type",
+          "user_context_map"
+        ],
+        "properties": {
+          "auth_data": {
+            "type": "object",
+            "properties": {
+              "authorization_code": {
+                "type": "string",
+                "description": "OAuth authorization code from /ap/signin callback"
+              },
+              "client_domain": {
+                "type": "string",
+                "default": "DeviceLegacy"
+              },
+              "client_id": {
+                "type": "string",
+                "description": "Hex-encoded deviceSerial#A2UMVHOX7UP4V7"
+              },
+              "code_algorithm": {
+                "type": "string",
+                "default": "SHA-256"
+              },
+              "code_verifier": {
+                "type": "string",
+                "description": "PKCE code verifier (random string, not the challenge)"
+              },
+              "use_global_authentication": {
+                "type": "boolean",
+                "default": false
+              }
+            },
+            "required": [
+              "authorization_code",
+              "client_domain",
+              "client_id",
+              "code_algorithm",
+              "code_verifier",
+              "use_global_authentication"
+            ]
+          },
+          "registration_data": {
+            "type": "object",
+            "properties": {
+              "app_name": {
+                "type": "string",
+                "default": "AGSLauncher for Windows"
+              },
+              "app_version": {
+                "type": "string",
+                "default": "1.0.0"
+              },
+              "device_model": {
+                "type": "string",
+                "default": "Windows"
+              },
+              "device_name": {
+                "type": "string",
+                "nullable": true,
+                "default": null
+              },
+              "device_serial": {
+                "type": "string",
+                "description": "Random UUID for this device"
+              },
+              "device_type": {
+                "type": "string",
+                "default": "A2UMVHOX7UP4V7"
+              },
+              "domain": {
+                "type": "string",
+                "default": "Device"
+              },
+              "os_version": {
+                "type": "string",
+                "default": "10.0.19044.0"
+              }
+            },
+            "required": [
+              "app_name",
+              "app_version",
+              "device_model",
+              "device_serial",
+              "device_type",
+              "domain",
+              "os_version"
+            ]
+          },
+          "requested_extensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "customer_info",
+              "device_info"
+            ]
+          },
+          "requested_token_type": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "bearer",
+              "mac_dms"
+            ]
+          },
+          "user_context_map": {
+            "type": "object",
+            "default": {}
+          }
+        }
+      },
+      "DeviceRegistrationResponse": {
+        "type": "object",
+        "description": "Deeply nested token response. Access via response.success.tokens.bearer",
+        "properties": {
+          "response": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "object",
+                "properties": {
+                  "tokens": {
+                    "type": "object",
+                    "properties": {
+                      "bearer": {
+                        "type": "object",
+                        "properties": {
+                          "access_token": {
+                            "type": "string"
+                          },
+                          "refresh_token": {
+                            "type": "string"
+                          },
+                          "expires_in": {
+                            "type": "integer",
+                            "example": 3600
+                          },
+                          "token_type": {
+                            "type": "string",
+                            "example": "bearer"
+                          }
+                        },
+                        "required": [
+                          "access_token",
+                          "refresh_token"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "TokenRefreshRequest": {
+        "type": "object",
+        "required": [
+          "source_token",
+          "source_token_type",
+          "requested_token_type",
+          "app_name",
+          "app_version"
+        ],
+        "properties": {
+          "source_token": {
+            "type": "string",
+            "description": "The refresh token"
+          },
+          "source_token_type": {
+            "type": "string",
+            "default": "refresh_token"
+          },
+          "requested_token_type": {
+            "type": "string",
+            "default": "access_token"
+          },
+          "app_name": {
+            "type": "string",
+            "default": "AGSLauncher for Windows"
+          },
+          "app_version": {
+            "type": "string",
+            "default": "1.0.0"
+          }
+        }
+      },
+      "TokenRefreshResponse": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "type": "string",
+            "description": "Same refresh token as input \u2014 unchanged"
+          },
+          "expires_in": {
+            "type": "integer",
+            "example": 3600
+          },
+          "token_type": {
+            "type": "string",
+            "example": "bearer"
+          }
+        },
+        "required": [
+          "access_token"
+        ]
+      },
+      "GetEntitlementsRequest": {
+        "type": "object",
+        "required": [
+          "Operation",
+          "clientId",
+          "keyId",
+          "hardwareHash"
+        ],
+        "properties": {
+          "Operation": {
+            "type": "string",
+            "default": "GetEntitlements"
+          },
+          "clientId": {
+            "type": "string",
+            "default": "Sonic"
+          },
+          "syncPoint": {
+            "type": "string",
+            "nullable": true,
+            "default": null
+          },
+          "nextToken": {
+            "type": "string",
+            "nullable": true,
+            "description": "Pagination token from previous response. Null for first page."
+          },
+          "maxResults": {
+            "type": "integer",
+            "default": 50
+          },
+          "productIdFilter": {
+            "type": "string",
+            "nullable": true,
+            "default": null
+          },
+          "keyId": {
+            "type": "string",
+            "default": "d5dc8b8b-86c8-4fc4-ae93-18c0def5314d"
+          },
+          "hardwareHash": {
+            "type": "string",
+            "description": "SHA-256 (uppercase hex) of the device serial string"
+          }
+        }
+      },
+      "GetEntitlementsResponse": {
+        "type": "object",
+        "properties": {
+          "entitlements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Entitlement"
+            }
+          },
+          "nextToken": {
+            "type": "string",
+            "nullable": true,
+            "description": "Present when more pages are available. Pass to next request."
+          }
+        }
+      },
+      "Entitlement": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "entitlementId \u2014 required for GetGameDownload (NOT the product ID)"
+          },
+          "purchasedDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "product": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "productId \u2014 format: amzn1.adg.product.XXXX"
+              },
+              "title": {
+                "type": "string"
+              },
+              "sku": {
+                "type": "string"
+              },
+              "productDetail": {
+                "type": "object",
+                "properties": {
+                  "iconUrl": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "details": {
+                    "type": "object",
+                    "properties": {
+                      "developer": {
+                        "type": "string"
+                      },
+                      "publisher": {
+                        "type": "string"
+                      },
+                      "releaseDate": {
+                        "type": "string",
+                        "format": "date"
+                      },
+                      "fileSize": {
+                        "type": "integer",
+                        "format": "int64"
+                      },
+                      "logoUrl": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "backgroundUrl1": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "backgroundUrl2": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "pgCrownImageUrl": {
+                        "type": "string",
+                        "format": "uri"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "GetGameDownloadRequest": {
+        "type": "object",
+        "required": [
+          "Operation",
+          "entitlementId"
+        ],
+        "properties": {
+          "Operation": {
+            "type": "string",
+            "default": "GetGameDownload"
+          },
+          "entitlementId": {
+            "type": "string",
+            "description": "entitlementId from GetEntitlements (the entitlement id, NOT the product id)"
+          }
+        }
+      },
+      "GetGameDownloadResponse": {
+        "type": "object",
+        "properties": {
+          "downloadUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Time-limited base URL for CDN content. Append /manifest.proto for manifest, /files/{hashHex} for file content."
+          },
+          "versionId": {
+            "type": "string",
+            "description": "Version identifier for the current build. Stored locally to detect updates via GetLiveVersionIds."
+          }
+        },
+        "required": [
+          "downloadUrl",
+          "versionId"
+        ]
+      },
+      "GetLiveVersionIdsRequest": {
+        "type": "object",
+        "required": [
+          "Operation",
+          "adgProductIds"
+        ],
+        "properties": {
+          "Operation": {
+            "type": "string",
+            "default": "GetLiveVersionIds"
+          },
+          "adgProductIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of productIds (amzn1.adg.product.XXXX format) to check for updates"
+          }
+        }
+      },
+      "GetLiveVersionIdsResponse": {
+        "type": "object",
+        "properties": {
+          "adgProductIdToVersionIdMap": {
+            "type": "object",
+            "description": "Map of productId to current live versionId. Empty if no version info available.",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AmazonManifestFile": {
+        "type": "object",
+        "description": "Single file entry parsed from the protobuf manifest at /manifest.proto",
+        "properties": {
+          "unixPath": {
+            "type": "string",
+            "description": "Relative path within install directory"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Expected file size in bytes"
+          },
+          "hashAlgorithm": {
+            "type": "integer",
+            "description": "0 = SHA-256"
+          },
+          "hashBytes": {
+            "type": "string",
+            "format": "byte",
+            "description": "Raw hash bytes (SHA-256 when hashAlgorithm=0)"
+          }
+        }
+      }
+    }
+  }
+}
