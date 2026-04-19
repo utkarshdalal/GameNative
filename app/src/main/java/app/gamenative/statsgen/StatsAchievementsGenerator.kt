@@ -1,7 +1,5 @@
 package app.gamenative.statsgen
 
-import org.json.JSONArray
-import org.json.JSONObject
 import java.io.File
 
 class StatsAchievementsGenerator {
@@ -22,13 +20,13 @@ class StatsAchievementsGenerator {
         return sb.toString()
     }
 
-    fun generateStatsAchievements(schema: ByteArray, configDirectory: String): ProcessingResult {
+    fun parseSchema(schema: ByteArray): ProcessingResult {
         val parsedSchema = vdfParser.binaryLoads(schema)
         val achievementsOut = mutableListOf<Achievement>()
         val statsOut = mutableListOf<Stat>()
         val nameToBlockBit = mutableMapOf<String, Pair<Int, Int>>()
 
-        for ((appId, appData) in parsedSchema) {
+        for ((_, appData) in parsedSchema) {
             if (appData !is Map<*, *>) continue
             val sch = appData as Map<String, Any>
             val statInfo = sch["stats"] as? Map<String, Any> ?: continue
@@ -99,17 +97,18 @@ class StatsAchievementsGenerator {
                             achievementBuilder["progress"] = ach["progress"] as Any
                         }
 
-                        val achievement = Achievement(
-                            name = achievementBuilder["name"]?.toString() ?: "",
-                            displayName = achievementBuilder["displayName"] as? Map<String, String>,
-                            description = achievementBuilder["description"] as? Map<String, String>,
-                            hidden = (achievementBuilder["hidden"] as? Number)?.toInt() ?: 0,
-                            icon = achievementBuilder["icon"]?.toString(),
-                            iconGray = achievementBuilder["icon_gray"]?.toString(),
-                            icongray = achievementBuilder["icongray"]?.toString(),
-                            progress = achievementBuilder["progress"] as? Map<String, Any>
+                        achievementsOut.add(
+                            Achievement(
+                                name = achievementBuilder["name"]?.toString() ?: "",
+                                displayName = achievementBuilder["displayName"] as? Map<String, String>,
+                                description = achievementBuilder["description"] as? Map<String, String>,
+                                hidden = (achievementBuilder["hidden"] as? Number)?.toInt() ?: 0,
+                                icon = achievementBuilder["icon"]?.toString(),
+                                iconGray = achievementBuilder["icon_gray"]?.toString(),
+                                icongray = achievementBuilder["icongray"]?.toString(),
+                                progress = achievementBuilder["progress"] as? Map<String, Any>,
+                            )
                         )
-                        achievementsOut.add(achievement)
                     }
                 } else {
                     val statBuilder = mutableMapOf<String, Any>()
@@ -137,24 +136,33 @@ class StatsAchievementsGenerator {
                         statBuilder["default"] = stat["default"] as Any
                     }
 
-                    val statObj = Stat(
-                        id = statBuilder["id"]?.toString() ?: "",
-                        name = statBuilder["name"]?.toString() ?: "",
-                        type = statBuilder["type"]?.toString() ?: "int",
-                        default = statBuilder["default"]?.toString() ?: "0",
-                        global = statBuilder["global"]?.toString() ?: "0",
-                        min = statBuilder["min"]?.toString()
+                    statsOut.add(
+                        Stat(
+                            id = statBuilder["id"]?.toString() ?: "",
+                            name = statBuilder["name"]?.toString() ?: "",
+                            type = statBuilder["type"]?.toString() ?: "int",
+                            default = statBuilder["default"]?.toString() ?: "0",
+                            global = statBuilder["global"]?.toString() ?: "0",
+                            min = statBuilder["min"]?.toString(),
+                        )
                     )
-                    statsOut.add(statObj)
                 }
             }
         }
 
-        var copyDefaultUnlockedImg = false
-        var copyDefaultLockedImg = false
+        return ProcessingResult(
+            achievements = achievementsOut,
+            stats = statsOut,
+            copyDefaultUnlockedImg = achievementsOut.any { it.icon.isNullOrEmpty() },
+            copyDefaultLockedImg = achievementsOut.any { it.iconGray.isNullOrEmpty() },
+            nameToBlockBit = nameToBlockBit,
+        )
+    }
+
+    fun writeConfigFiles(result: ProcessingResult, configDirectory: String) {
         val outputAchievements = mutableListOf<Map<String, Any>>()
 
-        for (ach in achievementsOut) {
+        for (ach in result.achievements) {
             val outputAch = mutableMapOf<String, Any>()
             outputAch["name"] = ach.name
             outputAch["displayName"] = ach.displayName ?: emptyMap<String, String>()
@@ -166,7 +174,6 @@ class StatsAchievementsGenerator {
                 outputAch["icon"] = "img/$icon"
             } else {
                 outputAch["icon"] = "img/steam_default_icon_unlocked.jpg"
-                copyDefaultUnlockedImg = true
             }
 
             val iconGray = ach.iconGray
@@ -174,7 +181,6 @@ class StatsAchievementsGenerator {
                 outputAch["icon_gray"] = "img/$iconGray"
             } else {
                 outputAch["icon_gray"] = "img/steam_default_icon_locked.jpg"
-                copyDefaultLockedImg = true
             }
 
             val icongray = ach.icongray
@@ -186,15 +192,15 @@ class StatsAchievementsGenerator {
                 outputAch["progress"] = ach.progress
             }
 
-            ach.unlocked?.let { outputAch["unlocked"] = it }
-            ach.unlockTimestamp?.let { outputAch["unlockTimestamp"] = it }
+            ach.unlocked?.let { outputAch["earned"] = it }
+            ach.unlockTimestamp?.let { outputAch["earned_time"] = it }
             ach.formattedUnlockTime?.let { outputAch["formattedUnlockTime"] = it }
 
             outputAchievements.add(outputAch)
         }
 
         val outputStats = mutableListOf<Map<String, Any>>()
-        for (stat in statsOut) {
+        for (stat in result.stats) {
             val outputStat = mutableMapOf<String, Any>()
             outputStat["id"] = stat.id
             outputStat["name"] = stat.name
@@ -251,7 +257,7 @@ class StatsAchievementsGenerator {
 
             val orderedKeys = listOf(
                 "hidden", "displayName", "description", "icon", "icon_gray", "name",
-                "unlocked", "unlockTimestamp", "formattedUnlockTime"
+                "unlocked", "unlockTimestamp", "formattedUnlockTime",
             )
 
             for ((index, ach) in outputAchievements.withIndex()) {
@@ -320,7 +326,6 @@ class StatsAchievementsGenerator {
                 if (index > 0) jsonBuilder.append(",\n")
                 jsonBuilder.append("  {\n")
 
-                // Define the desired order of properties
                 val orderedKeys = listOf("id", "default", "global", "name", "type")
                 val statMap = stat.toMap()
 
@@ -337,13 +342,11 @@ class StatsAchievementsGenerator {
             jsonBuilder.append("\n]")
             statsFile.writeText(jsonBuilder.toString(), Charsets.UTF_8)
         }
+    }
 
-        return ProcessingResult(
-            achievements = achievementsOut,
-            stats = statsOut,
-            copyDefaultUnlockedImg = copyDefaultUnlockedImg,
-            copyDefaultLockedImg = copyDefaultLockedImg,
-            nameToBlockBit = nameToBlockBit,
-        )
+    fun generateStatsAchievements(schema: ByteArray, configDirectory: String): ProcessingResult {
+        val result = parseSchema(schema)
+        writeConfigFiles(result, configDirectory)
+        return result
     }
 }
