@@ -60,7 +60,6 @@ import java.io.IOException
 import java.io.OutputStream
 import java.net.SocketTimeoutException
 import java.nio.file.attribute.FileTime
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -499,6 +498,7 @@ object SteamAutoCloud {
                                     val result = downloadSingleFile(
                                         appInfo = appInfo,
                                         steamCloud = steamCloud,
+                                        hashCacheDao = hashCacheDao,
                                         file = file,
                                         fileList = fileList,
                                         getFilePrefixPath = getFilePrefixPath,
@@ -1064,6 +1064,7 @@ object SteamAutoCloud {
     private suspend fun downloadSingleFile(
         appInfo: SteamApp,
         steamCloud: SteamCloud,
+        hashCacheDao: SteamFileHashCacheDao,
         file: AppFileInfo,
         fileList: AppFileChangeList,
         getFilePrefixPath: (AppFileInfo, AppFileChangeList) -> String,
