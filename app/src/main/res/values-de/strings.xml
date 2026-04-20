@@ -429,6 +429,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Speichert einen Logcat-Snapshot nur für diese App</string>
     <string name="settings_save_logcat_title">Logcat speichern</string>
+    <string name="settings_achievement_show_notification">Errungenschaften-Benachrichtigungen anzeigen</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Behandlung von Flags bei CALL/RET-Befehlen<br /><br />
         <b>0</b> : Behandelt CALL/RET als ob nie Flags benötigt werden (schneller, instabil)<br />
@@ -1043,11 +1044,14 @@
     <string name="best_config_compatibility_unknown">Keine bekannte Konfiguration</string>
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">Konfiguration erfolgreich übernommen</string>
+    <string name="best_config_missing_components_title">Konfiguration nicht angewendet</string>
+    <string name="best_config_missing_components_message">Die folgenden erforderlichen Komponenten sind auf diesem Gerät nicht verfügbar:\n\n%1$s\n\nInstallieren Sie die fehlenden Komponenten und versuchen Sie es erneut.</string>
     <string name="best_config_known_config_invalid">Bekannte Konfiguration ungültig</string>
     <string name="best_config_no_config_available">Keine optimale Konfiguration verfügbar</string>
     <string name="best_config_fetch_failed">Konfiguration konnte nicht abgerufen werden. Bitte überprüfen Sie Ihre Netzwerkverbindung.</string>
+    <string name="best_config_apply_anyway">Trotzdem anwenden</string>
+    <string name="best_config_applied_with_defaults">Konfiguration angewendet, fehlende Komponenten durch Standardwerte ersetzt</string>
     <string name="best_config_apply_failed">Konfiguration konnte nicht übernommen werden: %s</string>
-    <string name="best_config_missing_content">%s fehlt</string>
     <string name="import_config">Konfiguration importieren</string>
     <string name="export_config">Konfiguration exportieren</string>
     <string name="library_app_type">App-Typ</string>

@@ -116,6 +116,9 @@ fun SettingsGroupInterface(
     // Controller/gamepad hints visibility
     var showGamepadHints by rememberSaveable { mutableStateOf(PrefManager.showGamepadHints) }
 
+    // Achievements
+    var showAchievementNotifications by rememberSaveable { mutableStateOf(PrefManager.achievementShowNotification) }
+
     // Language selection dialog
     var openLanguageDialog by rememberSaveable { mutableStateOf(false) }
     var showLanguageRestartDialog by rememberSaveable { mutableStateOf(false) }
@@ -209,6 +212,15 @@ fun SettingsGroupInterface(
     }
 
     SettingsGroup(modifier = Modifier.background(Color.Transparent)) {
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_achievement_show_notification)) },
+            state = showAchievementNotifications,
+            onCheckedChange = {
+                showAchievementNotifications = it
+                PrefManager.achievementShowNotification = it
+            },
+        )
         // Achievement notification position
         val achPositionKeys = remember { ACHIEVEMENT_NOTIFICATION_POSITION.keys.toList() }
         val achPositionLabelResIds = remember { ACHIEVEMENT_NOTIFICATION_POSITION.values.toList() }

@@ -2,7 +2,6 @@ package com.winlator.xserver.requests;
 
 import static com.winlator.xserver.XClientRequestHandler.RESPONSE_CODE_SUCCESS;
 
-import com.winlator.core.CursorLocker;
 import com.winlator.xconnector.XInputStream;
 import com.winlator.xconnector.XOutputStream;
 import com.winlator.xconnector.XStreamLock;
@@ -77,8 +76,8 @@ public abstract class WindowRequests {
             outputStream.writeByte((byte)window.getMapState().ordinal());
             outputStream.writeByte((byte)(window.attributes.isOverrideRedirect() ? 1 : 0));
             outputStream.writeInt(0);
-            outputStream.writeInt(window.getAllEventMasks().getBits());
-            outputStream.writeInt(client.getEventMaskForWindow(window).getBits());
+            outputStream.writeInt((int)window.getAllEventMasks().getBits());
+            outputStream.writeInt((int)client.getEventMaskForWindow(window).getBits());
             outputStream.writeShort((short)window.attributes.getDoNotPropagateMask().getBits());
             outputStream.writeShort((short)0);
         }
@@ -336,7 +335,14 @@ public abstract class WindowRequests {
             if (srcHeight == 0) srcHeight = (short)(srcWindow.getHeight() - srcY);
 
             short[] localPoint = srcWindow.rootPointToLocal(client.xServer.pointer.getX(), client.xServer.pointer.getY());
-            boolean isContained = localPoint[0] >= srcX && localPoint[1] >= srcY && localPoint[0] < (srcX + srcWidth) && localPoint[1] < (srcY + srcHeight);
+            // Allow XWarpPointer to work with legacy soft-bounds
+            // (see XServer.java:injectPointerMoveDelta)
+            short x = localPoint[0];
+            short y = localPoint[1];
+            short softMarginX = (short)(client.xServer.screenInfo.width * 0.05f);
+            short softMarginY = (short)(client.xServer.screenInfo.height * 0.05f);
+            boolean isContained = x >= srcX - softMarginX && y >= srcY - softMarginY &&
+                                  x < (srcX + srcWidth + softMarginX) && y < (srcY + srcHeight + softMarginY);
             if (!isContained) return;
         }
 

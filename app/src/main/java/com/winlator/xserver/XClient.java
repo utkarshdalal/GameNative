@@ -5,6 +5,7 @@ import androidx.collection.ArrayMap;
 import com.winlator.xconnector.XInputStream;
 import com.winlator.xconnector.XOutputStream;
 import com.winlator.xserver.events.Event;
+import com.winlator.xserver.extensions.XInput2Extension;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -100,6 +101,9 @@ public class XClient implements XResourceManager.OnResourceLifecycleListener {
             xServer.cursorManager.removeOnResourceLifecycleListener(this);
             xServer.resourceIDs.free(resourceIDBase);
         }
+
+        XInput2Extension xi2 = xServer.getExtension(XInput2Extension.MAJOR_OPCODE);
+        xi2.onClientDisconnected(this);
     }
 
     public void generateSequenceNumber() {

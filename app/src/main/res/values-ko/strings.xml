@@ -454,6 +454,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">이 앱의 PID에 대한 logcat 스냅샷만 저장합니다</string>
     <string name="settings_save_logcat_title">logcat 저장</string>
+    <string name="settings_achievement_show_notification">업적 알림 표시</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         CALL/RET 명령어의 플래그 처리<br /><br />
@@ -1115,11 +1116,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">설정이 성공적으로 적용되었습니다</string>
+    <string name="best_config_missing_components_title">구성이 적용되지 않음</string>
+    <string name="best_config_missing_components_message">이 장치에서 다음 필수 구성 요소를 사용할 수 없습니다:\n\n%1$s\n\n누락된 구성 요소를 설치하고 다시 시도하세요.</string>
     <string name="best_config_known_config_invalid">알려진 설정이 유효하지 않음</string>
     <string name="best_config_no_config_available">이 게임에 사용 가능한 최적 설정이 없습니다</string>
     <string name="best_config_fetch_failed">설정을 가져오지 못했습니다. 네트워크 연결을 확인하세요.</string>
+    <string name="best_config_apply_anyway">그래도 적용</string>
+    <string name="best_config_applied_with_defaults">구성이 적용되었습니다. 누락된 구성 요소가 기본값으로 대체되었습니다</string>
     <string name="best_config_apply_failed">설정 적용 실패: %s</string>
-    <string name="best_config_missing_content">%s 누락됨</string>
     <string name="import_config">설정 가져오기</string>
     <string name="export_config">설정 내보내기</string>
     <string name="library_app_type">앱 유형</string>

@@ -440,6 +440,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Зберігає знімок logcat лише для PID цього застосунку</string>
     <string name="settings_save_logcat_title">Зберегти logcat</string>
+    <string name="settings_achievement_show_notification">Показувати сповіщення про досягнення</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Обробка прапорців для опкодів CALL/RET<br /><br />
@@ -1100,11 +1101,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">Конфігурацію успішно застосовано</string>
+    <string name="best_config_missing_components_title">Конфігурацію не застосовано</string>
+    <string name="best_config_missing_components_message">Наступні необхідні компоненти недоступні на цьому пристрої:\n\n%1$s\n\nВстановіть відсутні компоненти та спробуйте знову.</string>
     <string name="best_config_known_config_invalid">Відома конфігурація недійсна</string>
     <string name="best_config_no_config_available">Немає доступної найкращої конфігурації для цієї гри</string>
     <string name="best_config_fetch_failed">Не вдалося отримати конфігурацію. Перевірте підключення до мережі.</string>
+    <string name="best_config_apply_anyway">Застосувати все одно</string>
+    <string name="best_config_applied_with_defaults">Конфігурацію застосовано, відсутні компоненти замінено значеннями за замовчуванням</string>
     <string name="best_config_apply_failed">Не вдалося застосувати конфігурацію: %s</string>
-    <string name="best_config_missing_content">%s відсутній</string>
     <string name="import_config">Імпортувати конфігурацію</string>
     <string name="export_config">Експортувати конфігурацію</string>
     <string name="library_app_type">Тип застосунку</string>

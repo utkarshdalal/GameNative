@@ -36,6 +36,8 @@ public class PresentExtension implements Extension {
     public enum Mode {COPY, FLIP, SKIP}
     private final SparseArray<Event> events = new SparseArray<>();
     private SyncExtension syncExtension;
+    private byte firstEventId = 0;
+    private byte firstErrorId = 0;
 
     private static abstract class ClientOpcodes {
         private static final byte QUERY_VERSION = 0;
@@ -61,14 +63,22 @@ public class PresentExtension implements Extension {
     }
 
     @Override
-    public byte getFirstErrorId() {
-        return 0;
-    }
+    public int getNumEvents() { return 2; }
 
     @Override
-    public byte getFirstEventId() {
-        return 0;
-    }
+    public int getNumErrors() { return 0; }
+
+    @Override
+    public void setFirstEventId(byte id) { this.firstEventId = id; }
+
+    @Override
+    public void setFirstErrorId(byte id) { this.firstErrorId = id; }
+
+    @Override
+    public byte getFirstEventId() { return firstEventId; }
+
+    @Override
+    public byte getFirstErrorId() { return firstErrorId; }
 
     private void sendIdleNotify(Window window, Pixmap pixmap, int serial, int idleFence) {
         if (idleFence != 0) syncExtension.setTriggered(idleFence);
