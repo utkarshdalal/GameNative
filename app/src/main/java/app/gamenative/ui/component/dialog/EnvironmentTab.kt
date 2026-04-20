@@ -160,7 +160,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                         val hasSuggestions = selectedEnvVarInfo?.selectionType == EnvVarSelectionType.SUGGESTIONS
                         NoExtractOutlinedTextField(
                             value = envVarValue,
-                            onValueChange = { envVarValue = it.trim() },
+                            onValueChange = { envVarValue = it },
                             label = { Text(text = stringResource(R.string.value)) },
                             singleLine = true,
                             trailingIcon = if (hasSuggestions) {
