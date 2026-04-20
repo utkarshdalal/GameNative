@@ -449,7 +449,7 @@ class LibraryViewModel @Inject constructor(
             val licensedDepotMap = SteamService.buildLicensedDepotMap(filteredSteamApps)
 
             // Added this to avoid duplicate from custom imported steam game
-            val steamEntriesAppIds = mutableListOf<String>()
+            val steamEntriesAppIds = mutableSetOf<String>()
 
             val steamEntries: List<LibraryEntry> = filteredSteamApps.map { item ->
                 val isInstalled = downloadDirectorySet.contains(SteamService.getAppDirName(item))

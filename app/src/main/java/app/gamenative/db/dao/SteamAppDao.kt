@@ -155,4 +155,7 @@ interface SteamAppDao {
 
     @Query("SELECT * FROM steam_app WHERE config LIKE '%\"installDir\":\"' || :dirName || '\",%'")
     suspend fun findSteamAppWithInstallDir(dirName: String): List<SteamApp>
+
+    @Query("SELECT * FROM steam_app WHERE id IN (:appIds)")
+    suspend fun findSteamAppWithAppIds(appIds: List<Int>): List<SteamApp>
 }

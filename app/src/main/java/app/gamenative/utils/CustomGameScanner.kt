@@ -513,46 +513,46 @@ object CustomGameScanner {
             val steamApps = SteamService.findSteamAppWithInstallDir(dirName = folder.name)
             if (steamApps?.size == 1) {
                 val steamApp = steamApps[0]
+                if (SteamService.isAppLicensed(steamApp.packageId)) {
+                    if (SteamService.getInstalledApp(steamApp.id) == null) {
+                        val preferredLanguage = PrefManager.containerLanguage
+                        val mainDepots = getMainAppDepots(steamApp.id, preferredLanguage)
+                        val mainAppDepots = mainDepots.filter { (_, depot) ->
+                            depot.dlcAppId == INVALID_APP_ID
+                        }
+                        val mainAppDepotIds = mainAppDepots.keys.sorted()
 
-                if (SteamService.isAppLicensed(steamApp.packageId) &&
-                    SteamService.getInstalledApp(steamApp.id) == null) {
-                    val preferredLanguage = PrefManager.containerLanguage
-                    val mainDepots = getMainAppDepots(steamApp.id, preferredLanguage)
-                    val mainAppDepots = mainDepots.filter { (_, depot) ->
-                        depot.dlcAppId == INVALID_APP_ID
+                        runBlocking {
+                            SteamService.instance?.appInfoDao?.insert(
+                                AppInfo(
+                                    steamApp.id,
+                                    isDownloaded = true,
+                                    downloadedDepots = mainAppDepotIds,
+                                    dlcDepots = emptyList(),
+                                    branch = "public",
+                                    customInstallPath = folderPath
+                                ),
+                            )
+                        }
+
+                        MarkerUtils.addMarker(folderPath, Marker.DOWNLOAD_COMPLETE_MARKER)
                     }
-                    val mainAppDepotIds = mainAppDepots.keys.sorted()
 
-                    runBlocking {
-                        SteamService.instance?.appInfoDao?.insert(
-                            AppInfo(
-                                steamApp.id,
-                                isDownloaded = true,
-                                downloadedDepots = mainAppDepotIds,
-                                dlcDepots = emptyList(),
-                                branch = "public",
-                                customInstallPath = folderPath
-                            ),
-                        )
-                    }
+                    val idPart = steamApp.id
+                    val appId = "${GameSource.STEAM.name}_$idPart"
 
-                    MarkerUtils.addMarker(folderPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                    return LibraryItem(
+                        index = 0,
+                        appId = appId,
+                        name = steamApp.name,
+                        iconHash = steamApp.clientIconHash,
+                        capsuleImageUrl = steamApp.getCapsuleUrl(),
+                        headerImageUrl = steamApp.getHeaderImageUrl().orEmpty().ifEmpty { steamApp.headerUrl },
+                        heroImageUrl = steamApp.getHeroUrl().ifEmpty { steamApp.headerUrl },
+                        isShared = false,
+                        gameSource = GameSource.STEAM,
+                    )
                 }
-
-                val idPart = steamApp.id
-                val appId = "${GameSource.STEAM.name}_$idPart"
-
-                return LibraryItem(
-                    index = 0,
-                    appId = appId,
-                    name = steamApp.name,
-                    iconHash = steamApp.clientIconHash,
-                    capsuleImageUrl = steamApp.getCapsuleUrl(),
-                    headerImageUrl = steamApp.getHeaderImageUrl().orEmpty().ifEmpty { steamApp.headerUrl },
-                    heroImageUrl = steamApp.getHeroUrl().ifEmpty { steamApp.headerUrl },
-                    isShared = false,
-                    gameSource = GameSource.STEAM,
-                )
             }
         }
 

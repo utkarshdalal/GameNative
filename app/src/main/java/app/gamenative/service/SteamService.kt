@@ -612,18 +612,20 @@ class SteamService : Service(), IChallengeUrlChanged {
             return runBlocking(Dispatchers.IO) { instance?.appInfoDao?.getAll() }
         }
 
+        fun findSteamAppWithAppIds(appIds: List<Int>): List<SteamApp>? {
+            return runBlocking(Dispatchers.IO) { instance?.appDao?.findSteamAppWithAppIds(appIds) }
+        }
+
         fun getImportedAppDirs(): List<String> {
             val dirs = mutableSetOf<String>()
-
-            getAllInstalledApps()?.forEach { installedApp ->
-                if (installedApp.isImported) {
-                    val steamApp = getAppInfoOf(installedApp.id)
-                    if (steamApp != null) {
-                        dirs += getAppDirName(steamApp)
-                    }
+            val installedApps = getAllInstalledApps()
+            val importedAppIds = installedApps?.filter { it.isImported }?.map { it.id }
+            if (importedAppIds != null) {
+                val steamApps = findSteamAppWithAppIds(importedAppIds)
+                steamApps?.forEach { steamApp ->
+                    dirs += getAppDirName(steamApp)
                 }
             }
-
             return dirs.toList()
         }
 
