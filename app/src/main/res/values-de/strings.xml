@@ -26,6 +26,7 @@
     <string name="base_app_reset_container_confirm">Zurücksetzen</string>
     <string name="steam_verify_files_title">Dateien überprüfen</string>
     <string name="steam_verify_files_message">Stelle bitte sicher, dass deine Spielstände vorher in die Cloud hochgeladen oder gesichert wurden, da sie sonst überschrieben werden können.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Speicherstände werden heruntergeladen %1$d/%2$d</string>
     <string name="steam_update_title">Aktualisieren</string>
     <string name="steam_update_message">Stelle sicher, dass deine Speicherstände vor dem Aktualisieren in der Cloud gesichert oder gebackupt sind, um ein Überschreiben zu verhindern.</string>
     <string name="steam_not_logged_in">Du musst bei Steam angemeldet sein, um diese Funktion zu nutzen</string>
@@ -237,6 +238,7 @@
     <string name="toggle_fullscreen">Vollbild umschalten</string>
     <string name="toggle_orientation">Ausrichtung wechseln</string>
     <string name="task_manager">Task-Manager</string>
+    <string name="tools_wine_processes_running_hint">%1$d aktiv, tippe/klicke auf einen Prozess, um ihn zu schließen</string>
     <string name="magnifier">Lupe</string>
     <string name="logs">Logs</string>
     <string name="exit_game">Beenden</string>
@@ -429,6 +431,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Speichert einen Logcat-Snapshot nur für diese App</string>
     <string name="settings_save_logcat_title">Logcat speichern</string>
+    <string name="settings_achievement_show_notification">Errungenschaften-Benachrichtigungen anzeigen</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Behandlung von Flags bei CALL/RET-Befehlen<br /><br />
         <b>0</b> : Behandelt CALL/RET als ob nie Flags benötigt werden (schneller, instabil)<br />
@@ -855,6 +858,8 @@
     <string name="settings_info_libraries_subtitle">Welche Technologien GameNative möglich machen</string>
     <string name="settings_info_privacy_title">Datenschutzerklärung</string>
     <string name="settings_info_privacy_subtitle">Öffnet die Datenschutzerklärung von GameNative</string>
+    <string name="settings_info_usage_analytics_title">Nutzungsanalysen</string>
+    <string name="settings_info_usage_analytics_subtitle">Wir erfassen niemals persönliche Daten. Durch Deaktivierung werden nicht wesentliche Analysen gestoppt, jedoch werden grundlegende Spiel-Performance-Daten weiterhin als berechtigtes Interesse zur Verbesserung der Kompatibilität erfasst.</string>
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Oberfläche</string>
     <string name="settings_interface_external_links_title">Weblinks extern öffnen</string>
@@ -1041,11 +1046,14 @@
     <string name="best_config_compatibility_unknown">Keine bekannte Konfiguration</string>
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">Konfiguration erfolgreich übernommen</string>
+    <string name="best_config_missing_components_title">Konfiguration nicht angewendet</string>
+    <string name="best_config_missing_components_message">Die folgenden erforderlichen Komponenten sind auf diesem Gerät nicht verfügbar:\n\n%1$s\n\nInstallieren Sie die fehlenden Komponenten und versuchen Sie es erneut.</string>
     <string name="best_config_known_config_invalid">Bekannte Konfiguration ungültig</string>
     <string name="best_config_no_config_available">Keine optimale Konfiguration verfügbar</string>
     <string name="best_config_fetch_failed">Konfiguration konnte nicht abgerufen werden. Bitte überprüfen Sie Ihre Netzwerkverbindung.</string>
+    <string name="best_config_apply_anyway">Trotzdem anwenden</string>
+    <string name="best_config_applied_with_defaults">Konfiguration angewendet, fehlende Komponenten durch Standardwerte ersetzt</string>
     <string name="best_config_apply_failed">Konfiguration konnte nicht übernommen werden: %s</string>
-    <string name="best_config_missing_content">%s fehlt</string>
     <string name="import_config">Konfiguration importieren</string>
     <string name="export_config">Konfiguration exportieren</string>
     <string name="library_app_type">App-Typ</string>
@@ -1304,4 +1312,26 @@
     <string name="workshop_processing">Mods werden verarbeitet…</string>
     <string name="workshop_failed_count">%1$d Workshop-Mod(s) konnten nicht aktualisiert werden</string>
     <string name="workshop_download_failed">Download fehlgeschlagen</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Empfohlen</string>
+    <string name="recommended_buy_button">Spiel ansehen</string>
+    <string name="recommended_support_message">Ein Kauf über diesen Link unterstützt die Entwicklung von GameNative.</string>
+    <string name="recommended_about_heading">Über dieses Spiel</string>
+    <string name="recommended_review_count">Basierend auf %1$s Bewertungen</string>
+    <string name="review_overwhelmingly_positive">Überwältigend positiv</string>
+    <string name="review_very_positive">Sehr positiv</string>
+    <string name="review_mostly_positive">Größtenteils positiv</string>
+    <string name="review_mixed">Gemischt</string>
+    <string name="review_mostly_negative">Größtenteils negativ</string>
+    <string name="review_overwhelmingly_negative">Überwältigend negativ</string>
+    <string name="settings_interface_show_recommendations_title">Spielempfehlungen anzeigen</string>
+    <string name="settings_interface_show_recommendations_subtitle">Zeigt kuratierte Indie-Spiele in deiner Bibliothek. Aktiviert lassen unterstützt Indie-Entwickler und GameNative.</string>
+     <string name="steam_save_export_success">Spielstände exportiert</string>
+     <string name="steam_save_export_no_saves_found">Keine Spielstände gefunden</string>
+     <string name="steam_save_export_failed">Spielstände konnten nicht exportiert werden: %s</string>
+     <string name="steam_save_import_success">Spielstände importiert</string>
+     <string name="steam_save_import_failed">Spielstände konnten nicht importiert werden: %s</string>
+    <string name="option_import_saves">Spielstände importieren</string>
+    <string name="option_export_saves">Spielstände exportieren</string>
 </resources>

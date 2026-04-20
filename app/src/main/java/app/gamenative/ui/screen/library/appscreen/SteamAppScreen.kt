@@ -77,6 +77,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.ui.component.dialog.state.GameManagerDialogState
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.ui.util.SteamSaveTransfer
 import app.gamenative.utils.ContainerUtils.getContainer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -458,10 +459,12 @@ class SteamAppScreen : BaseAppScreen() {
     ) {
         val gameId = libraryItem.gameId
         val appInfo = SteamService.getAppInfoOf(gameId)
-        PostHog.capture(
-            event = "container_opened",
-            properties = mapOf("game_name" to (appInfo?.name ?: "")),
-        )
+        if (PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(
+                event = "container_opened",
+                properties = mapOf("game_name" to (appInfo?.name ?: "")),
+            )
+        }
         super.onRunContainerClick(context, libraryItem, onClickPlay)
     }
 
@@ -645,6 +648,62 @@ class SteamAppScreen : BaseAppScreen() {
         )
     }
 
+    override fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean {
+        return libraryItem.gameSource == app.gamenative.data.GameSource.STEAM
+    }
+
+    private suspend fun activateSaveTransferContainer(context: Context, appId: String): Throwable? {
+        return try {
+            withContext(Dispatchers.IO) {
+                val containerManager = ContainerManager(context)
+                val container = ContainerUtils.getOrCreateContainer(context, appId)
+                containerManager.activateContainer(container)
+            }
+            null
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            Timber.e(t, "Failed to activate save transfer container for $appId")
+            t
+        }
+    }
+
+    override suspend fun exportSaves(
+        context: Context,
+        libraryItem: LibraryItem,
+        uri: Uri,
+    ): Boolean {
+        val activationError = activateSaveTransferContainer(context, libraryItem.appId)
+        if (activationError != null) {
+            SnackbarManager.show(
+                context.getString(
+                    R.string.steam_save_export_failed,
+                    activationError.message ?: "Unknown error",
+                ),
+            )
+            return false
+        }
+        return SteamSaveTransfer.exportSaves(context, libraryItem.gameId, uri)
+    }
+
+    override suspend fun importSaves(
+        context: Context,
+        libraryItem: LibraryItem,
+        uri: Uri,
+    ): Boolean {
+        val activationError = activateSaveTransferContainer(context, libraryItem.appId)
+        if (activationError != null) {
+            SnackbarManager.show(
+                context.getString(
+                    R.string.steam_save_import_failed,
+                    activationError.message ?: "Unknown error",
+                ),
+            )
+            return false
+        }
+        return SteamSaveTransfer.importSaves(context, libraryItem.gameId, uri)
+    }
+
     @Composable
     override fun getSourceSpecificMenuOptions(
         context: Context,
@@ -752,10 +811,12 @@ class SteamAppScreen : BaseAppScreen() {
             AppMenuOption(
                 AppOptionMenuType.ForceCloudSync,
                 onClick = {
-                    PostHog.capture(
-                        event = "cloud_sync_forced",
-                        properties = mapOf("game_name" to appInfo.name),
-                    )
+                    if (PrefManager.usageAnalyticsEnabled) {
+                        PostHog.capture(
+                            event = "cloud_sync_forced",
+                            properties = mapOf("game_name" to appInfo.name),
+                        )
+                    }
                     CoroutineScope(Dispatchers.IO).launch {
                         SnackbarManager.show(context.getString(R.string.library_cloud_sync_starting))
 
@@ -1251,11 +1312,31 @@ class SteamAppScreen : BaseAppScreen() {
             val appDao = remember { SteamService.instance?.appDao }
             var currentEnabledIds by remember { mutableStateOf<Set<Long>?>(null) }
 
+            // Load container for mod path override
+            val containerId = "STEAM_$gameId"
+            var workshopModPath by remember(gameId) { mutableStateOf("") }
+            val wsGameRootDir = remember(gameId) {
+                if (SteamService.isAppInstalled(gameId)) File(SteamService.getAppDirPath(gameId)) else null
+            }
+            val wsWinePrefix = remember(gameId) {
+                runCatching {
+                    val container = ContainerUtils.getContainer(context, containerId)
+                    container.getRootDir()?.let { File(it, ".wine").absolutePath } ?: ""
+                }.getOrDefault("")
+            }
+
             LaunchedEffect(gameId) {
                 val idsString = withContext(Dispatchers.IO) {
                     appDao?.getEnabledWorkshopItemIds(gameId)
                 }
                 currentEnabledIds = WorkshopManager.parseEnabledIds(idsString)
+                // Load saved mod path override
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        val container = ContainerUtils.getContainer(context, containerId)
+                        workshopModPath = container.getExtra("workshopModPath", "")
+                    }
+                }
             }
 
             val loadedIds = currentEnabledIds
@@ -1263,6 +1344,9 @@ class SteamAppScreen : BaseAppScreen() {
                 WorkshopManagerDialog(
                     visible = true,
                     currentEnabledIds = loadedIds,
+                    workshopModPath = workshopModPath,
+                    gameRootDir = wsGameRootDir,
+                    winePrefix = wsWinePrefix,
                     onGetDisplayInfo = { context ->
                         return@WorkshopManagerDialog getGameDisplayInfo(context, libraryItem)
                     },
@@ -1286,6 +1370,17 @@ class SteamAppScreen : BaseAppScreen() {
                                     gameRootDir = gameRootDir,
                                     gameName = gameName,
                                 )
+                            }
+                        }
+                    },
+                    onModPathChanged = { newPath ->
+                        workshopModPath = newPath
+                        CoroutineScope(Dispatchers.IO).launch {
+                            runCatching {
+                                val container = ContainerUtils.getContainer(context, containerId)
+                                container.putExtra("workshopModPath", if (newPath.isEmpty()) null else newPath)
+                                container.saveData()
+                                Timber.tag("Workshop").i("Workshop mod path override set to: '$newPath' for gameId=$gameId")
                             }
                         }
                     },

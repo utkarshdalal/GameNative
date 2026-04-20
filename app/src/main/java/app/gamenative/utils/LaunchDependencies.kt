@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import app.gamenative.R
 import app.gamenative.data.GameSource
+import app.gamenative.utils.launchdependencies.BionicDefaultProtonDependency
 import app.gamenative.utils.launchdependencies.GogScriptInterpreterDependency
 import app.gamenative.utils.launchdependencies.LaunchDependencyCallbacks
 import app.gamenative.utils.launchdependencies.LaunchDependency
@@ -18,12 +19,15 @@ const val LOADING_PROGRESS_UNKNOWN: Float = -1f
 class LaunchDependencies {
     companion object {
         private val launchDependencies: List<LaunchDependency> = listOf(
+            BionicDefaultProtonDependency,
             GogScriptInterpreterDependency,
         )
+
+        private var dependenciesProvider: () -> List<LaunchDependency> = { launchDependencies }
     }
 
     fun getLaunchDependencies(container: Container, gameSource: GameSource, gameId: Int): List<LaunchDependency> =
-        launchDependencies.filter { it.appliesTo(container, gameSource, gameId) }
+        dependenciesProvider().filter { it.appliesTo(container, gameSource, gameId) }
 
     suspend fun ensureLaunchDependencies(
         context: Context,
@@ -45,5 +49,15 @@ class LaunchDependencies {
             setLoadingMessage(context.getString(R.string.main_loading))
             setLoadingProgress(1f)
         }
+    }
+
+    /**
+     * Test-only hook to override the launch dependency provider.
+     * Not intended for production code paths.
+     *
+     * @param provider Dependency provider for tests; pass null to restore the default provider.
+     */
+    internal fun setDependenciesProviderForTests(provider: (() -> List<LaunchDependency>)?) {
+        dependenciesProvider = provider ?: { launchDependencies }
     }
 }

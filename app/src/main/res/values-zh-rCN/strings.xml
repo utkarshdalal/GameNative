@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">重置</string>
     <string name="steam_verify_files_title">验证文件</string>
     <string name="steam_verify_files_message">验证前请确保存档已上传至云端或已备份，否则存档可能会被覆盖</string>
+    <string name="steam_cloud_sync_downloading_save_files">正在下载存档文件 %1$d/%2$d</string>
     <string name="steam_update_title">更新</string>
     <string name="steam_update_message">更新前请确保存档已上传至云端或已备份，否则存档可能会被覆盖</string>
     <string name="steam_storage_permission_required">需要存储权限</string>
@@ -242,6 +243,7 @@
     <string name="toggle_fullscreen">切换全屏</string>
     <string name="toggle_orientation">切换屏幕方向</string>
     <string name="task_manager">任务管理器</string>
+    <string name="tools_wine_processes_running_hint">%1$d 个正在运行，点按/点击某个进程以关闭</string>
     <string name="magnifier">放大镜</string>
     <string name="logs">应用日志</string>
     <string name="exit_game">退出</string>
@@ -439,6 +441,7 @@
     <!-- 设置 -->
     <string name="settings_save_logcat_subtitle">保存此应用 PID 的 logcat 快照</string>
     <string name="settings_save_logcat_title">保存 logcat</string>
+    <string name="settings_achievement_show_notification">显示成就通知</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         CALL/RET 操作码的标志处理方式<br /><br />
@@ -885,6 +888,8 @@
     <string name="settings_info_libraries_subtitle">了解哪些技术让 GameNative 成为可能</string>
     <string name="settings_info_privacy_title">隐私政策</string>
     <string name="settings_info_privacy_subtitle">打开链接至 GameNative 的隐私政策</string>
+    <string name="settings_info_usage_analytics_title">使用分析</string>
+    <string name="settings_info_usage_analytics_subtitle">我们绝不追踪个人信息。关闭此选项将停止非必要的分析，但核心游戏性能数据仍会作为合法权益继续收集，以改善兼容性。</string>
 
     <!-- 设置：界面组 -->
     <string name="settings_interface_title">界面</string>
@@ -1090,11 +1095,14 @@
 
     <!-- 最佳配置提示消息 -->
     <string name="best_config_applied_successfully">配置已成功应用</string>
+    <string name="best_config_missing_components_title">配置未应用</string>
+    <string name="best_config_missing_components_message">此设备上以下必需组件不可用：\n\n%1$s\n\n请安装缺失的组件后重试。</string>
     <string name="best_config_known_config_invalid">已知配置无效</string>
     <string name="best_config_no_config_available">此游戏没有可用的最佳配置</string>
     <string name="best_config_fetch_failed">获取配置失败，请检查网络连接。</string>
+    <string name="best_config_apply_anyway">仍然应用</string>
+    <string name="best_config_applied_with_defaults">配置已应用，缺失组件已替换为默认值</string>
     <string name="best_config_apply_failed">应用配置失败：%s</string>
-    <string name="best_config_missing_content">%s 缺失</string>
     <string name="import_config">导入配置</string>
     <string name="export_config">导出配置</string>
 
@@ -1357,4 +1365,26 @@
     <string name="workshop_processing">正在处理模组…</string>
     <string name="workshop_failed_count">%1$d 个创意工坊模组更新失败</string>
     <string name="workshop_download_failed">下载失败</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">推荐</string>
+    <string name="recommended_buy_button">查看游戏</string>
+    <string name="recommended_support_message">通过此链接购买有助于支持 GameNative 的开发。</string>
+    <string name="recommended_about_heading">关于本游戏</string>
+    <string name="recommended_review_count">基于 %1$s 条评价</string>
+    <string name="review_overwhelmingly_positive">好评如潮</string>
+    <string name="review_very_positive">特别好评</string>
+    <string name="review_mostly_positive">多半好评</string>
+    <string name="review_mixed">褒贬不一</string>
+    <string name="review_mostly_negative">多半差评</string>
+    <string name="review_overwhelmingly_negative">差评如潮</string>
+    <string name="settings_interface_show_recommendations_title">显示游戏推荐</string>
+    <string name="settings_interface_show_recommendations_subtitle">在游戏库中显示精选独立游戏。保持开启有助于支持独立开发者和 GameNative。</string>
+     <string name="steam_save_export_success">存档已导出</string>
+     <string name="steam_save_export_no_saves_found">未找到存档文件</string>
+     <string name="steam_save_export_failed">导出存档失败：%s</string>
+     <string name="steam_save_import_success">存档已导入</string>
+     <string name="steam_save_import_failed">导入存档失败：%s</string>
+    <string name="option_import_saves">导入存档</string>
+    <string name="option_export_saves">导出存档</string>
 </resources>

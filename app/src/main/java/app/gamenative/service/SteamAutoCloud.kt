@@ -1,6 +1,8 @@
 package app.gamenative.service
 
 import androidx.room.withTransaction
+import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
@@ -14,6 +16,7 @@ import app.gamenative.service.SteamService.Companion.FileChanges
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import app.gamenative.utils.FileUtils
+import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileChangeList
@@ -25,6 +28,7 @@ import java.io.InputStream
 import java.io.RandomAccessFile
 import java.security.MessageDigest
 import java.nio.file.Files
+import java.nio.file.FileSystemException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Date
@@ -37,16 +41,24 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
+import java.io.IOException
 import java.io.OutputStream
 import java.net.SocketTimeoutException
 import java.nio.file.attribute.FileTime
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * [Steam Auto Cloud](https://partner.steamgames.com/doc/features/cloud#steam_auto-cloud)
@@ -74,8 +86,8 @@ object SteamAutoCloud {
     private inline fun InputStream.copyTo(
         out: OutputStream,
         bufferSize: Int = 8 * 1024,
-        progress: (Long) -> Unit,
-    ) {
+        progress: (chunkBytes: Long, totalBytes: Long) -> Unit,
+    ): Long {
         val buf = ByteArray(bufferSize)
         var bytesRead: Int
         var total = 0L
@@ -83,8 +95,9 @@ object SteamAutoCloud {
             if (bytesRead == 0) continue
             out.write(buf, 0, bytesRead)
             total += bytesRead
-            progress(total)
+            progress(bytesRead.toLong(), total)
         }
+        return total
     }
 
     fun syncUserFiles(
@@ -372,133 +385,72 @@ object SteamAutoCloud {
 
         val downloadFiles: (AppFileChangeList, CoroutineScope) -> Deferred<UserFilesDownloadResult> = { fileList, parentScope ->
             parentScope.async {
-                var filesDownloaded = 0
-                var bytesDownloaded = 0L
+                val filesDownloaded = AtomicInteger(0)
+                val bytesDownloaded = AtomicLong(0L)
                 val totalFiles = fileList.files.size
+                val parallelism = PrefManager.downloadSpeed.coerceAtLeast(1)
+                // A new client (and its Dispatcher thread pool) is created intentionally per sync,
+                // since cloud saves are downloaded at most once per game launch.
+                val downloadHttpClient = Net.httpForParallelDownloads(parallelism)
+                val semaphore = Semaphore(parallelism)
+                val completedFiles = AtomicInteger(0)
+                val totalRawBytes = fileList.files.sumOf { it.rawFileSize.toLong() }
+                // downloadedRawBytes tracks bytes as they stream in (per-chunk) for live progress.
+                // bytesDownloaded accumulates rawFileSize per completed file for final accounting.
+                val downloadedRawBytes = AtomicLong(0L)
+                val lastReportedPercent = AtomicInteger(-1)
+                val progressMessage: (Int) -> String = { finishedFiles ->
+                    steamInstance.getString(
+                        R.string.steam_cloud_sync_downloading_save_files,
+                        finishedFiles,
+                        totalFiles,
+                    )
+                }
 
-                fileList.files.forEachIndexed { index, file ->
-                    val prefixedPath = getFilePrefixPath(file, fileList)
-                    val actualFilePath = getFullFilePath(file, fileList)
-
-                    Timber.i("$prefixedPath -> $actualFilePath")
-
-                    val fileDownloadInfo = steamCloud.clientFileDownload(appInfo.id, prefixedPath).await()
-
-                    if (fileDownloadInfo.urlHost.isNotEmpty()) {
-                        onProgress?.invoke("Downloading ${file.filename}", -1f)
-                        val httpUrl = with(fileDownloadInfo) {
-                            buildUrl(useHttps, urlHost, urlPath)
-                        }
-
-                        Timber.i("Downloading $httpUrl")
-
-                        val headers = Headers.headersOf(
-                            *fileDownloadInfo.requestHeaders
-                                .map { listOf(it.name, it.value) }
-                                .flatten()
-                                .toTypedArray(),
-                        )
-
-                        val request = Request.Builder()
-                            .url(httpUrl)
-                            .headers(headers)
-                            .build()
-
-                        val httpClient = steamInstance.steamClient!!.configuration.httpClient
-
-                        val response = withTimeout(SteamService.requestTimeout) {
-                            httpClient.newCall(request).execute()
-                        }
-
-                        if (!response.isSuccessful) {
-                            Timber.w("File download of $prefixedPath was unsuccessful")
-                            response.close()
-                            return@forEachIndexed
-                        }
-
-                        try {
-                            val totalFileSize = fileDownloadInfo.rawFileSize.toLong()
-                            var totalBytesRead = 0L
-                            var lastReportedProgress = -1f
-                            val progressThreshold = 0.01f // Update every 1%
-
-                            val copyToFile: (InputStream) -> Unit = { input ->
-                                Files.createDirectories(actualFilePath.parent)
-
-                                FileOutputStream(actualFilePath.toString()).use { fs ->
-                                    input.copyTo(fs, 8 * 1024) { bytesRead ->
-                                        totalBytesRead = bytesRead
-                                        if (totalFileSize > 0) {
-                                            val currentProgress = (totalBytesRead.toFloat() / totalFileSize).coerceIn(0f, 1f)
-                                            if (currentProgress - lastReportedProgress >= progressThreshold || currentProgress >= 1f) {
-                                                onProgress?.invoke("Downloading ${file.filename}", currentProgress)
-                                                lastReportedProgress = currentProgress
-                                            }
-                                        }
-                                    }
-
-                                    // Preserve file timestamp from steamcloud, could fix game save loading, tested Skyrim
-                                    try {
-                                        // Ensure your fileDownloadInfo actually contains a timestamp (Long)
-                                        fileDownloadInfo.timestamp.let { timestamp ->
-                                            val fileTime = FileTime.fromMillis(timestamp.time)
-                                            Files.setLastModifiedTime(actualFilePath, fileTime)
-                                        }
-                                    } catch (e: Exception) {
-                                        Timber.w("Failed to set lastModified for $actualFilePath: ${e.message}")
-                                    }
-
-                                    if (totalBytesRead != totalFileSize) {
-                                        Timber.w("Bytes read from stream of $prefixedPath does not match expected size")
+                try {
+                    coroutineScope {
+                        fileList.files.map { file ->
+                            async {
+                                semaphore.withPermit {
+                                    val result = downloadSingleFile(
+                                        appInfo = appInfo,
+                                        steamCloud = steamCloud,
+                                        file = file,
+                                        fileList = fileList,
+                                        getFilePrefixPath = getFilePrefixPath,
+                                        getFullFilePath = getFullFilePath,
+                                        buildUrl = buildUrl,
+                                        httpClient = downloadHttpClient,
+                                        totalRawBytes = totalRawBytes,
+                                        downloadedRawBytes = downloadedRawBytes,
+                                        lastReportedPercent = lastReportedPercent,
+                                        completedFiles = completedFiles,
+                                        totalFiles = totalFiles,
+                                        progressMessage = progressMessage,
+                                        onProgress = onProgress,
+                                    )
+                                    if (result != null) {
+                                        filesDownloaded.addAndGet(result.filesDownloaded)
+                                        bytesDownloaded.addAndGet(result.bytesDownloaded)
                                     }
                                 }
                             }
-
-                            withTimeout(SteamService.responseTimeout) {
-                                if (fileDownloadInfo.fileSize != fileDownloadInfo.rawFileSize) {
-                                    response.body?.byteStream()?.use { inputStream ->
-                                        ZipInputStream(inputStream).use { zipInput ->
-                                            val entry = zipInput.nextEntry
-
-                                            if (entry == null) {
-                                                Timber.w("Downloaded user file $prefixedPath has no zip entries")
-                                                return@withTimeout
-                                            }
-
-                                            copyToFile(zipInput)
-
-                                            if (zipInput.nextEntry != null) {
-                                                Timber.e("Downloaded user file $prefixedPath has more than one zip entry")
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    response.body?.byteStream()?.use { inputStream ->
-                                        copyToFile(inputStream)
-                                    }
-                                }
-
-                                filesDownloaded++
-
-                                bytesDownloaded += fileDownloadInfo.fileSize
-                            }
-                        } catch (e: FileSystemException) {
-                            Timber.w("Could not download $actualFilePath: %s", e.message);
-                        } catch (e: SocketTimeoutException) {
-                            Timber.w("Could not download $actualFilePath: %s", e.message);
-                        }
-
-                        response.close()
-                    } else {
-                        Timber.w("URL host of $prefixedPath was empty")
+                        }.awaitAll()
+                    }
+                } finally {
+                    runCatching {
+                        downloadHttpClient.dispatcher.executorService.shutdown()
+                    }
+                    runCatching {
+                        downloadHttpClient.connectionPool.evictAll()
                     }
                 }
 
-                if (totalFiles > 0) {
+                if (totalFiles > 0 && filesDownloaded.get() == totalFiles) {
                     onProgress?.invoke("Download complete", 1.0f)
                 }
 
-                UserFilesDownloadResult(filesDownloaded, bytesDownloaded)
+                UserFilesDownloadResult(filesDownloaded.get(), bytesDownloaded.get())
             }
         }
 
@@ -881,21 +833,52 @@ object SteamAutoCloud {
                     }.inWholeMicroseconds
 
                     val hasUncachedLocalFiles = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty()
+                    var rehydratedSilently = false
                     if (hasUncachedLocalFiles) {
-                        if (localAppChangeNumber < 0) {
-                            // first offline play: never synced, no cache, but local
-                            // files exist — cloud would silently overwrite them
-                            hasLocalChanges = true
-                            conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                        // no cache but local files exist. before declaring conflict,
+                        // check if local state is byte-identical to remote — this is
+                        // the "cache-wiped by destructive migration, nothing actually
+                        // changed" case and should be silent. key by absolute filesystem
+                        // path: cloud stores files as (pathPrefixIndex, basename) while
+                        // local scan stores filename as subdir-relative path with a
+                        // single pattern prefix, so basename-only keys won't match for
+                        // nested files.
+                        // windows paths are case-insensitive; steam cloud and wine may
+                        // disagree on case. lowercase the keys so content-identical
+                        // files compare equal regardless.
+                        val localByPath = allLocalUserFiles.associate {
+                            it.getAbsPath(prefixToPath).toString().lowercase() to it.sha
+                        }
+                        val remoteByPath = appFileListChange.files.associate {
+                            getFullFilePath(it, appFileListChange).toString().lowercase() to it.shaFile
+                        }
+                        val localMatchesRemote = localByPath.keys == remoteByPath.keys &&
+                            localByPath.all { (path, sha) ->
+                                sha.contentEquals(remoteByPath[path])
+                            }
+
+                        if (localMatchesRemote) {
+                            Timber.i("Cache absent but local matches remote — rehydrating cache silently")
+                            with(steamInstance) {
+                                db.withTransaction {
+                                    fileChangeListsDao.insert(appInfo.id, allLocalUserFiles)
+                                    changeNumbersDao.insert(appInfo.id, cloudAppChangeNumber)
+                                }
+                            }
+                            syncResult = SyncResult.UpToDate
+                            filesManaged = allLocalUserFiles.size
+                            rehydratedSilently = true
                         } else {
-                            // app update cleared the cache but a prior sync was
-                            // recorded — can't tell if local files changed
                             hasLocalChanges = true
                             conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                            remoteTimestamp = appFileListChange.files.map { it.timestamp.time }.maxOrNull() ?: 0L
+                            localTimestamp = allLocalUserFiles.map { it.timestamp }.maxOrNull() ?: 0L
                         }
                     }
 
-                    if (!hasLocalChanges) {
+                    if (rehydratedSilently) {
+                        // nothing to do — cache is now consistent with cloud
+                    } else if (!hasLocalChanges) {
                         // we can safely download the new changes since no changes have been
                         // made locally
 
@@ -990,6 +973,187 @@ object SteamAutoCloud {
         )
 
         postSyncInfo
+    }
+
+    private suspend fun downloadSingleFile(
+        appInfo: SteamApp,
+        steamCloud: SteamCloud,
+        file: AppFileInfo,
+        fileList: AppFileChangeList,
+        getFilePrefixPath: (AppFileInfo, AppFileChangeList) -> String,
+        getFullFilePath: (AppFileInfo, AppFileChangeList) -> Path,
+        buildUrl: (Boolean, String, String) -> String,
+        httpClient: okhttp3.OkHttpClient,
+        totalRawBytes: Long,
+        downloadedRawBytes: AtomicLong,
+        lastReportedPercent: AtomicInteger,
+        completedFiles: AtomicInteger,
+        totalFiles: Int,
+        progressMessage: (Int) -> String,
+        onProgress: ((message: String, progress: Float) -> Unit)?, // invoked from IO thread
+    ): UserFilesDownloadResult? {
+        val prefixedPath = getFilePrefixPath(file, fileList)
+        val actualFilePath = getFullFilePath(file, fileList)
+
+        Timber.i("$prefixedPath -> $actualFilePath")
+
+        val fileDownloadInfo = try {
+            steamCloud.clientFileDownload(appInfo.id, prefixedPath).await()
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to fetch download info for %s", prefixedPath)
+            return null
+        }
+
+        if (fileDownloadInfo.urlHost.isEmpty()) {
+            Timber.w("URL host of $prefixedPath was empty")
+            return null
+        }
+
+        val httpUrl = with(fileDownloadInfo) {
+            buildUrl(useHttps, urlHost, urlPath)
+        }
+
+        Timber.i("Downloading $httpUrl")
+
+        val headers = Headers.headersOf(
+            *fileDownloadInfo.requestHeaders
+                .map { listOf(it.name, it.value) }
+                .flatten()
+                .toTypedArray(),
+        )
+
+        val request = Request.Builder()
+            .url(httpUrl)
+            .headers(headers)
+            .build()
+
+        val response = try {
+            withTimeout(SteamService.requestTimeout) {
+                httpClient.newCall(request).execute()
+            }
+        } catch (e: TimeoutCancellationException) {
+            Timber.w(e, "Timed out downloading %s", actualFilePath)
+            null
+        } catch (e: SocketTimeoutException) {
+            Timber.w("Could not download $actualFilePath: %s", e.message)
+            null
+        } catch (e: IOException) {
+            Timber.w("Could not download $actualFilePath: %s", e.message)
+            null
+        }
+
+        if (response == null) {
+            return null
+        }
+
+        if (!response.isSuccessful) {
+            Timber.w("File download of $prefixedPath was unsuccessful")
+            response.close()
+            return null
+        }
+
+        try {
+            val totalFileSize = fileDownloadInfo.rawFileSize.toLong()
+
+            val copyToFile: (InputStream) -> Boolean = { input ->
+                Files.createDirectories(actualFilePath.parent)
+
+                FileOutputStream(actualFilePath.toString()).use { fs ->
+                    val totalBytesRead = input.copyTo(fs, 8 * 1024) { chunkBytes, _ ->
+                        if (totalRawBytes > 0L) {
+                            val currentPercent = (
+                                downloadedRawBytes.addAndGet(chunkBytes) * 100 / totalRawBytes
+                                ).toInt().coerceIn(0, 100)
+                            while (true) {
+                                val previousPercent = lastReportedPercent.get()
+                                if (currentPercent <= previousPercent) break
+                                if (lastReportedPercent.compareAndSet(previousPercent, currentPercent)) {
+                                    onProgress?.invoke(
+                                        progressMessage(completedFiles.get()),
+                                        currentPercent / 100f,
+                                    )
+                                    break
+                                }
+                            }
+                        }
+                    }
+
+                    // Preserve file timestamp from steamcloud, could fix game save loading, tested Skyrim
+                    try {
+                        fileDownloadInfo.timestamp.let { timestamp ->
+                            val fileTime = FileTime.fromMillis(timestamp.time)
+                            Files.setLastModifiedTime(actualFilePath, fileTime)
+                        }
+                    } catch (e: Exception) {
+                        Timber.w("Failed to set lastModified for $actualFilePath: ${e.message}")
+                    }
+
+                    if (totalBytesRead != totalFileSize) {
+                        Timber.w("Bytes read from stream of $prefixedPath does not match expected size")
+                        return@use false
+                    }
+                    true
+                }
+            }
+
+            val downloaded = withTimeout(SteamService.responseTimeout) {
+                if (fileDownloadInfo.fileSize != fileDownloadInfo.rawFileSize) {
+                    response.body?.byteStream()?.use { inputStream ->
+                        ZipInputStream(inputStream).use { zipInput ->
+                            val entry = zipInput.nextEntry
+
+                            if (entry == null) {
+                                Timber.w("Downloaded user file $prefixedPath has no zip entries")
+                                return@withTimeout false
+                            }
+
+                            if (!copyToFile(zipInput)) return@withTimeout false
+
+                            if (zipInput.nextEntry != null) {
+                                Timber.e("Downloaded user file $prefixedPath has more than one zip entry")
+                            }
+                        }
+                    } ?: return@withTimeout false
+                } else {
+                    response.body?.byteStream()?.use { inputStream ->
+                        if (!copyToFile(inputStream)) return@withTimeout false
+                    } ?: return@withTimeout false
+                }
+                true
+            }
+
+            if (!downloaded) {
+                return null
+            }
+
+            val finishedFiles = completedFiles.incrementAndGet()
+            val finalProgress = if (totalRawBytes > 0L) {
+                (downloadedRawBytes.get().toFloat() / totalRawBytes).coerceIn(0f, 1f)
+            } else {
+                finishedFiles.toFloat() / totalFiles
+            }
+            onProgress?.invoke(progressMessage(finishedFiles), finalProgress)
+
+            return UserFilesDownloadResult(1, fileDownloadInfo.rawFileSize.toLong())
+        } catch (e: TimeoutCancellationException) {
+            Timber.w(e, "Timed out downloading %s", actualFilePath)
+            return null
+        } catch (e: FileSystemException) {
+            Timber.w("Could not download $actualFilePath: %s", e.message)
+            return null
+        } catch (e: SocketTimeoutException) {
+            // Distinct from the outer SocketTimeoutException catch above: that one covers the
+            // connection/response phase; this one covers a timeout during the streaming read.
+            Timber.w("Could not download $actualFilePath: %s", e.message)
+            return null
+        } catch (e: IOException) {
+            Timber.w("Could not download $actualFilePath: %s", e.message)
+            return null
+        } finally {
+            response.close()
+        }
     }
 
     private fun AppFileChangeList.printFileChangeList(appInfo: SteamApp) {

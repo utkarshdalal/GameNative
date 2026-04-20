@@ -28,18 +28,23 @@ object GameFixesRegistry {
         GOG_Fix_2147483047,
         GOG_Fix_1787707874,
         GOG_Fix_1635627436,
-        STEAM_Fix_22300,
-        STEAM_Fix_22380,
-        STEAM_Fix_22330,
-        STEAM_Fix_752580,
         STEAM_Fix_400,
+        STEAM_Fix_22300,
+        STEAM_Fix_22330,
+        STEAM_Fix_22370,
+        STEAM_Fix_22380,
+        STEAM_Fix_22490,
         STEAM_Fix_413150,
-        STEAM_Fix_3373660,
+        STEAM_Fix_752580,
         STEAM_Fix_1637320,
+        STEAM_Fix_3373660,
         EPIC_Fix_b1b4e0b67a044575820cb5e63028dcae,
         EPIC_Fix_dabb52e328834da7bbe99691e374cb84,
+        EPIC_Fix_e345fdb9186645a48d30c3f85a8951dc,
         EPIC_Fix_59a0c86d02da42e8ba6444cb171e61bf,
     ).associateBy { it.gameSource to it.gameId }
+
+    private var fixesProvider: () -> Map<Pair<GameSource, String>, GameFix> = { fixes }
 
     fun applyFor(context: Context, appId: String, container: Container) {
         val source = ContainerUtils.extractGameSourceFromContainerId(appId)
@@ -53,7 +58,7 @@ object GameFixesRegistry {
             else -> gameId
         }
         Timber.i("GameFixesRegistry: Applying fixes for game: $source $catalogId if available")
-        val fix = fixes[source to catalogId] ?: return
+        val fix = fixesProvider()[source to catalogId] ?: return
         val (installPath, installPathWindows) = resolvePaths(context, source, gameId) ?: return
         fix.apply(context, catalogId, installPath, installPathWindows, container)
     }
@@ -79,5 +84,15 @@ object GameFixesRegistry {
             }
             else -> null
         }
+    }
+
+    /**
+     * Test-only hook to override the game-fixes provider.
+     * Not intended for production code paths.
+     *
+     * @param provider Fixes provider for tests; pass null to restore the default provider.
+     */
+    internal fun setFixesProviderForTests(provider: (() -> Map<Pair<GameSource, String>, GameFix>)?) {
+        fixesProvider = provider ?: { fixes }
     }
 }

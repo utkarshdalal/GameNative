@@ -196,6 +196,7 @@ private val isExiting = AtomicBoolean(false)
 private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
 private const val EXIT_PROCESS_POLL_INTERVAL_MS = 1_000L
 private const val EXIT_PROCESS_RESPONSE_TIMEOUT_MS = 2_000L
+private const val QUICK_MENU_PROCESS_POLL_INTERVAL_MS = 2_000L
 
 private data class XServerViewReleaseBinding(
     val xServerView: XServerView,
@@ -241,6 +242,48 @@ private fun buildEssentialProcessAllowlist(): Set<String> {
     val essentialServices = WineUtils.getEssentialServiceNames()
         .map { normalizeProcessName(it) }
     return (essentialServices + CORE_WINE_PROCESSES).toSet()
+}
+
+private suspend fun requestWineProcessSnapshot(winHandler: WinHandler): List<ProcessInfo>? {
+    val previousListener = winHandler.getOnGetProcessInfoListener()
+    val lock = Any()
+    var currentList = mutableListOf<ProcessInfo>()
+    var expectedCount = 0
+    val deferred = CompletableDeferred<List<ProcessInfo>?>()
+
+    val listener = OnGetProcessInfoListener { index, count, processInfo ->
+        previousListener?.onGetProcessInfo(index, count, processInfo)
+        synchronized(lock) {
+            if (count == 0 && processInfo == null) {
+                if (!deferred.isCompleted) deferred.complete(emptyList())
+                return@synchronized
+            }
+            if (index == 0) {
+                currentList = mutableListOf()
+                expectedCount = count
+                if (count == 0 && !deferred.isCompleted) {
+                    deferred.complete(emptyList())
+                    return@synchronized
+                }
+            }
+            if (processInfo != null) {
+                currentList.add(processInfo)
+            }
+            if (currentList.size >= expectedCount && !deferred.isCompleted) {
+                deferred.complete(currentList.toList())
+            }
+        }
+    }
+
+    return try {
+        winHandler.setOnGetProcessInfoListener(listener)
+        winHandler.listProcesses()
+        withTimeoutOrNull(EXIT_PROCESS_RESPONSE_TIMEOUT_MS) {
+            deferred.await()
+        }
+    } finally {
+        winHandler.setOnGetProcessInfoListener(previousListener)
+    }
 }
 
 // TODO logs in composables are 'unstable' which can cause recomposition (performance issues)
@@ -374,6 +417,9 @@ fun XServerScreen(
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
     var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
     var showQuickMenu by remember { mutableStateOf(false) }
+    var quickMenuToolsVisible by remember { mutableStateOf(false) }
+    var quickMenuWineProcesses by remember { mutableStateOf<List<ProcessInfo>>(emptyList()) }
+    var quickMenuWineProcessesLoading by remember { mutableStateOf(false) }
     var hasPhysicalController by remember { mutableStateOf(false) }
     var keepPausedForEditor by remember { mutableStateOf(false) }
     var hasPhysicalKeyboard by remember { mutableStateOf(false) }
@@ -795,6 +841,37 @@ fun XServerScreen(
         showQuickMenu = false
     }
 
+    LaunchedEffect(showQuickMenu, quickMenuToolsVisible, xServerView) {
+        if (!showQuickMenu || !quickMenuToolsVisible) {
+            quickMenuWineProcesses = emptyList()
+            quickMenuWineProcessesLoading = false
+            return@LaunchedEffect
+        }
+
+        val winHandler = xServerView?.getxServer()?.winHandler
+        if (winHandler == null) {
+            quickMenuWineProcesses = emptyList()
+            quickMenuWineProcessesLoading = false
+            return@LaunchedEffect
+        }
+
+        quickMenuWineProcessesLoading = true
+        while (showQuickMenu && quickMenuToolsVisible) {
+            val snapshot = withContext(Dispatchers.IO) {
+                requestWineProcessSnapshot(winHandler)
+                    ?.sortedWith(
+                        compareByDescending<ProcessInfo> { normalizeProcessName(it.name) !in buildEssentialProcessAllowlist() }
+                            .thenByDescending { it.memoryUsage },
+                    )
+            }
+            if (snapshot != null) {
+                quickMenuWineProcesses = snapshot
+            }
+            quickMenuWineProcessesLoading = false
+            delay(QUICK_MENU_PROCESS_POLL_INTERVAL_MS)
+        }
+    }
+
     val onQuickMenuItemSelected: (Int) -> Boolean = { itemId ->
         when (itemId) {
             QuickMenuAction.KEYBOARD -> {
@@ -806,7 +883,7 @@ fun XServerScreen(
                 anchor.post {
                     if (anchor.windowToken == null) return@post
                     val show = {
-                        PostHog.capture(event = "onscreen_keyboard_enabled")
+                        if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "onscreen_keyboard_enabled")
                         val isExternalDisplaySession =
                             (anchor.display?.displayId ?: Display.DEFAULT_DISPLAY) != Display.DEFAULT_DISPLAY
 
@@ -827,10 +904,10 @@ fun XServerScreen(
 
             QuickMenuAction.INPUT_CONTROLS -> {
                 if (areControlsVisible) {
-                    PostHog.capture(event = "onscreen_controller_disabled")
+                    if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "onscreen_controller_disabled")
                     hideInputControls()
                 } else {
-                    PostHog.capture(event = "onscreen_controller_enabled")
+                    if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "onscreen_controller_enabled")
                     val manager = PluviaApp.inputControlsManager
                     val profiles = manager?.getProfiles(false) ?: listOf()
                     if (profiles.isNotEmpty()) {
@@ -851,7 +928,7 @@ fun XServerScreen(
             }
 
             QuickMenuAction.EDIT_CONTROLS -> {
-                PostHog.capture(event = "edit_controls_in_game")
+                if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "edit_controls_in_game")
                 keepPausedForEditor = true
 
                 // Get or create profile for this container
@@ -927,7 +1004,7 @@ fun XServerScreen(
             }
 
             QuickMenuAction.EDIT_PHYSICAL_CONTROLLER -> {
-                PostHog.capture(event = "edit_physical_controller_from_menu")
+                if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "edit_physical_controller_from_menu")
                 keepPausedForEditor = true
                 showPhysicalControllerDialog = true
                 true
@@ -938,10 +1015,12 @@ fun XServerScreen(
                 isPerformanceHudEnabled = enabled
                 PrefManager.showFps = enabled
                 updatePerformanceHud(enabled)
-                PostHog.capture(
-                    event = "performance_hud_toggled",
-                    properties = mapOf("enabled" to enabled),
-                )
+                if (PrefManager.usageAnalyticsEnabled) {
+                    PostHog.capture(
+                        event = "performance_hud_toggled",
+                        properties = mapOf("enabled" to enabled),
+                    )
+                }
                 false
             }
 
@@ -969,7 +1048,7 @@ fun XServerScreen(
             ?.isVisible(WindowInsetsCompat.Type.ime()) == true
 
         if (imeVisible) {
-            PostHog.capture(event = "onscreen_keyboard_disabled")
+            if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "onscreen_keyboard_disabled")
             imeInputReceiver?.hideKeyboard()
             view.post {
                 if (Build.VERSION.SDK_INT >= 30) {
@@ -1613,6 +1692,12 @@ fun XServerScreen(
                                 contentsManager,
                                 onExtractFileListener,
                             )
+
+                            if (container.wineVersion.lowercase().contains("proton-10")) {
+                                // Only proton 10 can apply this fix
+                                XServerScreenUtils.replaceXAudioDllsFromRedistributable(context, appId)
+                            }
+
                             extractArm64ecInputDLLs(context, container) // REQUIRED: Uses updated xinput1_3 main.c from x86_64 build, prevents crashes with 3+ players, avoids need for input shim dlls.
                             extractx86_64InputDlls(context, container)
                             extractGraphicsDriverFiles(
@@ -2029,6 +2114,10 @@ fun XServerScreen(
             onItemSelected = onQuickMenuItemSelected,
             renderer = xServerView?.renderer,
             container = container,
+            winHandler = xServerView?.getxServer()?.winHandler,
+            wineProcesses = quickMenuWineProcesses,
+            isWineProcessesLoading = quickMenuWineProcessesLoading,
+            onToolsVisibilityChanged = { quickMenuToolsVisible = it },
             isPerformanceHudEnabled = isPerformanceHudEnabled,
             performanceHudConfig = performanceHudConfig,
             onPerformanceHudConfigChanged = ::applyPerformanceHudConfig,
@@ -2526,6 +2615,7 @@ private fun shiftXEnvironmentToContext(
 
     return environment
 }
+
 private fun setupXEnvironment(
     context: Context,
     appId: String,
@@ -2543,6 +2633,8 @@ private fun setupXEnvironment(
     onGameLaunchError: ((String) -> Unit)? = null,
     navigateBack: () -> Unit,
 ): XEnvironment {
+    ProcessHelper.hardKillStaleWineProcesses()
+
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val lc_all = container!!.lC_ALL
     val imageFs = ImageFs.find(context)

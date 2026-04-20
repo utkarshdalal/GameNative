@@ -91,8 +91,8 @@ internal fun ListViewCard(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
             },
         ),
-        border = if (isFocused) {
-            BorderStroke(
+        border = when {
+            isFocused -> BorderStroke(
                 2.dp,
                 Brush.horizontalGradient(
                     colors = listOf(
@@ -101,8 +101,11 @@ internal fun ListViewCard(
                     ),
                 ),
             )
-        } else {
-            null
+            appInfo.isRecommended -> BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+            )
+            else -> null
         },
     ) {
         Row(
@@ -179,8 +182,12 @@ internal fun ListViewCard(
                 }
             }
 
-            // Compatibility badge
-            compatibilityStatus?.let { status ->
+            val badgeStatus = if (appInfo.isRecommended) {
+                GameCompatibilityStatus.RECOMMENDED
+            } else {
+                compatibilityStatus
+            }
+            badgeStatus?.let { status ->
                 CompatibilityBadge(
                     status = status,
                     showLabel = true,

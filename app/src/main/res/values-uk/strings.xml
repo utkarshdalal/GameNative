@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">Скинути</string>
     <string name="steam_verify_files_title">Перевірити файли</string>
     <string name="steam_verify_files_message">Будь ласка, переконайтеся, що ваші збереження завантажено у хмару або створено їхню резервну копію перед перевіркою, оскільки інакше вони можуть бути перезаписані.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Завантаження файлів збережень %1$d/%2$d</string>
     <string name="steam_update_title">Оновити</string>
     <string name="steam_update_message">Будь ласка, переконайтеся, що ваші збереження завантажено у хмару або створено їхню резервну копію перед оновленням, оскільки інакше вони можуть бути перезаписані.</string>
     <string name="steam_not_logged_in">Ви повинні увійти в Steam, щоб використовувати цю функцію</string>
@@ -243,6 +244,7 @@
     <string name="toggle_fullscreen">Перемкнути повноекранний режим</string>
     <string name="toggle_orientation">Перемкнути орієнтацію екрана</string>
     <string name="task_manager">Диспетчер завдань</string>
+    <string name="tools_wine_processes_running_hint">%1$d запущено, торкніться/клацніть процес, щоб закрити його</string>
     <string name="magnifier">Лупа</string>
     <string name="logs">Журнали</string>
     <string name="exit_game">Вийти з гри</string>
@@ -440,6 +442,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Зберігає знімок logcat лише для PID цього застосунку</string>
     <string name="settings_save_logcat_title">Зберегти logcat</string>
+    <string name="settings_achievement_show_notification">Показувати сповіщення про досягнення</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Обробка прапорців для опкодів CALL/RET<br /><br />
@@ -889,6 +892,8 @@
     <string name="settings_info_libraries_subtitle">Дізнайтеся, завдяки яким технологіям працює GameNative</string>
     <string name="settings_info_privacy_title">Політика конфіденційності</string>
     <string name="settings_info_privacy_subtitle">Відкриває посилання на Політику конфіденційності GameNative</string>
+    <string name="settings_info_usage_analytics_title">Аналітика використання</string>
+    <string name="settings_info_usage_analytics_subtitle">Ми ніколи не відстежуємо особисту інформацію. Вимкнення зупиняє несуттєву аналітику, однак основні дані про продуктивність ігор все одно збираються як законний інтерес для покращення сумісності.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Інтерфейс</string>
@@ -1098,11 +1103,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">Конфігурацію успішно застосовано</string>
+    <string name="best_config_missing_components_title">Конфігурацію не застосовано</string>
+    <string name="best_config_missing_components_message">Наступні необхідні компоненти недоступні на цьому пристрої:\n\n%1$s\n\nВстановіть відсутні компоненти та спробуйте знову.</string>
     <string name="best_config_known_config_invalid">Відома конфігурація недійсна</string>
     <string name="best_config_no_config_available">Немає доступної найкращої конфігурації для цієї гри</string>
     <string name="best_config_fetch_failed">Не вдалося отримати конфігурацію. Перевірте підключення до мережі.</string>
+    <string name="best_config_apply_anyway">Застосувати все одно</string>
+    <string name="best_config_applied_with_defaults">Конфігурацію застосовано, відсутні компоненти замінено значеннями за замовчуванням</string>
     <string name="best_config_apply_failed">Не вдалося застосувати конфігурацію: %s</string>
-    <string name="best_config_missing_content">%s відсутній</string>
     <string name="import_config">Імпортувати конфігурацію</string>
     <string name="export_config">Експортувати конфігурацію</string>
     <string name="library_app_type">Тип застосунку</string>
@@ -1363,4 +1371,26 @@
     <string name="workshop_processing">Обробка модів…</string>
     <string name="workshop_failed_count">Не вдалося оновити %1$d мод(ів) Майстерні</string>
     <string name="workshop_download_failed">Помилка завантаження</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Рекомендовано</string>
+    <string name="recommended_buy_button">Переглянути гру</string>
+    <string name="recommended_support_message">Покупка за цим посиланням допомагає підтримувати розробку GameNative.</string>
+    <string name="recommended_about_heading">Про цю гру</string>
+    <string name="recommended_review_count">На основі %1$s відгуків</string>
+    <string name="review_overwhelmingly_positive">Надзвичайно позитивні</string>
+    <string name="review_very_positive">Дуже позитивні</string>
+    <string name="review_mostly_positive">Переважно позитивні</string>
+    <string name="review_mixed">Змішані</string>
+    <string name="review_mostly_negative">Переважно негативні</string>
+    <string name="review_overwhelmingly_negative">Надзвичайно негативні</string>
+    <string name="settings_interface_show_recommendations_title">Показувати рекомендації ігор</string>
+    <string name="settings_interface_show_recommendations_subtitle">Показує підібрані інді-ігри у вашій бібліотеці. Залишаючи це увімкненим, ви підтримуєте інді-розробників та GameNative.</string>
+     <string name="steam_save_export_success">Збереження експортовано</string>
+     <string name="steam_save_export_no_saves_found">Збереження не знайдено</string>
+     <string name="steam_save_export_failed">Не вдалося експортувати збереження: %s</string>
+     <string name="steam_save_import_success">Збереження імпортовано</string>
+     <string name="steam_save_import_failed">Не вдалося імпортувати збереження: %s</string>
+    <string name="option_import_saves">Імпортувати збереження</string>
+    <string name="option_export_saves">Експортувати збереження</string>
 </resources>

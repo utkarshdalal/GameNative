@@ -21,6 +21,7 @@
     <string name="abc_toolbar_collapse_description">Свернуть</string>
     <string name="about">О программе</string>
     <string name="acknowledge">ОК</string>
+    <string name="steam_cloud_sync_downloading_save_files">Загрузка файлов сохранения %1$d/%2$d</string>
     <string name="action_add_game">Добавить игру</string>
     <string name="action_details">Подробности</string>
     <string name="action_refresh">Обновить</string>
@@ -104,11 +105,14 @@
     <string name="bcn_emulation">Эмуляция BCn</string>
     <string name="bcn_emulation_type">Тип эмуляции BCn</string>
     <string name="best_config_applied_successfully">Конфигурация успешно применена</string>
+    <string name="best_config_applied_with_defaults">Конфигурация применена, отсутствующие компоненты заменены значениями по умолчанию</string>
+    <string name="best_config_apply_anyway">Применить всё равно</string>
     <string name="best_config_apply_failed">Ошибка применения конфигурации: %s</string>
     <string name="best_config_exact_gpu_match">Известная конфигурация работает на вашем GPU</string>
     <string name="best_config_fallback_match">Известная конфигурация может работать на вашем GPU</string>
     <string name="best_config_known_config_invalid">Известная конфигурация невалидна</string>
-    <string name="best_config_missing_content">%s отсутствует</string>
+    <string name="best_config_missing_components_message">Следующие необходимые компоненты недоступны на этом устройстве:\n\n%1$s\n\nУстановите недостающие компоненты и повторите попытку.</string>
+    <string name="best_config_missing_components_title">Конфигурация не применена</string>
     <string name="best_config_no_config_available">Нет доступной лучшей конфигурации для этой игры</string>
     <string name="best_config_fetch_failed">Не удалось получить конфигурацию. Проверьте сетевое подключение.</string>
     <string name="bind_button">Привязать: %1$s</string>
@@ -976,6 +980,8 @@ https://gamenative.app
     <string name="settings_info_libraries_title">Используемые библиотеки</string>
     <string name="settings_info_privacy_subtitle">Открывает ссылку на политику конфиденциальности GameNative</string>
     <string name="settings_info_privacy_title">Политика конфиденциальности</string>
+    <string name="settings_info_usage_analytics_title">Аналитика использования</string>
+    <string name="settings_info_usage_analytics_subtitle">Мы никогда не отслеживаем личную информацию. Отключение останавливает несущественную аналитику, однако основные данные о производительности игр по-прежнему собираются как законный интерес для улучшения совместимости.</string>
     <string name="settings_info_send_tip_subtitle">Внесите вклад в продолжающуюся разработку</string>
     <string name="settings_info_send_tip_title">Отправить чаевые</string>
     <string name="settings_info_source_subtitle">Просмотреть исходный код этого проекта</string>
@@ -1007,6 +1013,7 @@ https://gamenative.app
     <string name="settings_region_default">По умолчанию</string>
     <string name="settings_save_logcat_subtitle">Сохраняет снимок logcat только для PID этого приложения</string>
     <string name="settings_save_logcat_title">Сохранить logcat</string>
+    <string name="settings_achievement_show_notification">Показывать уведомления о достижениях</string>
     <string name="settings_saving_restarting">Сохранение настроек и перезагрузка…</string>
     <string name="settings_select_language">Выберите язык</string>
     <string name="settings_subtitle">Настройте ваш опыт</string>
@@ -1168,6 +1175,7 @@ https://gamenative.app
     <string name="tab_local">Пользовательское</string>
     <string name="tab_steam">Steam</string>
     <string name="task_manager">Менеджер задач</string>
+    <string name="tools_wine_processes_running_hint">%1$d запущено, нажмите/кликните по процессу, чтобы закрыть его</string>
     <string name="template_percent">%1$d процент.</string>
     <string name="thumbstick_buttons">Кнопки джойстика</string>
     <string name="thumbstick_buttons_category">Кнопки джойстика</string>
@@ -1297,4 +1305,26 @@ https://gamenative.app
     <string name="workshop_processing">Обработка модов…</string>
     <string name="workshop_failed_count">Не удалось обновить %1$d мод(ов) Мастерской</string>
     <string name="workshop_download_failed">Ошибка загрузки</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Рекомендуемое</string>
+    <string name="recommended_buy_button">Посмотреть игру</string>
+    <string name="recommended_support_message">Покупка по этой ссылке помогает поддержать разработку GameNative.</string>
+    <string name="recommended_about_heading">Об этой игре</string>
+    <string name="recommended_review_count">На основе %1$s отзывов</string>
+    <string name="review_overwhelmingly_positive">Крайне положительные</string>
+    <string name="review_very_positive">Очень положительные</string>
+    <string name="review_mostly_positive">В основном положительные</string>
+    <string name="review_mixed">Смешанные</string>
+    <string name="review_mostly_negative">В основном отрицательные</string>
+    <string name="review_overwhelmingly_negative">Крайне отрицательные</string>
+    <string name="settings_interface_show_recommendations_title">Показывать рекомендации игр</string>
+    <string name="settings_interface_show_recommendations_subtitle">Показывает подобранные инди-игры в вашей библиотеке. Оставляя это включённым, вы поддерживаете инди-разработчиков и GameNative.</string>
+     <string name="steam_save_export_success">Сохранения экспортированы</string>
+     <string name="steam_save_export_no_saves_found">Сохранения не найдены</string>
+     <string name="steam_save_export_failed">Не удалось экспортировать сохранения: %s</string>
+     <string name="steam_save_import_success">Сохранения импортированы</string>
+     <string name="steam_save_import_failed">Не удалось импортировать сохранения: %s</string>
+    <string name="option_import_saves">Импортировать сохранения</string>
+    <string name="option_export_saves">Экспортировать сохранения</string>
 </resources>

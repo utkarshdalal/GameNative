@@ -30,6 +30,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.intercept.Interceptor
 import coil.request.CachePolicy
+import app.gamenative.PrefManager
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.gog.GOGService
@@ -371,7 +372,9 @@ class MainActivity : ComponentActivity() {
             EpicService.start(this)
         }
 
-        PostHog.capture(event = "app_foregrounded")
+        if (PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(event = "app_foregrounded")
+        }
     }
 
     override fun onPause() {
@@ -392,7 +395,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        PostHog.capture(event = "app_backgrounded")
+        if (PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(event = "app_backgrounded")
+        }
         super.onPause()
     }
 

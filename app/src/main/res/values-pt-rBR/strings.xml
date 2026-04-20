@@ -32,6 +32,7 @@
     <string name="delete_prompt_title">Deletar App</string>
     <string name="cancel_download_prompt_title">Cancelar Download</string>
     <string name="acknowledge">OK</string>
+    <string name="steam_cloud_sync_downloading_save_files">Baixando arquivos de salvamento %1$d/%2$d</string>
     <string name="yes">Sim</string>
     <string name="no">Não</string>
     <string name="not_enough_space">Sem espaço suficiente</string>
@@ -175,6 +176,7 @@
     <string name="toggle_fullscreen">Alternar Tela Cheia</string>
     <string name="toggle_orientation">Alternar Orientação</string>
     <string name="task_manager">Gerenciador de tarefas</string>
+    <string name="tools_wine_processes_running_hint">%1$d em execução, toque/clique em um processo para fechá-lo</string>
     <string name="magnifier">Lupa</string>
     <string name="logs">Logs</string>
     <string name="exit_game">Sair</string>
@@ -715,6 +717,8 @@
     <string name="settings_info_libraries_subtitle">Veja quais tecnologias tornam o GameNative possível</string>
     <string name="settings_info_privacy_title">Política de privacidade</string>
     <string name="settings_info_privacy_subtitle">Abre um link para a política de privacidade do GameNative</string>
+    <string name="settings_info_usage_analytics_title">Análise de uso</string>
+    <string name="settings_info_usage_analytics_subtitle">Nunca rastreamos informações pessoais. Desativar isso interrompe análises não essenciais, porém dados de desempenho de jogos ainda são coletados como interesse legítimo para melhorar a compatibilidade.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>
@@ -926,11 +930,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">Config aplicada com sucesso</string>
+    <string name="best_config_missing_components_title">Configuração não aplicada</string>
+    <string name="best_config_missing_components_message">Os seguintes componentes necessários não estão disponíveis neste dispositivo:\n\n%1$s\n\nInstale os componentes ausentes e tente novamente.</string>
     <string name="best_config_known_config_invalid">Config conhecida inválida</string>
     <string name="best_config_no_config_available">Nenhuma melhor config disponível para este jogo</string>
     <string name="best_config_fetch_failed">Falha ao obter a configuração. Verifique sua conexão de rede.</string>
+    <string name="best_config_apply_anyway">Aplicar mesmo assim</string>
+    <string name="best_config_applied_with_defaults">Configuração aplicada, componentes ausentes substituídos por padrões</string>
     <string name="best_config_apply_failed">Falha ao aplicar config: %s</string>
-    <string name="best_config_missing_content">%s ausente</string>
     <string name="import_config">Importar configuração</string>
     <string name="export_config">Exportar configuração</string>
 
@@ -1132,6 +1139,7 @@
     <!-- Adições de configurações -->
     <string name="settings_save_logcat_subtitle">Salva um snapshot do logcat apenas para o PID deste aplicativo</string>
     <string name="settings_save_logcat_title">Salvar logcat</string>
+    <string name="settings_achievement_show_notification">Mostrar notificações de conquistas</string>
 
     <!-- Adições diversas -->
     <string name="calculating_space_requirements">Calculando requisitos de espaço...</string>
@@ -1234,4 +1242,26 @@
     <string name="workshop_processing">Processando mods…</string>
     <string name="workshop_failed_count">%1$d mod(s) da Oficina não puderam ser atualizados</string>
     <string name="workshop_download_failed">Falha no download</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Recomendado</string>
+    <string name="recommended_buy_button">Conferir jogo</string>
+    <string name="recommended_support_message">Comprar através deste link ajuda a apoiar o desenvolvimento do GameNative.</string>
+    <string name="recommended_about_heading">Sobre este jogo</string>
+    <string name="recommended_review_count">Baseado em %1$s avaliações</string>
+    <string name="review_overwhelmingly_positive">Extremamente positivo</string>
+    <string name="review_very_positive">Muito positivo</string>
+    <string name="review_mostly_positive">Majoritariamente positivo</string>
+    <string name="review_mixed">Misto</string>
+    <string name="review_mostly_negative">Majoritariamente negativo</string>
+    <string name="review_overwhelmingly_negative">Extremamente negativo</string>
+    <string name="settings_interface_show_recommendations_title">Mostrar recomendações de jogos</string>
+    <string name="settings_interface_show_recommendations_subtitle">Mostra jogos indie selecionados na sua biblioteca. Manter ativado ajuda a apoiar desenvolvedores indie e o GameNative.</string>
+     <string name="steam_save_export_success">Saves exportados</string>
+     <string name="steam_save_export_no_saves_found">Nenhum save encontrado</string>
+     <string name="steam_save_export_failed">Falha ao exportar saves: %s</string>
+     <string name="steam_save_import_success">Saves importados</string>
+     <string name="steam_save_import_failed">Falha ao importar saves: %s</string>
+    <string name="option_import_saves">Importar saves</string>
+    <string name="option_export_saves">Exportar saves</string>
 </resources>

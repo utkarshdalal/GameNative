@@ -247,6 +247,9 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
     implementation(libs.landscapist.coil)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.exoplayer.hls)
+    implementation(libs.media3.ui)
     debugImplementation(libs.androidx.ui.tooling)
 
     // Support
@@ -270,6 +273,9 @@ dependencies {
 
     // Room Database
     implementation(libs.bundles.room)
+
+    // 7Zip binding
+    implementation(libs.sevenzipjbinding)
 
     // Memory Leak Detection
     // debugImplementation("com.squareup.leakcanary:leakcanary-android:3.0-alpha-8")

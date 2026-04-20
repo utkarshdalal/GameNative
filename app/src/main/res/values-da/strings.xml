@@ -36,6 +36,7 @@
     <string name="delete_prompt_title">Slet app</string>
     <string name="cancel_download_prompt_title">Annullér download</string>
     <string name="acknowledge">OK</string>
+    <string name="steam_cloud_sync_downloading_save_files">Downloader gemfiler %1$d/%2$d</string>
     <string name="yes">Ja</string>
     <string name="no">Nej</string>
     <string name="not_enough_space">Ikke nok plads</string>
@@ -175,6 +176,7 @@
     <string name="toggle_fullscreen">Skift fuldskærm</string>
     <string name="toggle_orientation">Skift orientering</string>
     <string name="task_manager">Jobliste</string>
+    <string name="tools_wine_processes_running_hint">%1$d kører, tryk/klik på en proces for at lukke den</string>
     <string name="magnifier">Forstørrelsesglas</string>
     <string name="logs">Logfiler</string>
     <string name="exit_game">Afslut</string>
@@ -715,6 +717,8 @@
     <string name="settings_info_libraries_subtitle">Se hvilke teknologier der gør GameNative mulig</string>
     <string name="settings_info_privacy_title">Privatlivspolitik</string>
     <string name="settings_info_privacy_subtitle">Åbner et link til GameNatives privatlivspolitik</string>
+    <string name="settings_info_usage_analytics_title">Brugsanalyse</string>
+    <string name="settings_info_usage_analytics_subtitle">Vi sporer aldrig personlige oplysninger. Deaktivering stopper ikke-essentiel analyse, men grundlæggende spilydelsesdata indsamles stadig som en berettiget interesse for at forbedre kompatibilitet.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Grænseflade</string>
@@ -926,11 +930,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">Konfiguration anvendt med succes</string>
+    <string name="best_config_missing_components_title">Konfiguration ikke anvendt</string>
+    <string name="best_config_missing_components_message">Følgende nødvendige komponenter er ikke tilgængelige på denne enhed:\n\n%1$s\n\nInstaller de manglende komponenter og prøv igen.</string>
     <string name="best_config_known_config_invalid">Kendt konfiguration ugyldig</string>
     <string name="best_config_no_config_available">Ingen bedste konfiguration tilgængelig for dette spil</string>
     <string name="best_config_fetch_failed">Kunne ikke hente konfiguration. Kontrollér din netværksforbindelse.</string>
+    <string name="best_config_apply_anyway">Anvend alligevel</string>
+    <string name="best_config_applied_with_defaults">Konfiguration anvendt, manglende komponenter erstattet med standardværdier</string>
     <string name="best_config_apply_failed">Kunne ikke anvende konfiguration: %s</string>
-    <string name="best_config_missing_content">%s mangler</string>
     <string name="import_config">Importér konfiguration</string>
     <string name="export_config">Eksportér konfiguration</string>
 
@@ -1132,6 +1139,7 @@
     <!-- Settings additions -->
     <string name="settings_save_logcat_subtitle">Gemmer et snapshot af logcat kun for denne apps PID</string>
     <string name="settings_save_logcat_title">Gem logcat</string>
+    <string name="settings_achievement_show_notification">Vis præstationsmeddelelser</string>
 
     <!-- Misc additions -->
     <string name="calculating_space_requirements">Beregner pladskrav...</string>
@@ -1234,4 +1242,26 @@
     <string name="workshop_processing">Behandler mods…</string>
     <string name="workshop_failed_count">%1$d workshop-mod(s) kunne ikke opdateres</string>
     <string name="workshop_download_failed">Download mislykkedes</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Anbefalet</string>
+    <string name="recommended_buy_button">Se spillet</string>
+    <string name="recommended_support_message">Køb via dette link hjælper med at støtte udviklingen af GameNative.</string>
+    <string name="recommended_about_heading">Om dette spil</string>
+    <string name="recommended_review_count">Baseret på %1$s anmeldelser</string>
+    <string name="review_overwhelmingly_positive">Overvældende positiv</string>
+    <string name="review_very_positive">Meget positiv</string>
+    <string name="review_mostly_positive">Overvejende positiv</string>
+    <string name="review_mixed">Blandet</string>
+    <string name="review_mostly_negative">Overvejende negativ</string>
+    <string name="review_overwhelmingly_negative">Overvældende negativ</string>
+    <string name="settings_interface_show_recommendations_title">Vis spilanbefalinger</string>
+    <string name="settings_interface_show_recommendations_subtitle">Vis udvalgte indie-spil i dit bibliotek. At holde dette aktiveret hjælper med at støtte indie-udviklere og GameNative.</string>
+     <string name="steam_save_export_success">Gemte filer eksporteret</string>
+     <string name="steam_save_export_no_saves_found">Ingen gemte filer fundet</string>
+     <string name="steam_save_export_failed">Kunne ikke eksportere gemte filer: %s</string>
+     <string name="steam_save_import_success">Gemte filer importeret</string>
+     <string name="steam_save_import_failed">Kunne ikke importere gemte filer: %s</string>
+    <string name="option_import_saves">Importér gemte spil</string>
+    <string name="option_export_saves">Eksportér gemte spil</string>
 </resources>

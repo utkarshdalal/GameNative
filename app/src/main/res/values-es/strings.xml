@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">Restablecer</string>
     <string name="steam_verify_files_title">Verificar archivos</string>
     <string name="steam_verify_files_message">Asegúrate de que tus archivos de guardado están en la nube o respaldados antes de verificar, ya que podrían sobrescribirse.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Descargando archivos de guardado %1$d/%2$d</string>
     <string name="steam_update_title">Actualizar</string>
     <string name="steam_update_message">Asegúrate de que tus archivos de guardado están en la nube o respaldados antes de actualizar, ya que podrían sobrescribirse.</string>
     <string name="steam_not_logged_in">Debes iniciar sesión en Steam para usar esta función.</string>
@@ -259,6 +260,7 @@
     <string name="toggle_fullscreen">Alternar pantalla completa</string>
     <string name="toggle_orientation">Alternar orientación</string>
     <string name="task_manager">Administrador de tareas</string>
+    <string name="tools_wine_processes_running_hint">%1$d en ejecución, toca/haz clic en un proceso para cerrarlo</string>
     <string name="magnifier">Lupa</string>
     <string name="logs">Registros</string>
     <string name="exit_game">Salir</string>
@@ -489,6 +491,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Guarda una instantánea del logcat solo para el PID de esta aplicación.</string>
     <string name="settings_save_logcat_title">Guardar logcat</string>
+    <string name="settings_achievement_show_notification">Mostrar notificaciones de logros</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Manejo de banderas en opcodes CALL/RET<br /><br />
@@ -904,6 +907,8 @@
     <string name="settings_info_libraries_subtitle">Descubre qué tecnologías hacen posible GameNative.</string>
     <string name="settings_info_privacy_title">Política de privacidad</string>
     <string name="settings_info_privacy_subtitle">Abre un enlace a la política de privacidad de GameNative.</string>
+    <string name="settings_info_usage_analytics_title">Análisis de uso</string>
+    <string name="settings_info_usage_analytics_subtitle">Nunca rastreamos información personal. Al desactivar esto se detienen los análisis no esenciales, sin embargo los datos de rendimiento de juegos se siguen recopilando como interés legítimo para mejorar la compatibilidad.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfaz</string>
@@ -1115,11 +1120,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">La mejor configuración se ha aplicado correctamente.</string>
+    <string name="best_config_missing_components_title">Configuración no aplicada</string>
+    <string name="best_config_missing_components_message">Los siguientes componentes requeridos no están disponibles en este dispositivo:\n\n%1$s\n\nInstale los componentes faltantes e intente nuevamente.</string>
     <string name="best_config_known_config_invalid">La configuración conocida es inválida.</string>
     <string name="best_config_no_config_available">No hay una mejor configuración disponible para este juego.</string>
     <string name="best_config_fetch_failed">Error al obtener la configuración. Compruebe su conexión de red.</string>
+    <string name="best_config_apply_anyway">Aplicar de todos modos</string>
+    <string name="best_config_applied_with_defaults">Configuración aplicada, componentes faltantes reemplazados por valores predeterminados</string>
     <string name="best_config_apply_failed">Error al aplicar la configuración: %s.</string>
-    <string name="best_config_missing_content">Falta %s.</string>
     <string name="import_config">Importar configuración</string>
     <string name="export_config">Exportar configuración</string>
     <string name="library_app_type">Tipo de aplicación</string>
@@ -1370,4 +1378,26 @@
     <string name="workshop_processing">Procesando mods…</string>
     <string name="workshop_failed_count">%1$d mod(s) del Workshop no se pudieron actualizar</string>
     <string name="workshop_download_failed">Error en la descarga</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Recomendado</string>
+    <string name="recommended_buy_button">Ver juego</string>
+    <string name="recommended_support_message">Comprar a través de este enlace ayuda a apoyar el desarrollo de GameNative.</string>
+    <string name="recommended_about_heading">Sobre este juego</string>
+    <string name="recommended_review_count">Basado en %1$s reseñas</string>
+    <string name="review_overwhelmingly_positive">Abrumadoramente positivo</string>
+    <string name="review_very_positive">Muy positivo</string>
+    <string name="review_mostly_positive">Mayormente positivo</string>
+    <string name="review_mixed">Mixto</string>
+    <string name="review_mostly_negative">Mayormente negativo</string>
+    <string name="review_overwhelmingly_negative">Abrumadoramente negativo</string>
+    <string name="settings_interface_show_recommendations_title">Mostrar recomendaciones de juegos</string>
+    <string name="settings_interface_show_recommendations_subtitle">Muestra juegos indie seleccionados en tu biblioteca. Mantenerlo activado ayuda a apoyar a los desarrolladores indie y a GameNative.</string>
+     <string name="steam_save_export_success">Partidas guardadas exportadas</string>
+     <string name="steam_save_export_no_saves_found">No se encontraron partidas guardadas</string>
+     <string name="steam_save_export_failed">Error al exportar partidas: %s</string>
+     <string name="steam_save_import_success">Partidas guardadas importadas</string>
+     <string name="steam_save_import_failed">Error al importar partidas: %s</string>
+    <string name="option_import_saves">Importar partidas guardadas</string>
+    <string name="option_export_saves">Exportar partidas guardadas</string>
 </resources>

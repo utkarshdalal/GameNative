@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">Resetează</string>
     <string name="steam_verify_files_title">Verificare fișiere</string>
     <string name="steam_verify_files_message">Asigură-te că salvările sunt încărcate în cloud sau copiate în altă parte înainte de verificare, deoarece pot fi suprascrise.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Se descarcă fișierele de salvare %1$d/%2$d</string>
     <string name="steam_update_title">Actualizare</string>
     <string name="steam_update_message">Asigură-te că salvările sunt încărcate în cloud sau copiate în altă parte înainte de actualizare, deoarece pot fi suprascrise.</string>
     <string name="steam_not_logged_in">Trebuie să fii autentificat în Steam pentru a folosi această funcție</string>
@@ -246,6 +247,7 @@
     <string name="toggle_fullscreen">Comută pe ecran complet</string>
     <string name="toggle_orientation">Comută orientarea</string>
     <string name="task_manager">Manager de activități</string>
+    <string name="tools_wine_processes_running_hint">%1$d în execuție, atinge/clic pe un proces pentru a-l închide</string>
     <string name="magnifier">Lupă</string>
     <string name="logs">Loguri</string>
     <string name="exit_game">Ieșire</string>
@@ -443,6 +445,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Salvează un snapshot al logcat doar pentru PID-ul acestei aplicații</string>
     <string name="settings_save_logcat_title">Salvează logcat</string>
+    <string name="settings_achievement_show_notification">Afișați notificările de realizări</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
             Gestionarea flag-urilor pentru opcode‑urile CALL/RET<br /><br />
             <b>0</b> : Tratează CALL/RET ca și cum nu ar avea nevoie de flag-uri (mai rapid, instabil)<br />
@@ -895,6 +898,8 @@
 	<string name="settings_info_libraries_subtitle">Vezi tehnologiile care fac GameNative posibil</string>
 	<string name="settings_info_privacy_title">Politica de confidențialitate</string>
 	<string name="settings_info_privacy_subtitle">Deschide linkul către politica de confidențialitate GameNative</string>
+	<string name="settings_info_usage_analytics_title">Analiză utilizare</string>
+	<string name="settings_info_usage_analytics_subtitle">Nu urmărim niciodată informații personale. Dezactivarea oprește analizele neesențiale, însă datele de bază privind performanța jocurilor sunt în continuare colectate ca interes legitim pentru a îmbunătăți compatibilitatea.</string>
 
 	<!-- Settings: Interface Group -->
 	<string name="settings_interface_title">Interfață</string>
@@ -1103,11 +1108,14 @@
 
 	<!-- Best Config Toast Messages -->
 	<string name="best_config_applied_successfully">Configurația a fost aplicată cu succes</string>
+	<string name="best_config_missing_components_title">Configurația nu a fost aplicată</string>
+	<string name="best_config_missing_components_message">Următoarele componente necesare nu sunt disponibile pe acest dispozitiv:\n\n%1$s\n\nInstalați componentele lipsă și încercați din nou.</string>
 	<string name="best_config_known_config_invalid">Config cunoscut invalid</string>
 	<string name="best_config_no_config_available">Nu există o configurație optimă pentru acest joc</string>
 	<string name="best_config_fetch_failed">Nu s-a putut obține configurația. Verificați conexiunea la rețea.</string>
+	<string name="best_config_apply_anyway">Aplică oricum</string>
+	<string name="best_config_applied_with_defaults">Configurație aplicată, componentele lipsă înlocuite cu valori implicite</string>
 	<string name="best_config_apply_failed">Aplicarea configurației a eșuat: %s</string>
-	<string name="best_config_missing_content">%s lipsește</string>
 	<string name="import_config">Importă configurarea</string>
 	<string name="export_config">Exportă configurarea</string>
 	<string name="library_app_type">Tip aplicație</string>
@@ -1369,4 +1377,26 @@
     <string name="workshop_processing">Se procesează modurile…</string>
     <string name="workshop_failed_count">%1$d mod(uri) Workshop nu au putut fi actualizate</string>
     <string name="workshop_download_failed">Descărcarea a eșuat</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Recomandat</string>
+    <string name="recommended_buy_button">Vezi jocul</string>
+    <string name="recommended_support_message">Cumpărarea prin acest link ajută la susținerea dezvoltării GameNative.</string>
+    <string name="recommended_about_heading">Despre acest joc</string>
+    <string name="recommended_review_count">Pe baza a %1$s recenzii</string>
+    <string name="review_overwhelmingly_positive">Copleșitor de pozitiv</string>
+    <string name="review_very_positive">Foarte pozitiv</string>
+    <string name="review_mostly_positive">Majoritar pozitiv</string>
+    <string name="review_mixed">Mixt</string>
+    <string name="review_mostly_negative">Majoritar negativ</string>
+    <string name="review_overwhelmingly_negative">Copleșitor de negativ</string>
+    <string name="settings_interface_show_recommendations_title">Afișează recomandări de jocuri</string>
+    <string name="settings_interface_show_recommendations_subtitle">Afișează jocuri indie selectate în biblioteca ta. Păstrând această opțiune activată, sprijini dezvoltatorii indie și GameNative.</string>
+     <string name="steam_save_export_success">Salvari exportate</string>
+     <string name="steam_save_export_no_saves_found">Nu s-au găsit fișiere de salvare</string>
+     <string name="steam_save_export_failed">Exportul salvărilor a eșuat: %s</string>
+     <string name="steam_save_import_success">Salvari importate</string>
+     <string name="steam_save_import_failed">Importul salvărilor a eșuat: %s</string>
+    <string name="option_import_saves">Importă salvări</string>
+    <string name="option_export_saves">Exportă salvări</string>
 </resources>

@@ -260,6 +260,8 @@ private fun PrimaryActionButton(
                             fontFeatureSettings = "tnum",
                         ),
                         color = Color.White,
+                        maxLines = 1,
+                        softWrap = false,
                     )
                 }
             }

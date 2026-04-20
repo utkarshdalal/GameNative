@@ -2,6 +2,7 @@ package app.gamenative.ui
 
 import android.content.Context
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -1096,6 +1097,10 @@ fun PluviaMain(
         }
     }
 
+    BackHandler(enabled = state.loadingDialogVisible && !SteamService.keepAlive) {
+        // TODO: Make prelaunch/loading operations cancellable so Back can exit safely.
+    }
+
     PluviaTheme(
         isDark = when (state.appTheme) {
             AppTheme.AUTO -> isSystemInDarkTheme()
@@ -1565,7 +1570,7 @@ fun preLaunchApp(
                         title = context.getString(R.string.game_executable_not_found_title),
                         message = context.getString(R.string.game_executable_not_found),
                         dismissBtnText = context.getString(R.string.ok),
-                        actionBtnText = AppOptionMenuType.EditContainer.text,
+                        actionBtnText = context.getString(AppOptionMenuType.EditContainer.title),
                     ),
                 )
                 return@launch
@@ -1602,6 +1607,31 @@ fun preLaunchApp(
 
         // set up Ubuntu file system — download required files and install
         SplitCompat.install(context)
+
+        try {
+            LaunchDependencies().ensureLaunchDependencies(
+                context = context,
+                container = container,
+                gameSource = gameSource,
+                gameId = gameId,
+                setLoadingMessage = setLoadingMessage,
+                setLoadingProgress = setLoadingProgress,
+            )
+        } catch (e: Exception) {
+            Timber.tag("preLaunchApp").e(e, "ensureLaunchDependencies failed")
+            setLoadingDialogVisible(false)
+            setMessageDialogState(
+                MessageDialogState(
+                    visible = true,
+                    type = DialogType.SYNC_FAIL,
+                    title = context.getString(R.string.launch_dependency_failed_title),
+                    message = e.message ?: context.getString(R.string.launch_dependency_failed_message),
+                    dismissBtnText = context.getString(R.string.ok),
+                ),
+            )
+            return@launch
+        }
+
         try {
             if (!SteamService.isImageFsInstallable(context, container.containerVariant)) {
                 setLoadingMessage("Downloading first-time files")
@@ -1621,45 +1651,6 @@ fun preLaunchApp(
                     this,
                     context = context,
                 ).await()
-            } else {
-                if (container.wineVersion.contains("proton-9.0-arm64ec") &&
-                    !SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz")
-                ) {
-                    setLoadingMessage("Downloading arm64ec Proton")
-                    SteamService.downloadFile(
-                        onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                        this,
-                        context = context,
-                        "proton-9.0-arm64ec.txz",
-                    ).await()
-                } else if (container.wineVersion.contains("proton-9.0-x86_64") &&
-                    !SteamService.isFileInstallable(context, "proton-9.0-x86_64.txz")
-                ) {
-                    setLoadingMessage("Downloading x86_64 Proton")
-                    SteamService.downloadFile(
-                        onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                        this,
-                        context = context,
-                        "proton-9.0-x86_64.txz",
-                    ).await()
-                }
-                if (container.wineVersion.contains("proton-9.0-x86_64") || container.wineVersion.contains("proton-9.0-arm64ec")) {
-                    val protonVersion = container.wineVersion
-                    val imageFs = ImageFs.find(context)
-                    val outFile = File(imageFs.rootDir, "/opt/$protonVersion")
-                    val binDir = File(outFile, "bin")
-                    if (!binDir.exists() || !binDir.isDirectory) {
-                        Timber.i("Extracting $protonVersion to /opt/")
-                        setLoadingMessage("Extracting $protonVersion")
-                        setLoadingProgress(-1f)
-                        val downloaded = File(imageFs.getFilesDir(), "$protonVersion.txz")
-                        TarCompressorUtils.extract(
-                            TarCompressorUtils.Type.XZ,
-                            downloaded,
-                            outFile,
-                        )
-                    }
-                }
             }
 
             if (!container.isUseLegacyDRM && !container.isLaunchRealSteam &&
@@ -1699,30 +1690,6 @@ fun preLaunchApp(
                     type = DialogType.SYNC_FAIL,
                     title = context.getString(R.string.download_failed_title),
                     message = e.message ?: context.getString(R.string.download_failed_message),
-                    dismissBtnText = context.getString(R.string.ok),
-                ),
-            )
-            return@launch
-        }
-
-        try {
-            LaunchDependencies().ensureLaunchDependencies(
-                context = context,
-                container = container,
-                gameSource = gameSource,
-                gameId = gameId,
-                setLoadingMessage = setLoadingMessage,
-                setLoadingProgress = setLoadingProgress,
-            )
-        } catch (e: Exception) {
-            Timber.tag("preLaunchApp").e(e, "ensureLaunchDependencies failed")
-            setLoadingDialogVisible(false)
-            setMessageDialogState(
-                MessageDialogState(
-                    visible = true,
-                    type = DialogType.SYNC_FAIL,
-                    title = context.getString(R.string.launch_dependency_failed_title),
-                    message = e.message ?: context.getString(R.string.launch_dependency_failed_message),
                     dismissBtnText = context.getString(R.string.ok),
                 ),
             )

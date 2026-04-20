@@ -37,9 +37,48 @@ public abstract class ProcessHelper {
 //        Log.d("ProcessHelper", "Process terminated with pid: " + pid);
     }
 
+    public static void killProcess(int pid) {
+        Process.sendSignal(pid, SIGKILL);
+    }
+
     public static void terminateAllWineProcesses() {
         for (String process : listRunningWineProcesses()) {
             terminateProcess(Integer.parseInt(process));
+        }
+    }
+
+    public static void killAllWineProcesses() {
+        for (String process : listRunningWineProcesses()) {
+            killProcess(Integer.parseInt(process));
+        }
+    }
+
+    public static void hardKillStaleWineProcesses() throws InterruptedException {
+        long deadlineMs = System.currentTimeMillis() + 5000;
+        List<String> stalePids = listRunningWineProcesses();
+
+        if (stalePids.isEmpty()) {
+            return;
+        }
+
+        Log.w("ProcessHelper", String.format(
+            "Found %d stale Wine process(es) before launch; hard-killing: %s",
+            stalePids.size(), String.join(", ", stalePids)));
+
+        killAllWineProcesses();
+
+        List<String> remaining;
+        do {
+            Thread.sleep(100);
+            remaining = listRunningWineProcesses();
+        } while (!remaining.isEmpty() && System.currentTimeMillis() < deadlineMs);
+
+        if (!remaining.isEmpty()) {
+            Log.w("ProcessHelper", String.format(
+                "Wine processes still present after hard-kill: %s",
+                String.join(", ", remaining)));
+            throw new IllegalStateException(
+                "Wine processes still present after hard-kill attempt: " + String.join(", ", remaining));
         }
     }
 
@@ -71,11 +110,17 @@ public abstract class ProcessHelper {
         public final int pid;
         public final int ppid;
         public final String name;
+        public final long rssBytes;
 
         public ProcessInfo(int pid, int ppid, String name) {
+            this(pid, ppid, name, 0L);
+        }
+
+        public ProcessInfo(int pid, int ppid, String name, long rssBytes) {
             this.pid = pid;
             this.ppid = ppid;
             this.name = name;
+            this.rssBytes = rssBytes;
         }
     }
 
@@ -113,7 +158,6 @@ public abstract class ProcessHelper {
         List<ProcessInfo> processes = new ArrayList<>();
         String myUser = null;
 
-        // First get our username using the id command
         try {
             java.lang.Process idProcess = Runtime.getRuntime().exec("id");
             try (
@@ -122,7 +166,6 @@ public abstract class ProcessHelper {
             ) {
                 String idOutput = idReader.readLine();
                 if (idOutput != null) {
-                    // id output format: uid=10290(u0_a290) gid=10290(u0_a290) ...
                     int startIndex = idOutput.indexOf('(');
                     int endIndex = idOutput.indexOf(')');
                     if (startIndex != -1 && endIndex != -1) {
@@ -135,13 +178,8 @@ public abstract class ProcessHelper {
             return processes;
         }
 
-        if (myUser == null) {
-            return processes;
-        }
+        if (myUser == null) return processes;
 
-        // Log.d("ProcessHelper", "Found user value to be: " + myUser);
-
-        // Now get the processes
         try {
             java.lang.Process process = Runtime.getRuntime().exec("ps -A -o USER,PID,PPID,VSZ,RSS,WCHAN,ADDR,S,NAME");
             try (
@@ -149,21 +187,19 @@ public abstract class ProcessHelper {
                 BufferedReader reader = new BufferedReader(isr);
             ) {
                 String line;
-
-                // Skip header line
                 reader.readLine();
 
                 while ((line = reader.readLine()) != null) {
-                    String[] parts = line.trim().split("\\s+");
+                    String[] parts = line.trim().split("\\s+", 9);
                     if (parts.length >= 9) {
                         String user = parts[0];
                         int pid = Integer.parseInt(parts[1]);
                         int ppid = Integer.parseInt(parts[2]);
+                        long rssKb = Long.parseLong(parts[4]);
                         String processName = parts[8];
 
-                        // Check if process belongs to our app (same user)
                         if (user.equals(myUser) && pid != Process.myPid()) {
-                            ProcessInfo info = new ProcessInfo(pid, ppid, processName);
+                            ProcessInfo info = new ProcessInfo(pid, ppid, processName, rssKb * 1024L);
                             processes.add(info);
                         }
                     }

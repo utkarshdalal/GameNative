@@ -13,6 +13,7 @@ public class XOutputStream {
     public final ClientSocket clientSocket;
     private final ReentrantLock lock = new ReentrantLock();
     private int ancillaryFd = -1;
+    private static final double FP3232_SCALE = 4294967296.0;
 
     public XOutputStream(int initialCapacity) {
         this(null, initialCapacity);
@@ -49,6 +50,30 @@ public class XOutputStream {
     public void writeLong(long value) {
         ensureSpaceIsAvailable(8);
         buffer.putLong(value);
+    }
+
+    public void writeFP3232(double value) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            throw new IllegalArgumentException("FP3232 value must be finite");
+        }
+
+        long fixed = Math.round(value * FP3232_SCALE);
+
+        int integral = (int) (fixed >> 32);
+        int frac = (int) fixed;
+
+        // FP3232 is a struct { int32_t integral; uint32_t frac; } in X11.
+        writeInt(integral);
+        writeInt(frac);
+    }
+
+    public void writeFP3232(int integerPart, long fractionalPart) {
+        if (fractionalPart < 0L || fractionalPart > 0xFFFFFFFFL) {
+            throw new IllegalArgumentException("fractionalPart must be in range 0 .. 0xFFFFFFFF");
+        }
+
+        writeInt(integerPart);
+        writeInt((int) fractionalPart);
     }
 
     public void writeString8(String str) {

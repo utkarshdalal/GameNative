@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">Resetuj</string>
     <string name="steam_verify_files_title">Zweryfikuj pliki</string>
     <string name="steam_verify_files_message">Upewnij się, że Twoje zapisy są przesłane do chmury lub utworzono ich kopię zapasową przed weryfikacją, w przeciwnym razie mogą zostać nadpisane.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Pobieranie plików zapisów %1$d/%2$d</string>
     <string name="steam_update_title">Aktualizuj</string>
     <string name="steam_update_message">Upewnij się, że Twoje zapisy są przesłane do chmury lub utworzono ich kopię zapasową przed aktualizacją, w przeciwnym razie mogą zostać nadpisane.</string>
     <string name="steam_not_logged_in">Musisz być zalogowany do Steam, aby użyć tej funkcji</string>
@@ -256,6 +257,7 @@
     <string name="toggle_fullscreen">Przełącz pełny ekran</string>
     <string name="toggle_orientation">Przełącz orientację</string>
     <string name="task_manager">Menedżer zadań</string>
+    <string name="tools_wine_processes_running_hint">%1$d uruchomionych, stuknij/kliknij proces, aby go zamknąć</string>
     <string name="magnifier">Lupa</string>
     <string name="logs">Logi</string>
     <string name="exit_game">Wyjdź</string>
@@ -453,6 +455,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Zapisuje migawkę logcat tylko dla PID tej aplikacji</string>
     <string name="settings_save_logcat_title">Zapisz logcat</string>
+    <string name="settings_achievement_show_notification">Pokaż powiadomienia o osiągnięciach</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Obsługa flag w instrukcjach CALL/RET<br /><br />
@@ -903,6 +906,8 @@
     <string name="settings_info_libraries_subtitle">Zobacz, jakie technologie umożliwiają działanie GameNative</string>
     <string name="settings_info_privacy_title">Polityka prywatności</string>
     <string name="settings_info_privacy_subtitle">Otwiera link do polityki prywatności GameNative</string>
+    <string name="settings_info_usage_analytics_title">Analityka użytkowania</string>
+    <string name="settings_info_usage_analytics_subtitle">Nigdy nie śledzimy danych osobowych. Wyłączenie tego zatrzymuje nieistotne analizy, jednak podstawowe dane o wydajności gier są nadal zbierane jako uzasadniony interes w celu poprawy kompatybilności.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfejs</string>
@@ -1112,11 +1117,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">Konfiguracja zastosowana pomyślnie</string>
+    <string name="best_config_missing_components_title">Konfiguracja nie została zastosowana</string>
+    <string name="best_config_missing_components_message">Następujące wymagane komponenty nie są dostępne na tym urządzeniu:\n\n%1$s\n\nZainstaluj brakujące komponenty i spróbuj ponownie.</string>
     <string name="best_config_known_config_invalid">Znana konfiguracja jest nieprawidłowa</string>
     <string name="best_config_no_config_available">Brak najlepszej konfiguracji dla tej gry</string>
     <string name="best_config_fetch_failed">Nie udało się pobrać konfiguracji. Sprawdź połączenie sieciowe.</string>
+    <string name="best_config_apply_anyway">Zastosuj mimo to</string>
+    <string name="best_config_applied_with_defaults">Konfiguracja zastosowana, brakujące komponenty zastąpione wartościami domyślnymi</string>
     <string name="best_config_apply_failed">Nie udało się zastosować konfiguracji: %s</string>
-    <string name="best_config_missing_content">Brak %s</string>
     <string name="import_config">Importuj konfigurację</string>
     <string name="export_config">Eksportuj konfigurację</string>
     <string name="library_app_type">Typ aplikacji</string>
@@ -1367,4 +1375,26 @@
     <string name="workshop_processing">Przetwarzanie modów…</string>
     <string name="workshop_failed_count">Nie udało się zaktualizować %1$d modów z Warsztatu</string>
     <string name="workshop_download_failed">Pobieranie nie powiodło się</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Polecane</string>
+    <string name="recommended_buy_button">Zobacz grę</string>
+    <string name="recommended_support_message">Zakup przez ten link pomaga wspierać rozwój GameNative.</string>
+    <string name="recommended_about_heading">O tej grze</string>
+    <string name="recommended_review_count">Na podstawie %1$s recenzji</string>
+    <string name="review_overwhelmingly_positive">Przytłaczająco pozytywne</string>
+    <string name="review_very_positive">Bardzo pozytywne</string>
+    <string name="review_mostly_positive">W większości pozytywne</string>
+    <string name="review_mixed">Mieszane</string>
+    <string name="review_mostly_negative">W większości negatywne</string>
+    <string name="review_overwhelmingly_negative">Przytłaczająco negatywne</string>
+    <string name="settings_interface_show_recommendations_title">Pokaż rekomendacje gier</string>
+    <string name="settings_interface_show_recommendations_subtitle">Wyświetla wyselekcjonowane gry indie w twojej bibliotece. Pozostawienie tego włączonego wspiera niezależnych deweloperów i GameNative.</string>
+     <string name="steam_save_export_success">Zapisy wyeksportowane</string>
+     <string name="steam_save_export_no_saves_found">Nie znaleziono plików zapisów</string>
+     <string name="steam_save_export_failed">Nie udało się wyeksportować zapisów: %s</string>
+     <string name="steam_save_import_success">Zapisy zaimportowane</string>
+     <string name="steam_save_import_failed">Nie udało się zaimportować zapisów: %s</string>
+    <string name="option_import_saves">Importuj zapisy</string>
+    <string name="option_export_saves">Eksportuj zapisy</string>
 </resources>

@@ -11,12 +11,15 @@ import com.winlator.xserver.extensions.Extension;
 
 import java.io.IOException;
 
+import timber.log.Timber;
+
 public abstract class ExtensionRequests {
     public static void queryExtension(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         short length = inputStream.readShort();
         inputStream.skip(2);
         String name = inputStream.readString8(length);
         Extension extension = client.xServer.getExtensionByName(name);
+        Timber.d("QueryExtension: name=%s present=%b opcode=%d", name, extension != null, extension != null ? extension.getMajorOpcode() : -1);
         try (XStreamLock lock = outputStream.lock()) {
             outputStream.writeByte(RESPONSE_CODE_SUCCESS);
             outputStream.writeByte((byte)0);

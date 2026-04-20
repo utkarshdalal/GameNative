@@ -11,8 +11,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
@@ -40,6 +42,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Gamepad
@@ -72,6 +75,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
@@ -83,6 +87,8 @@ import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.utils.MathUtils.normalizedProgress
 import com.winlator.container.Container
 import com.winlator.renderer.GLRenderer
+import com.winlator.winhandler.ProcessInfo
+import com.winlator.winhandler.WinHandler
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -99,6 +105,7 @@ private object QuickMenuTab {
     const val HUD = 0
     const val EFFECTS = 1
     const val CONTROLLER = 2
+    const val TOOLS = 3
 }
 
 data class QuickMenuItem(
@@ -219,6 +226,10 @@ fun QuickMenu(
     onItemSelected: (Int) -> Boolean,
     renderer: GLRenderer? = null,
     container: Container? = null,
+    winHandler: WinHandler? = null,
+    wineProcesses: List<ProcessInfo> = emptyList(),
+    isWineProcessesLoading: Boolean = false,
+    onToolsVisibilityChanged: (Boolean) -> Unit = {},
     isPerformanceHudEnabled: Boolean = false,
     performanceHudConfig: PerformanceHudConfig = PerformanceHudConfig(),
     onPerformanceHudConfigChanged: (PerformanceHudConfig) -> Unit = {},
@@ -274,6 +285,7 @@ fun QuickMenu(
     val selectedTabLabelResId = when (selectedTab) {
         QuickMenuTab.HUD -> R.string.performance_hud
         QuickMenuTab.EFFECTS -> R.string.screen_effects
+        QuickMenuTab.TOOLS -> R.string.task_manager
         else -> R.string.quick_menu_tab_controller
     }
 
@@ -283,9 +295,11 @@ fun QuickMenu(
     val controllerScrollState = rememberScrollState()
     val hudTabFocusRequester = remember { FocusRequester() }
     val controllerTabFocusRequester = remember { FocusRequester() }
+    val toolsTabFocusRequester = remember { FocusRequester() }
     val hudItemFocusRequester = remember { FocusRequester() }
     val effectsItemFocusRequester = remember { FocusRequester() }
     val controllerItemFocusRequester = remember { FocusRequester() }
+    val toolsItemFocusRequester = remember { FocusRequester() }
 
     BackHandler(enabled = isVisible) {
         onDismiss()
@@ -415,6 +429,15 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = controllerTabFocusRequester,
                                 )
+                                QuickMenuTabButton(
+                                    icon = Icons.Default.BarChart,
+                                    contentDescriptionResId = R.string.task_manager,
+                                    selected = selectedTab == QuickMenuTab.TOOLS,
+                                    accentColor = PluviaTheme.colors.accentPurple,
+                                    onSelected = { selectedTab = QuickMenuTab.TOOLS },
+                                    modifier = Modifier.width(56.dp),
+                                    focusRequester = toolsTabFocusRequester,
+                                )
                             }
 
                             Spacer(modifier = Modifier.weight(1f))
@@ -505,6 +528,16 @@ fun QuickMenu(
                                         }
                                     }
 
+                                    QuickMenuTab.TOOLS -> {
+                                        ToolsQuickMenuTab(
+                                            winHandler = winHandler,
+                                            processes = wineProcesses,
+                                            isLoadingProcesses = isWineProcessesLoading,
+                                            firstItemFocusRequester = toolsItemFocusRequester,
+                                            modifier = Modifier.fillMaxSize(),
+                                        )
+                                    }
+
                                     else -> {
                                         Column(
                                             modifier = Modifier
@@ -536,6 +569,10 @@ fun QuickMenu(
         }
     }
 
+    LaunchedEffect(isVisible, selectedTab) {
+        onToolsVisibilityChanged(isVisible && selectedTab == QuickMenuTab.TOOLS)
+    }
+
     LaunchedEffect(isVisible) {
         if (isVisible) {
             repeat(3) {
@@ -549,6 +586,54 @@ fun QuickMenu(
                 } catch (_: Exception) {
                     delay(80)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ToolsQuickMenuTab(
+    winHandler: WinHandler?,
+    processes: List<ProcessInfo>,
+    isLoadingProcesses: Boolean,
+    firstItemFocusRequester: FocusRequester? = null,
+    modifier: Modifier = Modifier,
+) {
+    val scrollState = rememberScrollState()
+    val accentColor = PluviaTheme.colors.accentPurple
+
+    Column(
+        modifier = modifier
+            .verticalScroll(scrollState)
+            .focusGroup(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        QuickMenuSectionHeader(
+            title = if (isLoadingProcesses) {
+                stringResource(R.string.main_loading)
+            } else {
+                stringResource(R.string.tools_wine_processes_running_hint, processes.size)
+            },
+        )
+
+        if (!isLoadingProcesses && processes.isEmpty()) {
+            Text(
+                text = stringResource(R.string.tools_wine_processes_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        } else {
+            processes.forEachIndexed { index, process ->
+                QuickMenuProcessRow(
+                    title = process.name + if (process.wow64Process) " *32" else "",
+                    subtitle = process.formattedMemoryUsage,
+                    accentColor = accentColor,
+                    onEndProcess = {
+                        winHandler?.killProcess(process.name, process.pid)
+                    },
+                    focusRequester = if (index == 0) firstItemFocusRequester else null,
+                )
             }
         }
     }
@@ -1499,6 +1584,110 @@ private fun QuickMenuSwitch(
                 .align(if (enabled) Alignment.CenterEnd else Alignment.CenterStart)
                 .background(Color.White, CircleShape),
         )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun QuickMenuProcessRow(
+    title: String,
+    subtitle: String,
+    accentColor: Color,
+    onEndProcess: () -> Unit,
+    modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(14.dp)
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .clip(shape)
+            .background(
+                if (isFocused) {
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            accentColor.copy(alpha = 0.14f),
+                            accentColor.copy(alpha = 0.06f),
+                        ),
+                    )
+                } else {
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f),
+                        ),
+                    )
+                },
+            )
+            .then(
+                if (isFocused) {
+                    Modifier.border(
+                        width = 2.dp,
+                        color = accentColor.copy(alpha = 0.8f),
+                        shape = shape,
+                    )
+                } else {
+                    Modifier
+                }
+            )
+            .then(
+                if (focusRequester != null) {
+                    Modifier.focusRequester(focusRequester)
+                } else {
+                    Modifier
+                }
+            )
+            .focusable(interactionSource = interactionSource)
+            .onPreviewKeyEvent { keyEvent ->
+                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && isFocused) {
+                    when (keyEvent.nativeKeyEvent.keyCode) {
+                        KeyEvent.KEYCODE_BUTTON_A,
+                        KeyEvent.KEYCODE_DPAD_CENTER,
+                        KeyEvent.KEYCODE_ENTER -> {
+                            onEndProcess()
+                            true
+                        }
+
+                        else -> false
+                    }
+                } else {
+                    false
+                }
+            }
+            .selectable(
+                selected = isFocused,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onEndProcess,
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurface,
+                fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
+                maxLines = 1,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .basicMarquee(iterations = Int.MAX_VALUE),
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (isFocused) accentColor.copy(alpha = 0.92f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

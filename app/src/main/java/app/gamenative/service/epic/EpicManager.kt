@@ -1,20 +1,19 @@
 package app.gamenative.service.epic
 
 import android.content.Context
+import app.gamenative.PrefManager
 import app.gamenative.data.EpicGame
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.db.dao.EpicGameDao
 import app.gamenative.utils.Net
 import java.io.File
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
@@ -32,13 +31,10 @@ class EpicManager @Inject constructor(
 
     private val httpClient = Net.http
 
-    // Separate client for CDN downloads - no connection pooling, follows redirects
-    private val cdnClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .followRedirects(true)
-        .followSslRedirects(true)
-        .build()
+    private fun getCdnClient(): okhttp3.OkHttpClient {
+        val parallelDownloads = PrefManager.downloadSpeed.coerceAtLeast(1)
+        return Net.httpForParallelDownloads(parallelDownloads)
+    }
 
     data class EpicAssetList(
         val appName: String,
@@ -907,7 +903,7 @@ class EpicManager @Inject constructor(
                 .get()
                 .build()
 
-            val manifestBytes = cdnClient.newCall(manifestRequest).execute().use { manifestResponse ->
+            val manifestBytes = getCdnClient().newCall(manifestRequest).execute().use { manifestResponse ->
                 if (!manifestResponse.isSuccessful) {
                     return@withContext Result.failure(Exception("Failed to download manifest binary: ${manifestResponse.code}"))
                 }

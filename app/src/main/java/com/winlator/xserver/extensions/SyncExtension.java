@@ -16,6 +16,8 @@ import java.io.IOException;
 public class SyncExtension implements Extension {
     public static final byte MAJOR_OPCODE = -104;
     private final SparseBooleanArray fences = new SparseBooleanArray();
+    private byte firstEventId = 0;
+    private byte firstErrorId = 0;
 
     private static abstract class ClientOpcodes {
         private static final byte CREATE_FENCE = 14;
@@ -36,14 +38,22 @@ public class SyncExtension implements Extension {
     }
 
     @Override
-    public byte getFirstErrorId() {
-        return Byte.MIN_VALUE;
-    }
+    public int getNumEvents() { return 2; }
 
     @Override
-    public byte getFirstEventId() {
-        return 0;
-    }
+    public int getNumErrors() { return 2; }
+
+    @Override
+    public void setFirstEventId(byte id) { this.firstEventId = id; }
+
+    @Override
+    public void setFirstErrorId(byte id) { this.firstErrorId = id; }
+
+    @Override
+    public byte getFirstEventId() { return firstEventId; }
+
+    @Override
+    public byte getFirstErrorId() { return firstErrorId; }
 
     public void setTriggered(int id) {
         synchronized (fences) {

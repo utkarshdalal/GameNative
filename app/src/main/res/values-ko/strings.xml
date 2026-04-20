@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">초기화</string>
     <string name="steam_verify_files_title">파일 검증</string>
     <string name="steam_verify_files_message">검증하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
+    <string name="steam_cloud_sync_downloading_save_files">저장 파일 다운로드 중 %1$d/%2$d</string>
     <string name="steam_update_title">업데이트</string>
     <string name="steam_update_message">업데이트하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
     <string name="steam_not_logged_in">이 기능을 사용하려면 Steam에 로그인해야 합니다</string>
@@ -257,6 +258,7 @@
     <string name="toggle_fullscreen">전체 화면 전환</string>
     <string name="toggle_orientation">방향 전환</string>
     <string name="task_manager">작업 관리자</string>
+    <string name="tools_wine_processes_running_hint">%1$d개 실행 중, 프로세스를 탭/클릭해 종료</string>
     <string name="magnifier">돋보기</string>
     <string name="logs">로그</string>
     <string name="exit_game">종료</string>
@@ -454,6 +456,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">이 앱의 PID에 대한 logcat 스냅샷만 저장합니다</string>
     <string name="settings_save_logcat_title">logcat 저장</string>
+    <string name="settings_achievement_show_notification">업적 알림 표시</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         CALL/RET 명령어의 플래그 처리<br /><br />
@@ -904,6 +907,8 @@
     <string name="settings_info_libraries_subtitle">GameNative를 가능하게 하는 기술 보기</string>
     <string name="settings_info_privacy_title">개인정보 보호정책</string>
     <string name="settings_info_privacy_subtitle">GameNative의 개인정보 보호정책 링크 열기</string>
+    <string name="settings_info_usage_analytics_title">사용 분석</string>
+    <string name="settings_info_usage_analytics_subtitle">개인 정보는 절대 추적하지 않습니다. 이 기능을 비활성화하면 비필수 분석이 중지되지만, 호환성 향상을 위한 정당한 이익으로서 핵심 게임 성능 데이터는 계속 수집됩니다.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">인터페이스</string>
@@ -1113,11 +1118,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">설정이 성공적으로 적용되었습니다</string>
+    <string name="best_config_missing_components_title">구성이 적용되지 않음</string>
+    <string name="best_config_missing_components_message">이 장치에서 다음 필수 구성 요소를 사용할 수 없습니다:\n\n%1$s\n\n누락된 구성 요소를 설치하고 다시 시도하세요.</string>
     <string name="best_config_known_config_invalid">알려진 설정이 유효하지 않음</string>
     <string name="best_config_no_config_available">이 게임에 사용 가능한 최적 설정이 없습니다</string>
     <string name="best_config_fetch_failed">설정을 가져오지 못했습니다. 네트워크 연결을 확인하세요.</string>
+    <string name="best_config_apply_anyway">그래도 적용</string>
+    <string name="best_config_applied_with_defaults">구성이 적용되었습니다. 누락된 구성 요소가 기본값으로 대체되었습니다</string>
     <string name="best_config_apply_failed">설정 적용 실패: %s</string>
-    <string name="best_config_missing_content">%s 누락됨</string>
     <string name="import_config">설정 가져오기</string>
     <string name="export_config">설정 내보내기</string>
     <string name="library_app_type">앱 유형</string>
@@ -1368,4 +1376,26 @@
     <string name="workshop_processing">모드 처리 중…</string>
     <string name="workshop_failed_count">%1$d개의 워크숍 모드를 업데이트하지 못했습니다</string>
     <string name="workshop_download_failed">다운로드 실패</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">추천</string>
+    <string name="recommended_buy_button">게임 보기</string>
+    <string name="recommended_support_message">이 링크를 통해 구매하시면 GameNative 개발을 지원하는 데 도움이 됩니다.</string>
+    <string name="recommended_about_heading">이 게임에 대하여</string>
+    <string name="recommended_review_count">%1$s개의 리뷰 기반</string>
+    <string name="review_overwhelmingly_positive">압도적으로 긍정적</string>
+    <string name="review_very_positive">매우 긍정적</string>
+    <string name="review_mostly_positive">대체로 긍정적</string>
+    <string name="review_mixed">복합적</string>
+    <string name="review_mostly_negative">대체로 부정적</string>
+    <string name="review_overwhelmingly_negative">압도적으로 부정적</string>
+    <string name="settings_interface_show_recommendations_title">게임 추천 표시</string>
+    <string name="settings_interface_show_recommendations_subtitle">라이브러리에 엄선된 인디 게임을 표시합니다. 이 기능을 켜두면 인디 개발자와 GameNative를 지원하는 데 도움이 됩니다.</string>
+     <string name="steam_save_export_success">세이브 데이터 내보내기 완료</string>
+     <string name="steam_save_export_no_saves_found">세이브 파일을 찾을 수 없음</string>
+     <string name="steam_save_export_failed">세이브 데이터 내보내기 실패: %s</string>
+     <string name="steam_save_import_success">세이브 데이터 가져오기 완료</string>
+     <string name="steam_save_import_failed">세이브 데이터 가져오기 실패: %s</string>
+    <string name="option_import_saves">세이브 가져오기</string>
+    <string name="option_export_saves">세이브 내보내기</string>
 </resources>

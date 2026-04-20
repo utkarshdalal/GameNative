@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">重置</string>
     <string name="steam_verify_files_title">驗證檔案</string>
     <string name="steam_verify_files_message">請確保您的存檔已上傳至雲端或已備份, 然後再進行驗證, 否則存檔可能會被覆蓋</string>
+    <string name="steam_cloud_sync_downloading_save_files">正在下載存檔檔案 %1$d/%2$d</string>
     <string name="steam_update_title">更新</string>
     <string name="steam_update_message">請確保您的存檔已上傳至雲端或已備份, 然後再進行驗證, 否則存檔可能會被覆蓋</string>
     <string name="steam_storage_permission_required">需要存儲權限</string>
@@ -242,6 +243,7 @@
     <string name="toggle_fullscreen">切換全屏</string>
     <string name="toggle_orientation">切換螢幕方向</string>
     <string name="task_manager">工作管理員</string>
+    <string name="tools_wine_processes_running_hint">%1$d 個正在執行，點按/點擊某個程序以關閉</string>
     <string name="magnifier">放大鏡</string>
     <string name="logs">應用程序日誌</string>
     <string name="exit_game">退出</string>
@@ -439,6 +441,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">保存此應用程序 PID 的 logcat 快照</string>
     <string name="settings_save_logcat_title">保存 logcat</string>
+    <string name="settings_achievement_show_notification">顯示成就通知</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         CALL/RET opcodes 的 flags 處理方式<br /><br />
@@ -887,6 +890,8 @@
     <string name="settings_info_libraries_subtitle">了解哪些技術讓GameNative成為可能</string>
     <string name="settings_info_privacy_title">隱私權政策</string>
     <string name="settings_info_privacy_subtitle">開啟連結至 GameNative 的隱私權政策</string>
+    <string name="settings_info_usage_analytics_title">使用分析</string>
+    <string name="settings_info_usage_analytics_subtitle">我們絕不追蹤個人資訊。關閉此選項將停止非必要的分析，但核心遊戲效能資料仍會作為合法權益繼續收集，以改善相容性。</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">介面</string>
@@ -1093,11 +1098,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">配置已成功套用</string>
+    <string name="best_config_missing_components_title">設定未套用</string>
+    <string name="best_config_missing_components_message">此裝置上以下必要元件無法使用：\n\n%1$s\n\n請安裝缺少的元件後重試。</string>
     <string name="best_config_known_config_invalid">已知配置無效</string>
     <string name="best_config_no_config_available">此遊戲沒有可用的最佳配置</string>
     <string name="best_config_fetch_failed">無法取得配置，請檢查網路連線。</string>
+    <string name="best_config_apply_anyway">仍然套用</string>
+    <string name="best_config_applied_with_defaults">設定已套用，缺少的元件已替換為預設值</string>
     <string name="best_config_apply_failed">套用配置失敗: %s</string>
-    <string name="best_config_missing_content">%s 缺少</string>
     <string name="import_config">匯入設定</string>
     <string name="export_config">匯出設定</string>
 
@@ -1360,4 +1368,26 @@
     <string name="workshop_processing">正在處理模組…</string>
     <string name="workshop_failed_count">%1$d 個創意工坊模組更新失敗</string>
     <string name="workshop_download_failed">下載失敗</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">推薦</string>
+    <string name="recommended_buy_button">查看遊戲</string>
+    <string name="recommended_support_message">透過此連結購買有助於支持 GameNative 的開發。</string>
+    <string name="recommended_about_heading">關於本遊戲</string>
+    <string name="recommended_review_count">基於 %1$s 則評價</string>
+    <string name="review_overwhelmingly_positive">壓倒性好評</string>
+    <string name="review_very_positive">極度好評</string>
+    <string name="review_mostly_positive">大多好評</string>
+    <string name="review_mixed">褒貶不一</string>
+    <string name="review_mostly_negative">大多負評</string>
+    <string name="review_overwhelmingly_negative">壓倒性負評</string>
+    <string name="settings_interface_show_recommendations_title">顯示遊戲推薦</string>
+    <string name="settings_interface_show_recommendations_subtitle">在遊戲庫中顯示精選獨立遊戲。保持開啟有助於支持獨立開發者和 GameNative。</string>
+     <string name="steam_save_export_success">存檔已匯出</string>
+     <string name="steam_save_export_no_saves_found">未找到存檔檔案</string>
+     <string name="steam_save_export_failed">匯出存檔失敗：%s</string>
+     <string name="steam_save_import_success">存檔已匯入</string>
+     <string name="steam_save_import_failed">匯入存檔失敗：%s</string>
+    <string name="option_import_saves">匯入存檔</string>
+    <string name="option_export_saves">匯出存檔</string>
 </resources>

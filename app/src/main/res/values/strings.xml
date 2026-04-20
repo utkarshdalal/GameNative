@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">Reset</string>
     <string name="steam_verify_files_title">Verify Files</string>
     <string name="steam_verify_files_message">Please ensure your saves are uploaded to the cloud or backed up before verifying, as they may be overwritten otherwise.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Downloading save files %1$d/%2$d</string>
     <string name="steam_update_title">Update</string>
     <string name="steam_update_message">Please ensure your saves are uploaded to the cloud or backed up before updating, as they may be overwritten otherwise.</string>
     <string name="steam_not_logged_in">You must be logged into Steam to use this feature</string>
@@ -279,6 +280,8 @@
     <string name="screen_effects_close">Close</string>
     <string name="quick_menu_tab_general">General</string>
     <string name="quick_menu_tab_controller">Controller</string>
+    <string name="tools_wine_processes_running_hint">%1$d running, tap/click a process to close</string>
+    <string name="tools_wine_processes_empty">No running EXEs detected.</string>
     <string name="performance_hud">Performance HUD</string>
     <string name="performance_hud_description">Show or hide the in-game overlay.</string>
     <string name="performance_hud_presets">Presets</string>
@@ -461,7 +464,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Saves a snapshot of the logcat only for this app\'s PID</string>
     <string name="settings_save_logcat_title">Save logcat</string>
-
+    <string name="settings_achievement_show_notification">Show Achievement Notifications</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Handling of flags on CALL/RET opcodes<br /><br />
         <b>0</b> : Treats CALL/RET as if it never needed flags (faster, unstable)<br />
@@ -878,6 +881,8 @@
     <string name="settings_info_libraries_subtitle">See what technologies make GameNative possible</string>
     <string name="settings_info_privacy_title">Privacy Policy</string>
     <string name="settings_info_privacy_subtitle">Opens a link to GameNative\'s privacy policy</string>
+    <string name="settings_info_usage_analytics_title">Usage analytics</string>
+    <string name="settings_info_usage_analytics_subtitle">We never track personal information. Disabling this stops non-essential analytics, however core game performance data is still collected as a legitimate interest to improve compatibility.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>
@@ -1152,9 +1157,17 @@
     <string name="best_config_no_config_available">No best config available for this game</string>
     <string name="best_config_fetch_failed">Failed to fetch config. Please check your network connection.</string>
     <string name="best_config_apply_failed">Failed to apply config: %s</string>
-    <string name="best_config_missing_content">%s missing</string>
+    <string name="best_config_missing_components_title">Config not applied</string>
+    <string name="best_config_missing_components_message">The following required components are not available:\n\n%1$s</string>
+    <string name="best_config_apply_anyway">Apply anyway</string>
+    <string name="best_config_applied_with_defaults">Config applied with missing components replaced by defaults</string>
     <string name="import_config">Import config</string>
     <string name="export_config">Export config</string>
+    <string name="steam_save_export_success">Saves exported</string>
+    <string name="steam_save_export_no_saves_found">No save files found</string>
+    <string name="steam_save_export_failed">Failed to export saves: %s</string>
+    <string name="steam_save_import_success">Saves imported</string>
+    <string name="steam_save_import_failed">Failed to import saves: %s</string>
     <string name="library_app_type">App Type</string>
     <string name="library_app_status">App Status</string>
     <string name="library_layout">Layout</string>
@@ -1395,4 +1408,43 @@
     <string name="workshop_processing">Processing mods…</string>
     <string name="workshop_failed_count">%1$d workshop mod(s) failed to update</string>
     <string name="workshop_download_failed">Download failed</string>
+
+    <!-- App option menu labels -->
+    <string name="option_open_store_page">Open store page</string>
+    <string name="option_export_for_frontend">Export for frontend</string>
+    <string name="option_open_container">Open container</string>
+    <string name="option_edit_container">Edit container</string>
+    <string name="option_reset_to_defaults">Reset container</string>
+    <string name="option_get_support">Get support</string>
+    <string name="option_submit_feedback">Submit feedback</string>
+    <string name="option_reset_drm">Reset DRM</string>
+    <string name="option_use_known_config">Use known config</string>
+    <string name="option_import_saves">Import saves</string>
+    <string name="option_export_saves">Export saves</string>
+    <string name="option_verify_files">Verify files</string>
+    <string name="option_update">Update</string>
+    <string name="option_move_to_external_storage">Move to external storage</string>
+    <string name="option_move_to_internal_storage">Move to internal storage</string>
+    <string name="option_force_cloud_sync">Force cloud sync</string>
+    <string name="option_browse_online_saves">Browse online saves</string>
+    <string name="option_force_download_remote">Force download remote saves</string>
+    <string name="option_force_upload_local">Force upload local saves</string>
+    <string name="option_fetch_game_images">Fetch game images</string>
+    <string name="option_test_graphics">Test graphics</string>
+    <string name="option_manage_dlc">Manage DLC</string>
+    <string name="option_manage_workshop">Manage Workshop</string>
+    <!-- Recommendations -->
+    <string name="recommended_badge">Recommended</string>
+    <string name="recommended_buy_button">Check It Out</string>
+    <string name="recommended_support_message">Purchasing through this link helps support the development of GameNative.</string>
+    <string name="recommended_about_heading">About This Game</string>
+    <string name="recommended_review_count">Based on %1$s reviews</string>
+    <string name="review_overwhelmingly_positive">Overwhelmingly Positive</string>
+    <string name="review_very_positive">Very Positive</string>
+    <string name="review_mostly_positive">Mostly Positive</string>
+    <string name="review_mixed">Mixed</string>
+    <string name="review_mostly_negative">Mostly Negative</string>
+    <string name="review_overwhelmingly_negative">Overwhelmingly Negative</string>
+    <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
+    <string name="settings_interface_show_recommendations_subtitle">Show curated indie game picks in your library. Keeping this on helps support indie developers and GameNative.</string>
 </resources>

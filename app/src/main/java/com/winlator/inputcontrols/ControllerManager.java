@@ -11,8 +11,6 @@ import android.view.KeyEvent;
 
 import app.gamenative.PrefManager;
 
-import com.winlator.winhandler.WinHandler;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,7 +44,7 @@ public class ControllerManager {
     private final SparseArray<String> slotAssignments = new SparseArray<>();
 
     // This tracks which of the 4 player slots are enabled by the user.
-    private final boolean[] enabledSlots = new boolean[WinHandler.MAX_PLAYERS];
+    private final boolean[] enabledSlots = new boolean[4];
 
     public static final String PREF_PLAYER_SLOT_PREFIX = "controller_slot_";
     public static final String PREF_ENABLED_SLOTS_PREFIX = "enabled_slot_";
@@ -89,7 +87,7 @@ public class ControllerManager {
      */
     private void loadAssignments() {
         slotAssignments.clear();
-        for (int i = 0; i < WinHandler.MAX_PLAYERS; i++) {
+        for (int i = 0; i < 4; i++) {
             // Load which device is assigned to this slot
             String prefKey = PREF_PLAYER_SLOT_PREFIX + i;
             String deviceIdentifier = preferences.getString(prefKey, null);
@@ -108,7 +106,7 @@ public class ControllerManager {
      */
     public void saveAssignments() {
         SharedPreferences.Editor editor = preferences.edit();
-        for (int i = 0; i < WinHandler.MAX_PLAYERS; i++) {
+        for (int i = 0; i < 4; i++) {
             // Save the assigned device identifier
             String deviceIdentifier = slotAssignments.get(i);
             String prefKey = PREF_PLAYER_SLOT_PREFIX + i;
@@ -204,13 +202,13 @@ public class ControllerManager {
      * @param device The physical InputDevice to assign.
      */
     public void assignDeviceToSlot(int slotIndex, InputDevice device) {
-        if (slotIndex < 0 || slotIndex >= WinHandler.MAX_PLAYERS) return;
+        if (slotIndex < 0 || slotIndex >= 4) return;
 
         String newDeviceIdentifier = getDeviceIdentifier(device);
         if (newDeviceIdentifier == null) return;
 
         // First, remove the new device from any slot it might already be in.
-        for (int i = 0; i < WinHandler.MAX_PLAYERS; i++) {
+        for (int i = 0; i < 4; i++) {
             if (newDeviceIdentifier.equals(slotAssignments.get(i))) {
                 slotAssignments.remove(i);
             }
@@ -226,7 +224,7 @@ public class ControllerManager {
      * @param slotIndex The player slot to un-assign (0-3).
      */
     public void unassignSlot(int slotIndex) {
-        if (slotIndex < 0 || slotIndex >= WinHandler.MAX_PLAYERS) return;
+        if (slotIndex < 0 || slotIndex >= 4) return;
         slotAssignments.remove(slotIndex);
         saveAssignments();
     }
@@ -279,38 +277,13 @@ public class ControllerManager {
      * @param isEnabled The new enabled state.
      */
     public void setSlotEnabled(int slotIndex, boolean isEnabled) {
-        if (slotIndex < 0 || slotIndex >= WinHandler.MAX_PLAYERS) return;
+        if (slotIndex < 0 || slotIndex >= 4) return;
         enabledSlots[slotIndex] = isEnabled;
         saveAssignments();
     }
 
     public boolean isSlotEnabled(int slotIndex) {
-        if (slotIndex < 0 || slotIndex >= WinHandler.MAX_PLAYERS) return false;
+        if (slotIndex < 0 || slotIndex >= 4) return false;
         return enabledSlots[slotIndex];
-    }
-
-    /**
-     * Auto-assigns a device to the first available slot.
-     * If the device is already assigned, returns its existing slot.
-     * @param deviceId The Android device ID from the input event.
-     * @return The slot index (0-3), or -1 if no slot available or device is not a controller.
-     */
-    public int autoAssignDevice(int deviceId) {
-        int existingSlot = getSlotForDevice(deviceId);
-        if (existingSlot >= 0) {
-            return isSlotEnabled(existingSlot) ? existingSlot : -1;
-        }
-
-        InputDevice device = inputManager.getInputDevice(deviceId);
-        if (device == null || !isGameController(device)) return -1;
-
-        for (int i = 0; i < WinHandler.MAX_PLAYERS; i++) {
-            if (slotAssignments.get(i) == null) {
-                assignDeviceToSlot(i, device);
-                setSlotEnabled(i, true);
-                return i;
-            }
-        }
-        return -1;
     }
 }

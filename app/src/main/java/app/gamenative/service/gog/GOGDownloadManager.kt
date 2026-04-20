@@ -1,7 +1,9 @@
 package app.gamenative.service.gog
 
 import android.content.Context
+import app.gamenative.PrefManager
 import app.gamenative.data.DownloadInfo
+import app.gamenative.service.StreamingAssembly
 import app.gamenative.service.gog.api.DepotFile
 import app.gamenative.service.gog.api.FileChunk
 import app.gamenative.service.gog.api.GOGApiClient
@@ -9,6 +11,7 @@ import app.gamenative.service.gog.api.GOGManifestMeta
 import app.gamenative.service.gog.api.GOGManifestParser
 import app.gamenative.service.gog.api.V1DepotFile
 import app.gamenative.enums.Marker
+import app.gamenative.utils.CdnRankingUtils
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
 import org.json.JSONArray
@@ -28,7 +31,11 @@ import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import timber.log.Timber
 
@@ -63,7 +70,6 @@ class GOGDownloadManager @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     private val WINDOWS_OS_VERSION = "windows"
-    private val httpClient = Net.http
 
     /**
      * Context needed to refresh secure CDN links when they expire
@@ -76,11 +82,11 @@ class GOGDownloadManager @Inject constructor(
     )
 
     companion object {
-        private const val MAX_PARALLEL_DOWNLOADS = 4
         private const val CHUNK_BUFFER_SIZE = 1024 * 1024 // 1MB buffer
         private const val MAX_CHUNK_RETRIES = 3 // Maximum retries per chunk
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
         private const val DEPENDENCY_URL = "https://content-system.gog.com/dependencies/repository?generation=2"
+        private const val STREAM_PROGRESS_TIME_INTERVAL_MS = 200L
     }
 
     /**
@@ -313,7 +319,8 @@ class GOGDownloadManager @Inject constructor(
                 """.trimMargin(),
             )
 
-            downloadInfo.setTotalExpectedBytes(totalSize)
+            val resumedBytes = downloadInfo.getBytesDownloaded()
+            downloadInfo.setTotalExpectedBytes(totalSize + resumedBytes)
 
             // Step 7: Get secure CDN links for chunks
             downloadInfo.updateStatusMessage("Getting secure download links...")
@@ -369,7 +376,11 @@ class GOGDownloadManager @Inject constructor(
                     generation = selectedBuild.generation,
                 )
                 if (linksResult.isSuccess) {
-                    val urls = linksResult.getOrThrow().urls
+                    val urls = CdnRankingUtils.rankBaseUrlsByHeadProbe(
+                        linksResult.getOrThrow().urls,
+                        Net.http,
+                        "GOG Galaxy",
+                    )
                     productUrlMap[productId] = urls
                 } else {
                     return@withContext Result.failure(
@@ -379,7 +390,7 @@ class GOGDownloadManager @Inject constructor(
             }
 
             // Build chunk URL map using the correct product URL for each chunk
-            val chunkUrlMap = parser.buildChunkUrlMapWithProducts(chunkHashes, chunkToProductMap, productUrlMap)
+            val chunkUrlCandidates = parser.buildChunkUrlCandidatesWithProducts(chunkHashes, chunkToProductMap, productUrlMap)
 
             // Store context for refreshing secure links if they expire
             val secureLinkContext = SecureLinkContext(
@@ -389,43 +400,35 @@ class GOGDownloadManager @Inject constructor(
                 chunkToProductMap = chunkToProductMap,
             )
 
-            // Step 8: Download chunks
-            Timber.tag("GOG").i("Downoading Chunks for game $gameId")
+            // Step 8+9: Download chunks and assemble files in a unified streaming loop.
+            // Chunks are ordered by file so files complete front-to-back, allowing
+            // early assembly and cache cleanup to reduce peak disk usage.
+            Timber.tag("GOG").i("Downloading and assembling game $gameId")
 
             // Mark download as in-progress so UI and install checks can detect partial installs
             installPath.mkdirs()
             MarkerUtils.addMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
-            downloadInfo.updateStatusMessage("Downloading chunks...")
+            downloadInfo.updateStatusMessage("Downloading...")
 
             val chunkCacheDir = File(installPath, ".gog_chunks")
             chunkCacheDir.mkdirs()
+            gameInstallDir.mkdirs()
 
-            val downloadResult = downloadChunks(
-                chunkUrlMap = chunkUrlMap,
+            val downloadAndAssembleResult = downloadAndAssembleChunks(
+                chunkUrlCandidates = chunkUrlCandidates,
                 chunkCacheDir = chunkCacheDir,
+                installDir = gameInstallDir,
+                files = gameFiles + supportFilesForGameDirAssemble,
                 downloadInfo = downloadInfo,
                 chunkHashes = chunkHashes,
                 secureLinkContext = secureLinkContext,
                 chunkToProductMap = chunkToProductMap,
             )
 
-            if (downloadResult.isFailure) {
+            if (downloadAndAssembleResult.isFailure) {
                 MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
-                return@withContext downloadResult
-            }
-
-            // Step 9: Assemble game files
-            downloadInfo.updateStatusMessage("Assembling files...")
-
-            // Use installPath directly since it already includes the game-specific folder
-            gameInstallDir.mkdirs()
-
-            val filesToAssembleInGameDir = gameFiles + supportFilesForGameDirAssemble
-            val assembleResult = assembleFiles(filesToAssembleInGameDir, chunkCacheDir, gameInstallDir, downloadInfo)
-            if (assembleResult.isFailure) {
-                MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
-                return@withContext assembleResult
+                return@withContext downloadAndAssembleResult
             }
 
             // Download Dependencies (They will either go to root or supportDir depending on )
@@ -434,7 +437,11 @@ class GOGDownloadManager @Inject constructor(
                 supportDir.mkdirs()
 
                 val dependencyResult = downloadDependencies(gameId, dependencies, installPath, supportDir, downloadInfo)
-                if (dependencyResult.isFailure){
+                if (dependencyResult.isFailure) {
+                    if (!downloadInfo.isActive()) {
+                        MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                        return@withContext dependencyResult
+                    }
                     Timber.tag("GOG").w("Failed to install Dependencies: ${dependencyResult.exceptionOrNull()?.message}")
                 }
 
@@ -619,7 +626,8 @@ class GOGDownloadManager @Inject constructor(
             }
             val totalSize = gameFiles.sumOf { it.file.size } +
                 if (supportDir != null) supportFiles.sumOf { it.file.size } else 0L
-            downloadInfo.setTotalExpectedBytes(totalSize)
+            val resumedBytes = downloadInfo.getBytesDownloaded()
+            downloadInfo.setTotalExpectedBytes(totalSize + resumedBytes)
             downloadInfo.updateStatusMessage("Downloading files...")
             downloadInfo.setProgress(0f)
             downloadInfo.setActive(true)
@@ -630,7 +638,7 @@ class GOGDownloadManager @Inject constructor(
 
             // Gen 1: one main.bin URL per product; each file is fetched with Range: bytes=offset-(offset+size-1)
             val mainBinUrlByProduct = productUrlMap.mapValues { (_, urls) ->
-                (urls.firstOrNull()?.trimEnd('/') ?: "") + "/main.bin"
+                buildGen1MainBinUrl(urls.firstOrNull())
             }
 
             fun downloadOneFile(f: FileWithProduct, baseDir: File): Result<Unit> {
@@ -659,7 +667,7 @@ class GOGDownloadManager @Inject constructor(
                     .build()
 
                 return try {
-                    httpClient.newCall(request).execute().use { response ->
+                    Net.http.newCall(request).execute().use { response ->
                         if (!response.isSuccessful) return Result.failure(Exception("HTTP ${response.code} for ${file.path}"))
                         val body = response.body ?: return Result.failure(Exception("Empty response"))
                         val md = MessageDigest.getInstance("MD5")
@@ -742,101 +750,191 @@ class GOGDownloadManager @Inject constructor(
         }
     }
 
-    /**
-     * Download all chunks from CDN with parallel execution
-     *
-     * @param chunkUrlMap Map of chunk MD5 hash to secure CDN URL
-     * @param chunkCacheDir Directory to cache downloaded chunks
-     * @param downloadInfo Progress tracker
-     * @param chunkHashes List of all chunk hashes needed
-     * @param secureLinkContext Context for refreshing secure links if they expire
-     * @param chunkToProductMap Map of chunk MD5 hash to product ID for debugging
-     */
-    private suspend fun downloadChunks(
-        chunkUrlMap: Map<String, String>,
+    internal fun buildGen1MainBinUrl(baseUrl: String?): String {
+        val safeBase = baseUrl?.trim().orEmpty()
+        require(safeBase.isNotEmpty()) { "Missing Gen 1 secure link URL" }
+
+        val queryIndex = safeBase.indexOf('?')
+        val pathBase = if (queryIndex >= 0) safeBase.substring(0, queryIndex) else safeBase
+        val querySuffix = if (queryIndex >= 0) safeBase.substring(queryIndex) else ""
+        val normalizedPathBase = pathBase.trimEnd('/')
+
+        return "$normalizedPathBase/main.bin$querySuffix"
+    }
+
+
+
+    // assembles files as chunks arrive, deletes chunks once their last consumer is assembled
+    private suspend fun downloadAndAssembleChunks(
+        chunkUrlCandidates: Map<String, List<String>>,
         chunkCacheDir: File,
+        installDir: File,
+        files: List<DepotFile>,
         downloadInfo: DownloadInfo,
         chunkHashes: List<String>,
-        secureLinkContext: SecureLinkContext,
+        secureLinkContext: SecureLinkContext?,
         chunkToProductMap: Map<String, String>,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            var currentChunkUrlMap = chunkUrlMap
-            val chunks = chunkUrlMap.entries.toList()
-            val totalChunks = chunks.size
-            var downloadedChunks = 0
+            val fileChunkIds = files.map { f -> f.chunks.map { it.compressedMd5 } }
+            val chunkLastFile = StreamingAssembly.buildChunkLastFileMap(fileChunkIds)
+            val parallelDownloads = PrefManager.downloadSpeed.coerceAtLeast(1)
+            val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 
-            Timber.tag("GOG").d("Downloading $totalChunks chunks...")
+            var currentChunkUrlCandidates = chunkUrlCandidates
+            val totalChunks = chunkHashes.size
+            val totalFiles = files.size
+            val downloadedChunkIds = mutableSetOf<String>()
+            var nextFileToAssemble = 0
 
-            // Initialize download progress
+            // assemble every file whose chunks have all arrived (or that has zero chunks)
+            suspend fun assembleReady(): Result<Unit> {
+                while (nextFileToAssemble < totalFiles) {
+                    val file = files[nextFileToAssemble]
+                    if (!file.chunks.all { it.compressedMd5 in downloadedChunkIds }) break
+                    if (!downloadInfo.isActive()) return Result.failure(Exception("Download cancelled"))
+
+                    val r = assembleFile(file, chunkCacheDir, installDir)
+                    if (r.isFailure) return Result.failure(
+                        r.exceptionOrNull() ?: Exception("Failed to assemble ${file.path}"),
+                    )
+
+                    for (chunk in file.chunks) {
+                        if (chunkLastFile[chunk.compressedMd5] == nextFileToAssemble) {
+                            File(chunkCacheDir, "${chunk.compressedMd5}.chunk").delete()
+                        }
+                    }
+                    nextFileToAssemble++
+                }
+                return Result.success(Unit)
+            }
+
+            Timber.tag("GOG").d("Streaming download+assembly: $totalChunks chunks, $totalFiles files")
+
             downloadInfo.setProgress(0.0f)
             downloadInfo.setActive(true)
-            downloadInfo.emitProgressChange()
 
-            // Download in batches to avoid overwhelming the system
-            chunks.chunked(MAX_PARALLEL_DOWNLOADS).forEach { chunkBatch ->
+            chunkHashes.chunked(parallelDownloads).forEach { chunkBatch ->
                 if (!downloadInfo.isActive()) {
                     Timber.tag("GOG").w("Download cancelled by user")
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
 
-                // Download batch in parallel with retry logic
-                val results = chunkBatch.map { (chunkMd5, _) ->
-                    async {
-                        // Use current URL map in case it was refreshed
-                        val url = currentChunkUrlMap[chunkMd5] ?: return@async Result.failure<File>(
-                            Exception("No URL found for chunk $chunkMd5"),
-                        )
-                        downloadChunkWithRetry(chunkMd5, url, chunkCacheDir, downloadInfo)
-                    }
-                }.awaitAll()
+                // Download batch in parallel and process chunk completions as they arrive.
+                val completionChannel = Channel<Pair<String, Result<File>>>(chunkBatch.size)
+                val resultsByChunk = mutableMapOf<String, Result<File>>()
+                var assemblyFailure: Throwable? = null
 
-                // Check if any download failed due to expired links (401/403/404)
+                coroutineScope {
+                    chunkBatch.forEach { chunkMd5 ->
+                        launch {
+                            val result = run {
+                                val urls = currentChunkUrlCandidates[chunkMd5] ?: return@run Result.failure<File>(
+                                    Exception("No URL candidates found for chunk $chunkMd5"),
+                                )
+                                downloadChunkWithRetry(chunkMd5, urls, chunkCacheDir, downloadInfo, downloadHttpClient)
+                            }
+                            completionChannel.send(chunkMd5 to result)
+                        }
+                    }
+
+                    repeat(chunkBatch.size) {
+                        val (chunkMd5, result) = completionChannel.receive()
+                        resultsByChunk[chunkMd5] = result
+
+                        // Optimistic streaming behavior inside the batch.
+                        // If this batch later needs secure-link refresh, we still keep existing
+                        // refresh semantics (refresh+retry whole batch), and set semantics
+                        // prevent double-counting already completed chunks.
+                        if (result.isSuccess && assemblyFailure == null) {
+                            downloadedChunkIds.add(chunkMd5)
+                            val assembleResult = assembleReady()
+                            if (assembleResult.isFailure) {
+                                assemblyFailure = assembleResult.exceptionOrNull()
+                                    ?: Exception("Failed to assemble ready files")
+                                return@repeat
+                            }
+
+                            val progress = downloadedChunkIds.size.toFloat() / totalChunks
+                            downloadInfo.setProgress(progress)
+                            downloadInfo.updateStatusMessage(
+                                "Downloading (${downloadedChunkIds.size}/$totalChunks chunks, $nextFileToAssemble/$totalFiles files)",
+                            )
+                        }
+                    }
+                }
+                completionChannel.close()
+                if (assemblyFailure != null) {
+                    return@withContext Result.failure(assemblyFailure!!)
+                }
+                val results = chunkBatch.map { chunkMd5 ->
+                    resultsByChunk[chunkMd5] ?: Result.failure<File>(
+                        Exception("Missing batch result for chunk $chunkMd5"),
+                    )
+                }
+
+                // Handle expired secure links (401/403/404)
                 val expiredLinkFailures = results.zip(chunkBatch).filter { (result, _) ->
                     val exception = result.exceptionOrNull()
                     exception is HttpStatusException && exception.statusCode in listOf(401, 403, 404)
                 }
+                val expiredChunkIds = expiredLinkFailures.map { (_, chunkMd5) -> chunkMd5 }.toSet()
+                val nonExpiredFailures = results.zip(chunkBatch).filter { (result, chunkMd5) ->
+                    result.isFailure && chunkMd5 !in expiredChunkIds
+                }
 
-                if (expiredLinkFailures.isNotEmpty()) {
+                if (expiredLinkFailures.isNotEmpty() && secureLinkContext != null) {
+                    nonExpiredFailures.firstOrNull()?.first?.let { failedResult ->
+                        return@withContext Result.failure(
+                            failedResult.exceptionOrNull()
+                                ?: Exception("Failed to download chunk with non-expired error"),
+                        )
+                    }
+
                     Timber.tag("GOG").w("Detected ${expiredLinkFailures.size} expired secure link(s), refreshing...")
 
-                    // Log which products the failing chunks belong to
-                    expiredLinkFailures.forEach { (result, chunk) ->
-                        val chunkMd5 = chunk.key
+                    expiredLinkFailures.forEach { (result, chunkMd5) ->
                         val productId = chunkToProductMap[chunkMd5]
                         Timber.tag("GOG").w("Chunk $chunkMd5 belongs to product $productId: ${result.exceptionOrNull()?.message}")
                     }
 
-                    // Refresh secure links
                     val refreshResult = refreshSecureLinks(secureLinkContext, chunkHashes)
                     if (refreshResult.isSuccess) {
-                        currentChunkUrlMap = refreshResult.getOrThrow()
-                        Timber.tag("GOG").i("Secure links refreshed successfully, retrying failed chunks")
+                        currentChunkUrlCandidates = refreshResult.getOrThrow()
+                        val failedChunkIds = expiredChunkIds.toList()
+                        Timber.tag("GOG").i("Secure links refreshed, retrying ${failedChunkIds.size} failed chunk(s)")
 
-                        // Retry the failed chunks with new URLs
-                        val retryResults = chunkBatch.map { (chunkMd5, _) ->
+                        val retryResults = failedChunkIds.map { chunkMd5 ->
                             async {
-                                val url = currentChunkUrlMap[chunkMd5] ?: return@async Result.failure<File>(
-                                    Exception("No URL found for chunk $chunkMd5 after refresh"),
+                                val urls = currentChunkUrlCandidates[chunkMd5] ?: return@async Result.failure<File>(
+                                    Exception("No URL candidates found for chunk $chunkMd5 after refresh"),
                                 )
-                                downloadChunkWithRetry(chunkMd5, url, chunkCacheDir, downloadInfo)
+                                downloadChunkWithRetry(chunkMd5, urls, chunkCacheDir, downloadInfo, downloadHttpClient)
                             }
                         }.awaitAll()
 
-                        // Check retry results
                         retryResults.firstOrNull { it.isFailure }?.let { failedResult ->
                             return@withContext Result.failure(
                                 failedResult.exceptionOrNull() ?: Exception("Failed to download chunk after link refresh"),
                             )
                         }
+
+                        // After a successful refresh+retry pass, ensure all chunks in this batch
+                        // are reflected in assembly/progress state.
+                        failedChunkIds.forEach { downloadedChunkIds.add(it) }
+                        assembleReady().onFailure { return@withContext Result.failure(it) }
+
+                        val progress = downloadedChunkIds.size.toFloat() / totalChunks
+                        downloadInfo.setProgress(progress)
+                        downloadInfo.updateStatusMessage(
+                            "Downloading (${downloadedChunkIds.size}/$totalChunks chunks, $nextFileToAssemble/$totalFiles files)",
+                        )
                     } else {
-                        Timber.tag("GOG").e("Failed to refresh secure links: ${refreshResult.exceptionOrNull()?.message}")
                         return@withContext Result.failure(
                             refreshResult.exceptionOrNull() ?: Exception("Failed to refresh secure links"),
                         )
                     }
                 } else {
-                    // Check if any download failed for other reasons
                     results.firstOrNull { it.isFailure }?.let { failedResult ->
                         return@withContext Result.failure(
                             failedResult.exceptionOrNull() ?: Exception("Failed to download chunk"),
@@ -844,21 +942,19 @@ class GOGDownloadManager @Inject constructor(
                     }
                 }
 
-                downloadedChunks += chunkBatch.size
-
-                // Update progress with smooth interpolation
-                val progress = downloadedChunks.toFloat() / totalChunks
-                downloadInfo.setProgress(progress)
-                downloadInfo.updateStatusMessage("Downloading chunks ($downloadedChunks/$totalChunks)")
-                downloadInfo.emitProgressChange()
-
-                Timber.tag("GOG").d("Progress: ${(progress * 100).toInt()}% ($downloadedChunks/$totalChunks chunks)")
             }
 
-            Timber.tag("GOG").i("All $totalChunks chunks downloaded successfully")
+            // assemble any remaining files whose chunks are all present (or have zero chunks)
+            assembleReady().onFailure { return@withContext Result.failure(it) }
+
+            if (nextFileToAssemble != totalFiles) {
+                throw Exception("Assembly incomplete: only $nextFileToAssemble of $totalFiles files assembled")
+            }
+
+            Timber.tag("GOG").i("Streaming complete: $totalChunks chunks, $nextFileToAssemble files assembled")
             Result.success(Unit)
         } catch (e: Exception) {
-            Timber.tag("GOG").e(e, "Failed to download chunks")
+            Timber.tag("GOG").e(e, "Failed to download and assemble")
             Result.failure(e)
         }
     }
@@ -965,30 +1061,7 @@ class GOGDownloadManager @Inject constructor(
                     continue
                 }
 
-                // Extract chunk hashes
-                val chunkHashes = parser.extractChunkHashes(depotFiles)
-
-                // Build chunk URL map using dependency base URLs
-                val chunkUrlMap = buildChunkUrlMap(chunkHashes, dependencyBaseUrls)
-
-                // Create cache directory for this dependency
-                val depotCacheDir = File(installBaseDir, ".gog_dep_${depot.dependencyId}")
-                depotCacheDir.mkdirs()
-
-                // Download chunks
-                val downloadResult = downloadChunksSimple(chunkUrlMap, depotCacheDir, downloadInfo)
-                if (downloadResult.isFailure) {
-                    Timber.tag("GOG").w("Failed to download chunks for ${depot.readableName}: ${downloadResult.exceptionOrNull()?.message}")
-                    continue
-                }
-
-                // Assemble files - the file paths in the manifest already contain the full directory structure
-                // so we use installBaseDir directly without adding depot.dependencyId
-                val depotInstallDir = installBaseDir
-                depotInstallDir.mkdirs()
-
                 // Strip __redist/ prefix from file paths if they're being installed to supportDir
-                // This prevents paths like supportDir/__redist/DirectX and gives us supportDir/DirectX instead
                 val filesToAssemble = if (installBaseDir == supportDir) {
                     depotFiles.map { file ->
                         if (file.path.startsWith("__redist/")) {
@@ -1001,13 +1074,42 @@ class GOGDownloadManager @Inject constructor(
                     depotFiles
                 }
 
-                val assembleResult = assembleFiles(filesToAssemble, depotCacheDir, depotInstallDir, downloadInfo)
-                if (assembleResult.isFailure) {
-                    Timber.tag("GOG").w("Failed to assemble files for ${depot.readableName}: ${assembleResult.exceptionOrNull()?.message}")
+                // Extract chunk hashes and build URLs
+                val depotChunkHashes = parser.extractChunkHashes(filesToAssemble)
+                val rankedDependencyUrls = CdnRankingUtils.rankBaseUrlsByHeadProbe(
+                    dependencyBaseUrls,
+                    Net.http,
+                    "GOG Galaxy",
+                )
+                val chunkUrlCandidates = buildChunkUrlCandidates(depotChunkHashes, rankedDependencyUrls)
+
+                // Create cache directory for this dependency
+                val depotCacheDir = File(installBaseDir, ".gog_dep_${depot.dependencyId}")
+                depotCacheDir.mkdirs()
+
+                val depotInstallDir = installBaseDir
+                depotInstallDir.mkdirs()
+
+                // Streaming download + assemble (no secure link refresh for deps)
+                val depotResult = downloadAndAssembleChunks(
+                    chunkUrlCandidates = chunkUrlCandidates,
+                    chunkCacheDir = depotCacheDir,
+                    installDir = depotInstallDir,
+                    files = filesToAssemble,
+                    downloadInfo = downloadInfo,
+                    chunkHashes = depotChunkHashes,
+                    secureLinkContext = null,
+                    chunkToProductMap = emptyMap(),
+                )
+                if (depotResult.isFailure) {
+                    // propagate cancellations so finalizeInstallSuccess doesn't run
+                    if (!downloadInfo.isActive()) {
+                        return@withContext depotResult
+                    }
+                    Timber.tag("GOG").w("Failed to download/assemble ${depot.readableName}: ${depotResult.exceptionOrNull()?.message}")
                     continue
                 }
 
-                // Cleanup cache
                 depotCacheDir.deleteRecursively()
 
                 Timber.tag("GOG").i("Successfully downloaded dependency: ${depot.readableName} to ${depotInstallDir.absolutePath}")
@@ -1051,68 +1153,8 @@ class GOGDownloadManager @Inject constructor(
     /**
      * Build chunk URL map using base URLs
      */
-    private fun buildChunkUrlMap(chunkHashes: List<String>, baseUrls: List<String>): Map<String, String> {
-        val chunkUrlMap = mutableMapOf<String, String>()
-        val baseUrl = baseUrls.firstOrNull() ?: return emptyMap()
-        // Ensure base URL ends with / for proper concatenation
-        val normalizedBaseUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
-
-        chunkHashes.forEach { hash ->
-            // Build GOG Galaxy path format: AA/BB/CCDD...
-            val galaxyPath = if (hash.length >= 4) {
-                "${hash.substring(0, 2)}/${hash.substring(2, 4)}/$hash"
-            } else {
-                hash
-            }
-            chunkUrlMap[hash] = "$normalizedBaseUrl$galaxyPath"
-        }
-
-        return chunkUrlMap
-    }
-
-    /**
-     * Simplified chunk download without retry and secure link refresh
-     * Used for dependencies which use open links
-     */
-    private suspend fun downloadChunksSimple(
-        chunkUrlMap: Map<String, String>,
-        chunkCacheDir: File,
-        downloadInfo: DownloadInfo,
-    ): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val chunks = chunkUrlMap.entries.toList()
-            val totalChunks = chunks.size
-            var downloadedChunks = 0
-
-            downloadInfo.setProgress(0f)
-            downloadInfo.setActive(true)
-            downloadInfo.emitProgressChange()
-
-            // Download in batches
-            chunks.chunked(MAX_PARALLEL_DOWNLOADS).forEach { chunkBatch ->
-                val results = chunkBatch.map { (chunkMd5, url) ->
-                    async {
-                        downloadChunk(chunkMd5, url, chunkCacheDir, downloadInfo)
-                    }
-                }.awaitAll()
-
-                // Check if any download failed
-                results.firstOrNull { it.isFailure }?.let { failedResult ->
-                    return@withContext Result.failure(
-                        failedResult.exceptionOrNull() ?: Exception("Failed to download chunk"),
-                    )
-                }
-
-                downloadedChunks += chunkBatch.size
-                downloadInfo.setProgress(downloadedChunks.toFloat() / totalChunks)
-                downloadInfo.emitProgressChange()
-            }
-
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Timber.tag("GOG").e(e, "Failed to download dependency chunks")
-            Result.failure(e)
-        }
+    private fun buildChunkUrlCandidates(chunkHashes: List<String>, baseUrls: List<String>): Map<String, List<String>> {
+        return parser.buildChunkUrlCandidates(chunkHashes, baseUrls)
     }
 
     /**
@@ -1120,12 +1162,12 @@ class GOGDownloadManager @Inject constructor(
      *
      * @param context Context containing info needed to fetch new links
      * @param chunkHashes List of chunk hashes needed
-     * @return New chunk URL map with fresh secure links
+     * @return New chunk URL candidates with fresh secure links
      */
     private suspend fun refreshSecureLinks(
         context: SecureLinkContext,
         chunkHashes: List<String>,
-    ): Result<Map<String, String>> = withContext(Dispatchers.IO) {
+    ): Result<Map<String, List<String>>> = withContext(Dispatchers.IO) {
         try {
             val productUrlMap = mutableMapOf<String, List<String>>()
 
@@ -1137,7 +1179,11 @@ class GOGDownloadManager @Inject constructor(
                     generation = context.generation,
                 )
                 if (linksResult.isSuccess) {
-                    productUrlMap[productId] = linksResult.getOrThrow().urls
+                    productUrlMap[productId] = CdnRankingUtils.rankBaseUrlsByHeadProbe(
+                        linksResult.getOrThrow().urls,
+                        Net.http,
+                        "GOG Galaxy",
+                    )
                 } else {
                     return@withContext Result.failure(
                         linksResult.exceptionOrNull() ?: Exception("Failed to refresh secure links for product $productId"),
@@ -1147,9 +1193,9 @@ class GOGDownloadManager @Inject constructor(
 
             Timber.tag("GOG").d("Refreshed secure links for ${productUrlMap.size} product(s)")
 
-            // Rebuild chunk URL map with new secure links
-            val newChunkUrlMap = parser.buildChunkUrlMapWithProducts(chunkHashes, context.chunkToProductMap, productUrlMap)
-            Result.success(newChunkUrlMap)
+            // Rebuild chunk URL candidates with new secure links
+            val newChunkUrlCandidates = parser.buildChunkUrlCandidatesWithProducts(chunkHashes, context.chunkToProductMap, productUrlMap)
+            Result.success(newChunkUrlCandidates)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to refresh secure links")
             Result.failure(e)
@@ -1160,20 +1206,26 @@ class GOGDownloadManager @Inject constructor(
      * Download a single chunk with retry logic
      *
      * @param chunkMd5 Compressed MD5 hash (chunk identifier)
-     * @param url Secure CDN URL (time-limited)
+     * @param urlCandidates Ordered secure CDN URL candidates (fastest first)
      * @param chunkCacheDir Cache directory
      * @param downloadInfo Progress tracker
      */
     private suspend fun downloadChunkWithRetry(
         chunkMd5: String,
-        url: String,
+        urlCandidates: List<String>,
         chunkCacheDir: File,
         downloadInfo: DownloadInfo,
+        httpClient: OkHttpClient,
     ): Result<File> = withContext(Dispatchers.IO) {
+        if (urlCandidates.isEmpty()) {
+            return@withContext Result.failure(Exception("No URL candidates for chunk $chunkMd5"))
+        }
+
         var lastException: Exception? = null
 
         repeat(MAX_CHUNK_RETRIES) { attempt ->
-            val result = downloadChunk(chunkMd5, url, chunkCacheDir, downloadInfo)
+            val url = urlCandidates[attempt % urlCandidates.size]
+            val result = downloadChunk(chunkMd5, url, chunkCacheDir, downloadInfo, httpClient)
 
             if (result.isSuccess) {
                 if (attempt > 0) {
@@ -1208,9 +1260,11 @@ class GOGDownloadManager @Inject constructor(
         url: String,
         chunkCacheDir: File,
         downloadInfo: DownloadInfo,
+        httpClient: OkHttpClient,
     ): Result<File> = withContext(Dispatchers.IO) {
         try {
             val chunkFile = File(chunkCacheDir, "$chunkMd5.chunk")
+            val tempChunkFile = File(chunkCacheDir, "$chunkMd5.chunk.part")
 
             // Skip if already downloaded and verified
             if (chunkFile.exists()) {
@@ -1224,8 +1278,9 @@ class GOGDownloadManager @Inject constructor(
                 }
             }
 
-            // Download compressed chunk
-            Timber.tag("GOG").d("Downloading chunk $chunkMd5 from: $url")
+            // Download compressed chunk (redact query params to avoid token leakage in logs)
+            val safeUrl = url.substringBefore('?')
+            Timber.tag("GOG").v("Downloading chunk $chunkMd5 from: $safeUrl")
 
             val request = Request.Builder()
                 .url(url)
@@ -1234,71 +1289,72 @@ class GOGDownloadManager @Inject constructor(
 
             httpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    Timber.tag("GOG").e("HTTP ${response.code} for chunk $chunkMd5 from URL: $url")
+                    Timber.tag("GOG").e("HTTP ${response.code} for chunk $chunkMd5 from URL: $safeUrl")
                     return@withContext Result.failure(
                         HttpStatusException(response.code, "HTTP ${response.code} downloading chunk $chunkMd5")
                     )
                 }
 
-                val compressedBytes = response.body?.bytes()
+                val responseBody = response.body
                     ?: return@withContext Result.failure(Exception("Empty response for chunk $chunkMd5"))
 
+                val md = MessageDigest.getInstance("MD5")
+                val buffer = ByteArray(256 * 1024) // 256KB
+                var lastProgressEmitAt = System.currentTimeMillis()
+
+                if (tempChunkFile.exists()) tempChunkFile.delete()
+
+                try {
+                    BufferedOutputStream(FileOutputStream(tempChunkFile)).use { output ->
+                        responseBody.byteStream().use { input ->
+                            var bytesRead: Int
+                            while (input.read(buffer).also { bytesRead = it } != -1) {
+                                if (!downloadInfo.isActive()) {
+                                    tempChunkFile.delete()
+                                    return@withContext Result.failure(Exception("Download cancelled"))
+                                }
+                                md.update(buffer, 0, bytesRead)
+                                output.write(buffer, 0, bytesRead)
+                                downloadInfo.updateBytesDownloaded(bytesRead.toLong())
+
+                                val now = System.currentTimeMillis()
+                                if (now - lastProgressEmitAt >= STREAM_PROGRESS_TIME_INTERVAL_MS) {
+                                    downloadInfo.emitProgressChange()
+                                    lastProgressEmitAt = now
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    tempChunkFile.delete()
+                    return@withContext Result.failure(
+                        Exception("Failed while streaming chunk $chunkMd5: ${e.message}")
+                    )
+                }
+
                 // Verify compressed MD5
-                val actualMd5 = calculateMd5(compressedBytes)
+                val actualMd5 = md.digest().joinToString("") { "%02x".format(it) }
                 if (actualMd5 != chunkMd5) {
+                    tempChunkFile.delete()
                     return@withContext Result.failure(
                         Exception("Compressed MD5 mismatch for chunk: expected $chunkMd5, got $actualMd5"),
                     )
                 }
 
-                // Save compressed chunk (will decompress during assembly)
-                chunkFile.writeBytes(compressedBytes)
-                downloadInfo.updateBytesDownloaded(compressedBytes.size.toLong())
+                // Ensure UI receives final progress update for this chunk.
+                downloadInfo.emitProgressChange()
+
+                // Atomically replace destination with verified temp chunk
+                if (chunkFile.exists()) chunkFile.delete()
+                if (!tempChunkFile.renameTo(chunkFile)) {
+                    tempChunkFile.copyTo(chunkFile, overwrite = true)
+                    tempChunkFile.delete()
+                }
 
                 Result.success(chunkFile)
             }
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to download chunk $chunkMd5")
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Assemble files from downloaded chunks
-     *
-     * @param files List of files to assemble
-     * @param chunkCacheDir Directory containing downloaded chunks
-     * @param installDir Target installation directory
-     * @param downloadInfo Progress tracker
-     */
-    private suspend fun assembleFiles(
-        files: List<DepotFile>,
-        chunkCacheDir: File,
-        installDir: File,
-        downloadInfo: DownloadInfo,
-    ): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val totalFiles = files.size
-
-            for ((index, file) in files.withIndex()) {
-                if (!downloadInfo.isActive()) {
-                    return@withContext Result.failure(Exception("Download cancelled"))
-                }
-
-                downloadInfo.updateStatusMessage("Assembling ${index + 1}/$totalFiles: ${file.path}")
-
-                val assembleResult = assembleFile(file, chunkCacheDir, installDir)
-                if (assembleResult.isFailure) {
-                    return@withContext Result.failure(
-                        assembleResult.exceptionOrNull() ?: Exception("Failed to assemble ${file.path}"),
-                    )
-                }
-            }
-
-            Timber.tag("GOG").i("Assembled $totalFiles file(s) successfully")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Timber.tag("GOG").e(e, "Failed to assemble files")
             Result.failure(e)
         }
     }
@@ -1366,7 +1422,7 @@ class GOGDownloadManager @Inject constructor(
                 }
             }
 
-            Timber.tag("GOG").d("Assembled: ${file.path} (${outputFile.length()} bytes)")
+            Timber.tag("GOG").v("Assembled: ${file.path} (${outputFile.length()} bytes)")
             Result.success(outputFile)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to assemble file ${file.path}")
