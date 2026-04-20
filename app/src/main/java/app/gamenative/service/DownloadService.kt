@@ -65,15 +65,6 @@ object DownloadService {
                 dirs += getSubdirectories(installPath)
             }
 
-            SteamService.getAllInstalledApps()?.forEach { installedApp ->
-                if (installedApp.isImported) {
-                    val steamApp = SteamService.getAppInfoOf(installedApp.id)
-                    if (steamApp != null) {
-                        dirs += SteamService.getAppDirName(steamApp)
-                    }
-                }
-            }
-
             downloadDirectoryApps = dirs.toMutableList()
         }
 

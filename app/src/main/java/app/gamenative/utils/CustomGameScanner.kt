@@ -465,9 +465,7 @@ object CustomGameScanner {
 
                 val manualItem = createLibraryItemFromFolder(manualPath)
                 if (manualItem != null && existingAppIds.add(manualItem.appId)) {
-                    if (manualItem.gameSource != GameSource.STEAM) {
-                        items.add(manualItem.copy(index = indexCounter++))
-                    }
+                    items.add(manualItem.copy(index = indexCounter++))
                 }
             }
         }

@@ -612,6 +612,21 @@ class SteamService : Service(), IChallengeUrlChanged {
             return runBlocking(Dispatchers.IO) { instance?.appInfoDao?.getAll() }
         }
 
+        fun getImportedAppDirs(): List<String> {
+            val dirs = mutableSetOf<String>()
+
+            getAllInstalledApps()?.forEach { installedApp ->
+                if (installedApp.isImported) {
+                    val steamApp = getAppInfoOf(installedApp.id)
+                    if (steamApp != null) {
+                        dirs += getAppDirName(steamApp)
+                    }
+                }
+            }
+
+            return dirs.toList()
+        }
+
         fun findSteamAppWithInstallDir(dirName: String): List<SteamApp>? {
             return runBlocking(Dispatchers.IO) { instance?.appDao?.findSteamAppWithInstallDir(dirName) }
         }
