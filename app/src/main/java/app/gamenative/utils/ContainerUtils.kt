@@ -989,9 +989,6 @@ object ContainerUtils {
             Timber.w("Could not find gameFolderPath for game $appId, skipping drive mapping update")
         }
 
-        // Auto-detect loose input DLLs in game directory and persist WINEDLLOVERRIDES
-        autoApplyInputDllOverrides(container)
-
         return container
     }
 
@@ -1276,93 +1273,5 @@ object ContainerUtils {
         )
 
         return systemKeywords.any { fileName.contains(it) }
-    }
-
-    /**
-     * Scans the container's A: drive (game install directory) for loose dinput8.dll / dinput.dll
-     * and persists WINEDLLOVERRIDES entries to the container's envVars so they are visible
-     * in the Environment tab. Uses the same A: drive path that [scanExecutablesInADrive] and
-     * [getADrivePath] use to locate the game install directory.
-     *
-     * Returns true if the container was modified.
-     */
-    fun autoApplyInputDllOverrides(container: Container): Boolean {
-        Timber.d("autoApplyInputDllOverrides: drives=${container.drives}")
-
-        // Use the same A: drive path that scanExecutablesInADrive uses — this is the game install directory
-        val aDrivePath = getADrivePath(container.drives)
-        if (aDrivePath == null) {
-            Timber.d("autoApplyInputDllOverrides: skipping — no A: drive found")
-            return false
-        }
-
-        val gameDir = File(aDrivePath)
-        if (!gameDir.exists() || !gameDir.isDirectory) {
-            Timber.d("autoApplyInputDllOverrides: skipping — A: drive path does not exist or is not a directory: $aDrivePath")
-            return false
-        }
-
-        Timber.d("autoApplyInputDllOverrides: scanning game directory at ${gameDir.absolutePath}")
-
-        // Scan the game install directory (A: drive) for loose dinput8.dll / dinput.dll up to 3 levels deep
-        val inputDllNames = setOf("dinput8.dll", "dinput.dll")
-        val foundDlls = mutableSetOf<String>()
-        scanForInputDlls(gameDir, inputDllNames, foundDlls, maxDepth = 3, currentDepth = 0)
-
-        Timber.d("autoApplyInputDllOverrides: foundDlls=$foundDlls")
-        if (foundDlls.isEmpty()) return false
-
-        val newOverrides = foundDlls.joinToString(";") { it.removeSuffix(".dll") + "=n,b" }
-        Timber.i("Auto-detected input DLLs in game drives: $foundDlls → WINEDLLOVERRIDES += $newOverrides")
-
-        val containerEnvVars = EnvVars(container.envVars)
-        val existing = containerEnvVars.get("WINEDLLOVERRIDES")
-        var updated = false
-
-        if (existing.isEmpty()) {
-            containerEnvVars.put("WINEDLLOVERRIDES", newOverrides)
-            updated = true
-        } else {
-            // Parse existing entry names — handles both "dinput8=n,b" and "dinput8=native,builtin"
-            val existingEntries = existing.split(";").map { it.trim().substringBefore("=") }.toSet()
-            val toPrepend = foundDlls
-                .map { it.removeSuffix(".dll") }
-                .filter { it !in existingEntries }
-                .joinToString(";") { "$it=n,b" }
-            if (toPrepend.isNotEmpty()) {
-                // Preserve existing user values; prepend auto-detected overrides in front
-                containerEnvVars.put("WINEDLLOVERRIDES", "$existing;$toPrepend")
-                updated = true
-            }
-        }
-
-        if (updated) {
-            container.envVars = containerEnvVars.toString()
-            container.saveData()
-            Timber.i("Persisted WINEDLLOVERRIDES to container: ${containerEnvVars.get("WINEDLLOVERRIDES")}")
-            Timber.i("Full container envVars after update: ${container.envVars}")
-        } else {
-            Timber.d("autoApplyInputDllOverrides: no update needed, existing WINEDLLOVERRIDES already covers found DLLs")
-        }
-
-        return updated
-    }
-
-    private fun scanForInputDlls(
-        dir: File,
-        targetNames: Set<String>,
-        found: MutableSet<String>,
-        maxDepth: Int,
-        currentDepth: Int,
-    ) {
-        if (currentDepth > maxDepth) return
-        val files = dir.listFiles() ?: return
-        for (file in files) {
-            if (file.isFile && file.name.lowercase() in targetNames) {
-                found.add(file.name.lowercase())
-            } else if (file.isDirectory && currentDepth < maxDepth) {
-                scanForInputDlls(file, targetNames, found, maxDepth, currentDepth + 1)
-            }
-        }
     }
 }
