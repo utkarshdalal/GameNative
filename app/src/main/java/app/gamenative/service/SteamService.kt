@@ -540,6 +540,12 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        fun isAppLicensed(packageId: Int): Boolean {
+            return runBlocking(Dispatchers.IO) {
+                instance?.licenseDao?.findLicense(packageId) != null
+            }
+        }
+
         fun getPkgInfoOf(appId: Int): SteamLicense? {
             return runBlocking(Dispatchers.IO) {
                 instance?.licenseDao?.findLicense(

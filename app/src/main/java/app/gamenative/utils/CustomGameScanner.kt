@@ -516,7 +516,8 @@ object CustomGameScanner {
             if (steamApps?.size == 1) {
                 val steamApp = steamApps[0]
 
-                if (SteamService.getInstalledApp(steamApp.id) == null) {
+                if (SteamService.isAppLicensed(steamApp.packageId) &&
+                    SteamService.getInstalledApp(steamApp.id) == null) {
                     val preferredLanguage = PrefManager.containerLanguage
                     val mainDepots = getMainAppDepots(steamApp.id, preferredLanguage)
                     val mainAppDepots = mainDepots.filter { (_, depot) ->
