@@ -470,36 +470,36 @@ class GOGManager @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val gameId = libraryItem.gameId.toString()
-                val installPath = getGameInstallPath(gameId, libraryItem.name)
-                val installDir = File(installPath)
-                val hadInstallArtifacts = installDir.exists() || MarkerUtils.hasPartialInstall(installPath)
-                val wasInstalled = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
 
-                // Delete the manifest file
+                val game = getGameFromDbById(gameId)
+                val storedPath = game?.installPath?.takeIf { it.isNotBlank() }
+                val computedPath = getGameInstallPath(gameId, libraryItem.name)
+                val pathsToClean = listOfNotNull(storedPath, computedPath).distinct()
+
                 val manifestPath = File(context.filesDir, "manifests/$gameId")
                 if (manifestPath.exists()) {
                     manifestPath.delete()
                     Timber.i("Deleted manifest file for game $gameId")
                 }
 
-                // Delete game files
-                if (installDir.exists()) {
-                    val success = installDir.deleteRecursively()
-                    if (success) {
-                        Timber.i("Successfully deleted game directory: $installPath")
+                val failedPaths = mutableListOf<String>()
+                for (path in pathsToClean) {
+                    val dir = File(path)
+                    if (dir.exists()) {
+                        if (dir.deleteRecursively()) {
+                            Timber.i("Successfully deleted game directory: $path")
+                        } else {
+                            Timber.w("Failed to delete some game files at $path")
+                            failedPaths.add(path)
+                        }
                     } else {
-                        Timber.w("Failed to delete some game files")
-                        return@withContext Result.failure(Exception("Failed to fully delete at $installPath"))
+                        Timber.w("GOG game directory doesn't exist: $path")
                     }
-                } else {
-                    Timber.w("GOG game directory doesn't exist: $installPath")
+                    MarkerUtils.removeMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)
+                    MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 }
 
-                MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
-                MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
-
-                val game = getGameFromDbById(gameId)
-                if (game != null && (wasInstalled || hadInstallArtifacts)) {
+                if (game != null) {
                     val updatedGame = game.copy(isInstalled = false, installPath = "")
                     gogGameDao.update(updatedGame)
                     Timber.d("Updated database: game marked as not installed")
@@ -513,6 +513,10 @@ class GOGManager @Inject constructor(
                 app.gamenative.PluviaApp.events.emitJava(
                     app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(libraryItem.gameId),
                 )
+
+                if (failedPaths.isNotEmpty()) {
+                    return@withContext Result.failure(Exception("Failed to fully delete at: ${failedPaths.joinToString()}"))
+                }
 
                 Result.success(Unit)
             } catch (e: Exception) {
@@ -1246,6 +1250,7 @@ class GOGManager @Inject constructor(
         val game = runBlocking { getGameFromDbById(gameId.toString()) }
 
         if (game != null) {
+            if (game.installPath.isNotBlank()) return game.installPath
             return GOGConstants.getGameInstallPath(game.title)
         }
 
