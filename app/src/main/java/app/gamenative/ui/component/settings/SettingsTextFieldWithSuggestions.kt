@@ -51,6 +51,7 @@ fun SettingsTextFieldWithSuggestions(
 ) {
     val focusRequester = remember { FocusRequester() }
     var suggestionsExpanded by remember { mutableStateOf(false) }
+    var wasFocused by remember { mutableStateOf(false) }
 
     SettingsTileScaffold(
         modifier = Modifier
@@ -68,9 +69,10 @@ fun SettingsTextFieldWithSuggestions(
                         .focusRequester(focusRequester)
                         .weight(1f)
                         .onFocusChanged { focusState ->
-                            if (!focusState.isFocused) {
+                            if (wasFocused && !focusState.isFocused) {
                                 onCommit?.invoke()
                             }
+                            wasFocused = focusState.isFocused
                         },
                     enabled = enabled,
                     value = value,
