@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.component.NoExtractOutlinedTextField
@@ -29,6 +30,7 @@ fun SettingsTextField(
     tonalElevation: Dp = ListItemDefaults.Elevation,
     shadowElevation: Dp = ListItemDefaults.Elevation,
     onValueChange: (String) -> Unit,
+    onCommit: (() -> Unit)? = null,
 ) {
     val focusRequester = remember { FocusRequester() }
     SettingsMenuLink(
@@ -42,7 +44,12 @@ fun SettingsTextField(
                 NoExtractOutlinedTextField(
                     modifier = Modifier
                         .focusRequester(focusRequester)
-                        .width(76.dp),
+                        .width(76.dp)
+                        .onFocusChanged { focusState ->
+                            if (!focusState.isFocused) {
+                                onCommit?.invoke()
+                            }
+                        },
                     enabled = enabled,
                     value = value,
                     onValueChange = onValueChange,

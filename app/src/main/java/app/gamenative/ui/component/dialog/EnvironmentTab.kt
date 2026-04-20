@@ -176,13 +176,27 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                         onDismissRequest = { suggestionsExpanded = false },
                                     ) {
                                         selectedEnvVarInfo!!.possibleValues.forEach { suggestion ->
-                                            DropdownMenuItem(
-                                                text = { Text(suggestion) },
-                                                onClick = {
-                                                    envVarValue = suggestion
-                                                    suggestionsExpanded = false
-                                                },
-                                            )
+                                            if (suggestion.startsWith("---")) {
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text = suggestion.removePrefix("---"),
+                                                            style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                                                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                        )
+                                                    },
+                                                    onClick = {},
+                                                    enabled = false,
+                                                )
+                                            } else {
+                                                DropdownMenuItem(
+                                                    text = { Text(suggestion) },
+                                                    onClick = {
+                                                        envVarValue = suggestion
+                                                        suggestionsExpanded = false
+                                                    },
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -202,7 +216,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                     enabled = envVarName.isNotEmpty(),
                     onClick = {
                         val envVars = EnvVars(config.envVars)
-                        envVars.put(envVarName.trim(), envVarValue.trim())
+                        envVars.put(envVarName.trim(), envVarValue.replace(" ", ""))
                         state.config.value = config.copy(envVars = envVars.toString())
                         state.showEnvVarCreateDialog.value = false
                     },

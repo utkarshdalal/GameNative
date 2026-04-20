@@ -2,6 +2,11 @@ package app.gamenative.ui.component.settings
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
@@ -68,14 +73,28 @@ fun SettingsEnvVars(
                 )
             }
             EnvVarSelectionType.SUGGESTIONS -> {
+                // Local state preserves exactly what the user typed (including spaces),
+                // while envVars stores a space-stripped version so the space-delimited
+                // serialization format isn't corrupted. Commit happens on EVERY keystroke,
+                // so no typed data can be lost when the user taps Save.
+                var localValue by remember(identifier) { mutableStateOf(value) }
+                // Sync local state if the stored value changes externally (e.g. suggestion click,
+                // or first composition). Only reset when stored value diverges from the cleaned
+                // local value — this prevents wiping user's in-progress typing.
+                LaunchedEffect(value) {
+                    if (value != localValue.replace(" ", "")) {
+                        localValue = value
+                    }
+                }
                 SettingsTextFieldWithSuggestions(
                     colors = colors,
                     enabled = enabled,
                     title = { Text(identifier) },
-                    value = value,
+                    value = localValue,
                     suggestions = envVarInfo?.possibleValues ?: emptyList(),
-                    onValueChange = {
-                        envVars.put(identifier, it.trim())
+                    onValueChange = { newText ->
+                        localValue = newText
+                        envVars.put(identifier, newText.replace(" ", ""))
                         onEnvVarsChange(envVars)
                     },
                     action = envVarAction?.let {
@@ -101,21 +120,28 @@ fun SettingsEnvVars(
                         },
                     )
                 } else {
+                    var localValue by remember(identifier) { mutableStateOf(value) }
+                    LaunchedEffect(value) {
+                        if (value != localValue.replace(" ", "")) {
+                            localValue = value
+                        }
+                    }
                     SettingsTextField(
                         colors = colors,
                         enabled = enabled,
                         title = { Text(identifier) },
-                        value = value,
-                    onValueChange = {
-                        envVars.put(identifier, it.trim())
-                        onEnvVarsChange(envVars)
-                    },
-                    action = envVarAction?.let {
-                        { envVarAction(identifier) }
-                    },
-                )
+                        value = localValue,
+                        onValueChange = { newText ->
+                            localValue = newText
+                            envVars.put(identifier, newText.replace(" ", ""))
+                            onEnvVarsChange(envVars)
+                        },
+                        action = envVarAction?.let {
+                            { envVarAction(identifier) }
+                        },
+                    )
+                }
             }
         }
     }
-}
 }

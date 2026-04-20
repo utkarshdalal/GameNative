@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.Dp
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
@@ -46,6 +47,7 @@ fun SettingsTextFieldWithSuggestions(
     tonalElevation: Dp = ListItemDefaults.Elevation,
     shadowElevation: Dp = ListItemDefaults.Elevation,
     onValueChange: (String) -> Unit,
+    onCommit: (() -> Unit)? = null,
 ) {
     val focusRequester = remember { FocusRequester() }
     var suggestionsExpanded by remember { mutableStateOf(false) }
@@ -64,7 +66,12 @@ fun SettingsTextFieldWithSuggestions(
                 NoExtractOutlinedTextField(
                     modifier = Modifier
                         .focusRequester(focusRequester)
-                        .weight(1f),
+                        .weight(1f)
+                        .onFocusChanged { focusState ->
+                            if (!focusState.isFocused) {
+                                onCommit?.invoke()
+                            }
+                        },
                     enabled = enabled,
                     value = value,
                     onValueChange = onValueChange,
@@ -101,6 +108,7 @@ fun SettingsTextFieldWithSuggestions(
                                     text = { Text(suggestion) },
                                     onClick = {
                                         onValueChange(suggestion)
+                                        onCommit?.invoke()
                                         suggestionsExpanded = false
                                     },
                                 )
