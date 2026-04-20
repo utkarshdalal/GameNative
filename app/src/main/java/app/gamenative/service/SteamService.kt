@@ -602,6 +602,10 @@ class SteamService : Service(), IChallengeUrlChanged {
             return runBlocking(Dispatchers.IO) { instance?.appInfoDao?.getInstalledApp(appId) }
         }
 
+        fun getAllInstalledApps(): List<AppInfo>? {
+            return runBlocking(Dispatchers.IO) { instance?.appInfoDao?.getAll() }
+        }
+
         fun findSteamAppWithInstallDir(dirName: String): List<SteamApp>? {
             return runBlocking(Dispatchers.IO) { instance?.appDao?.findSteamAppWithInstallDir(dirName) }
         }
