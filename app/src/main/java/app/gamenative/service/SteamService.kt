@@ -2059,6 +2059,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     val appId = downloadInfo.gameId
                     val steamId = userSteamId
                     if (steamId != null && !ContainerUtils.isLocalSavesOnly(svc.applicationContext, "STEAM_$appId")) {
+                        downloadInfo.setPostInstallSyncing(true)
                         downloadInfo.updateStatusMessage("Syncing saves...")
                         PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, true))
                         try {
@@ -2077,6 +2078,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                         } catch (e: Exception) {
                             Timber.e(e, "[PostInstallSync] Cloud save sync failed for app $appId")
                         } finally {
+                            downloadInfo.setPostInstallSyncing(false)
+                            downloadInfo.updateStatusMessage(null)
                             PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, false))
                         }
                     }

@@ -362,8 +362,9 @@ class SteamAppScreen : BaseAppScreen() {
     }
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
-        // download job is removed on completion, so non-null means actively downloading
-        return SteamService.getAppDownloadInfo(libraryItem.gameId) != null
+        val downloadInfo = SteamService.getAppDownloadInfo(libraryItem.gameId) ?: return false
+        val progress = downloadInfo.getProgress() ?: 0f
+        return downloadInfo.isPostInstallSyncing() || (downloadInfo.isActive() && progress < 1f)
     }
 
     override fun getDownloadProgress(context: Context, libraryItem: LibraryItem): Float {
