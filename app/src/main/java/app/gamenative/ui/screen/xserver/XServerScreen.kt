@@ -402,6 +402,7 @@ fun XServerScreen(
     }
     var isKeyboardVisible = false
     var areControlsVisible by remember { mutableStateOf(false) }
+    var isDisableMouseInput by remember { mutableStateOf(container.isDisableMouseInput) }
     var isEditMode by remember { mutableStateOf(false) }
     var gameRoot by remember { mutableStateOf<View?>(null) }
     var windowModificationListener by remember { mutableStateOf<WindowManager.OnWindowModificationListener?>(null) }
@@ -918,6 +919,16 @@ fun XServerScreen(
                     }
                 }
                 areControlsVisible = !areControlsVisible
+                true
+            }
+
+            QuickMenuAction.DISABLE_MOUSE -> {
+                val newValue = !isDisableMouseInput
+                isDisableMouseInput = newValue
+                container.setDisableMouseInput(newValue)
+                container.saveData()
+                PluviaApp.touchpadView?.setTouchscreenMouseDisabled(newValue)
+                xServerView?.renderer?.setCursorVisible(!newValue)
                 true
             }
 
@@ -2163,6 +2174,7 @@ fun XServerScreen(
             activeToggleIds = buildSet {
                 if (areControlsVisible) add(QuickMenuAction.INPUT_CONTROLS)
                 if (isTouchscreenModeActive) add(QuickMenuAction.TOUCHSCREEN_MODE)
+                if (isDisableMouseInput) add(QuickMenuAction.DISABLE_MOUSE)
             },
         )
 

@@ -101,6 +101,7 @@ object QuickMenuAction {
     const val EDIT_PHYSICAL_CONTROLLER = 5
     const val PERFORMANCE_HUD = 6
     const val TOUCHSCREEN_MODE = 7
+    const val DISABLE_MOUSE = 8
 }
 
 private object QuickMenuTab {
@@ -248,6 +249,14 @@ fun QuickMenu(
     )
 
     val controllerItems = buildList {
+        add(
+            QuickMenuItem(
+                id = QuickMenuAction.DISABLE_MOUSE,
+                icon = Icons.Default.TouchApp,
+                labelResId = R.string.disable_mouse_input,
+                accentColor = PluviaTheme.colors.accentPurple,
+            )
+        )
         add(
             QuickMenuItem(
                 id = QuickMenuAction.KEYBOARD,
