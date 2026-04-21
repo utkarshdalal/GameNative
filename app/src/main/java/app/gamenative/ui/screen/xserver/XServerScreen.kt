@@ -928,6 +928,11 @@ fun XServerScreen(
                 container.setDisableMouseInput(newValue)
                 container.saveData()
                 PluviaApp.touchpadView?.setTouchscreenMouseDisabled(newValue)
+                if (!newValue && !container.isTouchscreenMode) {
+                    xServerView?.renderer?.setCursorVisible(true)
+                } else if (newValue) {
+                    xServerView?.renderer?.setCursorVisible(false)
+                }
                 true
             }
 
