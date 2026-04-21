@@ -160,81 +160,75 @@ fun HomeDownloadsScreen(
         clearSelectedLibraryItem()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
-            .displayCutoutPadding(),
-    ) {
-        DownloadsHeader(
-            title = stringResource(selectedSection.titleResId),
-            onBack = {
-                if (selectedLibraryItem != null) {
-                    clearSelectedLibraryItem()
-                } else {
-                    onBack()
+    if (selectedLibraryItem != null) {
+        LibraryDetailPane(
+            libraryItem = selectedLibraryItem,
+            onBack = ::clearSelectedLibraryItem,
+            onClickPlay = { useBoxArt ->
+                selectedLibraryItem?.let { libraryItem ->
+                    onClickPlay(libraryItem.appId, useBoxArt)
                 }
             },
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            onTestGraphics = {
+                selectedLibraryItem?.let { libraryItem ->
+                    onTestGraphics(libraryItem.appId)
+                }
+            },
         )
-
-        val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
-
-        if (isPortrait && selectedLibraryItem == null) {
-            // Portrait: horizontal tab row above the content
-            DownloadsTabRow(
-                sections = sections,
-                selectedSection = selectedSection,
-                onSectionSelected = { selectedSectionIndex = it.ordinal },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-            )
-        }
-
-        Row(
+    } else {
+        Column(
             modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 16.dp, vertical = if (isPortrait) 0.dp else 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .statusBarsPadding()
+                .displayCutoutPadding(),
         ) {
-            if (!isPortrait && selectedLibraryItem == null) {
-                DownloadsSidebar(
+            DownloadsHeader(
+                title = stringResource(selectedSection.titleResId),
+                onBack = onBack,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            )
+
+            val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
+
+            if (isPortrait) {
+                // Portrait: horizontal tab row above the content
+                DownloadsTabRow(
                     sections = sections,
                     selectedSection = selectedSection,
                     onSectionSelected = { selectedSectionIndex = it.ordinal },
                     modifier = Modifier
-                        .width(96.dp)
-                        .fillMaxHeight(),
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                 )
             }
 
-            Surface(
+            Row(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxHeight(),
-                shape = RoundedCornerShape(24.dp),
-                color = PluviaTheme.colors.surfacePanel.copy(alpha = 0.94f),
-                tonalElevation = 2.dp,
-                shadowElevation = 12.dp,
+                    .padding(horizontal = 16.dp, vertical = if (isPortrait) 0.dp else 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                if (selectedLibraryItem != null) {
-                    LibraryDetailPane(
-                        libraryItem = selectedLibraryItem,
-                        onBack = ::clearSelectedLibraryItem,
-                        onClickPlay = { useBoxArt ->
-                            selectedLibraryItem?.let { libraryItem ->
-                                onClickPlay(libraryItem.appId, useBoxArt)
-                            }
-                        },
-                        onTestGraphics = {
-                            selectedLibraryItem?.let { libraryItem ->
-                                onTestGraphics(libraryItem.appId)
-                            }
-                        },
+                if (!isPortrait) {
+                    DownloadsSidebar(
+                        sections = sections,
+                        selectedSection = selectedSection,
+                        onSectionSelected = { selectedSectionIndex = it.ordinal },
+                        modifier = Modifier
+                            .width(96.dp)
+                            .fillMaxHeight(),
                     )
-                } else {
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    shape = RoundedCornerShape(24.dp),
+                    color = PluviaTheme.colors.surfacePanel.copy(alpha = 0.94f),
+                    tonalElevation = 2.dp,
+                    shadowElevation = 12.dp,
+                ) {
                     when (selectedSection) {
                         DownloadsSection.Downloads -> DownloadsContent(
                             state = state,
