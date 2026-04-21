@@ -260,6 +260,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var reconnectJob: Job? = null
+    private var offlineAchievementSyncJob: Job? = null
 
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = {
         Companion.stop()
@@ -3335,6 +3336,8 @@ class SteamService : Service(), IChallengeUrlChanged {
         _unifiedFriends = null
 
         reconnectJob?.cancel()
+        offlineAchievementSyncJob?.cancel()
+        offlineAchievementSyncJob = null
         isStopping = false
         retryAttempt = 0
 
@@ -3384,6 +3387,8 @@ class SteamService : Service(), IChallengeUrlChanged {
         Timber.i("Disconnected from Steam. User initiated: ${callback.isUserInitiated}")
 
         isConnected = false
+        offlineAchievementSyncJob?.cancel()
+        offlineAchievementSyncJob = null
 
         if (!isStopping && retryAttempt < MAX_RETRY_ATTEMPTS) {
             retryAttempt++
@@ -3535,7 +3540,8 @@ class SteamService : Service(), IChallengeUrlChanged {
     }
 
     private fun syncPendingOfflineAchievements() {
-        scope.launch {
+        offlineAchievementSyncJob?.cancel()
+        offlineAchievementSyncJob = scope.launch {
             try {
                 delay(2_000)
 
@@ -3553,6 +3559,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.tag("achievements").i("Scanning ${installedApps.size} installed apps for offline achievement sync")
                 for (installedApp in installedApps) {
                     ensureActive()
+
+                    if (!isConnected || !isLoggedIn) {
+                        Timber.tag("achievements").d("Stopping reconnect achievement sync sweep — Steam no longer connected")
+                        return@launch
+                    }
 
                     val appId = installedApp.id
                     val gseSaveDirs = getGseSaveDirs(applicationContext, appId).filter { it.isDirectory }
@@ -3584,6 +3595,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                 throw e
             } catch (e: Exception) {
                 Timber.tag("achievements").e(e, "Reconnect achievement sync sweep failed")
+            } finally {
+                if (offlineAchievementSyncJob?.isActive != true) {
+                    offlineAchievementSyncJob = null
+                }
             }
         }
     }
