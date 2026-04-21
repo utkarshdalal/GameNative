@@ -2076,12 +2076,15 @@ class SteamService : Service(), IChallengeUrlChanged {
                             val prefixToPath: (String) -> String = { prefix ->
                                 PathType.from(prefix).toAbsPath(appId, steamId.accountID, container)
                             }
-                            forceSyncUserFiles(
+                            val postSyncInfo = forceSyncUserFiles(
                                 appId = appId,
                                 prefixToPath = prefixToPath,
                                 preferredSave = SaveLocation.Remote,
                                 parentScope = parentScope,
                             ).await()
+                            if (postSyncInfo.syncResult !in setOf(SyncResult.Success, SyncResult.UpToDate)) {
+                                Timber.w("[PostInstallSync] Cloud save sync finished with ${postSyncInfo.syncResult} for app $appId")
+                            }
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
