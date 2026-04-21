@@ -14,6 +14,7 @@ import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 import timber.log.Timber
 import java.io.File
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 class XServerScreenUtils {
     /**
@@ -43,11 +44,15 @@ class XServerScreenUtils {
             }
 
             // Not Support Type
-            if (appDirPath == null) {
+            if (appDirPath.isNullOrBlank()) {
                 return
             }
 
             val appDir = File(appDirPath)
+            if (!appDir.isDirectory) {
+                Timber.tag("replaceXAudioDllsFromRedistributable").w("Install path is not a directory: %s", appDir.absolutePath)
+                return
+            }
 
             // Check the common path first, otherwise scan the game dir for DXSETUP.exe
             var directXDir = File(appDirPath, "_CommonRedist/DirectX")
@@ -254,12 +259,11 @@ class XServerScreenUtils {
             dllFiles.forEach { dllFile ->
                 val outFile = File(targetDir, dllFile.name.lowercase())
                 try {
-                    if (outFile.exists() && !outFile.delete()) {
-                        Timber.tag("replaceXAudioDllsFromRedistributable")
-                            .w("Failed to delete existing target DLL: %s", outFile.absolutePath)
-                    }
-
-                    Files.move(dllFile.toPath(), outFile.toPath())
+                    Files.move(
+                        dllFile.toPath(),
+                        outFile.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING
+                    )
                     Timber.tag("replaceXAudioDllsFromRedistributable").d("Extracted: %s", outFile.name)
                 } catch (e: Exception) {
                     Timber.tag("replaceXAudioDllsFromRedistributable")

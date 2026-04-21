@@ -2951,8 +2951,12 @@ private fun setupXEnvironment(
     }
 
     if (container.wineVersion.lowercase().contains("proton-10")) {
-        // Only proton 10 can apply this fix
-        XServerScreenUtils.replaceXAudioDllsFromRedistributable(context, guestProgramLauncherComponent, appId)
+        try {
+            // Only proton 10 can apply this fix
+            XServerScreenUtils.replaceXAudioDllsFromRedistributable(context, guestProgramLauncherComponent, appId)
+        } catch (e: Exception) {
+            Timber.tag("replaceXAudioDllsFromRedistributable").w(e, "Failed to replace XAudio DLLs; continuing launch")
+        }
     }
 
     try {
