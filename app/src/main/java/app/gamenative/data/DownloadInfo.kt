@@ -48,8 +48,8 @@ data class DownloadInfo(
         persistProgressSnapshot()
         // Mark as inactive and clear speed tracking so a future resume
         // does not use stale samples.
-        setPostInstallSyncing(false)
         setActive(false)
+        setPostInstallSyncing(false)
         resetSpeedTracking()
         downloadJob?.cancel(CancellationException(message))
     }

@@ -1972,6 +1972,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         // Remove the downloading app info
                         instance?.downloadingAppInfoDao?.deleteApp(appId)
+                    } catch (e: CancellationException) {
+                        Timber.d(e, "Download canceled for app $appId")
+                        throw e
                     } catch (e: Exception) {
                         Timber.e(e, "Download failed for app $appId")
                         di.persistProgressSnapshot()
@@ -2266,11 +2269,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return@async PostSyncInfo(SyncResult.InProgress)
             }
 
-            val context = instance?.applicationContext ?: return@async PostSyncInfo(SyncResult.UnknownFail)
-            // Migrate GSE Saves to Steam userdata
-            SteamUtils.migrateGSESavesToSteamUserdata(context, appId)
-
             try {
+                val context = instance?.applicationContext ?: return@async PostSyncInfo(SyncResult.UnknownFail)
+                // Migrate GSE Saves to Steam userdata
+                SteamUtils.migrateGSESavesToSteamUserdata(context, appId)
+
                 var syncResult = PostSyncInfo(SyncResult.UnknownFail)
 
                 val maxAttempts = 3
@@ -2358,11 +2361,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return@async PostSyncInfo(SyncResult.InProgress)
             }
 
-            val context = instance?.applicationContext ?: return@async PostSyncInfo(SyncResult.UnknownFail)
-            // Migrate GSE Saves to Steam userdata
-            SteamUtils.migrateGSESavesToSteamUserdata(context, appId)
-
             try {
+                val context = instance?.applicationContext ?: return@async PostSyncInfo(SyncResult.UnknownFail)
+                // Migrate GSE Saves to Steam userdata
+                SteamUtils.migrateGSESavesToSteamUserdata(context, appId)
+
                 var syncResult = PostSyncInfo(SyncResult.UnknownFail)
 
                 val maxAttempts = 3

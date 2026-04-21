@@ -441,7 +441,6 @@ class EpicService : Service() {
 
                     if (result.isSuccess) {
                         Timber.i("[Download] Completed successfully for game $gameId")
-                        SnackbarManager.show("Download completed successfully!")
 
                         // Download cloud saves so they're ready before first launch.
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
@@ -467,6 +466,7 @@ class EpicService : Service() {
                             }
                         }
 
+                        SnackbarManager.show("Download completed successfully!")
                         downloadInfo.setProgress(1.0f)
                         downloadInfo.setActive(false)
                     } else {
@@ -480,11 +480,13 @@ class EpicService : Service() {
                 } catch (e: CancellationException) {
                     downloadInfo.setPostInstallSyncing(false)
                     downloadInfo.updateStatusMessage(null)
+                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, false))
                     throw e
                 } catch (e: Exception) {
                     Timber.e(e, "[Download] Exception for game $gameId")
                     downloadInfo.setPostInstallSyncing(false)
                     downloadInfo.updateStatusMessage(null)
+                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, false))
                     downloadInfo.setProgress(-1.0f)
                     downloadInfo.setActive(false)
 

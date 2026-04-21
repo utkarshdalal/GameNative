@@ -371,7 +371,6 @@ class GOGService : Service() {
                         SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     } else {
                         Timber.i("[Download] Completed successfully for game $gameId")
-                        SnackbarManager.show("Download completed successfully!")
 
                         // Download cloud saves so they're ready before first launch.
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
@@ -396,17 +395,20 @@ class GOGService : Service() {
                             }
                         }
 
+                        SnackbarManager.show("Download completed successfully!")
                         downloadInfo.setProgress(1.0f)
                         downloadInfo.setActive(false)
                     }
                 } catch (e: CancellationException) {
                     downloadInfo.setPostInstallSyncing(false)
                     downloadInfo.updateStatusMessage(null)
+                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId.toIntOrNull() ?: -1, false))
                     throw e
                 } catch (e: Exception) {
                     Timber.e(e, "[Download] Exception for game $gameId")
                     downloadInfo.setPostInstallSyncing(false)
                     downloadInfo.updateStatusMessage(null)
+                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId.toIntOrNull() ?: -1, false))
                     downloadInfo.setProgress(-1.0f)
                     downloadInfo.setActive(false)
 
@@ -586,6 +588,8 @@ class GOGService : Service() {
                                 Timber.tag("GOG").e("[Cloud Saves] Failed to sync save location '${location.name}' for game $gameId (timestamp: $newTimestamp)")
                                 allSucceeded = false
                             }
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             Timber.tag("GOG").e(e, "[Cloud Saves] Exception syncing save location '${location.name}' for game $gameId")
                             allSucceeded = false
@@ -604,6 +608,8 @@ class GOGService : Service() {
                     getInstance()?.gogManager?.endSync(appId)
                     Timber.tag("GOG").d("[Cloud Saves] Sync completed and lock released for $appId")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "[Cloud Saves] Failed to sync cloud saves for App ID: $appId")
                 return@withContext false
