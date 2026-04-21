@@ -402,7 +402,7 @@ fun XServerScreen(
     }
     var isKeyboardVisible = false
     var areControlsVisible by remember { mutableStateOf(false) }
-    var isDisableMouseInput by remember { mutableStateOf(container.isDisableMouseInput) }
+    var isDisableMouseInput by remember(container.id) { mutableStateOf(container.isDisableMouseInput) }
     var isEditMode by remember { mutableStateOf(false) }
     var gameRoot by remember { mutableStateOf<View?>(null) }
     var windowModificationListener by remember { mutableStateOf<WindowManager.OnWindowModificationListener?>(null) }
@@ -928,7 +928,6 @@ fun XServerScreen(
                 container.setDisableMouseInput(newValue)
                 container.saveData()
                 PluviaApp.touchpadView?.setTouchscreenMouseDisabled(newValue)
-                xServerView?.renderer?.setCursorVisible(!newValue)
                 true
             }
 
