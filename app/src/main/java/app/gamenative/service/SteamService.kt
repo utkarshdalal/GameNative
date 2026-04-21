@@ -23,6 +23,7 @@ import app.gamenative.data.DownloadInfo
 import app.gamenative.data.Emoticon
 import app.gamenative.data.EncryptedAppTicket
 import app.gamenative.data.GameProcessInfo
+import app.gamenative.data.GameSource
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.OwnedGames
 import app.gamenative.data.PostSyncInfo
@@ -1970,9 +1971,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId))
 
                         // Remove the downloading app info
-                        runBlocking {
-                            instance?.downloadingAppInfoDao?.deleteApp(appId)
-                        }
+                        instance?.downloadingAppInfoDao?.deleteApp(appId)
                     } catch (e: Exception) {
                         Timber.e(e, "Download failed for app $appId")
                         di.persistProgressSnapshot()
@@ -1998,6 +1997,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             return info
         }
 
+        // parentScope is intentionally the download job's own CoroutineScope: cancelling the
+        // download (e.g. user taps Cancel) also cancels the post-install cloud save sync.
         private suspend fun completeAppDownload(
             downloadInfo: DownloadInfo,
             downloadingAppId: Int,
@@ -2058,12 +2059,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                 instance?.let { svc ->
                     val appId = downloadInfo.gameId
                     val steamId = userSteamId
-                    if (steamId != null && !ContainerUtils.isLocalSavesOnly(svc.applicationContext, "STEAM_$appId")) {
+                    val containerId = "${GameSource.STEAM.name}_$appId"
+                    if (steamId != null && !ContainerUtils.isLocalSavesOnly(svc.applicationContext, containerId)) {
                         downloadInfo.setPostInstallSyncing(true)
                         downloadInfo.updateStatusMessage("Syncing saves...")
                         PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, true))
                         try {
-                            val container = ContainerUtils.getOrCreateContainer(svc.applicationContext, "STEAM_$appId")
+                            val container = ContainerUtils.getOrCreateContainer(svc.applicationContext, containerId)
                             val prefixToPath: (String) -> String = { prefix ->
                                 PathType.from(prefix).toAbsPath(appId, steamId.accountID, container)
                             }
@@ -2264,8 +2266,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return@async PostSyncInfo(SyncResult.InProgress)
             }
 
+            val context = instance?.applicationContext ?: return@async PostSyncInfo(SyncResult.UnknownFail)
             // Migrate GSE Saves to Steam userdata
-            SteamUtils.migrateGSESavesToSteamUserdata(instance?.applicationContext!!, appId)
+            SteamUtils.migrateGSESavesToSteamUserdata(context, appId)
 
             try {
                 var syncResult = PostSyncInfo(SyncResult.UnknownFail)
@@ -2355,8 +2358,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return@async PostSyncInfo(SyncResult.InProgress)
             }
 
+            val context = instance?.applicationContext ?: return@async PostSyncInfo(SyncResult.UnknownFail)
             // Migrate GSE Saves to Steam userdata
-            SteamUtils.migrateGSESavesToSteamUserdata(instance?.applicationContext!!, appId)
+            SteamUtils.migrateGSESavesToSteamUserdata(context, appId)
 
             try {
                 var syncResult = PostSyncInfo(SyncResult.UnknownFail)

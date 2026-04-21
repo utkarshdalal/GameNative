@@ -63,10 +63,12 @@ class DownloadsViewModel @Inject constructor(
         val info: DownloadInfo,
         val progressListener: (Float) -> Unit,
         val statusJob: Job,
+        val syncingJob: Job,
     ) {
         fun dispose() {
             info.removeProgressListener(progressListener)
             statusJob.cancel()
+            syncingJob.cancel()
         }
     }
 
@@ -420,10 +422,17 @@ class DownloadsViewModel @Inject constructor(
                 }
             }
 
+            val syncingJob = viewModelScope.launch(Dispatchers.Default) {
+                binding.info.getPostInstallSyncingFlow().collect {
+                    updateObservedDownloadItem(binding)
+                }
+            }
+
             observedDownloads[key] = ObservedDownload(
                 info = binding.info,
                 progressListener = progressListener,
                 statusJob = statusJob,
+                syncingJob = syncingJob,
             )
         }
     }

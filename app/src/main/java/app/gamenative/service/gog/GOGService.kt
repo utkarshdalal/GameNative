@@ -376,11 +376,12 @@ class GOGService : Service() {
                         // Download cloud saves so they're ready before first launch.
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
                         val appId = "GOG_$gameId"
+                        val numericGameId = gameId.toIntOrNull()
                         val gogGame = instance.gogManager.getGameFromDbById(gameId)
                         val locations = if (gogGame != null) instance.gogManager.getSaveDirectoryPath(context, appId, gogGame.title) else null
-                        if (!locations.isNullOrEmpty() && !ContainerUtils.isLocalSavesOnly(context, appId)) {
+                        if (numericGameId != null && !locations.isNullOrEmpty() && !ContainerUtils.isLocalSavesOnly(context, appId)) {
                             downloadInfo.setPostInstallSyncing(true)
-                            PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId.toIntOrNull() ?: 0, true))
+                            PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(numericGameId, true))
                             downloadInfo.updateStatusMessage("Syncing saves...")
                             try {
                                 syncCloudSaves(context, appId, preferredAction = "download")
@@ -391,7 +392,7 @@ class GOGService : Service() {
                             } finally {
                                 downloadInfo.setPostInstallSyncing(false)
                                 downloadInfo.updateStatusMessage(null)
-                                PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId.toIntOrNull() ?: 0, false))
+                                PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(numericGameId, false))
                             }
                         }
 
