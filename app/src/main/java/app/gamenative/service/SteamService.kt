@@ -3480,6 +3480,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 scope.launch {
                     resumePendingWorkshopDownloads()
                 }
+
+                syncPendingOfflineAchievements()
             }
 
             else -> {
@@ -3529,6 +3531,60 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
 
             WorkshopManager.startWorkshopDownload(appId, enabledIds, context)
+        }
+    }
+
+    private fun syncPendingOfflineAchievements() {
+        scope.launch {
+            try {
+                delay(2_000)
+
+                if (!isConnected || !isLoggedIn) {
+                    Timber.tag("achievements").d("Skipping reconnect achievement sync sweep — Steam no longer connected")
+                    return@launch
+                }
+
+                val installedApps = appInfoDao.getAll()
+                if (installedApps.isEmpty()) {
+                    Timber.tag("achievements").d("Skipping reconnect achievement sync sweep — no installed apps")
+                    return@launch
+                }
+
+                Timber.tag("achievements").i("Scanning ${installedApps.size} installed apps for offline achievement sync")
+                for (installedApp in installedApps) {
+                    ensureActive()
+
+                    val appId = installedApp.id
+                    val gseSaveDirs = getGseSaveDirs(applicationContext, appId).filter { it.isDirectory }
+                    if (gseSaveDirs.isEmpty()) continue
+
+                    val hasOfflineAchievementData = gseSaveDirs.any { dir ->
+                        File(dir, "achievements.json").exists() ||
+                            (File(dir, "stats").isDirectory && (File(dir, "stats").listFiles()?.isNotEmpty() == true))
+                    }
+                    if (!hasOfflineAchievementData) continue
+
+                    if (!tryAcquireSync(appId)) {
+                        Timber.tag("achievements").d("Skipping reconnect achievement sync for appId=$appId — sync already in progress")
+                        continue
+                    }
+
+                    try {
+                        Timber.tag("achievements").i("Attempting reconnect achievement sync for appId=$appId")
+                        syncAchievementsFromGoldberg(applicationContext, appId)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Timber.tag("achievements").e(e, "Reconnect achievement sync failed for appId=$appId")
+                    } finally {
+                        releaseSync(appId)
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.tag("achievements").e(e, "Reconnect achievement sync sweep failed")
+            }
         }
     }
 
