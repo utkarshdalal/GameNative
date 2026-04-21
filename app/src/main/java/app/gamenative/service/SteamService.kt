@@ -2056,6 +2056,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // clean up DB record BEFORE notifying UI to avoid stale "Resume" button
                 instance?.downloadingAppInfoDao?.deleteApp(downloadInfo.gameId)
 
+                // Clear persisted bytes now — depot install is committed. Post-install sync is
+                // best-effort and may be cancelled, so this must not be deferred past the sync block.
+                downloadInfo.clearPersistedBytesDownloaded(appDirPath)
+
                 // Download cloud saves so they're ready before first launch.
                 // Uses the container's own path directly — no activation of the shared xuser
                 // symlink needed, so this is safe to run concurrently with any other game session.
@@ -2089,9 +2093,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
                     }
                 }
-
-                // Clear persisted bytes file on successful completion
-                downloadInfo.clearPersistedBytesDownloaded(appDirPath)
             }
         }
 
