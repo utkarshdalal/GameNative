@@ -1684,12 +1684,6 @@ fun XServerScreen(
                                 contentsManager,
                                 onExtractFileListener,
                             )
-
-                            if (container.wineVersion.lowercase().contains("proton-10")) {
-                                // Only proton 10 can apply this fix
-                                XServerScreenUtils.replaceXAudioDllsFromRedistributable(context, appId)
-                            }
-
                             extractArm64ecInputDLLs(context, container) // REQUIRED: Uses updated xinput1_3 main.c from x86_64 build, prevents crashes with 3+ players, avoids need for input shim dlls.
                             extractx86_64InputDlls(context, container)
                             extractGraphicsDriverFiles(
@@ -2954,6 +2948,11 @@ private fun setupXEnvironment(
                 Timber.e(e, "Error requesting encrypted app ticket for app $gameIdForTicket")
             }
         }
+    }
+
+    if (container.wineVersion.lowercase().contains("proton-10")) {
+        // Only proton 10 can apply this fix
+        XServerScreenUtils.replaceXAudioDllsFromRedistributable(context, guestProgramLauncherComponent, appId)
     }
 
     try {

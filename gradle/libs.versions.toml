@@ -42,7 +42,6 @@ spongycastle = "1.58.0.0" # https://mvnrepository.com/artifact/com.madgag.spongy
 timber = "5.0.1" # https://mvnrepository.com/artifact/com.jakewharton.timber/timber
 zstd-jni = "1.5.7-5" # https://mvnrepository.com/artifact/com.github.luben/zstd-jni
 zxing = "3.5.3" # https://mvnrepository.com/artifact/com.google.zxing/core
-sevenzipjbinding = "Release-16.02-2.03" # https://github.com/omicronapps/7-Zip-JBinding-4Android
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -93,7 +92,6 @@ spongycastle = { group = "com.madgag.spongycastle", name = "prov", version.ref =
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 zstd-jni = { group = "com.github.luben", name = "zstd-jni", version.ref = "zstd-jni" }
 zxing = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
-sevenzipjbinding = { group = "com.github.omicronapps", name = "7-Zip-JBinding-4Android", version.ref = "sevenzipjbinding" }
 
 # Testing
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

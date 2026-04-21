@@ -274,9 +274,6 @@ dependencies {
     // Room Database
     implementation(libs.bundles.room)
 
-    // 7Zip binding
-    implementation(libs.sevenzipjbinding)
-
     // Memory Leak Detection
     // debugImplementation("com.squareup.leakcanary:leakcanary-android:3.0-alpha-8")
 
