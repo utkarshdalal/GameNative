@@ -183,6 +183,15 @@ object BestConfigService {
             filtered.remove("executablePath")
         }
 
+        if (config.toString().contains("turnip", ignoreCase = true) && GPUBlackist.isTurnipBlacklisted()) {
+            if (matchType == "exact_gpu_match" || matchType == "gpu_family_match" || matchType == "fallback_match") {
+                filtered.remove("graphicsDriver")
+                filtered.remove("graphicsDriverVersion")
+                filtered.remove("graphicsDriverConfig")
+                return JsonObject(filtered)
+            }
+        }
+
         if (matchType == "exact_gpu_match" || matchType == "gpu_family_match") {
             // Apply all fields
             return JsonObject(filtered)
@@ -730,16 +739,10 @@ object BestConfigService {
                     resultMap["graphicsDriver"] = filteredJson.optString("graphicsDriver", "")
                 }
                 if (filteredJson.has("graphicsDriverVersion") && !filteredJson.isNull("graphicsDriverVersion")) {
-                    val version = filteredJson.optString("graphicsDriverVersion", "")
-                    if (!version.contains("turnip", ignoreCase = true) || !GPUBlackist.isTurnipBlacklisted()) {
-                        resultMap["graphicsDriverVersion"] = version
-                    }
+                    resultMap["graphicsDriverVersion"] = filteredJson.optString("graphicsDriverVersion", "")
                 }
                 if (filteredJson.has("graphicsDriverConfig") && !filteredJson.isNull("graphicsDriverConfig")) {
-                    val config = filteredJson.optString("graphicsDriverConfig", "")
-                    if (!config.contains("turnip", ignoreCase = true) || !GPUBlackist.isTurnipBlacklisted()) {
-                        resultMap["graphicsDriverConfig"] = config
-                    }
+                    resultMap["graphicsDriverConfig"] = filteredJson.optString("graphicsDriverConfig", "")
                 }
                 if (filteredJson.has("dxwrapper") && !filteredJson.isNull("dxwrapper")) {
                     resultMap["dxwrapper"] = filteredJson.optString("dxwrapper", "")
