@@ -1225,7 +1225,7 @@ class SteamAppScreen : BaseAppScreen() {
                             hideUninstallDialog(libraryItem.appId)
 
                             CoroutineScope(Dispatchers.IO).launch {
-                                val installedAppInfo = getInstalledApp(libraryItem.gameId)!!
+                                val installedAppInfo = getInstalledApp(libraryItem.gameId)
 
                                 val success = SteamService.deleteApp(gameId)
                                 DownloadService.invalidateCache()
@@ -1251,7 +1251,7 @@ class SteamAppScreen : BaseAppScreen() {
                                 }
 
                                 // Back to home screen as the game is imported
-                                if (success && installedAppInfo.isImported) {
+                                if (success && installedAppInfo?.isImported == true) {
                                     withContext(Dispatchers.Main) {
                                         onBack()
                                     }
