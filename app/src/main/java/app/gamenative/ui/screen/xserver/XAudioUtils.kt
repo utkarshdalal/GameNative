@@ -172,8 +172,6 @@ object XAudioUtils {
                     .w("Batch extraction did not report success. Expected marker: %s", BATCH_SUCCESS_CHECK)
                 Timber.tag("XAudioUtils")
                     .w("Batch output:\n%s", batchResult)
-                Timber.tag("XAudioUtils")
-                    .w("Skipping DLL move/cleanup to preserve temp dirs for debugging. wow64=%s system32=%s bat=%s", tempDirWow64.absolutePath, tempDirSys32.absolutePath, batFile.absolutePath)
             }
 
             // Cleanup the temp dirs
