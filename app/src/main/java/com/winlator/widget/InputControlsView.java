@@ -88,6 +88,11 @@ public class InputControlsView extends View {
     private boolean containerShooterMode = false;
     private boolean containerShooterModeRuntime = false; // runtime toggle state
 
+    // Callback invoked when the SHOW_KEYBOARD binding is triggered
+    private Runnable showKeyboardCallback;
+    // Tracks whether SHOW_KEYBOARD is currently held, so the callback fires once per press (rising edge only)
+    private boolean showKeyboardPressed;
+
     @SuppressLint("ResourceType")
     public InputControlsView(Context context) {
         super(context);
@@ -395,6 +400,14 @@ public class InputControlsView extends View {
         this.containerShooterMode = enabled;
         this.containerShooterModeRuntime = enabled;
         invalidate();
+    }
+
+    public void setShowKeyboardCallback(Runnable callback) {
+        this.showKeyboardCallback = callback;
+    }
+
+    public void triggerShowKeyboard() {
+        if (showKeyboardCallback != null) showKeyboardCallback.run();
     }
 
     /** Check if a STICK element should be hidden because container shooter mode replaces it. */
@@ -981,7 +994,18 @@ public class InputControlsView extends View {
             }
         }
         else {
-            if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
+            if (binding == Binding.SHOW_KEYBOARD) {
+                if (isActionDown) {
+                    if (!showKeyboardPressed) {
+                        showKeyboardPressed = true;
+                        if (showKeyboardCallback != null) showKeyboardCallback.run();
+                    }
+                } else {
+                    showKeyboardPressed = false;
+                }
+                return;
+            }
+            else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
                 mouseMoveOffset.x = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
                 if (isActionDown) createMouseMoveTimer();
             }

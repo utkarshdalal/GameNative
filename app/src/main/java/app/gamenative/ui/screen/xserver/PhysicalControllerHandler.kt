@@ -22,7 +22,8 @@ import java.util.TimerTask
 class PhysicalControllerHandler(
     private var profile: ControlsProfile?,
     private val xServer: XServer?,
-    private val onOpenNavigationMenu: (() -> Unit)? = null
+    private val onOpenNavigationMenu: (() -> Unit)? = null,
+    private val onShowKeyboard: (() -> Unit)? = null
 ) {
     private val TAG = "gncontrol"
     private val mouseMoveOffset = PointF(0f, 0f)
@@ -30,6 +31,9 @@ class PhysicalControllerHandler(
     // track which axis keycodes are currently "pressed" so we only release on actual transitions.
     // accessed only from main thread (MotionEvent dispatch + Compose lifecycle), no sync needed.
     private val activeAxisBindings = mutableSetOf<Int>()
+
+    // Tracks whether SHOW_KEYBOARD is currently held, so onShowKeyboard fires once per press (rising edge only)
+    private var showKeyboardPressed = false
 
     private fun releaseActiveAxes() {
         val controller = profile?.getController("*") ?: return
@@ -62,6 +66,7 @@ class PhysicalControllerHandler(
         mouseMoveTimer?.cancel()
         mouseMoveTimer = null
         mouseMoveOffset.set(0f, 0f)
+        showKeyboardPressed = false
     }
 
     /**
@@ -312,6 +317,16 @@ class PhysicalControllerHandler(
                 if (isActionDown) {
                     Log.d(TAG, "Opening navigation menu from controller binding")
                     onOpenNavigationMenu?.invoke()
+                }
+            } else if (binding == Binding.SHOW_KEYBOARD) {
+                if (isActionDown) {
+                    if (!showKeyboardPressed) {
+                        showKeyboardPressed = true
+                        Log.d(TAG, "Showing keyboard from controller binding")
+                        onShowKeyboard?.invoke()
+                    }
+                } else {
+                    showKeyboardPressed = false
                 }
             } else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
                 // Handle horizontal mouse movement - ADD contribution from this input
