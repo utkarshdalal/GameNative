@@ -237,10 +237,10 @@ object XAudioUtils {
                 lines.add("cabarc -r -p X \"${toWindowsPathForWine("A", appDir, cab)}\" || exit /b 1")
             }
             lines.add("popd || exit /b 1")
-            lines.add("echo $BATCH_SUCCESS_CHECK")
         }
 
         lines.add("")
+        lines.add("echo $BATCH_SUCCESS_CHECK")
         return lines.joinToString("\r\n")
     }
 
