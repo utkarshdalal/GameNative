@@ -680,7 +680,7 @@
         "variant": "bionic"
       },
       {
-        "id": "proton-10.0-4-x86-64-1",
+        "id": "proton-10.0-4-x86_64-1",
         "name": "Proton 10.0-4 x86-64",
         "url": "https://downloads.gamenative.app/proton-10.0-4-x86_64.wcp",
         "variant": "bionic"
