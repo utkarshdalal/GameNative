@@ -17,6 +17,8 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
 object XAudioUtils {
+    const val BATCH_SUCCESS_CHECK = "__GN_XAUDIO_EXTRACT_OK__"
+
     /**
      * Replace DLLs from DirectX Redistributable
      */
@@ -150,22 +152,29 @@ object XAudioUtils {
 
             val batchCommand = "wine cmd /c ${batFile.absolutePath}"
             val batchResult = guestProgramLauncherComponent.execShellCommand(batchCommand, false)
-            Timber.tag("XAudioUtils")
-                .d("Batch extraction result: \n%s", batchResult)
 
-            try {
-                if (batFile.exists()) {
-                    val deleted = batFile.delete()
+            if (batchResult.contains(BATCH_SUCCESS_CHECK)) {
+                try {
+                    if (batFile.exists()) {
+                        val deleted = batFile.delete()
+                        Timber.tag("XAudioUtils")
+                            .d("Deleted batch file: %s (deleted=%s)", batFile.absolutePath, deleted)
+                    }
+                } catch (e: Exception) {
                     Timber.tag("XAudioUtils")
-                        .d("Deleted batch file: %s (deleted=%s)", batFile.absolutePath, deleted)
+                        .w(e, "Failed to delete batch file: %s", batFile.absolutePath)
                 }
-            } catch (e: Exception) {
-                Timber.tag("XAudioUtils")
-                    .w(e, "Failed to delete batch file: %s", batFile.absolutePath)
-            }
 
-            moveDllsFromTempToTarget(tempDirWow64, targetDirWow64)
-            moveDllsFromTempToTarget(tempDirSys32, targetDirSys32)
+                moveDllsFromTempToTarget(tempDirWow64, targetDirWow64)
+                moveDllsFromTempToTarget(tempDirSys32, targetDirSys32)
+            } else {
+                Timber.tag("XAudioUtils")
+                    .w("Batch extraction did not report success. Expected marker: %s", BATCH_SUCCESS_CHECK)
+                Timber.tag("XAudioUtils")
+                    .w("Batch output:\n%s", batchResult)
+                Timber.tag("XAudioUtils")
+                    .w("Skipping DLL move/cleanup to preserve temp dirs for debugging. wow64=%s system32=%s bat=%s", tempDirWow64.absolutePath, tempDirSys32.absolutePath, batFile.absolutePath)
+            }
 
             // Cleanup the temp dirs
             cleanupDirs(tempDirWow64, tempDirSys32)
@@ -211,24 +220,24 @@ object XAudioUtils {
 
         if (cabFilesWow64.isNotEmpty()) {
             lines.add("echo Extracting (wow64) to ${tempDirWow64.name}")
-            lines.add("pushd \"${toWindowsPathForWine("C", cDriveDir, tempDirWow64)}\"")
+            lines.add("pushd \"${toWindowsPathForWine("C", cDriveDir, tempDirWow64)}\" || exit /b 1")
             cabFilesWow64.forEach { cab ->
                 lines.add("echo Extracting (wow64) ${cab.name}")
-                lines.add("cabarc -r -p X \"${toWindowsPathForWine("A", appDir, cab)}\"")
+                lines.add("cabarc -r -p X \"${toWindowsPathForWine("A", appDir, cab)}\" || exit /b 1")
             }
-            lines.add("popd")
+            lines.add("popd || exit /b 1")
             lines.add("")
         }
 
         if (cabFilesSys32.isNotEmpty()) {
             lines.add("echo Extracting (system32) to ${tempDirSys32.name}")
-            lines.add("pushd \"${toWindowsPathForWine("C", cDriveDir, tempDirSys32)}\"")
+            lines.add("pushd \"${toWindowsPathForWine("C", cDriveDir, tempDirSys32)}\" || exit /b 1")
             cabFilesSys32.forEach { cab ->
                 lines.add("echo Extracting (system32) ${cab.name}")
-                lines.add("cabarc -r -p X \"${toWindowsPathForWine("A", appDir, cab)}\"")
+                lines.add("cabarc -r -p X \"${toWindowsPathForWine("A", appDir, cab)}\" || exit /b 1")
             }
-            lines.add("popd")
-            lines.add("")
+            lines.add("popd || exit /b 1")
+            lines.add("echo $BATCH_SUCCESS_CHECK")
         }
 
         lines.add("")
