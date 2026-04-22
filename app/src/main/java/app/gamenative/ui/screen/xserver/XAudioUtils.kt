@@ -1,7 +1,9 @@
 package app.gamenative.ui.screen.xserver
 
 import android.content.Context
+import app.gamenative.PluviaApp
 import app.gamenative.data.GameSource
+import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
@@ -131,6 +133,8 @@ object XAudioUtils {
                     .d("No matching DirectX CABs found for XAudio/XACT/X3DAudio under: %s", directXDir.absolutePath)
                 return
             }
+
+            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Extracting XAudio DLLs..."))
 
             val batFile = File(tempDir, "extract_dx_audio_dlls.bat")
             val batContent = buildCabarcBatchScript(
