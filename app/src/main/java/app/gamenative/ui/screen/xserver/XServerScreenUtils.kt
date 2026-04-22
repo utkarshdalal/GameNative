@@ -84,6 +84,9 @@ class XServerScreenUtils {
                 val tempDirWow64 = File(windowsDir, "temp/syswow64")
                 val tempDirSys32 = File(windowsDir, "temp/system32")
 
+                // Pre-clean to ensure no stale files from interrupted runs remain
+                cleanupDirs(tempDirWow64, tempDirSys32)
+
                 val targetDirWow64 = File(windowsDir, "syswow64")
                 val targetDirSys32 = File(windowsDir, "system32")
 
@@ -165,28 +168,33 @@ class XServerScreenUtils {
                 moveDllsFromTempToTarget(tempDirWow64, targetDirWow64)
                 moveDllsFromTempToTarget(tempDirSys32, targetDirSys32)
 
-                try {
-                    if (tempDirWow64.exists()) {
-                        val deleted = tempDirWow64.deleteRecursively()
-                        Timber.tag("replaceXAudioDllsFromRedistributable")
-                            .d("Cleanup temp dir (wow64): %s (deleted=%s)", tempDirWow64.absolutePath, deleted)
-                    } else {
-                        Timber.tag("replaceXAudioDllsFromRedistributable")
-                            .d("Cleanup temp dir (wow64): %s (skipped; not found)", tempDirWow64.absolutePath)
-                    }
+                // Cleanup the temp dirs
+                cleanupDirs(tempDirWow64, tempDirSys32)
+            }
+        }
 
-                    if (tempDirSys32.exists()) {
-                        val deleted = tempDirSys32.deleteRecursively()
-                        Timber.tag("replaceXAudioDllsFromRedistributable")
-                            .d("Cleanup temp dir (system32): %s (deleted=%s)", tempDirSys32.absolutePath, deleted)
-                    } else {
-                        Timber.tag("replaceXAudioDllsFromRedistributable")
-                            .d("Cleanup temp dir (system32): %s (skipped; not found)", tempDirSys32.absolutePath)
-                    }
-                } catch (e: Exception) {
+        private fun cleanupDirs(tempDirWow64: File, tempDirSys32: File) {
+            try {
+                if (tempDirWow64.exists()) {
+                    val deleted = tempDirWow64.deleteRecursively()
                     Timber.tag("replaceXAudioDllsFromRedistributable")
-                        .w(e, "Failed during temp dir cleanup")
+                        .d("Cleanup temp dir (wow64): %s (deleted=%s)", tempDirWow64.absolutePath, deleted)
+                } else {
+                    Timber.tag("replaceXAudioDllsFromRedistributable")
+                        .d("Cleanup temp dir (wow64): %s (skipped; not found)", tempDirWow64.absolutePath)
                 }
+
+                if (tempDirSys32.exists()) {
+                    val deleted = tempDirSys32.deleteRecursively()
+                    Timber.tag("replaceXAudioDllsFromRedistributable")
+                        .d("Cleanup temp dir (system32): %s (deleted=%s)", tempDirSys32.absolutePath, deleted)
+                } else {
+                    Timber.tag("replaceXAudioDllsFromRedistributable")
+                        .d("Cleanup temp dir (system32): %s (skipped; not found)", tempDirSys32.absolutePath)
+                }
+            } catch (e: Exception) {
+                Timber.tag("replaceXAudioDllsFromRedistributable")
+                    .w(e, "Failed during temp dir cleanup")
             }
         }
 
@@ -257,12 +265,29 @@ class XServerScreenUtils {
             }
 
             dllFiles.forEach { dllFile ->
-                val outFile = File(targetDir, dllFile.name.lowercase())
+                val desiredName = dllFile.name.lowercase()
+
+                // On case-sensitive filesystems a mixed-case sibling (e.g. "XAudio2_7.dll") won't
+                // be replaced by REPLACE_EXISTING when the destination is "xaudio2_7.dll".
+                // Delete any case-variant siblings first so only one copy survives.
+                targetDir.listFiles()
+                    ?.filter { it.name.equals(desiredName, ignoreCase = true) && it.name != desiredName }
+                    ?.forEach { stale ->
+                        if (!stale.delete()) {
+                            Timber.tag("replaceXAudioDllsFromRedistributable")
+                                .w("Failed to delete case-variant sibling: %s", stale.absolutePath)
+                        } else {
+                            Timber.tag("replaceXAudioDllsFromRedistributable")
+                                .d("Removed case-variant sibling: %s", stale.name)
+                        }
+                    }
+
+                val outFile = File(targetDir, desiredName)
                 try {
                     Files.move(
                         dllFile.toPath(),
                         outFile.toPath(),
-                        StandardCopyOption.REPLACE_EXISTING
+                        StandardCopyOption.REPLACE_EXISTING,
                     )
                     Timber.tag("replaceXAudioDllsFromRedistributable").d("Extracted: %s", outFile.name)
                 } catch (e: Exception) {
