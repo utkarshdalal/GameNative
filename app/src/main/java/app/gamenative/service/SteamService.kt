@@ -1659,9 +1659,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
 
                         // Moved to DownloadSpeedConfig
-                        val cpuCores = DownloadSpeedConfig.cpuCores
-                        val maxDownloads = DownloadSpeedConfig.maxDownloads
-                        val maxDecompress = DownloadSpeedConfig.maxDecompress
+                        val speedConfig = DownloadSpeedConfig()
+                        val cpuCores = speedConfig.cpuCores
+                        val maxDownloads = speedConfig.maxDownloads
+                        val maxDecompress = speedConfig.maxDecompress
 
                         Timber.i("CPU Cores: $cpuCores")
                         Timber.i("maxDownloads: $maxDownloads")

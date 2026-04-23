@@ -785,8 +785,9 @@ class GOGDownloadManager @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val scope = CoroutineScope(Dispatchers.IO)
-            val parallelDownloads = DownloadSpeedConfig.maxDownloads
-            val parallelAssemble = DownloadSpeedConfig.maxDecompress
+            val speedConfig = DownloadSpeedConfig()
+            val parallelDownloads = speedConfig.maxDownloads
+            val parallelAssemble = speedConfig.maxDecompress
             val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 
             val currentChunkUrlCandidates = ConcurrentHashMap(chunkUrlCandidates)
@@ -822,15 +823,17 @@ class GOGDownloadManager @Inject constructor(
                 var assemblySuccessCount = 0
 
                 matchedFiles.forEach { file ->
-                    // Find the specific chunk that matches the current chunkMd5
-                    val chunk = file.chunks.first { chunk -> chunk.compressedMd5 == chunkMd5 }
-                    val result = assembleFile(file, chunk, chunkCacheDir, installDir)
-                    if (result.isSuccess) {
-                        // 3. If assembly is successful and all chunks in downloadedChunkIds, increment file counter
-                        assemblySuccessCount++
-                    } else {
-                        Timber.tag("GOG").d(result.exceptionOrNull()?.message ?: "Failed to assemble ${file.path}")
-                    }
+                    file.chunks.withIndex()
+                        .filter { (_, chunk) -> chunk.compressedMd5 == chunkMd5 }
+                        .forEach { (chunkIndex, chunk) ->
+                            val result = assembleFile(file, chunk, chunkIndex, chunkCacheDir, installDir)
+                            if (result.isSuccess) {
+                                // 3. If assembly is successful and all chunks in downloadedChunkIds, increment file counter
+                                assemblySuccessCount++
+                            } else {
+                                Timber.tag("GOG").d(result.exceptionOrNull()?.message ?: "Failed to assemble ${file.path}")
+                            }
+                        }
                 }
 
                 // 4. Decrement usage count only when assembly is successful
@@ -1404,6 +1407,7 @@ class GOGDownloadManager @Inject constructor(
     private suspend fun assembleFile(
         file: DepotFile,
         chunk: FileChunk,
+        chunkIndex: Int,
         chunkCacheDir: File,
         installDir: File,
     ): Result<File> = withContext(Dispatchers.IO) {
@@ -1442,7 +1446,6 @@ class GOGDownloadManager @Inject constructor(
                 )
             }
 
-            val chunkIndex = file.chunks.indexOfFirst { it.compressedMd5 == chunk.compressedMd5 }
             val writeOffset = file.chunks.take(chunkIndex).sumOf { it.size }
 
             // Write decompressed chunk at specific file offset using RandomAccessFile
