@@ -971,9 +971,36 @@ class GOGDownloadManager @Inject constructor(
             }
 
             // Wait for all pending chunks to complete processing
-            while (pendingChunks.get() > 0) {
-                Timber.tag("GOG").d("Waiting for ${pendingChunks.get()} pending chunks to complete")
+            var lastPendingChunks = pendingChunks.get()
+            var currentPendingChunks = lastPendingChunks
+            var samePendingChunksAttempts = 0
+            while (currentPendingChunks > 0) {
+                Timber.tag("GOG").d("Waiting for $currentPendingChunks pending chunks to complete")
+
+                if (currentPendingChunks == lastPendingChunks) {
+                    samePendingChunksAttempts++
+                } else {
+                    lastPendingChunks = currentPendingChunks
+                    samePendingChunksAttempts = 0
+                }
+
+                if (samePendingChunksAttempts >= 10) {
+                    val missingChunks = chunkHashes.filterNot { downloadedChunkIds.contains(it) }
+                    if (missingChunks.isNotEmpty()) {
+                        Timber.tag("GOG").w(
+                            "Pending chunks stuck at $currentPendingChunks for $samePendingChunksAttempts checks; " +
+                                "re-emitting ${missingChunks.size} missing chunk(s) for retry",
+                        )
+                        missingChunks.forEach { networkChunkFlow.tryEmit(it) }
+                    }
+
+                    samePendingChunksAttempts = 0
+                }
+
+                // Wait for 1 second to recheck
                 delay(1000)
+
+                currentPendingChunks = pendingChunks.get()
             }
 
             // Cancel the download flow jobs since no more chunks will be added
