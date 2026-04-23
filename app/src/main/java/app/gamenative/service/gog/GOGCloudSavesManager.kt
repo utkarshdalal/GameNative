@@ -41,18 +41,20 @@ class GOGCloudSavesManager @Inject constructor(
         private const val USER_AGENT = "GOGGalaxyCommunicationService/2.0.13.27 (Windows_32bit) dont_sync_marker/true installation_source/gog"
         private const val DELETION_MD5 = "aadd86936a80ee8a369579c3926f1b3c"
 
-        // Python's gzip.compress(..., mtime=0) zeros the MTIME header bytes for deterministic
-        // output. Java's GZIPOutputStream does not expose mtime, so normalize bytes 4..7 after
-        // compression before hashing/uploading.
+        // Python's gzip.compress(..., mtime=0) produces deterministic output with MTIME=0,
+        // XFL=0, and OS=255 (unknown). Java's GZIPOutputStream does not expose these fields,
+        // so normalize bytes 4..9 after compression before hashing/uploading.
         internal fun gzipCompress(data: ByteArray): ByteArray {
             val buffer = ByteArrayOutputStream()
             GZIPOutputStream(buffer).use { it.write(data) }
 
             return buffer.toByteArray().also { compressed ->
-                compressed[4] = 0
-                compressed[5] = 0
-                compressed[6] = 0
-                compressed[7] = 0
+                compressed[4] = 0    // MTIME byte 0
+                compressed[5] = 0    // MTIME byte 1
+                compressed[6] = 0    // MTIME byte 2
+                compressed[7] = 0    // MTIME byte 3
+                compressed[8] = 0    // XFL: no special compression flags
+                compressed[9] = -1   // OS: 255 = unknown (matches Python gzip default)
             }
         }
     }
@@ -127,10 +129,12 @@ class GOGCloudSavesManager @Inject constructor(
         val notExistingRemotely: List<SyncFile> = emptyList()
     ) {
         fun determineAction(): SyncAction {
+            val hasLocalWork = updatedLocal.isNotEmpty() || notExistingRemotely.isNotEmpty()
+            val hasCloudWork = updatedCloud.isNotEmpty() || notExistingLocally.isNotEmpty()
             return when {
-                updatedLocal.isEmpty() && updatedCloud.isNotEmpty() -> SyncAction.DOWNLOAD
-                updatedLocal.isNotEmpty() && updatedCloud.isEmpty() -> SyncAction.UPLOAD
-                updatedLocal.isEmpty() && updatedCloud.isEmpty() -> SyncAction.NONE
+                hasLocalWork && !hasCloudWork -> SyncAction.UPLOAD
+                !hasLocalWork && hasCloudWork -> SyncAction.DOWNLOAD
+                !hasLocalWork && !hasCloudWork -> SyncAction.NONE
                 else -> SyncAction.CONFLICT
             }
         }
@@ -492,7 +496,7 @@ class GOGCloudSavesManager @Inject constructor(
             val localFile = File(file.absolutePath)
             Timber.tag("GOG-CloudSaves").i("Uploading: ${file.relativePath} (${localFile.length()} bytes)")
 
-            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$dirname/${file.relativePath.urlEncodePath()}"
+            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/${dirname.urlEncodePath()}/${file.relativePath.urlEncodePath()}"
 
             val compressed = gzipCompress(localFile.readBytes())
             val etag = MessageDigest.getInstance("MD5")
@@ -545,7 +549,7 @@ class GOGCloudSavesManager @Inject constructor(
         try {
             Timber.tag("GOG-CloudSaves").i("Downloading: ${file.relativePath}")
 
-            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$dirname/${file.relativePath.urlEncodePath()}"
+            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/${dirname.urlEncodePath()}/${file.relativePath.urlEncodePath()}"
 
             val request = Request.Builder()
                 .url(url)
@@ -599,7 +603,7 @@ class GOGCloudSavesManager @Inject constructor(
         authToken: String
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$dirname/${file.relativePath.urlEncodePath()}"
+            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/${dirname.urlEncodePath()}/${file.relativePath.urlEncodePath()}"
             val request = Request.Builder()
                 .url(url)
                 .delete()

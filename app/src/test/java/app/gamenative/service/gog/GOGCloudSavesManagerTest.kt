@@ -142,13 +142,15 @@ class GOGCloudSavesManagerTest {
     }
 
     @Test
-    fun gzipCompress_mtime_field_is_zero() {
+    fun gzipCompress_mtime_xfl_os_fields_are_normalized() {
         val result = GOGCloudSavesManager.gzipCompress("hello".toByteArray())
 
-        assertEquals(0.toByte(), result[4])
-        assertEquals(0.toByte(), result[5])
-        assertEquals(0.toByte(), result[6])
-        assertEquals(0.toByte(), result[7])
+        assertEquals(0.toByte(), result[4])  // MTIME byte 0
+        assertEquals(0.toByte(), result[5])  // MTIME byte 1
+        assertEquals(0.toByte(), result[6])  // MTIME byte 2
+        assertEquals(0.toByte(), result[7])  // MTIME byte 3
+        assertEquals(0.toByte(), result[8])  // XFL
+        assertEquals((-1).toByte(), result[9]) // OS = 255 (unknown)
     }
 
     @Test
@@ -180,21 +182,35 @@ class GOGCloudSavesManagerTest {
     }
 
     @Test
-    fun download_action_deletes_stale_local_file_not_present_in_cloud() {
-        val root = Files.createTempDirectory("gog-download-stale").toFile()
-        val staleFile = File(root, "stale.sav").apply { writeText("old") }
-
-        val notExistingRemotely = listOf(
-            GOGCloudSavesManager.SyncFile(
-                relativePath = "stale.sav",
-                absolutePath = staleFile.absolutePath,
+    fun sync_classifier_selects_upload_when_only_local_files_not_in_cloud() {
+        val classifier = GOGCloudSavesManager.SyncClassifier(
+            notExistingRemotely = listOf(
+                GOGCloudSavesManager.SyncFile(
+                    relativePath = "save.sav",
+                    absolutePath = "/tmp/save.sav",
+                ),
             ),
         )
-        notExistingRemotely.forEach { File(it.absolutePath).delete() }
 
-        assertFalse(staleFile.exists())
-        root.deleteRecursively()
+        assertEquals(GOGCloudSavesManager.SyncAction.UPLOAD, classifier.determineAction())
     }
+
+    @Test
+    fun sync_classifier_selects_download_when_only_new_cloud_files_exist() {
+        val classifier = GOGCloudSavesManager.SyncClassifier(
+            notExistingLocally = listOf(
+                GOGCloudSavesManager.CloudFile(
+                    relativePath = "new.sav",
+                    md5Hash = "abc123",
+                    updateTime = null,
+                    updateTimestamp = null,
+                ),
+            ),
+        )
+
+        assertEquals(GOGCloudSavesManager.SyncAction.DOWNLOAD, classifier.determineAction())
+    }
+
 
     private fun callDeleteLocalFilesForRemoteState(root: File): Boolean {
         val method = manager.javaClass.declaredMethods.first { it.name == "deleteLocalFilesForRemoteState" }

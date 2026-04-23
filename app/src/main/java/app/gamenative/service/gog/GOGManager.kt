@@ -1195,7 +1195,7 @@ class GOGManager @Inject constructor(
         }
         Timber.tag("GOG").i("[Cloud Saves] Found ${saveLocations.size} save location(s) for $appId")
 
-        val syncResults = saveLocations.mapIndexedNotNull { index, location ->
+        val syncResults = saveLocations.mapIndexed { index, location ->
             syncSaveLocation(
                 appId = appId,
                 gameId = gameId,
@@ -1203,7 +1203,7 @@ class GOGManager @Inject constructor(
                 locationIndex = index,
                 locationCount = saveLocations.size,
                 preferredAction = preferredAction,
-            )
+            ) ?: false
         }
 
         val success = syncResults.all { it }
@@ -1274,11 +1274,7 @@ class GOGManager @Inject constructor(
             if (saveDir.exists() && saveDir.isDirectory) {
                 val filesBefore = saveDir.listFiles()
                 if (filesBefore != null && filesBefore.isNotEmpty()) {
-                    Timber.tag("GOG").i(
-                        "[Cloud Saves] [BEFORE] ${filesBefore.size} files in '$locationName': ${filesBefore.joinToString(", ") {
-                            it.name
-                        }}",
-                    )
+                    Timber.tag("GOG").i("[Cloud Saves] [BEFORE] ${filesBefore.size} file(s) in '$locationName'")
                 } else {
                     Timber.tag("GOG").i("[Cloud Saves] [BEFORE] Directory '$locationName' is empty")
                 }
@@ -1300,13 +1296,7 @@ class GOGManager @Inject constructor(
             if (saveDir.exists() && saveDir.isDirectory) {
                 val files = saveDir.listFiles()
                 if (files != null && files.isNotEmpty()) {
-                    val fileList = files.joinToString(", ") { it.name }
-                    Timber.tag("GOG").i("[Cloud Saves] [$preferredAction] Files in '$locationName': $fileList (${files.size} files)")
-
-                    files.forEach { file ->
-                        val size = if (file.isFile) "${file.length()} bytes" else "directory"
-                        Timber.tag("GOG").d("[Cloud Saves] [$preferredAction]   - ${file.name} ($size)")
-                    }
+                    Timber.tag("GOG").i("[Cloud Saves] [$preferredAction] ${files.size} file(s) in '$locationName'")
                 } else {
                     Timber.tag("GOG").w("[Cloud Saves] [$preferredAction] Directory '$locationName' is empty at: $locationPath")
                 }
