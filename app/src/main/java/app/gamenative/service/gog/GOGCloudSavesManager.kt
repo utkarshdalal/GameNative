@@ -45,6 +45,12 @@ class GOGCloudSavesManager(
         NONE
     }
 
+    data class SyncCheckResult(
+        val action: SyncAction,
+        val localTimestampMs: Long,
+        val remoteTimestampMs: Long,
+    )
+
     /**
      * Represents a local save file
      */
@@ -328,6 +334,42 @@ class GOGCloudSavesManager(
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "Sync failed: ${e.message}")
             return@withContext 0L
+        }
+    }
+
+    /**
+     * Read-only pre-flight check: returns the sync action and file timestamps in a single network
+     * round-trip. Returns null if credentials or cloud file listing are unavailable.
+     */
+    suspend fun checkSync(
+        localPath: String,
+        dirname: String,
+        clientId: String,
+        clientSecret: String,
+        lastSyncTimestamp: Long = 0,
+    ): SyncCheckResult? = withContext(Dispatchers.IO) {
+        try {
+            val credentials = GOGAuthManager.getGameCredentials(context, clientId, clientSecret)
+                .getOrNull() ?: return@withContext null
+
+            val syncDir = File(localPath)
+            val localFiles = if (syncDir.exists()) scanLocalFiles(syncDir) else emptyList()
+            val cloudFiles = getCloudFiles(credentials.userId, clientId, dirname, credentials.accessToken)
+                ?: return@withContext null
+
+            val action = when {
+                localFiles.isEmpty() && cloudFiles.isEmpty() -> SyncAction.NONE
+                localFiles.isNotEmpty() && cloudFiles.isEmpty() -> SyncAction.UPLOAD
+                localFiles.isEmpty() && cloudFiles.any { !it.isDeleted } -> SyncAction.DOWNLOAD
+                else -> classifyFiles(localFiles, cloudFiles, lastSyncTimestamp).determineAction()
+            }
+
+            val localMax = localFiles.maxOfOrNull { it.updateTimestamp ?: 0L } ?: 0L
+            val remoteMax = cloudFiles.maxOfOrNull { it.updateTimestamp ?: 0L } ?: 0L
+            SyncCheckResult(action, localMax * 1000, remoteMax * 1000)
+        } catch (e: Exception) {
+            Timber.tag("GOG-CloudSaves").e(e, "checkSync failed")
+            null
         }
     }
 
