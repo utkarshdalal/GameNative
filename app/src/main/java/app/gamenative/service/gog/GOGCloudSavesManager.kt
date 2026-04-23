@@ -2,6 +2,9 @@ package app.gamenative.service.gog
 
 import android.content.Context
 import app.gamenative.utils.FileUtils
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -22,8 +25,9 @@ import java.util.zip.GZIPOutputStream
 import java.util.concurrent.TimeUnit
 
 
-class GOGCloudSavesManager(
-    private val context: Context
+@Singleton
+class GOGCloudSavesManager @Inject constructor(
+    @ApplicationContext private val context: Context,
 ) {
 
     private val httpClient = OkHttpClient.Builder()

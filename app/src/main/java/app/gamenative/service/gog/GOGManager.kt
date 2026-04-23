@@ -58,6 +58,7 @@ data class GameSizeInfo(
 class GOGManager @Inject constructor(
     private val gogGameDao: GOGGameDao,
     @ApplicationContext private val context: Context,
+    private val cloudSavesManager: GOGCloudSavesManager,
 ) {
 
     // Thread-safe cache for download sizes
@@ -1138,6 +1139,147 @@ class GOGManager @Inject constructor(
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "[Cloud Saves] Failed to get save directory path for appId $appId")
             return@withContext null
+        }
+    }
+
+    suspend fun syncCloudSaves(
+        appId: String,
+        preferredAction: String = "none",
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            Timber.tag("GOG").d("[Cloud Saves] syncCloudSaves called for $appId with action: $preferredAction")
+
+            if (!startSync(appId)) {
+                Timber.tag("GOG").w("[Cloud Saves] Sync already in progress for $appId, skipping duplicate sync")
+                return@withContext false
+            }
+
+            try {
+                if (!GOGAuthManager.hasStoredCredentials(context)) {
+                    Timber.tag("GOG").e("[Cloud Saves] Cannot sync saves: not authenticated")
+                    return@withContext false
+                }
+
+                val authConfigPath = GOGAuthManager.getAuthConfigPath(context)
+                Timber.tag("GOG").d("[Cloud Saves] Using auth config path: $authConfigPath")
+
+                val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+                Timber.tag("GOG").d("[Cloud Saves] Extracted game ID: $gameId from appId: $appId")
+                val game = getGameFromDbById(gameId.toString())
+
+                if (game == null) {
+                    Timber.tag("GOG").e("[Cloud Saves] Game not found for appId: $appId")
+                    return@withContext false
+                }
+                Timber.tag("GOG").d("[Cloud Saves] Found game: ${game.title}")
+
+                Timber.tag("GOG").d("[Cloud Saves] Resolving save directory paths for $appId")
+                val saveLocations = getSaveDirectoryPath(context, appId, game.title)
+
+                if (saveLocations == null || saveLocations.isEmpty()) {
+                    Timber.tag("GOG").w("[Cloud Saves] No save locations found for game $appId (cloud saves may not be enabled)")
+                    return@withContext false
+                }
+                Timber.tag("GOG").i("[Cloud Saves] Found ${saveLocations.size} save location(s) for $appId")
+
+                var allSucceeded = true
+
+                for ((index, location) in saveLocations.withIndex()) {
+                    try {
+                        Timber.tag("GOG").d("[Cloud Saves] Processing location ${index + 1}/${saveLocations.size}: '${location.name}'")
+
+                        try {
+                            val saveDir = java.io.File(location.location)
+                            Timber.tag("GOG").d("[Cloud Saves] [BEFORE] Checking directory: ${location.location}")
+                            Timber.tag("GOG").d("[Cloud Saves] [BEFORE] Directory exists: ${saveDir.exists()}, isDirectory: ${saveDir.isDirectory}")
+                            if (saveDir.exists() && saveDir.isDirectory) {
+                                val filesBefore = saveDir.listFiles()
+                                if (filesBefore != null && filesBefore.isNotEmpty()) {
+                                    Timber.tag("GOG").i(
+                                        "[Cloud Saves] [BEFORE] ${filesBefore.size} files in '${location.name}': ${filesBefore.joinToString(", ") {
+                                            it.name
+                                        }}",
+                                    )
+                                } else {
+                                    Timber.tag("GOG").i("[Cloud Saves] [BEFORE] Directory '${location.name}' is empty")
+                                }
+                            } else {
+                                Timber.tag("GOG").i("[Cloud Saves] [BEFORE] Directory '${location.name}' does not exist yet")
+                            }
+                        } catch (e: Exception) {
+                            Timber.tag("GOG").e(e, "[Cloud Saves] [BEFORE] Failed to check directory")
+                        }
+
+                        val timestampStr = getCloudSaveSyncTimestamp(appId, location.name)
+                        val timestamp = timestampStr.toLongOrNull() ?: 0L
+
+                        Timber.tag("GOG").i("[Cloud Saves] Syncing '${location.name}' for game $gameId (clientId: ${location.clientId}, path: ${location.location}, timestamp: $timestamp, action: $preferredAction)")
+
+                        if (location.clientSecret.isEmpty()) {
+                            Timber.tag("GOG").e("[Cloud Saves] Missing clientSecret for '${location.name}', skipping sync")
+                            continue
+                        }
+
+                        val newTimestamp = cloudSavesManager.syncSaves(
+                            clientId = location.clientId,
+                            clientSecret = location.clientSecret,
+                            localPath = location.location,
+                            dirname = location.name,
+                            lastSyncTimestamp = timestamp,
+                            preferredAction = preferredAction,
+                        )
+
+                        if (newTimestamp > 0) {
+                            setCloudSaveSyncTimestamp(appId, location.name, newTimestamp.toString())
+                            Timber.tag("GOG").d("[Cloud Saves] Updated timestamp for '${location.name}': $newTimestamp")
+
+                            try {
+                                val saveDir = java.io.File(location.location)
+                                if (saveDir.exists() && saveDir.isDirectory) {
+                                    val files = saveDir.listFiles()
+                                    if (files != null && files.isNotEmpty()) {
+                                        val fileList = files.joinToString(", ") { it.name }
+                                        Timber.tag("GOG").i("[Cloud Saves] [$preferredAction] Files in '${location.name}': $fileList (${files.size} files)")
+
+                                        files.forEach { file ->
+                                            val size = if (file.isFile) "${file.length()} bytes" else "directory"
+                                            Timber.tag("GOG").d("[Cloud Saves] [$preferredAction]   - ${file.name} ($size)")
+                                        }
+                                    } else {
+                                        Timber.tag("GOG").w("[Cloud Saves] [$preferredAction] Directory '${location.name}' is empty at: ${location.location}")
+                                    }
+                                } else {
+                                    Timber.tag("GOG").w("[Cloud Saves] [$preferredAction] Directory not found: ${location.location}")
+                                }
+                            } catch (e: Exception) {
+                                Timber.tag("GOG").e(e, "[Cloud Saves] Failed to list files in directory: ${location.location}")
+                            }
+
+                            Timber.tag("GOG").i("[Cloud Saves] Successfully synced save location '${location.name}' for game $gameId")
+                        } else {
+                            Timber.tag("GOG").e("[Cloud Saves] Failed to sync save location '${location.name}' for game $gameId (timestamp: $newTimestamp)")
+                            allSucceeded = false
+                        }
+                    } catch (e: Exception) {
+                        Timber.tag("GOG").e(e, "[Cloud Saves] Exception syncing save location '${location.name}' for game $gameId")
+                        allSucceeded = false
+                    }
+                }
+
+                if (allSucceeded) {
+                    Timber.tag("GOG").i("[Cloud Saves] All save locations synced successfully for $appId")
+                    return@withContext true
+                } else {
+                    Timber.tag("GOG").w("[Cloud Saves] Some save locations failed to sync for $appId")
+                    return@withContext false
+                }
+            } finally {
+                endSync(appId)
+                Timber.tag("GOG").d("[Cloud Saves] Sync completed and lock released for $appId")
+            }
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "[Cloud Saves] Failed to sync cloud saves for App ID: $appId")
+            return@withContext false
         }
     }
 
