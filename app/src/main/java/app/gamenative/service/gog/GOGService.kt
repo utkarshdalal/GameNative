@@ -376,23 +376,29 @@ class GOGService : Service() {
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
                         val appId = "GOG_$gameId"
                         val numericGameId = gameId.toIntOrNull()
-                        val gogGame = instance.gogManager.getGameFromDbById(gameId)
-                        val locations = if (gogGame != null) instance.gogManager.getSaveDirectoryPath(context, appId, gogGame.title) else null
-                        if (numericGameId != null && !locations.isNullOrEmpty() && !ContainerUtils.isLocalSavesOnly(context, appId)) {
-                            downloadInfo.setPostInstallSyncing(true)
-                            PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(numericGameId, true))
-                            downloadInfo.updateStatusMessage("Syncing saves...")
-                            try {
-                                syncCloudSaves(context, appId, preferredAction = "download")
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                Timber.e(e, "[PostInstallSync] Cloud save sync failed for game $gameId")
-                            } finally {
-                                downloadInfo.setPostInstallSyncing(false)
-                                downloadInfo.updateStatusMessage(null)
-                                PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(numericGameId, false))
+                        try {
+                            val gogGame = instance.gogManager.getGameFromDbById(gameId)
+                            val locations = if (gogGame != null) instance.gogManager.getSaveDirectoryPath(context, appId, gogGame.title) else null
+                            if (numericGameId != null && !locations.isNullOrEmpty() && !ContainerUtils.isLocalSavesOnly(context, appId)) {
+                                downloadInfo.setPostInstallSyncing(true)
+                                PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(numericGameId, true))
+                                downloadInfo.updateStatusMessage("Syncing saves...")
+                                try {
+                                    syncCloudSaves(context, appId, preferredAction = "download")
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    Timber.e(e, "[PostInstallSync] Cloud save sync failed for game $gameId")
+                                } finally {
+                                    downloadInfo.setPostInstallSyncing(false)
+                                    downloadInfo.updateStatusMessage(null)
+                                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(numericGameId, false))
+                                }
                             }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.e(e, "[PostInstallSync] Cloud save sync failed for game $gameId")
                         }
 
                         SnackbarManager.show("Download completed successfully!")
