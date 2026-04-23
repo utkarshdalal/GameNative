@@ -13,6 +13,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.OkHttpClient
 import org.json.JSONArray
 import timber.log.Timber
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URLEncoder
@@ -21,9 +22,8 @@ import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
 import java.time.format.DateTimeFormatter
-import java.util.zip.CRC32
-import java.util.zip.Deflater
 import java.util.concurrent.TimeUnit
+import java.util.zip.GZIPOutputStream
 
 
 @Singleton
@@ -41,36 +41,19 @@ class GOGCloudSavesManager @Inject constructor(
         private const val USER_AGENT = "GOGGalaxyCommunicationService/2.0.13.27 (Windows_32bit) dont_sync_marker/true installation_source/gog"
         private const val DELETION_MD5 = "aadd86936a80ee8a369579c3926f1b3c"
 
-        /**
-         * Gzip-compress [data] with mtime=0 and compression level 6, matching the heroic-gogdl
-         * convention (gzip.compress(data, 6, mtime=0)). The deterministic mtime ensures the same
-         * file content always produces the same compressed bytes and therefore the same MD5 hash,
-         * which is required for interoperability with GOG Galaxy and Heroic.
-         */
+        // Python's gzip.compress(..., mtime=0) zeros the MTIME header bytes for deterministic
+        // output. Java's GZIPOutputStream does not expose mtime, so normalize bytes 4..7 after
+        // compression before hashing/uploading.
         internal fun gzipCompress(data: ByteArray): ByteArray {
-            val bos = java.io.ByteArrayOutputStream()
-            // 10-byte gzip header: magic(2) CM(1) FLG(1) MTIME(4) XFL(1) OS(1)
-            bos.write(0x1f); bos.write(0x8b)  // magic
-            bos.write(0x08)                    // CM = deflate
-            bos.write(0x00)                    // FLG = none
-            bos.write(0x00); bos.write(0x00); bos.write(0x00); bos.write(0x00)  // MTIME = 0
-            bos.write(0x00)                    // XFL
-            bos.write(0xff)                    // OS = unknown
-            val deflater = Deflater(6, true)   // nowrap=true for raw DEFLATE (no zlib header)
-            deflater.setInput(data)
-            deflater.finish()
-            val buf = ByteArray(8192)
-            while (!deflater.finished()) bos.write(buf, 0, deflater.deflate(buf))
-            deflater.end()
-            val crc = CRC32().also { it.update(data) }
-            val c = crc.value.toInt()
-            // CRC32 and size are little-endian in gzip
-            bos.write(c and 0xff); bos.write((c shr 8) and 0xff)
-            bos.write((c shr 16) and 0xff); bos.write((c shr 24) and 0xff)
-            val s = data.size
-            bos.write(s and 0xff); bos.write((s shr 8) and 0xff)
-            bos.write((s shr 16) and 0xff); bos.write((s shr 24) and 0xff)
-            return bos.toByteArray()
+            val buffer = ByteArrayOutputStream()
+            GZIPOutputStream(buffer).use { it.write(data) }
+
+            return buffer.toByteArray().also { compressed ->
+                compressed[4] = 0
+                compressed[5] = 0
+                compressed[6] = 0
+                compressed[7] = 0
+            }
         }
     }
 
