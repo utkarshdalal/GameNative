@@ -9,6 +9,7 @@ import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.EventDispatcher
+import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.utils.ContainerMigrator
@@ -233,6 +234,7 @@ class PluviaApp : SplitCompatApplication() {
             inputControlsManager = null
             touchpadView = null
             achievementWatcher = null
+            ActiveGameRegistry.clear()
             SteamService.keepAlive = false
             clearActiveSuspendState()
         }
