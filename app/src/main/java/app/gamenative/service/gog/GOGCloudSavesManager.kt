@@ -14,14 +14,15 @@ import okhttp3.OkHttpClient
 import org.json.JSONArray
 import timber.log.Timber
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.net.URLEncoder
 import java.security.MessageDigest
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
 import java.time.format.DateTimeFormatter
-import java.util.zip.GZIPOutputStream
+import java.util.zip.CRC32
+import java.util.zip.Deflater
 import java.util.concurrent.TimeUnit
 
 
@@ -40,6 +41,37 @@ class GOGCloudSavesManager @Inject constructor(
         private const val USER_AGENT = "GOGGalaxyCommunicationService/2.0.13.27 (Windows_32bit) dont_sync_marker/true installation_source/gog"
         private const val DELETION_MD5 = "aadd86936a80ee8a369579c3926f1b3c"
 
+        /**
+         * Gzip-compress [data] with mtime=0 and compression level 6, matching the heroic-gogdl
+         * convention (gzip.compress(data, 6, mtime=0)). The deterministic mtime ensures the same
+         * file content always produces the same compressed bytes and therefore the same MD5 hash,
+         * which is required for interoperability with GOG Galaxy and Heroic.
+         */
+        internal fun gzipCompress(data: ByteArray): ByteArray {
+            val bos = java.io.ByteArrayOutputStream()
+            // 10-byte gzip header: magic(2) CM(1) FLG(1) MTIME(4) XFL(1) OS(1)
+            bos.write(0x1f); bos.write(0x8b)  // magic
+            bos.write(0x08)                    // CM = deflate
+            bos.write(0x00)                    // FLG = none
+            bos.write(0x00); bos.write(0x00); bos.write(0x00); bos.write(0x00)  // MTIME = 0
+            bos.write(0x00)                    // XFL
+            bos.write(0xff)                    // OS = unknown
+            val deflater = Deflater(6, true)   // nowrap=true for raw DEFLATE (no zlib header)
+            deflater.setInput(data)
+            deflater.finish()
+            val buf = ByteArray(8192)
+            while (!deflater.finished()) bos.write(buf, 0, deflater.deflate(buf))
+            deflater.end()
+            val crc = CRC32().also { it.update(data) }
+            val c = crc.value.toInt()
+            // CRC32 and size are little-endian in gzip
+            bos.write(c and 0xff); bos.write((c shr 8) and 0xff)
+            bos.write((c shr 16) and 0xff); bos.write((c shr 24) and 0xff)
+            val s = data.size
+            bos.write(s and 0xff); bos.write((s shr 8) and 0xff)
+            bos.write((s shr 16) and 0xff); bos.write((s shr 24) and 0xff)
+            return bos.toByteArray()
+        }
     }
 
     enum class SyncAction {
@@ -70,28 +102,15 @@ class GOGCloudSavesManager @Inject constructor(
                     return@withContext
                 }
 
-                // Get file modification timestamp
                 val timestamp = file.lastModified()
                 val instant = Instant.ofEpochMilli(timestamp)
                 updateTime = DateTimeFormatter.ISO_INSTANT.format(instant)
-                updateTimestamp = timestamp / 1000 // Convert to seconds
+                updateTimestamp = timestamp / 1000
 
-                // Calculate MD5 of gzipped content (matching Python implementation)
-                FileInputStream(file).use { fis ->
-                    val digest = MessageDigest.getInstance("MD5")
-                    val buffer = java.io.ByteArrayOutputStream()
-
-                    GZIPOutputStream(buffer).use { gzipOut ->
-                        val fileBuffer = ByteArray(8192)
-                        var bytesRead: Int
-                        while (fis.read(fileBuffer).also { bytesRead = it } != -1) {
-                            gzipOut.write(fileBuffer, 0, bytesRead)
-                        }
-                    }
-
-                    md5Hash = digest.digest(buffer.toByteArray())
-                        .joinToString("") { "%02x".format(it) }
-                }
+                val compressed = GOGCloudSavesManager.gzipCompress(file.readBytes())
+                md5Hash = MessageDigest.getInstance("MD5")
+                    .digest(compressed)
+                    .joinToString("") { "%02x".format(it) }
 
                 Timber.d("Calculated metadata for $relativePath: md5=$md5Hash, timestamp=$updateTimestamp")
             } catch (e: Exception) {
@@ -240,10 +259,12 @@ class GOGCloudSavesManager @Inject constructor(
                     classifier.updatedCloud.forEach { file ->
                         downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
                     }
-                    classifier.notExistingLocally.forEach { file ->
-                        if (!file.isDeleted) {
-                            downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
-                        }
+                    classifier.notExistingLocally.filter { !it.isDeleted }.forEach { file ->
+                        downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
+                    }
+                    classifier.notExistingRemotely.forEach { file ->
+                        Timber.tag("GOG-CloudSaves").i("Deleting stale local file: ${file.relativePath}")
+                        File(file.absolutePath).delete()
                     }
                 }
 
@@ -254,6 +275,10 @@ class GOGCloudSavesManager @Inject constructor(
                     }
                     classifier.notExistingRemotely.forEach { file ->
                         uploadFile(credentials.userId, clientId, dirname, file, credentials.accessToken)
+                    }
+                    classifier.notExistingLocally.forEach { file ->
+                        Timber.tag("GOG-CloudSaves").i("Deleting stale cloud file: ${file.relativePath}")
+                        deleteCloudFile(credentials.userId, clientId, dirname, file, credentials.accessToken)
                     }
                 }
 
@@ -462,8 +487,14 @@ class GOGCloudSavesManager @Inject constructor(
             null
         }
 
+    // Encodes each path segment individually so slashes are preserved as path separators.
+    private fun String.urlEncodePath(): String =
+        split("/").joinToString("/") { URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+
     /**
-     * Upload file to GOG cloud storage
+     * Upload file to GOG cloud storage. The file is gzip-compressed before sending, matching
+     * the GOG Galaxy / heroic-gogdl convention. The Etag header carries the MD5 of the
+     * compressed bytes, which the server stores as the file's canonical hash.
      */
     private suspend fun uploadFile(
         userId: String,
@@ -474,13 +505,16 @@ class GOGCloudSavesManager @Inject constructor(
     ) = withContext(Dispatchers.IO) {
         try {
             val localFile = File(file.absolutePath)
-            val fileSize = localFile.length()
+            Timber.tag("GOG-CloudSaves").i("Uploading: ${file.relativePath} (${localFile.length()} bytes)")
 
-            Timber.tag("GOG-CloudSaves").i("Uploading: ${file.relativePath} (${fileSize} bytes)")
+            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$dirname/${file.relativePath.urlEncodePath()}"
 
-            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$dirname/${file.relativePath}"
+            val compressed = gzipCompress(localFile.readBytes())
+            val etag = MessageDigest.getInstance("MD5")
+                .digest(compressed)
+                .joinToString("") { "%02x".format(it) }
 
-            val requestBody = localFile.readBytes().toRequestBody("application/octet-stream".toMediaType())
+            val requestBody = compressed.toRequestBody("application/octet-stream".toMediaType())
 
             val requestBuilder = Request.Builder()
                 .url(url)
@@ -488,9 +522,9 @@ class GOGCloudSavesManager @Inject constructor(
                 .header("Authorization", "Bearer $authToken")
                 .header("User-Agent", USER_AGENT)
                 .header("X-Object-Meta-User-Agent", USER_AGENT)
-                .header("Content-Type", "application/octet-stream")
+                .header("Content-Encoding", "gzip")
+                .header("Etag", etag)
 
-            // Add last modified timestamp header if available
             file.updateTime?.let { timestamp ->
                 requestBuilder.header("X-Object-Meta-LocalLastModified", timestamp)
             }
@@ -525,7 +559,7 @@ class GOGCloudSavesManager @Inject constructor(
         try {
             Timber.tag("GOG-CloudSaves").i("Downloading: ${file.relativePath}")
 
-            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$dirname/${file.relativePath}"
+            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$dirname/${file.relativePath.urlEncodePath()}"
 
             val request = Request.Builder()
                 .url(url)
@@ -564,6 +598,37 @@ class GOGCloudSavesManager @Inject constructor(
 
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "Failed to download ${file.relativePath}")
+        }
+    }
+
+    /**
+     * Delete a file from GOG cloud storage. Called during UPLOAD sync to remove cloud files
+     * that no longer exist locally, keeping cloud state in sync with local deletions.
+     */
+    private suspend fun deleteCloudFile(
+        userId: String,
+        clientId: String,
+        dirname: String,
+        file: CloudFile,
+        authToken: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$dirname/${file.relativePath.urlEncodePath()}"
+            val request = Request.Builder()
+                .url(url)
+                .delete()
+                .header("Authorization", "Bearer $authToken")
+                .header("User-Agent", USER_AGENT)
+                .build()
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Timber.tag("GOG-CloudSaves").e("Failed to delete cloud file ${file.relativePath}: HTTP ${response.code}")
+                }
+                response.isSuccessful
+            }
+        } catch (e: Exception) {
+            Timber.tag("GOG-CloudSaves").e(e, "Failed to delete cloud file ${file.relativePath}")
+            false
         }
     }
 
@@ -615,5 +680,21 @@ class GOGCloudSavesManager @Inject constructor(
      */
     private fun currentTimestamp(): Long {
         return System.currentTimeMillis() / 1000
+    }
+
+    private fun deleteLocalFilesForRemoteState(syncDir: File): Boolean {
+        if (!syncDir.exists()) return true
+
+        val localFiles = syncDir.walkBottomUp()
+            .filter { it != syncDir }
+            .toList()
+
+        return localFiles.all { file ->
+            val deleted = file.delete()
+            if (!deleted && file.exists()) {
+                Timber.tag("GOG-CloudSaves").e("Failed to delete local file for remote keep: ${file.absolutePath}")
+            }
+            deleted || !file.exists()
+        }
     }
 }
