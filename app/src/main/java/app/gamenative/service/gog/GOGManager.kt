@@ -1148,6 +1148,7 @@ class GOGManager @Inject constructor(
     ): Boolean = withContext(Dispatchers.IO) {
         Timber.tag("GOG").d("[Cloud Saves] syncCloudSaves called for $appId with action: $preferredAction")
 
+        // Check if there's already a sync in progress for this appId.
         if (!startSync(appId)) {
             Timber.tag("GOG").w("[Cloud Saves] Sync already in progress for $appId, skipping duplicate sync")
             return@withContext false
@@ -1159,6 +1160,7 @@ class GOGManager @Inject constructor(
             Timber.tag("GOG").e(e, "[Cloud Saves] Failed to sync cloud saves for App ID: $appId")
             return@withContext false
         } finally {
+            // Always end the sync, even if an exception occurred.
             endSync(appId)
             Timber.tag("GOG").d("[Cloud Saves] Sync completed and lock released for $appId")
         }
@@ -1183,6 +1185,7 @@ class GOGManager @Inject constructor(
         }
         Timber.tag("GOG").d("[Cloud Saves] Found game: ${game.title}")
 
+        // Get save directory paths. Android runs games through Wine, so they resolve to Windows paths.
         Timber.tag("GOG").d("[Cloud Saves] Resolving save directory paths for $appId")
         val saveLocations = getSaveDirectoryPath(context, appId, game.title)
 
@@ -1222,13 +1225,16 @@ class GOGManager @Inject constructor(
     ): Boolean? {
         try {
             Timber.tag("GOG").d("[Cloud Saves] Processing location ${locationIndex + 1}/$locationCount: '${location.name}'")
+            // Log directory state before sync.
             logDirectoryStateBeforeSync(location.location, location.name)
 
+            // Get stored timestamp for this location.
             val timestampStr = getCloudSaveSyncTimestamp(appId, location.name)
             val timestamp = timestampStr.toLongOrNull() ?: 0L
 
             Timber.tag("GOG").i("[Cloud Saves] Syncing '${location.name}' for game $gameId (clientId: ${location.clientId}, path: ${location.location}, timestamp: $timestamp, action: $preferredAction)")
 
+            // Validate clientSecret is available.
             if (location.clientSecret.isEmpty()) {
                 Timber.tag("GOG").e("[Cloud Saves] Missing clientSecret for '${location.name}', skipping sync")
                 return null
@@ -1244,6 +1250,7 @@ class GOGManager @Inject constructor(
             )
 
             if (newTimestamp > 0) {
+                // Success: store the new timestamp and log resulting files.
                 setCloudSaveSyncTimestamp(appId, location.name, newTimestamp.toString())
                 Timber.tag("GOG").d("[Cloud Saves] Updated timestamp for '${location.name}': $newTimestamp")
                 logDirectoryStateAfterSync(location.location, location.name, preferredAction)

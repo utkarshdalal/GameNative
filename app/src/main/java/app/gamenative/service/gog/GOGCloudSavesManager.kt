@@ -85,11 +85,13 @@ class GOGCloudSavesManager @Inject constructor(
                     return@withContext
                 }
 
+                // Get file modification timestamp.
                 val timestamp = file.lastModified()
                 val instant = Instant.ofEpochMilli(timestamp)
                 updateTime = DateTimeFormatter.ISO_INSTANT.format(instant)
                 updateTimestamp = timestamp / 1000
 
+                // Calculate the MD5 of gzipped content to match GOG's upload metadata.
                 val compressed = GOGCloudSavesManager.gzipCompress(file.readBytes())
                 md5Hash = MessageDigest.getInstance("MD5")
                     .digest(compressed)
@@ -508,6 +510,7 @@ class GOGCloudSavesManager @Inject constructor(
                 .header("Content-Encoding", "gzip")
                 .header("Etag", etag)
 
+            // Add last modified timestamp header if available.
             file.updateTime?.let { timestamp ->
                 requestBuilder.header("X-Object-Meta-LocalLastModified", timestamp)
             }

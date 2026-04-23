@@ -409,7 +409,9 @@ class GOGService : Service() {
         }
 
         /**
-         * Sync GOG cloud saves for a game
+         * Sync GOG cloud saves for a game.
+         * The context parameter is kept for call-site compatibility; the implementation now
+         * delegates to GOGManager, which owns the cloud-save orchestration.
          * @param context Android context
          * @param appId Game app ID (e.g., "gog_123456")
          * @param preferredAction Preferred sync action: "download", "upload", or "none"
