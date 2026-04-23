@@ -3907,7 +3907,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                                     val steamApp = appDao.findApp(appid)?.let { existingApp ->
                                         val currentLicense = licenseDao.findLicense(existingApp.packageId)
                                         existingApp.copy(
-                                            packageId = if (currentLicense != null && ELicenseFlags.code(currentLicense.licenseFlags) and 8 == 0) {
+                                            packageId = if (
+                                                currentLicense != null &&
+                                                ELicenseFlags.code(currentLicense.licenseFlags) and 8 == 0 &&
+                                                currentLicense.appIds.contains(appid)
+                                            ) {
                                                 existingApp.packageId
                                             } else {
                                                 pkg.id
