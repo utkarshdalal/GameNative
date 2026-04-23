@@ -220,18 +220,33 @@ class GOGCloudSavesManager(
             // Handle preferred action
             if (preferredAction == "download" && downloadableCloud.isNotEmpty()) {
                 Timber.tag("GOG-CloudSaves").i("Forcing download of ${downloadableCloud.size} file(s) (user requested)")
-                downloadableCloud.forEach { file ->
-                    downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
+                val allDownloaded = downloadableCloud.fold(true) { allSucceeded, file ->
+                    val downloaded = downloadFile(
+                        credentials.userId,
+                        clientId,
+                        dirname,
+                        file,
+                        syncDir,
+                        credentials.accessToken,
+                    )
+                    allSucceeded && downloaded
                 }
-                return@withContext currentTimestamp()
+                return@withContext if (allDownloaded) currentTimestamp() else 0L
             }
 
             if (preferredAction == "upload" && localFiles.isNotEmpty()) {
                 Timber.tag("GOG-CloudSaves").i("Forcing upload of ${localFiles.size} file(s) (user requested)")
-                localFiles.forEach { file ->
-                    uploadFile(credentials.userId, clientId, dirname, file, credentials.accessToken)
+                val allUploaded = localFiles.fold(true) { allSucceeded, file ->
+                    val uploaded = uploadFile(
+                        credentials.userId,
+                        clientId,
+                        dirname,
+                        file,
+                        credentials.accessToken,
+                    )
+                    allSucceeded && uploaded
                 }
-                return@withContext currentTimestamp()
+                return@withContext if (allUploaded) currentTimestamp() else 0L
             }
 
             // Complex sync scenario - use classifier
@@ -365,7 +380,9 @@ class GOGCloudSavesManager(
             }
 
             val localMax = localFiles.maxOfOrNull { it.updateTimestamp ?: 0L } ?: 0L
-            val remoteMax = cloudFiles.maxOfOrNull { it.updateTimestamp ?: 0L } ?: 0L
+            val remoteMax = cloudFiles
+                .filter { !it.isDeleted }
+                .maxOfOrNull { it.updateTimestamp ?: 0L } ?: 0L
             SyncCheckResult(action, localMax * 1000, remoteMax * 1000)
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "checkSync failed")
@@ -509,7 +526,7 @@ class GOGCloudSavesManager(
         dirname: String,
         file: SyncFile,
         authToken: String
-    ) = withContext(Dispatchers.IO) {
+    ): Boolean = withContext(Dispatchers.IO) {
         try {
             val localFile = File(file.absolutePath)
             val fileSize = localFile.length()
@@ -537,15 +554,18 @@ class GOGCloudSavesManager(
             response.use {
                 if (response.isSuccessful) {
                     Timber.tag("GOG-CloudSaves").i("Successfully uploaded: ${file.relativePath}")
+                    true
                 } else {
                     val errorBody = response.body?.string() ?: "No response body"
                     Timber.tag("GOG-CloudSaves").e("Failed to upload ${file.relativePath}: HTTP ${response.code}")
                     Timber.tag("GOG-CloudSaves").e("Upload error body: $errorBody")
+                    false
                 }
             }
 
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "Failed to upload ${file.relativePath}")
+            false
         }
     }
 
@@ -559,7 +579,7 @@ class GOGCloudSavesManager(
         file: CloudFile,
         syncDir: File,
         authToken: String
-    ) = withContext(Dispatchers.IO) {
+    ): Boolean = withContext(Dispatchers.IO) {
         try {
             Timber.tag("GOG-CloudSaves").i("Downloading: ${file.relativePath}")
 
@@ -578,10 +598,10 @@ class GOGCloudSavesManager(
                     val errorBody = response.body?.string() ?: "No response body"
                     Timber.tag("GOG-CloudSaves").e("Failed to download ${file.relativePath}: HTTP ${response.code}")
                     Timber.tag("GOG-CloudSaves").e("Download error body: $errorBody")
-                    return@withContext
+                    return@withContext false
                 }
 
-                val bytes = response.body?.bytes() ?: return@withContext
+                val bytes = response.body?.bytes() ?: return@withContext false
                 Timber.tag("GOG-CloudSaves").d("Downloaded ${bytes.size} bytes for ${file.relativePath}")
 
                 // resolve against on-disk casing to avoid creating duplicate dirs
@@ -598,10 +618,12 @@ class GOGCloudSavesManager(
                 }
 
                 Timber.tag("GOG-CloudSaves").i("Successfully downloaded: ${file.relativePath}")
+                true
             }
 
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "Failed to download ${file.relativePath}")
+            false
         }
     }
 
