@@ -98,7 +98,7 @@ public abstract class GPUInformation {
             String gpuRenderer = Objects.toString(gl.glGetString(GL10.GL_RENDERER), "");
             String gpuVendor = Objects.toString(gl.glGetString(GL10.GL_VENDOR), "");
             String gpuVersion = Objects.toString(gl.glGetString(GL10.GL_VERSION), "");
-            if (GPUBlackist.isTurnipBlacklisted()) gpuRenderer += " - " + Build.MANUFACTURER;
+            if (GPUBlackist.isTurnipBlacklisted()) gpuRenderer = Build.MANUFACTURER + " " + gpuRenderer;
 
             gpuInfo.put("renderer", gpuRenderer);
             gpuInfo.put("vendor", gpuVendor);
