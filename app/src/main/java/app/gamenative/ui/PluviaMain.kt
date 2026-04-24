@@ -1841,7 +1841,7 @@ fun preLaunchApp(
 
         // For Steam games, sync save files and check no pending remote operations are running
         val prefixToPath: (String) -> String = { prefix ->
-            PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+            PathType.from(prefix).toAbsPath(container, gameId, SteamService.userSteamId!!.accountID)
         }
 
         // Workshop mod sync: check for updates and download if needed

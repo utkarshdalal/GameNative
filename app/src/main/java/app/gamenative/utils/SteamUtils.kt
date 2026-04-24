@@ -228,7 +228,8 @@ object SteamUtils {
         createAppManifest(context, steamAppId)
 
         // Game-specific Handling
-        ensureSaveLocationsForGames(context, steamAppId)
+        val container = ContainerUtils.getOrCreateContainer(context, appId)
+        ensureSaveLocationsForGames(context, steamAppId, container)
 
         // Generate achievements.json
         generateAchievementsFile(rootPath.resolve("steam_settings"), appId)
@@ -277,7 +278,7 @@ object SteamUtils {
         generateAchievementsFile(path, appId)
 
         // Game-specific Handling
-        ensureSaveLocationsForGames(context, steamAppId)
+        ensureSaveLocationsForGames(context, steamAppId, container)
 
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
     }
@@ -759,7 +760,7 @@ object SteamUtils {
         createAppManifest(context, steamAppId)
 
         // Game-specific Handling
-        ensureSaveLocationsForGames(context, steamAppId)
+        ensureSaveLocationsForGames(context, steamAppId, container)
 
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
     }
@@ -1422,7 +1423,7 @@ object SteamUtils {
      * - {64BitSteamID} - Replaced with the user's 64-bit Steam ID
      * - {Steam3AccountID} - Replaced with the user's Steam3 account ID
      */
-    fun ensureSaveLocationsForGames(context: Context, steamAppId: Int) {
+    fun ensureSaveLocationsForGames(context: Context, steamAppId: Int, container: Container) {
         val mapping = SpecialGameSaveMapping.registry.find { it.appId == steamAppId } ?: return
 
         try {
@@ -1430,7 +1431,7 @@ object SteamUtils {
             val steamId64 = SteamService.userSteamId?.convertToUInt64()?.toString() ?: "0"
             val steam3AccountId = accountId.toString()
 
-            val basePath = mapping.pathType.toAbsPath(context, steamAppId, accountId)
+            val basePath = mapping.pathType.toAbsPath(container, steamAppId, accountId)
 
             // Substitute placeholders in paths
             val sourceRelativePath = mapping.sourceRelativePath

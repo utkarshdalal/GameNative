@@ -2,6 +2,7 @@ package app.gamenative.enums
 
 import android.content.Context
 import app.gamenative.service.SteamService
+import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
 import java.nio.file.Paths
 import timber.log.Timber
@@ -26,62 +27,53 @@ enum class PathType {
 
     /**
      * Turns a path type to a full path through the android system to the expected directory in
-     * the wine prefix or the steam common app dir. Make sure to run
-     * [com.winlator.container.ContainerManager.activateContainer] on the proper
-     * [com.winlator.container.Container] beforehand.
+     * the wine prefix or the steam common app dir.
      */
-    fun toAbsPath(context: Context, appId: Int, accountId: Long): String {
+    fun toAbsPath(container: Container, appId: Int, accountId: Long): String {
+        val root = container.rootDir.absolutePath
         val path = when (this) {
             GameInstall -> SteamService.getAppDirPath(appId)
             SteamUserData -> Paths.get(
-                ImageFs.find(context).rootDir.absolutePath,
-                ImageFs.WINEPREFIX,
-                "/drive_c/Program Files (x86)/Steam/userdata/$accountId/$appId/remote",
+                root,
+                ".wine/drive_c/Program Files (x86)/Steam/userdata/$accountId/$appId/remote",
             ).toString()
             WinMyDocuments -> Paths.get(
-                ImageFs.find(context).rootDir.absolutePath,
-                ImageFs.WINEPREFIX,
-                "/drive_c/users/",
+                root,
+                ".wine/drive_c/users",
                 ImageFs.USER,
                 "Documents/",
             ).toString()
             WinAppDataLocal -> Paths.get(
-                ImageFs.find(context).rootDir.absolutePath,
-                ImageFs.WINEPREFIX,
-                "/drive_c/users/",
+                root,
+                ".wine/drive_c/users",
                 ImageFs.USER,
                 "AppData/Local/",
             ).toString()
             WinAppDataLocalLow -> Paths.get(
-                ImageFs.find(context).rootDir.absolutePath,
-                ImageFs.WINEPREFIX,
-                "/drive_c/users/",
+                root,
+                ".wine/drive_c/users",
                 ImageFs.USER,
                 "AppData/LocalLow/",
             ).toString()
             WinAppDataRoaming -> Paths.get(
-                ImageFs.find(context).rootDir.absolutePath,
-                ImageFs.WINEPREFIX,
-                "/drive_c/users/",
+                root,
+                ".wine/drive_c/users",
                 ImageFs.USER,
                 "AppData/Roaming/",
             ).toString()
             WinSavedGames -> Paths.get(
-                ImageFs.find(context).rootDir.absolutePath,
-                ImageFs.WINEPREFIX,
-                "/drive_c/users/",
+                root,
+                ".wine/drive_c/users",
                 ImageFs.USER,
                 "Saved Games/",
             ).toString()
             WinProgramData -> Paths.get(
-                ImageFs.find(context).rootDir.absolutePath,
-                ImageFs.WINEPREFIX,
-                "/drive_c/ProgramData/",
+                root,
+                ".wine/drive_c/ProgramData/",
             ).toString()
             Root -> Paths.get(
-                ImageFs.find(context).rootDir.absolutePath,
-                ImageFs.WINEPREFIX,
-                "/drive_c/users/",
+                root,
+                ".wine/drive_c/users",
                 ImageFs.USER,
                 "",
             ).toString()

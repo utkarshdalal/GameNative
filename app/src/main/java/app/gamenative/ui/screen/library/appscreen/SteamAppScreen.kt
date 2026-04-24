@@ -61,6 +61,7 @@ import app.gamenative.workshop.WorkshopManager
 import app.gamenative.NetworkMonitor
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.posthog.PostHog
+import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import com.winlator.fexcore.FEXCoreManager
@@ -652,19 +653,20 @@ class SteamAppScreen : BaseAppScreen() {
         return libraryItem.gameSource == app.gamenative.data.GameSource.STEAM
     }
 
-    private suspend fun activateSaveTransferContainer(context: Context, appId: String): Throwable? {
+    private suspend fun activateSaveTransferContainer(context: Context, appId: String): Result<Container> {
         return try {
-            withContext(Dispatchers.IO) {
+            val container = withContext(Dispatchers.IO) {
                 val containerManager = ContainerManager(context)
                 val container = ContainerUtils.getOrCreateContainer(context, appId)
                 containerManager.activateContainer(container)
+                container
             }
-            null
+            Result.success(container)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (t: Throwable) {
             Timber.e(t, "Failed to activate save transfer container for $appId")
-            t
+            Result.failure(t)
         }
     }
 
@@ -673,17 +675,17 @@ class SteamAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
         uri: Uri,
     ): Boolean {
-        val activationError = activateSaveTransferContainer(context, libraryItem.appId)
-        if (activationError != null) {
+        val containerResult = activateSaveTransferContainer(context, libraryItem.appId)
+        if (containerResult.isFailure) {
             SnackbarManager.show(
                 context.getString(
                     R.string.steam_save_export_failed,
-                    activationError.message ?: "Unknown error",
+                    containerResult.exceptionOrNull()?.message ?: "Unknown error",
                 ),
             )
             return false
         }
-        return SteamSaveTransfer.exportSaves(context, libraryItem.gameId, uri)
+        return SteamSaveTransfer.exportSaves(context, containerResult.getOrThrow(), libraryItem.gameId, uri)
     }
 
     override suspend fun importSaves(
@@ -691,17 +693,17 @@ class SteamAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
         uri: Uri,
     ): Boolean {
-        val activationError = activateSaveTransferContainer(context, libraryItem.appId)
-        if (activationError != null) {
+        val containerResult = activateSaveTransferContainer(context, libraryItem.appId)
+        if (containerResult.isFailure) {
             SnackbarManager.show(
                 context.getString(
                     R.string.steam_save_import_failed,
-                    activationError.message ?: "Unknown error",
+                    containerResult.exceptionOrNull()?.message ?: "Unknown error",
                 ),
             )
             return false
         }
-        return SteamSaveTransfer.importSaves(context, libraryItem.gameId, uri)
+        return SteamSaveTransfer.importSaves(context, containerResult.getOrThrow(), libraryItem.gameId, uri)
     }
 
     @Composable
@@ -831,7 +833,7 @@ class SteamAppScreen : BaseAppScreen() {
                         containerManager.activateContainer(container)
 
                         val prefixToPath: (String) -> String = { prefix ->
-                            PathType.from(prefix).toAbsPath(context, gameId, steamId.accountID)
+                            PathType.from(prefix).toAbsPath(container, gameId, steamId.accountID)
                         }
                         val syncResult = SteamService.forceSyncUserFiles(
                             appId = gameId,
@@ -1128,7 +1130,7 @@ class SteamAppScreen : BaseAppScreen() {
                                     val steamId = SteamService.userSteamId
                                     if (steamId != null) {
                                         val prefixToPath: (String) -> String = { prefix ->
-                                            PathType.from(prefix).toAbsPath(context, gameId, steamId.accountID)
+                                            PathType.from(prefix).toAbsPath(container, gameId, steamId.accountID)
                                         }
                                         SteamService.forceSyncUserFiles(
                                             appId = gameId,

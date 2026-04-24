@@ -8,7 +8,7 @@ import app.gamenative.data.SaveFilePattern
 import app.gamenative.enums.PathType
 import app.gamenative.service.SteamService
 import app.gamenative.utils.FileUtils
-import com.winlator.xenvironment.ImageFs
+import com.winlator.container.Container
 import java.io.IOException
 import java.nio.channels.Channels
 import java.nio.file.Files
@@ -64,13 +64,14 @@ object SteamSaveTransfer {
 
     suspend fun exportSaves(
         context: Context,
+        container: Container,
         steamAppId: Int,
         uri: Uri,
     ): Boolean {
         return try {
             val app = SteamService.getAppInfoOf(steamAppId)
                 ?: throw IOException("Steam app not found")
-            val prefixToPath = makePrefixToPath(context, steamAppId)
+            val prefixToPath = makePrefixToPath(container, steamAppId)
             val roots = withContext(Dispatchers.IO) { resolveExportRoots(app, prefixToPath) }
 
             if (roots.isEmpty()) {
@@ -119,6 +120,7 @@ object SteamSaveTransfer {
 
     suspend fun importSaves(
         context: Context,
+        container: Container,
         steamAppId: Int,
         uri: Uri,
     ): Boolean {
@@ -133,7 +135,7 @@ object SteamSaveTransfer {
                 throw IOException("Archive does not declare any save roots")
             }
 
-            val prefixToPath = makePrefixToPath(context, steamAppId)
+            val prefixToPath = makePrefixToPath(container, steamAppId)
             val rootMap = withContext(Dispatchers.IO) {
                 resolveImportRoots(app, archiveManifest.roots, prefixToPath)
             }
@@ -344,30 +346,29 @@ object SteamSaveTransfer {
 
     // -- Helpers ---------------------------------------------------------------
 
-    private fun makePrefixToPath(context: Context, appId: Int): (String) -> String? = { prefix ->
-        resolveRootBasePath(context, appId, PathType.from(prefix))?.pathString
+    private fun makePrefixToPath(container: Container, appId: Int): (String) -> String? = { prefix ->
+        resolveRootBasePath(container, appId, PathType.from(prefix))?.pathString
     }
 
     private fun resolveRootBasePath(
-        context: Context,
+        container: Container,
         appId: Int,
         rootType: PathType,
     ): Path? {
         val accountId = when (rootType) {
-            PathType.SteamUserData -> resolveSteamAccountId(context, appId) ?: return null
+            PathType.SteamUserData -> resolveSteamAccountId(container, appId) ?: return null
             else -> 0L
         }
-        return Paths.get(rootType.toAbsPath(context, appId, accountId))
+        return Paths.get(rootType.toAbsPath(container, appId, accountId))
     }
 
-    private fun resolveSteamAccountId(context: Context, appId: Int): Long? {
+    private fun resolveSteamAccountId(container: Container, appId: Int): Long? {
         SteamService.userSteamId?.accountID?.toLong()?.let { return it }
         PrefManager.steamUserAccountId.takeIf { it != 0 }?.toLong()?.let { return it }
 
         val userdataRoot = Paths.get(
-            ImageFs.find(context).rootDir.absolutePath,
-            ImageFs.WINEPREFIX,
-            "/drive_c/Program Files (x86)/Steam/userdata",
+            container.rootDir.absolutePath,
+            ".wine/drive_c/Program Files (x86)/Steam/userdata",
         )
         if (!Files.isDirectory(userdataRoot)) return null
 
