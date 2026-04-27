@@ -2264,6 +2264,7 @@ fun XServerScreen(
                     showPlayingBlockedDialog = false
                     scope.launch {
                         SteamService.kickPlayingSession(onlyGame = true)
+                        SteamService.clearPlayingConflict()
                     }
                 }) {
                     Text(text = stringResource(R.string.main_play_anyway))

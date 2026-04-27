@@ -3556,7 +3556,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     private fun onPlayingSessionState(callback: PlayingSessionStateCallback) {
         Timber.d("onPlayingSessionState called with isPlayingBlocked = " + callback.isPlayingBlocked)
         _isPlayingBlocked.value = callback.isPlayingBlocked
-        if (callback.isPlayingBlocked) {
+        if (callback.isPlayingBlocked && _isHandlingConflict.compareAndSet(false, true)) {
             val event = SteamEvent.PlayingBlocked
             PluviaApp.events.emit(event)
         }
