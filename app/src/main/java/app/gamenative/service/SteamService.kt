@@ -262,6 +262,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var reconnectJob: Job? = null
     private var offlineAchievementSyncJob: Job? = null
+    private val pendingSyncAppIds: MutableSet<Int> = java.util.Collections.synchronizedSet(mutableSetOf())
 
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = {
         Companion.stop()
@@ -2290,6 +2291,8 @@ class SteamService : Service(), IChallengeUrlChanged {
         suspend fun closeApp(context: Context, appId: Int, isOffline: Boolean, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
             async {
                 if (isOffline || !isConnected) {
+                    instance?.pendingSyncAppIds?.add(appId)
+                    Timber.tag("achievements").d("Recording appId=$appId for offline achievement sync on reconnect")
                     return@async
                 }
 
@@ -3316,6 +3319,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         reconnectJob?.cancel()
         offlineAchievementSyncJob?.cancel()
         offlineAchievementSyncJob = null
+        pendingSyncAppIds.clear()
         isStopping = false
         retryAttempt = 0
 
@@ -3528,14 +3532,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                     return@launch
                 }
 
-                val installedApps = appInfoDao.getAll()
-                if (installedApps.isEmpty()) {
-                    Timber.tag("achievements").d("Skipping reconnect achievement sync sweep — no installed apps")
+                val appsToSync = pendingSyncAppIds.toSet()
+                if (appsToSync.isEmpty()) {
+                    Timber.tag("achievements").d("Skipping reconnect achievement sync sweep — no apps were closed while offline")
                     return@launch
                 }
 
-                Timber.tag("achievements").i("Scanning ${installedApps.size} installed apps for offline achievement sync")
-                for (installedApp in installedApps) {
+                Timber.tag("achievements").i("Syncing offline achievements for ${appsToSync.size} app(s) closed while disconnected")
+                for (appId in appsToSync) {
                     ensureActive()
 
                     if (!isConnected || !isLoggedIn) {
@@ -3543,15 +3547,20 @@ class SteamService : Service(), IChallengeUrlChanged {
                         return@launch
                     }
 
-                    val appId = installedApp.id
                     val gseSaveDirs = getGseSaveDirs(applicationContext, appId).filter { it.isDirectory }
-                    if (gseSaveDirs.isEmpty()) continue
+                    if (gseSaveDirs.isEmpty()) {
+                        pendingSyncAppIds.remove(appId)
+                        continue
+                    }
 
                     val hasOfflineAchievementData = gseSaveDirs.any { dir ->
                         File(dir, "achievements.json").exists() ||
                             (File(dir, "stats").isDirectory && (File(dir, "stats").listFiles()?.isNotEmpty() == true))
                     }
-                    if (!hasOfflineAchievementData) continue
+                    if (!hasOfflineAchievementData) {
+                        pendingSyncAppIds.remove(appId)
+                        continue
+                    }
 
                     if (!tryAcquireSync(appId)) {
                         Timber.tag("achievements").d("Skipping reconnect achievement sync for appId=$appId — sync already in progress")
@@ -3561,6 +3570,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     try {
                         Timber.tag("achievements").i("Attempting reconnect achievement sync for appId=$appId")
                         syncAchievementsFromGoldberg(applicationContext, appId)
+                        pendingSyncAppIds.remove(appId)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
