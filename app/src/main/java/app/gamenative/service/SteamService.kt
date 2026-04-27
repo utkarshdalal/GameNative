@@ -2346,6 +2346,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 } finally {
                     releaseSync(appId)
+                    instance?.removePendingSyncApp(appId)
                 }
             }
         }
@@ -3529,13 +3530,13 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
     }
 
-    private fun addPendingSyncApp(appId: Int) {
+    internal fun addPendingSyncApp(appId: Int) {
         pendingSyncAppIds.add(appId)
         runCatching { pendingSyncFile.writeText(pendingSyncAppIds.joinToString("\n")) }
         Timber.tag("achievements").d("Recording appId=$appId for offline achievement sync on reconnect")
     }
 
-    private fun removePendingSyncApp(appId: Int) {
+    internal fun removePendingSyncApp(appId: Int) {
         pendingSyncAppIds.remove(appId)
         runCatching {
             if (pendingSyncAppIds.isEmpty()) pendingSyncFile.delete()
