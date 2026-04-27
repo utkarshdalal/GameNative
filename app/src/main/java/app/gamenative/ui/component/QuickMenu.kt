@@ -410,7 +410,11 @@ fun QuickMenu(
                                 .focusGroup(),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
+                            val tabScrollState = rememberScrollState()
                             Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .verticalScroll(tabScrollState),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
@@ -451,8 +455,6 @@ fun QuickMenu(
                                     focusRequester = toolsTabFocusRequester,
                                 )
                             }
-
-                            Spacer(modifier = Modifier.weight(1f))
 
                             Box(
                                 modifier = Modifier
