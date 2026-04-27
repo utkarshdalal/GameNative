@@ -1675,7 +1675,8 @@ fun XServerScreen(
                             taskAffinityMask = ProcessHelper.getAffinityMask(container.getCPUList(true)).toShort().toInt()
                             taskAffinityMaskWoW64 = ProcessHelper.getAffinityMask(container.getCPUListWoW64(true)).toShort().toInt()
                             win32AppWorkarounds?.setTaskAffinityMasks(taskAffinityMask, taskAffinityMaskWoW64)
-                            containerVariantChanged = container.containerVariant != imageFs.variant
+                            val appliedVariantSeen = container.getExtra("appliedContainerVariant")
+                            containerVariantChanged = appliedVariantSeen.isNotEmpty() && container.containerVariant != appliedVariantSeen
                             firstTimeBoot = container.getExtra("appVersion").isEmpty() || containerVariantChanged
                             needsUnpacking = container.isNeedsUnpacking
                             Timber.i("First time boot: $firstTimeBoot")
@@ -3019,10 +3020,13 @@ private fun setupXEnvironment(
         }
     }
 
-    if (container.wineVersion.lowercase().contains("proton-10")) {
+    if (container.wineVersion.lowercase().contains("proton-10") && container.getExtra("xaudioDllsExtracted").isEmpty()) {
         try {
-            // Only proton 10 can apply this fix
+            // Only proton 10 can apply this fix; gated so it only runs once per container
+            // (cleared by applyGeneralPatches when it wipes system32 DLLs).
             XAudioUtils.replaceXAudioDllsFromRedistributable(context, guestProgramLauncherComponent, appId)
+            container.putExtra("xaudioDllsExtracted", "1")
+            container.saveData()
         } catch (e: Exception) {
             Timber.tag("replaceXAudioDllsFromRedistributable").w(e, "Failed to replace XAudio DLLs; continuing launch")
         }
@@ -3888,15 +3892,27 @@ private fun setupWineSystemFiles(
     val imageFs = ImageFs.find(context)
     val appVersion = AppUtils.getVersionCode(context).toString()
     val imgVersion = imageFs.getVersion().toString()
-    val wineVersion = imageFs.getArch()
-    val variant = imageFs.getVariant()
     var containerDataChanged = false
 
-    if (!container.getExtra("appVersion").equals(appVersion) || !container.getExtra("imgVersion").equals(imgVersion) ||
-        container.containerVariant != variant || (container.containerVariant == variant && container.wineVersion != wineVersion)) {
+    val appliedContainerVariant = container.getExtra("appliedContainerVariant")
+    val appliedWineVersion = container.getExtra("appliedWineVersion")
+    val markersMissing = appliedContainerVariant.isEmpty() || appliedWineVersion.isEmpty()
+    val firstBoot = container.getExtra("appVersion").isEmpty()
+    val imgVersionChanged = container.getExtra("imgVersion") != imgVersion
+    val variantChanged = !markersMissing && container.containerVariant != appliedContainerVariant
+    val wineVersionChanged = !markersMissing && container.wineVersion != appliedWineVersion
+
+    if (firstBoot || imgVersionChanged || variantChanged || wineVersionChanged) {
         applyGeneralPatches(context, container, imageFs, xServerState.value.wineInfo, containerManager, onExtractFileListener)
+        container.putExtra("appliedContainerVariant", container.containerVariant)
+        container.putExtra("appliedWineVersion", container.wineVersion)
         container.putExtra("appVersion", appVersion)
         container.putExtra("imgVersion", imgVersion)
+        containerDataChanged = true
+    } else if (markersMissing) {
+        // Pre-existing container: trust the on-disk prefix and adopt it as-is.
+        container.putExtra("appliedContainerVariant", container.containerVariant)
+        container.putExtra("appliedWineVersion", container.wineVersion)
         containerDataChanged = true
     }
 
@@ -3917,7 +3933,7 @@ private fun setupWineSystemFiles(
         )
     }
 
-    val needReextract = ALWAYS_REEXTRACT || xServerState.value.dxwrapper != container.getExtra("dxwrapper") || container.wineVersion != wineVersion
+    val needReextract = ALWAYS_REEXTRACT || xServerState.value.dxwrapper != container.getExtra("dxwrapper") || variantChanged || wineVersionChanged
 
     Timber.i("needReextract is " + needReextract)
     Timber.i("xServerState.value.dxwrapper is " + xServerState.value.dxwrapper)
@@ -4028,6 +4044,7 @@ private fun applyGeneralPatches(
     WineUtils.applySystemTweaks(context, wineInfo)
     container.putExtra("graphicsDriver", null)
     container.putExtra("desktopTheme", null)
+    container.putExtra("xaudioDllsExtracted", null)
     WinlatorPrefManager.init(context)
     WinlatorPrefManager.putString("current_box64_version", "")
 }
@@ -4665,5 +4682,4 @@ private fun setImagefsContainerVariant(context: Context, container: Container) {
     val imageFs = ImageFs.find(context)
     val containerVariant = container.containerVariant
     imageFs.createVariantFile(containerVariant)
-    imageFs.createArchFile(container.wineVersion)
 }
