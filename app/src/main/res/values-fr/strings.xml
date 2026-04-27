@@ -757,7 +757,7 @@
     <string name="gesture_threshold">Seuil du geste (px)</string>
     <string name="gesture_threshold_subtitle">Mouvement requis pour verrouiller le type de geste (plus bas = plus réactif)</string>
     <string name="gesture_show_click_highlight">Afficher la mise en évidence du clic</string>
-    <string name="gesture_show_click_highlight_subtitle">Afficher un cercle à l'emplacement du toucher</string>
+    <string name="gesture_show_click_highlight_subtitle">Afficher un cercle à l\'emplacement du toucher</string>
     <string name="gesture_show_debug_overlay">Afficher la superposition de débogage des gestes</string>
     <string name="gesture_show_debug_overlay_subtitle">Afficher des libellés de geste temporaires en haut au centre</string>
 
