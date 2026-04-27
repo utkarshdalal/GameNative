@@ -3336,8 +3336,10 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         isConnected = false
 
-        val event = SteamEvent.Disconnected(isTerminal = false)
-        PluviaApp.events.emit(event)
+        if (!_isHandlingConflict.get()) {
+            val event = SteamEvent.Disconnected(isTerminal = false)
+            PluviaApp.events.emit(event)
+        }
 
         steamClient!!.disconnect()
     }
@@ -3378,8 +3380,10 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             Timber.w("Attempting to reconnect (retry $retryAttempt) after ${backoffMs}ms")
 
-            val event = SteamEvent.RemotelyDisconnected
-            PluviaApp.events.emit(event)
+            if (!_isHandlingConflict.get()) {
+                val event = SteamEvent.RemotelyDisconnected
+                PluviaApp.events.emit(event)
+            }
 
             reconnectJob = scope.launch {
                 delay(backoffMs)
