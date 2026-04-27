@@ -942,7 +942,7 @@ class GOGDownloadManager @Inject constructor(
             downloadInfo.setActive(true)
 
             // Start downloads by launching a separate coroutine to emit chunks
-            scope.launch {
+            val preallocJob: Job = scope.launch {
                 if (!downloadInfo.isActive()) {
                     Timber.tag("GOG").w("Download cancelled by user")
                     return@launch
@@ -981,6 +981,8 @@ class GOGDownloadManager @Inject constructor(
                     }
                 }
             }
+
+            preallocJob.join()
 
             // Wait for all pending chunks to complete processing
             var lastPendingChunks = pendingChunks.get()
