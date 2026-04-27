@@ -282,7 +282,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     private val _isPlayingBlocked = MutableStateFlow(false)
     val isPlayingBlocked = _isPlayingBlocked.asStateFlow()
-    private val _isHandlingConflict = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val _isHandlingConflict = AtomicBoolean(false)
 
     // Cache in-memory the local persona state.
     private val _localPersona = MutableStateFlow(
@@ -417,9 +417,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             get() = instance?.steamClient?.steamID?.isValid == true
         var isWaitingForQRAuth: Boolean = false
             private set
-
-        val isPlayingBlocked: kotlinx.coroutines.flow.StateFlow<Boolean>
-            get() = instance?._isPlayingBlocked ?: MutableStateFlow(false)
 
         fun clearPlayingConflict() {
             instance?._isPlayingBlocked?.value = false
@@ -3542,7 +3539,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             if (PluviaApp.xEnvironment != null) {
                 if (!_isHandlingConflict.getAndSet(true)) {
                     _isPlayingBlocked.value = true
-                    PluviaApp.events.emit(SteamEvent.PlayingBlocked)
+                    val event = SteamEvent.PlayingBlocked
+                    PluviaApp.events.emit(event)
                 }
                 reconnect()
             } else {
@@ -3559,7 +3557,8 @@ class SteamService : Service(), IChallengeUrlChanged {
         Timber.d("onPlayingSessionState called with isPlayingBlocked = " + callback.isPlayingBlocked)
         _isPlayingBlocked.value = callback.isPlayingBlocked
         if (callback.isPlayingBlocked) {
-            PluviaApp.events.emit(SteamEvent.PlayingBlocked)
+            val event = SteamEvent.PlayingBlocked
+            PluviaApp.events.emit(event)
         }
     }
 

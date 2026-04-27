@@ -2254,6 +2254,32 @@ fun XServerScreen(
         )
     }
 
+    if (showPlayingBlockedDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = {},
+            title = { Text(text = stringResource(R.string.main_app_running_title)) },
+            text = { Text(text = stringResource(R.string.main_app_running_message, context.getString(R.string.main_app_running_unknown_game))) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPlayingBlockedDialog = false
+                    scope.launch {
+                        SteamService.kickPlayingSession(onlyGame = true)
+                    }
+                }) {
+                    Text(text = stringResource(R.string.main_play_anyway))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showPlayingBlockedDialog = false
+                    exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+                }) {
+                    Text(text = stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
     // Physical Controller Config Dialog
     if (showPhysicalControllerDialog) {
         // Get profile from container settings, not from InputControlsView
@@ -2342,32 +2368,6 @@ fun XServerScreen(
                 }
             }
         }
-    }
-
-    if (showPlayingBlockedDialog) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = {},
-            title = { Text(text = stringResource(R.string.main_app_running_title)) },
-            text = { Text(text = stringResource(R.string.main_app_running_message, context.getString(R.string.main_another_device))) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showPlayingBlockedDialog = false
-                    scope.launch {
-                        app.gamenative.service.SteamService.kickPlayingSession(onlyGame = true)
-                    }
-                }) {
-                    Text(text = stringResource(R.string.main_play_anyway))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showPlayingBlockedDialog = false
-                    exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
-                }) {
-                    Text(text = stringResource(R.string.cancel))
-                }
-            },
-        )
     }
 
     // var ranSetup by rememberSaveable { mutableStateOf(false) }
