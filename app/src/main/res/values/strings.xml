@@ -1065,6 +1065,7 @@
     <string name="main_app_running_message">You are logged in on another device already playing %s. \nYou can still play this game, but that will disconnect the other session from Steam.</string>
     <string name="main_app_running_other_device">You are logged in on another device (%1$s) already playing %2$s (%3$s), and that save is not yet in the cloud. \nYou can still play this game, but that will disconnect the other session from Steam and may create a save conflict when that session progress is synced</string>
     <string name="main_play_anyway">Play anyway</string>
+    <string name="main_another_device">another device</string>
 
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Save Conflict</string>

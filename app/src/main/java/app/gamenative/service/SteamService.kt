@@ -282,6 +282,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     private val _isPlayingBlocked = MutableStateFlow(false)
     val isPlayingBlocked = _isPlayingBlocked.asStateFlow()
+    private val _isHandlingConflict = java.util.concurrent.atomic.AtomicBoolean(false)
 
     // Cache in-memory the local persona state.
     private val _localPersona = MutableStateFlow(
@@ -416,6 +417,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             get() = instance?.steamClient?.steamID?.isValid == true
         var isWaitingForQRAuth: Boolean = false
             private set
+
+        val isPlayingBlocked: kotlinx.coroutines.flow.StateFlow<Boolean>
+            get() = instance?._isPlayingBlocked ?: MutableStateFlow(false)
+
+        fun clearPlayingConflict() {
+            instance?._isPlayingBlocked?.value = false
+            instance?._isHandlingConflict?.set(false)
+        }
 
         private val serverListPath: String
             get() = Paths.get(DownloadService.baseCacheDirPath, "server_list.bin").pathString
@@ -3526,10 +3535,17 @@ class SteamService : Service(), IChallengeUrlChanged {
         } else if (callback.result == EResult.LoggedInElsewhere) {
             // received when a client runs an app and wants to forcibly close another
             // client running an app
-            val event = SteamEvent.ForceCloseApp
-            PluviaApp.events.emit(event)
-
-            reconnect()
+            if (PluviaApp.xEnvironment != null) {
+                if (!_isHandlingConflict.getAndSet(true)) {
+                    _isPlayingBlocked.value = true
+                    PluviaApp.events.emit(SteamEvent.PlayingBlocked)
+                }
+                reconnect()
+            } else {
+                val event = SteamEvent.ForceCloseApp
+                PluviaApp.events.emit(event)
+                reconnect()
+            }
         } else {
             reconnect()
         }
@@ -3538,6 +3554,9 @@ class SteamService : Service(), IChallengeUrlChanged {
     private fun onPlayingSessionState(callback: PlayingSessionStateCallback) {
         Timber.d("onPlayingSessionState called with isPlayingBlocked = " + callback.isPlayingBlocked)
         _isPlayingBlocked.value = callback.isPlayingBlocked
+        if (callback.isPlayingBlocked) {
+            PluviaApp.events.emit(SteamEvent.PlayingBlocked)
+        }
     }
 
     @OptIn(ExperimentalStdlibApi::class)

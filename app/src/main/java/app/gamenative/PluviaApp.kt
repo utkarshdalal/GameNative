@@ -234,6 +234,7 @@ class PluviaApp : SplitCompatApplication() {
             touchpadView = null
             achievementWatcher = null
             SteamService.keepAlive = false
+            SteamService.clearPlayingConflict()
             clearActiveSuspendState()
         }
 
