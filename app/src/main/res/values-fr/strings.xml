@@ -735,6 +735,31 @@
     <string name="gesture_zoom_page_up_down">Page haut/bas</string>
     <string name="gesture_action_label">Action</string>
     <string name="gesture_delay_label">Délai</string>
+    <string name="gesture_section_single_finger">Un doigt</string>
+    <string name="gesture_section_two_finger">Deux doigts</string>
+    <string name="gesture_section_three_finger">Trois doigts</string>
+    <string name="gesture_section_other">Autre</string>
+    <string name="gesture_pan_left_click_drag">Glisser avec clic gauche</string>
+    <string name="gesture_pan_right_click_drag">Glisser avec clic droit</string>
+    <string name="gesture_action_show_keyboard">Afficher le clavier</string>
+    <string name="gesture_header_special">Spécial</string>
+    <string name="gesture_header_mouse">Souris</string>
+    <string name="gesture_header_common_game">Touches de jeu courantes</string>
+    <string name="gesture_header_letters">Lettres A-Z</string>
+    <string name="gesture_header_numbers">Nombres 0-9</string>
+    <string name="gesture_header_function_keys">Touches de fonction</string>
+    <string name="gesture_two_finger_hold">Maintien à deux doigts</string>
+    <string name="gesture_two_finger_hold_delay">Délai du maintien à deux doigts (ms)</string>
+    <string name="gesture_three_finger_tap">Appui à trois doigts</string>
+    <string name="gesture_three_finger_drag">Glisser à trois doigts</string>
+    <string name="gesture_three_finger_hold">Maintien à trois doigts</string>
+    <string name="gesture_three_finger_hold_delay">Délai du maintien à trois doigts (ms)</string>
+    <string name="gesture_threshold">Seuil du geste (px)</string>
+    <string name="gesture_threshold_subtitle">Mouvement requis pour verrouiller le type de geste (plus bas = plus réactif)</string>
+    <string name="gesture_show_click_highlight">Afficher la mise en évidence du clic</string>
+    <string name="gesture_show_click_highlight_subtitle">Afficher un cercle à l'emplacement du toucher</string>
+    <string name="gesture_show_debug_overlay">Afficher la superposition de débogage des gestes</string>
+    <string name="gesture_show_debug_overlay_subtitle">Afficher des libellés de geste temporaires en haut au centre</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Paramètres des joysticks dynamiques</string>

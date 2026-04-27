@@ -784,6 +784,31 @@
     <string name="gesture_zoom_page_up_down">Re Pág / Av Pág</string>
     <string name="gesture_action_label">Acción</string>
     <string name="gesture_delay_label">Retraso</string>
+    <string name="gesture_section_single_finger">Un dedo</string>
+    <string name="gesture_section_two_finger">Dos dedos</string>
+    <string name="gesture_section_three_finger">Tres dedos</string>
+    <string name="gesture_section_other">Otro</string>
+    <string name="gesture_pan_left_click_drag">Arrastrar con clic izquierdo</string>
+    <string name="gesture_pan_right_click_drag">Arrastrar con clic derecho</string>
+    <string name="gesture_action_show_keyboard">Mostrar teclado</string>
+    <string name="gesture_header_special">Especial</string>
+    <string name="gesture_header_mouse">Ratón</string>
+    <string name="gesture_header_common_game">Teclas comunes de juego</string>
+    <string name="gesture_header_letters">Letras A-Z</string>
+    <string name="gesture_header_numbers">Números 0-9</string>
+    <string name="gesture_header_function_keys">Teclas de función</string>
+    <string name="gesture_two_finger_hold">Mantener con dos dedos</string>
+    <string name="gesture_two_finger_hold_delay">Retardo de mantener con dos dedos (ms)</string>
+    <string name="gesture_three_finger_tap">Toque con tres dedos</string>
+    <string name="gesture_three_finger_drag">Arrastre con tres dedos</string>
+    <string name="gesture_three_finger_hold">Mantener con tres dedos</string>
+    <string name="gesture_three_finger_hold_delay">Retardo de mantener con tres dedos (ms)</string>
+    <string name="gesture_threshold">Umbral de gesto (px)</string>
+    <string name="gesture_threshold_subtitle">Movimiento necesario para bloquear el tipo de gesto (menor = más sensible)</string>
+    <string name="gesture_show_click_highlight">Mostrar resaltado de clic</string>
+    <string name="gesture_show_click_highlight_subtitle">Mostrar un círculo en la ubicación del toque</string>
+    <string name="gesture_show_debug_overlay">Mostrar superposición de depuración de gestos</string>
+    <string name="gesture_show_debug_overlay_subtitle">Mostrar etiquetas temporales de gestos en la parte superior central</string>
 
     <string name="external_display_input">Entrada de pantalla externa</string>
     <string name="external_display_input_subtitle">Elige el comportamiento al conectar una pantalla de presentación.</string>

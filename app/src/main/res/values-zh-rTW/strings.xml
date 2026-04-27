@@ -732,6 +732,31 @@
     <string name="gesture_zoom_page_up_down">Page Up/Down</string>
     <string name="gesture_action_label">操作</string>
     <string name="gesture_delay_label">延遲</string>
+    <string name="gesture_section_single_finger">單指</string>
+    <string name="gesture_section_two_finger">雙指</string>
+    <string name="gesture_section_three_finger">三指</string>
+    <string name="gesture_section_other">其他</string>
+    <string name="gesture_pan_left_click_drag">左鍵拖曳</string>
+    <string name="gesture_pan_right_click_drag">右鍵拖曳</string>
+    <string name="gesture_action_show_keyboard">顯示鍵盤</string>
+    <string name="gesture_header_special">特殊</string>
+    <string name="gesture_header_mouse">滑鼠</string>
+    <string name="gesture_header_common_game">常用遊戲按鍵</string>
+    <string name="gesture_header_letters">字母 A-Z</string>
+    <string name="gesture_header_numbers">數字 0-9</string>
+    <string name="gesture_header_function_keys">功能鍵</string>
+    <string name="gesture_two_finger_hold">雙指長按</string>
+    <string name="gesture_two_finger_hold_delay">雙指長按延遲 (ms)</string>
+    <string name="gesture_three_finger_tap">三指點按</string>
+    <string name="gesture_three_finger_drag">三指拖曳</string>
+    <string name="gesture_three_finger_hold">三指長按</string>
+    <string name="gesture_three_finger_hold_delay">三指長按延遲 (ms)</string>
+    <string name="gesture_threshold">手勢閾值 (px)</string>
+    <string name="gesture_threshold_subtitle">鎖定手勢類型所需的移動距離（越低越靈敏）</string>
+    <string name="gesture_show_click_highlight">顯示點擊高亮</string>
+    <string name="gesture_show_click_highlight_subtitle">在點擊位置顯示圓圈</string>
+    <string name="gesture_show_debug_overlay">顯示手勢除錯疊加層</string>
+    <string name="gesture_show_debug_overlay_subtitle">在頂部中央顯示臨時手勢標籤</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">動態搖桿設定</string>

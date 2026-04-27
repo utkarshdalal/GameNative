@@ -739,6 +739,31 @@
     <string name="gesture_zoom_page_up_down">Pag su/giù</string>
     <string name="gesture_action_label">Azione</string>
     <string name="gesture_delay_label">Ritardo</string>
+    <string name="gesture_section_single_finger">Un dito</string>
+    <string name="gesture_section_two_finger">Due dita</string>
+    <string name="gesture_section_three_finger">Tre dita</string>
+    <string name="gesture_section_other">Altro</string>
+    <string name="gesture_pan_left_click_drag">Trascina con clic sinistro</string>
+    <string name="gesture_pan_right_click_drag">Trascina con clic destro</string>
+    <string name="gesture_action_show_keyboard">Mostra tastiera</string>
+    <string name="gesture_header_special">Speciale</string>
+    <string name="gesture_header_mouse">Mouse</string>
+    <string name="gesture_header_common_game">Tasti di gioco comuni</string>
+    <string name="gesture_header_letters">Lettere A-Z</string>
+    <string name="gesture_header_numbers">Numeri 0-9</string>
+    <string name="gesture_header_function_keys">Tasti funzione</string>
+    <string name="gesture_two_finger_hold">Pressione con due dita</string>
+    <string name="gesture_two_finger_hold_delay">Ritardo pressione con due dita (ms)</string>
+    <string name="gesture_three_finger_tap">Tocco con tre dita</string>
+    <string name="gesture_three_finger_drag">Trascinamento con tre dita</string>
+    <string name="gesture_three_finger_hold">Pressione con tre dita</string>
+    <string name="gesture_three_finger_hold_delay">Ritardo pressione con tre dita (ms)</string>
+    <string name="gesture_threshold">Soglia gesto (px)</string>
+    <string name="gesture_threshold_subtitle">Movimento necessario per bloccare il tipo di gesto (più basso = più reattivo)</string>
+    <string name="gesture_show_click_highlight">Mostra evidenziazione clic</string>
+    <string name="gesture_show_click_highlight_subtitle">Mostra un cerchio nella posizione del tocco</string>
+    <string name="gesture_show_debug_overlay">Mostra overlay debug gesture</string>
+    <string name="gesture_show_debug_overlay_subtitle">Mostra etichette temporanee dei gesti in alto al centro</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Impostazioni joystick dinamici</string>

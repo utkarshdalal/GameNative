@@ -709,6 +709,31 @@
     <string name="gesture_zoom_page_up_down">Bild auf/ab</string>
     <string name="gesture_action_label">Aktion</string>
     <string name="gesture_delay_label">Verzögerung</string>
+    <string name="gesture_section_single_finger">Ein Finger</string>
+    <string name="gesture_section_two_finger">Zwei Finger</string>
+    <string name="gesture_section_three_finger">Drei Finger</string>
+    <string name="gesture_section_other">Andere</string>
+    <string name="gesture_pan_left_click_drag">Linksklick-Ziehen</string>
+    <string name="gesture_pan_right_click_drag">Rechtsklick-Ziehen</string>
+    <string name="gesture_action_show_keyboard">Tastatur anzeigen</string>
+    <string name="gesture_header_special">Spezial</string>
+    <string name="gesture_header_mouse">Maus</string>
+    <string name="gesture_header_common_game">Häufige Spieltasten</string>
+    <string name="gesture_header_letters">Buchstaben A-Z</string>
+    <string name="gesture_header_numbers">Zahlen 0-9</string>
+    <string name="gesture_header_function_keys">Funktionstasten</string>
+    <string name="gesture_two_finger_hold">Halten mit zwei Fingern</string>
+    <string name="gesture_two_finger_hold_delay">Verzögerung für Halten mit zwei Fingern (ms)</string>
+    <string name="gesture_three_finger_tap">Tippen mit drei Fingern</string>
+    <string name="gesture_three_finger_drag">Ziehen mit drei Fingern</string>
+    <string name="gesture_three_finger_hold">Halten mit drei Fingern</string>
+    <string name="gesture_three_finger_hold_delay">Verzögerung für Halten mit drei Fingern (ms)</string>
+    <string name="gesture_threshold">Gestenschwelle (px)</string>
+    <string name="gesture_threshold_subtitle">Bewegung zum Sperren des Gestentyps (niedriger = reaktionsschneller)</string>
+    <string name="gesture_show_click_highlight">Klickhervorhebung anzeigen</string>
+    <string name="gesture_show_click_highlight_subtitle">Kreis an Tipp-Position anzeigen</string>
+    <string name="gesture_show_debug_overlay">Gesten-Debug-Overlay anzeigen</string>
+    <string name="gesture_show_debug_overlay_subtitle">Temporäre Gestenbeschriftungen oben mittig anzeigen</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Dynamische Joystick-Einstellungen</string>

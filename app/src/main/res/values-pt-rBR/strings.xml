@@ -561,6 +561,31 @@
     <string name="gesture_zoom_page_up_down">PgUp/PgDn</string>
     <string name="gesture_action_label">Ação</string>
     <string name="gesture_delay_label">Atraso</string>
+    <string name="gesture_section_single_finger">Um dedo</string>
+    <string name="gesture_section_two_finger">Dois dedos</string>
+    <string name="gesture_section_three_finger">Três dedos</string>
+    <string name="gesture_section_other">Outro</string>
+    <string name="gesture_pan_left_click_drag">Arrastar com clique esquerdo</string>
+    <string name="gesture_pan_right_click_drag">Arrastar com clique direito</string>
+    <string name="gesture_action_show_keyboard">Mostrar teclado</string>
+    <string name="gesture_header_special">Especial</string>
+    <string name="gesture_header_mouse">Mouse</string>
+    <string name="gesture_header_common_game">Teclas comuns de jogo</string>
+    <string name="gesture_header_letters">Letras A-Z</string>
+    <string name="gesture_header_numbers">Números 0-9</string>
+    <string name="gesture_header_function_keys">Teclas de função</string>
+    <string name="gesture_two_finger_hold">Segurar com dois dedos</string>
+    <string name="gesture_two_finger_hold_delay">Atraso ao segurar com dois dedos (ms)</string>
+    <string name="gesture_three_finger_tap">Toque com três dedos</string>
+    <string name="gesture_three_finger_drag">Arrastar com três dedos</string>
+    <string name="gesture_three_finger_hold">Segurar com três dedos</string>
+    <string name="gesture_three_finger_hold_delay">Atraso ao segurar com três dedos (ms)</string>
+    <string name="gesture_threshold">Limite do gesto (px)</string>
+    <string name="gesture_threshold_subtitle">Movimento necessário para travar o tipo de gesto (menor = mais responsivo)</string>
+    <string name="gesture_show_click_highlight">Mostrar destaque de clique</string>
+    <string name="gesture_show_click_highlight_subtitle">Mostrar um círculo no local do toque</string>
+    <string name="gesture_show_debug_overlay">Mostrar sobreposição de depuração de gestos</string>
+    <string name="gesture_show_debug_overlay_subtitle">Mostrar rótulos temporários de gestos no topo central</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Configurações de joysticks dinâmicos</string>

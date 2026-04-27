@@ -740,6 +740,31 @@
 	<string name="gesture_zoom_page_up_down">PgSus/PgJos</string>
 	<string name="gesture_action_label">Acțiune</string>
 	<string name="gesture_delay_label">Întârziere</string>
+    <string name="gesture_section_single_finger">Un deget</string>
+    <string name="gesture_section_two_finger">Două degete</string>
+    <string name="gesture_section_three_finger">Trei degete</string>
+    <string name="gesture_section_other">Altul</string>
+    <string name="gesture_pan_left_click_drag">Tragere cu clic stânga</string>
+    <string name="gesture_pan_right_click_drag">Tragere cu clic dreapta</string>
+    <string name="gesture_action_show_keyboard">Afișează tastatura</string>
+    <string name="gesture_header_special">Special</string>
+    <string name="gesture_header_mouse">Mouse</string>
+    <string name="gesture_header_common_game">Taste comune de joc</string>
+    <string name="gesture_header_letters">Litere A-Z</string>
+    <string name="gesture_header_numbers">Numere 0-9</string>
+    <string name="gesture_header_function_keys">Taste funcționale</string>
+    <string name="gesture_two_finger_hold">Menținere cu două degete</string>
+    <string name="gesture_two_finger_hold_delay">Întârziere menținere cu două degete (ms)</string>
+    <string name="gesture_three_finger_tap">Atingere cu trei degete</string>
+    <string name="gesture_three_finger_drag">Tragere cu trei degete</string>
+    <string name="gesture_three_finger_hold">Menținere cu trei degete</string>
+    <string name="gesture_three_finger_hold_delay">Întârziere menținere cu trei degete (ms)</string>
+    <string name="gesture_threshold">Prag gest (px)</string>
+    <string name="gesture_threshold_subtitle">Mișcare necesară pentru a bloca tipul de gest (mai mic = mai receptiv)</string>
+    <string name="gesture_show_click_highlight">Afișează evidențierea clicului</string>
+    <string name="gesture_show_click_highlight_subtitle">Afișează un cerc la locația atingerii</string>
+    <string name="gesture_show_debug_overlay">Afișează suprapunerea de depanare a gesturilor</string>
+    <string name="gesture_show_debug_overlay_subtitle">Afișează etichete temporare de gesturi în partea de sus, centru</string>
 
 	<!-- Shooter Mode -->
 	<string name="shooter_mode_settings">Setări joystick-uri dinamice</string>

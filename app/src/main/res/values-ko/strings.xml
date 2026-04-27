@@ -749,6 +749,31 @@
     <string name="gesture_zoom_page_up_down">페이지 위/아래</string>
     <string name="gesture_action_label">동작</string>
     <string name="gesture_delay_label">지연</string>
+    <string name="gesture_section_single_finger">한 손가락</string>
+    <string name="gesture_section_two_finger">두 손가락</string>
+    <string name="gesture_section_three_finger">세 손가락</string>
+    <string name="gesture_section_other">기타</string>
+    <string name="gesture_pan_left_click_drag">왼쪽 클릭 드래그</string>
+    <string name="gesture_pan_right_click_drag">오른쪽 클릭 드래그</string>
+    <string name="gesture_action_show_keyboard">키보드 표시</string>
+    <string name="gesture_header_special">특수</string>
+    <string name="gesture_header_mouse">마우스</string>
+    <string name="gesture_header_common_game">일반 게임 키</string>
+    <string name="gesture_header_letters">문자 A-Z</string>
+    <string name="gesture_header_numbers">숫자 0-9</string>
+    <string name="gesture_header_function_keys">기능 키</string>
+    <string name="gesture_two_finger_hold">두 손가락 길게 누르기</string>
+    <string name="gesture_two_finger_hold_delay">두 손가락 길게 누르기 지연 (ms)</string>
+    <string name="gesture_three_finger_tap">세 손가락 탭</string>
+    <string name="gesture_three_finger_drag">세 손가락 드래그</string>
+    <string name="gesture_three_finger_hold">세 손가락 길게 누르기</string>
+    <string name="gesture_three_finger_hold_delay">세 손가락 길게 누르기 지연 (ms)</string>
+    <string name="gesture_threshold">제스처 임계값 (px)</string>
+    <string name="gesture_threshold_subtitle">제스처 유형을 고정하는 데 필요한 이동 거리 (낮을수록 더 반응이 빠름)</string>
+    <string name="gesture_show_click_highlight">클릭 강조 표시</string>
+    <string name="gesture_show_click_highlight_subtitle">탭 위치에 원 표시</string>
+    <string name="gesture_show_debug_overlay">제스처 디버그 오버레이 표시</string>
+    <string name="gesture_show_debug_overlay_subtitle">상단 중앙에 임시 제스처 레이블 표시</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">동적 조이스틱 설정</string>
