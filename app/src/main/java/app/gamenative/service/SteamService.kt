@@ -262,7 +262,8 @@ class SteamService : Service(), IChallengeUrlChanged {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var reconnectJob: Job? = null
     private var offlineAchievementSyncJob: Job? = null
-    private val pendingSyncAppIds: MutableSet<Int> = java.util.Collections.synchronizedSet(mutableSetOf())
+    private val pendingSyncAppIds: MutableSet<Int> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+    private val pendingSyncFile by lazy { File(applicationContext.filesDir, "pending_achievement_sync.txt") }
 
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = {
         Companion.stop()
@@ -2291,8 +2292,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         suspend fun closeApp(context: Context, appId: Int, isOffline: Boolean, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
             async {
                 if (isOffline || !isConnected) {
-                    instance?.pendingSyncAppIds?.add(appId)
-                    Timber.tag("achievements").d("Recording appId=$appId for offline achievement sync on reconnect")
+                    instance?.addPendingSyncApp(appId)
                     return@async
                 }
 
@@ -3064,6 +3064,13 @@ class SteamService : Service(), IChallengeUrlChanged {
         super.onCreate()
         instance = this
 
+        // Restore any app IDs that were pending achievement sync before the service was killed
+        pendingSyncAppIds.addAll(
+            runCatching {
+                pendingSyncFile.readLines().mapNotNull { it.trim().toIntOrNull() }
+            }.getOrDefault(emptyList())
+        )
+
         // JavaSteam logger CME hot-fix
         runCatching {
             val clazz = Class.forName("in.dragonbra.javasteam.util.log.LogManager")
@@ -3320,6 +3327,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         offlineAchievementSyncJob?.cancel()
         offlineAchievementSyncJob = null
         pendingSyncAppIds.clear()
+        runCatching { pendingSyncFile.delete() }
         isStopping = false
         retryAttempt = 0
 
@@ -3521,6 +3529,20 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
     }
 
+    private fun addPendingSyncApp(appId: Int) {
+        pendingSyncAppIds.add(appId)
+        runCatching { pendingSyncFile.writeText(pendingSyncAppIds.joinToString("\n")) }
+        Timber.tag("achievements").d("Recording appId=$appId for offline achievement sync on reconnect")
+    }
+
+    private fun removePendingSyncApp(appId: Int) {
+        pendingSyncAppIds.remove(appId)
+        runCatching {
+            if (pendingSyncAppIds.isEmpty()) pendingSyncFile.delete()
+            else pendingSyncFile.writeText(pendingSyncAppIds.joinToString("\n"))
+        }
+    }
+
     private fun syncPendingOfflineAchievements() {
         offlineAchievementSyncJob?.cancel()
         offlineAchievementSyncJob = scope.launch {
@@ -3549,7 +3571,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                     val gseSaveDirs = getGseSaveDirs(applicationContext, appId).filter { it.isDirectory }
                     if (gseSaveDirs.isEmpty()) {
-                        pendingSyncAppIds.remove(appId)
+                        removePendingSyncApp(appId)
                         continue
                     }
 
@@ -3558,7 +3580,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             (File(dir, "stats").isDirectory && (File(dir, "stats").listFiles()?.isNotEmpty() == true))
                     }
                     if (!hasOfflineAchievementData) {
-                        pendingSyncAppIds.remove(appId)
+                        removePendingSyncApp(appId)
                         continue
                     }
 
@@ -3570,7 +3592,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     try {
                         Timber.tag("achievements").i("Attempting reconnect achievement sync for appId=$appId")
                         syncAchievementsFromGoldberg(applicationContext, appId)
-                        pendingSyncAppIds.remove(appId)
+                        removePendingSyncApp(appId)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
