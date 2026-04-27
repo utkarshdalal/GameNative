@@ -263,6 +263,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     private var reconnectJob: Job? = null
     private var offlineAchievementSyncJob: Job? = null
     private val pendingSyncAppIds: MutableSet<Int> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+    private val pendingSyncFileLock = Any()
     private val pendingSyncFile by lazy { File(applicationContext.filesDir, "pending_achievement_sync.txt") }
 
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = {
@@ -2636,7 +2637,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         private fun clearUserData(clearCloudSyncState: Boolean = false) {
             PrefManager.clearSteamSessionPreferences()
-
+            instance?.clearPendingSync()
             clearDatabase(clearCloudSyncState = clearCloudSyncState)
         }
 
@@ -3328,7 +3329,6 @@ class SteamService : Service(), IChallengeUrlChanged {
         offlineAchievementSyncJob?.cancel()
         offlineAchievementSyncJob = null
         pendingSyncAppIds.clear()
-        runCatching { pendingSyncFile.delete() }
         isStopping = false
         retryAttempt = 0
 
@@ -3531,16 +3531,27 @@ class SteamService : Service(), IChallengeUrlChanged {
     }
 
     internal fun addPendingSyncApp(appId: Int) {
-        pendingSyncAppIds.add(appId)
-        runCatching { pendingSyncFile.writeText(pendingSyncAppIds.joinToString("\n")) }
+        synchronized(pendingSyncFileLock) {
+            pendingSyncAppIds.add(appId)
+            runCatching { pendingSyncFile.writeText(pendingSyncAppIds.joinToString("\n")) }
+        }
         Timber.tag("achievements").d("Recording appId=$appId for offline achievement sync on reconnect")
     }
 
     internal fun removePendingSyncApp(appId: Int) {
-        pendingSyncAppIds.remove(appId)
-        runCatching {
-            if (pendingSyncAppIds.isEmpty()) pendingSyncFile.delete()
-            else pendingSyncFile.writeText(pendingSyncAppIds.joinToString("\n"))
+        synchronized(pendingSyncFileLock) {
+            pendingSyncAppIds.remove(appId)
+            runCatching {
+                if (pendingSyncAppIds.isEmpty()) pendingSyncFile.delete()
+                else pendingSyncFile.writeText(pendingSyncAppIds.joinToString("\n"))
+            }
+        }
+    }
+
+    internal fun clearPendingSync() {
+        synchronized(pendingSyncFileLock) {
+            pendingSyncAppIds.clear()
+            runCatching { pendingSyncFile.delete() }
         }
     }
 
