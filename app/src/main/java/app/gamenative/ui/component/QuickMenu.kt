@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Mouse
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TouchApp
@@ -252,9 +253,9 @@ fun QuickMenu(
         add(
             QuickMenuItem(
                 id = QuickMenuAction.DISABLE_MOUSE,
-                icon = Icons.Default.TouchApp,
+                icon = Icons.Filled.Mouse,
                 labelResId = R.string.disable_mouse_input,
-                accentColor = PluviaTheme.colors.accentPurple,
+                accentColor = PluviaTheme.colors.accentPink,
             )
         )
         add(
