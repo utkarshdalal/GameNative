@@ -285,6 +285,7 @@ fun SystemMenu(
 
         val onLoggedOut: (SteamEvent.LoggedOut) -> Unit = {
             persona = SteamFriend()
+            showStatusPicker = false
         }
 
         PluviaApp.events.on<SteamEvent.PersonaStateReceived, Unit>(onPersonaStateReceived)
