@@ -2262,9 +2262,9 @@ fun XServerScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showPlayingBlockedDialog = false
+                    SteamService.clearPlayingConflict()
                     scope.launch {
                         SteamService.kickPlayingSession(onlyGame = true)
-                        SteamService.clearPlayingConflict()
                     }
                 }) {
                     Text(text = stringResource(R.string.main_play_anyway))
