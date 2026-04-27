@@ -785,6 +785,95 @@ class KeyValueUtilsTest {
         assertEquals("", patterns[0].uploadPath)
     }
 
+    /**
+     * Danganronpa 2: Goodbye Despair (App ID 413420) has savefiles with `path: /` (a lone
+     * forward-slash) and a Windows rootoverride mapping gameinstall → WinMyDocuments with
+     * addpath="My Games/Danganronpa2/". The "/" is semantically identical to "" (root of this
+     * path type) and must be normalised to empty so that:
+     *   1. The computed local path is "My Games/Danganronpa2" (no spurious trailing slash that
+     *      would break file-system lookups).
+     *   2. uploadPath is "" (not "/"), keeping the cloud key as "%GameInstall%" instead of
+     *      "%GameInstall%/" which would cause a lookup miss in cloudPrefixToLocalPath.
+     */
+    @Test
+    fun danganronpa2SlashPathWithWindowsRootOverrideIsNormalizedToEmpty() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "413420"
+                "ufs"
+                {
+                    "quota"         "1000000000"
+                    "maxnumfiles"   "5"
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "gameinstall"
+                            "path"      "/"
+                            "pattern"   "savedata.vfs"
+                        }
+                        "1"
+                        {
+                            "root"      "gameinstall"
+                            "path"      "/"
+                            "pattern"   "savedata_jp.vfs"
+                        }
+                        "2"
+                        {
+                            "root"      "gameinstall"
+                            "path"      "/"
+                            "pattern"   "savedata_ch.vfs"
+                        }
+                    }
+                    "rootoverrides"
+                    {
+                        "0"
+                        {
+                            "root"          "gameinstall"
+                            "os"            "Windows"
+                            "oscompare"     "="
+                            "useinstead"    "WinMyDocuments"
+                            "addpath"       "My Games/Danganronpa2/"
+                        }
+                        "1"
+                        {
+                            "root"          "gameinstall"
+                            "os"            "MacOS"
+                            "oscompare"     "="
+                            "useinstead"    "MacAppSupport"
+                            "addpath"       "Danganronpa2"
+                        }
+                        "2"
+                        {
+                            "root"          "gameinstall"
+                            "os"            "Linux"
+                            "oscompare"     "="
+                            "useinstead"    "LinuxXdgDataHome"
+                            "addpath"       "/Danganronpa2Save"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val kv = KeyValue.loadFromString(kvString)!!
+        val steamApp = kv.generateSteamApp()
+
+        val patterns = steamApp.ufs.saveFilePatterns
+        assertEquals(3, patterns.size)
+
+        // All three patterns share the same resolved root and path
+        patterns.forEach { p ->
+            assertEquals(PathType.WinMyDocuments, p.root)
+            assertEquals("My Games/Danganronpa2", p.path)  // no trailing slash
+            assertEquals(PathType.GameInstall, p.uploadRoot)
+            assertEquals("", p.uploadPath)  // "/" normalised to "" → cloud key has no trailing slash
+        }
+        assertEquals("savedata.vfs", patterns[0].pattern)
+        assertEquals("savedata_jp.vfs", patterns[1].pattern)
+        assertEquals("savedata_ch.vfs", patterns[2].pattern)
+    }
+
     @Test
     fun generateSteamAppStampsCurrentUfsParseVersion() {
         val kvString = """

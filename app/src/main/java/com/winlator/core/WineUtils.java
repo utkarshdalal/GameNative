@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.winlator.container.Container;
+import com.winlator.fexcore.FEXCoreManager;
 import com.winlator.xenvironment.ImageFs;
 
 import org.json.JSONArray;
@@ -170,6 +171,11 @@ public abstract class WineUtils {
             for (String name : xinputLibs) registryEditor.setStringValue(dllOverridesKey, name, "builtin,native");
             if (wineInfo.isArm64EC()) for (String name : opengLibs) registryEditor.setStringValue(dllOverridesKey, name, "native,builtin");
 
+            // Force Rockstar Social Club helper onto Wine's builtin D3D stack
+            final String socialClubDllOverridesKey = "Software\\Wine\\AppDefaults\\SocialClubHelper.exe\\DllOverrides";
+            final String[] socialClubBuiltinLibs = {"dxgi", "d3d9", "d3d10", "d3d10_1", "d3d10core", "d3d11"};
+            for (String name : socialClubBuiltinLibs) registryEditor.setStringValue(socialClubDllOverridesKey, name, "builtin");
+
             registryEditor.removeKey("Software\\Winlator\\WFM\\ContextMenu\\7-Zip");
             registryEditor.setStringValue("Software\\Winlator\\WFM\\ContextMenu\\7-Zip", "Open Archive", "Z:\\opt\\apps\\7-Zip\\7zFM.exe \"%FILE%\"");
             registryEditor.setStringValue("Software\\Winlator\\WFM\\ContextMenu\\7-Zip", "Extract Here", "Z:\\opt\\apps\\7-Zip\\7zG.exe x \"%FILE%\" -r -o\"%DIR%\" -y");
@@ -188,6 +194,11 @@ public abstract class WineUtils {
         for (String dlname : dlnames) {
             FileUtils.copy(new File(wineSysWoW64Dir, dlname), new File(win64 ? containerSysWoW64Dir : containerSystem32Dir, dlname));
             if (win64) FileUtils.copy(new File(wineSystem32Dir, dlname), new File(containerSystem32Dir, dlname));
+        }
+
+        // FEX AppConfig presets only apply when running Arm64X (arm64ec) Wine under FEX
+        if (wineInfo.isArm64EC()) {
+            FEXCoreManager.ensureAppConfigOverrides(context);
         }
     }
 

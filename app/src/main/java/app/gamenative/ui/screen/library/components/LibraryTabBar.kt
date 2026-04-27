@@ -198,9 +198,9 @@ private fun CompactLibraryTabBar(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .horizontalScroll(scrollState)
                     .clip(RoundedCornerShape(20.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .horizontalScroll(scrollState)
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,

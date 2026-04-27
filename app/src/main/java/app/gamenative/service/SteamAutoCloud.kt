@@ -131,6 +131,7 @@ object SteamAutoCloud {
                 val cloudKey = "%${p.uploadRoot.name}%${p.uploadPath}"
                     .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
                     .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+                    .trimEnd('/')  // keep consistent with the trimEnd done at lookup time
                 cloudKey to Paths.get(prefixToPath(p.root.name), p.substitutedPath).pathString
             }
 
@@ -205,10 +206,17 @@ object SteamAutoCloud {
             val gameInstallPrefix = "%${PathType.GameInstall.name}%"
             if (file.filename.startsWith(gameInstallPrefix)) {
                 // Steam API sometimes returns prefix="" and filename="%GameInstall%save0.dat" instead of splitting correctly.
-                return@getFullFilePath Paths.get(
-                    prefixToPath(PathType.GameInstall.name),
-                    file.filename.removePrefix(gameInstallPrefix)
-                )
+                // Strip the embedded prefix (and any leading slash) to get the bare filename.
+                val stripped = file.filename.removePrefix(gameInstallPrefix).trimStart('/')
+                // If a Windows rootoverride remaps GameInstall → another directory (e.g.
+                // Danganronpa 2: WinMyDocuments/My Games/Danganronpa2/), download there instead
+                // of the raw game-install folder so the game can find its saves.
+                val remapped = cloudPrefixToLocalPath[gameInstallPrefix]
+                return@getFullFilePath if (remapped != null) {
+                    Paths.get(remapped, stripped)
+                } else {
+                    Paths.get(prefixToPath(PathType.GameInstall.name), stripped)
+                }
             }
 
             val convertedPrefixes = convertPrefixes(fileList)

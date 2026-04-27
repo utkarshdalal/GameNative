@@ -1,0 +1,51 @@
+413420: Danganronpa 2: Goodbye Despair
+	appinfo
+		appid: 413420
+		common
+			name: Danganronpa 2: Goodbye Despair
+			type: Game
+			oslist: windows
+		config
+			contenttype: 3
+			installdir: Danganronpa2
+			launch
+				0
+					executable: Danganronpa2.exe
+					type: default
+					config
+						oslist: windows
+		ufs
+			quota: 1000000000
+			maxnumfiles: 5
+			savefiles
+				0
+					root: gameinstall
+					path: /
+					pattern: savedata.vfs
+				1
+					root: gameinstall
+					path: /
+					pattern: savedata_jp.vfs
+				2
+					root: gameinstall
+					path: /
+					pattern: savedata_ch.vfs
+			rootoverrides
+				0
+					root: gameinstall
+					os: Windows
+					oscompare: =
+					useinstead: WinMyDocuments
+					addpath: My Games/Danganronpa2/
+				1
+					root: gameinstall
+					os: MacOS
+					oscompare: =
+					useinstead: MacAppSupport
+					addpath: Danganronpa2
+				2
+					root: gameinstall
+					os: Linux
+					oscompare: =
+					useinstead: LinuxXdgDataHome
+					addpath: /Danganronpa2Save

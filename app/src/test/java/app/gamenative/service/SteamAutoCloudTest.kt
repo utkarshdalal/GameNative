@@ -1062,6 +1062,119 @@ class SteamAutoCloudTest {
         }
     }
 
+    /**
+     * Danganronpa 2 sends cloud files with the GameInstall placeholder embedded in the filename
+     * (e.g. filename="%GameInstall%savedata.vfs", pathPrefixes=[]) because its PICS UFS entry has
+     * path="/". A Windows rootoverride maps GameInstall → WinMyDocuments + My Games/Danganronpa2/.
+     * The downloaded file must land in the WinMyDocuments subdirectory, NOT the game install dir.
+     */
+    @Test
+    fun downloadWithEmbeddedGameInstallPrefixUsesRootoverrideLocalPath() = runBlocking {
+        saveFilesDir.listFiles()?.forEach { it.delete() }
+        runBlocking {
+            db.appChangeNumbersDao().deleteByAppId(steamAppId)
+            db.appFileChangeListsDao().deleteByAppId(steamAppId)
+            db.appChangeNumbersDao().insert(app.gamenative.data.ChangeNumbers(steamAppId, 0))
+            db.appFileChangeListsDao().insert(steamAppId, emptyList())
+        }
+
+        val docsRoot = File(tempDir, "Documents")
+        val gameInstallRoot = File(tempDir, "GameInstall")
+        val expectedSaveDir = File(docsRoot, "My Games/Danganronpa2")
+        docsRoot.mkdirs()
+        gameInstallRoot.mkdirs()
+        expectedSaveDir.mkdirs()
+
+        // Danganronpa 2 SaveFilePattern after KeyValueUtils fix: "/" path normalised to ""
+        val saveFilePatterns = listOf(
+            SaveFilePattern(
+                root = PathType.WinMyDocuments,
+                path = "My Games/Danganronpa2",
+                pattern = "savedata.vfs",
+                uploadRoot = PathType.GameInstall,
+                uploadPath = "",
+            ),
+        )
+        val danganApp = db.steamAppDao().findApp(steamAppId)!!
+            .copy(ufs = UFS(saveFilePatterns = saveFilePatterns))
+
+        val fileContent = "save file content".toByteArray()
+        val fileHash = CryptoHelper.shaHash(fileContent)
+
+        // Steam sends filename with embedded %GameInstall% prefix (no separate pathPrefixes entry)
+        val mockFile = mock<AppFileInfo>()
+        whenever(mockFile.filename).thenReturn("%GameInstall%savedata.vfs")
+        whenever(mockFile.shaFile).thenReturn(fileHash)
+        whenever(mockFile.pathPrefixIndex).thenReturn(0)
+        whenever(mockFile.timestamp).thenReturn(Date())
+        whenever(mockFile.rawFileSize).thenReturn(fileContent.size)
+
+        val cloudChangeNumber = 5L
+        val mockAppFileChangeList = mock<AppFileChangeList>()
+        whenever(mockAppFileChangeList.currentChangeNumber).thenReturn(cloudChangeNumber)
+        whenever(mockAppFileChangeList.isOnlyDelta).thenReturn(false)
+        whenever(mockAppFileChangeList.appBuildIDHwm).thenReturn(0)
+        whenever(mockAppFileChangeList.pathPrefixes).thenReturn(listOf())
+        whenever(mockAppFileChangeList.machineNames).thenReturn(listOf())
+        whenever(mockAppFileChangeList.files).thenReturn(listOf(mockFile))
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(mockAppFileChangeList)
+
+        val downloadInfo = mock<FileDownloadInfo>()
+        whenever(downloadInfo.urlHost).thenReturn("test.example.com")
+        whenever(downloadInfo.urlPath).thenReturn("/download/savedata.vfs")
+        whenever(downloadInfo.useHttps).thenReturn(true)
+        whenever(downloadInfo.requestHeaders).thenReturn(emptyList())
+        whenever(downloadInfo.fileSize).thenReturn(fileContent.size)
+        whenever(downloadInfo.rawFileSize).thenReturn(fileContent.size)
+
+        every { mockSteamCloud.clientFileDownload(any(), any()) } returns
+            CompletableFuture.completedFuture(downloadInfo)
+        every { mockSteamCloud.clientFileDownload(any(), any(), any(), any(), any()) } returns
+            CompletableFuture.completedFuture(downloadInfo)
+
+        val mockHttpClient = mock<OkHttpClient>()
+        every { Net.httpForParallelDownloads(any()) } returns mockHttpClient
+        val call = mock<Call>()
+        whenever(call.execute()).thenReturn(
+            Response.Builder()
+                .request(okhttp3.Request.Builder().url("https://test.example.com/download/savedata.vfs").build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body(fileContent.toResponseBody(null))
+                .build(),
+        )
+        whenever(mockHttpClient.newCall(any())).thenReturn(call)
+
+        val prefixToPath: (String) -> String = { prefix ->
+            when (prefix) {
+                "WinMyDocuments" -> docsRoot.absolutePath
+                "GameInstall" -> gameInstallRoot.absolutePath
+                "SteamUserData" -> File(tempDir, "userdata").absolutePath
+                else -> tempDir.absolutePath
+            }
+        }
+
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = danganApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = prefixToPath,
+        ).await()
+
+        assertNotNull("Result should not be null", result)
+        assertEquals("Should download 1 file", 1, result!!.filesDownloaded)
+
+        // File must land in WinMyDocuments/My Games/Danganronpa2/, NOT the game install dir
+        val expectedFile = File(expectedSaveDir, "savedata.vfs")
+        assertTrue("savedata.vfs must be in WinMyDocuments/My Games/Danganronpa2/, not game install dir: ${expectedFile.absolutePath}", expectedFile.exists())
+        assertFalse("savedata.vfs must NOT be in game install dir", File(gameInstallRoot, "savedata.vfs").exists())
+    }
+
     @Test
     fun testNoPrefixUpload() = runBlocking {
         val testApp = db.steamAppDao().findApp(steamAppId)!!

@@ -16,6 +16,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.NotificationHelper
+import com.winlator.container.Container
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -507,6 +508,49 @@ class EpicService : Service() {
         }
 
         // ==========================================================================
+        // EOS OVERLAY
+        // ==========================================================================
+
+        /**
+         * Install (or re-install) the EOS overlay into [container].
+         *
+         * Downloads the latest overlay from Epic's CDN, replaces incompatible DLLs
+         * with Wine-compatible stubs, and writes the overlay path to the Wine registry.
+         *
+         * @param context         Android context.
+         * @param container       Target Wine container.
+         * @param forceReinstall  Re-download even if the overlay appears installed.
+         * @param onProgress      Optional callback: (downloadedChunks, totalChunks).
+         */
+        suspend fun installOverlay(
+            context: Context,
+            container: Container,
+            forceReinstall: Boolean = false,
+            onProgress: ((Int, Int) -> Unit)? = null,
+        ): Result<Unit> {
+            val instance = getInstance()
+                ?: return Result.failure(Exception("EpicService not running"))
+            return instance.epicOverlayManager.installOverlay(
+                context, container, forceReinstall, onProgress,
+            )
+        }
+
+        /**
+         * Returns true if the EOS overlay is installed in [container].
+         */
+        fun isOverlayInstalled(container: Container): Boolean =
+            getInstance()?.epicOverlayManager?.isOverlayInstalled(container) ?: false
+
+        /**
+         * Remove the EOS overlay from [container] and clear its registry entry.
+         */
+        suspend fun removeOverlay(context: Context, container: Container): Result<Unit> {
+            val instance = getInstance()
+                ?: return Result.failure(Exception("EpicService not running"))
+            return instance.epicOverlayManager.removeOverlay(context, container)
+        }
+
+        // ==========================================================================
         // CLOUD SAVES HELPERS
         // ==========================================================================
 
@@ -534,6 +578,9 @@ class EpicService : Service() {
 
     @Inject
     lateinit var epicDownloadManager: EpicDownloadManager
+
+    @Inject
+    lateinit var epicOverlayManager: EpicOverlayManager
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 

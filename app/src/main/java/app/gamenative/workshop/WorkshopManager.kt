@@ -2229,7 +2229,7 @@ object WorkshopManager {
         // Starbound has mods/ (HIGH confidence) but workshop items use a
         // _metadata format that doesn't work when symlinked into mods/.
         // Force ISteamUGC path regardless of detection.
-        val forceStandardAppIds = setOf(211820) // Starbound
+        val forceStandardAppIds = setOf(211820,1468810) // Starbound,TaleofImmortal
 
         // When the game's binary contains ISteamUGC / GetItemInstallInfo
         // strings AND there's a HIGH-confidence mod directory, the game
