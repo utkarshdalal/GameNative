@@ -2273,7 +2273,7 @@ fun XServerScreen(
             dismissButton = {
                 TextButton(onClick = {
                     showPlayingBlockedDialog = false
-                    exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+                    exit(xServerView?.getxServer()?.winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
                 }) {
                     Text(text = stringResource(R.string.cancel))
                 }
