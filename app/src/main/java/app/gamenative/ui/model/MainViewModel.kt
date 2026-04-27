@@ -588,7 +588,7 @@ class MainViewModel @Inject constructor(
         if (gameSource == GameSource.STEAM) {
             try {
                 val container = withContext(Dispatchers.IO) {
-                    ContainerUtils.getOrCreateContainer(context, appId)
+                    ContainerUtils.getContainer(context, appId)
                 }
                 SteamService.closeApp(context, gameId, isOffline.value) { prefix ->
                     PathType.from(prefix).toAbsPath(container, gameId, SteamService.userSteamId!!.accountID)
