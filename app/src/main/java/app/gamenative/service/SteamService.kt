@@ -2680,6 +2680,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val username = PrefManager.username
 
             clearUserData(clearCloudSyncState = clearCloudSyncState)
+            instance?._localPersona?.value = SteamFriend()
 
             val event = SteamEvent.LoggedOut(username)
             PluviaApp.events.emit(event)
