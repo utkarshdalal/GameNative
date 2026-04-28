@@ -57,6 +57,9 @@
     <string name="downloads_status_failed">Falhou</string>
     <string name="downloads_status_paused">Pausado</string>
     <string name="downloads_summary">Gerencie downloads ativos e armazenamento em um só lugar</string>
+    <string name="storage_internal">Interno</string>
+    <string name="storage_external">Externo</string>
+    <string name="storage_free_of_total">%1$s: %2$s livre de %3$s</string>
     <string name="container_storage_title">Gerenciador de armazenamento</string>
     <string name="container_storage_subtitle">Mova instalações entre armazenamento interno e externo</string>
     <string name="container_storage_summary">%1$d itens • %2$s</string>

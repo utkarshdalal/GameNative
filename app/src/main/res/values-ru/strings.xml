@@ -1131,6 +1131,9 @@ https://gamenative.app
     <string name="downloads_status_failed">Ошибка</string>
     <string name="downloads_status_paused">Приостановлено</string>
     <string name="downloads_summary">Управляйте активными загрузками и хранилищем в одном месте</string>
+    <string name="storage_internal">Внутренняя</string>
+    <string name="storage_external">Внешняя</string>
+    <string name="storage_free_of_total">%1$s: %2$s свободно из %3$s</string>
     <string name="container_storage_title">Менеджер хранилища</string>
     <string name="container_storage_subtitle">Перемещайте установки между внутренним и внешним хранилищем</string>
     <string name="container_storage_summary">%1$d элементов • %2$s</string>

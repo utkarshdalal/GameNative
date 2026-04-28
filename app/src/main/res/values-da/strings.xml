@@ -61,6 +61,9 @@
     <string name="downloads_status_failed">Mislykket</string>
     <string name="downloads_status_paused">Sat på pause</string>
     <string name="downloads_summary">Administrer aktive downloads og lager ét sted</string>
+    <string name="storage_internal">Intern</string>
+    <string name="storage_external">Ekstern</string>
+    <string name="storage_free_of_total">%1$s: %2$s ledig af %3$s</string>
     <string name="container_storage_title">Lagerstyring</string>
     <string name="container_storage_subtitle">Flyt installationer mellem intern og ekstern lagerplads</string>
     <string name="container_storage_summary">%1$d elementer • %2$s</string>

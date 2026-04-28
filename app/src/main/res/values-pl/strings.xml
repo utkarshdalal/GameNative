@@ -112,6 +112,9 @@
     <string name="downloads_status_failed">Nieudane</string>
     <string name="downloads_status_paused">Wstrzymano</string>
     <string name="downloads_summary">Zarządzaj aktywnymi pobraniami i pamięcią w jednym miejscu</string>
+    <string name="storage_internal">Wewnętrzny</string>
+    <string name="storage_external">Zewnętrzny</string>
+    <string name="storage_free_of_total">%1$s: %2$s wolne z %3$s</string>
     <string name="container_storage_title">Menedżer pamięci</string>
     <string name="container_storage_subtitle">Przenoś instalacje między pamięcią wewnętrzną i zewnętrzną</string>
     <string name="container_storage_summary">%1$d elementów • %2$s</string>

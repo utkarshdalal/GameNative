@@ -103,6 +103,9 @@
     <string name="downloads_status_failed">Eșuat</string>
     <string name="downloads_status_paused">În pauză</string>
     <string name="downloads_summary">Gestionează descărcările active și stocarea într-un singur loc</string>
+    <string name="storage_internal">Intern</string>
+    <string name="storage_external">Extern</string>
+    <string name="storage_free_of_total">%1$s: %2$s liber din %3$s</string>
     <string name="container_storage_title">Manager stocare</string>
     <string name="container_storage_subtitle">Mută instalările între stocarea internă și externă</string>
     <string name="container_storage_summary">%1$d elemente • %2$s</string>

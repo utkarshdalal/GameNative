@@ -921,6 +921,9 @@
     <string name="settings_storage_title">Storage</string>
     <string name="settings_storage_manage_title">Storage Manager</string>
     <string name="settings_storage_manage_subtitle">Review game and container storage in one place</string>
+    <string name="storage_internal">Internal</string>
+    <string name="storage_external">External</string>
+    <string name="storage_free_of_total">%1$s: %2$s free of %3$s</string>
     <string name="container_storage_title">Container &amp; Storage Manager</string>
     <string name="container_storage_subtitle">Review game and container storage, including installed games without containers</string>
     <string name="container_storage_summary">%1$d items • %2$s</string>
