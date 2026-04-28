@@ -988,7 +988,6 @@ object ContainerUtils {
         } else {
             Timber.w("Could not find gameFolderPath for game $appId, skipping drive mapping update")
         }
-
         return container
     }
 

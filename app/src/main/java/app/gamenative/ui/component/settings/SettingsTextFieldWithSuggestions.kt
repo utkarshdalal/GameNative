@@ -68,6 +68,8 @@ fun SettingsTextFieldWithSuggestions(
                     modifier = Modifier
                         .focusRequester(focusRequester)
                         .weight(1f)
+                        // trim on save: keep focus, otherwise hitting save button
+                        // will not record latest changes and call spaces trim
                         .onFocusChanged { focusState ->
                             if (wasFocused && !focusState.isFocused) {
                                 onCommit?.invoke()

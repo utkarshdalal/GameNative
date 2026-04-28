@@ -45,6 +45,8 @@ fun SettingsTextField(
                     modifier = Modifier
                         .focusRequester(focusRequester)
                         .width(76.dp)
+                        // trim on save: keep focus, otherwise hitting save button
+                        // will not record latest changes and call spaces trim
                         .onFocusChanged { focusState ->
                             if (!focusState.isFocused) {
                                 onCommit?.invoke()
