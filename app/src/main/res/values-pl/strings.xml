@@ -727,6 +727,26 @@
     <string name="fexcore_presets_description">Przeglądaj, modyfikuj i twórz presety FEXCore</string>
     <string name="preset_name">Nazwa presetu</string>
 
+    <!-- Controller Presets -->
+    <string name="load_controller_preset">Wczytaj preset</string>
+    <string name="save_controller_preset">Zapisz preset</string>
+    <string name="no_presets_available">Brak dostępnych presetów</string>
+    <string name="factory_preset">Fabryczny</string>
+    <string name="preset_will_overwrite">Preset o tej nazwie już istnieje i zostanie nadpisany</string>
+    <string name="preset_name_already_exists">Preset o tej nazwie już istnieje</string>
+    <string name="save_as_new">Zapisz jako \"%1$s\"</string>
+    <string name="overwrite">Nadpisz</string>
+    <string name="rename">Zmień nazwę</string>
+    <string name="rename_preset">Zmień nazwę presetu</string>
+    <string name="reset_to_defaults">Przywróć ustawienia domyślne</string>
+    <string name="import_bindings">Importuj przypisania</string>
+    <string name="import_bindings_failed">Nie udało się zaimportować przypisań</string>
+    <string name="save_preset_failed">Nie udało się zapisać presetu</string>
+    <string name="export_bindings">Eksportuj przypisania</string>
+    <string name="export_bindings_failed">Nie udało się wyeksportować przypisań</string>
+    <string name="delete_preset_title">Usuń preset</string>
+    <string name="delete_preset_message">Usunąć \"%1$s\"? Tej operacji nie można cofnąć.</string>
+
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Użyj API SDL</string>
     <string name="use_steam_input">Użyj Steam Input</string>
@@ -1546,4 +1566,18 @@
     <string name="filter_five_star_device">Recenzje 5-gwiazdkowe na urządzeniu</string>
     <string name="filter_five_star_gpu">Recenzje 5-gwiazdkowe na GPU</string>
     <string name="filter_proven_gpu">Sprawdzone na twoim GPU</string>
+    <string name="settings_default_controller_preset_title">Domyślny preset kontrolera</string>
+    <string name="settings_default_controller_preset_none">Brak (użyj wbudowanych ustawień)</string>
+    <string name="settings_default_layout_preset_title">Domyślny preset układu</string>
+    <string name="settings_default_layout_preset_none">Brak (użyj wbudowanych ustawień)</string>
+
+    <string name="save_layout_preset">Zapisz układ predefiniowany</string>
+    <string name="load_layout_preset">Wczytaj układ predefiniowany</string>
+    <string name="layout_preset_saved">Układ predefiniowany zapisany</string>
+    <string name="layout_preset_loaded">Układ predefiniowany wczytany</string>
+    <string name="save_layout_preset_failed">Nie udało się zapisać układu predefiniowanego</string>
+    <string name="import_layout_preset">Importuj układ predefiniowany</string>
+    <string name="export_layout_preset">Eksportuj układ predefiniowany</string>
+    <string name="import_layout_preset_failed">Nie udało się zaimportować układu predefiniowanego</string>
+    <string name="export_layout_preset_failed">Nie udało się wyeksportować układu predefiniowanego</string>
 </resources>

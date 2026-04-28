@@ -539,6 +539,26 @@
     <string name="box64_presets">Predefinições do Box64</string>
     <string name="preset_name">Nome da predefinição</string>
 
+    <!-- Controller Presets -->
+    <string name="load_controller_preset">Carregar predefinição</string>
+    <string name="save_controller_preset">Salvar predefinição</string>
+    <string name="no_presets_available">Nenhuma predefinição disponível</string>
+    <string name="factory_preset">Padrão de fábrica</string>
+    <string name="preset_will_overwrite">Uma predefinição com este nome já existe e será sobrescrita</string>
+    <string name="preset_name_already_exists">Uma predefinição com este nome já existe</string>
+    <string name="save_as_new">Salvar como \"%1$s\"</string>
+    <string name="overwrite">Sobrescrever</string>
+    <string name="rename">Renomear</string>
+    <string name="rename_preset">Renomear predefinição</string>
+    <string name="reset_to_defaults">Restaurar padrões</string>
+    <string name="import_bindings">Importar mapeamentos</string>
+    <string name="import_bindings_failed">Falha ao importar mapeamentos</string>
+    <string name="save_preset_failed">Falha ao salvar predefinição</string>
+    <string name="export_bindings">Exportar mapeamentos</string>
+    <string name="export_bindings_failed">Falha ao exportar mapeamentos</string>
+    <string name="delete_preset_title">Excluir predefinição</string>
+    <string name="delete_preset_message">Excluir \"%1$s\"? Esta ação não pode ser desfeita.</string>
+
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Usar API SDL</string>
     <string name="use_steam_input">Usar Steam Input</string>
@@ -1413,4 +1433,18 @@
     <string name="filter_five_star_device">Avaliações 5 estrelas no dispositivo</string>
     <string name="filter_five_star_gpu">Avaliações 5 estrelas na GPU</string>
     <string name="filter_proven_gpu">Comprovado na sua GPU</string>
+    <string name="settings_default_controller_preset_title">Predefinição padrão do controle</string>
+    <string name="settings_default_controller_preset_none">Nenhuma (usar padrões integrados)</string>
+    <string name="settings_default_layout_preset_title">Layout predefinido padrão</string>
+    <string name="settings_default_layout_preset_none">Nenhum (usar padrões integrados)</string>
+
+    <string name="save_layout_preset">Salvar layout predefinido</string>
+    <string name="load_layout_preset">Carregar layout predefinido</string>
+    <string name="layout_preset_saved">Layout predefinido salvo</string>
+    <string name="layout_preset_loaded">Layout predefinido carregado</string>
+    <string name="save_layout_preset_failed">Falha ao salvar layout predefinido</string>
+    <string name="import_layout_preset">Importar layout predefinido</string>
+    <string name="export_layout_preset">Exportar layout predefinido</string>
+    <string name="import_layout_preset_failed">Falha ao importar layout predefinido</string>
+    <string name="export_layout_preset_failed">Falha ao exportar layout predefinido</string>
 </resources>

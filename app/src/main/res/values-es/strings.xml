@@ -763,6 +763,26 @@
     <string name="fexcore_presets_description">Ve, modifica y crea preajustes de FEXCore.</string>
     <string name="preset_name">Nombre del preajuste</string>
 
+    <!-- Controller Presets -->
+    <string name="load_controller_preset">Cargar preajuste</string>
+    <string name="save_controller_preset">Guardar preajuste</string>
+    <string name="no_presets_available">No hay preajustes disponibles</string>
+    <string name="factory_preset">Fábrica</string>
+    <string name="preset_will_overwrite">Ya existe un preajuste con este nombre y se sobrescribirá</string>
+    <string name="preset_name_already_exists">Ya existe un preajuste con este nombre</string>
+    <string name="save_as_new">Guardar como \"%1$s\"</string>
+    <string name="overwrite">Sobrescribir</string>
+    <string name="rename">Renombrar</string>
+    <string name="rename_preset">Renombrar preajuste</string>
+    <string name="reset_to_defaults">Restablecer valores predeterminados</string>
+    <string name="import_bindings">Importar asignaciones</string>
+    <string name="import_bindings_failed">Error al importar asignaciones</string>
+    <string name="save_preset_failed">Error al guardar preajuste</string>
+    <string name="export_bindings">Exportar asignaciones</string>
+    <string name="export_bindings_failed">Error al exportar asignaciones</string>
+    <string name="delete_preset_title">Eliminar preajuste</string>
+    <string name="delete_preset_message">¿Eliminar \"%1$s\"? Esta acción no se puede deshacer.</string>
+
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Usar API de SDL</string>
     <string name="use_steam_input">Usar Steam Input</string>
@@ -1549,4 +1569,18 @@
     <string name="filter_five_star_device">Reseñas de 5 estrellas en el dispositivo</string>
     <string name="filter_five_star_gpu">Reseñas de 5 estrellas en la GPU</string>
     <string name="filter_proven_gpu">Probado en tu GPU</string>
+    <string name="settings_default_controller_preset_title">Preajuste de mando predeterminado</string>
+    <string name="settings_default_controller_preset_none">Ninguno (usar valores predeterminados)</string>
+    <string name="settings_default_layout_preset_title">Preajuste de diseño predeterminado</string>
+    <string name="settings_default_layout_preset_none">Ninguno (usar valores predeterminados)</string>
+
+    <string name="save_layout_preset">Guardar preajuste de diseño</string>
+    <string name="load_layout_preset">Cargar preajuste de diseño</string>
+    <string name="layout_preset_saved">Preajuste de diseño guardado</string>
+    <string name="layout_preset_loaded">Preajuste de diseño cargado</string>
+    <string name="save_layout_preset_failed">Error al guardar preajuste de diseño</string>
+    <string name="import_layout_preset">Importar preajuste de diseño</string>
+    <string name="export_layout_preset">Exportar preajuste de diseño</string>
+    <string name="import_layout_preset_failed">Error al importar preajuste de diseño</string>
+    <string name="export_layout_preset_failed">Error al exportar preajuste de diseño</string>
 </resources>

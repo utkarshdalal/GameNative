@@ -709,6 +709,26 @@
     <string name="fexcore_presets_description">查看、修改及创建 FEXCore 预设集</string>
     <string name="preset_name">预设集名称</string>
 
+    <!-- Controller Presets -->
+    <string name="load_controller_preset">加载预设</string>
+    <string name="save_controller_preset">保存预设</string>
+    <string name="no_presets_available">没有可用的预设</string>
+    <string name="factory_preset">出厂预设</string>
+    <string name="preset_will_overwrite">同名预设已存在，将被覆盖</string>
+    <string name="preset_name_already_exists">同名预设已存在</string>
+    <string name="save_as_new">另存为\"%1$s\"</string>
+    <string name="overwrite">覆盖</string>
+    <string name="rename">重命名</string>
+    <string name="rename_preset">重命名预设</string>
+    <string name="reset_to_defaults">恢复默认值</string>
+    <string name="import_bindings">导入按键绑定</string>
+    <string name="import_bindings_failed">导入按键绑定失败</string>
+    <string name="save_preset_failed">保存预设失败</string>
+    <string name="export_bindings">导出按键绑定</string>
+    <string name="export_bindings_failed">导出按键绑定失败</string>
+    <string name="delete_preset_title">删除预设</string>
+    <string name="delete_preset_message">删除"%1$s"？此操作无法撤消。</string>
+
     <!-- 容器配置：输入 -->
     <string name="use_sdl_api">使用 SDL API</string>
     <string name="use_steam_input">使用 Steam Input</string>
@@ -1608,4 +1628,18 @@
     <string name="filter_five_star_device">设备上的五星好评</string>
     <string name="filter_five_star_gpu">GPU上的五星好评</string>
     <string name="filter_proven_gpu">已在您的GPU上验证</string>
+    <string name="settings_default_controller_preset_title">默认手柄预设</string>
+    <string name="settings_default_controller_preset_none">无（使用内置默认值）</string>
+    <string name="settings_default_layout_preset_title">默认布局预设</string>
+    <string name="settings_default_layout_preset_none">无（使用内置默认值）</string>
+
+    <string name="save_layout_preset">保存布局预设</string>
+    <string name="load_layout_preset">加载布局预设</string>
+    <string name="layout_preset_saved">布局预设已保存</string>
+    <string name="layout_preset_loaded">布局预设已加载</string>
+    <string name="save_layout_preset_failed">保存布局预设失败</string>
+    <string name="import_layout_preset">导入布局预设</string>
+    <string name="export_layout_preset">导出布局预设</string>
+    <string name="import_layout_preset_failed">导入布局预设失败</string>
+    <string name="export_layout_preset_failed">导出布局预设失败</string>
 </resources>

@@ -718,6 +718,26 @@
     <string name="fexcore_presets_description">Visualizza, modifica e crea preset FEXCore</string>
     <string name="preset_name">Nome preset</string>
 
+    <!-- Controller Presets -->
+    <string name="load_controller_preset">Carica preset</string>
+    <string name="save_controller_preset">Salva preset</string>
+    <string name="no_presets_available">Nessun preset disponibile</string>
+    <string name="factory_preset">Predefinito</string>
+    <string name="preset_will_overwrite">Un preset con questo nome esiste già e verrà sovrascritto</string>
+    <string name="preset_name_already_exists">Un preset con questo nome esiste già</string>
+    <string name="save_as_new">Salva come \"%1$s\"</string>
+    <string name="overwrite">Sovrascrivi</string>
+    <string name="rename">Rinomina</string>
+    <string name="rename_preset">Rinomina preset</string>
+    <string name="reset_to_defaults">Ripristina valori predefiniti</string>
+    <string name="import_bindings">Importa associazioni</string>
+    <string name="import_bindings_failed">Importazione associazioni non riuscita</string>
+    <string name="save_preset_failed">Salvataggio preset non riuscito</string>
+    <string name="export_bindings">Esporta associazioni</string>
+    <string name="export_bindings_failed">Esportazione associazioni non riuscita</string>
+    <string name="delete_preset_title">Elimina preset</string>
+    <string name="delete_preset_message">Eliminare \"%1$s\"? Questa azione non può essere annullata.</string>
+
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Usa API SDL</string>
     <string name="use_steam_input">Usa Steam Input</string>
@@ -1539,4 +1559,18 @@
     <string name="filter_five_star_device">Recensioni a 5 stelle sul dispositivo</string>
     <string name="filter_five_star_gpu">Recensioni a 5 stelle sulla GPU</string>
     <string name="filter_proven_gpu">Collaudato sulla tua GPU</string>
+    <string name="settings_default_controller_preset_title">Preset controller predefinito</string>
+    <string name="settings_default_controller_preset_none">Nessuno (usa impostazioni predefinite)</string>
+    <string name="settings_default_layout_preset_title">Layout predefinito</string>
+    <string name="settings_default_layout_preset_none">Nessuno (usa impostazioni predefinite)</string>
+
+    <string name="save_layout_preset">Salva layout predefinito</string>
+    <string name="load_layout_preset">Carica layout predefinito</string>
+    <string name="layout_preset_saved">Layout predefinito salvato</string>
+    <string name="layout_preset_loaded">Layout predefinito caricato</string>
+    <string name="save_layout_preset_failed">Impossibile salvare il layout predefinito</string>
+    <string name="import_layout_preset">Importa layout predefinito</string>
+    <string name="export_layout_preset">Esporta layout predefinito</string>
+    <string name="import_layout_preset_failed">Impossibile importare il layout predefinito</string>
+    <string name="export_layout_preset_failed">Impossibile esportare il layout predefinito</string>
 </resources>

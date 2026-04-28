@@ -757,6 +757,39 @@
     <string name="fexcore_presets_description">View, modify, and create FEXCore presets</string>
     <string name="preset_name">Preset name</string>
 
+    <!-- Controller Presets -->
+    <string name="load_controller_preset">Load Preset</string>
+    <string name="save_controller_preset">Save Preset</string>
+    <string name="no_presets_available">No presets available</string>
+    <string name="factory_preset">Factory</string>
+    <string name="preset_will_overwrite">A preset with this name already exists and will be overwritten</string>
+    <string name="preset_name_already_exists">A preset with this name already exists</string>
+    <string name="save_as_new">Save as \"%1$s\"</string>
+    <string name="overwrite">Overwrite</string>
+    <string name="rename">Rename</string>
+    <string name="rename_preset">Rename Preset</string>
+    <string name="reset_to_defaults">Reset to defaults</string>
+    <string name="import_bindings">Import bindings</string>
+    <string name="import_bindings_failed">Failed to import bindings</string>
+    <string name="save_preset_failed">Failed to save preset</string>
+    <string name="export_bindings">Export bindings</string>
+    <string name="export_bindings_failed">Failed to export bindings</string>
+    <string name="delete_preset_title">Delete Preset</string>
+    <string name="delete_preset_message">Delete \"%1$s\"? This cannot be undone.</string>
+    <string name="preset_rename_failed">Failed to rename preset</string>
+    <string name="preset_delete_failed">Failed to delete preset</string>
+
+    <!-- Layout Presets (onscreen controls) -->
+    <string name="save_layout_preset">Save Layout Preset</string>
+    <string name="load_layout_preset">Load Layout Preset</string>
+    <string name="layout_preset_saved">Layout preset saved</string>
+    <string name="layout_preset_loaded">Layout preset loaded</string>
+    <string name="save_layout_preset_failed">Failed to save layout preset</string>
+    <string name="import_layout_preset">Import Layout Preset</string>
+    <string name="export_layout_preset">Export Layout Preset</string>
+    <string name="import_layout_preset_failed">Failed to import layout preset</string>
+    <string name="export_layout_preset_failed">Failed to export layout preset</string>
+
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Use SDL API</string>
     <string name="use_steam_input">Use Steam Input</string>
@@ -909,6 +942,10 @@
     <string name="settings_emulation_default_config_title">Modify Default Config</string>
     <string name="settings_emulation_default_config_subtitle">The initial container settings for each game (does not affect already installed games)</string>
     <string name="settings_emulation_default_config_dialog_title">Default Container Config</string>
+    <string name="settings_default_controller_preset_title">Default Controller Preset</string>
+    <string name="settings_default_controller_preset_none">None (use built-in defaults)</string>
+    <string name="settings_default_layout_preset_title">Default Layout Preset</string>
+    <string name="settings_default_layout_preset_none">None (use built-in defaults)</string>
     <string name="settings_emulation_auto_apply_known_config_title">Auto-apply known config</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Automatically apply recommended settings for Steam games on first launch</string>
     <string name="settings_emulation_box64_presets_title">Box64 Presets</string>

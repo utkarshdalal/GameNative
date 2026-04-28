@@ -714,6 +714,26 @@
     <string name="fexcore_presets_description">Voir, modifier et créer des préréglages FEXCore</string>
     <string name="preset_name">Nom du préréglage</string>
 
+    <!-- Controller Presets -->
+    <string name="load_controller_preset">Charger un préréglage</string>
+    <string name="save_controller_preset">Enregistrer le préréglage</string>
+    <string name="no_presets_available">Aucun préréglage disponible</string>
+    <string name="factory_preset">Usine</string>
+    <string name="preset_will_overwrite">Un préréglage avec ce nom existe déjà et sera écrasé</string>
+    <string name="preset_name_already_exists">Un préréglage avec ce nom existe déjà</string>
+    <string name="save_as_new">Enregistrer sous \"%1$s\"</string>
+    <string name="overwrite">Écraser</string>
+    <string name="rename">Renommer</string>
+    <string name="rename_preset">Renommer le préréglage</string>
+    <string name="reset_to_defaults">Réinitialiser les paramètres par défaut</string>
+    <string name="import_bindings">Importer les affectations</string>
+    <string name="import_bindings_failed">Échec de l\'importation des affectations</string>
+    <string name="save_preset_failed">Échec de l\'enregistrement du préréglage</string>
+    <string name="export_bindings">Exporter les affectations</string>
+    <string name="export_bindings_failed">Échec de l\'exportation des affectations</string>
+    <string name="delete_preset_title">Supprimer le préréglage</string>
+    <string name="delete_preset_message">Supprimer \"%1$s\" ? Cette action est irréversible.</string>
+
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Utiliser l\'API SDL</string>
     <string name="use_steam_input">Utiliser Steam Input</string>
@@ -1543,4 +1563,18 @@
     <string name="filter_five_star_device">Avis 5 étoiles sur l\'appareil</string>
     <string name="filter_five_star_gpu">Avis 5 étoiles sur le GPU</string>
     <string name="filter_proven_gpu">Éprouvé sur votre GPU</string>
+    <string name="settings_default_controller_preset_title">Préréglage de manette par défaut</string>
+    <string name="settings_default_controller_preset_none">Aucun (utiliser les paramètres par défaut)</string>
+    <string name="settings_default_layout_preset_title">Disposition par défaut</string>
+    <string name="settings_default_layout_preset_none">Aucune (utiliser les paramètres par défaut)</string>
+
+    <string name="save_layout_preset">Enregistrer la disposition</string>
+    <string name="load_layout_preset">Charger la disposition</string>
+    <string name="layout_preset_saved">Disposition enregistrée</string>
+    <string name="layout_preset_loaded">Disposition chargée</string>
+    <string name="save_layout_preset_failed">Échec de l\'enregistrement de la disposition</string>
+    <string name="import_layout_preset">Importer la disposition</string>
+    <string name="export_layout_preset">Exporter la disposition</string>
+    <string name="import_layout_preset_failed">Échec de l\'importation de la disposition</string>
+    <string name="export_layout_preset_failed">Échec de l\'exportation de la disposition</string>
 </resources>

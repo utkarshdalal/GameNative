@@ -689,6 +689,16 @@ object PrefManager {
             setPref(DINPUT_MAPPER_TYPE, value)
         }
 
+    private val DEFAULT_CONTROLLER_PRESET = stringPreferencesKey("default_controller_preset")
+    var defaultControllerPreset: String
+        get() = getPref(DEFAULT_CONTROLLER_PRESET, "")
+        set(value) { setPref(DEFAULT_CONTROLLER_PRESET, value) }
+
+    private val DEFAULT_LAYOUT_PRESET = stringPreferencesKey("default_layout_preset")
+    var defaultLayoutPreset: String
+        get() = getPref(DEFAULT_LAYOUT_PRESET, "")
+        set(value) { setPref(DEFAULT_LAYOUT_PRESET, value) }
+
     // External display input mode (off|touchpad|keyboard|hybrid)
     private val EXTERNAL_DISPLAY_INPUT_MODE = stringPreferencesKey("external_display_input_mode")
     var externalDisplayInputMode: String

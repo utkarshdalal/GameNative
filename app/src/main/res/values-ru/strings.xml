@@ -855,6 +855,26 @@ https://gamenative.app
     <string name="preset_left_stick">Левый джойстик</string>
     <string name="preset_mouse">Мышь</string>
     <string name="preset_name">Название предустановки</string>
+
+    <!-- Controller Presets -->
+    <string name="load_controller_preset">Загрузить предустановку</string>
+    <string name="save_controller_preset">Сохранить предустановку</string>
+    <string name="no_presets_available">Нет доступных предустановок</string>
+    <string name="factory_preset">Заводская</string>
+    <string name="preset_will_overwrite">Предустановка с таким именем уже существует и будет перезаписана</string>
+    <string name="preset_name_already_exists">Предустановка с таким именем уже существует</string>
+    <string name="save_as_new">Сохранить как \"%1$s\"</string>
+    <string name="overwrite">Перезаписать</string>
+    <string name="rename">Переименовать</string>
+    <string name="rename_preset">Переименовать предустановку</string>
+    <string name="reset_to_defaults">Сбросить на стандартные</string>
+    <string name="import_bindings">Импортировать привязки</string>
+    <string name="import_bindings_failed">Не удалось импортировать привязки</string>
+    <string name="save_preset_failed">Не удалось сохранить предустановку</string>
+    <string name="export_bindings">Экспортировать привязки</string>
+    <string name="export_bindings_failed">Не удалось экспортировать привязки</string>
+    <string name="delete_preset_title">Удалить предустановку</string>
+    <string name="delete_preset_message">Удалить \"%1$s\"? Это действие нельзя отменить.</string>
     <string name="preset_right_stick">Правый джойстик</string>
     <string name="preset_wasd">WASD</string>
     <string name="press_b_to_close">Нажмите B для закрытия</string>
@@ -1476,4 +1496,18 @@ https://gamenative.app
     <string name="filter_five_star_device">5-звёздочные отзывы на устройстве</string>
     <string name="filter_five_star_gpu">5-звёздочные отзывы на GPU</string>
     <string name="filter_proven_gpu">Проверено на вашем GPU</string>
+    <string name="settings_default_controller_preset_title">Пресет контроллера по умолчанию</string>
+    <string name="settings_default_controller_preset_none">Нет (использовать встроенные настройки)</string>
+    <string name="settings_default_layout_preset_title">Пресет макета по умолчанию</string>
+    <string name="settings_default_layout_preset_none">Нет (использовать встроенные настройки)</string>
+
+    <string name="save_layout_preset">Сохранить макет</string>
+    <string name="load_layout_preset">Загрузить макет</string>
+    <string name="layout_preset_saved">Макет сохранён</string>
+    <string name="layout_preset_loaded">Макет загружен</string>
+    <string name="save_layout_preset_failed">Не удалось сохранить макет</string>
+    <string name="import_layout_preset">Импортировать макет</string>
+    <string name="export_layout_preset">Экспортировать макет</string>
+    <string name="import_layout_preset_failed">Не удалось импортировать макет</string>
+    <string name="export_layout_preset_failed">Не удалось экспортировать макет</string>
 </resources>
