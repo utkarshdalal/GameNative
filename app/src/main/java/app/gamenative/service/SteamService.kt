@@ -2074,7 +2074,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         try {
                             val container = ContainerUtils.getOrCreateContainer(svc.applicationContext, containerId)
                             val prefixToPath: (String) -> String = { prefix ->
-                                PathType.from(prefix).toAbsPath(appId, steamId.accountID, container)
+                                PathType.from(prefix).toAbsPath(container, appId, steamId.accountID)
                             }
                             val postSyncInfo = forceSyncUserFiles(
                                 appId = appId,
