@@ -866,33 +866,36 @@ fun XServerScreen(
         }
     }
 
+    // Shows the soft keyboard, anchored to [anchor]. Handles the Android 12+
+    // post-delay quirk and routes input to the external display IME when needed.
+    val showSoftKeyboard: (View, String) -> Unit = { anchor, analyticsEvent ->
+        anchor.post {
+            if (anchor.windowToken != null) {
+                val show = {
+                    if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = analyticsEvent)
+                    val isExternalDisplaySession =
+                        (anchor.display?.displayId ?: Display.DEFAULT_DISPLAY) != Display.DEFAULT_DISPLAY
+
+                    if (isExternalDisplaySession) {
+                        imeInputReceiver?.showKeyboard() ?: imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                    } else {
+                        imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                    }
+                }
+                if (Build.VERSION.SDK_INT > 29) {
+                    anchor.postDelayed({ show() }, 500)  // Pixel/Android-12+ quirk
+                } else {
+                    show()
+                }
+            }
+        }
+    }
+
     val onQuickMenuItemSelected: (Int) -> Boolean = { itemId ->
         when (itemId) {
             QuickMenuAction.KEYBOARD -> {
                 keyboardRequestedFromOverlay = true
-                val anchor = view // use the same composable root view
-                val c = if (Build.VERSION.SDK_INT >= 30)
-                    anchor.windowInsetsController else null
-
-                anchor.post {
-                    if (anchor.windowToken == null) return@post
-                    val show = {
-                        if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "onscreen_keyboard_enabled")
-                        val isExternalDisplaySession =
-                            (anchor.display?.displayId ?: Display.DEFAULT_DISPLAY) != Display.DEFAULT_DISPLAY
-
-                        if (isExternalDisplaySession) {
-                            imeInputReceiver?.showKeyboard() ?: imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
-                        } else {
-                            imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
-                        }
-                    }
-                    if (Build.VERSION.SDK_INT > 29 && c != null) {
-                        anchor.postDelayed({ show() }, 500)  // Pixel/Android-12+ quirk
-                    } else {
-                        show()
-                    }
-                }
+                showSoftKeyboard(view, "onscreen_keyboard_enabled")
                 true
             }
 
@@ -1871,24 +1874,7 @@ fun XServerScreen(
 
             // Wire SHOW_KEYBOARD binding callback for overlay control buttons
             icView.setShowKeyboardCallback {
-                icView.post {
-                    if (icView.windowToken == null) return@post
-                    val show = {
-                        if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "onscreen_keyboard_enabled_from_binding")
-                        val isExternalDisplaySession =
-                            (icView.display?.displayId ?: android.view.Display.DEFAULT_DISPLAY) != android.view.Display.DEFAULT_DISPLAY
-                        if (isExternalDisplaySession) {
-                            imeInputReceiver?.showKeyboard() ?: imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
-                        } else {
-                            imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
-                        }
-                    }
-                    if (Build.VERSION.SDK_INT > 29) {
-                        icView.postDelayed({ show() }, 500)  // Pixel/Android-12+ quirk
-                    } else {
-                        show()
-                    }
-                }
+                showSoftKeyboard(icView, "onscreen_keyboard_enabled_from_binding")
             }
 
             xServerView.getxServer().winHandler.setInputControlsView(PluviaApp.inputControlsView)
