@@ -85,13 +85,28 @@ object EpicGameLauncher {
             params.add("-EpicPortal")
 
             // User information parameters
-            val displayName = "GameNativeUser" //! We should adjust this later and use the user's real displayName later
+            val displayName = gameToken?.displayName?.takeIf { it.isNotBlank() } ?: "EpicUser"
             val accountId = gameToken?.accountId ?: "0"
 
             params.add("-epicusername=$displayName")
             params.add("-epicuserid=$accountId")
             params.add("-epiclocale=$languageCode")
             params.add("-epicsandboxid=${game.namespace}")
+
+            // EOS deployment id (from the manifest API sidecar config).
+            // Required by modern EOS-integrated titles – without it they fail with
+            // "Failed to connect to the Epic Launcher, ensure it is running..."
+            // Null/empty for games that do not ship a sidecar, which is normal.
+            val deploymentId = EpicService.getInstance()?.epicManager?.fetchDeploymentId(
+                context = context,
+                namespace = game.namespace,
+                catalogItemId = game.catalogId,
+                appName = game.appName,
+            )
+            if (!deploymentId.isNullOrEmpty()) {
+                params.add("-epicdeploymentid=$deploymentId")
+                Timber.tag("EPIC").d("Added deployment id for ${game.appName}")
+            }
 
             // Ownership token for DRM-protected games
             if (ownershipTokenPath != null) {
