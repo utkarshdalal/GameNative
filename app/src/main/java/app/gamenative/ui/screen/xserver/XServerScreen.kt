@@ -1676,7 +1676,12 @@ fun XServerScreen(
                             taskAffinityMaskWoW64 = ProcessHelper.getAffinityMask(container.getCPUListWoW64(true)).toShort().toInt()
                             win32AppWorkarounds?.setTaskAffinityMasks(taskAffinityMask, taskAffinityMaskWoW64)
                             val appliedVariantSeen = container.getExtra("appliedContainerVariant")
-                            containerVariantChanged = appliedVariantSeen.isNotEmpty() && container.containerVariant != appliedVariantSeen
+                            val appliedWineVersionSeen = container.getExtra("appliedWineVersion")
+                            val markersAvail = appliedVariantSeen.isNotEmpty() && appliedWineVersionSeen.isNotEmpty()
+                            val variantMismatch = markersAvail && container.containerVariant != appliedVariantSeen
+                            val wineVersionMismatch = markersAvail && container.wineVersion != appliedWineVersionSeen
+                            val imgVersionMismatch = container.getExtra("imgVersion") != imageFs.getVersion().toString()
+                            containerVariantChanged = variantMismatch || wineVersionMismatch || imgVersionMismatch
                             firstTimeBoot = container.getExtra("appVersion").isEmpty() || containerVariantChanged
                             needsUnpacking = container.isNeedsUnpacking
                             Timber.i("First time boot: $firstTimeBoot")
@@ -4045,6 +4050,9 @@ private fun applyGeneralPatches(
     container.putExtra("graphicsDriver", null)
     container.putExtra("desktopTheme", null)
     container.putExtra("xaudioDllsExtracted", null)
+    container.putExtra("wincomponents", null)
+    container.putExtra("audioDriver", null)
+    container.putExtra("startupSelection", null)
     WinlatorPrefManager.init(context)
     WinlatorPrefManager.putString("current_box64_version", "")
 }
