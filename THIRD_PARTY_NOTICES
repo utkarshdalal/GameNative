@@ -4,6 +4,104 @@ This file contains notices for third-party assets and libraries used in this pro
 
 ---
 
+## Scope and Completeness
+
+This list is **not exhaustive**. GameNative builds on the broader open-source
+Wine / Proton / DXVK / VKD3D / Mesa / box64 / FEX / PulseAudio ecosystem, and
+additional smaller components may be present in bundled archives under
+`app/src/main/assets/` and prebuilt native libraries under
+`app/src/main/jniLibs/`. Where a component is distributed under a copyleft
+license (LGPL, GPL, MPL), the terms of that license apply regardless of whether
+the component is named in this file. The sections below highlight the items
+that most users will want to know about, together with a blanket offer for the
+corresponding source of any copyleft component we distribute in binary form.
+
+---
+
+## Availability of Source for Copyleft Components
+
+For any component distributed in binary form with this application that is
+covered by a copyleft license (LGPL-2.1, LGPL-3.0, GPL-2.0, GPL-3.0, or
+MPL-2.0), the corresponding source code is available from the upstream project
+at the revision used. Where practical, the upstream name and revision are
+recorded alongside the binary — for example in `VERSION` / `COMMIT` metadata
+inside the bundled archive, in the filename of the archive itself, or in
+`app/src/main/cpp/` for components built from source in this repository.
+
+If you cannot obtain the source from upstream, contact
+Utkarsh Dalal on our
+[Discord server](https://discord.gg/2hKv4VfZfE)) and we will supply it, in
+accordance with LGPL-2.1 §6, LGPL-3.0 §4, GPL-2.0 §3, and GPL-3.0 §6. This
+offer is valid for at least three years from the date on which you received
+the binary.
+
+---
+
+## libredirect.so (Proprietary)
+
+**Component:** `libredirect.so`
+**Location:** `app/src/main/assets/redirect.tzst`
+**License:** Proprietary — all rights reserved by the GameNative maintainers.
+
+`libredirect.so` is a small native shim developed by the GameNative
+maintainers. It is loaded **only into Wine / Proton subprocesses** at runtime
+via `LD_PRELOAD`; it is not linked with, and does not run inside the address
+space of, the Kotlin/Java Android application. Its responsibilities are:
+
+1. **Identifier compatibility.** Some guest-side components embed the
+   historical Android package identifier `com.winlator`. `libredirect.so`
+   rewrites those references to the current application identifier at runtime
+   so that games which hardcode or capture the identifier during launch
+   continue to boot correctly under GameNative.
+2. **Android 15 (API 35) compatibility.** Recent Android releases tightened
+   restrictions on how executables stored under an app's private data
+   directory may be invoked. `libredirect.so` adapts affected process
+   launches so that the emulation stack continues to function on Android 15
+   and later.
+
+`libredirect.so` was written from scratch by the GameNative maintainers and
+is not derived from any code in this repository. It is kept closed-source
+for a specific reason. AI-assisted and commercial forks routinely take
+open-source Android projects, rename them, and redistribute them through
+commercial channels as their own products. Because `libredirect.so` is
+specific to this application — not a generic tool that a fork could use
+unchanged — publishing its source would reduce rebranding GameNative into
+a working fork to a near-trivial operation. Keeping it closed raises the
+cost of that path substantially. Every other component in this repository
+— the application UI, store integrations, container management, device
+configuration, and all code the community actively contributes to —
+remains fully open under GPL-3.0 and may be forked, modified, and
+redistributed under those terms.
+
+### Relationship to the GPL-3.0 application
+
+GameNative's Kotlin/Java application is distributed under GPL-3.0 and remains
+so. `libredirect.so` runs inside separate subprocesses (Wine and Proton
+instances) and communicates with those processes through standard
+operating-system interfaces only. It is not compiled or linked into the
+Android application, does not share the Android application's address space,
+and does not expose a library interface to it. Under the FSF's and SFLC's
+longstanding interpretation of the GPL's "mere aggregation" language
+(GPL-3.0 §5, GPL-2.0 §2), this makes `libredirect.so` a separate program
+aggregated with GameNative on the same distribution medium rather than a
+derivative work of the application.
+
+### Separability
+
+The GameNative application can be rebuilt without `libredirect.so` by
+deleting `app/src/main/assets/redirect.tzst` before building the APK. The
+resulting GPL-3.0 application builds, installs, and runs as a standalone
+program; it does not require `libredirect.so` to be compiled or linked.
+Practical runtime compatibility will be reduced: on Android 15 and later,
+most Windows games launched through the bundled emulation stack will fail
+to start, and on earlier Android versions some games that embed the
+historical `com.winlator` identifier will fail to receive input. This
+reflects GPL's guarantee that users can modify and rebuild the application
+itself; it does not imply that `libredirect.so` is part of the application
+in the sense of GPL-3.0 §0 ("based on").
+
+---
+
 ## Kenney Input Prompts
 
 **Asset Pack:** Input Prompts

@@ -1405,10 +1405,12 @@ object SteamUtils {
 
     fun getSteamId64(): Long? {
         return SteamService.userSteamId?.convertToUInt64()?.toLong()
+            ?: PrefManager.steamUserSteamId64.takeIf { it != 0L }
     }
 
     fun getSteam3AccountId(): Long? {
         return SteamService.userSteamId?.accountID?.toLong()
+            ?: PrefManager.steamUserAccountId.takeIf { it != 0 }?.toLong()
     }
 
     /**

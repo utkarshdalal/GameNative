@@ -1,9 +1,7 @@
 package app.gamenative.service.gog
 
 import android.content.Context
-import app.gamenative.PrefManager
 import app.gamenative.data.DownloadInfo
-import app.gamenative.service.StreamingAssembly
 import app.gamenative.service.gog.api.DepotFile
 import app.gamenative.service.gog.api.FileChunk
 import app.gamenative.service.gog.api.GOGApiClient
@@ -12,11 +10,13 @@ import app.gamenative.service.gog.api.GOGManifestParser
 import app.gamenative.service.gog.api.V1DepotFile
 import app.gamenative.enums.Marker
 import app.gamenative.utils.CdnRankingUtils
+import app.gamenative.utils.DownloadSpeedConfig
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
 import org.json.JSONArray
 import org.json.JSONObject
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import java.io.ByteArrayOutputStream
 import java.io.BufferedOutputStream
 import java.io.File
@@ -29,15 +29,24 @@ import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flatMapMerge
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import timber.log.Timber
+import java.io.IOException
+import java.io.RandomAccessFile
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentHashMap.newKeySet
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Custom exception for HTTP status errors with typed status code
@@ -762,9 +771,8 @@ class GOGDownloadManager @Inject constructor(
         return "$normalizedPathBase/main.bin$querySuffix"
     }
 
-
-
     // assembles files as chunks arrive, deletes chunks once their last consumer is assembled
+    @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun downloadAndAssembleChunks(
         chunkUrlCandidates: Map<String, List<String>>,
         chunkCacheDir: File,
@@ -776,37 +784,156 @@ class GOGDownloadManager @Inject constructor(
         chunkToProductMap: Map<String, String>,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val fileChunkIds = files.map { f -> f.chunks.map { it.compressedMd5 } }
-            val chunkLastFile = StreamingAssembly.buildChunkLastFileMap(fileChunkIds)
-            val parallelDownloads = PrefManager.downloadSpeed.coerceAtLeast(1)
+            val scope = CoroutineScope(Dispatchers.IO)
+            val speedConfig = DownloadSpeedConfig()
+            val parallelDownloads = speedConfig.maxDownloads
+            val parallelAssemble = speedConfig.maxDecompress
             val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 
-            var currentChunkUrlCandidates = chunkUrlCandidates
+            val currentChunkUrlCandidates = ConcurrentHashMap(chunkUrlCandidates)
             val totalChunks = chunkHashes.size
             val totalFiles = files.size
-            val downloadedChunkIds = mutableSetOf<String>()
-            var nextFileToAssemble = 0
+            val chunkUsageCounts = ConcurrentHashMap<String, AtomicInteger>()
+            val downloadedChunkIds = newKeySet<String>()
+            val pendingChunks = AtomicInteger(chunkHashes.size)
+
+            chunkHashes.forEach { chunkMd5 ->
+                chunkUsageCounts[chunkMd5] = AtomicInteger(
+                    files.sumOf { file -> file.chunks.count { chunk -> chunk.compressedMd5 == chunkMd5 } }
+                )
+            }
+
+            val networkChunkFlow = MutableSharedFlow<String>(extraBufferCapacity = Int.MAX_VALUE)
+            val assembleFlow = MutableSharedFlow<Pair<String, Result<File>>>(extraBufferCapacity = Int.MAX_VALUE)
+
+            var assemblyFailure: Throwable? = null
 
             // assemble every file whose chunks have all arrived (or that has zero chunks)
-            suspend fun assembleReady(): Result<Unit> {
-                while (nextFileToAssemble < totalFiles) {
-                    val file = files[nextFileToAssemble]
-                    if (!file.chunks.all { it.compressedMd5 in downloadedChunkIds }) break
-                    if (!downloadInfo.isActive()) return Result.failure(Exception("Download cancelled"))
+            suspend fun assembleReady(chunkMd5: String): Result<Unit> {
+                if (!downloadInfo.isActive()) {
+                    return Result.failure(Exception("Download cancelled"))
+                }
 
-                    val r = assembleFile(file, chunkCacheDir, installDir)
-                    if (r.isFailure) return Result.failure(
-                        r.exceptionOrNull() ?: Exception("Failed to assemble ${file.path}"),
-                    )
+                // 1. Find all files that contain this chunk
+                val matchedFiles = files.filter { file ->
+                    file.chunks.any { chunk -> chunk.compressedMd5 == chunkMd5 }
+                }
 
-                    for (chunk in file.chunks) {
-                        if (chunkLastFile[chunk.compressedMd5] == nextFileToAssemble) {
-                            File(chunkCacheDir, "${chunk.compressedMd5}.chunk").delete()
+                // 2. For each file found, try to assemble if all chunks are ready
+                var assemblySuccessCount = 0
+
+                matchedFiles.forEach { file ->
+                    file.chunks.withIndex()
+                        .filter { (_, chunk) -> chunk.compressedMd5 == chunkMd5 }
+                        .forEach { (chunkIndex, chunk) ->
+                            val result = assembleFile(file, chunk, chunkIndex, chunkCacheDir, installDir)
+                            if (result.isSuccess) {
+                                // 3. If assembly is successful and all chunks in downloadedChunkIds, increment file counter
+                                assemblySuccessCount++
+                            } else {
+                                Timber.tag("GOG").d(result.exceptionOrNull()?.message ?: "Failed to assemble ${file.path}")
+                            }
+                        }
+                }
+
+                // 4. Decrement usage count only when assembly is successful
+                if (assemblySuccessCount > 0) {
+                    val usageCount = chunkUsageCounts[chunkMd5]?.addAndGet(-assemblySuccessCount)
+                    if (usageCount != null && usageCount <= 0) {
+                        val cacheFile = File(chunkCacheDir, "${chunkMd5}.chunk")
+                        cacheFile.delete()
+                    }
+                }
+
+                return Result.success(Unit)
+            }
+
+            val networkChunkJob: Job = scope.launch {
+                networkChunkFlow
+                    .flatMapMerge<String, Unit>(concurrency = parallelDownloads) { chunkMd5 ->
+                        flow<Unit> {
+                            if (!downloadInfo.isActive()) {
+                                return@flow
+                            }
+
+                            val result = run {
+                                val urls = currentChunkUrlCandidates[chunkMd5] ?: return@run Result.failure<File>(
+                                    Exception("No URL candidates found for chunk $chunkMd5"),
+                                )
+                                downloadChunkWithRetry(chunkMd5, urls, chunkCacheDir, downloadInfo, downloadHttpClient)
+                            }
+
+                            // Always emit result to assembleFlow for processing (success or failure)
+                            assembleFlow.tryEmit(chunkMd5 to result)
+                            emit(Unit)
                         }
                     }
-                    nextFileToAssemble++
-                }
-                return Result.success(Unit)
+                    .flowOn(Dispatchers.IO)
+                    .collect()
+            }
+
+            val assembleJob: Job = scope.launch {
+                assembleFlow
+                    .flatMapMerge<Pair<String, Result<File>>, Unit>(concurrency = parallelAssemble) { (chunkMd5, result) ->
+                        flow<Unit> {
+                            if (!downloadInfo.isActive()) {
+                                return@flow
+                            }
+
+                            if (result.isSuccess && assemblyFailure == null) {
+                                // Successful download - add to completed set and try assembly
+                                downloadedChunkIds.add(chunkMd5)
+
+                                val assembleResult = assembleReady(chunkMd5)
+                                if (assembleResult.isFailure) {
+                                    assemblyFailure = assembleResult.exceptionOrNull()
+                                        ?: Exception("Failed to assemble ready files")
+                                    Timber.tag("GOG").d("Chunk $chunkMd5 assembleReady Failed: ${assemblyFailure.message}")
+
+                                    // Requeue the chunk for retry
+                                    downloadedChunkIds.remove(chunkMd5)
+                                    networkChunkFlow.tryEmit(chunkMd5)
+                                    return@flow
+                                }
+
+                                val progress = downloadedChunkIds.size.toFloat() / totalChunks
+                                downloadInfo.setProgress(progress)
+                                downloadInfo.updateStatusMessage(
+                                    "Downloading (${downloadedChunkIds.size}/$totalChunks chunks)",
+                                )
+
+                                // Decrement pending chunks counter
+                                pendingChunks.decrementAndGet()
+                            } else if (result.isFailure) {
+                                // Failed download - handle retry logic
+                                val exception = result.exceptionOrNull()
+                                Timber.tag("GOG").d("Chunk $chunkMd5 download failed: ${exception?.message}")
+
+                                if (exception is HttpStatusException) {
+                                    Timber.tag("GOG").d("Chunk $chunkMd5 download failed: HttpError ${exception.statusCode}, ${exception.message}")
+                                    if (exception.statusCode in listOf(401, 403, 404, 500)) {
+                                        if (secureLinkContext != null) {
+                                            Timber.tag("GOG").w("Chunk $chunkMd5 urls expired, refreshing")
+
+                                            val refreshResult = refreshSecureLinks(secureLinkContext, listOf(chunkMd5))
+                                            if (refreshResult.isSuccess) {
+                                                currentChunkUrlCandidates[chunkMd5] = refreshResult.getOrThrow().getValue(chunkMd5)
+                                                networkChunkFlow.tryEmit(chunkMd5)
+                                                return@flow
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // For other failures, could add additional retry logic here
+                                Timber.tag("GOG").e("Chunk $chunkMd5 failed permanently: ${exception?.message}")
+                            }
+
+                            emit(Unit)
+                        }
+                    }
+                    .flowOn(Dispatchers.IO)
+                    .collect()
             }
 
             Timber.tag("GOG").d("Streaming download+assembly: $totalChunks chunks, $totalFiles files")
@@ -814,144 +941,99 @@ class GOGDownloadManager @Inject constructor(
             downloadInfo.setProgress(0.0f)
             downloadInfo.setActive(true)
 
-            chunkHashes.chunked(parallelDownloads).forEach { chunkBatch ->
+            // Start downloads by launching a separate coroutine to emit chunks
+            val preallocJob: Job = scope.launch {
                 if (!downloadInfo.isActive()) {
                     Timber.tag("GOG").w("Download cancelled by user")
+                    return@launch
+                }
+
+                val chunksAdded = mutableListOf<String>()
+
+                files.forEach { file ->
+                    if (!downloadInfo.isActive()) {
+                        Timber.tag("GOG").w("Download cancelled during file iteration")
+                        return@launch
+                    }
+                    Timber.tag("GOG").v("Pre-allocating ${file.path}")
+
+                    // Allocating file before download
+                    val outputFile = File(installDir, file.path)
+                    outputFile.parentFile?.mkdirs()
+
+                    val totalSize = file.chunks.sumOf { it.size }
+
+                    try {
+                        // okio resize can OOM for large files on android.
+                        RandomAccessFile(outputFile.path, "rw").use {
+                            it.setLength(totalSize)
+                        }
+
+                        file.chunks.forEach { chunk ->
+                            if (!chunksAdded.contains(chunk.compressedMd5)) {
+                                chunksAdded.add(chunk.compressedMd5)
+                                networkChunkFlow.emit(chunk.compressedMd5)
+                                Timber.tag("GOG").v("Emitted chunk ${chunk.compressedMd5} to download flow")
+                            }
+                        }
+                    } catch (e: IOException) {
+                        throw IOException("Failed to allocate file ${outputFile.path}: ${e.message}")
+                    }
+                }
+            }
+
+            preallocJob.join()
+
+            // Wait for all pending chunks to complete processing
+            var lastPendingChunks = pendingChunks.get()
+            var currentPendingChunks = lastPendingChunks
+            var samePendingChunksAttempts = 0
+            while (currentPendingChunks > 0) {
+                if (!downloadInfo.isActive()) {
+                    networkChunkJob.cancel()
+                    assembleJob.cancel()
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
 
-                // Download batch in parallel and process chunk completions as they arrive.
-                val completionChannel = Channel<Pair<String, Result<File>>>(chunkBatch.size)
-                val resultsByChunk = mutableMapOf<String, Result<File>>()
-                var assemblyFailure: Throwable? = null
+                Timber.tag("GOG").d("Waiting for $currentPendingChunks pending chunks to complete")
 
-                coroutineScope {
-                    chunkBatch.forEach { chunkMd5 ->
-                        launch {
-                            val result = run {
-                                val urls = currentChunkUrlCandidates[chunkMd5] ?: return@run Result.failure<File>(
-                                    Exception("No URL candidates found for chunk $chunkMd5"),
-                                )
-                                downloadChunkWithRetry(chunkMd5, urls, chunkCacheDir, downloadInfo, downloadHttpClient)
-                            }
-                            completionChannel.send(chunkMd5 to result)
-                        }
-                    }
-
-                    repeat(chunkBatch.size) {
-                        val (chunkMd5, result) = completionChannel.receive()
-                        resultsByChunk[chunkMd5] = result
-
-                        // Optimistic streaming behavior inside the batch.
-                        // If this batch later needs secure-link refresh, we still keep existing
-                        // refresh semantics (refresh+retry whole batch), and set semantics
-                        // prevent double-counting already completed chunks.
-                        if (result.isSuccess && assemblyFailure == null) {
-                            downloadedChunkIds.add(chunkMd5)
-                            val assembleResult = assembleReady()
-                            if (assembleResult.isFailure) {
-                                assemblyFailure = assembleResult.exceptionOrNull()
-                                    ?: Exception("Failed to assemble ready files")
-                                return@repeat
-                            }
-
-                            val progress = downloadedChunkIds.size.toFloat() / totalChunks
-                            downloadInfo.setProgress(progress)
-                            downloadInfo.updateStatusMessage(
-                                "Downloading (${downloadedChunkIds.size}/$totalChunks chunks, $nextFileToAssemble/$totalFiles files)",
-                            )
-                        }
-                    }
-                }
-                completionChannel.close()
-                if (assemblyFailure != null) {
-                    return@withContext Result.failure(assemblyFailure!!)
-                }
-                val results = chunkBatch.map { chunkMd5 ->
-                    resultsByChunk[chunkMd5] ?: Result.failure<File>(
-                        Exception("Missing batch result for chunk $chunkMd5"),
-                    )
-                }
-
-                // Handle expired secure links (401/403/404)
-                val expiredLinkFailures = results.zip(chunkBatch).filter { (result, _) ->
-                    val exception = result.exceptionOrNull()
-                    exception is HttpStatusException && exception.statusCode in listOf(401, 403, 404)
-                }
-                val expiredChunkIds = expiredLinkFailures.map { (_, chunkMd5) -> chunkMd5 }.toSet()
-                val nonExpiredFailures = results.zip(chunkBatch).filter { (result, chunkMd5) ->
-                    result.isFailure && chunkMd5 !in expiredChunkIds
-                }
-
-                if (expiredLinkFailures.isNotEmpty() && secureLinkContext != null) {
-                    nonExpiredFailures.firstOrNull()?.first?.let { failedResult ->
-                        return@withContext Result.failure(
-                            failedResult.exceptionOrNull()
-                                ?: Exception("Failed to download chunk with non-expired error"),
-                        )
-                    }
-
-                    Timber.tag("GOG").w("Detected ${expiredLinkFailures.size} expired secure link(s), refreshing...")
-
-                    expiredLinkFailures.forEach { (result, chunkMd5) ->
-                        val productId = chunkToProductMap[chunkMd5]
-                        Timber.tag("GOG").w("Chunk $chunkMd5 belongs to product $productId: ${result.exceptionOrNull()?.message}")
-                    }
-
-                    val refreshResult = refreshSecureLinks(secureLinkContext, chunkHashes)
-                    if (refreshResult.isSuccess) {
-                        currentChunkUrlCandidates = refreshResult.getOrThrow()
-                        val failedChunkIds = expiredChunkIds.toList()
-                        Timber.tag("GOG").i("Secure links refreshed, retrying ${failedChunkIds.size} failed chunk(s)")
-
-                        val retryResults = failedChunkIds.map { chunkMd5 ->
-                            async {
-                                val urls = currentChunkUrlCandidates[chunkMd5] ?: return@async Result.failure<File>(
-                                    Exception("No URL candidates found for chunk $chunkMd5 after refresh"),
-                                )
-                                downloadChunkWithRetry(chunkMd5, urls, chunkCacheDir, downloadInfo, downloadHttpClient)
-                            }
-                        }.awaitAll()
-
-                        retryResults.firstOrNull { it.isFailure }?.let { failedResult ->
-                            return@withContext Result.failure(
-                                failedResult.exceptionOrNull() ?: Exception("Failed to download chunk after link refresh"),
-                            )
-                        }
-
-                        // After a successful refresh+retry pass, ensure all chunks in this batch
-                        // are reflected in assembly/progress state.
-                        failedChunkIds.forEach { downloadedChunkIds.add(it) }
-                        assembleReady().onFailure { return@withContext Result.failure(it) }
-
-                        val progress = downloadedChunkIds.size.toFloat() / totalChunks
-                        downloadInfo.setProgress(progress)
-                        downloadInfo.updateStatusMessage(
-                            "Downloading (${downloadedChunkIds.size}/$totalChunks chunks, $nextFileToAssemble/$totalFiles files)",
-                        )
-                    } else {
-                        return@withContext Result.failure(
-                            refreshResult.exceptionOrNull() ?: Exception("Failed to refresh secure links"),
-                        )
-                    }
+                if (currentPendingChunks == lastPendingChunks) {
+                    samePendingChunksAttempts++
                 } else {
-                    results.firstOrNull { it.isFailure }?.let { failedResult ->
-                        return@withContext Result.failure(
-                            failedResult.exceptionOrNull() ?: Exception("Failed to download chunk"),
-                        )
-                    }
+                    lastPendingChunks = currentPendingChunks
+                    samePendingChunksAttempts = 0
                 }
 
+                if (samePendingChunksAttempts >= 10) {
+                    val missingChunks = chunkHashes.filterNot { downloadedChunkIds.contains(it) }
+                    if (missingChunks.isNotEmpty()) {
+                        Timber.tag("GOG").w(
+                            "Pending chunks stuck at $currentPendingChunks for $samePendingChunksAttempts checks; " +
+                                "re-emitting ${missingChunks.size} missing chunk(s) for retry",
+                        )
+                        missingChunks.forEach { networkChunkFlow.tryEmit(it) }
+                    }
+
+                    samePendingChunksAttempts = 0
+                }
+
+                // Wait for 1 second to recheck
+                delay(1000)
+
+                currentPendingChunks = pendingChunks.get()
             }
 
-            // assemble any remaining files whose chunks are all present (or have zero chunks)
-            assembleReady().onFailure { return@withContext Result.failure(it) }
+            // Cancel the download flow jobs since no more chunks will be added
+            networkChunkJob.cancel()
 
-            if (nextFileToAssemble != totalFiles) {
-                throw Exception("Assembly incomplete: only $nextFileToAssemble of $totalFiles files assembled")
+            // Cancel the assemble flow jobs since no more files will be added
+            assembleJob.cancel()
+
+            if (assemblyFailure != null) {
+                return@withContext Result.failure(assemblyFailure!!)
             }
 
-            Timber.tag("GOG").i("Streaming complete: $totalChunks chunks, $nextFileToAssemble files assembled")
+            Timber.tag("GOG").i("Streaming complete: $totalChunks chunks, ${files.size} files assembled")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to download and assemble")
@@ -1224,6 +1306,10 @@ class GOGDownloadManager @Inject constructor(
         var lastException: Exception? = null
 
         repeat(MAX_CHUNK_RETRIES) { attempt ->
+            if (!downloadInfo.isActive()) {
+                return@withContext Result.failure(Exception("Download cancelled"))
+            }
+
             val url = urlCandidates[attempt % urlCandidates.size]
             val result = downloadChunk(chunkMd5, url, chunkCacheDir, downloadInfo, httpClient)
 
@@ -1238,8 +1324,11 @@ class GOGDownloadManager @Inject constructor(
 
             if (attempt < MAX_CHUNK_RETRIES - 1) {
                 val delay = RETRY_DELAY_MS * (1 shl attempt) // Exponential backoff: 1s, 2s, 4s
-                Timber.tag("GOG").w("Chunk $chunkMd5 download failed (attempt ${attempt + 1}/$MAX_CHUNK_RETRIES): ${lastException?.message}. Retrying in ${delay}ms...")
-                kotlinx.coroutines.delay(delay)
+                if (downloadInfo.isActive()) {
+                    Timber.tag("GOG")
+                        .w("Chunk $chunkMd5 download failed (attempt ${attempt + 1}/$MAX_CHUNK_RETRIES): ${lastException?.message}. Retrying in ${delay}ms...")
+                    delay(delay)
+                }
             }
         }
 
@@ -1263,6 +1352,10 @@ class GOGDownloadManager @Inject constructor(
         httpClient: OkHttpClient,
     ): Result<File> = withContext(Dispatchers.IO) {
         try {
+            if (!downloadInfo.isActive()) {
+                return@withContext Result.failure(Exception("Download cancelled"))
+            }
+
             val chunkFile = File(chunkCacheDir, "$chunkMd5.chunk")
             val tempChunkFile = File(chunkCacheDir, "$chunkMd5.chunk.part")
 
@@ -1368,6 +1461,8 @@ class GOGDownloadManager @Inject constructor(
      */
     private suspend fun assembleFile(
         file: DepotFile,
+        chunk: FileChunk,
+        chunkIndex: Int,
         chunkCacheDir: File,
         installDir: File,
     ): Result<File> = withContext(Dispatchers.IO) {
@@ -1375,54 +1470,58 @@ class GOGDownloadManager @Inject constructor(
             val outputFile = File(installDir, file.path)
             outputFile.parentFile?.mkdirs()
 
-            outputFile.outputStream().use { output ->
-                for (chunk in file.chunks) {
-                    // Get compressed chunk file
-                    val chunkFile = File(chunkCacheDir, "${chunk.compressedMd5}.chunk")
+            // Get compressed chunk file
+            val chunkFile = File(chunkCacheDir, "${chunk.compressedMd5}.chunk")
 
-                    if (!chunkFile.exists()) {
-                        return@withContext Result.failure(
-                            Exception("Chunk file missing: ${chunk.compressedMd5}"),
-                        )
-                    }
+            if (!chunkFile.exists()) {
+                return@withContext Result.failure(
+                    Exception("Chunk file missing: ${chunk.compressedMd5}"),
+                )
+            }
 
-                    // Read compressed data
-                    val compressedBytes = chunkFile.readBytes()
+            // Read compressed data
+            val compressedBytes = chunkFile.readBytes()
 
-                    // Decompress chunk
-                    val decompressedBytes = decompressChunk(compressedBytes, chunk)
-                    if (decompressedBytes.isFailure) {
-                        return@withContext Result.failure(
-                            decompressedBytes.exceptionOrNull()
-                                ?: Exception("Failed to decompress chunk ${chunk.compressedMd5}"),
-                        )
-                    }
+            // Decompress chunk
+            val decompressedBytes = decompressChunk(compressedBytes, chunk)
+            if (decompressedBytes.isFailure) {
+                return@withContext Result.failure(
+                    decompressedBytes.exceptionOrNull()
+                        ?: Exception("Failed to decompress chunk ${chunk.compressedMd5}"),
+                )
+            }
 
-                    val data = decompressedBytes.getOrThrow()
+            val data = decompressedBytes.getOrThrow()
 
-                    // Verify decompressed MD5
-                    val actualMd5 = calculateMd5(data)
-                    if (actualMd5 != chunk.md5) {
-                        return@withContext Result.failure(
-                            Exception("Decompressed MD5 mismatch for chunk: expected ${chunk.md5}, got $actualMd5"),
-                        )
-                    }
+            // Verify decompressed MD5
+            val actualMd5 = calculateMd5(data)
+            if (actualMd5 != chunk.md5) {
+                return@withContext Result.failure(
+                    Exception("Decompressed MD5 mismatch for chunk: expected ${chunk.md5}, got $actualMd5"),
+                )
+            }
 
-                    // Write to output file
-                    output.write(data)
-                }
+            val writeOffset = file.chunks.take(chunkIndex).sumOf { it.size }
+
+            // Write decompressed chunk at specific file offset using RandomAccessFile
+            RandomAccessFile(outputFile.path, "rw").use { randomAccessFile ->
+                randomAccessFile.seek(writeOffset)
+                randomAccessFile.write(data)
             }
 
             // Verify final file hash if provided
             if (file.md5 != null) {
                 val fileMd5 = calculateMd5File(outputFile)
                 if (fileMd5 != file.md5) {
-                    Timber.tag("GOG").w("File MD5 mismatch: ${file.path}, expected ${file.md5}, got $fileMd5")
+                    // Timber.tag("GOG").w("File MD5 mismatch: ${file.path}, expected ${file.md5}, got $fileMd5")
                     // Don't fail - some games have incorrect MD5 in manifest
+                    // And as it is changed to use RandomAccessFile, it happens when not all chunks are completed download
+                } else {
+                    // Move the log here for files finally assembled
+                    Timber.tag("GOG").v("Assembled: ${file.path} (${outputFile.length()} bytes)")
                 }
             }
 
-            Timber.tag("GOG").v("Assembled: ${file.path} (${outputFile.length()} bytes)")
             Result.success(outputFile)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to assemble file ${file.path}")
@@ -1509,6 +1608,7 @@ class GOGDownloadManager @Inject constructor(
     /**
      * Check if file exists and has the expected size. When [expectedMd5] is non-null/non-blank,
      * also verifies content MD5 to reject corrupted files; short-circuits on size mismatch before hashing.
+     * When [expectedMd5] is null/blank, returns false to avoid treating pre-allocated files as complete.
      */
     private fun fileExistsWithCorrectSize(
         outputFile: File,
@@ -1517,7 +1617,8 @@ class GOGDownloadManager @Inject constructor(
     ): Boolean {
         if (!outputFile.exists()) return false
         if (outputFile.length() != expectedSize) return false
-        return expectedMd5.isNullOrBlank() || calculateMd5File(outputFile).equals(expectedMd5, ignoreCase = true)
+        if (expectedMd5.isNullOrBlank()) return false
+        return calculateMd5File(outputFile).equals(expectedMd5, ignoreCase = true)
     }
     /**
      * Calculate MD5 hash of file

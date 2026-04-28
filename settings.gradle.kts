@@ -9,9 +9,6 @@ pluginManagement {
         }
         mavenCentral()
         gradlePluginPortal()
-        maven {
-            setUrl("https://jitpack.io")
-        }
     }
 }
 dependencyResolutionManagement {
@@ -20,9 +17,6 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = uri("https://central.sonatype.com/repository/maven-snapshots/") } // JavaSteam
-        maven {
-            url = uri("https://jitpack.io") // 7Zip
-        }
     }
 }
 

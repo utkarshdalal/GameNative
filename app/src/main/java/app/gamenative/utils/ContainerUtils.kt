@@ -1264,12 +1264,38 @@ object ContainerUtils {
      * Checks if an executable is likely a system/utility file
      */
     private fun isSystemExecutable(fileName: String): Boolean {
-        val systemKeywords = listOf(
-            "unins", "setup", "install", "config", "crash", "handler",
-            "viewer", "compiler", "tool", "redist", "vcredist", "directx",
-            "steam", "origin", "uplay", "epic", "battlenet",
+        val baseName = fileName.removeSuffix(".exe")
+        val strongPrefixes = listOf(
+            "unins",
+            "uninstall",
+            "setup",
+            "install",
+            "redist",
+            "vcredist",
+            "vc_redist",
+            "dxsetup",
+            "directx",
+            "crashhandler",
+            "crashreporter",
         )
 
-        return systemKeywords.any { fileName.contains(it) }
+        if (strongPrefixes.any { baseName.startsWith(it) }) {
+            return true
+        }
+
+        val denylistTokens = setOf(
+            "unins",
+            "uninstall",
+            "setup",
+            "installer",
+            "redist",
+            "vcredist",
+            "directx",
+            "dxsetup",
+            "crashhandler",
+            "crashreporter",
+        )
+        val tokens = baseName.split(Regex("[^a-z0-9]+")).filter { it.isNotBlank() }
+        return tokens.any { it in denylistTokens }
     }
 }
