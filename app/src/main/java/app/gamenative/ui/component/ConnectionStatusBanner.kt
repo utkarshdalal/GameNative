@@ -46,7 +46,9 @@ import app.gamenative.R
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.theme.PluviaTheme
 
-private const val TIMEOUT_SHOW_OFFLINE_OPTION_SECONDS = 5
+// Threshold past which the UX (and any autonomous wait, e.g. preLaunchApp) treats
+// a still-CONNECTING Steam session as "slow enough to fall back to offline."
+const val TIMEOUT_SHOW_OFFLINE_OPTION_SECONDS = 5
 
 @Composable
 fun ConnectionStatusBanner(

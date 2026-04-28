@@ -43,6 +43,13 @@ import kotlin.io.path.setLastModifiedTime
 
 object SteamUtils {
 
+    /**
+     * True when a stored Steam session exists (offline-launch gate).
+     * Matches GOG/Epic/Amazon AuthManager.hasStoredCredentials convention.
+     */
+    fun hasStoredCredentials(): Boolean =
+        PrefManager.username.isNotEmpty() && PrefManager.refreshToken.isNotEmpty()
+
     fun getDownloadBytes(manifest: ManifestInfo?): Long {
         if (manifest == null) return 0L
         return if (manifest.download > 0L) manifest.download else manifest.size

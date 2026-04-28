@@ -52,6 +52,7 @@ import androidx.navigation.navDeepLink
 import app.gamenative.BuildConfig
 import app.gamenative.Constants
 import app.gamenative.MainActivity
+import app.gamenative.NetworkMonitor
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
@@ -62,11 +63,13 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
+import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import com.posthog.PostHog
 import app.gamenative.ui.component.AchievementOverlay
 import app.gamenative.ui.component.ConnectionStatusBanner
+import app.gamenative.ui.component.TIMEOUT_SHOW_OFFLINE_OPTION_SECONDS
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
@@ -95,6 +98,7 @@ import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.GameFeedbackUtils
 import app.gamenative.utils.IntentLaunchManager
+import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateChecker
 import app.gamenative.utils.UpdateInfo
 import app.gamenative.utils.UpdateInstaller
@@ -123,12 +127,44 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 
 private const val PENDING_LAUNCH_TIMEOUT_MS = 10_000L
 
+// fall back at the same moment the banner would offer "Continue Offline".
+private const val STEAM_LOGIN_AWAIT_MS: Long = TIMEOUT_SHOW_OFFLINE_OPTION_SECONDS * 1000L
+
 /** Used to suspend preLaunchApp while the user decides on large workshop updates. */
 private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
+
+// disconnect listener ignores non-terminal events on purpose: SteamService.reconnect()
+// emits Disconnected(isTerminal=false) before each retry, and a wifi blip mid-login should
+// resolve via the eventual LogonEnded(Success), not bail the wait.
+private suspend fun awaitSteamLogin(timeoutMs: Long = STEAM_LOGIN_AWAIT_MS): Boolean {
+    val deferred = CompletableDeferred<Boolean>()
+    val onLogon: (SteamEvent.LogonEnded) -> Unit = { e ->
+        when (e.loginResult) {
+            LoginResult.Success -> deferred.complete(true)
+            LoginResult.Failed -> deferred.complete(false)
+            else -> Unit
+        }
+    }
+    val onDisconnect: (SteamEvent.Disconnected) -> Unit = { e ->
+        if (e.isTerminal) deferred.complete(false)
+    }
+    PluviaApp.events.on<SteamEvent.LogonEnded, Unit>(onLogon)
+    PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onDisconnect)
+    try {
+        // register-then-check: a flag check before registration would race events
+        // fired in the gap.
+        if (SteamService.isLoggedIn) return true
+        return withTimeoutOrNull(timeoutMs) { deferred.await() } ?: false
+    } finally {
+        PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogon)
+        PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onDisconnect)
+    }
+}
 
 private fun NavHostController.navigateFromLoginIfNeeded(
     targetRoute: String,
@@ -214,7 +250,12 @@ private fun resolveGameAppId(context: Context, appId: String): GameResolutionRes
 private fun needsDeferLaunch(context: Context, appId: String): Boolean {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     return when (gameSource) {
-        GameSource.STEAM -> !SteamService.isLoggedIn
+        GameSource.STEAM -> {
+            if (SteamService.isLoggedIn) return false
+            // isLoggedIn is network-gated (requires LoggedOnCallback). allow offline launch when
+            // saved creds + local container exist — Steam can reconnect in background.
+            !(SteamUtils.hasStoredCredentials() && ContainerUtils.hasContainer(context, appId))
+        }
         GameSource.GOG -> !GOGService.isRunning
         GameSource.EPIC -> !EpicService.isRunning
         GameSource.AMAZON -> !AmazonService.isRunning
@@ -1234,7 +1275,7 @@ fun PluviaMain(
 
             // Connection status banner (overlay) - dismissible so users can access navigation
             if (state.currentScreen != PluviaScreen.LoginUser && !connectionBannerDismissed && initialConnectDone && !state.isSteamConnected &&
-                PrefManager.refreshToken.isNotEmpty() && PrefManager.username.isNotEmpty()) {
+                SteamUtils.hasStoredCredentials()) {
                 Box(modifier = Modifier.zIndex(5f)) {
                     ConnectionStatusBanner(
                         connectionState = state.connectionState,
@@ -1258,7 +1299,7 @@ fun PluviaMain(
                 when {
                     SteamService.isLoggedIn -> PluviaScreen.Home.route + "?offline=false"
                     // skip login screen if any service has stored credentials
-                    (PrefManager.username.isNotEmpty() && PrefManager.refreshToken.isNotEmpty()) ||
+                    SteamUtils.hasStoredCredentials() ||
                         GOGService.hasStoredCredentials(context) ||
                         EpicService.hasStoredCredentials(context) ||
                         AmazonService.hasStoredCredentials(context) ->
@@ -1302,8 +1343,7 @@ fun PluviaMain(
                     // Show update/crash/support dialogs when Home is first displayed
                     // Skip when offline with Steam credentials (avoid flash when Steam reconnects)
                     LaunchedEffect(Unit) {
-                        val hasSteamCredentials = PrefManager.refreshToken.isNotEmpty() && PrefManager.username.isNotEmpty()
-                        val shouldShowDialogs = !isOffline || !hasSteamCredentials
+                        val shouldShowDialogs = !isOffline || !SteamUtils.hasStoredCredentials()
 
                         if (shouldShowDialogs && !state.annoyingDialogShown && PluviaApp.xEnvironment == null && !SteamService.keepAlive && !MainActivity.wasLaunchedViaExternalIntent) {
                             val currentUpdateInfo = updateInfo
@@ -1572,6 +1612,22 @@ fun preLaunchApp(
             return@launch
         }
 
+        // resolve real offline state for this launch. caller-supplied isOffline=true is honored
+        // (user explicitly went offline). otherwise, when Steam isn't logged in yet, wait briefly
+        // so cold-start cloud sync can run; wait fast-fails on a terminal disconnect so wifi-off
+        // doesn't ride out the full timeout.
+        val effectiveIsOffline = when {
+            isOffline -> true
+            gameSource != GameSource.STEAM -> false
+            SteamService.isLoggedIn -> false
+            !NetworkMonitor.hasInternet.value -> true
+            else -> {
+                setLoadingMessage(context.getString(R.string.connecting_to_steam))
+                setLoadingProgress(-1f)
+                !awaitSteamLogin()
+            }
+        }
+
         // When "Open container" is used we boot to desktop/file manager only — skip executable check
         if (!bootToContainer) {
             // Verify we have a launch executable for all platforms before proceeding (fail fast, avoid black screen)
@@ -1755,7 +1811,7 @@ fun preLaunchApp(
         if(isSteamGame) {
             try {
                 val currentPlaying = SteamService.getSelfCurrentlyPlayingAppId()
-                if (!isOffline && currentPlaying != null && currentPlaying != gameId) {
+                if (!effectiveIsOffline && currentPlaying != null && currentPlaying != gameId) {
                     val otherGameName = SteamService.getAppInfoOf(currentPlaying)?.name ?: "another game"
                     setLoadingDialogVisible(false)
                     setMessageDialogState(
@@ -1879,7 +1935,7 @@ fun preLaunchApp(
             try {
                 // Skip workshop sync if Steam isn't fully connected yet
                 // (can happen if the user taps Play immediately after opening the app).
-                if (isOffline || !SteamService.isConnected || !SteamService.isLoggedIn) {
+                if (effectiveIsOffline || !SteamService.isConnected || !SteamService.isLoggedIn) {
                     Timber.tag("Workshop").w(
                         "Steam not connected/logged in or offline, skipping workshop sync for appId=$gameId"
                     )
@@ -2022,7 +2078,7 @@ fun preLaunchApp(
             ignorePendingOperations = ignorePendingOperations,
             preferredSave = preferredSave,
             parentScope = this,
-            isOffline = isOffline,
+            isOffline = effectiveIsOffline,
             onProgress = { message, progress ->
                 setLoadingMessage(message)
                 setLoadingProgress(if (progress < 0) -1f else progress)
