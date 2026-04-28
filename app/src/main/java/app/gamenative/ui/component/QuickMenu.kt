@@ -255,7 +255,7 @@ fun QuickMenu(
                 id = QuickMenuAction.DISABLE_MOUSE,
                 icon = Icons.Filled.Mouse,
                 labelResId = R.string.disable_mouse_input,
-                accentColor = PluviaTheme.colors.accentPink,
+                accentColor = PluviaTheme.colors.accentPurple,
             )
         )
         add(
@@ -263,7 +263,7 @@ fun QuickMenu(
                 id = QuickMenuAction.KEYBOARD,
                 icon = Icons.Default.Keyboard,
                 labelResId = R.string.keyboard,
-                accentColor = PluviaTheme.colors.accentCyan,
+                accentColor = PluviaTheme.colors.accentPurple,
             )
         )
         add(
@@ -280,7 +280,7 @@ fun QuickMenu(
                     id = QuickMenuAction.EDIT_PHYSICAL_CONTROLLER,
                     icon = Icons.Default.Gamepad,
                     labelResId = R.string.edit_physical_controller,
-                    accentColor = PluviaTheme.colors.accentWarning,
+                    accentColor = PluviaTheme.colors.accentPurple,
                 )
             )
         }
@@ -289,7 +289,7 @@ fun QuickMenu(
                 id = QuickMenuAction.EDIT_CONTROLS,
                 icon = Icons.Default.Edit,
                 labelResId = R.string.edit_controls,
-                accentColor = PluviaTheme.colors.accentSuccess,
+                accentColor = PluviaTheme.colors.accentPurple,
             )
         )
         add(
