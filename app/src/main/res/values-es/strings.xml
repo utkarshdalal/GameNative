@@ -1034,6 +1034,7 @@
     <string name="main_app_running_message">Has iniciado sesión en otro dispositivo que ya está jugando a %s.\nAún puedes jugar a este juego, pero eso desconectará la otra sesión de Steam.</string>
     <string name="main_app_running_other_device">Has iniciado sesión en otro dispositivo (%1$s) que ya está jugando a %2$s (%3$s), y ese archivo de guardado aún no está en la nube.\nAún puedes jugar a este juego, pero eso desconectará la otra sesión de Steam y podría crear un conflicto de guardado cuando se sincronice el progreso de esa sesión.</string>
     <string name="main_play_anyway">Jugar de todos modos</string>
+    <string name="main_app_running_unknown_game">un juego</string>
 
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Conflicto de guardado</string>

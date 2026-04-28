@@ -675,6 +675,7 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
 Вы всё ещё можете играть в эту игру, но это может создать конфликт, когда ваш предыдущий прогресс успешно загрузится.</string>
     <string name="main_pending_upload_title">Ожидание загрузки</string>
     <string name="main_play_anyway">Играть в любом случае</string>
+    <string name="main_app_running_unknown_game">игру</string>
     <string name="main_recent_crash_message">Приносим извинения!
 Было бы хорошо узнать о недавней проблеме, которая у вас была.
 Вы можете просмотреть и экспортировать самый последний журнал сбоев в настройках приложения и приложить его как Github проблему в репозитории проекта.

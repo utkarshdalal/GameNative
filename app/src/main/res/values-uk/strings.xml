@@ -1017,6 +1017,7 @@
     <string name="main_app_running_message">Ви авторизовані на іншому пристрої, де граєте у %s. Ви все одно можете грати в цю гру, але це завершить інший сеанс у Steam.</string>
     <string name="main_app_running_other_device">Ви авторизовані на іншому пристрої (%1$s), де граєте у %2$s (%3$s), і прогрес цієї гри ще не синхронізовано з хмарою. \nВи все одно можете грати в цю гру, але це завершить інший сеанс у Steam і може створити конфлікт збережень, коли прогрес того сеансу синхронізуватиметься</string>
     <string name="main_play_anyway">Все одно грати</string>
+    <string name="main_app_running_unknown_game">гру</string>
 
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Конфлікт збережень</string>

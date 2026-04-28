@@ -844,6 +844,7 @@
     <string name="main_app_running_message">Du er logget ind på en anden enhed og spiller allerede %s. \nDu kan stadig spille dette spil, men det vil afbryde den anden session fra Steam.</string>
     <string name="main_app_running_other_device">Du er logget ind på en anden enhed (%1$s) og spiller allerede %2$s (%3$s), og den gemfil er ikke i skyen endnu. \nDu kan stadig spille dette spil, men det vil afbryde den anden session fra Steam og kan skabe en gemfilkonflikt når sessionsframgangen synkroniseres</string>
     <string name="main_play_anyway">Spil alligevel</string>
+    <string name="main_app_running_unknown_game">et spil</string>
 
     <!-- TODO: Manual review - PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Gemfilkonflikt</string>

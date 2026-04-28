@@ -844,6 +844,7 @@
     <string name="main_app_running_message">Você já está logado em outro dispositivo jogando %s. \nVocê ainda pode jogar este jogo, mas isso desconectará a outra sessão do Steam.</string>
     <string name="main_app_running_other_device">Você já está logado em outro dispositivo (%1$s) jogando %2$s (%3$s), e esse save ainda não está na nuvem. \nVocê ainda pode jogar este jogo, mas isso desconectará a outra sessão do Steam e pode criar um conflito de save quando o progresso da sessão for sincronizado</string>
     <string name="main_play_anyway">Jogar mesmo assim</string>
+    <string name="main_app_running_unknown_game">um jogo</string>
 
     <!-- TODO: Revisão manual - PluviaMain: Conflitos de save -->
     <string name="main_save_conflict_title">Conflito de save</string>

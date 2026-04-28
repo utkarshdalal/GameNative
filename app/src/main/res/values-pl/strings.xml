@@ -1031,6 +1031,7 @@
     <string name="main_app_running_message">Jesteś zalogowany na innym urządzeniu grając w %s. \nMożesz kontynuować grę, ale to rozłączy drugą sesję ze Steam.</string>
     <string name="main_app_running_other_device">Jesteś zalogowany na innym urządzeniu (%1$s) grając w %2$s (%3$s), a zapis nie jest jeszcze w chmurze. \nMożesz kontynuować grę, ale to rozłączy drugą sesję ze Steam i może stworzyć konflikt zapisu, gdy postęp tamtej sesji zostanie zsynchronizowany.</string>
     <string name="main_play_anyway">Graj mimo to</string>
+    <string name="main_app_running_unknown_game">grę</string>
 
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Konflikt zapisu</string>

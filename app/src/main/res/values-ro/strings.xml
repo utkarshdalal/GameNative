@@ -1022,6 +1022,7 @@
 	<string name="main_app_running_message">Ești autentificat pe un alt dispozitiv care deja rulează %s.\nPoți juca în continuare, dar asta va deconecta cealaltă sesiune din Steam.</string>
 	<string name="main_app_running_other_device">Ești autentificat pe un alt dispozitiv (%1$s) care rulează deja %2$s (%3$s), iar salvarea nu este încă în cloud.\nPoți juca în continuare, dar asta va deconecta cealaltă sesiune și poate crea conflicte de salvare când progresul este sincronizat.</string>
 	<string name="main_play_anyway">Joacă oricum</string>
+	<string name="main_app_running_unknown_game">un joc</string>
 
 	<!-- PluviaMain: Save Conflicts -->
 	<string name="main_save_conflict_title">Conflict de salvare</string>

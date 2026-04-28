@@ -1014,6 +1014,7 @@
     <string name="main_app_running_message">您已在另一台裝置登入並正在遊玩 %s。\n您仍可繼續遊玩此遊戲，但此操作將導致 Steam 斷開另一裝置的連線。</string>
     <string name="main_app_running_other_device">您已在另一台裝置 (%1$s) 上登入並正在遊玩 %2$s (%3$s)，該存檔尚未同步至雲端。\n您仍可繼續遊玩此遊戲，但此操作將使另一裝置的 Steam 連線中斷，且當該裝置的進度同步時可能產生存檔衝突。</string>
     <string name="main_play_anyway">仍要繼續</string>
+    <string name="main_app_running_unknown_game">遊戲</string>
 
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">存檔衝突</string>

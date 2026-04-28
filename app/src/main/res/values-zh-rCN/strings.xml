@@ -1011,6 +1011,7 @@
     <string name="main_app_running_message">您已在另一台设备登录并正在游玩 %s。\n您仍可继续游玩此游戏，但此操作将导致 Steam 断开另一设备的连接。</string>
     <string name="main_app_running_other_device">您已在另一台设备（%1$s）上登录并正在游玩 %2$s（%3$s），该存档尚未同步至云端。\n您仍可继续游玩此游戏，但此操作将使另一设备的 Steam 连接中断，且当该设备的进度同步时可能产生存档冲突。</string>
     <string name="main_play_anyway">仍要继续</string>
+    <string name="main_app_running_unknown_game">游戏</string>
 
     <!-- 主界面：存档冲突 -->
     <string name="main_save_conflict_title">存档冲突</string>

@@ -1018,6 +1018,7 @@
     <string name="main_app_running_message">Vous êtes connecté sur un autre appareil jouant déjà à %s. \nVous pouvez toujours jouer à ce jeu, mais cela déconnectera l\'autre session de Steam.</string>
     <string name="main_app_running_other_device">Vous êtes connecté sur un autre appareil (%1$s) jouant déjà à %2$s (%3$s), et cette sauvegarde n\'est pas encore dans le cloud. \nVous pouvez toujours jouer à ce jeu, mais cela déconnectera l\'autre session de Steam et peut créer un conflit de sauvegarde lorsque la progression de cette session sera synchronisée</string>
     <string name="main_play_anyway">Jouer quand même</string>
+    <string name="main_app_running_unknown_game">un jeu</string>
 
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Conflit de sauvegarde</string>

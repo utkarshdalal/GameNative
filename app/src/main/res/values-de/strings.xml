@@ -970,6 +970,7 @@
     <string name="main_app_running_message">Du bist auf einem anderen Gerät bereits mit %s angemeldet. Du kannst trotzdem spielen, aber das beendet die andere Steam-Sitzung.</string>
     <string name="main_app_running_other_device">Du bist auf einem anderen Gerät (%1$s) mit %2$s (%3$s) angemeldet, und dieser Spielstand wurde noch nicht in der Cloud gespeichert. Du kannst trotzdem spielen, doch wird dadurch die andere Sitzung getrennt und es kann zu Speicherstandskonflikten kommen, wenn die andere Sitzung synchronisiert wird.</string>
     <string name="main_play_anyway">Trotzdem starten</string>
+    <string name="main_app_running_unknown_game">ein Spiel</string>
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Speicherstandkonflikt</string>
     <string name="main_save_conflict_message">Es wurden ein neuer lokaler und ein neuer Cloud-Spielstand gefunden. Welchen möchtest du behalten?\n\nLokal:\n\t%1$s\nCloud:\n\t%2$s</string>
