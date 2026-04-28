@@ -29,6 +29,11 @@ class EpicManager @Inject constructor(
 
     private val REFRESH_BATCH_SIZE = 10
 
+    // Deployment ID cache TTL — deployment IDs rarely change, but a periodic re-probe
+    // gives automatic recovery from any poisoned cache entry (stale negative, truncated
+    // value, etc.) without requiring manual intervention.
+    private val DEPLOYMENT_ID_CACHE_TTL_MS = 30L * 24 * 60 * 60 * 1000  // 30 days
+
     private val httpClient = Net.http
 
     private fun getCdnClient(): okhttp3.OkHttpClient {
@@ -921,6 +926,103 @@ class EpicManager @Inject constructor(
         } catch (e: Exception) {
             Timber.tag("Epic").e(e, "Exception fetching manifest")
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Fetch the EOS deployment id for a game from the launcher manifest API.
+     *
+     * Mirrors Legendary's sidecar handling (legendary/core.py, _update_assets_and_meta
+     * and get_launch_parameters): the manifest API response contains
+     * `elements[0].sidecar.config` as a JSON-encoded string, which carries the
+     * game's `deploymentId`.  Passing `-epicdeploymentid=<id>` on the command
+     * line is required for modern EOS-integrated games; without it, titles
+     * such as "Deliver At All Costs" refuse to start with
+     * "Failed to connect to the Epic Launcher".
+     *
+     * Cached per app-name under [Context.filesDir]/epic/deployment_ids/.
+     *
+     * @return the deployment id if the game exposes one, otherwise null. Null
+     *         is a valid result – most titles do not have a sidecar.
+     */
+    suspend fun fetchDeploymentId(
+        context: Context,
+        namespace: String,
+        catalogItemId: String,
+        appName: String,
+        forceRefresh: Boolean = false,
+    ): String? = withContext(Dispatchers.IO) {
+        val cacheDir = File(context.filesDir, "epic/deployment_ids").also { it.mkdirs() }
+        val sanitized = appName.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+        val cacheFile = File(cacheDir, "$sanitized.txt")
+
+        if (!forceRefresh && cacheFile.exists()) {
+            val cacheAgeMs = System.currentTimeMillis() - cacheFile.lastModified()
+            if (cacheAgeMs < DEPLOYMENT_ID_CACHE_TTL_MS) {
+                return@withContext cacheFile.readText().trim().takeIf { it.isNotEmpty() }
+            }
+            Timber.tag("Epic").d(
+                "fetchDeploymentId cache for $appName is stale (age=${cacheAgeMs}ms), refetching",
+            )
+        }
+
+        try {
+            val credentialsResult = EpicAuthManager.getStoredCredentials(context)
+            val accessToken = credentialsResult.getOrNull()?.accessToken
+            if (accessToken.isNullOrEmpty()) {
+                Timber.tag("Epic").w("fetchDeploymentId: no access token")
+                return@withContext null
+            }
+
+            val manifestUrl = "${EpicConstants.EPIC_LAUNCHER_API_URL}/launcher/api/public/assets/v2/platform" +
+                "/Windows/namespace/$namespace/catalogItem/$catalogItemId/app" +
+                "/$appName/label/Live"
+
+            val request = Request.Builder()
+                .url(manifestUrl)
+                .header("Authorization", "Bearer $accessToken")
+                .header("User-Agent", EpicConstants.EPIC_USER_AGENT)
+                .get()
+                .build()
+
+            val manifestJson = httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Timber.tag("Epic").w("fetchDeploymentId: manifest API ${response.code} for $appName")
+                    return@withContext null
+                }
+                val body = response.body?.string()
+                if (body.isNullOrEmpty()) return@withContext null
+                JSONObject(body)
+            }
+
+            val elements = manifestJson.optJSONArray("elements")
+            if (elements == null || elements.length() == 0) return@withContext null
+
+            val sidecar = elements.getJSONObject(0).optJSONObject("sidecar")
+            // sidecar.config is a JSON-encoded string, NOT a nested JSON object
+            val configStr = sidecar?.optString("config", "") ?: ""
+            if (configStr.isEmpty()) {
+                // Cache negative result to avoid refetching every launch
+                cacheFile.writeText("")
+                return@withContext null
+            }
+
+            val deploymentId = try {
+                JSONObject(configStr).optString("deploymentId", "").takeIf { it.isNotEmpty() }
+            } catch (e: Exception) {
+                // Malformed sidecar (transient Epic API hiccup or schema change).
+                // Do NOT persist a negative cache here — next launch will retry the parse
+                // rather than permanently treating this game as having no deployment id.
+                Timber.tag("Epic").w(e, "fetchDeploymentId: failed to parse sidecar.config for $appName")
+                return@withContext null
+            }
+
+            cacheFile.writeText(deploymentId ?: "")
+            Timber.tag("Epic").d("fetchDeploymentId($appName) = ${deploymentId ?: "<none>"}")
+            deploymentId
+        } catch (e: Exception) {
+            Timber.tag("Epic").e(e, "Exception fetching deployment id for $appName")
+            null
         }
     }
 
