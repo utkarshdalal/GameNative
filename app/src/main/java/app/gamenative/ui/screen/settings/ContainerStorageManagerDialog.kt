@@ -422,7 +422,7 @@ fun ContainerStorageManagerContent(
                 )
                 if (state.volumeInfo.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(2.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         state.volumeInfo.forEach { vol ->
                             Text(
                                 text = stringResource(

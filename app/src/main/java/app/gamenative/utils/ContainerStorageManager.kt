@@ -89,7 +89,7 @@ object ContainerStorageManager {
             Timber.w(e, "Failed to query internal storage volume info")
         }
         val externalPath = PrefManager.externalStoragePath
-        if (externalPath.isNotBlank() && File(externalPath).exists()) {
+        if (PrefManager.useExternalStorage && externalPath.isNotBlank() && File(externalPath).isDirectory) {
             runCatching {
                 volumes += VolumeInfo(
                     label = context.getString(R.string.storage_external),
