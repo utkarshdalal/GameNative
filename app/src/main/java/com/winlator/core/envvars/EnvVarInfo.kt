@@ -289,20 +289,6 @@ data class EnvVarInfo(
             "MESA_VK_PRESENT_MODE" to EnvVarInfo(
                 identifier = "MESA_VK_PRESENT_MODE",
             ),
-            "MANGOHUD" to EnvVarInfo(
-                identifier = "MANGOHUD",
-                selectionType = EnvVarSelectionType.TOGGLE,
-                possibleValues = listOf("0", "1"),
-            ),
-            "MANGOHUD_CONFIG" to EnvVarInfo(
-                identifier = "MANGOHUD_CONFIG",
-                selectionType = EnvVarSelectionType.SUGGESTIONS,
-                possibleValues = listOf(
-                    "fps",
-                    "fps_limit=60",
-                    "fps_only",
-                ),
-            ),
         )
     }
 }

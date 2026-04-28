@@ -92,6 +92,7 @@ fun SettingsTextFieldWithSuggestions(
                         onDismissRequest = { suggestionsExpanded = false },
                     ) {
                         suggestions.forEach { suggestion ->
+                            // suggestion box headers
                             if (suggestion.startsWith("---")) {
                                 // Category header — greyed out, not clickable
                                 DropdownMenuItem(

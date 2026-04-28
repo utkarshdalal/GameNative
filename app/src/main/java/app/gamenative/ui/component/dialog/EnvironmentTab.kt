@@ -176,6 +176,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                         onDismissRequest = { suggestionsExpanded = false },
                                     ) {
                                         selectedEnvVarInfo!!.possibleValues.forEach { suggestion ->
+                                           // suggestion box headers
                                             if (suggestion.startsWith("---")) {
                                                 DropdownMenuItem(
                                                     text = {
@@ -216,6 +217,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                     enabled = envVarName.isNotEmpty(),
                     onClick = {
                         val envVars = EnvVars(config.envVars)
+                        // replace spaces in variables mistyped by user
                         envVars.put(envVarName.trim(), envVarValue.replace(" ", ""))
                         state.config.value = config.copy(envVars = envVars.toString())
                         state.showEnvVarCreateDialog.value = false

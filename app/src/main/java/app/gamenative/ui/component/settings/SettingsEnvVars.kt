@@ -94,6 +94,7 @@ fun SettingsEnvVars(
                     suggestions = envVarInfo?.possibleValues ?: emptyList(),
                     onValueChange = { newText ->
                         localValue = newText
+                        // replace spaces in variables mistyped by user
                         envVars.put(identifier, newText.replace(" ", ""))
                         onEnvVarsChange(envVars)
                     },
@@ -120,6 +121,7 @@ fun SettingsEnvVars(
                         },
                     )
                 } else {
+                    // replace spaces in variables mistyped by user
                     var localValue by remember(identifier) { mutableStateOf(value) }
                     LaunchedEffect(value) {
                         if (value != localValue.replace(" ", "")) {
@@ -133,6 +135,7 @@ fun SettingsEnvVars(
                         value = localValue,
                         onValueChange = { newText ->
                             localValue = newText
+                            // replace spaces in variables mistyped by user
                             envVars.put(identifier, newText.replace(" ", ""))
                             onEnvVarsChange(envVars)
                         },
