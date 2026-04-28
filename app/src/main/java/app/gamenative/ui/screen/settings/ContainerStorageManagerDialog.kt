@@ -134,12 +134,13 @@ class ContainerStorageManagerUiState internal constructor(
 
         scope.launch {
             isLoading = true
-            runCatching {
-                ContainerStorageManager.getVolumeInfo(appContext)
-            }.onSuccess {
-                volumeInfo = it
-            }.onFailure { error ->
-                Timber.w(error, "Failed to query volume info")
+            try {
+                volumeInfo = ContainerStorageManager.getVolumeInfo(appContext)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                volumeInfo = emptyList()
+                Timber.w(e, "Failed to query volume info")
             }
             runCatching {
                 ContainerStorageManager.loadEntries(appContext)
