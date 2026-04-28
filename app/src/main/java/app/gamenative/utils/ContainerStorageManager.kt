@@ -77,7 +77,7 @@ object ContainerStorageManager {
         val totalBytes: Long,
     )
 
-    fun getVolumeInfo(context: Context): List<VolumeInfo> {
+    suspend fun getVolumeInfo(context: Context): List<VolumeInfo> = withContext(Dispatchers.IO) {
         val volumes = mutableListOf<VolumeInfo>()
         runCatching {
             volumes += VolumeInfo(
@@ -85,18 +85,22 @@ object ContainerStorageManager {
                 freeBytes = StorageUtils.getAvailableSpace(context.dataDir.path),
                 totalBytes = StorageUtils.getTotalSpace(context.dataDir.path),
             )
+        }.onFailure { e ->
+            Timber.w(e, "Failed to query internal storage volume info")
         }
         val externalPath = PrefManager.externalStoragePath
-        if (externalPath.isNotBlank() && java.io.File(externalPath).exists()) {
+        if (externalPath.isNotBlank() && File(externalPath).exists()) {
             runCatching {
                 volumes += VolumeInfo(
                     label = context.getString(R.string.storage_external),
                     freeBytes = StorageUtils.getAvailableSpace(externalPath),
                     totalBytes = StorageUtils.getTotalSpace(externalPath),
                 )
+            }.onFailure { e ->
+                Timber.w(e, "Failed to query external storage volume info")
             }
         }
-        return volumes
+        volumes
     }
 
     data class Entry(
