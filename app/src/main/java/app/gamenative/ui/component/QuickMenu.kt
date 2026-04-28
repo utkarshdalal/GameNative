@@ -321,6 +321,7 @@ fun QuickMenu(
     val effectsItemFocusRequester = remember { FocusRequester() }
     val controllerItemFocusRequester = remember { FocusRequester() }
     val toolsItemFocusRequester = remember { FocusRequester() }
+    val navRailScrollState = rememberScrollState()
 
     BackHandler(enabled = isVisible) {
         onDismiss()
@@ -411,6 +412,9 @@ fun QuickMenu(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .verticalScroll(navRailScrollState),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
@@ -451,8 +455,6 @@ fun QuickMenu(
                                     focusRequester = toolsTabFocusRequester,
                                 )
                             }
-
-                            Spacer(modifier = Modifier.weight(1f))
 
                             Box(
                                 modifier = Modifier
