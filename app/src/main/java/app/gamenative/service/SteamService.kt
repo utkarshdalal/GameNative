@@ -61,7 +61,11 @@ import app.gamenative.utils.generateSteamApp
 import app.gamenative.workshop.WorkshopManager
 import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
 import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import `in`.dragonbra.javasteam.depotdownloader.DepotDownloader
 import `in`.dragonbra.javasteam.depotdownloader.IDownloadListener
 import `in`.dragonbra.javasteam.depotdownloader.data.AppItem
@@ -2807,6 +2811,25 @@ class SteamService : Service(), IChallengeUrlChanged {
             EResult.ParentalControlRestricted,
             EResult.CachedCredentialInvalid -> true
             else -> false
+        }
+
+        @EntryPoint
+        @InstallIn(SingletonComponent::class)
+        interface CloudSyncCacheEntryPoint {
+            fun fileChangeListsDao(): FileChangeListsDao
+        }
+
+        // runBlocking is intentional: must complete before pendingCloudResync write that follows
+        fun clearCloudSyncCache(context: Context, appId: Int) {
+            val dao = instance?.fileChangeListsDao
+                ?: EntryPointAccessors.fromApplication(
+                    context.applicationContext,
+                    CloudSyncCacheEntryPoint::class.java,
+                ).fileChangeListsDao()
+            runBlocking {
+                dao.deleteByAppId(appId)
+            }
+            Timber.i("Cleared cloud sync cache for appId=$appId")
         }
 
         fun clearDatabase(clearCloudSyncState: Boolean = false) {

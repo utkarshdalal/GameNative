@@ -28,6 +28,7 @@
     <string name="steam_verify_files_title">验证文件</string>
     <string name="steam_verify_files_message">验证前请确保存档已上传至云端或已备份，否则存档可能会被覆盖</string>
     <string name="steam_cloud_sync_downloading_save_files">正在下载存档文件 %1$d/%2$d</string>
+    <string name="steam_verify_files_message_local_saves">由于已启用仅本地存档，验证期间将跳过云同步。</string>
     <string name="steam_update_title">更新</string>
     <string name="steam_update_message">更新前请确保存档已上传至云端或已备份，否则存档可能会被覆盖</string>
     <string name="steam_storage_permission_required">需要存储权限</string>
@@ -642,6 +643,8 @@
     <string name="unpack_files_description">仅在出现\'应用程序加载错误\'时使用。可能会降低帧率。</string>
     <string name="force_dlc">强制开启DLC</string>
     <string name="force_dlc_description">仅在未检测到 DLC 或包含 DLC 的存档无法运作时启用</string>
+    <string name="local_saves_only">仅本地存档</string>
+    <string name="local_saves_only_description">禁用此游戏的云存档同步，仅在设备上保存</string>
     <string name="launch_steam_client_beta">启动 Steam 客户端（Beta）</string>
     <string name="steam_offline_mode">Steam 离线模式</string>
     <string name="steam_offline_mode_description">以离线模式启动 Steam 游戏</string>
@@ -1004,6 +1007,7 @@
     <string name="library_cloud_sync_up_to_date">云存档同步已是最新状态</string>
     <string name="library_cloud_sync_failed">云存档同步失败</string>
     <string name="library_cloud_sync_error">云存档同步错误：%1$s</string>
+    <string name="library_cloud_sync_in_progress">云存档同步正在进行中</string>
 
     <!-- 库应用界面：UI标签 -->
     <string name="library_need_internet">需联网安装</string>
@@ -1446,10 +1450,6 @@
     <string name="library_compatibility_unknown">未知</string>
     <string name="library_not_compatible">不兼容</string>
 
-    <!-- Steam 集成：存档设置 -->
-    <string name="local_saves_only">仅本地存档</string>
-    <string name="local_saves_only_description">禁用此游戏的云存档同步，仅将存档保存在本地设备上</string>
-
     <!-- 主界面：下载条目 -->
     <string name="main_downloading_entry">正在下载 %s</string>
 
@@ -1513,4 +1513,6 @@
     <string name="lsfg_install_message">将从 Steam 下载 Lossless Scaling 以启用帧生成。</string>
     <string name="lsfg_installing">正在下载 Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">降低画质以提升吞吐量</string>
+    <string name="cloud_sync_local_saves_only_title">仅本地存档</string>
+    <string name="cloud_sync_local_saves_only_message">此游戏已启用\u201C仅本地存档\u201D。云端存档可能与本地存档不同。您想保留哪个？</string>
 </resources>

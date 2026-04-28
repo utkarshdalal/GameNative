@@ -3,6 +3,7 @@ package app.gamenative.service
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import app.gamenative.PrefManager
 import app.gamenative.data.ConfigInfo
 import app.gamenative.data.FileChangeLists
 import app.gamenative.data.PostSyncInfo
@@ -26,6 +27,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.FileDownloadInfo
 import `in`.dragonbra.javasteam.steam.steamclient.configuration.SteamConfiguration
 import app.gamenative.enums.SyncResult
+import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import `in`.dragonbra.javasteam.util.crypto.CryptoHelper
 import kotlinx.coroutines.runBlocking
 import okhttp3.Call
@@ -80,6 +82,10 @@ class SteamAutoCloudTest {
         every { Net.httpForParallelDownloads(any()) } returns mockParallelHttpClient
 
         context = ApplicationProvider.getApplicationContext()
+
+        // PrefManager uses a real Robolectric-backed DataStore so pendingCloudResync persists
+        PrefManager.init(context)
+
         tempDir = File.createTempFile("steam_autocloud_test_", null)
         tempDir.delete()
         tempDir.mkdirs()
@@ -246,6 +252,7 @@ class SteamAutoCloudTest {
     @After
     fun tearDown() {
         unmockkObject(Net)
+        PrefManager.pendingCloudResync = emptySet()
 
         // Clean up ImageFs directory first (files created in wineprefix)
         // This is critical because ImageFs uses context.getFilesDir() which is inside Robolectric's temp directory
@@ -2396,46 +2403,17 @@ class SteamAutoCloudTest {
         )
     }
 
-    // ── Scenario 16: DB cache wiped by destructive migration, local == remote ──
-    // Repro of the "every steam game reports conflict post-update" bug. When
-    // fallbackToDestructiveMigration wipes file_change_lists but local save files
-    // are byte-identical to the cloud manifest, we must rehydrate the cache
-    // silently and NOT show a conflict dialog.
+    // ── Scenario 14: pendingCloudResync flag suppresses upgrade conflict text ──
     @Test
-    fun dbCleared_localMatchesRemote_rehydratesSilently_noConflict() = runBlocking {
+    fun cacheCleared_pendingResync_conflictWithoutUpgradeText() = runBlocking {
         db.appChangeNumbersDao().deleteByAppId(steamAppId)
         db.appFileChangeListsDao().deleteByAppId(steamAppId)
-
-        // the 5 files created in setUp() — cloud manifest must match exactly.
-        // local scan basePath = %WinMyDocuments%/My Games/TestGame/Steam/{id},
-        // files live under SaveGames/ → filename (relativized) includes that prefix.
-        val localFiles = mapOf(
-            "SaveGames/AutoSaveData.sav" to "autosave content".toByteArray(),
-            "SaveGames/SaveData_0.sav" to "savedata0 content".toByteArray(),
-            "SaveGames/ContinueSaveData.sav" to "continue content".toByteArray(),
-            "SaveGames/SaveData_1.sav" to "savedata1 content".toByteArray(),
-            "SaveGames/SystemData_0.sav" to "systemdata content".toByteArray(),
-        )
-
         assertTrue("Precondition: local save files exist", saveFilesDir.listFiles()!!.isNotEmpty())
 
-        val cloudFiles = localFiles.map { (name, content) ->
-            val m = mock<AppFileInfo>()
-            whenever(m.filename).thenReturn(name)
-            whenever(m.shaFile).thenReturn(sha1(content))
-            whenever(m.pathPrefixIndex).thenReturn(0)
-            whenever(m.timestamp).thenReturn(Date())
-            whenever(m.rawFileSize).thenReturn(content.size)
-            m
-        }
+        PrefManager.pendingCloudResync = setOf(steamAppId)
 
-        val cloudFileChangeList = makeCloudFileChangeList(
-            cloudChangeNumber = 5,
-            files = cloudFiles,
-            pathPrefixes = listOf("%WinMyDocuments%/My Games/TestGame/Steam/76561198025127569"),
-        )
         every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
-            CompletableFuture.completedFuture(cloudFileChangeList)
+            CompletableFuture.completedFuture(makeCloudFileChangeList(cloudChangeNumber = 5))
 
         val testApp = db.steamAppDao().findApp(steamAppId)!!
         val result = SteamAutoCloud.syncUserFiles(
@@ -2448,31 +2426,41 @@ class SteamAutoCloudTest {
         ).await()
 
         assertNotNull(result)
-        assertEquals(
-            "local matches remote exactly — should be UpToDate, not Conflict",
-            SyncResult.UpToDate,
-            result!!.syncResult,
-        )
+        assertEquals("Should still be Conflict", SyncResult.Conflict, result!!.syncResult)
         assertNull(
-            "no conflict dialog — conflictUfsVersion must be null",
+            "conflictUfsVersion should be null — generic text, not upgrade",
             result.conflictUfsVersion,
         )
-        assertEquals("no downloads", 0, result.filesDownloaded)
-        assertEquals("no uploads", 0, result.filesUploaded)
+    }
 
-        // cache must be rehydrated so next launch doesn't trip the same path
-        val rehydrated = db.appFileChangeListsDao().getByAppId(steamAppId)
-        assertNotNull("cache should be rehydrated", rehydrated)
+    // ── Scenario 15: Without pendingCloudResync, conflict sets conflictUfsVersion ──
+    @Test
+    fun cacheCleared_noPendingResync_conflictWithUpgradeText() = runBlocking {
+        db.appChangeNumbersDao().deleteByAppId(steamAppId)
+        db.appFileChangeListsDao().deleteByAppId(steamAppId)
+        assertTrue("Precondition: local save files exist", saveFilesDir.listFiles()!!.isNotEmpty())
+
+        PrefManager.pendingCloudResync = emptySet()
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(makeCloudFileChangeList(cloudChangeNumber = 5))
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals("Should be Conflict", SyncResult.Conflict, result!!.syncResult)
         assertEquals(
-            "rehydrated cache should contain all 5 local files",
-            5,
-            rehydrated!!.userFileInfo.size,
-        )
-        val rehydratedCn = db.appChangeNumbersDao().getByAppId(steamAppId)
-        assertEquals(
-            "rehydrated change number should match cloud",
-            5L,
-            rehydratedCn!!.changeNumber,
+            "conflictUfsVersion should be set for upgrade text",
+            CURRENT_UFS_PARSE_VERSION,
+            result.conflictUfsVersion,
         )
     }
 }

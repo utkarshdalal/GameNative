@@ -28,6 +28,7 @@
     <string name="steam_verify_files_title">驗證檔案</string>
     <string name="steam_verify_files_message">請確保您的存檔已上傳至雲端或已備份, 然後再進行驗證, 否則存檔可能會被覆蓋</string>
     <string name="steam_cloud_sync_downloading_save_files">正在下載存檔檔案 %1$d/%2$d</string>
+    <string name="steam_verify_files_message_local_saves">由於已啟用僅本地存檔，驗證期間將跳過雲端同步。</string>
     <string name="steam_update_title">更新</string>
     <string name="steam_update_message">請確保您的存檔已上傳至雲端或已備份, 然後再進行驗證, 否則存檔可能會被覆蓋</string>
     <string name="steam_storage_permission_required">需要存儲權限</string>
@@ -644,6 +645,8 @@
     <string name="unpack_files_description">僅在出現\'應用程式載入錯誤\'時使用。可能會降低幀率。</string>
     <string name="force_dlc">強制開啟DLC</string>
     <string name="force_dlc_description">僅在未偵測到 DLC 或包含 DLC 的存檔無法運作時啟用</string>
+    <string name="local_saves_only">僅本地存檔</string>
+    <string name="local_saves_only_description">停用此遊戲的雲端存檔同步，僅在裝置上保存</string>
     <string name="launch_steam_client_beta">啟動 Steam 用戶端 (Beta)</string>
     <string name="steam_offline_mode">Steam 離線模式</string>
     <string name="steam_offline_mode_description">以離線模式啟動 Steam 遊戲</string>
@@ -1007,6 +1010,7 @@
     <string name="library_cloud_sync_up_to_date">儲存檔案已更新至最新版本</string>
     <string name="library_cloud_sync_failed">雲端同步失敗</string>
     <string name="library_cloud_sync_error">雲端存檔同步錯誤：%1$s</string>
+    <string name="library_cloud_sync_in_progress">雲端存檔同步正在進行中</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">需連網安裝</string>
@@ -1445,9 +1449,6 @@
     <string name="library_compatibility_unknown">未知</string>
     <string name="library_not_compatible">不相容</string>
 
-    <string name="local_saves_only">僅限本地存檔</string>
-    <string name="local_saves_only_description">停用此遊戲的雲端存檔同步，僅將存檔儲存在本地裝置上</string>
-
     <string name="main_downloading_entry">正在下載 %s</string>
 
     <string name="option_open_store_page">開啟商店頁面</string>
@@ -1505,4 +1506,6 @@
     <string name="lsfg_install_message">將從 Steam 下載 Lossless Scaling 以啟用幀生成。</string>
     <string name="lsfg_installing">正在下載 Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">降低畫質以提升吞吐量</string>
+    <string name="cloud_sync_local_saves_only_title">僅本地存檔</string>
+    <string name="cloud_sync_local_saves_only_message">此遊戲已啟用「僅本地存檔」。雲端存檔可能與本地存檔不同。您想保留哪一個？</string>
 </resources>

@@ -28,6 +28,7 @@
     <string name="steam_verify_files_title">Zweryfikuj pliki</string>
     <string name="steam_verify_files_message">Upewnij się, że Twoje zapisy są przesłane do chmury lub utworzono ich kopię zapasową przed weryfikacją, w przeciwnym razie mogą zostać nadpisane.</string>
     <string name="steam_cloud_sync_downloading_save_files">Pobieranie plików zapisów %1$d/%2$d</string>
+    <string name="steam_verify_files_message_local_saves">Synchronizacja z chmurą zostanie pominięta podczas weryfikacji, ponieważ włączone są tylko lokalne zapisy.</string>
     <string name="steam_update_title">Aktualizuj</string>
     <string name="steam_update_message">Upewnij się, że Twoje zapisy są przesłane do chmury lub utworzono ich kopię zapasową przed aktualizacją, w przeciwnym razie mogą zostać nadpisane.</string>
     <string name="steam_not_logged_in">Musisz być zalogowany do Steam, aby użyć tej funkcji</string>
@@ -660,6 +661,8 @@
     <string name="unpack_files_description">Używaj tylko w przypadku błędu \'Application Load Error\'. Może zmniejszyć FPS.</string>
     <string name="force_dlc">Wymuś DLC</string>
     <string name="force_dlc_description">Włącz tylko jeśli DLC nie są wykrywane lub zapisy z DLC nie działają</string>
+    <string name="local_saves_only">Tylko lokalne zapisy</string>
+    <string name="local_saves_only_description">Wyłącz synchronizację zapisów z chmurą dla tej gry i przechowuj zapisy tylko na urządzeniu</string>
     <string name="launch_steam_client_beta">Uruchom Klienta Steam (Beta)</string>
     <string name="steam_offline_mode">Tryb Offline Steam</string>
     <string name="steam_offline_mode_description">Uruchamiaj gry Steam w trybie offline</string>
@@ -1022,6 +1025,7 @@
     <string name="library_cloud_sync_up_to_date">Pliki zapisu są już aktualne</string>
     <string name="library_cloud_sync_failed">Synchronizacja z chmurą nie powiodła się</string>
     <string name="library_cloud_sync_error">Błąd synchronizacji zapisów w chmurze: %1$s</string>
+    <string name="library_cloud_sync_in_progress">Synchronizacja z chmurą już trwa</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Wymagany internet do instalacji</string>
@@ -1443,4 +1447,6 @@
     <string name="lsfg_install_message">Spowoduje to pobranie Lossless Scaling ze Steam, aby umożliwić generowanie klatek.</string>
     <string name="lsfg_installing">Pobieranie Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Zmniejsza jakość dla wyższej przepustowości</string>
+    <string name="cloud_sync_local_saves_only_title">Tylko lokalne zapisy</string>
+    <string name="cloud_sync_local_saves_only_message">"Tylko lokalne zapisy" jest włączone dla tej gry. Zapisy w chmurze mogą różnić się od lokalnych zapisów. Które chcesz zachować?</string>
 </resources>

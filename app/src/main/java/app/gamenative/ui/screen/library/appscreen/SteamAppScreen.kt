@@ -34,13 +34,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
-import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
-
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
+import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.DownloadService
@@ -53,6 +53,7 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
+import java.util.Date
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamUtils
@@ -217,6 +218,78 @@ class SteamAppScreen : BaseAppScreen() {
 
         fun getPendingUpdateVerifyOperation(gameId: Int): AppOptionMenuType? {
             return pendingUpdateVerifyOperations[gameId]
+        }
+
+        fun performForceCloudSync(
+            context: Context,
+            appId: String,
+            gameId: Int,
+            preferredSave: SaveLocation = SaveLocation.None,
+            container: Container? = null,
+        ) {
+            CoroutineScope(Dispatchers.IO).launch {
+                val steamId = SteamService.userSteamId
+                if (steamId == null) {
+                    SnackbarManager.show(context.getString(R.string.steam_not_logged_in))
+                    return@launch
+                }
+
+                val resolvedContainer = container ?: ContainerUtils.getOrCreateContainer(context, appId)
+                val containerManager = ContainerManager(context)
+                containerManager.activateContainer(resolvedContainer)
+
+                SnackbarManager.show(context.getString(R.string.library_cloud_sync_starting))
+
+                val prefixToPath: (String) -> String = { prefix ->
+                    PathType.from(prefix).toAbsPath(resolvedContainer, gameId, steamId.accountID)
+                }
+                val syncResult = SteamService.forceSyncUserFiles(
+                    appId = gameId,
+                    prefixToPath = prefixToPath,
+                    preferredSave = preferredSave,
+                ).await()
+
+                when (syncResult.syncResult) {
+                    SyncResult.Success -> {
+                        SnackbarManager.show(context.getString(R.string.library_cloud_sync_success))
+                    }
+
+                    SyncResult.UpToDate -> {
+                        SnackbarManager.show(context.getString(R.string.library_cloud_sync_up_to_date))
+                    }
+
+                    SyncResult.InProgress -> {
+                        SnackbarManager.show(context.getString(R.string.library_cloud_sync_in_progress))
+                    }
+
+                    SyncResult.Conflict -> {
+                        val localDate = Date(syncResult.localTimestamp).toString()
+                        val remoteDate = Date(syncResult.remoteTimestamp).toString()
+                        withContext(Dispatchers.Main) {
+                            showInstallDialog(
+                                gameId,
+                                MessageDialogState(
+                                    visible = true,
+                                    type = DialogType.SYNC_CONFLICT,
+                                    title = context.getString(R.string.main_save_conflict_title),
+                                    message = context.getString(R.string.main_save_conflict_message, localDate, remoteDate),
+                                    confirmBtnText = context.getString(R.string.main_keep_remote),
+                                    dismissBtnText = context.getString(R.string.main_keep_local),
+                                ),
+                            )
+                        }
+                    }
+
+                    else -> {
+                        SnackbarManager.show(
+                            context.getString(
+                                R.string.library_cloud_sync_error,
+                                syncResult.syncResult,
+                            ),
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -747,15 +820,20 @@ class SteamAppScreen : BaseAppScreen() {
             AppMenuOption(
                 AppOptionMenuType.VerifyFiles,
                 onClick = {
-                    // Show confirmation dialog before verifying
                     setPendingUpdateVerifyOperation(gameId, AppOptionMenuType.VerifyFiles)
+                    val container = ContainerUtils.getOrCreateContainer(context, appId)
+                    val verifyMessage = if (container.isLocalSavesOnly) {
+                        context.getString(R.string.steam_verify_files_message_local_saves)
+                    } else {
+                        context.getString(R.string.steam_verify_files_message)
+                    }
                     showInstallDialog(
                         gameId,
                         MessageDialogState(
                             visible = true,
                             type = DialogType.UPDATE_VERIFY_CONFIRM,
                             title = context.getString(R.string.steam_verify_files_title),
-                            message = context.getString(R.string.steam_verify_files_message),
+                            message = verifyMessage,
                             confirmBtnText = context.getString(R.string.steam_continue),
                             dismissBtnText = context.getString(R.string.cancel),
                         ),
@@ -795,43 +873,21 @@ class SteamAppScreen : BaseAppScreen() {
                             properties = mapOf("game_name" to appInfo.name),
                         )
                     }
-                    CoroutineScope(Dispatchers.IO).launch {
-                        SnackbarManager.show(context.getString(R.string.library_cloud_sync_starting))
-
-                        val steamId = SteamService.userSteamId
-                        if (steamId == null) {
-                            SnackbarManager.show(context.getString(R.string.steam_not_logged_in))
-                            return@launch
-                        }
-
-                        val container = ContainerUtils.getOrCreateContainer(context, appId)
-
-                        val prefixToPath: (String) -> String = { prefix ->
-                            PathType.from(prefix).toAbsPath(container, gameId, steamId.accountID)
-                        }
-                        val syncResult = SteamService.forceSyncUserFiles(
-                            appId = gameId,
-                            prefixToPath = prefixToPath,
-                        ).await()
-
-                        when (syncResult.syncResult) {
-                            SyncResult.Success -> {
-                                SnackbarManager.show(context.getString(R.string.library_cloud_sync_success))
-                            }
-
-                            SyncResult.UpToDate -> {
-                                SnackbarManager.show(context.getString(R.string.library_cloud_sync_up_to_date))
-                            }
-
-                            else -> {
-                                SnackbarManager.show(
-                                    context.getString(
-                                        R.string.library_cloud_sync_error,
-                                        syncResult.syncResult,
-                                    ),
-                                )
-                            }
-                        }
+                    val container = ContainerUtils.getOrCreateContainer(context, appId)
+                    if (container.isLocalSavesOnly) {
+                        showInstallDialog(
+                            gameId,
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.SYNC_CONFLICT,
+                                title = context.getString(R.string.cloud_sync_local_saves_only_title),
+                                message = context.getString(R.string.cloud_sync_local_saves_only_message),
+                                confirmBtnText = context.getString(R.string.main_keep_remote),
+                                dismissBtnText = context.getString(R.string.main_keep_local),
+                            ),
+                        )
+                    } else {
+                        performForceCloudSync(context, appId, gameId, container = container)
                     }
                 },
             ),
@@ -1101,18 +1157,21 @@ class SteamAppScreen : BaseAppScreen() {
 
                                 if (operation == AppOptionMenuType.VerifyFiles) {
                                     MarkerUtils.clearInstalledPrerequisiteMarkers(getAppDirPath(gameId))
-                                    val steamId = SteamService.userSteamId
-                                    if (steamId != null) {
-                                        val prefixToPath: (String) -> String = { prefix ->
-                                            PathType.from(prefix).toAbsPath(container, gameId, steamId.accountID)
+                                    // skip cloud sync if local saves only — verify is about game files, not saves
+                                    if (!container.isLocalSavesOnly) {
+                                        val steamId = SteamService.userSteamId
+                                        if (steamId != null) {
+                                            val prefixToPath: (String) -> String = { prefix ->
+                                                PathType.from(prefix).toAbsPath(container, gameId, steamId.accountID)
+                                            }
+                                            SteamService.forceSyncUserFiles(
+                                                appId = gameId,
+                                                prefixToPath = prefixToPath,
+                                                overrideLocalChangeNumber = -1,
+                                            ).await()
+                                        } else {
+                                            SnackbarManager.show(context.getString(R.string.steam_not_logged_in))
                                         }
-                                        SteamService.forceSyncUserFiles(
-                                            appId = gameId,
-                                            prefixToPath = prefixToPath,
-                                            overrideLocalChangeNumber = -1,
-                                        ).await()
-                                    } else {
-                                        SnackbarManager.show(context.getString(R.string.steam_not_logged_in))
                                     }
                                 }
 
@@ -1163,14 +1222,32 @@ class SteamAppScreen : BaseAppScreen() {
                     }
                 }
 
+                DialogType.SYNC_CONFLICT -> {
+                    {
+                        hideInstallDialog(gameId)
+                        PrefManager.pendingCloudResync = PrefManager.pendingCloudResync - gameId
+                        performForceCloudSync(context, libraryItem.appId, gameId, SaveLocation.Remote)
+                    }
+                }
+
                 else -> null
+            }
+            val effectiveDismissClick: (() -> Unit)? = when (installDialogState.type) {
+                DialogType.SYNC_CONFLICT -> {
+                    {
+                        hideInstallDialog(gameId)
+                        PrefManager.pendingCloudResync = PrefManager.pendingCloudResync - gameId
+                        performForceCloudSync(context, libraryItem.appId, gameId, SaveLocation.Local)
+                    }
+                }
+                else -> onDismissClick
             }
 
             MessageDialog(
                 visible = installDialogState.visible,
                 onDismissRequest = onDismissRequest,
                 onConfirmClick = onConfirmClick,
-                onDismissClick = onDismissClick,
+                onDismissClick = effectiveDismissClick,
                 confirmBtnText = installDialogState.confirmBtnText,
                 dismissBtnText = installDialogState.dismissBtnText,
                 title = installDialogState.title,

@@ -28,6 +28,7 @@
     <string name="steam_verify_files_title">Перевірити файли</string>
     <string name="steam_verify_files_message">Будь ласка, переконайтеся, що ваші збереження завантажено у хмару або створено їхню резервну копію перед перевіркою, оскільки інакше вони можуть бути перезаписані.</string>
     <string name="steam_cloud_sync_downloading_save_files">Завантаження файлів збережень %1$d/%2$d</string>
+    <string name="steam_verify_files_message_local_saves">Хмарна синхронізація буде пропущена під час перевірки, оскільки увімкнено лише локальні збереження.</string>
     <string name="steam_update_title">Оновити</string>
     <string name="steam_update_message">Будь ласка, переконайтеся, що ваші збереження завантажено у хмару або створено їхню резервну копію перед оновленням, оскільки інакше вони можуть бути перезаписані.</string>
     <string name="steam_not_logged_in">Ви повинні увійти в Steam, щоб використовувати цю функцію</string>
@@ -646,6 +647,8 @@
     <string name="unpack_files_description">Використовувати лише якщо з\'являється \'Application Load Error 3:0000065432\'.</string>
     <string name="force_dlc">Примусити DLC</string>
     <string name="force_dlc_description">Увімкнути лише тоді, якщо не виявлено DLC або не працюють збереження з DLC</string>
+    <string name="local_saves_only">Лише локальні збереження</string>
+    <string name="local_saves_only_description">Вимкнути хмарну синхронізацію збережень для цієї гри та зберігати лише на пристрої</string>
     <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
     <string name="steam_offline_mode">Режим Офлайн Steam</string>
     <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
@@ -1008,6 +1011,7 @@
     <string name="library_cloud_sync_up_to_date">Файли збереження вже актуальні</string>
     <string name="library_cloud_sync_failed">Помилка синхронізації з хмарою</string>
     <string name="library_cloud_sync_error">Помилка синхронізації з хмарою: %1$s</string>
+    <string name="library_cloud_sync_in_progress">Синхронізація з хмарою вже виконується</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Потрібне інтернет-з\'єднання для інсталяції</string>
@@ -1439,4 +1443,6 @@
     <string name="lsfg_install_message">Це завантажить Lossless Scaling зі Steam для увімкнення генерації кадрів.</string>
     <string name="lsfg_installing">Завантаження Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Знижує якість для вищої пропускної здатності</string>
+    <string name="cloud_sync_local_saves_only_title">Лише локальні збереження</string>
+    <string name="cloud_sync_local_saves_only_message">"Лише локальні збереження" увімкнено для цієї гри. Хмарні збереження можуть відрізнятися від локальних. Які ви хочете залишити?</string>
 </resources>

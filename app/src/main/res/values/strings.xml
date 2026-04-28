@@ -28,6 +28,7 @@
     <string name="steam_verify_files_title">Verify Files</string>
     <string name="steam_verify_files_message">Please ensure your saves are uploaded to the cloud or backed up before verifying, as they may be overwritten otherwise.</string>
     <string name="steam_cloud_sync_downloading_save_files">Downloading save files %1$d/%2$d</string>
+    <string name="steam_verify_files_message_local_saves">Cloud sync will be skipped during verification because local saves only is enabled.</string>
     <string name="steam_update_title">Update</string>
     <string name="steam_update_message">Please ensure your saves are uploaded to the cloud or backed up before updating, as they may be overwritten otherwise.</string>
     <string name="steam_not_logged_in">You must be logged into Steam to use this feature</string>
@@ -1045,6 +1046,7 @@
     <string name="library_cloud_sync_success">Cloud sync completed successfully</string>
     <string name="library_cloud_sync_up_to_date">Save files are already up to date</string>
     <string name="library_cloud_sync_failed">Cloud sync failed</string>
+    <string name="library_cloud_sync_in_progress">Cloud sync is already in progress</string>
     <string name="library_cloud_sync_error">Cloud sync error: %1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
@@ -1104,6 +1106,8 @@
     <string name="main_keep_remote">Keep remote</string>
     <string name="main_save_conflict_upgrade_v1_title">Choose Save Version</string>
     <string name="main_save_conflict_upgrade_v1_message">We fixed cloud save path handling for this game and found different local and cloud saves. Pick one version to keep.\n\nLocal:\n\t%1$s\nCloud:\n\t%2$s</string>
+    <string name="cloud_sync_local_saves_only_title">Local Saves Only</string>
+    <string name="cloud_sync_local_saves_only_message">"Local saves only" is enabled for this game. Cloud saves may differ from local saves. Which would you like to keep?</string>
 
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Sync operation is taking too long. Please try launching the game again in a moment.</string>

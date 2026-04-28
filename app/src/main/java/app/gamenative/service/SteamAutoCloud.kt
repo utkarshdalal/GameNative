@@ -847,13 +847,10 @@ object SteamAutoCloud {
                         // check if local state is byte-identical to remote — this is
                         // the "cache-wiped by destructive migration, nothing actually
                         // changed" case and should be silent. key by absolute filesystem
-                        // path: cloud stores files as (pathPrefixIndex, basename) while
-                        // local scan stores filename as subdir-relative path with a
-                        // single pattern prefix, so basename-only keys won't match for
-                        // nested files.
-                        // windows paths are case-insensitive; steam cloud and wine may
-                        // disagree on case. lowercase the keys so content-identical
-                        // files compare equal regardless.
+                        // path (cloud stores (pathPrefixIndex, basename), local scan
+                        // stores subpath-relative filename; basename-only won't match
+                        // for nested files). lowercase since windows paths are
+                        // case-insensitive and wine/cloud may disagree on case.
                         val localByPath = allLocalUserFiles.associate {
                             it.getAbsPath(prefixToPath).toString().lowercase() to it.sha
                         }
@@ -878,9 +875,12 @@ object SteamAutoCloud {
                             rehydratedSilently = true
                         } else {
                             hasLocalChanges = true
-                            conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
                             remoteTimestamp = appFileListChange.files.map { it.timestamp.time }.maxOrNull() ?: 0L
                             localTimestamp = allLocalUserFiles.map { it.timestamp }.maxOrNull() ?: 0L
+                            // show upgrade-specific text unless this was a local-saves toggle-off
+                            if (appInfo.id !in PrefManager.pendingCloudResync) {
+                                conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                            }
                         }
                     }
 

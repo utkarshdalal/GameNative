@@ -28,6 +28,7 @@
     <string name="steam_verify_files_title">Verifica File</string>
     <string name="steam_verify_files_message">Assicurati che i tuoi salvataggi siano caricati sul cloud o sottoposti a backup prima della verifica, altrimenti potrebbero essere sovrascritti.</string>
     <string name="steam_cloud_sync_downloading_save_files">Download dei file di salvataggio %1$d/%2$d</string>
+    <string name="steam_verify_files_message_local_saves">La sincronizzazione cloud verrà saltata durante la verifica perché sono attivi solo i salvataggi locali.</string>
     <string name="steam_update_title">Aggiorna</string>
     <string name="steam_update_message">Assicurati che i tuoi salvataggi siano caricati sul cloud o sottoposti a backup prima dell\'aggiornamento, altrimenti potrebbero essere sovrascritti.</string>
     <string name="steam_not_logged_in">Devi aver effettuato l\'accesso a Steam per utilizzare questa funzione</string>
@@ -651,6 +652,8 @@
     <string name="unpack_files_description">Usa solo se ottieni \'Application Load Error 3:0000065432\'.</string>
     <string name="force_dlc">Forza DLC</string>
     <string name="force_dlc_description">Abilita solo se i DLC non vengono rilevati o i salvataggi con DLC non funzionano</string>
+    <string name="local_saves_only">Solo salvataggi locali</string>
+    <string name="local_saves_only_description">Disattiva la sincronizzazione cloud dei salvataggi per questo gioco e conserva i salvataggi solo sul dispositivo</string>
     <string name="launch_steam_client_beta">Avvia Client Steam (Beta)</string>
     <string name="steam_offline_mode">Modalità Offline Steam</string>
     <string name="steam_offline_mode_description">Avvia i giochi Steam in modalità offline</string>
@@ -1005,6 +1008,7 @@
     <string name="library_cloud_sync_up_to_date">I file di salvataggio sono già aggiornati</string>
     <string name="library_cloud_sync_failed">Sincronizzazione cloud fallita</string>
     <string name="library_cloud_sync_error">Errore sincronizzazione salvataggi cloud: %1$s</string>
+    <string name="library_cloud_sync_in_progress">Sincronizzazione cloud già in corso</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Serve internet per installare</string>
@@ -1436,4 +1440,6 @@
     <string name="lsfg_install_message">Scaricherà Lossless Scaling da Steam per abilitare la generazione di fotogrammi.</string>
     <string name="lsfg_installing">Download di Lossless Scaling in corso…</string>
     <string name="lsfg_performance_mode_desc">Riduce la qualità per una maggiore velocità</string>
+    <string name="cloud_sync_local_saves_only_title">Solo salvataggi locali</string>
+    <string name="cloud_sync_local_saves_only_message">\"Solo salvataggi locali\" è attivata per questo gioco. I salvataggi cloud potrebbero differire da quelli locali. Quali desideri conservare?</string>
 </resources>
