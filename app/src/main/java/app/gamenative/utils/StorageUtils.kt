@@ -29,6 +29,15 @@ object StorageUtils {
         return stat.blockSizeLong * stat.availableBlocksLong
     }
 
+    fun getTotalSpace(path: String): Long {
+        val file = File(path)
+        if (!file.exists()) {
+            throw IllegalArgumentException("Invalid path: $path")
+        }
+        val stat = StatFs(path)
+        return stat.blockSizeLong * stat.blockCountLong
+    }
+
     suspend fun getFolderSize(folderPath: String): Long {
         val folder = File(folderPath)
         if (folder.exists()) {

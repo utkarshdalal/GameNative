@@ -103,6 +103,9 @@
     <string name="downloads_status_failed">Échec</string>
     <string name="downloads_status_paused">En pause</string>
     <string name="downloads_summary">Gérez les téléchargements actifs et le stockage au même endroit</string>
+    <string name="storage_internal">Interne</string>
+    <string name="storage_external">Externe</string>
+    <string name="storage_free_of_total">%1$s : %2$s libre sur %3$s</string>
     <string name="container_storage_title">Gestionnaire de stockage</string>
     <string name="container_storage_subtitle">Déplacez les installations entre le stockage interne et externe</string>
     <string name="container_storage_summary">%1$d éléments • %2$s</string>

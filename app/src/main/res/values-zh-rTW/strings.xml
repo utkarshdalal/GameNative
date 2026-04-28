@@ -103,6 +103,9 @@
     <string name="downloads_status_failed">失敗</string>
     <string name="downloads_status_paused">已暫停</string>
     <string name="downloads_summary">在同一處管理進行中的下載與儲存</string>
+    <string name="storage_internal">內部</string>
+    <string name="storage_external">外部</string>
+    <string name="storage_free_of_total">%1$s：%3$s 中有 %2$s 可用</string>
     <string name="container_storage_title">儲存管理</string>
     <string name="container_storage_subtitle">在內部儲存與外部儲存之間移動安裝內容</string>
     <string name="container_storage_summary">%1$d 項 • %2$s</string>

@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
@@ -68,6 +69,38 @@ object ContainerStorageManager {
         INTERNAL,
         EXTERNAL,
         UNKNOWN,
+    }
+
+    data class VolumeInfo(
+        val label: String,
+        val freeBytes: Long,
+        val totalBytes: Long,
+    )
+
+    suspend fun getVolumeInfo(context: Context): List<VolumeInfo> = withContext(Dispatchers.IO) {
+        val volumes = mutableListOf<VolumeInfo>()
+        runCatching {
+            volumes += VolumeInfo(
+                label = context.getString(R.string.storage_internal),
+                freeBytes = StorageUtils.getAvailableSpace(context.dataDir.path),
+                totalBytes = StorageUtils.getTotalSpace(context.dataDir.path),
+            )
+        }.onFailure { e ->
+            Timber.w(e, "Failed to query internal storage volume info")
+        }
+        val externalPath = PrefManager.externalStoragePath
+        if (externalPath.isNotBlank() && File(externalPath).exists()) {
+            runCatching {
+                volumes += VolumeInfo(
+                    label = context.getString(R.string.storage_external),
+                    freeBytes = StorageUtils.getAvailableSpace(externalPath),
+                    totalBytes = StorageUtils.getTotalSpace(externalPath),
+                )
+            }.onFailure { e ->
+                Timber.w(e, "Failed to query external storage volume info")
+            }
+        }
+        volumes
     }
 
     data class Entry(

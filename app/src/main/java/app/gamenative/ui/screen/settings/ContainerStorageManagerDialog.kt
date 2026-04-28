@@ -90,6 +90,9 @@ class ContainerStorageManagerUiState internal constructor(
     var entries by mutableStateOf<List<ContainerStorageManager.Entry>>(emptyList())
         private set
 
+    var volumeInfo by mutableStateOf<List<ContainerStorageManager.VolumeInfo>>(emptyList())
+        private set
+
     var isLoading by mutableStateOf(false)
         private set
 
@@ -131,6 +134,13 @@ class ContainerStorageManagerUiState internal constructor(
 
         scope.launch {
             isLoading = true
+            runCatching {
+                ContainerStorageManager.getVolumeInfo(appContext)
+            }.onSuccess {
+                volumeInfo = it
+            }.onFailure { error ->
+                Timber.w(error, "Failed to query volume info")
+            }
             runCatching {
                 ContainerStorageManager.loadEntries(appContext)
             }.onSuccess {
@@ -396,20 +406,38 @@ fun ContainerStorageManagerContent(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = if (state.isLoading && !state.hasLoaded) {
-                    stringResource(R.string.container_storage_loading)
-                } else {
-                    stringResource(
-                        R.string.container_storage_summary,
-                        state.entries.size,
-                        StorageUtils.formatBinarySize(inventorySummaryBytes(state.entries)),
-                    )
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (state.isLoading && !state.hasLoaded) {
+                        stringResource(R.string.container_storage_loading)
+                    } else {
+                        stringResource(
+                            R.string.container_storage_summary,
+                            state.entries.size,
+                            StorageUtils.formatBinarySize(inventorySummaryBytes(state.entries)),
+                        )
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (state.volumeInfo.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        state.volumeInfo.forEach { vol ->
+                            Text(
+                                text = stringResource(
+                                    R.string.storage_free_of_total,
+                                    vol.label,
+                                    StorageUtils.formatBinarySize(vol.freeBytes, decimalPlaces = 1),
+                                    StorageUtils.formatBinarySize(vol.totalBytes, decimalPlaces = 1),
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            )
+                        }
+                    }
+                }
+            }
 
             if (onDismissRequest != null) {
                 IconButton(
