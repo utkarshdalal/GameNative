@@ -1,9 +1,11 @@
 package com.winlator.xenvironment;
 
 import android.content.Context;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.winlator.container.Container;
 import com.winlator.core.FileUtils;
 
 import java.io.File;
@@ -54,7 +56,35 @@ public class ImageFs {
     }
 
     public boolean isValid() {
-        return rootDir.isDirectory() && getImgVersionFile().exists();
+        if (!rootDir.isDirectory() || !getImgVersionFile().exists()) return false;
+
+        String variant = getVariant();
+        return hasRequiredRuntimeFiles(variant);
+    }
+
+    public boolean hasRequiredRuntimeFiles(String variant) {
+        if (Container.GLIBC.equals(variant)) {
+            return hasRequiredGlibcRuntimeFiles();
+        }
+
+        return true;
+    }
+
+    private boolean hasRequiredGlibcRuntimeFiles() {
+        String[] requiredPaths = {
+            "usr/lib/ld-linux-aarch64.so.1",
+            "usr/lib/libc.so.6",
+        };
+
+        for (String path : requiredPaths) {
+            File file = new File(rootDir, path);
+            if (!file.isFile()) {
+                Log.w("ImageFs", "Invalid glibc imagefs: missing " + file.getPath());
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public int getVersion() {

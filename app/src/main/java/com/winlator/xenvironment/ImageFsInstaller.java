@@ -42,7 +42,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class ImageFsInstaller {
-    public static final byte LATEST_VERSION = 28;
+    public static final byte LATEST_VERSION = 29;
 
     private static void resetContainerImgVersions(Context context) {
         ContainerManager manager = new ContainerManager(context);
@@ -137,12 +137,21 @@ public abstract class ImageFsInstaller {
                 });
             }
 
+            ContainerManager containerManager = null;
             if (success) {
                 Log.d("ImageFsInstaller", "Successfully installed system files");
-                ContainerManager containerManager = new ContainerManager(context);
+                containerManager = new ContainerManager(context);
 
                 installWineFromDownloads(context);
                 installGuestLibs(context);
+                GlibcRuntimePathPatcher.patch(context, imageFs, containerVariant);
+                if (!imageFs.hasRequiredRuntimeFiles(containerVariant)) {
+                    Log.e("ImageFsInstaller", "Installed imagefs is missing required runtime files for " + containerVariant);
+                    success = false;
+                }
+            }
+
+            if (success) {
                 imageFs.createImgVersionFile(LATEST_VERSION);
                 resetContainerImgVersions(context);
 
@@ -201,13 +210,17 @@ public abstract class ImageFsInstaller {
         return installIfNeededFuture(context, assetManager, null, null);
     }
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager, Container container, Callback<Integer> onProgress) {
+        String containerVariant = container != null ? container.getContainerVariant() : Container.DEFAULT_VARIANT;
         ImageFs imageFs = ImageFs.find(context);
-        if (!imageFs.isValid() || imageFs.getVersion() < LATEST_VERSION || !imageFs.getVariant().equals(container.getContainerVariant())) {
+        if (!imageFs.isValid() || imageFs.getVersion() < LATEST_VERSION || !imageFs.getVariant().equals(containerVariant)) {
             Log.d("ImageFsInstaller", "Installing image from assets");
-            return installFromAssetsFuture(context, assetManager, container.getContainerVariant(), onProgress);
+            return installFromAssetsFuture(context, assetManager, containerVariant, onProgress);
         } else {
             Log.d("ImageFsInstaller", "Image FS already valid and at latest version");
-            return Executors.newSingleThreadExecutor().submit(() -> true);
+            return Executors.newSingleThreadExecutor().submit(() -> {
+                GlibcRuntimePathPatcher.patch(context, imageFs, containerVariant);
+                return true;
+            });
         }
     }
 
