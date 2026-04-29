@@ -381,6 +381,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 handleStylusMove(event);
                 break;
             case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
                 handleStylusUp(event);
                 break;
         }
