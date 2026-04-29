@@ -1,21 +1,18 @@
 package com.winlator.widget;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
-import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.StateListDrawable;
-import android.os.Handler;
 import android.util.Log;
 import android.view.InputDevice;
 import android.view.MotionEvent;
-import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
-import app.gamenative.R;
 import app.gamenative.data.TouchGestureConfig;
+import timber.log.Timber;
+
 import com.winlator.core.AppUtils;
 import com.winlator.math.Mathf;
 import com.winlator.math.XForm;
@@ -325,13 +322,13 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        int toolType = event.getToolType(0);
+        boolean isStylus = isEventTriggeredByStulus(event);
         if (touchscreenMouseDisabled
-                && toolType != MotionEvent.TOOL_TYPE_STYLUS
+                && !isStylus
                 && !event.isFromSource(InputDevice.SOURCE_MOUSE)) {
             return true; // consume without generating mouse events
         }
-        if (toolType == MotionEvent.TOOL_TYPE_STYLUS) {
+        if (isStylus) {
             return handleStylusEvent(event);
         } else if (isTouchscreenMode) {
             return handleTouchscreenEvent(event);
@@ -340,20 +337,28 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         }
     }
 
-    private boolean handleStylusHoverEvent(MotionEvent event) {
-        int action = event.getActionMasked();
+    @Override
+    public boolean onHoverEvent(MotionEvent event) {
+        if (isEventTriggeredByStulus(event)) {
+            return handleStylusHoverEvent(event);
+        }
+        return super.onHoverEvent(event);
+    }
 
+    private boolean handleStylusHoverEvent(MotionEvent event) {
+        if (xServer.isRelativeMouseMovement()) return false;
+
+        int action = event.getActionMasked();
         switch (action) {
             case MotionEvent.ACTION_HOVER_ENTER:
-                Log.d("StylusEvent", "Hover Enter");
-                break;
+                Timber.tag("StylusEvent").d("Hover Enter");
             case MotionEvent.ACTION_HOVER_MOVE:
-                Log.d("StylusEvent", "Hover Move: (" + event.getX() + ", " + event.getY() + ")");
+                Timber.tag("StylusEvent").d("Hover Move: (" + event.getX() + ", " + event.getY() + ")");
                 float[] transformedPoint = XForm.transformPoint(xform, event.getX(), event.getY());
                 xServer.injectPointerMove((int) transformedPoint[0], (int) transformedPoint[1]);
                 break;
             case MotionEvent.ACTION_HOVER_EXIT:
-                Log.d("StylusEvent", "Hover Exit");
+                Timber.tag("StylusEvent").d("Hover Exit");
                 break;
             default:
                 return false;
@@ -363,11 +368,10 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     private boolean handleStylusEvent(MotionEvent event) {
         int action = event.getActionMasked();
-        int buttonState = event.getButtonState();
 
         switch (action) {
             case MotionEvent.ACTION_DOWN:
-                if ((buttonState & MotionEvent.BUTTON_SECONDARY) != 0) {
+                if (isStylusButtonPressed(event)) {
                     handleStylusRightClick(event);
                 } else {
                     handleStylusLeftClick(event);
@@ -382,6 +386,18 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         }
 
         return true;
+    }
+
+    private static boolean isEventTriggeredByStulus(MotionEvent event) {
+        int toolType = event.getToolType(0);
+        return toolType == MotionEvent.TOOL_TYPE_STYLUS || toolType == MotionEvent.TOOL_TYPE_ERASER;
+    }
+
+    private static boolean isStylusButtonPressed(MotionEvent event) {
+        int buttonState = event.getButtonState();
+        boolean stylusButtonPressed = (buttonState & (MotionEvent.BUTTON_STYLUS_PRIMARY | MotionEvent.BUTTON_SECONDARY)) != 0;
+        boolean toolSetToEraser = event.getToolType(0) == MotionEvent.TOOL_TYPE_ERASER;
+        return stylusButtonPressed || toolSetToEraser;
     }
 
     private void handleStylusLeftClick(MotionEvent event) {
