@@ -7,6 +7,7 @@ import app.gamenative.utils.LOADING_PROGRESS_UNKNOWN
 import com.winlator.container.Container
 import com.winlator.core.TarCompressorUtils
 import com.winlator.xenvironment.ImageFs
+import com.winlator.xenvironment.ImageFSLegacyMigrator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
@@ -48,6 +49,14 @@ object BionicDefaultProtonDependency : LaunchDependency {
     ) = coroutineScope {
         val protonVersion = container.wineVersion
         val imageFs = withContext(Dispatchers.IO) { ImageFs.find(context) }
+
+        withContext(Dispatchers.IO) {
+            val legacyImageFsRoot = File(context.filesDir, "imagefs")
+            ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(context, legacyImageFsRoot)
+        }
+
+        if (isSatisfied(context, container, gameSource, gameId)) return@coroutineScope
+
         val archiveName = when {
             protonVersion.contains("proton-9.0-arm64ec") -> "proton-9.0-arm64ec.txz"
             protonVersion.contains("proton-9.0-x86_64") -> "proton-9.0-x86_64.txz"

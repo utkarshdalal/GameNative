@@ -7,6 +7,7 @@ import app.gamenative.service.SteamService
 import com.winlator.container.Container
 import com.winlator.core.TarCompressorUtils
 import com.winlator.xenvironment.ImageFs
+import com.winlator.xenvironment.ImageFSLegacyMigrator
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -25,9 +26,11 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
+@Config(application = android.app.Application::class)
 class BionicDefaultProtonDependencyTest {
     private lateinit var context: Context
     private lateinit var container: Container
@@ -36,6 +39,8 @@ class BionicDefaultProtonDependencyTest {
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         container = mockk(relaxed = true)
+        mockkStatic(ImageFSLegacyMigrator::class)
+        every { ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(any(), any()) } returns true
     }
 
     @After
@@ -96,73 +101,106 @@ class BionicDefaultProtonDependencyTest {
     }
 
     @Test
-    fun install_returnsEarly_whenProtonVersionIsUnsupported() = runBlocking {
-        every { container.wineVersion } returns "wine-ge-custom"
-        mockkObject(SteamService.Companion)
-        mockkStatic(TarCompressorUtils::class)
+    fun install_returnsEarly_whenProtonVersionIsUnsupported() {
+        runBlocking {
+            every { container.wineVersion } returns "wine-ge-custom"
+            mockkObject(SteamService.Companion)
+            mockkStatic(TarCompressorUtils::class)
 
-        BionicDefaultProtonDependency.install(
-            context = context,
-            container = container,
-            callbacks = LaunchDependencyCallbacks({}, {}),
-            gameSource = GameSource.STEAM,
-            gameId = 8,
-        )
-
-        verify(exactly = 0) {
-            SteamService.downloadFile(
-                onDownloadProgress = any(),
-                parentScope = any(),
-                context = any(),
-                fileName = any(),
+            BionicDefaultProtonDependency.install(
+                context = context,
+                container = container,
+                callbacks = LaunchDependencyCallbacks({}, {}),
+                gameSource = GameSource.STEAM,
+                gameId = 8,
             )
+
+            verify(exactly = 0) {
+                SteamService.downloadFile(
+                    onDownloadProgress = any(),
+                    parentScope = any(),
+                    context = any(),
+                    fileName = any(),
+                )
+            }
         }
     }
 
     @Test
-    fun install_downloadsArchive_andForwardsProgress() = runBlocking {
-        every { container.wineVersion } returns "proton-9.0-arm64ec"
-        mockkObject(SteamService.Companion)
+    fun install_downloadsArchive_andForwardsProgress() {
+        runBlocking {
+            every { container.wineVersion } returns "proton-9.0-arm64ec"
+            mockkObject(SteamService.Companion)
+            mockkStatic(TarCompressorUtils::class)
+            every { TarCompressorUtils.extract(any(), any<File>(), any()) } returns true
 
-        val binDir = File(ImageFs.getSharedProtonDir(context), "proton-9.0-arm64ec/bin")
-        binDir.mkdirs()
+            every { SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz") } returns false
 
-        every { SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz") } returns false
+            val onProgressSlot = slot<(Float) -> Unit>()
+            val deferred = mockk<Deferred<Unit>>()
+            every {
+                SteamService.downloadFile(
+                    onDownloadProgress = capture(onProgressSlot),
+                    parentScope = any(),
+                    context = context,
+                    fileName = "proton-9.0-arm64ec.txz",
+                )
+            } answers {
+                onProgressSlot.captured(0.42f)
+                deferred
+            }
+            coEvery { deferred.await() } returns Unit
 
-        val onProgressSlot = slot<(Float) -> Unit>()
-        val deferred = mockk<Deferred<Unit>>()
-        every {
-            SteamService.downloadFile(
-                onDownloadProgress = capture(onProgressSlot),
-                parentScope = any(),
+            val progressValues = mutableListOf<Float>()
+            BionicDefaultProtonDependency.install(
                 context = context,
-                fileName = "proton-9.0-arm64ec.txz",
+                container = container,
+                callbacks = LaunchDependencyCallbacks(
+                    setLoadingMessage = {},
+                    setLoadingProgress = { progressValues += it },
+                ),
+                gameSource = GameSource.STEAM,
+                gameId = 9,
             )
-        } returns deferred
-        coEvery { deferred.await() } returns Unit
 
-        val progressValues = mutableListOf<Float>()
-        BionicDefaultProtonDependency.install(
-            context = context,
-            container = container,
-            callbacks = LaunchDependencyCallbacks(
-                setLoadingMessage = {},
-                setLoadingProgress = { progressValues += it },
-            ),
-            gameSource = GameSource.STEAM,
-            gameId = 9,
-        )
-
-        onProgressSlot.captured(0.42f)
-
-        verify(exactly = 1) {
-            SteamService.downloadFile(
-                onDownloadProgress = any(),
-                parentScope = any(),
-                context = context,
-                fileName = "proton-9.0-arm64ec.txz",
-            )
+            verify(exactly = 1) {
+                SteamService.downloadFile(
+                    onDownloadProgress = any(),
+                    parentScope = any(),
+                    context = context,
+                    fileName = "proton-9.0-arm64ec.txz",
+                )
+            }
+            assertTrue(progressValues.contains(0.42f))
         }
-        assertEquals(listOf(0.42f), progressValues)
+    }
+
+    @Test
+    fun install_callsMigration_beforeCheckingSatisfaction() {
+        runBlocking {
+            every { container.wineVersion } returns "proton-9.0-arm64ec"
+            mockkObject(SteamService.Companion)
+
+            // Ensure it's satisfied AFTER migration by creating the bin dir in shared location
+            val sharedProtonDir = File(ImageFs.getSharedProtonDir(context), "proton-9.0-arm64ec")
+            val binDir = File(sharedProtonDir, "bin")
+            binDir.mkdirs()
+
+            BionicDefaultProtonDependency.install(
+                context = context,
+                container = container,
+                callbacks = LaunchDependencyCallbacks({}, {}),
+                gameSource = GameSource.STEAM,
+                gameId = 10,
+            )
+
+            verify(exactly = 1) {
+                ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(context, any())
+            }
+            // Should not download because it's now satisfied
+            verify(exactly = 0) {
+                SteamService.downloadFile(any(), any(), any(), any())
+            }
+        }
     }
 }
