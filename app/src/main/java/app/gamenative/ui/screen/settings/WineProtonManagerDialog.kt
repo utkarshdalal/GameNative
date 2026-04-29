@@ -219,7 +219,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     val startTime = System.currentTimeMillis()
 
                     mgr.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
-                        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
+                        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
                             failReason = reason
                             err = e
                             latch.countDown()
@@ -403,7 +403,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     val latch = CountDownLatch(1)
                     try {
                         mgr.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
-                            override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
+                            override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
                                 failReason = reason
                                 err = e
                                 latch.countDown()
@@ -989,12 +989,12 @@ private suspend fun performFinishInstall(
         val latch = CountDownLatch(1)
         try {
             mgr.finishInstallContent(profile, object : ContentsManager.OnInstallFinishedCallback {
-                override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
+                override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
                     Timber.tag("WineProtonManagerDialog").e(e, "   ❌ finishInstallContent FAILED: $reason")
                     message = when (reason) {
                         ContentsManager.InstallFailedReason.ERROR_EXIST -> context.getString(R.string.wine_proton_version_already_exists)
                         ContentsManager.InstallFailedReason.ERROR_NOSPACE -> context.getString(R.string.wine_proton_error_nospace)
-                        else -> context.getString(R.string.wine_proton_install_failed, e.message ?: context.getString(R.string.wine_proton_error_unknown))
+                        else -> context.getString(R.string.wine_proton_install_failed, e?.message ?: context.getString(R.string.wine_proton_error_unknown))
                     }
                     success = false
                     latch.countDown()

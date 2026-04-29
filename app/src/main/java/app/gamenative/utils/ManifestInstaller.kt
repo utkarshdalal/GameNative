@@ -129,7 +129,7 @@ object ManifestInstaller {
         val latch = CountDownLatch(1)
         try {
             mgr.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
-                override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
+                override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
                     failReason = reason
                     err = e
                     latch.countDown()
@@ -158,7 +158,7 @@ object ManifestInstaller {
         val latch = CountDownLatch(1)
         try {
             mgr.finishInstallContent(profile, object : ContentsManager.OnInstallFinishedCallback {
-                override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
+                override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
                     latch.countDown()
                 }
 
