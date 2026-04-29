@@ -78,7 +78,11 @@ public final class ImageFSLegacyMigrator {
 
             File sharedProtonDir = new File(ImageFs.getSharedProtonDir(context), entry.getName());
             if (sharedProtonDir.exists()) {
-                Log.w("ImageFSLegacyMigrator", "Shared Proton already exists; refusing to overwrite during migration: " + entry.getName());
+                Log.w("ImageFSLegacyMigrator", "Shared Proton already exists; removing duplicate legacy opt entry: " + entry.getName());
+                if (!FileUtils.delete(entry)) {
+                    Log.w("ImageFSLegacyMigrator", "Failed to remove duplicate legacy Proton directory: " + entry.getAbsolutePath());
+                    return false;
+                }
                 continue;
             }
 

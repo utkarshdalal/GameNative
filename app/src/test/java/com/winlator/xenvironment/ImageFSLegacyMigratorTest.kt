@@ -119,7 +119,7 @@ class ImageFSLegacyMigratorTest {
     }
 
     @Test
-    fun migrateLegacyDirsIfNeeded_doesNotOverwriteExistingSharedProtonDir() {
+    fun migrateLegacyDirsIfNeeded_removesLegacyProtonDirWhenSharedAlreadyExists() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val legacyProton = File(legacyImageFsRoot, "opt/proton-ge-9-5").apply { mkdirs() }
         File(legacyProton, "from-legacy.txt").writeText("legacy")
@@ -130,7 +130,7 @@ class ImageFSLegacyMigratorTest {
         val migrated = ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(context, legacyImageFsRoot)
 
         assertTrue(migrated)
-        assertTrue("Legacy proton should remain when shared exists", legacyProton.exists())
+        assertFalse("Legacy proton should be removed when shared exists", legacyProton.exists())
         assertEquals("shared", File(existingShared, "existing.txt").readText())
     }
 }
