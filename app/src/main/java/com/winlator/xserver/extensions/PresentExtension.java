@@ -214,6 +214,7 @@ public class PresentExtension implements Extension {
                 final int finalSerial = serial;
                 final int finalIdleFence = idleFence;
                 final long finalScheduledUst = scheduledUst;
+                long delayNs = delayUs * 1_000L;
                 presentScheduler.schedule(() -> {
                     try {
                         if (limitGeneration.get() == capturedGen) {
@@ -232,7 +233,7 @@ public class PresentExtension implements Extension {
                     } catch (Exception ignored) {
                         // Client may have disconnected before the scheduled notify fired.
                     }
-                }, delayUs / 1_000L, TimeUnit.MILLISECONDS);
+                }, delayNs, TimeUnit.NANOSECONDS);
             }
         }
     }
