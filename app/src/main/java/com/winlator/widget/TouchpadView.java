@@ -322,7 +322,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        boolean isStylus = isEventTriggeredByStulus(event);
+        boolean isStylus = isEventTriggeredByStylus(event);
         if (touchscreenMouseDisabled
                 && !isStylus
                 && !event.isFromSource(InputDevice.SOURCE_MOUSE)) {
@@ -339,7 +339,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     @Override
     public boolean onHoverEvent(MotionEvent event) {
-        if (isEventTriggeredByStulus(event)) {
+        if (isEventTriggeredByStylus(event)) {
             return handleStylusHoverEvent(event);
         }
         return super.onHoverEvent(event);
@@ -388,14 +388,17 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         return true;
     }
 
-    private static boolean isEventTriggeredByStulus(MotionEvent event) {
+    private static boolean isEventTriggeredByStylus(MotionEvent event) {
         int toolType = event.getToolType(0);
         return toolType == MotionEvent.TOOL_TYPE_STYLUS || toolType == MotionEvent.TOOL_TYPE_ERASER;
     }
 
     private static boolean isStylusButtonPressed(MotionEvent event) {
         int buttonState = event.getButtonState();
-        boolean stylusButtonPressed = (buttonState & (MotionEvent.BUTTON_STYLUS_PRIMARY | MotionEvent.BUTTON_SECONDARY)) != 0;
+        boolean stylusButtonPressed = (buttonState & (MotionEvent.BUTTON_STYLUS_PRIMARY
+                | MotionEvent.BUTTON_STYLUS_SECONDARY
+                | MotionEvent.BUTTON_SECONDARY
+        )) != 0;
         boolean toolSetToEraser = event.getToolType(0) == MotionEvent.TOOL_TYPE_ERASER;
         return stylusButtonPressed || toolSetToEraser;
     }
