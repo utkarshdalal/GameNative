@@ -33,6 +33,7 @@ data class ScreenEffectsConfig(
         const val SCALING_MODE_FILL = 3
         const val SCALING_MODE_STRETCH = 4
         const val SCALING_MODE_FSR = 5
+        const val SCALING_MODE_FSR_ASPECT = 6
         const val FSR_MIN_LEVEL = 1
         const val FSR_MAX_LEVEL = 5
         const val FSR_DEFAULT_LEVEL = 3
@@ -102,8 +103,10 @@ fun applyScreenEffectsConfig(renderer: GLRenderer, config: ScreenEffectsConfig) 
     val effects = mutableListOf<Effect>()
 
     when (config.scalingMode) {
-        ScreenEffectsConfig.SCALING_MODE_FSR -> {
-            effects += composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
+        ScreenEffectsConfig.SCALING_MODE_FSR, ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> {
+            val easuEffect = composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
+            easuEffect.setPreserveAspect(config.scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT)
+            effects += easuEffect
             val rcasEffect = composer.getEffect(FSR1RcasEffect::class.java) ?: FSR1RcasEffect()
             rcasEffect.sharpnessStops = fsrQuickMenuLevelToStops(config.fsrSharpnessLevel)
             effects += rcasEffect

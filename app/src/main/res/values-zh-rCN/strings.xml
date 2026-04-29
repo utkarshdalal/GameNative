@@ -1480,6 +1480,7 @@
     <string name="screen_effects_scaling_mode_fill">填充</string>
     <string name="screen_effects_scaling_mode_stretch">拉伸</string>
     <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect">FSR 适配</string>
     <string name="screen_effects_fsr">FSR 1.0</string>
     <string name="screen_effects_fsr_description">官方 AMD FidelityFX Super Resolution 1.0，使用 EASU + RCAS，以较低的内部分辨率渲染并进行全分辨率放大。</string>
     <string name="screen_effects_fsr_quality">FSR 质量</string>
