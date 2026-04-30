@@ -310,7 +310,7 @@ private fun readWineProcessSnapshotFromProc(): List<ProcessInfo> {
                 ?.split(Regex("\\s+"))
                 ?.getOrNull(1)
                 ?.toIntOrNull()
-            if (uid != null && uid != myUid) continue
+            if (uid == null || uid != myUid) continue
 
             val comm = try { File(pidDir, "comm").readText().trim() } catch (_: Exception) { "" }
             val stat = try { File(pidDir, "stat").readText() } catch (_: Exception) { "" }
@@ -2433,8 +2433,15 @@ fun XServerScreen(
             isWineProcessesLoading = quickMenuWineProcessesLoading,
             onToolsVisibilityChanged = { quickMenuToolsVisible = it },
             onEndWineProcess = { process ->
-                ProcessHelper.killProcess(process.pid)
-                quickMenuWineProcesses = quickMenuWineProcesses.filterNot { it.pid == process.pid }
+                val killed = runCatching {
+                    ProcessHelper.killProcess(process.pid)
+                }.onFailure { error ->
+                    Timber.w(error, "Failed to kill Wine process pid=%d", process.pid)
+                }.isSuccess
+
+                if (killed) {
+                    quickMenuWineProcesses = quickMenuWineProcesses.filterNot { it.pid == process.pid }
+                }
             },
             isPerformanceHudEnabled = isPerformanceHudEnabled,
             performanceHudConfig = performanceHudConfig,
