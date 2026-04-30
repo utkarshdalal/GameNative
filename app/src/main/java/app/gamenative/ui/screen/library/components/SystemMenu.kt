@@ -77,6 +77,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PluviaApp
+import app.gamenative.events.AndroidEvent
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.SteamFriend
@@ -623,7 +624,7 @@ fun SystemMenu(
                                 text = stringResource(R.string.steam_go_offline),
                                 icon = Icons.AutoMirrored.Filled.AirplaneTicket,
                                 onClick = {
-                                    onNavigateRoute(PluviaScreen.Home.route + "?offline=true") // TODO: test this
+                                    PluviaApp.events.emit(AndroidEvent.SetOffline(true))
                                     onDismiss()
                                 },
                             )

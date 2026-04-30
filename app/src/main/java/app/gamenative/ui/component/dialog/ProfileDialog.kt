@@ -1,6 +1,8 @@
 package app.gamenative.ui.component.dialog
 
 import android.content.res.Configuration
+import app.gamenative.PluviaApp
+import app.gamenative.events.AndroidEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -176,7 +178,8 @@ fun ProfileDialog(
                                     }
                                 } else {
                                     FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = {
-                                        onNavigateRoute(PluviaScreen.Home.route + "?offline=true")
+                                        PluviaApp.events.emit(AndroidEvent.SetOffline(true))
+                                        onDismiss()
                                     }) {
                                         Icon(imageVector = Icons.AutoMirrored.Filled.AirplaneTicket, contentDescription = null)
                                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
