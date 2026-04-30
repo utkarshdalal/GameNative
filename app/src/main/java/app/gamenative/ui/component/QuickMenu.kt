@@ -94,7 +94,6 @@ import app.gamenative.utils.MathUtils.normalizedProgress
 import com.winlator.container.Container
 import com.winlator.renderer.GLRenderer
 import com.winlator.winhandler.ProcessInfo
-import com.winlator.winhandler.WinHandler
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -237,10 +236,10 @@ fun QuickMenu(
     onItemSelected: (Int) -> Boolean,
     renderer: GLRenderer? = null,
     container: Container? = null,
-    winHandler: WinHandler? = null,
     wineProcesses: List<ProcessInfo> = emptyList(),
     isWineProcessesLoading: Boolean = false,
     onToolsVisibilityChanged: (Boolean) -> Unit = {},
+    onEndWineProcess: (ProcessInfo) -> Unit = {},
     isPerformanceHudEnabled: Boolean = false,
     performanceHudConfig: PerformanceHudConfig = PerformanceHudConfig(),
     fpsLimiterEnabled: Boolean = true,
@@ -571,9 +570,9 @@ fun QuickMenu(
 
                                     QuickMenuTab.TOOLS -> {
                                         ToolsQuickMenuTab(
-                                            winHandler = winHandler,
                                             processes = wineProcesses,
                                             isLoadingProcesses = isWineProcessesLoading,
+                                            onEndProcess = onEndWineProcess,
                                             firstItemFocusRequester = toolsItemFocusRequester,
                                             modifier = Modifier.fillMaxSize(),
                                         )
@@ -638,9 +637,9 @@ fun QuickMenu(
 
 @Composable
 private fun ToolsQuickMenuTab(
-    winHandler: WinHandler?,
     processes: List<ProcessInfo>,
     isLoadingProcesses: Boolean,
+    onEndProcess: (ProcessInfo) -> Unit,
     firstItemFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -675,7 +674,7 @@ private fun ToolsQuickMenuTab(
                     subtitle = process.formattedMemoryUsage,
                     accentColor = accentColor,
                     onEndProcess = {
-                        winHandler?.killProcess(process.name, process.pid)
+                        onEndProcess(process)
                     },
                     focusRequester = if (index == 0) firstItemFocusRequester else null,
                 )

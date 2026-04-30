@@ -283,46 +283,108 @@ private fun buildEssentialProcessAllowlist(): Set<String> {
     return (essentialServices + CORE_WINE_PROCESSES).toSet()
 }
 
-private suspend fun requestWineProcessSnapshot(winHandler: WinHandler): List<ProcessInfo>? {
-    val previousListener = winHandler.getOnGetProcessInfoListener()
-    val lock = Any()
-    var currentList = mutableListOf<ProcessInfo>()
-    var expectedCount = 0
-    val deferred = CompletableDeferred<List<ProcessInfo>?>()
+private fun readWineProcessSnapshotFromProc(): List<ProcessInfo> {
+    val procDir = File("/proc")
+    val pidDirs = try {
+        procDir.listFiles { file -> file.isDirectory && file.name.all { it.isDigit() } } ?: return emptyList()
+    } catch (_: Exception) {
+        return emptyList()
+    }
 
-    val listener = OnGetProcessInfoListener { index, count, processInfo ->
-        previousListener?.onGetProcessInfo(index, count, processInfo)
-        synchronized(lock) {
-            if (count == 0 && processInfo == null) {
-                if (!deferred.isCompleted) deferred.complete(emptyList())
-                return@synchronized
+    val myUid = android.os.Process.myUid()
+    val processes = mutableListOf<ProcessInfo>()
+
+    for (pidDir in pidDirs) {
+        try {
+            val pid = pidDir.name.toIntOrNull() ?: continue
+            if (pid == android.os.Process.myPid()) continue
+
+            val statusLines = try {
+                File(pidDir, "status").readLines()
+            } catch (_: Exception) {
+                emptyList()
             }
-            if (index == 0) {
-                currentList = mutableListOf()
-                expectedCount = count
-                if (count == 0 && !deferred.isCompleted) {
-                    deferred.complete(emptyList())
-                    return@synchronized
-                }
+            val uid = statusLines
+                .firstOrNull { it.startsWith("Uid:") }
+                ?.trim()
+                ?.split(Regex("\\s+"))
+                ?.getOrNull(1)
+                ?.toIntOrNull()
+            if (uid != null && uid != myUid) continue
+
+            val comm = try { File(pidDir, "comm").readText().trim() } catch (_: Exception) { "" }
+            val stat = try { File(pidDir, "stat").readText() } catch (_: Exception) { "" }
+            val cmdlineBytes = try { File(pidDir, "cmdline").readBytes() } catch (_: Exception) { ByteArray(0) }
+            val cmdlineArgs = cmdlineBytes.toNullSeparatedStrings()
+            val searchableText = buildString {
+                append(comm)
+                append(' ')
+                append(stat)
+                append(' ')
+                append(cmdlineArgs.joinToString(" "))
             }
-            if (processInfo != null) {
-                currentList.add(processInfo)
+
+            if (!searchableText.contains("wine", ignoreCase = true) &&
+                !searchableText.contains(".exe", ignoreCase = true)) {
+                continue
             }
-            if (currentList.size >= expectedCount && !deferred.isCompleted) {
-                deferred.complete(currentList.toList())
-            }
+
+            val name = cmdlineArgs
+                .firstOrNull { it.endsWith(".exe", ignoreCase = true) }
+                ?: cmdlineArgs.firstOrNull { it.contains(".exe", ignoreCase = true) }
+                ?: cmdlineArgs.firstOrNull { it.contains("wine", ignoreCase = true) }
+                ?: comm.ifBlank { null }
+                ?: continue
+
+            val rssBytes = statusLines
+                .firstOrNull { it.startsWith("VmRSS:") }
+                ?.trim()
+                ?.split(Regex("\\s+"))
+                ?.getOrNull(1)
+                ?.toLongOrNull()
+                ?.times(1024L)
+                ?: 0L
+
+            processes.add(
+                ProcessInfo(
+                    pid,
+                    name.substringAfterLast('/').substringAfterLast('\\'),
+                    rssBytes,
+                    0,
+                    false,
+                ),
+            )
+        } catch (_: Exception) {
+            // Process exited or became unreadable while enumerating /proc.
         }
     }
 
-    return try {
-        winHandler.setOnGetProcessInfoListener(listener)
-        winHandler.listProcesses()
-        withTimeoutOrNull(EXIT_PROCESS_RESPONSE_TIMEOUT_MS) {
-            deferred.await()
+    val allowlist = buildEssentialProcessAllowlist()
+    return processes.sortedWith(
+        compareByDescending<ProcessInfo> { normalizeProcessName(it.name) !in allowlist }
+            .thenByDescending { it.memoryUsage },
+    )
+}
+
+private fun ByteArray.toNullSeparatedStrings(): List<String> {
+    if (isEmpty()) return emptyList()
+
+    val result = mutableListOf<String>()
+    var start = 0
+    for (i in indices) {
+        if (this[i] == 0.toByte()) {
+            if (i > start) {
+                val value = String(this, start, i - start).trim()
+                if (value.isNotBlank()) result.add(value)
+            }
+            start = i + 1
         }
-    } finally {
-        winHandler.setOnGetProcessInfoListener(previousListener)
     }
+    if (start < size) {
+        val value = String(this, start, size - start).trim()
+        if (value.isNotBlank()) result.add(value)
+    }
+    return result
 }
 
 // TODO logs in composables are 'unstable' which can cause recomposition (performance issues)
@@ -941,24 +1003,10 @@ fun XServerScreen(
             return@LaunchedEffect
         }
 
-        val winHandler = xServerView?.getxServer()?.winHandler
-        if (winHandler == null) {
-            quickMenuWineProcesses = emptyList()
-            quickMenuWineProcessesLoading = false
-            return@LaunchedEffect
-        }
-
         quickMenuWineProcessesLoading = true
         while (showQuickMenu && quickMenuToolsVisible) {
-            val snapshot = withContext(Dispatchers.IO) {
-                requestWineProcessSnapshot(winHandler)
-                    ?.sortedWith(
-                        compareByDescending<ProcessInfo> { normalizeProcessName(it.name) !in buildEssentialProcessAllowlist() }
-                            .thenByDescending { it.memoryUsage },
-                    )
-            }
-            if (snapshot != null) {
-                quickMenuWineProcesses = snapshot
+            quickMenuWineProcesses = withContext(Dispatchers.IO) {
+                readWineProcessSnapshotFromProc()
             }
             quickMenuWineProcessesLoading = false
             delay(QUICK_MENU_PROCESS_POLL_INTERVAL_MS)
@@ -2381,10 +2429,13 @@ fun XServerScreen(
             onItemSelected = onQuickMenuItemSelected,
             renderer = xServerView?.renderer,
             container = container,
-            winHandler = xServerView?.getxServer()?.winHandler,
             wineProcesses = quickMenuWineProcesses,
             isWineProcessesLoading = quickMenuWineProcessesLoading,
             onToolsVisibilityChanged = { quickMenuToolsVisible = it },
+            onEndWineProcess = { process ->
+                ProcessHelper.killProcess(process.pid)
+                quickMenuWineProcesses = quickMenuWineProcesses.filterNot { it.pid == process.pid }
+            },
             isPerformanceHudEnabled = isPerformanceHudEnabled,
             performanceHudConfig = performanceHudConfig,
             fpsLimiterEnabled = fpsLimiterEnabled,
