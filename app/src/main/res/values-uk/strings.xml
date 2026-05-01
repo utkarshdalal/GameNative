@@ -1424,5 +1424,5 @@
      <string name="steam_save_import_failed">Не вдалося імпортувати збереження: %s</string>
     <string name="option_import_saves">Імпортувати збереження</string>
     <string name="option_export_saves">Експортувати збереження</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlable">шукати...</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">шукати...</string>
 </resources>

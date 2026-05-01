@@ -1421,5 +1421,5 @@
      <string name="steam_save_import_failed">Importazione salvataggi fallita: %s</string>
     <string name="option_import_saves">Importa salvataggi</string>
     <string name="option_export_saves">Esporta salvataggi</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlable">search...</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">search...</string>
 </resources>

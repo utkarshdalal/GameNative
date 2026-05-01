@@ -1358,5 +1358,5 @@ https://gamenative.app
      <string name="steam_save_import_failed">Не удалось импортировать сохранения: %s</string>
     <string name="option_import_saves">Импортировать сохранения</string>
     <string name="option_export_saves">Экспортировать сохранения</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlable">искать...</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">искать...</string>
 </resources>

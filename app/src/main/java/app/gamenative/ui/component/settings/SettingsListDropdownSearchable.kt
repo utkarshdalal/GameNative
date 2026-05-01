@@ -121,7 +121,7 @@ fun SettingsListDropdownSearchable(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
-                placeholder = { stringResource(R.string.settings_interface_settingslistdropdownsearchable_searchlable) },
+                placeholder = {R.string.settings_interface_settingslistdropdownsearchable_searchlabel},
                 singleLine = true,
             )
 

@@ -1489,5 +1489,5 @@
     <string name="settings_interface_icon_style">圖示樣式</string>
 
     <string name="tools_wine_processes_empty">未偵測到正在執行的 EXE。</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlable">尋找...</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">尋找...</string>
 </resources>
