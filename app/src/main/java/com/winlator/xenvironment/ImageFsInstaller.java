@@ -211,7 +211,7 @@ public abstract class ImageFsInstaller {
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager, Container container, Callback<Integer> onProgress) {
         ImageFs imageFs = ImageFs.find(context);
         String wineVersion = container.getWineVersion();
-        if (!ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(context, imageFs.getRootDir())) {
+        if (!ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(context, imageFs.getRootDir(), wineVersion)) {
             Log.w("ImageFsInstaller", "Failed to migrate legacy directories before installation.");
             return Executors.newSingleThreadExecutor().submit(() -> false);
         }
@@ -227,8 +227,6 @@ public abstract class ImageFsInstaller {
         } else {
             Log.d("ImageFsInstaller", "Image FS already valid and at latest version");
             return Executors.newSingleThreadExecutor().submit(() -> {
-                ensureSharedHomeRoot(context, imageFs.getRootDir());
-                ensureProtonVersionSymlink(context, imageFs.getRootDir(), wineVersion);
                 return true;
             });
         }
@@ -409,7 +407,7 @@ public abstract class ImageFsInstaller {
      *
      * This allows the same user home (e.g. .wine, .cache) to be shared across variants.
      */
-    private static void ensureSharedHomeRoot(Context context, File rootDir) {
+    public static void ensureSharedHomeRoot(Context context, File rootDir) {
         File sharedHomeRoot = new File(ImageFs.getImageFsSharedDir(context), "home");
         if (!sharedHomeRoot.exists()) {
             sharedHomeRoot.mkdirs();
