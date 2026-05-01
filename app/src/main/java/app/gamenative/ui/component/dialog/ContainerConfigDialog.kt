@@ -442,7 +442,10 @@ fun ContainerConfigDialog(
 
         fun launchSteamAppDownload(appId: Int, label: String, onDownloaded: () -> Unit) {
             if (manifestInstallInProgress) return
-            val downloadInfo = SteamService.downloadApp(appId) ?: return
+            val downloadInfo = SteamService.downloadApp(appId) ?: run {
+                onDownloaded()
+                return
+            }
             manifestInstallInProgress = true
             showManifestDownloadDialog = true
             manifestDownloadProgress = downloadInfo.getProgress().coerceIn(0f, 1f)
@@ -461,9 +464,7 @@ fun ContainerConfigDialog(
                     withContext(Dispatchers.IO) {
                         downloadInfo.awaitCompletion(timeoutMs = 7L * 24L * 60L * 60L * 1000L)
                     }
-                    if (!downloadInfo.isActive()) {
-                        onDownloaded()
-                    }
+                    onDownloaded()
                 } finally {
                     downloadInfo.removeProgressListener(progressListener)
                     manifestInstallInProgress = false
