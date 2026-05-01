@@ -1492,13 +1492,13 @@
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
-    <string name="lsfg_description">使用 Lossless Scaling 的 Vulkan 層生成中間幀</string>
+    <string name="lsfg_description">使用 Lossless Scaling 的 Vulkan 層生成中間幀。已知僅在 Adreno 6xx 及更高版本上可用。</string>
     <string name="lsfg_enable">啟用 LSFG-VK 幀生成</string>
     <string name="lsfg_multiplier">幀倍率</string>
     <string name="lsfg_flow_scale">光流縮放</string>
     <string name="lsfg_performance_mode">效能模式</string>
     <string name="lsfg_not_supported">幀生成需要 Bionic 容器</string>
-    <string name="lsfg_install_prompt">Lossless Scaling 未安裝。點擊安裝。</string>
+    <string name="lsfg_install_prompt">Lossless Scaling 未安裝。點擊安裝。已知僅在 Adreno 6xx 及更高版本上可用。</string>
     <string name="lsfg_not_in_library">Lossless Scaling 不在你的 Steam 庫中</string>
     <string name="lsfg_install_title">安裝 Lossless Scaling？</string>
     <string name="lsfg_install_message">將從 Steam 下載 Lossless Scaling 以啟用幀生成。</string>

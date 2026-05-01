@@ -1427,13 +1427,13 @@
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
-    <string name="lsfg_description">Генерація проміжних кадрів за допомогою шару Vulkan Lossless Scaling</string>
+    <string name="lsfg_description">Генерація проміжних кадрів за допомогою шару Vulkan Lossless Scaling. Відомо, що працює лише на Adreno 6xx і новіших.</string>
     <string name="lsfg_enable">Увімкнути генерацію кадрів LSFG-VK</string>
     <string name="lsfg_multiplier">Множник кадрів</string>
     <string name="lsfg_flow_scale">Масштаб потоку</string>
     <string name="lsfg_performance_mode">Режим продуктивності</string>
     <string name="lsfg_not_supported">Для генерації кадрів потрібен контейнер Bionic</string>
-    <string name="lsfg_install_prompt">Lossless Scaling не встановлено. Натисніть для встановлення.</string>
+    <string name="lsfg_install_prompt">Lossless Scaling не встановлено. Натисніть для встановлення. Відомо, що працює лише на Adreno 6xx і новіших.</string>
     <string name="lsfg_not_in_library">Lossless Scaling немає у вашій бібліотеці Steam</string>
     <string name="lsfg_install_title">Встановити Lossless Scaling?</string>
     <string name="lsfg_install_message">Це завантажить Lossless Scaling зі Steam для увімкнення генерації кадрів.</string>

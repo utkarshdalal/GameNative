@@ -1361,13 +1361,13 @@ https://gamenative.app
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
-    <string name="lsfg_description">Генерация промежуточных кадров с помощью слоя Vulkan Lossless Scaling</string>
+    <string name="lsfg_description">Генерация промежуточных кадров с помощью слоя Vulkan Lossless Scaling. Известно, что работает только на Adreno 6xx и новее.</string>
     <string name="lsfg_enable">Включить генерацию кадров LSFG-VK</string>
     <string name="lsfg_multiplier">Множитель кадров</string>
     <string name="lsfg_flow_scale">Масштаб потока</string>
     <string name="lsfg_performance_mode">Режим производительности</string>
     <string name="lsfg_not_supported">Для генерации кадров требуется контейнер Bionic</string>
-    <string name="lsfg_install_prompt">Lossless Scaling не установлен. Нажмите для установки.</string>
+    <string name="lsfg_install_prompt">Lossless Scaling не установлен. Нажмите для установки. Известно, что работает только на Adreno 6xx и новее.</string>
     <string name="lsfg_not_in_library">Lossless Scaling нет в вашей библиотеке Steam</string>
     <string name="lsfg_install_title">Установить Lossless Scaling?</string>
     <string name="lsfg_install_message">Это загрузит Lossless Scaling из Steam для включения генерации кадров.</string>

@@ -1434,13 +1434,13 @@
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
-    <string name="lsfg_description">Generar fotogramas intermedios usando la capa Vulkan de Lossless Scaling</string>
+    <string name="lsfg_description">Generar fotogramas intermedios usando la capa Vulkan de Lossless Scaling. Solo se sabe que funciona en Adreno 6xx y posteriores.</string>
     <string name="lsfg_enable">Habilitar generación de fotogramas LSFG-VK</string>
     <string name="lsfg_multiplier">Multiplicador de fotogramas</string>
     <string name="lsfg_flow_scale">Escala de flujo</string>
     <string name="lsfg_performance_mode">Modo de rendimiento</string>
     <string name="lsfg_not_supported">La generación de fotogramas requiere un contenedor Bionic</string>
-    <string name="lsfg_install_prompt">Lossless Scaling no está instalado. Toca para instalar.</string>
+    <string name="lsfg_install_prompt">Lossless Scaling no está instalado. Toca para instalar. Solo se sabe que funciona en Adreno 6xx y posteriores.</string>
     <string name="lsfg_not_in_library">Lossless Scaling no está en tu biblioteca de Steam</string>
     <string name="lsfg_install_title">¿Instalar Lossless Scaling?</string>
     <string name="lsfg_install_message">Esto descargará Lossless Scaling de Steam para habilitar la generación de fotogramas.</string>

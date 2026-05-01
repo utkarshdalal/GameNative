@@ -458,19 +458,12 @@ private fun DxWrapperSection(state: ContainerConfigState) {
 private fun LsfgSection(state: ContainerConfigState) {
     val config = state.config.value
     val lsfgSupported = config.containerVariant.equals(Container.BIONIC, ignoreCase = true)
+    if (!lsfgSupported) return
+
     var dllAvailable by rememberSaveable { mutableStateOf(LsfgVkManager.isDllAvailable()) }
     val ownsApp = LsfgVkManager.ownsLosslessScaling()
 
     SettingsGroup {
-        if (!lsfgSupported) {
-            Text(
-                text = stringResource(R.string.lsfg_not_supported),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            return@SettingsGroup
-        }
-
         when {
             dllAvailable -> {
                 // State 1: DLL found — toggle works normally

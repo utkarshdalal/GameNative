@@ -1475,13 +1475,13 @@
     <string name="review_overwhelmingly_negative">Overwhelmingly Negative</string>
     <!-- LSFG Frame Generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
-    <string name="lsfg_description">Generate intermediate frames using Lossless Scaling\'s Vulkan layer</string>
+    <string name="lsfg_description">Generate intermediate frames using Lossless Scaling\'s Vulkan layer. Only known to work on Adreno 6xx and above.</string>
     <string name="lsfg_enable">Enable LSFG-VK frame generation</string>
     <string name="lsfg_multiplier">Frame multiplier</string>
     <string name="lsfg_flow_scale">Flow scale</string>
     <string name="lsfg_performance_mode">Performance mode</string>
     <string name="lsfg_not_supported">Frame generation requires a Bionic container</string>
-    <string name="lsfg_install_prompt">Lossless Scaling not installed. Tap to install.</string>
+    <string name="lsfg_install_prompt">Lossless Scaling not installed. Tap to install. Only known to work on Adreno 6xx and above.</string>
     <string name="lsfg_not_in_library">Lossless Scaling not in your Steam library</string>
     <string name="lsfg_install_title">Install Lossless Scaling?</string>
     <string name="lsfg_install_message">This will download Lossless Scaling from Steam to enable frame generation.</string>

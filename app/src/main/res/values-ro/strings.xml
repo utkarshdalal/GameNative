@@ -1433,13 +1433,13 @@
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
-    <string name="lsfg_description">Generare cadre intermediare folosind stratul Vulkan din Lossless Scaling</string>
+    <string name="lsfg_description">Generare cadre intermediare folosind stratul Vulkan din Lossless Scaling. Se știe că funcționează doar pe Adreno 6xx și mai nou.</string>
     <string name="lsfg_enable">Activează generarea de cadre LSFG-VK</string>
     <string name="lsfg_multiplier">Multiplicator cadre</string>
     <string name="lsfg_flow_scale">Scară flux</string>
     <string name="lsfg_performance_mode">Mod performanță</string>
     <string name="lsfg_not_supported">Generarea de cadre necesită un container Bionic</string>
-    <string name="lsfg_install_prompt">Lossless Scaling nu este instalat. Atingeți pentru a instala.</string>
+    <string name="lsfg_install_prompt">Lossless Scaling nu este instalat. Atingeți pentru a instala. Se știe că funcționează doar pe Adreno 6xx și mai nou.</string>
     <string name="lsfg_not_in_library">Lossless Scaling nu este în biblioteca dumneavoastră Steam</string>
     <string name="lsfg_install_title">Instalați Lossless Scaling?</string>
     <string name="lsfg_install_message">Aceasta va descărca Lossless Scaling din Steam pentru a activa generarea de cadre.</string>

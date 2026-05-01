@@ -1431,13 +1431,13 @@
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
-    <string name="lsfg_description">Generuj pośrednie klatki przy użyciu warstwy Vulkan z Lossless Scaling</string>
+    <string name="lsfg_description">Generuj pośrednie klatki przy użyciu warstwy Vulkan z Lossless Scaling. Wiadomo, że działa tylko na Adreno 6xx i nowszych.</string>
     <string name="lsfg_enable">Włącz generowanie klatek LSFG-VK</string>
     <string name="lsfg_multiplier">Mnożnik klatek</string>
     <string name="lsfg_flow_scale">Skala przepływu</string>
     <string name="lsfg_performance_mode">Tryb wydajności</string>
     <string name="lsfg_not_supported">Generowanie klatek wymaga kontenera Bionic</string>
-    <string name="lsfg_install_prompt">Lossless Scaling nie jest zainstalowany. Dotknij, aby zainstalować.</string>
+    <string name="lsfg_install_prompt">Lossless Scaling nie jest zainstalowany. Dotknij, aby zainstalować. Wiadomo, że działa tylko na Adreno 6xx i nowszych.</string>
     <string name="lsfg_not_in_library">Lossless Scaling nie jest w Twojej bibliotece Steam</string>
     <string name="lsfg_install_title">Zainstalować Lossless Scaling?</string>
     <string name="lsfg_install_message">Spowoduje to pobranie Lossless Scaling ze Steam, aby umożliwić generowanie klatek.</string>

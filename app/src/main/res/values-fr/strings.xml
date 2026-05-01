@@ -1428,13 +1428,13 @@
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
-    <string name="lsfg_description">Générer des images intermédiaires avec le layer Vulkan de Lossless Scaling</string>
+    <string name="lsfg_description">Générer des images intermédiaires avec le layer Vulkan de Lossless Scaling. Fonctionne uniquement sur Adreno 6xx et supérieur, à notre connaissance.</string>
     <string name="lsfg_enable">Activer la génération d\'images LSFG-VK</string>
     <string name="lsfg_multiplier">Multiplicateur d\'images</string>
     <string name="lsfg_flow_scale">Échelle de flux</string>
     <string name="lsfg_performance_mode">Mode performance</string>
     <string name="lsfg_not_supported">La génération d\'images nécessite un conteneur Bionic</string>
-    <string name="lsfg_install_prompt">Lossless Scaling n\'est pas installé. Appuyez pour installer.</string>
+    <string name="lsfg_install_prompt">Lossless Scaling n\'est pas installé. Appuyez pour installer. Fonctionne uniquement sur Adreno 6xx et supérieur, à notre connaissance.</string>
     <string name="lsfg_not_in_library">Lossless Scaling n\'est pas dans votre bibliothèque Steam</string>
     <string name="lsfg_install_title">Installer Lossless Scaling ?</string>
     <string name="lsfg_install_message">Cela téléchargera Lossless Scaling depuis Steam pour activer la génération d\'images.</string>

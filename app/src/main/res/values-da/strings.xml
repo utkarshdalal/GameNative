@@ -1298,13 +1298,13 @@
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
-    <string name="lsfg_description">Generer mellemliggende billeder ved hjælp af Lossless Scalings Vulkan-lag</string>
+    <string name="lsfg_description">Generer mellemliggende billeder ved hjælp af Lossless Scalings Vulkan-lag. Virkede kun på Adreno 6xx og nyere, så vidt vides.</string>
     <string name="lsfg_enable">Aktivér LSFG-VK billedgenerering</string>
     <string name="lsfg_multiplier">Billedmultiplikator</string>
     <string name="lsfg_flow_scale">Flow-skala</string>
     <string name="lsfg_performance_mode">Ydelsestilstand</string>
     <string name="lsfg_not_supported">Billedgenerering kræver en Bionic-container</string>
-    <string name="lsfg_install_prompt">Lossless Scaling er ikke installeret. Tryk for at installere.</string>
+    <string name="lsfg_install_prompt">Lossless Scaling er ikke installeret. Tryk for at installere. Virkede kun på Adreno 6xx og nyere, så vidt vides.</string>
     <string name="lsfg_not_in_library">Lossless Scaling er ikke i dit Steam-bibliotek</string>
     <string name="lsfg_install_title">Installer Lossless Scaling?</string>
     <string name="lsfg_install_message">Dette downloader Lossless Scaling fra Steam for at aktivere billedgenerering.</string>

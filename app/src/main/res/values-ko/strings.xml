@@ -1432,13 +1432,13 @@
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
-    <string name="lsfg_description">Lossless Scaling의 Vulkan 레이어를 사용하여 중간 프레임 생성</string>
+    <string name="lsfg_description">Lossless Scaling의 Vulkan 레이어를 사용하여 중간 프레임 생성. Adreno 6xx 이상에서만 작동하는 것으로 알려져 있습니다.</string>
     <string name="lsfg_enable">LSFG-VK 프레임 생성 활성화</string>
     <string name="lsfg_multiplier">프레임 배율</string>
     <string name="lsfg_flow_scale">플로우 스케일</string>
     <string name="lsfg_performance_mode">성능 모드</string>
     <string name="lsfg_not_supported">프레임 생성에는 Bionic 컨테이너가 필요합니다</string>
-    <string name="lsfg_install_prompt">Lossless Scaling이 설치되지 않았습니다. 탭하여 설치하세요.</string>
+    <string name="lsfg_install_prompt">Lossless Scaling이 설치되지 않았습니다. 탭하여 설치하세요. Adreno 6xx 이상에서만 작동하는 것으로 알려져 있습니다.</string>
     <string name="lsfg_not_in_library">Lossless Scaling이 Steam 라이브러리에 없습니다</string>
     <string name="lsfg_install_title">Lossless Scaling을 설치하시겠습니까?</string>
     <string name="lsfg_install_message">프레임 생성을 활성화하기 위해 Steam에서 Lossless Scaling을 다운로드합니다.</string>
