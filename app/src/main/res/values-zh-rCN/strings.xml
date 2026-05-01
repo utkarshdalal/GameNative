@@ -1497,4 +1497,5 @@
 
     <!-- 工具：Wine 进程 -->
     <string name="tools_wine_processes_empty">未检测到正在运行的EXE。</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlable">寻找...</string>
 </resources>

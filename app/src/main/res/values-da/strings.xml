@@ -1295,4 +1295,5 @@
      <string name="steam_save_import_failed">Kunne ikke importere gemte filer: %s</string>
     <string name="option_import_saves">Importér gemte spil</string>
     <string name="option_export_saves">Eksportér gemte spil</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlable">søge...</string>
 </resources>

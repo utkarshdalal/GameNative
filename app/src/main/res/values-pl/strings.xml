@@ -865,7 +865,7 @@
     <string name="driver_manager">Menedżer sterowników</string>
     <string name="select_a_driver">Wybierz sterownik</string>
     <string name="import_zip_from_device">Importuj ZIP z urządzenia</string>
-    
+
     <!-- Contents Manager -->
     <string name="contents_manager">Menedżer zawartości</string>
     <string name="import_wcp_from_device">Importuj .wcp z urządzenia</string>
@@ -1428,4 +1428,5 @@
      <string name="steam_save_import_failed">Nie udało się zaimportować zapisów: %s</string>
     <string name="option_import_saves">Importuj zapisy</string>
     <string name="option_export_saves">Eksportuj zapisy</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlable">szukać...</string>
 </resources>
