@@ -102,7 +102,7 @@ import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ExecutableSelectionUtils
-import app.gamenative.utils.LsfgVkManager
+import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.ManifestComponentHelper
 import app.gamenative.utils.PreInstallSteps
 import app.gamenative.utils.SteamTokenLogin
@@ -483,12 +483,12 @@ fun XServerScreen(
     var fpsLimiterEnabled by rememberSaveable(container.id) { mutableStateOf(initialFpsLimiterEnabled(container)) }
     var fpsLimiterTarget by rememberSaveable(container.id) { mutableIntStateOf(initialFpsLimiterTarget(container)) }
 
-    // LSFG hot-reload state
     // LSFG tab in QuickMenu only visible when enabled in container settings
-    val isLsfgAvailable = LsfgVkManager.isSupported(container) && LsfgVkManager.isArmed(container)
-    var lsfgMultiplier by rememberSaveable(container.id) { mutableIntStateOf(LsfgVkManager.multiplier(container)) }
-    var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(LsfgVkManager.flowScale(container)) }
-    var lsfgPerformanceMode by rememberSaveable(container.id) { mutableStateOf(LsfgVkManager.performanceMode(container)) }
+    val isLsfgAvailable = LsfgQuickMenuHelper.isAvailable(container)
+    val initialLsfgSettings = remember(container.id) { LsfgQuickMenuHelper.readSettings(container) }
+    var lsfgMultiplier by rememberSaveable(container.id) { mutableIntStateOf(initialLsfgSettings.multiplier) }
+    var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.flowScale) }
+    var lsfgPerformanceMode by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.performanceMode) }
 
     fun persistFpsLimiterState() {
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
@@ -585,32 +585,26 @@ fun XServerScreen(
         persistFpsLimiterState()
     }
 
-    // ── LSFG hot-reload callbacks ──────────────────────────────────────────
+    fun applyLsfgSettings() {
+        LsfgQuickMenuHelper.applySettings(
+            container,
+            LsfgQuickMenuHelper.Settings(lsfgMultiplier, lsfgFlowScale, lsfgPerformanceMode),
+        )
+    }
+
     fun applyLsfgMultiplier(mult: Int) {
-        lsfgMultiplier = mult.coerceIn(0, 4)
-        container.putExtra(LsfgVkManager.EXTRA_MULTIPLIER, lsfgMultiplier.toString())
-        container.saveData()
-        val effectiveEnabled = lsfgMultiplier >= 2
-        val effectiveMultiplier = if (effectiveEnabled) lsfgMultiplier else 2
-        LsfgVkManager.updateConfigAtRuntime(container, effectiveEnabled, effectiveMultiplier, lsfgFlowScale, lsfgPerformanceMode)
+        lsfgMultiplier = LsfgQuickMenuHelper.sanitizeMultiplier(mult)
+        applyLsfgSettings()
     }
 
     fun applyLsfgFlowScale(scale: Float) {
-        lsfgFlowScale = scale.coerceIn(0.25f, 1.0f)
-        container.putExtra(LsfgVkManager.EXTRA_FLOW_SCALE, String.format(java.util.Locale.US, "%.2f", lsfgFlowScale))
-        container.saveData()
-        val effectiveEnabled = lsfgMultiplier >= 2
-        val effectiveMultiplier = if (effectiveEnabled) lsfgMultiplier else 2
-        LsfgVkManager.updateConfigAtRuntime(container, effectiveEnabled, effectiveMultiplier, lsfgFlowScale, lsfgPerformanceMode)
+        lsfgFlowScale = LsfgQuickMenuHelper.sanitizeFlowScale(scale)
+        applyLsfgSettings()
     }
 
     fun applyLsfgPerformanceMode(enabled: Boolean) {
         lsfgPerformanceMode = enabled
-        container.putExtra(LsfgVkManager.EXTRA_PERFORMANCE_MODE, enabled.toString())
-        container.saveData()
-        val effectiveEnabled = lsfgMultiplier >= 2
-        val effectiveMultiplier = if (effectiveEnabled) lsfgMultiplier else 2
-        LsfgVkManager.updateConfigAtRuntime(container, effectiveEnabled, effectiveMultiplier, lsfgFlowScale, lsfgPerformanceMode)
+        applyLsfgSettings()
     }
 
     LaunchedEffect(xServerView) {

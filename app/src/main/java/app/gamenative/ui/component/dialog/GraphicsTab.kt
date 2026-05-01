@@ -3,13 +3,10 @@ package app.gamenative.ui.component.dialog
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -17,8 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
-import app.gamenative.service.SteamService
-import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.theme.settingsTileColors
@@ -31,9 +26,6 @@ import com.winlator.container.Container
 import com.winlator.core.KeyValueSet
 import com.winlator.core.StringUtils
 import com.winlator.core.envvars.EnvVars
-import androidx.compose.ui.graphics.Color
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Composable
@@ -468,28 +460,6 @@ private fun LsfgSection(state: ContainerConfigState) {
     val lsfgSupported = config.containerVariant.equals(Container.BIONIC, ignoreCase = true)
     var dllAvailable by rememberSaveable { mutableStateOf(LsfgVkManager.isDllAvailable()) }
     val ownsApp = LsfgVkManager.ownsLosslessScaling()
-    var showInstallDialog by rememberSaveable { mutableStateOf(false) }
-    var isInstalling by rememberSaveable { mutableStateOf(false) }
-    var installProgress by rememberSaveable { mutableStateOf(0f) }
-
-    // Poll download progress while installing
-    LaunchedEffect(isInstalling) {
-        while (isInstalling) {
-            val downloads = SteamService.getActiveDownloads()
-            val dlInfo = downloads[LsfgVkManager.LOSSLESS_SCALING_APP_ID]
-            if (dlInfo != null) {
-                installProgress = dlInfo.getProgress()
-                if (!dlInfo.isActive()) {
-                    isInstalling = false
-                    dllAvailable = LsfgVkManager.isDllAvailable()
-                }
-            } else {
-                isInstalling = false
-                dllAvailable = LsfgVkManager.isDllAvailable()
-            }
-            delay(500)
-        }
-    }
 
     SettingsGroup {
         if (!lsfgSupported) {
@@ -521,7 +491,14 @@ private fun LsfgSection(state: ContainerConfigState) {
                     title = { Text(text = stringResource(R.string.lsfg_enable)) },
                     subtitle = { Text(text = stringResource(R.string.lsfg_install_prompt)) },
                     state = false,
-                    onCheckedChange = { showInstallDialog = true },
+                    onCheckedChange = {
+                        state.launchSteamAppDownload(
+                            LsfgVkManager.LOSSLESS_SCALING_APP_ID,
+                            "Lossless Scaling",
+                        ) {
+                            dllAvailable = LsfgVkManager.isDllAvailable()
+                        }
+                    },
                 )
             }
             else -> {
@@ -536,42 +513,4 @@ private fun LsfgSection(state: ContainerConfigState) {
             }
         }
     }
-
-    // Install confirmation dialog
-    if (showInstallDialog) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showInstallDialog = false },
-            title = { Text(text = stringResource(R.string.lsfg_install_title)) },
-            text = { Text(text = stringResource(R.string.lsfg_install_message)) },
-            confirmButton = {
-                val scope = rememberCoroutineScope()
-                androidx.compose.material3.TextButton(onClick = {
-                    scope.launch {
-                        val dlInfo = SteamService.downloadApp(
-                            LsfgVkManager.LOSSLESS_SCALING_APP_ID
-                        )
-                        if (dlInfo != null) {
-                            showInstallDialog = false
-                            isInstalling = true
-                            installProgress = 0f
-                        }
-                    }
-                }) {
-                    Text(text = stringResource(android.R.string.ok))
-                }
-            },
-            dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { showInstallDialog = false }) {
-                    Text(text = stringResource(android.R.string.cancel))
-                }
-            },
-        )
-    }
-
-    // Download progress dialog
-    LoadingDialog(
-        visible = isInstalling,
-        progress = installProgress,
-        message = stringResource(R.string.lsfg_installing),
-    )
 }
