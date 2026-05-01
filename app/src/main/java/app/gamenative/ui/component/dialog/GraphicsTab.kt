@@ -497,6 +497,9 @@ private fun LsfgSection(state: ContainerConfigState) {
                             "Lossless Scaling",
                         ) {
                             dllAvailable = LsfgVkManager.isDllAvailable()
+                            if (dllAvailable) {
+                                state.config.value = state.config.value.copy(lsfgEnabled = true)
+                            }
                         }
                     },
                 )
