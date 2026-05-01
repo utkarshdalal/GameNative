@@ -39,7 +39,7 @@ public class ContainerManager {
 
     public ContainerManager(Context context) {
         this.context = context;
-        File rootDir = ImageFs.find(context).getRootDir();
+        File rootDir = ImageFs.getImageFsSharedDir(context);
         homeDir = new File(rootDir, "home");
         loadContainers();
     }
@@ -62,12 +62,12 @@ public class ContainerManager {
                         try {
                             File configFile = container.getConfigFile();
                             String configContent = FileUtils.readString(configFile);
-                            
+
                             if (configContent == null || configContent.trim().isEmpty()) {
                                 Log.w("ContainerManager", "Container config file is null or empty, skipping: " + containerId);
                                 continue;
                             }
-                            
+
                             JSONObject data = new JSONObject(configContent);
                             container.loadData(data);
                             containers.add(container);
