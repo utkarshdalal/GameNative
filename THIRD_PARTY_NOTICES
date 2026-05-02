@@ -139,7 +139,7 @@ Full license text: https://creativecommons.org/publicdomain/zero/1.0/
 **Authors:** PancakeTAS and contributors (upstream), FrankBarretta (Android port), xXJSONDeruloXx (Vortek/Adreno patches)
 **Source (upstream):** https://github.com/PancakeTAS/lsfg-vk
 **Source (Android port):** https://github.com/FrankBarretta/lsfg-vk-android
-**Source (Vortek fork):** https://github.com/xXJSONDeruloXx/lsfg-vk-android
+**Source (GameNative fork):** https://github.com/GameNative/lsfg-vk-android
 **License:** MIT (upstream v1.0; relicensed GPL-3.0 post-v2.0.0-dev, commit 5bedd8d)
 
 A prebuilt version of lsfg-vk with Android-specific patches (AHardwareBuffer
