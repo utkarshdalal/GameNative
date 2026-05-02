@@ -1456,7 +1456,7 @@
     <string name="game_launch_tip_9">팁: 게임 실행 시 검은 화면이 나타나면 \"%s\"(을)를 사용하고 A: 드라이브에서 게임을 실행해 보세요.</string>
     <string name="game_launch_tip_10">팁: 설정에서 사용자 정의 게임의 경로를 추가할 수 있습니다.</string>
     <string name="game_launch_tip_11">팁: 게임 내에서 FPS 통계를 보려면 빠른 메뉴의 성능 HUD를 사용하세요.</string>
-    <string name="game_launch_tip_12">팁: 게임이 실행되지 않는 경우 A:\_CommonRedist의 패키지를 설치하세요.</string>
+    <string name="game_launch_tip_12">팁: 게임이 실행되지 않는 경우 A:\\_CommonRedist의 패키지를 설치하세요.</string>
     <string name="game_launch_tip_13">팁: 기기의 뒤로 가기 키로 화면 컨트롤러를 켜거나 끌 수 있습니다.</string>
     <string name="game_launch_tip_14">팁: 기기의 뒤로 가기 키로 키보드를 불러올 수 있습니다.</string>
     <string name="game_launch_tip_15">팁: 컨테이너 내부에서 두 손가락으로 탭하여 마우스 오른쪽 버튼을 클릭할 수 있습니다.</string>

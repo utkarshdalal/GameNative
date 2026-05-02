@@ -1322,7 +1322,7 @@
     <string name="game_launch_tip_9">Tip: Hvis du får en sort skærm, når du starter et spil, så prøv at \"%s\" og start spillet fra A:-drevet.</string>
     <string name="game_launch_tip_10">Tip: Du kan tilføje forskellige placeringer til brugerdefinerede spil i indstillingerne.</string>
     <string name="game_launch_tip_11">Tip: Brug performance HUD i hurtigmenuen, når du vil have FPS-statistik i spillet.</string>
-    <string name="game_launch_tip_12">Tip: Installer pakker i A:\_CommonRedist, hvis dit spil ikke starter.</string>
+    <string name="game_launch_tip_12">Tip: Installer pakker i A:\\_CommonRedist, hvis dit spil ikke starter.</string>
     <string name="game_launch_tip_13">Tip: Du kan aktivere eller deaktivere skærmcontrolleren med din enheds tilbage-knap.</string>
     <string name="game_launch_tip_14">Tip: Du kan få tastaturet frem med din enheds tilbage-knap.</string>
     <string name="game_launch_tip_15">Tip: Du kan trykke med to fingre inde i containeren for at højreklikke.</string>

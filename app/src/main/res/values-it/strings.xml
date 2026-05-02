@@ -1448,7 +1448,7 @@
     <string name="game_launch_tip_9">Suggerimento: se ottieni una schermata nera all\'avvio di un gioco, prova \"%s\" e ad avviare il gioco dall\'unità A:.</string>
     <string name="game_launch_tip_10">Suggerimento: puoi aggiungere diverse posizioni per i giochi personalizzati nelle impostazioni.</string>
     <string name="game_launch_tip_11">Suggerimento: usa l\'HUD delle prestazioni nel menu rapido quando vuoi le statistiche FPS in-game.</string>
-    <string name="game_launch_tip_12">Suggerimento: installa i pacchetti in A:\_CommonRedist se il gioco non si avvia.</string>
+    <string name="game_launch_tip_12">Suggerimento: installa i pacchetti in A:\\_CommonRedist se il gioco non si avvia.</string>
     <string name="game_launch_tip_13">Suggerimento: puoi attivare o disattivare il controller sullo schermo con il tasto indietro del tuo dispositivo.</string>
     <string name="game_launch_tip_14">Suggerimento: puoi richiamare la tastiera con il tasto indietro del tuo dispositivo.</string>
     <string name="game_launch_tip_15">Suggerimento: puoi toccare con due dita all\'interno del container per fare clic destro.</string>

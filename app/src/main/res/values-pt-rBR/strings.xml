@@ -1322,7 +1322,7 @@
     <string name="game_launch_tip_9">Dica: Se estiver com tela preta ao iniciar um jogo, tente usar \"%s\" e iniciar o jogo a partir da unidade A:.</string>
     <string name="game_launch_tip_10">Dica: Você pode adicionar diferentes locais para jogos personalizados nas configurações.</string>
     <string name="game_launch_tip_11">Dica: Use o HUD de desempenho do menu rápido quando quiser estatísticas de FPS no jogo.</string>
-    <string name="game_launch_tip_12">Dica: Instale os pacotes em A:\_CommonRedist se o jogo não iniciar.</string>
+    <string name="game_launch_tip_12">Dica: Instale os pacotes em A:\\_CommonRedist se o jogo não iniciar.</string>
     <string name="game_launch_tip_13">Dica: Você pode ativar ou desativar o controle na tela com a tecla voltar do seu dispositivo.</string>
     <string name="game_launch_tip_14">Dica: Você pode abrir o teclado com a tecla voltar do seu dispositivo.</string>
     <string name="game_launch_tip_15">Dica: Você pode tocar com dois dedos dentro do contêiner para clicar com o botão direito.</string>

@@ -1502,7 +1502,7 @@
     <string name="game_launch_tip_9">Tip: If you are getting a black screen when launching a game, try \"%s\" and launching the game from A: drive.</string>
     <string name="game_launch_tip_10">Tip: You can add different locations for Custom Games in the settings.</string>
     <string name="game_launch_tip_11">Tip: Use the quick menu performance HUD when you want FPS stats in-game.</string>
-    <string name="game_launch_tip_12">Tip: Install packages in A:\_CommonRedist if your game doesn\'t launch.</string>
+    <string name="game_launch_tip_12">Tip: Install packages in A:\\_CommonRedist if your game doesn\'t launch.</string>
     <string name="game_launch_tip_13">Tip: You can enable or disable the onscreen controller with your device\'s back key.</string>
     <string name="game_launch_tip_14">Tip: You can bring up the keyboard with your device\'s back key.</string>
     <string name="game_launch_tip_15">Tip: You can tap with two fingers inside the container to right click.</string>

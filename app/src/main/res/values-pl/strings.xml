@@ -1455,7 +1455,7 @@
     <string name="game_launch_tip_9">Wskazówka: Jeśli po uruchomieniu gry pojawia się czarny ekran, spróbuj użyć \"%s\" i uruchomić grę z dysku A:.</string>
     <string name="game_launch_tip_10">Wskazówka: Możesz dodać różne lokalizacje dla niestandardowych gier w ustawieniach.</string>
     <string name="game_launch_tip_11">Wskazówka: Użyj HUD-a wydajności w szybkim menu, gdy chcesz zobaczyć statystyki FPS w grze.</string>
-    <string name="game_launch_tip_12">Wskazówka: Zainstaluj pakiety w A:\_CommonRedist, jeśli gra się nie uruchamia.</string>
+    <string name="game_launch_tip_12">Wskazówka: Zainstaluj pakiety w A:\\_CommonRedist, jeśli gra się nie uruchamia.</string>
     <string name="game_launch_tip_13">Wskazówka: Możesz włączyć lub wyłączyć kontroler ekranowy za pomocą przycisku wstecz na urządzeniu.</string>
     <string name="game_launch_tip_14">Wskazówka: Możesz wywołać klawiaturę za pomocą przycisku wstecz na urządzeniu.</string>
     <string name="game_launch_tip_15">Wskazówka: Możesz dotknąć dwoma palcami wewnątrz kontenera, aby kliknąć prawym przyciskiem myszy.</string>

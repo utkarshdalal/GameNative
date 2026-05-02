@@ -1525,7 +1525,7 @@
     <string name="game_launch_tip_9">提示：如果启动游戏时黑屏，请尝试\"%s\"并从 A: 盘启动游戏。</string>
     <string name="game_launch_tip_10">提示：你可以在设置中添加不同的自定义游戏路径。</string>
     <string name="game_launch_tip_11">提示：在游戏中使用快捷菜单的性能 HUD 查看 FPS 统计信息。</string>
-    <string name="game_launch_tip_12">提示：如果游戏无法启动，请安装 A:\_CommonRedist 中的运行库。</string>
+    <string name="game_launch_tip_12">提示：如果游戏无法启动，请安装 A:\\_CommonRedist 中的运行库。</string>
     <string name="game_launch_tip_13">提示：你可以通过设备的返回键启用或禁用屏幕手柄。</string>
     <string name="game_launch_tip_14">提示：你可以通过设备的返回键调出键盘。</string>
     <string name="game_launch_tip_15">提示：在容器中用双指点击可以模拟鼠标右键。</string>

@@ -1458,7 +1458,7 @@
     <string name="game_launch_tip_9">Consejo: Si obtienes una pantalla negra al iniciar un juego, prueba a usar \"%s\" e iniciar el juego desde la unidad A:.</string>
     <string name="game_launch_tip_10">Consejo: Puedes agregar diferentes ubicaciones para juegos personalizados en la configuración.</string>
     <string name="game_launch_tip_11">Consejo: Usa el HUD de rendimiento del menú rápido cuando quieras estadísticas de FPS en el juego.</string>
-    <string name="game_launch_tip_12">Consejo: Instala los paquetes en A:\_CommonRedist si tu juego no se inicia.</string>
+    <string name="game_launch_tip_12">Consejo: Instala los paquetes en A:\\_CommonRedist si tu juego no se inicia.</string>
     <string name="game_launch_tip_13">Consejo: Puedes activar o desactivar el controlador en pantalla con la tecla de retroceso de tu dispositivo.</string>
     <string name="game_launch_tip_14">Consejo: Puedes abrir el teclado con la tecla de retroceso de tu dispositivo.</string>
     <string name="game_launch_tip_15">Consejo: Puedes tocar con dos dedos dentro del contenedor para hacer clic derecho.</string>

@@ -1392,7 +1392,7 @@
     <string name="game_launch_tip_9">Tipp: Wenn Sie beim Starten eines Spiels einen schwarzen Bildschirm sehen, versuchen Sie \"%s\" und das Spiel von Laufwerk A: zu starten.</string>
     <string name="game_launch_tip_10">Tipp: Sie können in den Einstellungen verschiedene Orte für benutzerdefinierte Spiele hinzufügen.</string>
     <string name="game_launch_tip_11">Tipp: Verwenden Sie das Performance-HUD im Schnellmenü, wenn Sie FPS-Statistiken im Spiel wünschen.</string>
-    <string name="game_launch_tip_12">Tipp: Installieren Sie Pakete in A:\_CommonRedist, wenn Ihr Spiel nicht startet.</string>
+    <string name="game_launch_tip_12">Tipp: Installieren Sie Pakete in A:\\_CommonRedist, wenn Ihr Spiel nicht startet.</string>
     <string name="game_launch_tip_13">Tipp: Sie können den Bildschirm-Controller mit der Zurück-Taste Ihres Geräts aktivieren oder deaktivieren.</string>
     <string name="game_launch_tip_14">Tipp: Sie können die Tastatur mit der Zurück-Taste Ihres Geräts aufrufen.</string>
     <string name="game_launch_tip_15">Tipp: Sie können mit zwei Fingern im Container tippen, um einen Rechtsklick auszuführen.</string>

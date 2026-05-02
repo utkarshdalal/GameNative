@@ -1452,7 +1452,7 @@
     <string name="game_launch_tip_9">Conseil : Si vous obtenez un écran noir au lancement d\'un jeu, essayez \"%s\" et de lancer le jeu depuis le lecteur A:.</string>
     <string name="game_launch_tip_10">Conseil : Vous pouvez ajouter différents emplacements pour les jeux personnalisés dans les paramètres.</string>
     <string name="game_launch_tip_11">Conseil : Utilisez le HUD de performances du menu rapide lorsque vous souhaitez des statistiques FPS en jeu.</string>
-    <string name="game_launch_tip_12">Conseil : Installez les paquets dans A:\_CommonRedist si votre jeu ne se lance pas.</string>
+    <string name="game_launch_tip_12">Conseil : Installez les paquets dans A:\\_CommonRedist si votre jeu ne se lance pas.</string>
     <string name="game_launch_tip_13">Conseil : Vous pouvez activer ou désactiver la manette à l\'écran avec la touche retour de votre appareil.</string>
     <string name="game_launch_tip_14">Conseil : Vous pouvez faire apparaître le clavier avec la touche retour de votre appareil.</string>
     <string name="game_launch_tip_15">Conseil : Vous pouvez taper avec deux doigts à l\'intérieur du conteneur pour un clic droit.</string>

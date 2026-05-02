@@ -1517,7 +1517,7 @@
     <string name="game_launch_tip_9">提示：如果啟動遊戲時黑屏，請嘗試「%s」並從 A: 磁碟機啟動遊戲。</string>
     <string name="game_launch_tip_10">提示：你可以在設定中新增不同的自訂遊戲路徑。</string>
     <string name="game_launch_tip_11">提示：在遊戲中使用快速選單的效能 HUD 檢視 FPS 統計資訊。</string>
-    <string name="game_launch_tip_12">提示：如果遊戲無法啟動，請安裝 A:\_CommonRedist 中的執行庫。</string>
+    <string name="game_launch_tip_12">提示：如果遊戲無法啟動，請安裝 A:\\_CommonRedist 中的執行庫。</string>
     <string name="game_launch_tip_13">提示：你可以透過裝置的返回鍵啟用或停用螢幕手把。</string>
     <string name="game_launch_tip_14">提示：你可以透過裝置的返回鍵叫出鍵盤。</string>
     <string name="game_launch_tip_15">提示：在容器中用雙指點擊可以模擬滑鼠右鍵。</string>

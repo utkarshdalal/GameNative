@@ -1457,7 +1457,7 @@
 	<string name="game_launch_tip_9">Sfat: Dacă primiți un ecran negru la lansarea unui joc, încercați \"%s\" și să lansați jocul de pe unitatea A:.</string>
 	<string name="game_launch_tip_10">Sfat: Puteți adăuga diferite locații pentru jocuri personalizate în setări.</string>
 	<string name="game_launch_tip_11">Sfat: Utilizați HUD-ul de performanță din meniul rapid când doriți statistici FPS în joc.</string>
-	<string name="game_launch_tip_12">Sfat: Instalați pachetele în A:\_CommonRedist dacă jocul dvs. nu se lansează.</string>
+	<string name="game_launch_tip_12">Sfat: Instalați pachetele în A:\\_CommonRedist dacă jocul dvs. nu se lansează.</string>
 	<string name="game_launch_tip_13">Sfat: Puteți activa sau dezactiva controllerul pe ecran cu tasta de revenire a dispozitivului dvs.</string>
 	<string name="game_launch_tip_14">Sfat: Puteți afișa tastatura cu tasta de revenire a dispozitivului dvs.</string>
 	<string name="game_launch_tip_15">Sfat: Puteți atinge cu două degete în interiorul containerului pentru a face clic dreapta.</string>
