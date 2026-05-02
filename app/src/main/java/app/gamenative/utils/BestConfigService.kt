@@ -831,7 +831,11 @@ object BestConfigService {
                     resultMap["steamOfflineMode"] = filteredJson.optBoolean("steamOfflineMode", PrefManager.steamOfflineMode)
                 }
                 if (filteredJson.has("envVars") && !filteredJson.isNull("envVars")) {
-                    resultMap["envVars"] = filteredJson.optString("envVars", PrefManager.envVars)
+                    var envVars = filteredJson.optString("envVars", PrefManager.envVars)
+                    // Strip DXVK/VKD3D frame rate caps from backend config - client-side limiter handles this
+                    envVars = envVars.replace(Regex("""\s*DXVK_FRAME_RATE=\d+"""), "")
+                    envVars = envVars.replace(Regex("""\s*VKD3D_FRAME_RATE=\d+"""), "")
+                    resultMap["envVars"] = envVars.trim()
                 }
                 if (filteredJson.has("cpuList") && !filteredJson.isNull("cpuList")) {
                     resultMap["cpuList"] = filteredJson.optString("cpuList", PrefManager.cpuList)
