@@ -1451,7 +1451,7 @@
     <string name="game_launch_tip_2">Consejo: Puedes ver los archivos del juego presionando \"%s\" en la configuración del juego.</string>
     <string name="game_launch_tip_3">Consejo: Puedes ir al menú de configuración principal y descargar controladores personalizados para tu dispositivo para usar en Bionic.</string>
     <string name="game_launch_tip_4">Consejo: Si obtienes un error de DirectX, asegúrate de usar DXVK 1.10.3-async y leegao-wrapper en Bionic.</string>
-    <string name="game_launch_tip_5">Consejo: Prueba la prueba de Direct3D en el Menú Inicio después de hacer clic en \"%s\" para verificar si tu dispositivo funciona correctamente.</string>
+    <string name="game_launch_tip_5">Consejo: Ejecuta la prueba de Direct3D en el Menú Inicio después de hacer clic en \"%s\" para verificar si tu dispositivo funciona correctamente.</string>
     <string name="game_launch_tip_6">Consejo: Usa DXVK para juegos de DirectX 8/9/10/11, VKD3D para juegos de DirectX 12 y VirGL + WineD3D para juegos de OpenGL.</string>
     <string name="game_launch_tip_7">Consejo: Usa Turnip en glibc o bionic para jugar juegos de DirectX 12. El soporte de DirectX 12 para dispositivos que no soportan Turnip es actualmente limitado.</string>
     <string name="game_launch_tip_8">Consejo: Prueba los controladores Adreno o Snapdragon 8 Elite en glibc si tienes un dispositivo compatible.</string>
