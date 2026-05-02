@@ -3475,7 +3475,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         var isAutoLoggingIn = false
 
-        if (PrefManager.username.isNotEmpty() && PrefManager.refreshToken.isNotEmpty()) {
+        if (SteamUtils.hasStoredCredentials()) {
             isAutoLoggingIn = true
 
             login(

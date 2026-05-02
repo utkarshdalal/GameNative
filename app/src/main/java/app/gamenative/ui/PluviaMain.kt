@@ -63,13 +63,11 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
-import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import com.posthog.PostHog
 import app.gamenative.ui.component.AchievementOverlay
 import app.gamenative.ui.component.ConnectionStatusBanner
-import app.gamenative.ui.component.TIMEOUT_SHOW_OFFLINE_OPTION_SECONDS
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
@@ -127,44 +125,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 
 private const val PENDING_LAUNCH_TIMEOUT_MS = 10_000L
 
-// fall back at the same moment the banner would offer "Continue Offline".
-private const val STEAM_LOGIN_AWAIT_MS: Long = TIMEOUT_SHOW_OFFLINE_OPTION_SECONDS * 1000L
-
 /** Used to suspend preLaunchApp while the user decides on large workshop updates. */
 private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
-
-// disconnect listener ignores non-terminal events on purpose: SteamService.reconnect()
-// emits Disconnected(isTerminal=false) before each retry, and a wifi blip mid-login should
-// resolve via the eventual LogonEnded(Success), not bail the wait.
-private suspend fun awaitSteamLogin(timeoutMs: Long = STEAM_LOGIN_AWAIT_MS): Boolean {
-    val deferred = CompletableDeferred<Boolean>()
-    val onLogon: (SteamEvent.LogonEnded) -> Unit = { e ->
-        when (e.loginResult) {
-            LoginResult.Success -> deferred.complete(true)
-            LoginResult.Failed -> deferred.complete(false)
-            else -> Unit
-        }
-    }
-    val onDisconnect: (SteamEvent.Disconnected) -> Unit = { e ->
-        if (e.isTerminal) deferred.complete(false)
-    }
-    PluviaApp.events.on<SteamEvent.LogonEnded, Unit>(onLogon)
-    PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onDisconnect)
-    try {
-        // register-then-check: a flag check before registration would race events
-        // fired in the gap.
-        if (SteamService.isLoggedIn) return true
-        return withTimeoutOrNull(timeoutMs) { deferred.await() } ?: false
-    } finally {
-        PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogon)
-        PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onDisconnect)
-    }
-}
 
 private fun NavHostController.navigateFromLoginIfNeeded(
     targetRoute: String,
@@ -372,6 +338,40 @@ fun PluviaMain(
         }
     }
 
+    // shared intent-launch path. resolves isOffline at the call site because intent launches can
+    // arrive pre-login (cold-boot via stored creds) and downstream cloud-sync needs a settled answer.
+    val launchIntentApp: (resolvedAppId: String, hasTemporaryOverride: Boolean) -> Unit = { resolvedAppId, hasTemporaryOverride ->
+        MainActivity.wasLaunchedViaExternalIntent = true
+        trackGameLaunched(resolvedAppId)
+        viewModel.setLaunchedAppId(resolvedAppId)
+        viewModel.setBootToContainer(false)
+        CoroutineScope(Dispatchers.IO).launch {
+            val gameSource = ContainerUtils.extractGameSourceFromContainerId(resolvedAppId)
+            val isOffline = when {
+                gameSource != GameSource.STEAM -> false
+                SteamService.isLoggedIn -> false
+                !NetworkMonitor.hasInternet.value -> true
+                else -> {
+                    viewModel.setLoadingDialogVisible(true)
+                    viewModel.setLoadingDialogMessage(context.getString(R.string.connecting_to_steam))
+                    viewModel.setLoadingDialogProgress(-1f)
+                    !SteamUtils.awaitSteamLogin()
+                }
+            }
+            preLaunchApp(
+                context = context,
+                appId = resolvedAppId,
+                useTemporaryOverride = hasTemporaryOverride,
+                setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                setLoadingProgress = viewModel::setLoadingDialogProgress,
+                setLoadingMessage = viewModel::setLoadingDialogMessage,
+                setMessageDialogState = setMessageDialogState,
+                onSuccess = viewModel::launchApp,
+                isOffline = isOffline,
+            )
+        }
+    }
+
     // process pending launch request from cold start (event bus has no replay)
     LaunchedEffect(Unit) {
         MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
@@ -392,20 +392,7 @@ fun PluviaMain(
                             context, launchRequest.appId, launchRequest.containerConfig,
                         )
                     }
-                    MainActivity.wasLaunchedViaExternalIntent = true
-                    trackGameLaunched(resolution.finalAppId)
-                    viewModel.setLaunchedAppId(resolution.finalAppId)
-                    viewModel.setBootToContainer(false)
-                    preLaunchApp(
-                        context = context,
-                        appId = resolution.finalAppId,
-                        useTemporaryOverride = launchRequest.containerConfig != null,
-                        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                        setLoadingProgress = viewModel::setLoadingDialogProgress,
-                        setLoadingMessage = viewModel::setLoadingDialogMessage,
-                        setMessageDialogState = setMessageDialogState,
-                        onSuccess = viewModel::launchApp,
-                    )
+                    launchIntentApp(resolution.finalAppId, launchRequest.containerConfig != null)
                 }
 
                 is GameResolutionResult.NotFound -> {
@@ -467,21 +454,8 @@ fun PluviaMain(
                             popUpTo(navController.graph.startDestinationId) { saveState = false }
                         }
                     }
-                    MainActivity.wasLaunchedViaExternalIntent = true
                     // finalAppId — track what actually launched (may differ from launchRequest.appId after resolution)
-                    trackGameLaunched(resolution.finalAppId)
-                    viewModel.setLaunchedAppId(resolution.finalAppId)
-                    viewModel.setBootToContainer(false)
-                    preLaunchApp(
-                        context = context,
-                        appId = resolution.finalAppId,
-                        useTemporaryOverride = launchRequest.containerConfig != null,
-                        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                        setLoadingProgress = viewModel::setLoadingDialogProgress,
-                        setLoadingMessage = viewModel::setLoadingDialogMessage,
-                        setMessageDialogState = setMessageDialogState,
-                        onSuccess = viewModel::launchApp,
-                    )
+                    launchIntentApp(resolution.finalAppId, launchRequest.containerConfig != null)
                 }
             }
         }
@@ -514,20 +488,9 @@ fun PluviaMain(
                     when (val resolution = resolveGameAppId(context, event.appId)) {
                         is GameResolutionResult.Success -> {
                             Timber.i("[PluviaMain]: Using appId: ${resolution.finalAppId} (original: ${event.appId}, isSteamInstalled: ${resolution.isSteamInstalled}, isCustomGame: ${resolution.isCustomGame})")
-
-                            MainActivity.wasLaunchedViaExternalIntent = true
-                            trackGameLaunched(resolution.finalAppId)
-                            viewModel.setLaunchedAppId(resolution.finalAppId)
-                            viewModel.setBootToContainer(false)
-                            preLaunchApp(
-                                context = context,
-                                appId = resolution.finalAppId,
-                                useTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(resolution.finalAppId),
-                                setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                                setLoadingProgress = viewModel::setLoadingDialogProgress,
-                                setLoadingMessage = viewModel::setLoadingDialogMessage,
-                                setMessageDialogState = setMessageDialogState,
-                                onSuccess = viewModel::launchApp,
+                            launchIntentApp(
+                                resolution.finalAppId,
+                                IntentLaunchManager.hasTemporaryOverride(resolution.finalAppId),
                             )
                         }
 
@@ -1612,22 +1575,6 @@ fun preLaunchApp(
             return@launch
         }
 
-        // resolve real offline state for this launch. caller-supplied isOffline=true is honored
-        // (user explicitly went offline). otherwise, when Steam isn't logged in yet, wait briefly
-        // so cold-start cloud sync can run; wait fast-fails on a terminal disconnect so wifi-off
-        // doesn't ride out the full timeout.
-        val effectiveIsOffline = when {
-            isOffline -> true
-            gameSource != GameSource.STEAM -> false
-            SteamService.isLoggedIn -> false
-            !NetworkMonitor.hasInternet.value -> true
-            else -> {
-                setLoadingMessage(context.getString(R.string.connecting_to_steam))
-                setLoadingProgress(-1f)
-                !awaitSteamLogin()
-            }
-        }
-
         // When "Open container" is used we boot to desktop/file manager only — skip executable check
         if (!bootToContainer) {
             // Verify we have a launch executable for all platforms before proceeding (fail fast, avoid black screen)
@@ -1811,7 +1758,7 @@ fun preLaunchApp(
         if(isSteamGame) {
             try {
                 val currentPlaying = SteamService.getSelfCurrentlyPlayingAppId()
-                if (!effectiveIsOffline && currentPlaying != null && currentPlaying != gameId) {
+                if (!isOffline && currentPlaying != null && currentPlaying != gameId) {
                     val otherGameName = SteamService.getAppInfoOf(currentPlaying)?.name ?: "another game"
                     setLoadingDialogVisible(false)
                     setMessageDialogState(
@@ -1935,7 +1882,7 @@ fun preLaunchApp(
             try {
                 // Skip workshop sync if Steam isn't fully connected yet
                 // (can happen if the user taps Play immediately after opening the app).
-                if (effectiveIsOffline || !SteamService.isConnected || !SteamService.isLoggedIn) {
+                if (isOffline || !SteamService.isConnected || !SteamService.isLoggedIn) {
                     Timber.tag("Workshop").w(
                         "Steam not connected/logged in or offline, skipping workshop sync for appId=$gameId"
                     )
@@ -2078,7 +2025,7 @@ fun preLaunchApp(
             ignorePendingOperations = ignorePendingOperations,
             preferredSave = preferredSave,
             parentScope = this,
-            isOffline = effectiveIsOffline,
+            isOffline = isOffline,
             onProgress = { message, progress ->
                 setLoadingMessage(message)
                 setLoadingProgress(if (progress < 0) -1f else progress)

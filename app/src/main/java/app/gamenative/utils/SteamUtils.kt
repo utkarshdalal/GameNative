@@ -3,23 +3,29 @@ package app.gamenative.utils
 import android.annotation.SuppressLint
 import android.content.Context
 import android.provider.Settings
+import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.ManifestInfo
 import app.gamenative.data.SteamApp
+import app.gamenative.enums.LoginResult
 import app.gamenative.enums.Marker
 import app.gamenative.enums.SpecialGameSaveMapping
+import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirName
 import app.gamenative.service.SteamService.Companion.getAppInfoOf
+import app.gamenative.ui.component.TIMEOUT_SHOW_OFFLINE_OPTION_SECONDS
 import com.winlator.container.Container
 import com.winlator.core.TarCompressorUtils
 import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
 import `in`.dragonbra.javasteam.types.KeyValue
 import `in`.dragonbra.javasteam.util.HardwareUtils
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -49,6 +55,37 @@ object SteamUtils {
      */
     fun hasStoredCredentials(): Boolean =
         PrefManager.username.isNotEmpty() && PrefManager.refreshToken.isNotEmpty()
+
+    // fall back at the same moment the banner would offer "Continue Offline".
+    const val STEAM_LOGIN_AWAIT_MS: Long = TIMEOUT_SHOW_OFFLINE_OPTION_SECONDS * 1000L
+
+    // disconnect listener ignores non-terminal events on purpose: SteamService.reconnect()
+    // emits Disconnected(isTerminal=false) before each retry, and a wifi blip mid-login should
+    // resolve via the eventual LogonEnded(Success), not bail the wait.
+    suspend fun awaitSteamLogin(timeoutMs: Long = STEAM_LOGIN_AWAIT_MS): Boolean {
+        val deferred = CompletableDeferred<Boolean>()
+        val onLogon: (SteamEvent.LogonEnded) -> Unit = { e ->
+            when (e.loginResult) {
+                LoginResult.Success -> deferred.complete(true)
+                LoginResult.Failed -> deferred.complete(false)
+                else -> Unit
+            }
+        }
+        val onDisconnect: (SteamEvent.Disconnected) -> Unit = { e ->
+            if (e.isTerminal) deferred.complete(false)
+        }
+        PluviaApp.events.on<SteamEvent.LogonEnded, Unit>(onLogon)
+        PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onDisconnect)
+        try {
+            // register-then-check: a flag check before registration would race events
+            // fired in the gap.
+            if (SteamService.isLoggedIn) return true
+            return withTimeoutOrNull(timeoutMs) { deferred.await() } ?: false
+        } finally {
+            PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogon)
+            PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onDisconnect)
+        }
+    }
 
     fun getDownloadBytes(manifest: ManifestInfo?): Long {
         if (manifest == null) return 0L
