@@ -442,8 +442,12 @@ object SteamUtils {
     }
 
     fun autoLoginUserChanges(imageFs: ImageFs) {
+        // userSteamId is null on offline launch — fall back to persisted ID, else writer puts "null" in vdf
+        val steamId64 = SteamService.userSteamId?.convertToUInt64()?.toString()
+            ?: PrefManager.steamUserSteamId64.takeIf { it != 0L }?.toString()
+            ?: "0"
         val vdfFileText = SteamService.getLoginUsersVdfOauth(
-            steamId64 = SteamService.userSteamId?.convertToUInt64().toString(),
+            steamId64 = steamId64,
             account = PrefManager.username,
             refreshToken = PrefManager.refreshToken,
             accessToken = PrefManager.accessToken,      // may be blank

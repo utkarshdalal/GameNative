@@ -345,7 +345,7 @@ fun PluviaMain(
         trackGameLaunched(resolvedAppId)
         viewModel.setLaunchedAppId(resolvedAppId)
         viewModel.setBootToContainer(false)
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch(Dispatchers.IO) {
             val gameSource = ContainerUtils.extractGameSourceFromContainerId(resolvedAppId)
             val isOffline = when {
                 gameSource != GameSource.STEAM -> false
@@ -358,6 +358,8 @@ fun PluviaMain(
                     !SteamUtils.awaitSteamLogin()
                 }
             }
+            // sync viewModel — dialog retries + replaceSteamApi read isOffline.value
+            viewModel.setOffline(isOffline)
             preLaunchApp(
                 context = context,
                 appId = resolvedAppId,
