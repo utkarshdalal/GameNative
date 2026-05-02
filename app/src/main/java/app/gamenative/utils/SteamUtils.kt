@@ -211,7 +211,8 @@ object SteamUtils {
         val backupPaths = mutableSetOf<String>()
         val imageFs = ImageFs.find(context)
         autoLoginUserChanges(imageFs)
-        setupLightweightSteamConfig(imageFs, SteamService.userSteamId?.toString())
+        // userdata is keyed by Steam3 accountID (matches restoreSteamApi). userSteamId is null on offline.
+        setupLightweightSteamConfig(imageFs, getSteam3AccountId()?.toString())
 
         val rootPath = Paths.get(appDirPath)
         // Get ticket once for all DLLs
@@ -1475,8 +1476,9 @@ object SteamUtils {
         val mapping = SpecialGameSaveMapping.registry.find { it.appId == steamAppId } ?: return
 
         try {
-            val accountId = SteamService.userSteamId?.accountID?.toLong() ?: 0L
-            val steamId64 = SteamService.userSteamId?.convertToUInt64()?.toString() ?: "0"
+            // safe accessors fall back to PrefManager — match siblings (SteamAutoCloud, SaveFilePattern)
+            val accountId = getSteam3AccountId() ?: 0L
+            val steamId64 = getSteamId64()?.toString() ?: "0"
             val steam3AccountId = accountId.toString()
 
             val basePath = mapping.pathType.toAbsPath(container, steamAppId, accountId)
