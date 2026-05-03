@@ -23,6 +23,3 @@ fun CharSequence.unaccent(): String {
     val temp = Normalizer.normalize(this, Normalizer.Form.NFKD)
     return REGEX_UNACCENT.replace(temp, "")
 }
-
-// This doesn't belong here, but i'm tired.
-fun Long.getProfileUrl(): String = "${Constants.Persona.PROFILE_URL}$this/"
