@@ -434,16 +434,11 @@ public class WinHandler {
                             }
                             break;
                         case XINPUT:
-                            if (isXInput) {
-                                enabled = false;
-                                break;
-                            }
+                            // Only serve XInput requests; reject DInput probes.
+                            if (!isXInput) { enabled = false; }
                             break;
                         case BOTH:
-                            if (!isXInput) {
-                                enabled = false;
-                                break;
-                            }
+                            // Serve both XInput and DInput — no filtering needed.
                             break;
                     }
                     if (notify) {
@@ -593,6 +588,8 @@ public class WinHandler {
                     }
                 }
             } catch (IOException e) {
+                // Log so controller disconnections are visible in logcat instead of failing silently.
+                Log.e(TAG, "UDP receive thread died, controller input lost: " + e.getMessage());
             }
         });
 
