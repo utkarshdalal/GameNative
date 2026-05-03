@@ -31,6 +31,3 @@ fun CharSequence.unaccent(): String {
  * into safe filename components.
  */
 fun String.sanitizeForFilename(): String = REGEX_FILENAME_UNSAFE.replace(this, "_")
-
-// This doesn't belong here, but i'm tired.
-fun Long.getProfileUrl(): String = "${Constants.Persona.PROFILE_URL}$this/"
