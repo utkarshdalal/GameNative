@@ -93,6 +93,7 @@ import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
+import app.gamenative.ui.component.OpacityControlPanel
 import app.gamenative.ui.component.parseBooleanExtra
 import app.gamenative.ui.component.parsePositiveFpsLimit
 import app.gamenative.ui.data.PerformanceHudConfig
@@ -2020,9 +2021,8 @@ fun XServerScreen(
                     loadedProfile = targetProfile
                 }
 
-                // Set overlay opacity from preferences if needed
-                val opacity = PrefManager.getFloat("controls_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY)
-                setOverlayOpacity(opacity)
+                // Set overlay opacity from preferences
+                setOverlayOpacity(PrefManager.controlsOpacity)
 
                 // Set container-level shooter mode
                 setContainerShooterMode(container.isShooterMode)
@@ -2240,6 +2240,8 @@ fun XServerScreen(
 
         // Floating toolbar for edit mode (always visible in edit mode)
         if (isEditMode && areControlsVisible) {
+            var showOpacityDialog by remember { mutableStateOf(false) }
+
             EditModeToolbar(
                 onAdd = {
                     if (PluviaApp.inputControlsView?.addElement() == true) {
@@ -2347,6 +2349,18 @@ fun XServerScreen(
                         }
                     }
                 }
+            )
+
+            // Opacity button
+            TextButton(onClick = { showOpacityDialog = true }) {
+                Text("Opacity: ${(PrefManager.controlsOpacity * 100).roundToInt()}%",
+                    color = androidx.compose.ui.graphics.Color.White)
+            }
+
+            // Opacity control dialog
+            OpacityControlPanel(
+                showDialog = showOpacityDialog,
+                onDismiss = { showOpacityDialog = false }
             )
         }
 

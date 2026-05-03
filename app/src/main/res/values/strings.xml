@@ -234,6 +234,8 @@
     <string name="dpad_right">D-Pad Right</string>
     <string name="input_controls">On-screen Controller</string>
     <string name="edit_controls">Edit On-screen Controller</string>
+    <string name="controls_opacity">Controls Opacity</string>
+    <string name="controls_opacity_value">%d%%</string>
     <string name="edit_physical_controller">Edit Physical Controller</string>
     <string name="controller_disconnected">Disconnected</string>
     <string name="reset_onscreen_controls">Reset On-Screen Controls</string>

@@ -370,6 +370,14 @@ object PrefManager {
             setPref(PERFORMANCE_HUD_SHOW_BATTERY_RUNTIME, value)
         }
 
+    // Controls overlay opacity (0.0f = fully transparent, 1.0f = fully opaque)
+    private val CONTROLS_OPACITY = floatPreferencesKey("controls_opacity")
+    var controlsOpacity: Float
+        get() = getPref(CONTROLS_OPACITY, com.winlator.widget.InputControlsView.DEFAULT_OVERLAY_OPACITY)
+        set(value) {
+            setPref(CONTROLS_OPACITY, value.coerceIn(0.0f, 1.0f))
+        }
+
     private val PERFORMANCE_HUD_SHOW_BATTERY_TEMPERATURE = booleanPreferencesKey("performance_hud_show_battery_temperature")
     var performanceHudShowBatteryTemperature: Boolean
         get() = getPref(PERFORMANCE_HUD_SHOW_BATTERY_TEMPERATURE, false)
