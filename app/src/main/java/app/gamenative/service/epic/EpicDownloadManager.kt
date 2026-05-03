@@ -392,7 +392,7 @@ class EpicDownloadManager @Inject constructor(
     }
 
     /**
-     * Download the Epic Online Services overlay 
+     * Download the Epic Online Services overlay
      */
     suspend fun downloadOverlay(
         manifestResult: EpicManager.ManifestResult,
@@ -606,74 +606,6 @@ class EpicDownloadManager @Inject constructor(
     }
 
     /**
-     * Read and decompress an Epic Chunk file
-     * Epic chunks have their own format with header + optional compression
-     *
-     * Format (from legendary/models/chunk.py):
-     * - Magic: 0xB1FE3AA2 (4 bytes)
-     * - Header version: 3 (4 bytes)
-     * - Header size: 66 (4 bytes)
-     * - Compressed size (4 bytes)
-     * - GUID (16 bytes)
-     * - Hash (8 bytes)
-     * - Stored as flags (1 byte) - bit 0 = compressed
-     * - SHA hash (20 bytes)
-     * - Hash type (1 byte)
-     * - Uncompressed size (4 bytes)
-     * - Data (compressed_size bytes)
-     */
-    private fun readEpicChunk(chunkBytes: ByteArray): ByteArray {
-        val buffer = ByteBuffer.wrap(chunkBytes).order(ByteOrder.LITTLE_ENDIAN)
-
-        // Read header
-        val magic = buffer.int
-        if (magic != 0xB1FE3AA2.toInt()) {
-            throw Exception("Invalid chunk magic: 0x${magic.toString(16)}")
-        }
-
-        val headerVersion = buffer.int
-        val headerSize = buffer.int
-        val compressedSize = buffer.int
-
-        // Skip GUID (16 bytes), hash (8 bytes)
-        buffer.position(buffer.position() + 24)
-
-        // Read stored_as flag
-        val storedAs = buffer.get().toInt() and 0xFF
-        val isCompressed = (storedAs and 0x1) == 0x1
-
-        // Skip SHA hash (20 bytes), hash type (1 byte)
-        buffer.position(buffer.position() + 21)
-
-        // Read uncompressed size (4 bytes)
-        val uncompressedSize = buffer.int
-
-        // Read chunk data starting from header end
-        val dataStart = headerSize
-        //! Note: This may require adjustments if we see chunks bigger than 2GB - Unlikely but worth Observing
-        val dataBytes = chunkBytes.copyOfRange(dataStart, dataStart + compressedSize)
-
-        return if (isCompressed) {
-            // Decompress using zlib
-            val inflater = Inflater()
-            try {
-                inflater.setInput(dataBytes)
-                val result = ByteArray(uncompressedSize)
-                val resultLength = inflater.inflate(result)
-                if (resultLength != uncompressedSize) {
-                    throw IllegalStateException("Decompressed chunk size mismatch: expected $uncompressedSize, got $resultLength")
-                }
-                result
-            } finally {
-                inflater.end()
-            }
-        } else {
-            // Already uncompressed
-            dataBytes
-        }
-    }
-
-    /**
      * Decompress an Epic chunk file directly to output file with streaming hash verification
      * This avoids allocating huge ByteArrays (1.5GB) in memory
      */
@@ -859,91 +791,6 @@ class EpicDownloadManager @Inject constructor(
 
         // Ensure UI receives a final progress update after this chunk's bytes.
         downloadInfo.emitProgressChange()
-    }
-
-    /**
-     * Read and decompress an Epic Chunk file from disk using streaming to avoid OOM
-     * This version reads from a file input stream and decompresses in chunks
-     */
-    private fun readEpicChunkFromFile(chunkFile: File, expectedSize: Long): ByteArray {
-        chunkFile.inputStream().buffered().use { input ->
-            // Read header (66 bytes)
-            val headerBytes = ByteArray(66)
-            val headerRead = input.read(headerBytes)
-            if (headerRead != 66) {
-                throw Exception("Failed to read chunk header")
-            }
-
-            val buffer = ByteBuffer.wrap(headerBytes).order(ByteOrder.LITTLE_ENDIAN)
-
-            // Parse header
-            val magic = buffer.int
-            if (magic != 0xB1FE3AA2.toInt()) {
-                throw Exception("Invalid chunk magic: 0x${magic.toString(16)}")
-            }
-
-            val headerVersion = buffer.int
-            val headerSize = buffer.int
-            val compressedSize = buffer.int
-
-            // Skip GUID (16 bytes), hash (8 bytes)
-            buffer.position(buffer.position() + 24)
-
-            // Read stored_as flag
-            val storedAs = buffer.get().toInt() and 0xFF
-            val isCompressed = (storedAs and 0x1) == 0x1
-
-            // Skip SHA hash (20 bytes), hash type (1 byte)
-            buffer.position(buffer.position() + 21)
-
-            // Read uncompressed size (4 bytes)
-            val uncompressedSize = buffer.int
-
-            // Skip to data start if header is larger than 66 bytes
-            if (headerSize > 66) {
-                input.skip((headerSize - 66).toLong())
-            }
-
-            return if (isCompressed) {
-                // Decompress using streaming to avoid loading entire compressed data into memory
-                val inflater = Inflater()
-                try {
-                    val result = ByteArray(uncompressedSize)
-                    var resultOffset = 0
-                    val inputBuffer = ByteArray(65536) // 64KB buffer for reading compressed data
-
-                    while (resultOffset < uncompressedSize) {
-                        if (inflater.needsInput()) {
-                            val bytesRead = input.read(inputBuffer)
-                            if (bytesRead == -1) break
-                            inflater.setInput(inputBuffer, 0, bytesRead)
-                        }
-
-                        val decompressed = inflater.inflate(result, resultOffset, uncompressedSize - resultOffset)
-                        resultOffset += decompressed
-
-                        if (inflater.finished()) break
-                    }
-
-                    if (resultOffset != uncompressedSize) {
-                        throw IllegalStateException("Decompressed chunk size mismatch: expected $uncompressedSize, got $resultOffset")
-                    }
-                    result
-                } finally {
-                    inflater.end()
-                }
-            } else {
-                // Already uncompressed - read directly
-                val result = ByteArray(compressedSize)
-                var totalRead = 0
-                while (totalRead < compressedSize) {
-                    val bytesRead = input.read(result, totalRead, compressedSize - totalRead)
-                    if (bytesRead == -1) break
-                    totalRead += bytesRead
-                }
-                result
-            }
-        }
     }
 
     /**
