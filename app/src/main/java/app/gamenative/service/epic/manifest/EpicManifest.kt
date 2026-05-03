@@ -614,13 +614,6 @@ data class FileManifestList(
     var count: Int = 0,
     val elements: MutableList<FileManifest> = mutableListOf()
 ) {
-    private val pathMap: MutableMap<String, Int> by lazy {
-        elements.mapIndexed { index, fm -> fm.filename to index }.toMap(mutableMapOf())
-    }
-
-    fun getFileByPath(path: String): FileManifest? {
-        return pathMap[path]?.let { elements[it] }
-    }
 
     companion object {
         fun read(buffer: ByteBuffer): FileManifestList {
