@@ -10,36 +10,11 @@ import java.security.MessageDigest
 object ManifestUtils {
 
     /**
-     * Load and parse a manifest from a file
-     */
-    fun loadFromFile(file: File): EpicManifest {
-        return EpicManifest.readAll(file.readBytes())
-    }
-
-    /**
-     * Load and parse a manifest from an input stream
-     */
-    fun loadFromStream(stream: InputStream): EpicManifest {
-        return EpicManifest.readAll(stream.readBytes())
-    }
-
-    /**
      * Load and parse a manifest from bytes
      */
     fun loadFromBytes(data: ByteArray): EpicManifest {
         return EpicManifest.readAll(data)
     }
-
-    /**
-     * Verify manifest hash matches expected value
-     */
-    fun verifyManifestHash(manifestBytes: ByteArray, expectedHash: String): Boolean {
-        val md = MessageDigest.getInstance("SHA-1")
-        val computedHash = md.digest(manifestBytes)
-        val computedHashHex = computedHash.joinToString("") { "%02x".format(it) }
-        return computedHashHex.equals(expectedHash, ignoreCase = true)
-    }
-
     /**
      * Get list of files that are part of the default/required install.
      * Epic manifests list all files including optional (e.g. language packs). Files with
@@ -129,20 +104,6 @@ object ManifestUtils {
     }
 
     /**
-     * Get list of all executable files
-     */
-    fun getExecutableFiles(manifest: EpicManifest): List<FileManifest> {
-        return manifest.fileManifestList?.elements?.filter { it.isExecutable } ?: emptyList()
-    }
-
-    /**
-     * Find file by path in manifest
-     */
-    fun findFile(manifest: EpicManifest, path: String): FileManifest? {
-        return manifest.fileManifestList?.getFileByPath(path)
-    }
-
-    /**
      * Get files matching install tags (optional content only; does not include required).
      */
     fun getFilesWithTags(manifest: EpicManifest, tags: List<String>): List<FileManifest> {
@@ -165,14 +126,6 @@ object ManifestUtils {
         }
         // If selected language matched no files (e.g. manifest uses "de" not "German"), fall back to required-only
         return if (withLanguage.isEmpty()) getRequiredInstallFiles(manifest) else withLanguage
-    }
-
-    /**
-     * Build chunk download URL
-     */
-    fun buildChunkUrl(baseUrl: String, chunk: ChunkInfo, manifest: EpicManifest): String {
-        val chunkPath = chunk.getPath(manifest.getChunkDir())
-        return "$baseUrl/$chunkPath"
     }
 
     /**
@@ -210,15 +163,6 @@ object ManifestUtils {
             modified = modified,
             unchanged = unchanged
         )
-    }
-
-    /**
-     * Get chunks needed for an update (delta download)
-     */
-    fun getDeltaChunks(oldManifest: EpicManifest, newManifest: EpicManifest): List<ChunkInfo> {
-        val comparison = compareManifests(oldManifest, newManifest)
-        val changedFiles = comparison.added + comparison.modified.map { it.second }
-        return getChunksForFiles(newManifest, changedFiles.map { it.filename })
     }
 
     /**
@@ -284,44 +228,6 @@ data class FileDownloadInfo(
  */
 class DownloadPlanBuilder(private val manifest: EpicManifest) {
     private val selectedFiles = mutableSetOf<String>()
-
-    /**
-     * Add file by path
-     */
-    fun addFile(path: String): DownloadPlanBuilder {
-        selectedFiles.add(path)
-        return this
-    }
-
-    /**
-     * Add multiple files
-     */
-    fun addFiles(paths: Collection<String>): DownloadPlanBuilder {
-        selectedFiles.addAll(paths)
-        return this
-    }
-
-    /**
-     * Add all files matching a pattern
-     */
-    fun addPattern(pattern: Regex): DownloadPlanBuilder {
-        manifest.fileManifestList?.elements?.forEach { file ->
-            if (pattern.matches(file.filename)) {
-                selectedFiles.add(file.filename)
-            }
-        }
-        return this
-    }
-
-    /**
-     * Add all files with specific tags
-     */
-    fun addTags(tags: List<String>): DownloadPlanBuilder {
-        ManifestUtils.getFilesWithTags(manifest, tags).forEach { file ->
-            selectedFiles.add(file.filename)
-        }
-        return this
-    }
 
     /**
      * Build the download plan
