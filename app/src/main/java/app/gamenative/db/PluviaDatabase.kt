@@ -20,7 +20,6 @@ import app.gamenative.db.converters.AppConverter
 import app.gamenative.db.converters.ByteArrayConverter
 import app.gamenative.db.converters.FriendConverter
 import app.gamenative.db.converters.LicenseConverter
-import app.gamenative.db.converters.PathTypeConverter
 import app.gamenative.db.converters.UserFileInfoListConverter
 import app.gamenative.db.converters.GOGConverter
 import app.gamenative.db.dao.ChangeNumbersDao
@@ -80,7 +79,6 @@ const val DATABASE_NAME = "pluvia.db"
     ByteArrayConverter::class,
     FriendConverter::class,
     LicenseConverter::class,
-    PathTypeConverter::class,
     UserFileInfoListConverter::class,
     GOGConverter::class,
 )
