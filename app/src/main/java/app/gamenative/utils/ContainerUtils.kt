@@ -1036,8 +1036,8 @@ object ContainerUtils {
 
             // Raw filesystem scan — catches directories whose config file was empty/corrupt and
             // were silently skipped by ContainerManager. These are potential orphans.
-            // Directory layout: <filesDir>/imagefs/home/xuser-<containerId>
-            val homeDir = java.io.File(context.filesDir, "imagefs/home")
+            // Directory layout: <rootDir>/home/xuser-<containerId>
+            val homeDir = java.io.File(com.winlator.xenvironment.ImageFs.find(context).rootDir, "home")
             val prefix = "${com.winlator.xenvironment.ImageFs.USER}-"
             val rawDirs = homeDir.listFiles()
                 ?.filter { it.isDirectory && it.name.startsWith(prefix) }
@@ -1053,8 +1053,11 @@ object ContainerUtils {
             val orphanDir = java.io.File(homeDir, "$prefix$appId")
             if (orphanDir.exists()) {
                 try {
-                    FileUtils.delete(orphanDir)
-                    Timber.i("[ContainerDeletion] Deleted orphaned container directory for appId=$appId at ${orphanDir.absolutePath}")
+                    if (FileUtils.delete(orphanDir)) {
+                        Timber.i("[ContainerDeletion] Deleted orphaned container directory for appId=$appId at ${orphanDir.absolutePath}")
+                    } else {
+                        Timber.w("[ContainerDeletion] FileUtils.delete returned false for orphaned container directory for appId=$appId at ${orphanDir.absolutePath}")
+                    }
                 } catch (e: Exception) {
                     Timber.w(e, "[ContainerDeletion] Failed to delete orphaned container directory for appId=$appId at ${orphanDir.absolutePath}")
                 }
@@ -1106,7 +1109,7 @@ object ContainerUtils {
         val manager = ContainerManager(context)
         val loadedIds = manager.containers.map { it.id }.toSet()
 
-        val homeDir = java.io.File(context.filesDir, "imagefs/home")
+        val homeDir = java.io.File(com.winlator.xenvironment.ImageFs.find(context).rootDir, "home")
         if (!homeDir.exists()) return emptyList()
 
         val prefix = "${com.winlator.xenvironment.ImageFs.USER}-"

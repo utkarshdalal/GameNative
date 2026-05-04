@@ -20,7 +20,7 @@ class ContainerDeletionSmokeTest {
     @After
     fun cleanup() {
         // Clean up any test artifacts
-        val testIds = listOf("GOG_999999", "GOG_999998")
+        val testIds = listOf("GOG_999999", "GOG_999998", "GOG_999997", "GOG_999996")
         for (appId in testIds) {
             val dir = File(homeDir, "${prefix}${appId}")
             if (dir.exists()) dir.deleteRecursively()
