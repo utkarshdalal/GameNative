@@ -1060,14 +1060,27 @@ object ContainerUtils {
             // Directory layout: <filesDir>/imagefs/home/xuser-<containerId>
             val homeDir = java.io.File(context.filesDir, "imagefs/home")
             val prefix = "${com.winlator.xenvironment.ImageFs.USER}-"
-            val rawIds = homeDir.listFiles()
+            val rawDirs = homeDir.listFiles()
                 ?.filter { it.isDirectory && it.name.startsWith(prefix) }
-                ?.map { it.name.removePrefix(prefix) }
                 ?: emptyList()
+            val rawIds = rawDirs.map { it.name.removePrefix(prefix) }
             val unloadedIds = rawIds - loadedIds.toSet()
             Timber.w("[ContainerDeletion] Raw filesystem dirs (${rawIds.size}): $rawIds")
             if (unloadedIds.isNotEmpty()) {
                 Timber.w("[ContainerDeletion] Dirs present on disk but NOT loaded by ContainerManager (corrupt/empty config): $unloadedIds")
+            }
+
+            // If there is an orphaned directory for the requested appId, attempt to delete it.
+            val orphanDir = java.io.File(homeDir, "$prefix$appId")
+            if (orphanDir.exists()) {
+                try {
+                    FileUtils.delete(orphanDir)
+                    Timber.i("[ContainerDeletion] Deleted orphaned container directory for appId=$appId at ${orphanDir.absolutePath}")
+                } catch (e: Exception) {
+                    Timber.w(e, "[ContainerDeletion] Failed to delete orphaned container directory for appId=$appId at ${orphanDir.absolutePath}")
+                }
+            } else {
+                Timber.d("[ContainerDeletion] No orphaned container directory found for appId=$appId")
             }
         }
     }
