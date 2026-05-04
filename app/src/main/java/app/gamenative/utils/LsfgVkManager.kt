@@ -345,7 +345,7 @@ object LsfgVkManager {
         if (enabled && !dllPath.isNullOrBlank()) {
             appendLine("[[game]]")
             appendLine("exe = ${tomlString(PROCESS_EXE_IDENTIFIER)}")
-            appendLine("multiplier = ${multiplier.coerceIn(2, 4)}")
+            appendLine("multiplier = ${multiplier.coerceIn(1, 4)}")
             appendLine("flow_scale = ${formatFlowScale(flowScale)}")
             appendLine("performance_mode = ${if (performanceMode) "true" else "false"}")
             appendLine("hdr_mode = false")
