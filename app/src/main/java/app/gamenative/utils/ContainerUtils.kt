@@ -707,34 +707,13 @@ object ContainerUtils {
         val data = JSONObject()
         data.put("name", "container_$containerId")
 
-        // Create the actual container
+        // ContainerManager.createContainer now handles orphan cleanup internally,
+        // but we keep a safety-net retry here for any edge cases it misses.
         var container = containerManager.createContainerFuture(containerId, data).get()
 
-        // If container creation failed, it might be because directory already exists but is corrupted
-        // Try to clean it up and retry once
         if (container == null) {
-            Timber.w("Container creation failed for $containerId, checking for corrupted directory...")
-            // Get the container directory path
-            val rootDir = ImageFs.find(context).getRootDir()
-            val homeDir = File(rootDir, "home")
-            val containerDir = File(homeDir, ImageFs.USER + "-" + containerId)
-
-            if (containerDir.exists() && !containerManager.hasContainer(containerId)) {
-                Timber.w("Found orphaned/corrupted container directory, deleting and retrying: $containerId")
-                try {
-                    FileUtils.delete(containerDir)
-                    // Retry container creation after cleanup
-                    container = containerManager.createContainerFuture(containerId, data).get()
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to clean up corrupted container directory: $containerId")
-                }
-            }
-
-            // If still null after retry, throw exception
-            if (container == null) {
-                Timber.e("Failed to create container for $containerId after cleanup attempt")
-                throw IllegalStateException("Failed to create container: $containerId")
-            }
+            Timber.e("Failed to create container for $containerId")
+            throw IllegalStateException("Failed to create container: $containerId")
         }
 
         // For Custom Games, pre-populate executablePath if there's exactly one valid .exe
@@ -1113,6 +1092,52 @@ object ContainerUtils {
         } catch (e: NumberFormatException) {
             throw IllegalArgumentException("Could not extract game ID from container ID: $containerId", e)
         }
+    }
+
+    /**
+     * Scans for and deletes orphaned container directories — directories on disk that
+     * ContainerManager does not know about (because their config was empty/corrupt and silently
+     * skipped during loadContainers). These orphans block game reinstallation because
+     * ContainerManager.createContainer calls mkdirs() which fails when the directory already exists.
+     *
+     * Returns the list of deleted orphan directory names.
+     */
+    fun cleanOrphanedContainers(context: Context): List<String> {
+        val manager = ContainerManager(context)
+        val loadedIds = manager.containers.map { it.id }.toSet()
+
+        val homeDir = java.io.File(context.filesDir, "imagefs/home")
+        if (!homeDir.exists()) return emptyList()
+
+        val prefix = "${com.winlator.xenvironment.ImageFs.USER}-"
+        val rawDirs = homeDir.listFiles()
+            ?.filter { it.isDirectory && it.name.startsWith(prefix) }
+            ?: emptyList()
+
+        val deleted = mutableListOf<String>()
+        for (dir in rawDirs) {
+            val containerId = dir.name.removePrefix(prefix)
+            if (containerId !in loadedIds) {
+                Timber.w("[ContainerCleanup] Deleting orphaned container directory: ${dir.name} (containerId=$containerId)")
+                try {
+                    if (FileUtils.delete(dir)) {
+                        deleted.add(containerId)
+                        Timber.i("[ContainerCleanup] Deleted orphaned container directory for containerId=$containerId")
+                    } else {
+                        Timber.w("[ContainerCleanup] FileUtils.delete returned false for ${dir.absolutePath}")
+                    }
+                } catch (e: Exception) {
+                    Timber.w(e, "[ContainerCleanup] Failed to delete orphaned container directory for containerId=$containerId")
+                }
+            }
+        }
+
+        if (deleted.isNotEmpty()) {
+            Timber.i("[ContainerCleanup] Cleaned up ${deleted.size} orphaned container(s): $deleted")
+        } else {
+            Timber.d("[ContainerCleanup] No orphaned container directories found")
+        }
+        return deleted
     }
 
     /**

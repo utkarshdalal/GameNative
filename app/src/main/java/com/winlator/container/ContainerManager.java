@@ -167,7 +167,22 @@ public class ContainerManager {
             data.put("id", containerId);
 
             File containerDir = new File(homeDir, ImageFs.USER+"-"+containerId);
-            if (!containerDir.mkdirs()) return null;
+            if (!containerDir.mkdirs()) {
+                // mkdirs returns false when the directory already exists.
+                // If ContainerManager doesn't know about this container, it's an orphan
+                // (e.g. from a previous uninstall where the config was empty/corrupt and skipped).
+                // Delete it and retry so the user can reinstall the game.
+                if (!hasContainer(containerId) && containerDir.exists()) {
+                    Log.w("ContainerManager", "Orphaned container directory found for " + containerId + ", deleting and retrying creation");
+                    FileUtils.delete(containerDir);
+                    if (!containerDir.mkdirs()) {
+                        Log.e("ContainerManager", "Failed to create container directory after orphan cleanup: " + containerId);
+                        return null;
+                    }
+                } else {
+                    return null;
+                }
+            }
 
             Container container = new Container(containerId);
             container.setRootDir(containerDir);

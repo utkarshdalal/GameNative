@@ -12,6 +12,7 @@ import app.gamenative.events.EventDispatcher
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.utils.ContainerMigrator
+import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.PlayIntegrity
 import java.io.File
@@ -85,6 +86,11 @@ class PluviaApp : SplitCompatApplication() {
                 onProgressUpdate = null,
                 onComplete = null
             )
+
+            // Clean up any orphaned container directories left behind by previous uninstalls.
+            // These block game reinstallation because ContainerManager.createContainer fails when
+            // the directory already exists.
+            ContainerUtils.cleanOrphanedContainers(applicationContext)
         }
 
         // Clear any stale temporary config overrides from previous app sessions
