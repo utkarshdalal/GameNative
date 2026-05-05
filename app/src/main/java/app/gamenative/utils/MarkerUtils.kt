@@ -7,6 +7,14 @@ import java.io.File
 object MarkerUtils {
     private const val DOWNLOAD_INFO_DIR = ".DownloadInfo"
     private const val BYTES_DOWNLOADED_FILE = "bytes_downloaded.txt"
+    private val VERIFY_PREREQUISITE_MARKERS = listOf(
+        Marker.VCREDIST_INSTALLED,
+        Marker.GOG_SCRIPT_INSTALLED,
+        Marker.PHYSX_INSTALLED,
+        Marker.OPENAL_INSTALLED,
+        Marker.XNA_INSTALLED,
+        Marker.UBISOFT_CONNECT_INSTALLED,
+    )
 
     fun hasMarker(dirPath: String, type: Marker): Boolean {
         return File(dirPath, type.fileName).exists()
@@ -71,5 +79,13 @@ object MarkerUtils {
         }
         // Nothing to delete
         return true
+    }
+
+    /**
+     * Clears marker files that represent completed prerequisite installs.
+     * This is used by "Verify Files" flows so prerequisites can run again.
+     */
+    fun clearInstalledPrerequisiteMarkers(dirPath: String) {
+        VERIFY_PREREQUISITE_MARKERS.forEach { removeMarker(dirPath, it) }
     }
 }

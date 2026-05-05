@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.data.EpicGame
 import app.gamenative.data.LibraryItem
+import app.gamenative.service.DownloadService
 import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.service.epic.EpicConstants
 import app.gamenative.service.epic.EpicService
@@ -301,9 +302,9 @@ class EpicAppScreen : BaseAppScreen() {
     }
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
-        val downloadInfo = EpicService.getDownloadInfo(libraryItem.gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
-        return isDownloading
+        val downloadInfo = EpicService.getDownloadInfo(libraryItem.gameId) ?: return false
+        val progress = downloadInfo.getProgress() ?: 0f
+        return downloadInfo.isPostInstallSyncing() || (downloadInfo.isActive() && progress < 1f)
     }
 
     override fun getDownloadProgress(context: Context, libraryItem: LibraryItem): Float {
@@ -329,28 +330,34 @@ class EpicAppScreen : BaseAppScreen() {
 
         val gameId = libraryItem.gameId
         val downloadInfo = EpicService.getDownloadInfo(gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        val isDownloading = isDownloading(context, libraryItem)
         val installed = isInstalled(context, libraryItem)
+        val hasPartial = hasPartialDownload(context, libraryItem)
 
-        Timber.tag(TAG).d("onDownloadInstallClick: appId=${libraryItem.appId}, gameId=$gameId, isDownloading=$isDownloading, installed=$installed")
+        Timber.tag(TAG).d(
+            "onDownloadInstallClick: appId=${libraryItem.appId}, gameId=$gameId, " +
+                "isDownloading=$isDownloading, installed=$installed, hasPartial=$hasPartial",
+        )
 
         if (isDownloading) {
-            // Show cancel download dialog
-            showInstallDialog(
-                libraryItem.appId,
-                app.gamenative.ui.component.dialog.state.MessageDialogState(
-                    visible = true,
-                    type = app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD,
-                    title = context.getString(R.string.cancel_download_prompt_title),
-                    message = context.getString(R.string.epic_cancel_download_message),
-                    confirmBtnText = context.getString(R.string.yes),
-                    dismissBtnText = context.getString(R.string.no),
-                )
-            )
+            // Match GOG flow: cancel immediately from primary install/resume button.
+            Timber.tag(TAG).i("Cancelling Epic download for: $gameId")
+            downloadInfo?.cancel()
+            CoroutineScope(Dispatchers.IO).launch {
+                downloadInfo?.awaitCompletion()
+                EpicService.cleanupDownload(context, gameId)
+            }
         } else if (installed) {
             // Already installed: launch game
             Timber.tag(TAG).i("Epic game already installed, launching: $gameId")
             onClickPlay(false)
+        } else if (hasPartial) {
+            // Partial resume should go through DLC manager so selection is explicit and restart-safe.
+            Timber.tag(TAG).i("Showing game manager for partial Epic resume: ${libraryItem.appId}")
+            showGameManagerDialog(
+                gameId,
+                app.gamenative.ui.component.dialog.state.GameManagerDialogState(visible = true),
+            )
         } else {
             // Show game manager dialog with DLC selection
             Timber.tag(TAG).i("Showing game manager dialog for: ${libraryItem.appId}")
@@ -417,19 +424,31 @@ class EpicAppScreen : BaseAppScreen() {
 
     override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
         Timber.tag(TAG).i("onPauseResumeClick: appId=${libraryItem.appId}")
+        val gameId = libraryItem.gameId
+        val downloadInfo = EpicService.getDownloadInfo(gameId)
+        val hasPartial = hasPartialDownload(context, libraryItem)
 
         if (isDownloading(context, libraryItem)) {
-            val downloadInfo = EpicService.getDownloadInfo(libraryItem.gameId)
             // Cancel/pause download
-            Timber.tag(TAG).i("Pausing Epic download: ${libraryItem.gameId}")
+            Timber.tag(TAG).i("Pausing Epic download: $gameId")
             downloadInfo?.cancel()
-            CoroutineScope(Dispatchers.Main.immediate).launch {
-                EpicService.cleanupDownload(context, libraryItem.gameId)
+            CoroutineScope(Dispatchers.IO).launch {
+                downloadInfo?.awaitCompletion()
+                EpicService.cleanupDownload(context, gameId)
             }
+        } else if (hasPartial) {
+            Timber.tag(TAG).i("Showing game manager for partial Epic resume via pause/resume: $gameId")
+            showGameManagerDialog(
+                gameId,
+                app.gamenative.ui.component.dialog.state.GameManagerDialogState(visible = true),
+            )
         } else {
-            // Resume download (restart from beginning for now)
-            Timber.tag(TAG).i("Resuming Epic download: ${libraryItem.gameId}")
-            onDownloadInstallClick(context, libraryItem) {}
+            // Fresh start: show DLC manager/install selection dialog.
+            Timber.tag(TAG).i("Showing game manager dialog via pause/resume: $gameId")
+            showGameManagerDialog(
+                gameId,
+                app.gamenative.ui.component.dialog.state.GameManagerDialogState(visible = true),
+            )
         }
     }
 
@@ -465,6 +484,7 @@ class EpicAppScreen : BaseAppScreen() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val result = EpicService.deleteGame(context, libraryItem.gameId)
+                DownloadService.invalidateCache()
 
                 if (result.isSuccess) {
                     Timber.tag(TAG).i("Epic game uninstalled successfully: ${libraryItem.appId}")
@@ -546,7 +566,7 @@ class EpicAppScreen : BaseAppScreen() {
                         val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
                         scope.launch {
                             try {
-                                SnackbarManager.show(context.getString(R.string.epic_cloud_sync_starting))
+                                SnackbarManager.show(context.getString(R.string.library_cloud_sync_starting))
 
                                 val result = withContext(Dispatchers.IO) {
                                     EpicCloudSavesManager.syncCloudSaves(
@@ -557,11 +577,20 @@ class EpicAppScreen : BaseAppScreen() {
                                 }
 
                                 SnackbarManager.show(
-                                    if (result) context.getString(R.string.epic_cloud_sync_success) else context.getString(R.string.epic_cloud_sync_failed),
+                                    if (result) {
+                                        context.getString(R.string.library_cloud_sync_success)
+                                    } else {
+                                        context.getString(R.string.library_cloud_sync_failed)
+                                    },
                                 )
                             } catch (e: Exception) {
                                 Timber.tag(TAG).e(e, "[Cloud Saves] Sync failed")
-                                SnackbarManager.show(context.getString(R.string.epic_cloud_sync_error, e.message ?: ""))
+                                SnackbarManager.show(
+                                    context.getString(
+                                        R.string.library_cloud_sync_error,
+                                        e.message ?: "",
+                                    ),
+                                )
                             }
                         }
                     },
@@ -681,6 +710,16 @@ class EpicAppScreen : BaseAppScreen() {
         disposables +=
             { app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener) }
 
+        val postInstallSyncListener: (app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged) -> Unit = { event ->
+            if (event.appId == libraryItem.gameId) {
+                Timber.tag(TAG).d("[OBSERVE] PostInstallSyncStatusChanged for ${libraryItem.appId}, isSyncing=${event.isSyncing}")
+                onStateChanged()
+            }
+        }
+        app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener)
+        disposables +=
+            { app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener) }
+
         // Return cleanup function
         return {
             disposables.forEach { it() }
@@ -760,6 +799,7 @@ class EpicAppScreen : BaseAppScreen() {
                             downloadInfo?.awaitCompletion()
                             EpicService.cleanupDownload(context, gameId)
                             EpicService.deleteGame(context, gameId)
+                            DownloadService.invalidateCache()
                             withContext(Dispatchers.Main) {
                                 BaseAppScreen.hideInstallDialog(appId)
                                 app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false))

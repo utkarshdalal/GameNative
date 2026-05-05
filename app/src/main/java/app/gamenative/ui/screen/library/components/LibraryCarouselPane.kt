@@ -2,9 +2,6 @@ package app.gamenative.ui.screen.library.components
 
 import android.view.KeyEvent
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -88,17 +86,22 @@ private const val CAROUSEL_CARD_SIZE_MULTIPLIER = 1.22f
 private const val CAROUSEL_CARD_VERTICAL_OVERFLOW = 32f
 private const val CAROUSEL_BADGE_RESERVED_HEIGHT = 0f
 private const val CAROUSEL_MOUSE_WHEEL_SCROLL_MULTIPLIER = 72f
+private const val CAROUSEL_MOUSE_DRAG_SLOP_PX = 8f
 
 
 private fun Modifier.carouselMouseInput(listState: LazyListState): Modifier =
     pointerInput(listState) {
         coroutineScope {
             awaitPointerEventScope {
+                var isDragging = false
+                var lastDragX = 0f
+                var pressedStartX: Float? = null
                 while (true) {
                     val event = awaitPointerEvent()
+                    val mouseChange = event.changes.firstOrNull { it.type == PointerType.Mouse }
                     when (event.type) {
                         PointerEventType.Scroll -> {
-                            val scrollDelta = event.changes.firstOrNull()?.scrollDelta
+                            val scrollDelta = mouseChange?.scrollDelta
                             if (scrollDelta != null) {
                                 val dominantDelta =
                                     if (abs(scrollDelta.x) > abs(scrollDelta.y)) scrollDelta.x else scrollDelta.y
@@ -110,6 +113,37 @@ private fun Modifier.carouselMouseInput(listState: LazyListState): Modifier =
                                     }
                                 }
                             }
+                        }
+
+                        PointerEventType.Press -> {
+                            if (mouseChange?.pressed == true) {
+                                pressedStartX = mouseChange.position.x
+                                isDragging = false
+                            }
+                        }
+
+                        PointerEventType.Move -> {
+                            if (mouseChange != null) {
+                                val currentX = mouseChange.position.x
+                                if (isDragging) {
+                                    val delta = currentX - lastDragX
+                                    lastDragX = currentX
+                                    if (delta != 0f) {
+                                        listState.dispatchRawDelta(-delta)
+                                    }
+                                } else {
+                                    val startX = pressedStartX
+                                    if (startX != null && abs(currentX - startX) > CAROUSEL_MOUSE_DRAG_SLOP_PX) {
+                                        isDragging = true
+                                        lastDragX = currentX
+                                    }
+                                }
+                            }
+                        }
+
+                        PointerEventType.Release, PointerEventType.Exit -> {
+                            isDragging = false
+                            pressedStartX = null
                         }
 
                         else -> Unit
@@ -330,19 +364,11 @@ internal fun LibraryCarouselPane(
                 if (state.appInfoList.isNotEmpty()) {
                     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-                    val mouseDragState = rememberDraggableState { delta ->
-                        listState.dispatchRawDelta(-delta)
-                    }
-
                     LazyRow(
                         state = listState,
                         modifier = Modifier
                             .fillMaxSize()
-                            .carouselMouseInput(listState)
-                            .draggable(
-                                state = mouseDragState,
-                                orientation = Orientation.Horizontal,
-                            ),
+                            .carouselMouseInput(listState),
                         flingBehavior = flingBehavior,
                         horizontalArrangement = Arrangement.spacedBy(carouselItemSpacing),
                         verticalAlignment = Alignment.CenterVertically,

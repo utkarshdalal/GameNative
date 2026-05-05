@@ -49,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,84 +67,111 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.ScreenEffectsConfig
 import app.gamenative.ui.util.adaptivePanelWidth
+import app.gamenative.ui.util.applyScreenEffectsConfig
+import app.gamenative.ui.util.loadScreenEffectsConfig
+import app.gamenative.ui.util.persistScreenEffectsConfig
+import com.winlator.container.Container
 import com.winlator.renderer.GLRenderer
-import com.winlator.renderer.effects.ColorEffect
-import com.winlator.renderer.effects.CRTEffect
-import com.winlator.renderer.effects.Effect
-import com.winlator.renderer.effects.FXAAEffect
-import com.winlator.renderer.effects.NTSCCombinedEffect
-import com.winlator.renderer.effects.ToonEffect
+import kotlinx.coroutines.delay
 import kotlin.math.abs
 
 private const val SCREEN_EFFECT_PERCENT_STEP = 5f
 private const val SCREEN_EFFECT_GAMMA_STEP = 0.1f
 
+private fun scalingModeLabelRes(mode: Int): Int = when (mode) {
+    ScreenEffectsConfig.SCALING_MODE_NEAREST -> R.string.screen_effects_scaling_mode_nearest
+    ScreenEffectsConfig.SCALING_MODE_LINEAR -> R.string.screen_effects_scaling_mode_linear
+    ScreenEffectsConfig.SCALING_MODE_FILL -> R.string.screen_effects_scaling_mode_fill
+    ScreenEffectsConfig.SCALING_MODE_STRETCH -> R.string.screen_effects_scaling_mode_stretch
+    ScreenEffectsConfig.SCALING_MODE_FSR -> R.string.screen_effects_scaling_mode_fsr
+    ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> R.string.screen_effects_scaling_mode_fsr_aspect
+    else -> R.string.screen_effects_scaling_mode_none
+}
+
 @Composable
 fun ScreenEffectsTabContent(
     renderer: GLRenderer,
     modifier: Modifier = Modifier,
+    container: Container? = null,
     firstItemFocusRequester: FocusRequester? = null,
     scrollState: ScrollState = rememberScrollState(),
 ) {
-    val composer = renderer.effectComposer
-    val initialColorEffect = composer.getEffect(ColorEffect::class.java)
+    val initialConfig = remember(renderer, container) { loadScreenEffectsConfig(container) }
 
-    var brightness by remember(renderer) {
-        mutableFloatStateOf((initialColorEffect?.brightness ?: 0f) * 100f)
+    var brightness by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.brightness)
     }
-    var contrast by remember(renderer) {
-        mutableFloatStateOf((initialColorEffect?.contrast ?: 0f) * 100f)
+    var contrast by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.contrast)
     }
-    var gamma by remember(renderer) {
-        mutableFloatStateOf(initialColorEffect?.gamma ?: 1.0f)
+    var gamma by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.gamma)
     }
-    var enableToon by remember(renderer) {
-        mutableStateOf(composer.getEffect(ToonEffect::class.java) != null)
+    var scalingMode by remember(renderer, container) {
+        mutableIntStateOf(initialConfig.scalingMode)
     }
-    var enableFXAA by remember(renderer) {
-        mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
+    var fsrSharpnessLevel by remember(renderer, container) {
+        mutableIntStateOf(initialConfig.fsrSharpnessLevel)
     }
-    var enableCRT by remember(renderer) {
-        mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
+    var enableToon by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableToon)
     }
-    var enableNTSC by remember(renderer) {
-        mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
+    var enableFXAA by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableFXAA)
+    }
+    var enableVivid by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableVivid)
+    }
+    var enableCRT by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableCRT)
+    }
+    var enableNTSC by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableNTSC)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableCRT, enableNTSC) {
-        val effects = mutableListOf<Effect>()
-
-        if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
-            val colorEffect = ColorEffect()
-            colorEffect.brightness = brightness / 100f
-            colorEffect.contrast = contrast / 100f
-            colorEffect.gamma = gamma
-            effects += colorEffect
-        }
-
-        if (enableToon) {
-            effects += composer.getEffect(ToonEffect::class.java) ?: ToonEffect()
-        }
-        if (enableFXAA) {
-            effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
-        }
-        if (enableCRT) {
-            effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
-        }
-        if (enableNTSC) {
-            effects += composer.getEffect(NTSCCombinedEffect::class.java) ?: NTSCCombinedEffect()
-        }
-
-        composer.setEffects(effects)
+    LaunchedEffect(
+        brightness,
+        contrast,
+        gamma,
+        scalingMode,
+        fsrSharpnessLevel,
+        enableToon,
+        enableFXAA,
+        enableVivid,
+        enableCRT,
+        enableNTSC,
+    ) {
+        val config = ScreenEffectsConfig(
+            brightness = brightness,
+            contrast = contrast,
+            gamma = gamma,
+            scalingMode = scalingMode,
+            fsrSharpnessLevel = fsrSharpnessLevel,
+            enableToon = enableToon,
+            enableFXAA = enableFXAA,
+            enableVivid = enableVivid,
+            enableCRT = enableCRT,
+            enableNTSC = enableNTSC,
+        )
+        // Apply immediately for live preview
+        applyScreenEffectsConfig(renderer, config)
+        // Debounce persist to disk
+        delay(300)
+        persistScreenEffectsConfig(container, config)
+        container?.saveData()
     }
 
     fun resetEffects() {
         brightness = 0f
         contrast = 0f
         gamma = 1.0f
+        scalingMode = ScreenEffectsConfig.SCALING_MODE_NONE
+        fsrSharpnessLevel = ScreenEffectsConfig.FSR_DEFAULT_LEVEL
         enableToon = false
         enableFXAA = false
+        enableVivid = false
         enableCRT = false
         enableNTSC = false
     }
@@ -154,6 +182,46 @@ fun ScreenEffectsTabContent(
             .focusGroup()
             .padding(vertical = 12.dp),
     ) {
+        OptionSectionHeader(text = stringResource(R.string.screen_effects_scaling))
+
+        ScreenEffectAdjustmentRow(
+            title = stringResource(R.string.screen_effects_scaling_mode),
+            valueText = stringResource(scalingModeLabelRes(scalingMode)),
+            progress = normalizedProgress(
+                scalingMode.toFloat(),
+                ScreenEffectsConfig.SCALING_MODE_NONE.toFloat(),
+                ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT.toFloat(),
+            ),
+            onDecrease = {
+                scalingMode = (scalingMode - 1).coerceAtLeast(ScreenEffectsConfig.SCALING_MODE_NONE)
+            },
+            onIncrease = {
+                scalingMode = (scalingMode + 1).coerceAtMost(ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT)
+            },
+            focusRequester = firstItemFocusRequester,
+        )
+        if (scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR || scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT) {
+            ScreenEffectAdjustmentRow(
+                title = stringResource(R.string.screen_effects_fsr_sharpness),
+                valueText = stringResource(R.string.screen_effects_fsr_sharpness_value, fsrSharpnessLevel),
+                progress = normalizedProgress(
+                    fsrSharpnessLevel.toFloat(),
+                    ScreenEffectsConfig.FSR_MIN_LEVEL.toFloat(),
+                    ScreenEffectsConfig.FSR_MAX_LEVEL.toFloat(),
+                ),
+                onDecrease = {
+                    fsrSharpnessLevel = (fsrSharpnessLevel - 1).coerceAtLeast(ScreenEffectsConfig.FSR_MIN_LEVEL)
+                },
+                onIncrease = {
+                    fsrSharpnessLevel = (fsrSharpnessLevel + 1).coerceAtMost(ScreenEffectsConfig.FSR_MAX_LEVEL)
+                },
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        OptionSectionHeader(text = stringResource(R.string.screen_effects_color_adjustments))
+
         ScreenEffectAdjustmentRow(
             title = stringResource(R.string.screen_effects_brightness),
             valueText = formatPercent(brightness),
@@ -164,7 +232,6 @@ fun ScreenEffectsTabContent(
             onIncrease = {
                 brightness = (brightness + SCREEN_EFFECT_PERCENT_STEP).coerceIn(-100f, 100f)
             },
-            focusRequester = firstItemFocusRequester,
         )
         ScreenEffectAdjustmentRow(
             title = stringResource(R.string.screen_effects_contrast),
@@ -191,6 +258,8 @@ fun ScreenEffectsTabContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        OptionSectionHeader(text = stringResource(R.string.screen_effects_shader_toggles))
+
         ScreenEffectToggleRow(
             title = stringResource(R.string.screen_effects_toon),
             subtitle = stringResource(R.string.screen_effects_toon_description),
@@ -202,6 +271,12 @@ fun ScreenEffectsTabContent(
             subtitle = stringResource(R.string.screen_effects_fxaa_description),
             enabled = enableFXAA,
             onToggle = { enableFXAA = !enableFXAA },
+        )
+        ScreenEffectToggleRow(
+            title = stringResource(R.string.screen_effects_vivid),
+            subtitle = stringResource(R.string.screen_effects_vivid_description),
+            enabled = enableVivid,
+            onToggle = { enableVivid = !enableVivid },
         )
         ScreenEffectToggleRow(
             title = stringResource(R.string.screen_effects_crt),
@@ -235,58 +310,51 @@ fun ScreenEffectsPanel(
     renderer: GLRenderer,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    container: Container? = null,
 ) {
-    val composer = renderer.effectComposer
-    val initialColorEffect = composer.getEffect(ColorEffect::class.java)
+    val initialConfig = remember(renderer, container) { loadScreenEffectsConfig(container) }
     val firstItemFocusRequester = remember { FocusRequester() }
 
-    var brightness by remember(renderer) {
-        mutableFloatStateOf((initialColorEffect?.brightness ?: 0f) * 100f)
+    var brightness by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.brightness)
     }
-    var contrast by remember(renderer) {
-        mutableFloatStateOf((initialColorEffect?.contrast ?: 0f) * 100f)
+    var contrast by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.contrast)
     }
-    var gamma by remember(renderer) {
-        mutableFloatStateOf(initialColorEffect?.gamma ?: 1.0f)
+    var gamma by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.gamma)
     }
-    var enableToon by remember(renderer) {
-        mutableStateOf(composer.getEffect(ToonEffect::class.java) != null)
+    var enableToon by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableToon)
     }
-    var enableFXAA by remember(renderer) {
-        mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
+    var enableFXAA by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableFXAA)
     }
-    var enableCRT by remember(renderer) {
-        mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
+    var enableVivid by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableVivid)
     }
-    var enableNTSC by remember(renderer) {
-        mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
+    var enableCRT by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableCRT)
+    }
+    var enableNTSC by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableNTSC)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableCRT, enableNTSC) {
-        val effects = mutableListOf<Effect>()
-
-        if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
-            val colorEffect = ColorEffect()
-            colorEffect.brightness = brightness / 100f
-            colorEffect.contrast = contrast / 100f
-            colorEffect.gamma = gamma
-            effects += colorEffect
-        }
-
-        if (enableToon) {
-            effects += composer.getEffect(ToonEffect::class.java) ?: ToonEffect()
-        }
-        if (enableFXAA) {
-            effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
-        }
-        if (enableCRT) {
-            effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
-        }
-        if (enableNTSC) {
-            effects += composer.getEffect(NTSCCombinedEffect::class.java) ?: NTSCCombinedEffect()
-        }
-
-        composer.setEffects(effects)
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableVivid, enableCRT, enableNTSC) {
+        val config = ScreenEffectsConfig(
+            brightness = brightness,
+            contrast = contrast,
+            gamma = gamma,
+            enableToon = enableToon,
+            enableFXAA = enableFXAA,
+            enableVivid = enableVivid,
+            enableCRT = enableCRT,
+            enableNTSC = enableNTSC,
+        )
+        applyScreenEffectsConfig(renderer, config)
+        delay(300)
+        persistScreenEffectsConfig(container, config)
+        container?.saveData()
     }
 
     fun resetEffects() {
@@ -295,6 +363,7 @@ fun ScreenEffectsPanel(
         gamma = 1.0f
         enableToon = false
         enableFXAA = false
+        enableVivid = false
         enableCRT = false
         enableNTSC = false
     }
@@ -472,6 +541,12 @@ fun ScreenEffectsPanel(
                         subtitle = stringResource(R.string.screen_effects_fxaa_description),
                         enabled = enableFXAA,
                         onToggle = { enableFXAA = !enableFXAA },
+                    )
+                    ScreenEffectToggleRow(
+                        title = stringResource(R.string.screen_effects_vivid),
+                        subtitle = stringResource(R.string.screen_effects_vivid_description),
+                        enabled = enableVivid,
+                        onToggle = { enableVivid = !enableVivid },
                     )
                     ScreenEffectToggleRow(
                         title = stringResource(R.string.screen_effects_crt),
@@ -746,7 +821,7 @@ private fun ScreenEffectAdjustmentButton(
 @Composable
 private fun ScreenEffectToggleRow(
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     enabled: Boolean,
     onToggle: () -> Unit,
 ) {
@@ -803,12 +878,14 @@ private fun ScreenEffectToggleRow(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (!subtitle.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         Box(contentAlignment = Alignment.CenterEnd) {

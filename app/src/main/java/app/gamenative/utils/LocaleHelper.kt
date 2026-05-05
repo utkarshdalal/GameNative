@@ -22,6 +22,7 @@ object LocaleHelper {
         "es" to "Español",
         "it" to "Italiano",
         "pt-BR" to "Português Brasileiro (Brazilian Portuguese)",
+        "ru" to "Русский",
         "uk" to "Українська",
         "zh-TW" to "正體中文",
         "zh-CN" to "简体中文",

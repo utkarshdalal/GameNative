@@ -17,6 +17,7 @@ import androidx.annotation.NonNull;
 
 import com.winlator.PrefManager;
 
+import app.gamenative.utils.LsfgVkManager;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.box86_64.Box86_64PresetManager;
 import com.winlator.container.Container;
@@ -36,6 +37,7 @@ import com.winlator.fexcore.FEXCorePresetManager;
 import com.winlator.sysvshm.SysVSHMConnectionHandler;
 import com.winlator.sysvshm.SysVSHMRequestHandler;
 import com.winlator.sysvshm.SysVSharedMemory;
+import com.winlator.winhandler.WinHandler;
 import com.winlator.xconnector.UnixSocketConfig;
 import com.winlator.xconnector.XConnectorEpoll;
 import com.winlator.xenvironment.ImageFs;
@@ -178,10 +180,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     private int execGuestProgram() {
 
-        final int MAX_PLAYERS = 1; // old static method
-
-        // Get the number of enabled players directly from ControllerManager.
-        final int enabledPlayerCount = MAX_PLAYERS;
+        // Always pre-create all 4 mem files so controllers can be hot-plugged during gameplay.
+        // Unused gamepads just read zeroes (no-op in evshim).
+        final int enabledPlayerCount = WinHandler.MAX_PLAYERS;
         for (int i = 0; i < enabledPlayerCount; i++) {
             String memPath;
             if (i == 0) {
@@ -313,6 +314,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (this.envVars != null) {
             envVars.putAll(this.envVars);
         }
+
+        if (LsfgVkManager.isSupported(container)) {
+            LsfgVkManager.ensureRuntimeInstalled(environment.getContext(), container);
+            LsfgVkManager.writeConfig(container);
+            LsfgVkManager.applyLaunchEnv(container, envVars);
+        }
+
         Log.d("BionicProgramLauncherComponent", "env vars are " + envVars.toString());
 
         String emulator = container.getEmulator();
@@ -486,6 +494,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String emulator = container.getEmulator();
         if (this.envVars != null) envVars.putAll(this.envVars);
+
         String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command);
 
         File box64File = new File(rootDir, "/usr/bin/box64");

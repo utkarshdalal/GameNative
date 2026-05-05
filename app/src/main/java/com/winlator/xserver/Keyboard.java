@@ -89,6 +89,28 @@ public class Keyboard {
                 device.getKeyboardType() == InputDevice.KEYBOARD_TYPE_ALPHABETIC;
     }
 
+    public boolean onVirtualKeyEvent(KeyEvent event) {
+        int action = event.getAction();
+        if (action == KeyEvent.ACTION_DOWN || action == KeyEvent.ACTION_UP) {
+            int keyCode = event.getKeyCode();
+            if (keyCode >= keycodeMap.length) return false;
+
+            XKeycode xKeycode = keycodeMap[keyCode];
+            if (xKeycode == null) return false;
+
+            if (action == KeyEvent.ACTION_DOWN) {
+                boolean shiftPressed = event.isShiftPressed() || keyCode == KeyEvent.KEYCODE_AT || keyCode == KeyEvent.KEYCODE_STAR || keyCode == KeyEvent.KEYCODE_POUND || keyCode == KeyEvent.KEYCODE_PLUS;
+                if (shiftPressed) xServer.injectKeyPress(XKeycode.KEY_SHIFT_L);
+                xServer.injectKeyPress(xKeycode, xKeycode != XKeycode.KEY_ENTER ? event.getUnicodeChar() : 0);
+            }
+            else if (action == KeyEvent.ACTION_UP) {
+                xServer.injectKeyRelease(XKeycode.KEY_SHIFT_L);
+                xServer.injectKeyRelease(xKeycode);
+            }
+        }
+        return true;
+    }
+
     public boolean onKeyEvent(KeyEvent event) {
 
         int action = event.getAction();
@@ -313,6 +335,8 @@ public class Keyboard {
         keyboard.setKeysyms(XKeycode.KEY_F10.getId(), 65479, 0);
         keyboard.setKeysyms(XKeycode.KEY_F11.getId(), 65480, 0);
         keyboard.setKeysyms(XKeycode.KEY_F12.getId(), 65481, 0);
+        keyboard.setKeysyms(XKeycode.KEY_NUM_LOCK.getId(), 65407, 0);
+        keyboard.setKeysyms(XKeycode.KEY_CAPS_LOCK.getId(), 65509, 0);
         return keyboard;
     }
 

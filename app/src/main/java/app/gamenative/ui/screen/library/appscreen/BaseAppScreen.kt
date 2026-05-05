@@ -21,6 +21,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import app.gamenative.PluviaApp
 import app.gamenative.R
@@ -134,6 +135,8 @@ abstract class BaseAppScreen {
         private val installDialogStates = mutableStateMapOf<String, app.gamenative.ui.component.dialog.state.MessageDialogState>()
         private val exportConfigRequests = mutableStateMapOf<String, Boolean>()
         private val importConfigRequests = mutableStateMapOf<String, Boolean>()
+        private val exportSavesRequests = mutableStateMapOf<String, Boolean>()
+        private val importSavesRequests = mutableStateMapOf<String, Boolean>()
         private val knownConfigInstallStates = mutableStateMapOf<Int, KnownConfigInstallState>()
 
         fun showInstallDialog(appId: String, state: app.gamenative.ui.component.dialog.state.MessageDialogState) {
@@ -170,6 +173,50 @@ abstract class BaseAppScreen {
 
         fun shouldImportConfig(appId: String): Boolean {
             return importConfigRequests[appId] == true
+        }
+
+        fun requestExportSaves(appId: String) {
+            exportSavesRequests[appId] = true
+        }
+
+        fun clearExportSavesRequest(appId: String) {
+            exportSavesRequests.remove(appId)
+        }
+
+        fun shouldExportSaves(appId: String): Boolean {
+            return exportSavesRequests[appId] == true
+        }
+
+        fun requestImportSaves(appId: String) {
+            importSavesRequests[appId] = true
+        }
+
+        fun clearImportSavesRequest(appId: String) {
+            importSavesRequests.remove(appId)
+        }
+
+        fun shouldImportSaves(appId: String): Boolean {
+            return importSavesRequests[appId] == true
+        }
+
+        // missing components that prevent config from being applied
+        data class MissingComponentsState(
+            val components: List<String>,
+            val onApplyAnyway: (() -> Unit)? = null,
+        )
+
+        private val missingComponentsDialogStates = mutableStateMapOf<String, MissingComponentsState>()
+
+        fun showMissingComponentsDialog(appId: String, components: List<String>, onApplyAnyway: (() -> Unit)? = null) {
+            missingComponentsDialogStates[appId] = MissingComponentsState(components, onApplyAnyway)
+        }
+
+        fun hideMissingComponentsDialog(appId: String) {
+            missingComponentsDialogStates.remove(appId)
+        }
+
+        fun getMissingComponentsState(appId: String): MissingComponentsState? {
+            return missingComponentsDialogStates[appId]
         }
 
         fun showKnownConfigInstallState(gameId: Int, state: KnownConfigInstallState) {
@@ -459,6 +506,48 @@ abstract class BaseAppScreen {
         )
     }
 
+    @Composable
+    protected open fun getExportSavesOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        if (!supportsSaveTransfer(libraryItem)) return null
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ExportSaves,
+            onClick = {
+                requestExportSaves(libraryItem.appId)
+            },
+        )
+    }
+
+    @Composable
+    protected open fun getImportSavesOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        if (!supportsSaveTransfer(libraryItem)) return null
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ImportSaves,
+            onClick = {
+                requestImportSaves(libraryItem.appId)
+            },
+        )
+    }
+
+    protected open fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean = false
+
+    protected open suspend fun exportSaves(
+        context: Context,
+        libraryItem: LibraryItem,
+        uri: android.net.Uri,
+    ): Boolean = false
+
+    protected open suspend fun importSaves(
+        context: Context,
+        libraryItem: LibraryItem,
+        uri: android.net.Uri,
+    ): Boolean = false
+
     /**
      * Get config-related menu options (e.g. Export config, Import config).
      * By default returns only Export config when supported; sources can override
@@ -469,7 +558,7 @@ abstract class BaseAppScreen {
         context: Context,
         libraryItem: LibraryItem,
     ): List<AppMenuOption> {
-        return if (supportsContainerConfig()) {
+        val configOptions = if (supportsContainerConfig()) {
             listOfNotNull(
                 getUseKnownConfigOption(context, libraryItem),
                 getExportConfigOption(context, libraryItem),
@@ -478,6 +567,11 @@ abstract class BaseAppScreen {
         } else {
             emptyList()
         }
+
+        return configOptions + listOfNotNull(
+            getExportSavesOption(context, libraryItem),
+            getImportSavesOption(context, libraryItem),
+        )
     }
 
     /**
@@ -617,7 +711,11 @@ abstract class BaseAppScreen {
             val gameName = ContainerUtils.resolveGameName(libraryItem.appId)
             val gpuName = GPUInformation.getRenderer(context)
 
-            val bestConfig = BestConfigService.fetchBestConfig(gameName, gpuName)
+            val bestConfig = BestConfigService.fetchBestConfig(
+                gameName = gameName,
+                gpuName = gpuName,
+                gameStore = libraryItem.gameSource.name,
+            )
             if (bestConfig == null) {
                 SnackbarManager.show(context.getString(R.string.best_config_fetch_failed))
                 return
@@ -636,16 +734,46 @@ abstract class BaseAppScreen {
             )
             if (!installsOk) return
 
+            val appId = libraryItem.appId
+            val configJson = bestConfig.bestConfig
+            val matchType = bestConfig.matchType
+
             val parsedConfig = BestConfigService.parseConfigToContainerData(
                 context = context,
-                configJson = bestConfig.bestConfig,
-                matchType = bestConfig.matchType,
+                configJson = configJson,
+                matchType = matchType,
                 applyKnownConfig = true,
+                storeMatch = bestConfig.matchedStore.equals(libraryItem.gameSource.name, ignoreCase = true),
             )
-            val missingContentDescription = BestConfigService.consumeLastMissingContentDescription()
+            val missingComponents = BestConfigService.consumeLastMissingComponents()
 
-            if (parsedConfig != null && parsedConfig.isNotEmpty()) {
-                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+            if (missingComponents.isNotEmpty()) {
+                showMissingComponentsDialog(appId, missingComponents) {
+                    // "apply anyway" — re-parse with defaults replacing missing components
+                    uiScope.launch(Dispatchers.IO) {
+                        try {
+                            val forced = BestConfigService.parseConfigToContainerData(
+                                context, configJson, matchType, true,
+                                storeMatch = bestConfig.matchedStore.equals(libraryItem.gameSource.name, ignoreCase = true),
+                                forceApply = true,
+                            )
+                            if (forced != null && forced.isNotEmpty()) {
+                                val c = ContainerUtils.getOrCreateContainer(context, appId)
+                                val cd = ContainerUtils.toContainerData(c)
+                                val updated = ContainerUtils.applyBestConfigMapToContainerData(cd, forced)
+                                ContainerUtils.applyToContainer(context, c, updated)
+                                SnackbarManager.show(context.getString(R.string.best_config_applied_with_defaults))
+                            } else {
+                                SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))
+                            }
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to force-apply config: ${e.message}")
+                            SnackbarManager.show(context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"))
+                        }
+                    }
+                }
+            } else if (parsedConfig != null && parsedConfig.isNotEmpty()) {
+                val container = ContainerUtils.getOrCreateContainer(context, appId)
                 val currentData = ContainerUtils.toContainerData(container)
                 val updatedData = ContainerUtils.applyBestConfigMapToContainerData(
                     currentData,
@@ -654,12 +782,7 @@ abstract class BaseAppScreen {
                 ContainerUtils.applyToContainer(context, container, updatedData)
                 SnackbarManager.show(context.getString(R.string.best_config_applied_successfully))
             } else {
-                val message = if (missingContentDescription != null) {
-                    context.getString(R.string.best_config_missing_content, missingContentDescription)
-                } else {
-                    context.getString(R.string.best_config_known_config_invalid)
-                }
-                SnackbarManager.show(message)
+                SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))
             }
         } catch (e: CancellationException) {
             throw e
@@ -952,6 +1075,83 @@ abstract class BaseAppScreen {
             }
         }
 
+        var exportSavesRequested by remember(appId) {
+            mutableStateOf(shouldExportSaves(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldExportSaves(appId) }
+                .collect { shouldRequest ->
+                    exportSavesRequested = shouldRequest
+                }
+        }
+
+        val exportSavesLauncher =
+            rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.CreateDocument("application/zip"),
+            ) { uri ->
+                if (uri == null) {
+                    clearExportSavesRequest(appId)
+                    return@rememberLauncherForActivityResult
+                }
+
+                uiScope.launch {
+                    try {
+                        exportSaves(context, libraryItem, uri)
+                    } finally {
+                        clearExportSavesRequest(appId)
+                    }
+                }
+            }
+
+        LaunchedEffect(exportSavesRequested) {
+            if (exportSavesRequested) {
+                val gameName = displayInfo.name.ifBlank { "game" }
+                exportSavesLauncher.launch("${gameName}_saves.zip")
+            }
+        }
+
+        var importSavesRequested by remember(appId) {
+            mutableStateOf(shouldImportSaves(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldImportSaves(appId) }
+                .collect { shouldRequest ->
+                    importSavesRequested = shouldRequest
+                }
+        }
+
+        val importSavesLauncher =
+            rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocument(),
+            ) { uri ->
+                if (uri == null) {
+                    clearImportSavesRequest(appId)
+                    return@rememberLauncherForActivityResult
+                }
+
+                uiScope.launch {
+                    try {
+                        importSaves(context, libraryItem, uri)
+                    } finally {
+                        clearImportSavesRequest(appId)
+                    }
+                }
+            }
+
+        LaunchedEffect(importSavesRequested) {
+            if (importSavesRequested) {
+                importSavesLauncher.launch(
+                    arrayOf(
+                        "application/zip",
+                        "application/x-zip-compressed",
+                        "application/octet-stream",
+                    ),
+                )
+            }
+        }
+
         val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, exportFrontendLauncher)
 
         // Get download info based on game source for progress tracking
@@ -1053,6 +1253,44 @@ abstract class BaseAppScreen {
                 context.getString(R.string.working)
             },
         )
+
+        // missing components dialog — shown when config can't be applied
+        val missingState = getMissingComponentsState(appId)
+        if (missingState != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    hideMissingComponentsDialog(appId)
+                },
+                title = { Text(stringResource(R.string.best_config_missing_components_title)) },
+                text = {
+                    Text(
+                        text = stringResource(
+                            R.string.best_config_missing_components_message,
+                            missingState.components.joinToString("\n"),
+                        ),
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        hideMissingComponentsDialog(appId)
+                    }) {
+                        Text(stringResource(R.string.ok))
+                    }
+                },
+                dismissButton = if (missingState.onApplyAnyway != null) {
+                    {
+                        TextButton(onClick = {
+                            hideMissingComponentsDialog(appId)
+                            missingState.onApplyAnyway.invoke()
+                        }) {
+                            Text(stringResource(R.string.best_config_apply_anyway))
+                        }
+                    }
+                } else {
+                    null
+                },
+            )
+        }
 
         // Render any additional dialogs
         AdditionalDialogs(libraryItem, onDismiss = {}, onEditContainer = onEditContainer, onBack = onBack)

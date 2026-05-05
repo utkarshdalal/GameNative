@@ -218,6 +218,7 @@ object EpicAuthManager {
             val gameToken = EpicGameToken(
                 authCode = exchangeCode,
                 accountId = credentials.accountId,
+                displayName = credentials.displayName,
                 ownershipToken = ownershipTokenHex
             )
 

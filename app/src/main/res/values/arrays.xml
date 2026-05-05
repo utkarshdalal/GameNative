@@ -69,6 +69,7 @@
     <string-array name="audio_driver_entries">
         <item>ALSA</item>
         <item>PulseAudio</item>
+        <item>Disabled</item>
     </string-array>
     <string-array name="binding_type_entries">
         <item>Keyboard</item>
@@ -176,12 +177,14 @@
     </string-array>
     <string-array name="box64_bionic_version_entries">
         <item>0.3.7 (Default)</item>
+        <item>0.4.2</item>
         <item>0.4.0</item>
         <item>0.3.8</item>
         <item>0.3.6</item>
         <item>0.3.2</item>
     </string-array>
     <string-array name="wowbox64_version_entries">
+        <item>0.4.2</item>
         <item>0.4.0</item>
         <item>0.3.7</item>
         <item>0.3.6</item>
@@ -194,6 +197,7 @@
         <item>2512</item>
         <item>2601</item>
         <item>2603</item>
+        <item>2604</item>
     </string-array>
     <string-array name="dinput_mapper_type_entries">
         <item>Standard (Old Gamepads)</item>

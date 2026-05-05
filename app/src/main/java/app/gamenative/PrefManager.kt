@@ -300,6 +300,13 @@ object PrefManager {
             setPref(DRIVES, value)
         }
 
+    private val QUICK_MENU_LAST_TAB = intPreferencesKey("quick_menu_last_tab")
+    var quickMenuLastTab: Int
+        get() = getPref(QUICK_MENU_LAST_TAB, 0)
+        set(value) {
+            setPref(QUICK_MENU_LAST_TAB, value.coerceIn(0, 2))
+        }
+
     private val SHOW_FPS = booleanPreferencesKey("show_fps")
     var showFps: Boolean
         get() = getPref(SHOW_FPS, false)
@@ -948,6 +955,14 @@ object PrefManager {
             setPref(SWAP_FACE_BUTTONS, value)
         }
 
+    // Whether to show the on-screen gamepad hints/action bar in the UI
+    private val SHOW_GAMEPAD_HINTS = booleanPreferencesKey("show_gamepad_hints")
+    var showGamepadHints: Boolean
+        get() = getPref(SHOW_GAMEPAD_HINTS, true)
+        set(value) {
+            setPref(SHOW_GAMEPAD_HINTS, value)
+        }
+
     private val ITEMS_PER_PAGE = intPreferencesKey("items_per_page")
     var itemsPerPage: Int
         get() = getPref(ITEMS_PER_PAGE, 50)
@@ -1039,6 +1054,14 @@ object PrefManager {
         get() = getPref(AMAZON_INSTALLED_GAMES_COUNT, 0)
         set(value) {
             setPref(AMAZON_INSTALLED_GAMES_COUNT, value)
+        }
+
+    // Show game recommendations in library
+    private val SHOW_RECOMMENDATIONS = booleanPreferencesKey("show_recommendations")
+    var showRecommendations: Boolean
+        get() = getPref(SHOW_RECOMMENDATIONS, true)
+        set(value) {
+            setPref(SHOW_RECOMMENDATIONS, value)
         }
 
     // Show dialog when adding custom game folder
@@ -1175,9 +1198,23 @@ object PrefManager {
         get() = getPref(GOG_AMAZON_PATH_MIGRATED, false)
         set(value) { setPref(GOG_AMAZON_PATH_MIGRATED, value) }
 
+    private val ACHIEVEMENT_SHOW_NOTIFICATION = booleanPreferencesKey("achievement_show_notification")
+    var achievementShowNotification: Boolean
+        get() = getPref(ACHIEVEMENT_SHOW_NOTIFICATION, true)
+        set(value) { setPref(ACHIEVEMENT_SHOW_NOTIFICATION, value) }
+
     private val ACHIEVEMENT_NOTIFICATION_POSITION = stringPreferencesKey("achievement_notification_position")
     var achievementNotificationPosition: String
         get() = getPref(ACHIEVEMENT_NOTIFICATION_POSITION, "bottom_right")
         set(value) { setPref(ACHIEVEMENT_NOTIFICATION_POSITION, value) }
 
+    private val WARN_BEFORE_EXIT = booleanPreferencesKey("warn_before_exit")
+    var warnBeforeExit: Boolean
+        get() = getPref(WARN_BEFORE_EXIT, false)
+        set(value) { setPref(WARN_BEFORE_EXIT, value) }
+
+    private val USAGE_ANALYTICS_ENABLED = booleanPreferencesKey("usage_analytics_enabled")
+    var usageAnalyticsEnabled: Boolean
+        get() = getPref(USAGE_ANALYTICS_ENABLED, true)
+        set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
 }

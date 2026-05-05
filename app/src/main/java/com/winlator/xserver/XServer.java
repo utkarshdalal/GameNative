@@ -1,9 +1,10 @@
 package com.winlator.xserver;
 
+import android.graphics.Rect;
 import android.util.Log;
 import android.util.SparseArray;
 
-import com.winlator.core.CursorLocker;
+import com.winlator.math.Mathf;
 import com.winlator.renderer.GLRenderer;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xserver.extensions.BigReqExtension;
@@ -12,6 +13,7 @@ import com.winlator.xserver.extensions.Extension;
 import com.winlator.xserver.extensions.MITSHMExtension;
 import com.winlator.xserver.extensions.PresentExtension;
 import com.winlator.xserver.extensions.SyncExtension;
+import com.winlator.xserver.extensions.XInput2Extension;
 
 import java.nio.charset.Charset;
 import java.util.EnumMap;
@@ -37,7 +39,6 @@ public class XServer {
     public final GrabManager grabManager;
     private boolean isGrabbed = false;
     private XClient grabbingClient = null;
-    public final CursorLocker cursorLocker;
     private SHMSegmentManager shmSegmentManager;
     private GLRenderer renderer;
     private WinHandler winHandler;
@@ -48,7 +49,6 @@ public class XServer {
     public XServer(ScreenInfo screenInfo) {
         Log.d("XServer", "Creating xServer " + screenInfo);
         this.screenInfo = screenInfo;
-        cursorLocker = new CursorLocker(this);
         for (Lockable lockable : Lockable.values()) locks.put(lockable, new ReentrantLock());
 
         pixmapManager = new PixmapManager();
@@ -68,7 +68,6 @@ public class XServer {
     }
 
     public void setRelativeMouseMovement(boolean relativeMouseMovement) {
-        cursorLocker.setEnabled(!relativeMouseMovement);
         this.relativeMouseMovement = relativeMouseMovement;
     }
 
@@ -160,19 +159,74 @@ public class XServer {
 
     public void injectPointerMoveDelta(int dx, int dy) {
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
-            pointer.setPosition(pointer.getX() + dx, pointer.getY() + dy);
+            int minX = 0, minY = 0;
+            int maxX = screenInfo.width - 1, maxY = screenInfo.height - 1;
+            short clampedX = 0, clampedY = 0;
+
+            // ClipCursor
+            Rect confinement = grabManager.getConfinementBounds();
+            if (confinement != null) {
+                minX = Math.max(minX, confinement.left);
+                minY = Math.max(minY, confinement.top);
+                maxX = Math.min(maxX, confinement.right - 1);
+                maxY = Math.min(maxY, confinement.bottom - 1);
+
+                clampedX = (short) Mathf.clamp(pointer.getX() + dx, minX, maxX);
+                clampedY = (short) Mathf.clamp(pointer.getY() + dy, minY, maxY);
+
+                pointer.setPosition(clampedX, clampedY);
+            } else {
+                // Legacy path for old Proton builds with broken ClipCursor
+                // Do NOT remove without confirming no regressions with:
+                // - Games that rely on XWarpPointer (see WindowRequests.java:warpPointer)
+                // - Games that call ClipCursor and happen to work well with this workaround
+                short softMarginX = (short)(screenInfo.width * 0.05f);
+                short softMarginY = (short)(screenInfo.height * 0.05f);
+                short x = (short)Mathf.clamp(pointer.getX() + dx, -softMarginX, screenInfo.width - 1 + softMarginX);
+                short y = (short)Mathf.clamp(pointer.getY() + dy, -softMarginY, screenInfo.height - 1 + softMarginY);
+
+                pointer.setPosition(x, y);
+
+                clampedX = x;
+                clampedY = y;
+
+                if (x < 0) {
+                    clampedX = 0;
+                }
+                else if (x > screenInfo.width - 1) {
+                    clampedX = (short) (screenInfo.width - 1);
+                }
+                if (y < 0) {
+                    clampedY = 0;
+                }
+                else if (y > screenInfo.height - 1) {
+                    clampedY = (short) (screenInfo.height - 1);
+                }
+
+                pointer.setX(clampedX);
+                pointer.setY(clampedY);
+            }
+
+            XInput2Extension xi = getExtension(XInput2Extension.MAJOR_OPCODE);
+            xi.emitRawMotion(2, dx, dy);
         }
     }
 
     public void injectPointerButtonPress(Pointer.Button buttonCode) {
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             pointer.setButton(buttonCode, true);
+
+            XInput2Extension xi = getExtension(XInput2Extension.MAJOR_OPCODE);
+            xi.emitRawButton(2, buttonCode.code(), true);
         }
     }
 
     public void injectPointerButtonRelease(Pointer.Button buttonCode) {
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             pointer.setButton(buttonCode, false);
+
+            XInput2Extension xi = getExtension(XInput2Extension.MAJOR_OPCODE);
+            xi.emitRawButton(2, buttonCode.code(), false);
         }
     }
 
@@ -192,12 +246,28 @@ public class XServer {
         }
     }
 
+    private void registerExtension(Extension ext, int[] nextEventId, int[] nextErrorId) {
+        if (ext.getNumEvents() > 0) {
+            ext.setFirstEventId((byte) nextEventId[0]);
+            nextEventId[0] += ext.getNumEvents();
+        }
+        if (ext.getNumErrors() > 0) {
+            ext.setFirstErrorId((byte) nextErrorId[0]);
+            nextErrorId[0] += ext.getNumErrors();
+        }
+        extensions.put(ext.getMajorOpcode(), ext);
+    }
+
     private void setupExtensions() {
-        extensions.put(BigReqExtension.MAJOR_OPCODE, new BigReqExtension());
-        extensions.put(MITSHMExtension.MAJOR_OPCODE, new MITSHMExtension());
-        extensions.put(DRI3Extension.MAJOR_OPCODE, new DRI3Extension());
-        extensions.put(PresentExtension.MAJOR_OPCODE, new PresentExtension());
-        extensions.put(SyncExtension.MAJOR_OPCODE, new SyncExtension());
+        int[] nextEventId = {64};
+        int[] nextErrorId = {128};
+
+        registerExtension(new BigReqExtension(),    nextEventId, nextErrorId);
+        registerExtension(new MITSHMExtension(),    nextEventId, nextErrorId);
+        registerExtension(new DRI3Extension(),      nextEventId, nextErrorId);
+        registerExtension(new PresentExtension(),   nextEventId, nextErrorId);
+        registerExtension(new SyncExtension(),      nextEventId, nextErrorId);
+        registerExtension(new XInput2Extension(),   nextEventId, nextErrorId);
     }
 
     public <T extends Extension> T getExtension(int opcode) {

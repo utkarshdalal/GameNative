@@ -9,16 +9,15 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.OkHttpClient
 import org.json.JSONArray
-import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.time.Instant
-import java.time.ZoneOffset
+import java.time.OffsetDateTime
+import java.time.format.DateTimeParseException
 import java.time.format.DateTimeFormatter
-import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 import java.util.concurrent.TimeUnit
 
@@ -36,6 +35,7 @@ class GOGCloudSavesManager(
         private const val CLOUD_STORAGE_BASE_URL = "https://cloudstorage.gog.com"
         private const val USER_AGENT = "GOGGalaxyCommunicationService/2.0.13.27 (Windows_32bit) dont_sync_marker/true installation_source/gog"
         private const val DELETION_MD5 = "aadd86936a80ee8a369579c3926f1b3c"
+
     }
 
     enum class SyncAction {
@@ -174,7 +174,10 @@ class GOGCloudSavesManager(
 
             // Get cloud files using game-specific clientId in URL path
             Timber.tag("GOG").d("[Cloud Saves] Fetching cloud file list for dirname: $dirname")
-            val cloudFiles = getCloudFiles(credentials.userId, clientId, dirname, credentials.accessToken)
+            val cloudFiles = getCloudFiles(credentials.userId, clientId, dirname, credentials.accessToken) ?: run {
+                Timber.tag("GOG-CloudSaves").e("Failed to fetch cloud files, aborting sync")
+                return@withContext 0L
+            }
             Timber.tag("GOG").d("[Cloud Saves] Retrieved ${cloudFiles.size} total cloud files")
             val downloadableCloud = cloudFiles.filter { !it.isDeleted }
             Timber.tag("GOG").i("[Cloud Saves] Found ${downloadableCloud.size} downloadable cloud file(s) (excluding deleted)")
@@ -356,14 +359,16 @@ class GOGCloudSavesManager(
     }
 
     /**
-     * Get cloud files list from GOG API
+     * Returns the list of cloud files for this dirname, or null if the request failed
+     * (network error, HTTP error, parse error). A successful but empty response returns
+     * an empty list — callers must distinguish null (unknown) from empty (no cloud files).
      */
     private suspend fun getCloudFiles(
         userId: String,
         clientId: String,
         dirname: String,
         authToken: String
-    ): List<CloudFile> = withContext(Dispatchers.IO) {
+    ): List<CloudFile>? = withContext(Dispatchers.IO) {
         try {
             // List all files (don't include dirname in URL - it's used as a prefix filter)
             val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId"
@@ -383,7 +388,7 @@ class GOGCloudSavesManager(
                     val errorBody = response.body?.string() ?: "No response body"
                     Timber.tag("GOG").e("[Cloud Saves] Failed to fetch cloud files: HTTP ${response.code}")
                     Timber.tag("GOG").e("[Cloud Saves] Response body: $errorBody")
-                    return@withContext emptyList()
+                    return@withContext null
                 }
 
                 val responseBody = response.body?.string() ?: ""
@@ -392,40 +397,9 @@ class GOGCloudSavesManager(
                     return@withContext emptyList()
                 }
 
-                val items = try {
-                    JSONArray(responseBody)
-                } catch (e: Exception) {
-                    Timber.tag("GOG").e(e, "[Cloud Saves] Failed to parse JSON array response")
+                val files = parseCloudFilesResponse(responseBody, dirname) ?: run {
                     Timber.tag("GOG").e("[Cloud Saves] Response was: $responseBody")
-                    return@withContext emptyList()
-                }
-
-                Timber.tag("GOG").d("[Cloud Saves] Found ${items.length()} total items in cloud storage")
-
-                val files = mutableListOf<CloudFile>()
-                for (i in 0 until items.length()) {
-                    val fileObj = items.getJSONObject(i)
-                    val name = fileObj.optString("name", "")
-                    val hash = fileObj.optString("hash", "")
-                    val lastModified = fileObj.optString("last_modified")
-
-                    Timber.tag("GOG").d("[Cloud Saves]   Examining item $i: name='$name', dirname='$dirname'")
-
-                    // Filter files that belong to this save location (name starts with dirname/)
-                    if (name.isNotEmpty() && hash.isNotEmpty() && name.startsWith("$dirname/")) {
-                        val timestamp = try {
-                            Instant.parse(lastModified).epochSecond
-                        } catch (e: Exception) {
-                            null
-                        }
-
-                        // Remove the dirname prefix to get relative path
-                        val relativePath = name.removePrefix("$dirname/")
-                        files.add(CloudFile(relativePath, hash, lastModified, timestamp))
-                        Timber.tag("GOG").d("[Cloud Saves]     ✓ Matched: relativePath='$relativePath'")
-                    } else {
-                        Timber.tag("GOG").d("[Cloud Saves]     ✗ Skipped (doesn't match dirname or missing data)")
-                    }
+                    return@withContext null
                 }
 
                 Timber.tag("GOG").i("[Cloud Saves] Retrieved ${files.size} cloud files for dirname '$dirname'")
@@ -434,9 +408,55 @@ class GOGCloudSavesManager(
 
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "Failed to get cloud files")
-            emptyList()
+            null
         }
     }
+
+    internal fun parseCloudFilesResponse(responseBody: String, dirname: String): List<CloudFile>? {
+        val items = try {
+            JSONArray(responseBody)
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "[Cloud Saves] Failed to parse JSON array response")
+            return null
+        }
+
+        Timber.tag("GOG").d("[Cloud Saves] Found ${items.length()} total items in cloud storage")
+
+        val files = mutableListOf<CloudFile>()
+        for (i in 0 until items.length()) {
+            val fileObj = items.getJSONObject(i)
+            val name = fileObj.optString("name", "")
+            val hash = fileObj.optString("hash", "")
+            val lastModified = fileObj.optString("last_modified")
+
+            Timber.tag("GOG").d("[Cloud Saves]   Examining item $i: name='$name', dirname='$dirname'")
+
+            if (name.isNotEmpty() && hash.isNotEmpty() && name.startsWith("$dirname/")) {
+                val relativePath = name.removePrefix("$dirname/")
+                files.add(
+                    CloudFile(
+                        relativePath = relativePath,
+                        md5Hash = hash,
+                        updateTime = lastModified,
+                        updateTimestamp = parseCloudTimestamp(lastModified),
+                    ),
+                )
+                Timber.tag("GOG").d("[Cloud Saves]     ✓ Matched: relativePath='$relativePath'")
+            } else {
+                Timber.tag("GOG").d("[Cloud Saves]     ✗ Skipped (doesn't match dirname or missing data)")
+            }
+        }
+
+        return files
+    }
+
+    internal fun parseCloudTimestamp(lastModified: String): Long? =
+        try {
+            // GOG returns timestamps like "2026-04-02T20:34:00.123456+00:00".
+            OffsetDateTime.parse(lastModified).toInstant().epochSecond
+        } catch (_: DateTimeParseException) {
+            null
+        }
 
     /**
      * Upload file to GOG cloud storage

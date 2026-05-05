@@ -327,6 +327,19 @@ class GOGManifestParserTest {
     }
 
     @Test
+    fun testBuildChunkUrlMap_insertsChunkPathBeforeQueryToken() {
+        val chunks = listOf("aabbccdd11223344")
+        val baseUrls = listOf("https://cdn.gog.com/store/1451150270?__token__=exp=123~acl=*")
+
+        val result = parser.buildChunkUrlMap(chunks, baseUrls)
+
+        assertEquals(
+            "https://cdn.gog.com/store/1451150270/aa/bb/aabbccdd11223344?__token__=exp=123~acl=*",
+            result["aabbccdd11223344"],
+        )
+    }
+
+    @Test
     fun testBuildChunkUrlMapWithProducts() {
         val chunks = listOf("aabbccdd11223344", "11223344aabbccdd")
         val chunkToProductMap = mapOf(
@@ -354,6 +367,22 @@ class GOGManifestParserTest {
         val result = parser.buildChunkUrlMapWithProducts(chunks, chunkToProductMap, productUrlMap)
 
         assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun testBuildChunkUrlMapWithProducts_insertsChunkPathBeforeQueryToken() {
+        val chunks = listOf("aabbccdd11223344")
+        val chunkToProductMap = mapOf("aabbccdd11223344" to "12345")
+        val productUrlMap = mapOf(
+            "12345" to listOf("https://cdn.gog.com/store/1451150270?__token__=exp=123~acl=*")
+        )
+
+        val result = parser.buildChunkUrlMapWithProducts(chunks, chunkToProductMap, productUrlMap)
+
+        assertEquals(
+            "https://cdn.gog.com/store/1451150270/aa/bb/aabbccdd11223344?__token__=exp=123~acl=*",
+            result["aabbccdd11223344"],
+        )
     }
 
     @Test

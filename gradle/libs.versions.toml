@@ -5,14 +5,14 @@ apache-compress = "1.27.1" # https://mvnrepository.com/artifact/org.apache.commo
 apng = "3.0.2" # https://mvnrepository.com/artifact/com.github.penfeizhou.android.animation/apng
 composeBom = "2025.01.01" # https://mvnrepository.com/artifact/androidx.compose/compose-bom
 coreKtx = "1.15.0" # https://mvnrepository.com/artifact/androidx.core/core-ktx
-coroutines = "1.10.1" # https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-coroutines-core
+coroutines = "1.10.2" # https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-coroutines-core
 dagger-hilt = "2.55" # https://mvnrepository.com/artifact/com.google.dagger/hilt-android
 dataStore = "1.1.2" # https://mvnrepository.com/artifact/androidx.datastore/datastore-preferences
 espressoCore = "3.6.1" # https://mvnrepository.com/artifact/androidx.test.espresso/espresso-core
 feature-delivery = "2.1.0" # https://mvnrepository.com/artifact/com.google.android.play/feature-delivery
 play-integrity = "1.6.0" # https://mvnrepository.com/artifact/com.google.android.play/integrity
 hiltNavigationCompose = "1.2.0" # https://mvnrepository.com/artifact/androidx.hilt/hilt-navigation-compose
-javasteam = "1.8.0.1-16-SNAPSHOT" # https://mvnrepository.com/artifact/in.dragonbra/javasteam
+javasteam = "1.8.0.1-18-SNAPSHOT" # https://mvnrepository.com/artifact/in.dragonbra/javasteam
 json = "1.8.0" # https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json
 junit = "4.13.2" # https://mvnrepository.com/artifact/junit/junit
 junitVersion = "1.2.1" # https://mvnrepository.com/artifact/androidx.test.ext/junit
@@ -20,6 +20,7 @@ kotlin = "2.1.21" # https://mvnrepository.com/artifact/org.jetbrains.kotlin.andr
 kotlinter = "5.0.1" # https://plugins.gradle.org/plugin/org.jmailen.kotlinter
 ksp = "2.1.21-2.0.2" # https://mvnrepository.com/artifact/com.google.devtools.ksp/symbol-processing-api
 landscapistCoil = "2.4.6" # https://mvnrepository.com/artifact/com.github.skydoves/landscapist-coil
+media3 = "1.9.1" # https://mvnrepository.com/artifact/androidx.media3/media3-exoplayer
 lifecycleRuntimeKtx = "2.8.7" # https://mvnrepository.com/artifact/androidx.lifecycle/lifecycle-runtime-ktx
 material = "1.12.0" # https://mvnrepository.com/artifact/com.google.android.material/material
 material3Adaptive = "1.0.0" # https://mvnrepository.com/artifact/androidx.compose.material3.adaptive/adaptive-layout
@@ -79,6 +80,9 @@ javasteam-depotdownloader = { group = "io.github.joshuatam", name = "javasteam-d
 jetbrains-kotlinx-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "json" }
 kotlin-coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 landscapist-coil = { module = "com.github.skydoves:landscapist-coil", version.ref = "landscapistCoil" }
+media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
+media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls", version.ref = "media3" }
+media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 material-kolor = { group = "com.materialkolor", name = "material-kolor", version.ref = "materialKolor" }
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }

@@ -114,6 +114,12 @@ fun SettingsGroupInterface(
     var hideStatusBar by rememberSaveable { mutableStateOf(PrefManager.hideStatusBarWhenNotInGame) }
     var swapFaceButtons by rememberSaveable { mutableStateOf(PrefManager.swapFaceButtons) }
 
+    // Controller/gamepad hints visibility
+    var showGamepadHints by rememberSaveable { mutableStateOf(PrefManager.showGamepadHints) }
+
+    // Achievements
+    var showAchievementNotifications by rememberSaveable { mutableStateOf(PrefManager.achievementShowNotification) }
+
     // Language selection dialog
     var openLanguageDialog by rememberSaveable { mutableStateOf(false) }
     var showLanguageRestartDialog by rememberSaveable { mutableStateOf(false) }
@@ -207,6 +213,15 @@ fun SettingsGroupInterface(
     }
 
     SettingsGroup(modifier = Modifier.background(Color.Transparent)) {
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_achievement_show_notification)) },
+            state = showAchievementNotifications,
+            onCheckedChange = {
+                showAchievementNotifications = it
+                PrefManager.achievementShowNotification = it
+            },
+        )
         // Achievement notification position
         val achPositionKeys = remember { ACHIEVEMENT_NOTIFICATION_POSITION.keys.toList() }
         val achPositionLabelResIds = remember { ACHIEVEMENT_NOTIFICATION_POSITION.values.toList() }
@@ -260,6 +275,51 @@ fun SettingsGroupInterface(
             onCheckedChange = {
                 swapFaceButtons = it
                 PrefManager.swapFaceButtons = it
+            },
+        )
+
+        var warnBeforeExit by rememberSaveable { mutableStateOf(PrefManager.warnBeforeExit) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_warn_before_exit_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_warn_before_exit_subtitle)) },
+            state = warnBeforeExit,
+            onCheckedChange = {
+                warnBeforeExit = it
+                PrefManager.warnBeforeExit = it
+            },
+        )
+
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_show_gamepad_hints_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_show_gamepad_hints_subtitle)) },
+            state = showGamepadHints,
+            onCheckedChange = { newValue ->
+                showGamepadHints = newValue
+                PrefManager.showGamepadHints = newValue
+            },
+        )
+
+        var showRecommendations by rememberSaveable { mutableStateOf(PrefManager.showRecommendations) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_show_recommendations_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_show_recommendations_subtitle)) },
+            state = showRecommendations,
+            onCheckedChange = {
+                showRecommendations = it
+                PrefManager.showRecommendations = it
+                PluviaApp.events.emit(AndroidEvent.RecommendationToggleChanged)
+                if (PrefManager.usageAnalyticsEnabled) {
+                    com.posthog.PostHog.capture(
+                        event = "\$set",
+                        properties = mapOf("\$set" to mapOf("recommendation_enabled" to it)),
+                    )
+                    if (!it) {
+                        com.posthog.PostHog.capture("recommendation_disabled")
+                    }
+                }
             },
         )
 

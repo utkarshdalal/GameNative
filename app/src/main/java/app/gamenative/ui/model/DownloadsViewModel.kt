@@ -63,10 +63,12 @@ class DownloadsViewModel @Inject constructor(
         val info: DownloadInfo,
         val progressListener: (Float) -> Unit,
         val statusJob: Job,
+        val syncingJob: Job,
     ) {
         fun dispose() {
             info.removeProgressListener(progressListener)
             statusJob.cancel()
+            syncingJob.cancel()
         }
     }
 
@@ -98,9 +100,14 @@ class DownloadsViewModel @Inject constructor(
         scheduleRefreshDownloads()
     }
 
+    private val onPostInstallSyncStatusChanged: (AndroidEvent.PostInstallSyncStatusChanged) -> Unit = {
+        scheduleRefreshDownloads()
+    }
+
     init {
         PluviaApp.events.on<AndroidEvent.DownloadStatusChanged, Unit>(onDownloadStatusChanged)
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onLibraryInstallStatusChanged)
+        PluviaApp.events.on<AndroidEvent.PostInstallSyncStatusChanged, Unit>(onPostInstallSyncStatusChanged)
 
         viewModelScope.launch(Dispatchers.IO) {
             refreshRequests.collect {
@@ -114,6 +121,7 @@ class DownloadsViewModel @Inject constructor(
     override fun onCleared() {
         PluviaApp.events.off<AndroidEvent.DownloadStatusChanged, Unit>(onDownloadStatusChanged)
         PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(onLibraryInstallStatusChanged)
+        PluviaApp.events.off<AndroidEvent.PostInstallSyncStatusChanged, Unit>(onPostInstallSyncStatusChanged)
         clearObservedDownloads()
         super.onCleared()
     }
@@ -279,9 +287,10 @@ class DownloadsViewModel @Inject constructor(
         val key = downloadKey(gameSource, appId)
         val rawProgress = info.getProgress()
         val statusMessage = normalizeStatusMessage(info.getStatusMessageFlow().value)
+        val isRunning = info.isActive() || info.isPostInstallSyncing()
         val status = when {
             rawProgress < 0f || statusMessage?.startsWith("Failed", ignoreCase = true) == true -> DownloadItemStatus.FAILED
-            info.isActive() -> DownloadItemStatus.DOWNLOADING
+            isRunning -> DownloadItemStatus.DOWNLOADING
             else -> DownloadItemStatus.PAUSED
         }
 
@@ -413,10 +422,17 @@ class DownloadsViewModel @Inject constructor(
                 }
             }
 
+            val syncingJob = viewModelScope.launch(Dispatchers.Default) {
+                binding.info.getPostInstallSyncingFlow().collect {
+                    updateObservedDownloadItem(binding)
+                }
+            }
+
             observedDownloads[key] = ObservedDownload(
                 info = binding.info,
                 progressListener = progressListener,
                 statusJob = statusJob,
+                syncingJob = syncingJob,
             )
         }
     }

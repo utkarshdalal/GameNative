@@ -2,6 +2,7 @@ package com.winlator.core;
 
 import android.content.Context;
 import android.opengl.EGL14;
+import android.os.Build;
 import android.util.Log;
 
 import androidx.collection.ArrayMap;
@@ -97,6 +98,7 @@ public abstract class GPUInformation {
             String gpuRenderer = Objects.toString(gl.glGetString(GL10.GL_RENDERER), "");
             String gpuVendor = Objects.toString(gl.glGetString(GL10.GL_VENDOR), "");
             String gpuVersion = Objects.toString(gl.glGetString(GL10.GL_VERSION), "");
+            if (GPUBlackist.isTurnipBlacklisted()) gpuRenderer = Build.MANUFACTURER + " " + gpuRenderer;
 
             gpuInfo.put("renderer", gpuRenderer);
             gpuInfo.put("vendor", gpuVendor);
@@ -162,7 +164,7 @@ public abstract class GPUInformation {
     public static boolean isTurnipCapable(Context context) {
         String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
         // match “adreno 610…699” or “adreno 710…799”
-        return r.contains("adreno") && r.matches(".*\\b[67][0-9]{2}\\b.*");
+        return r.contains("adreno") && r.matches(".*\\b[67][0-9]{2}\\b.*") && !GPUBlackist.isTurnipBlacklisted();
     }
 
     /**

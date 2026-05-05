@@ -101,13 +101,13 @@ private enum class DownloadsSection(
     val titleResId: Int,
     val icon: ImageVector,
 ) {
-    Downloads(
-        titleResId = R.string.settings_downloads_title,
-        icon = Icons.Default.Download,
-    ),
     Storage(
         titleResId = R.string.settings_storage_manage_title,
         icon = Icons.Default.Storage,
+    ),
+    Downloads(
+        titleResId = R.string.downloads_section_title,
+        icon = Icons.Default.Download,
     ),
 }
 
@@ -121,7 +121,7 @@ fun HomeDownloadsScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val storageManagerState = rememberContainerStorageManagerUiState()
     val scope = rememberCoroutineScope()
-    var selectedSectionIndex by rememberSaveable { mutableIntStateOf(DownloadsSection.Downloads.ordinal) }
+    var selectedSectionIndex by rememberSaveable { mutableIntStateOf(DownloadsSection.Storage.ordinal) }
     val sections = remember { DownloadsSection.values().toList() }
     val selectedSection = sections.getOrElse(selectedSectionIndex) { DownloadsSection.Downloads }
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
@@ -160,67 +160,75 @@ fun HomeDownloadsScreen(
         clearSelectedLibraryItem()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
-            .displayCutoutPadding(),
-    ) {
-        DownloadsHeader(
-            title = stringResource(selectedSection.titleResId),
-            onBack = {
-                if (selectedLibraryItem != null) {
-                    clearSelectedLibraryItem()
-                } else {
-                    onBack()
+    if (selectedLibraryItem != null) {
+        LibraryDetailPane(
+            libraryItem = selectedLibraryItem,
+            onBack = ::clearSelectedLibraryItem,
+            onClickPlay = { useBoxArt ->
+                selectedLibraryItem?.let { libraryItem ->
+                    onClickPlay(libraryItem.appId, useBoxArt)
                 }
             },
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            onTestGraphics = {
+                selectedLibraryItem?.let { libraryItem ->
+                    onTestGraphics(libraryItem.appId)
+                }
+            },
         )
-
-        Row(
+    } else {
+        Column(
             modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .statusBarsPadding()
+                .displayCutoutPadding(),
         ) {
-            if (selectedLibraryItem == null) {
-                DownloadsSidebar(
+            DownloadsHeader(
+                title = stringResource(selectedSection.titleResId),
+                onBack = onBack,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            )
+
+            val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
+
+            if (isPortrait) {
+                // Portrait: horizontal tab row above the content
+                DownloadsTabRow(
                     sections = sections,
                     selectedSection = selectedSection,
                     onSectionSelected = { selectedSectionIndex = it.ordinal },
                     modifier = Modifier
-                        .width(96.dp)
-                        .fillMaxHeight(),
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                 )
             }
 
-            Surface(
+            Row(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxHeight(),
-                shape = RoundedCornerShape(24.dp),
-                color = PluviaTheme.colors.surfacePanel.copy(alpha = 0.94f),
-                tonalElevation = 2.dp,
-                shadowElevation = 12.dp,
+                    .padding(horizontal = 16.dp, vertical = if (isPortrait) 0.dp else 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                if (selectedLibraryItem != null) {
-                    LibraryDetailPane(
-                        libraryItem = selectedLibraryItem,
-                        onBack = ::clearSelectedLibraryItem,
-                        onClickPlay = { useBoxArt ->
-                            selectedLibraryItem?.let { libraryItem ->
-                                onClickPlay(libraryItem.appId, useBoxArt)
-                            }
-                        },
-                        onTestGraphics = {
-                            selectedLibraryItem?.let { libraryItem ->
-                                onTestGraphics(libraryItem.appId)
-                            }
-                        },
+                if (!isPortrait) {
+                    DownloadsSidebar(
+                        sections = sections,
+                        selectedSection = selectedSection,
+                        onSectionSelected = { selectedSectionIndex = it.ordinal },
+                        modifier = Modifier
+                            .width(96.dp)
+                            .fillMaxHeight(),
                     )
-                } else {
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    shape = RoundedCornerShape(24.dp),
+                    color = PluviaTheme.colors.surfacePanel.copy(alpha = 0.94f),
+                    tonalElevation = 2.dp,
+                    shadowElevation = 12.dp,
+                ) {
                     when (selectedSection) {
                         DownloadsSection.Downloads -> DownloadsContent(
                             state = state,
@@ -344,6 +352,70 @@ private fun DownloadsSidebar(
                 return@LaunchedEffect
             } catch (_: Exception) {
                 delay(80)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadsTabRow(
+    sections: List<DownloadsSection>,
+    selectedSection: DownloadsSection,
+    onSectionSelected: (DownloadsSection) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        sections.forEach { section ->
+            val isSelected = selectedSection == section
+            val accentColor = PluviaTheme.colors.accentPurple
+
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .selectable(
+                        selected = isSelected,
+                        onClick = { onSectionSelected(section) },
+                    ),
+                shape = RoundedCornerShape(16.dp),
+                color = if (isSelected) {
+                    accentColor.copy(alpha = 0.16f)
+                } else {
+                    PluviaTheme.colors.surfacePanel.copy(alpha = 0.88f)
+                },
+                border = BorderStroke(
+                    width = if (isSelected) 1.5.dp else 1.dp,
+                    color = if (isSelected) {
+                        accentColor.copy(alpha = 0.45f)
+                    } else {
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f)
+                    },
+                ),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = section.icon,
+                        contentDescription = stringResource(section.titleResId),
+                        tint = if (isSelected) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        text = stringResource(section.titleResId),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (isSelected) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

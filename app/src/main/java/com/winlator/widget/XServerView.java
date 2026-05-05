@@ -24,6 +24,7 @@ public class XServerView extends GLSurfaceView {
     private final GLRenderer renderer;
     // private final ArrayList<Callback<MotionEvent>> mouseEventCallbacks = new ArrayList<>();
     private final XServer xServer;
+    private int frameRateLimit = 0;
 
     public XServerView(Context context, XServer xServer) {
         super(context);
@@ -52,6 +53,15 @@ public class XServerView extends GLSurfaceView {
 
     public GLRenderer getRenderer() {
         return renderer;
+    }
+
+    public int getFrameRateLimit() {
+        return frameRateLimit;
+    }
+
+    public void setFrameRateLimit(int frameRateLimit) {
+        this.frameRateLimit = Math.max(0, frameRateLimit);
+        requestRender();
     }
 
     // public void addPointerEventListener(Callback<MotionEvent> listener) {

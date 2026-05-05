@@ -15,4 +15,11 @@ data class AppInfo (
     val dlcDepots: List<Int> = emptyList<Int>(),
     @ColumnInfo("branch", defaultValue = "public")
     val branch: String = "public",
-)
+    @ColumnInfo(name = "recovered_install_size_bytes", defaultValue = "0")
+    val recoveredInstallSizeBytes: Long = 0L,
+    @ColumnInfo("custom_install_path", defaultValue = "")
+    val customInstallPath: String = "",
+) {
+    val isImported: Boolean
+        get() = customInstallPath != ""
+}

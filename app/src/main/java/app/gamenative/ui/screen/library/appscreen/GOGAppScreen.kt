@@ -18,6 +18,7 @@ import app.gamenative.R
 import app.gamenative.data.GOGGame
 import app.gamenative.data.LibraryItem
 import app.gamenative.enums.Marker
+import app.gamenative.service.DownloadService
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.MarkerUtils
@@ -30,6 +31,7 @@ import com.winlator.container.ContainerData
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import app.gamenative.ui.util.SnackbarManager
@@ -80,6 +82,44 @@ class GOGAppScreen : BaseAppScreen() {
                 else -> "$bytes B"
             }
         }
+
+        internal suspend fun forceCloudSync(
+            context: Context,
+            appId: String,
+            syncCloudSaves: suspend (Context, String, String) -> Boolean = { syncContext, syncAppId, preferredAction ->
+                GOGService.syncCloudSaves(
+                    context = syncContext,
+                    appId = syncAppId,
+                    preferredAction = preferredAction,
+                )
+            },
+            showSnackbar: (String) -> Unit = SnackbarManager::show,
+            logError: (Throwable) -> Unit = { error ->
+                Timber.tag(TAG).e(error, "[Cloud Saves] Sync failed")
+            },
+        ) {
+            try {
+                showSnackbar(context.getString(R.string.library_cloud_sync_starting))
+
+                val result = withContext(Dispatchers.IO) {
+                    syncCloudSaves(context, appId, "auto")
+                }
+
+                if (result) {
+                    showSnackbar(context.getString(R.string.library_cloud_sync_success))
+                } else {
+                    showSnackbar(context.getString(R.string.library_cloud_sync_failed))
+                }
+            } catch (e: Exception) {
+                logError(e)
+                showSnackbar(
+                    context.getString(
+                        R.string.library_cloud_sync_error,
+                        e.message ?: "",
+                    ),
+                )
+            }
+        }
     }
 
     @Composable
@@ -87,7 +127,6 @@ class GOGAppScreen : BaseAppScreen() {
         context: Context,
         libraryItem: LibraryItem,
     ): GameDisplayInfo {
-        Timber.tag(TAG).d("getGameDisplayInfo: appId=${libraryItem.appId}, name=${libraryItem.name}")
         // Extract numeric gameId for GOGService calls
         val gameId = libraryItem.gameId.toString()
 
@@ -135,7 +174,6 @@ class GOGAppScreen : BaseAppScreen() {
                 val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ")
                 val timestampMillis = java.time.ZonedDateTime.parse(rawReleaseDate, formatter).toInstant().toEpochMilli()
                 val timestampSeconds = timestampMillis / 1000
-                Timber.tag(TAG).d("Parsed release date '$rawReleaseDate' -> $timestampSeconds seconds (${java.util.Date(timestampMillis)})")
                 timestampSeconds
             } catch (e: Exception) {
                 Timber.tag(TAG).d("Release date not parseable (ignored): $rawReleaseDate")
@@ -168,16 +206,13 @@ class GOGAppScreen : BaseAppScreen() {
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
         )
-        Timber.tag(TAG).d("Returning GameDisplayInfo: name=${displayInfo.name}, iconUrl=${displayInfo.iconUrl}, heroImageUrl=${displayInfo.heroImageUrl}, developer=${displayInfo.developer}, installLocation=${displayInfo.installLocation}")
         return displayInfo
     }
 
     override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean {
-        Timber.tag(TAG).d("isInstalled: checking appId=${libraryItem.appId}")
         return try {
             // GOGService expects numeric gameId
             val installed = GOGService.isGameInstalled(libraryItem.gameId.toString())
-            Timber.tag(TAG).d("isInstalled: appId=${libraryItem.appId}, result=$installed")
             installed
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to check install status for ${libraryItem.appId}")
@@ -197,13 +232,12 @@ class GOGAppScreen : BaseAppScreen() {
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
         Timber.tag(TAG).d("isDownloading: checking appId=${libraryItem.appId}")
-        // Check if there's an active download for this GOG game
-        // GOGService expects numeric gameId
-        val downloadInfo = GOGService.getDownloadInfo(libraryItem.gameId.toString())
-        val progress = downloadInfo?.getProgress() ?: 0f
-        val isActive = downloadInfo?.isActive() ?: false
-        val downloading = downloadInfo != null && isActive && progress < 1f
-        Timber.tag(TAG).d("isDownloading: appId=${libraryItem.appId}, hasDownloadInfo=${downloadInfo != null}, active=$isActive, progress=$progress, result=$downloading")
+        val downloadInfo = GOGService.getDownloadInfo(libraryItem.gameId.toString()) ?: return false
+        val progress = downloadInfo.getProgress() ?: 0f
+        val downloading = downloadInfo.isPostInstallSyncing() || (downloadInfo.isActive() && progress < 1f)
+        Timber.tag(TAG).d(
+            "isDownloading: appId=${libraryItem.appId}, postInstallSyncing=${downloadInfo.isPostInstallSyncing()}, active=${downloadInfo.isActive()}, progress=$progress, result=$downloading",
+        )
         return downloading
     }
 
@@ -226,8 +260,12 @@ class GOGAppScreen : BaseAppScreen() {
         val downloadInfo = GOGService.getDownloadInfo(gameId)
         val isDownloading = isDownloading(context, libraryItem)
         val installed = isInstalled(context, libraryItem)
+        val hasPartial = hasPartialDownload(context, libraryItem)
 
-        Timber.tag(TAG).d("onDownloadInstallClick: appId=${libraryItem.appId}, isDownloading=$isDownloading, installed=$installed")
+        Timber.tag(TAG).d(
+            "onDownloadInstallClick: appId=${libraryItem.appId}, " +
+                "isDownloading=$isDownloading, installed=$installed, hasPartial=$hasPartial",
+        )
 
         if (isDownloading) {
             // Cancel ongoing download
@@ -238,6 +276,10 @@ class GOGAppScreen : BaseAppScreen() {
             // Already installed: launch game
             Timber.tag(TAG).i("GOG game already installed, launching: ${libraryItem.appId}")
             onClickPlay(false)
+        } else if (hasPartial) {
+            // Match Steam behavior: resume immediately for partial downloads.
+            Timber.tag(TAG).i("Resuming partial GOG download for: ${libraryItem.appId}")
+            performDownload(context, libraryItem, onClickPlay)
         } else {
             // Show install confirmation dialog
             showGOGInstallConfirmationDialog(context, libraryItem)
@@ -313,13 +355,17 @@ class GOGAppScreen : BaseAppScreen() {
         val gameId = libraryItem.gameId.toString()
         val downloadInfo = GOGService.getDownloadInfo(gameId)
         val isDownloading = isDownloading(context, libraryItem)
+        val hasPartial = hasPartialDownload(context, libraryItem)
 
         if (isDownloading) {
             Timber.tag(TAG).i("Cancelling GOG download: ${libraryItem.appId}")
             downloadInfo?.cancel()
             GOGService.cleanupDownload(gameId)
+        } else if (hasPartial) {
+            Timber.tag(TAG).i("Resuming partial GOG download via pause/resume: ${libraryItem.appId}")
+            performDownload(context, libraryItem) {}
         } else {
-            // Partial data only: "Resume" means start/restart install – show install confirmation
+            // Fresh start: show install confirmation dialog.
             showGOGInstallConfirmationDialog(context, libraryItem)
         }
     }
@@ -354,6 +400,7 @@ class GOGAppScreen : BaseAppScreen() {
             try {
                 // Delegate to GOGService which calls GOGManager.deleteGame
                 val result = GOGService.deleteGame(context, libraryItem)
+                DownloadService.invalidateCache()
 
                 if (result.isSuccess) {
                     Timber.i("Successfully uninstalled GOG game: ${libraryItem.appId}")
@@ -411,16 +458,20 @@ class GOGAppScreen : BaseAppScreen() {
         Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
 
         if (previousLanguage != config.language) {
-            CoroutineScope(Dispatchers.IO).launch {
-                val gameId = libraryItem.gameId.toString()
-                if (!GOGService.isGameInstalled(gameId)) return@launch
-                if (GOGService.getDownloadInfo(gameId)?.isActive() == true) return@launch
+            triggerGOGVerifyDownload(context, libraryItem, config.language)
+        }
+    }
 
-                val installPath = GOGService.getInstallPath(gameId)
-                    ?: GOGConstants.getGameInstallPath(libraryItem.name)
+    private fun triggerGOGVerifyDownload(context: Context, libraryItem: LibraryItem, language: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val gameId = libraryItem.gameId.toString()
+            if (!GOGService.isGameInstalled(gameId)) return@launch
+            if (GOGService.getDownloadInfo(gameId)?.isActive() == true) return@launch
 
-                GOGService.downloadGame(context, gameId, installPath, config.language)
-            }
+            val installPath = GOGService.getInstallPath(gameId)
+                ?: GOGConstants.getGameInstallPath(libraryItem.name)
+
+            GOGService.downloadGame(context, gameId, installPath, language)
         }
     }
 
@@ -428,6 +479,58 @@ class GOGAppScreen : BaseAppScreen() {
         Timber.tag(TAG).d("supportsContainerConfig: returning true")
         // GOG games support container configuration like other Wine games
         return true
+    }
+
+    @Composable
+    override fun getSourceSpecificMenuOptions(
+        context: Context,
+        libraryItem: LibraryItem,
+        onEditContainer: () -> Unit,
+        onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
+        isInstalled: Boolean,
+    ): List<AppMenuOption> {
+        if (!isInstalled || isDownloading(context, libraryItem)) {
+            return emptyList()
+        }
+
+        val options = mutableListOf<AppMenuOption>()
+
+        options.add(
+            AppMenuOption(
+                optionType = AppOptionMenuType.VerifyFiles,
+                onClick = {
+                    showInstallDialog(
+                        libraryItem.appId,
+                        app.gamenative.ui.component.dialog.state.MessageDialogState(
+                            visible = true,
+                            type = app.gamenative.ui.enums.DialogType.UPDATE_VERIFY_CONFIRM,
+                            title = context.getString(R.string.library_verify_files_title),
+                            message = context.getString(R.string.library_verify_files_message),
+                            confirmBtnText = context.getString(R.string.proceed),
+                            dismissBtnText = context.getString(R.string.cancel),
+                        ),
+                    )
+                },
+            ),
+        )
+
+        options.add(
+            AppMenuOption(
+                optionType = AppOptionMenuType.ForceCloudSync,
+                onClick = {
+                    val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+                    scope.launch {
+                        forceCloudSync(
+                            context = context,
+                            appId = libraryItem.appId,
+                        )
+                    }
+                },
+            ),
+        )
+
+        return options
     }
 
     /**
@@ -514,6 +617,16 @@ class GOGAppScreen : BaseAppScreen() {
         disposables +=
             { app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener) }
 
+        val postInstallSyncListener: (app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged) -> Unit = { event ->
+            if (event.appId == libraryItem.gameId) {
+                Timber.tag(TAG).d("[OBSERVE] PostInstallSyncStatusChanged for ${libraryItem.appId}, isSyncing=${event.isSyncing}")
+                onStateChanged()
+            }
+        }
+        app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener)
+        disposables +=
+            { app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener) }
+
         // Return cleanup function
         return {
             disposables.forEach { it() }
@@ -590,6 +703,7 @@ class GOGAppScreen : BaseAppScreen() {
                             }
 
                             val result = GOGService.deleteGame(context, libraryItem)
+                            DownloadService.invalidateCache()
                             if (wasDownloading && !isInstalledAfterCancel) {
                                 SnackbarManager.show("Download cancelled")
                             }
@@ -597,6 +711,17 @@ class GOGAppScreen : BaseAppScreen() {
                                 SnackbarManager.show("Failed to delete download: ${result.exceptionOrNull()?.message}")
                             }
                         }
+                    }
+                }
+                app.gamenative.ui.enums.DialogType.UPDATE_VERIFY_CONFIRM -> {
+                    {
+                        BaseAppScreen.hideInstallDialog(appId)
+                        val gameId = libraryItem.gameId.toString()
+                        val installPath = GOGService.getInstallPath(gameId)
+                            ?: GOGConstants.getGameInstallPath(libraryItem.name)
+                        MarkerUtils.clearInstalledPrerequisiteMarkers(installPath)
+                        val language = loadContainerData(context, libraryItem).language
+                        triggerGOGVerifyDownload(context, libraryItem, language)
                     }
                 }
                 else -> null

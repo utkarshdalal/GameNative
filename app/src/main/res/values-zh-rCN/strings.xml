@@ -27,11 +27,9 @@
     <string name="base_app_reset_container_confirm">重置</string>
     <string name="steam_verify_files_title">验证文件</string>
     <string name="steam_verify_files_message">验证前请确保存档已上传至云端或已备份，否则存档可能会被覆盖</string>
+    <string name="steam_cloud_sync_downloading_save_files">正在下载存档文件 %1$d/%2$d</string>
     <string name="steam_update_title">更新</string>
     <string name="steam_update_message">更新前请确保存档已上传至云端或已备份，否则存档可能会被覆盖</string>
-    <string name="steam_cloud_sync_success">云同步已成功完成</string>
-    <string name="steam_cloud_sync_up_to_date">游戏存档已是最新版本</string>
-    <string name="steam_cloud_sync_failed">云同步失败：%s</string>
     <string name="steam_storage_permission_required">需要存储权限</string>
     <string name="steam_container_reset_success">容器已重置为默认设置</string>
     <string name="steam_imagefs_installed">ImageFS 已安装，请重试编辑容器</string>
@@ -58,10 +56,6 @@
     <string name="steam_never">从不</string>
     <string name="epic_cancel_download_message">确定要取消下载应用程序吗？</string>
     <string name="epic_delete_download_message">删除此游戏的所有已下载数据？</string>
-    <string name="epic_cloud_sync_starting">正在开始云存档同步…</string>
-    <string name="epic_cloud_sync_success">云存档同步成功</string>
-    <string name="epic_cloud_sync_failed">云存档同步失败</string>
-    <string name="epic_cloud_sync_error">云存档同步错误：%1$s</string>
     <string name="epic_uninstall_failed">卸载失败：%1$s</string>
     <string name="epic_uninstall_error">卸载错误：%1$s</string>
     <string name="steam_continue">继续</string>
@@ -93,6 +87,7 @@
     <string name="confirm_delete">确认删除</string>
     <string name="destination_library">游戏库</string>
     <string name="destination_downloads">下载和存储</string>
+    <string name="downloads_section_title">下载</string>
 
     <!-- Library Tabs -->
     <string name="downloads_empty">暂无活动下载</string>
@@ -225,6 +220,7 @@
     <string name="intent_launch_service_pending">服务就绪后将启动游戏</string>
     <string name="intent_launch_steam_login_failed">Steam 登录失败 — 游戏启动已取消</string>
     <string name="intent_launch_service_timeout">游戏服务启动失败 — 游戏启动已取消</string>
+    <string name="back_press_exit_warning">再次按返回键退出</string>
     <string name="game_executable_not_found_title">无法启动</string>
     <string name="game_executable_not_found">无法自动选择可执行文件。请在容器设置中指定可执行文件路径。</string>
     <string name="save_container_settings_title">保存容器配置？</string>
@@ -247,6 +243,7 @@
     <string name="toggle_fullscreen">切换全屏</string>
     <string name="toggle_orientation">切换屏幕方向</string>
     <string name="task_manager">任务管理器</string>
+    <string name="tools_wine_processes_running_hint">%1$d 个正在运行，点按/点击某个进程以关闭</string>
     <string name="magnifier">放大镜</string>
     <string name="logs">应用日志</string>
     <string name="exit_game">退出</string>
@@ -286,6 +283,8 @@
     <string name="screen_effects_toon_description">添加深色描边，呈现 cel-shading 风格外观。</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">通过轻量级后处理抗锯齿平滑锯齿边缘。</string>
+    <string name="screen_effects_vivid">鲜艳</string>
+    <string name="screen_effects_vivid_description">增加泛光和对比度增强，让画面更有冲击力。</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">添加扫描线和轻微色差效果。</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -296,6 +295,11 @@
     <string name="quick_menu_tab_controller">控制器</string>
     <string name="performance_hud">性能 HUD</string>
     <string name="performance_hud_description">显示或隐藏游戏内叠加层。</string>
+    <string name="performance_hud_fps_limiter">FPS 限制器</string>
+    <string name="performance_hud_fps_limiter_description">限制游戏内帧率。最高：%1$d Hz。</string>
+    <string name="performance_hud_fps_limiter_target">目标 FPS</string>
+    <string name="performance_hud_fps_limiter_off">无限制</string>
+    <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
     <string name="performance_hud_presets">预设</string>
     <string name="performance_hud_presets_description">快速切换常用 HUD 布局。</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -442,6 +446,7 @@
     <!-- 设置 -->
     <string name="settings_save_logcat_subtitle">保存此应用 PID 的 logcat 快照</string>
     <string name="settings_save_logcat_title">保存 logcat</string>
+    <string name="settings_achievement_show_notification">显示成就通知</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         CALL/RET 操作码的标志处理方式<br /><br />
@@ -730,6 +735,31 @@
     <string name="gesture_zoom_page_up_down">Page Up/Down</string>
     <string name="gesture_action_label">操作</string>
     <string name="gesture_delay_label">延迟</string>
+    <string name="gesture_section_single_finger">单指</string>
+    <string name="gesture_section_two_finger">双指</string>
+    <string name="gesture_section_three_finger">三指</string>
+    <string name="gesture_section_other">其他</string>
+    <string name="gesture_pan_left_click_drag">左键拖动</string>
+    <string name="gesture_pan_right_click_drag">右键拖动</string>
+    <string name="gesture_action_show_keyboard">显示键盘</string>
+    <string name="gesture_header_special">特殊</string>
+    <string name="gesture_header_mouse">鼠标</string>
+    <string name="gesture_header_common_game">常用游戏按键</string>
+    <string name="gesture_header_letters">字母 A-Z</string>
+    <string name="gesture_header_numbers">数字 0-9</string>
+    <string name="gesture_header_function_keys">功能键</string>
+    <string name="gesture_two_finger_hold">双指长按</string>
+    <string name="gesture_two_finger_hold_delay">双指长按延迟 (ms)</string>
+    <string name="gesture_three_finger_tap">三指点按</string>
+    <string name="gesture_three_finger_drag">三指拖动</string>
+    <string name="gesture_three_finger_hold">三指长按</string>
+    <string name="gesture_three_finger_hold_delay">三指长按延迟 (ms)</string>
+    <string name="gesture_threshold">手势阈值 (px)</string>
+    <string name="gesture_threshold_subtitle">锁定手势类型所需的移动距离（越低越灵敏）</string>
+    <string name="gesture_show_click_highlight">显示点击高亮</string>
+    <string name="gesture_show_click_highlight_subtitle">在点击位置显示圆圈</string>
+    <string name="gesture_show_debug_overlay">显示手势调试叠加层</string>
+    <string name="gesture_show_debug_overlay_subtitle">在顶部中央显示临时手势标签</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">动态摇杆设置</string>
@@ -846,6 +876,8 @@
     <string name="settings_emulation_default_config_title">修改默认配置</string>
     <string name="settings_emulation_default_config_subtitle">每款游戏的初始容器设置（不影响已安装游戏）</string>
     <string name="settings_emulation_default_config_dialog_title">默认容器设置</string>
+    <string name="settings_emulation_auto_apply_known_config_title">自动匹配预设配置</string>
+    <string name="settings_emulation_auto_apply_known_config_subtitle">首次运行 Steam 游戏时，自动加载并应用社区推荐的最佳设置</string>
     <string name="settings_emulation_box64_presets_title">Box64 预设集</string>
     <string name="settings_emulation_box64_presets_subtitle">查看、修改及创建 Box64 预设集</string>
     <string name="settings_emulation_driver_manager_title">驱动程序管理器</string>
@@ -888,6 +920,8 @@
     <string name="settings_info_libraries_subtitle">了解哪些技术让 GameNative 成为可能</string>
     <string name="settings_info_privacy_title">隐私政策</string>
     <string name="settings_info_privacy_subtitle">打开链接至 GameNative 的隐私政策</string>
+    <string name="settings_info_usage_analytics_title">使用分析</string>
+    <string name="settings_info_usage_analytics_subtitle">我们绝不追踪个人信息。关闭此选项将停止非必要的分析，但核心游戏性能数据仍会作为合法权益继续收集，以改善兼容性。</string>
 
     <!-- 设置：界面组 -->
     <string name="settings_interface_title">界面</string>
@@ -895,6 +929,10 @@
     <string name="settings_interface_external_links_subtitle">链接将以您的主要网页浏览器打开</string>
     <string name="settings_interface_hide_statusbar_title">在非游戏状态时隐藏状态栏</string>
     <string name="settings_interface_hide_statusbar_subtitle">在游戏列表、设置等界面隐藏 Android 状态栏。更改后应用程序将重新启动。</string>
+    <string name="settings_interface_warn_before_exit_title">退出前警告</string>
+    <string name="settings_interface_warn_before_exit_subtitle">需要双击返回键退出——第一次按下显示警告</string>
+    <string name="settings_interface_show_gamepad_hints_title">显示手柄提示</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">在屏幕底部显示手柄按键提示栏</string>
     <string name="settings_interface_wifi_only_title">仅限通过 Wi-Fi/LAN 下载</string>
     <string name="settings_interface_wifi_only_subtitle">禁止使用移动数据下载</string>
     <string name="settings_interface_external_storage_title">写入外部存储设备</string>
@@ -961,9 +999,11 @@
     <string name="library_export_cancelled">导出已取消</string>
     <string name="library_shortcut_created">快捷方式已创建</string>
     <string name="library_failed_to_create_shortcut">创建快捷方式失败：%s</string>
-    <string name="library_cloud_sync_success">云同步完成</string>
-    <string name="library_cloud_sync_up_to_date">存档文件已更新至最新版本</string>
-    <string name="library_cloud_sync_failed">云同步失败：%s</string>
+    <string name="library_cloud_sync_starting">正在同步云存档…</string>
+    <string name="library_cloud_sync_success">云存档同步完成</string>
+    <string name="library_cloud_sync_up_to_date">云存档同步已是最新状态</string>
+    <string name="library_cloud_sync_failed">云存档同步失败</string>
+    <string name="library_cloud_sync_error">云存档同步错误：%1$s</string>
 
     <!-- 库应用界面：UI标签 -->
     <string name="library_need_internet">需联网安装</string>
@@ -1003,6 +1043,7 @@
     <string name="main_app_running_message">您已在另一台设备登录并正在游玩 %s。\n您仍可继续游玩此游戏，但此操作将导致 Steam 断开另一设备的连接。</string>
     <string name="main_app_running_other_device">您已在另一台设备（%1$s）上登录并正在游玩 %2$s（%3$s），该存档尚未同步至云端。\n您仍可继续游玩此游戏，但此操作将使另一设备的 Steam 连接中断，且当该设备的进度同步时可能产生存档冲突。</string>
     <string name="main_play_anyway">仍要继续</string>
+    <string name="main_app_running_unknown_game">游戏</string>
 
     <!-- 主界面：存档冲突 -->
     <string name="main_save_conflict_title">存档冲突</string>
@@ -1087,11 +1128,14 @@
 
     <!-- 最佳配置提示消息 -->
     <string name="best_config_applied_successfully">配置已成功应用</string>
+    <string name="best_config_missing_components_title">配置未应用</string>
+    <string name="best_config_missing_components_message">此设备上以下必需组件不可用：\n\n%1$s\n\n请安装缺失的组件后重试。</string>
     <string name="best_config_known_config_invalid">已知配置无效</string>
     <string name="best_config_no_config_available">此游戏没有可用的最佳配置</string>
     <string name="best_config_fetch_failed">获取配置失败，请检查网络连接。</string>
+    <string name="best_config_apply_anyway">仍然应用</string>
+    <string name="best_config_applied_with_defaults">配置已应用，缺失组件已替换为默认值</string>
     <string name="best_config_apply_failed">应用配置失败：%s</string>
-    <string name="best_config_missing_content">%s 缺失</string>
     <string name="import_config">导入配置</string>
     <string name="export_config">导出配置</string>
 
@@ -1286,7 +1330,7 @@
 
     <!-- Epic Games Integration -->
     <string name="epic_integration_title">Epic Games 集成</string>
-    <string name="epic_settings_login_title">登录</string>
+    <string name="epic_settings_login_title">登录 Epic</string>
     <string name="epic_settings_login_subtitle">登录到您的 Epic Games 账户</string>
     <string name="epic_login_success_title">登录成功</string>
     <string name="epic_login_cancel">取消</string>
@@ -1354,4 +1398,119 @@
     <string name="workshop_processing">正在处理模组…</string>
     <string name="workshop_failed_count">%1$d 个创意工坊模组更新失败</string>
     <string name="workshop_download_failed">下载失败</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">推荐</string>
+    <string name="recommended_buy_button">查看游戏</string>
+    <string name="recommended_support_message">通过此链接购买有助于支持 GameNative 的开发。</string>
+    <string name="recommended_about_heading">关于本游戏</string>
+    <string name="recommended_review_count">基于 %1$s 条评价</string>
+    <string name="review_overwhelmingly_positive">好评如潮</string>
+    <string name="review_very_positive">特别好评</string>
+    <string name="review_mostly_positive">多半好评</string>
+    <string name="review_mixed">褒贬不一</string>
+    <string name="review_mostly_negative">多半差评</string>
+    <string name="review_overwhelmingly_negative">差评如潮</string>
+    <string name="settings_interface_show_recommendations_title">显示游戏推荐</string>
+    <string name="settings_interface_show_recommendations_subtitle">在游戏库中显示精选独立游戏。保持开启有助于支持独立开发者和 GameNative。</string>
+     <string name="steam_save_export_success">存档已导出</string>
+     <string name="steam_save_export_no_saves_found">未找到存档文件</string>
+     <string name="steam_save_export_failed">导出存档失败：%s</string>
+     <string name="steam_save_import_success">存档已导入</string>
+     <string name="steam_save_import_failed">导入存档失败：%s</string>
+    <string name="option_import_saves">导入存档</string>
+    <string name="option_export_saves">导出存档</string>
+    <string name="option_export_for_frontend">导出至前端</string>
+    <string name="option_open_container">打开容器</string>
+    <string name="option_edit_container">编辑容器</string>
+    <string name="option_reset_to_defaults">重置容器</string>
+    <string name="option_get_support">获取支持</string>
+    <string name="option_submit_feedback">提交反馈</string>
+    <string name="option_test_graphics">测试图形渲染</string>
+    <string name="option_fetch_game_images">获取游戏封面</string>
+
+    <!-- 容器配置：自定义分辨率 -->
+    <string name="container_config_custom_resolution_title">设置自定义分辨率</string>
+    <string name="container_config_custom_resolution_separator">x</string>
+    <string name="container_config_custom_resolution_error_nonzero">宽度和高度必须大于 0</string>
+    <string name="container_config_custom_resolution_error_aspect">宽度必须大于高度</string>
+
+    <!-- Steam 登录状态 -->
+    <string name="steam_not_logged_in">您必须登录 Steam 才能使用此功能</string>
+
+    <!-- 下载网络提示 -->
+    <string name="download_no_wifi">未连接到 Wi-Fi/LAN</string>
+    <string name="download_paused_wifi">下载已暂停 – 等待 Wi-Fi/LAN 连接</string>
+
+    <!-- 库兼容性 -->
+    <string name="library_compatibility_unknown">未知</string>
+    <string name="library_not_compatible">不兼容</string>
+
+    <!-- Steam 集成：存档设置 -->
+    <string name="local_saves_only">仅本地存档</string>
+    <string name="local_saves_only_description">禁用此游戏的云存档同步，仅将存档保存在本地设备上</string>
+
+    <!-- 主界面：下载条目 -->
+    <string name="main_downloading_entry">正在下载 %s</string>
+
+    <!-- 应用选项菜单 -->
+    <string name="option_open_store_page">打开商店页面</string>
+    <string name="option_force_cloud_sync">强制云同步</string>
+    <string name="option_browse_online_saves">浏览在线存档</string>
+    <string name="option_force_download_remote">强制下载远程存档</string>
+    <string name="option_force_upload_local">强制上传本地存档</string>
+    <string name="option_manage_dlc">管理 DLC</string>
+    <string name="option_manage_workshop">管理创意工坊</string>
+    <string name="option_move_to_external_storage">移至外部存储</string>
+    <string name="option_move_to_internal_storage">移至内部存储</string>
+    <string name="option_reset_drm">重置 DRM</string>
+    <string name="option_update">更新</string>
+    <string name="option_use_known_config">使用已知配置</string>
+    <string name="option_verify_files">验证文件</string>
+
+    <!-- 性能 HUD -->
+    <string name="performance_hud_battery_temperature">电池温度</string>
+
+    <!-- 屏幕效果 -->
+    <string name="screen_effects_scaling">缩放</string>
+    <string name="screen_effects_scaling_mode">缩放模式</string>
+    <string name="screen_effects_scaling_mode_none">无</string>
+    <string name="screen_effects_scaling_mode_nearest">最近邻</string>
+    <string name="screen_effects_scaling_mode_linear">线性</string>
+    <string name="screen_effects_scaling_mode_fill">填充</string>
+    <string name="screen_effects_scaling_mode_stretch">拉伸</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect">FSR 适配</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">官方 AMD FidelityFX Super Resolution 1.0，使用 EASU + RCAS，以较低的内部分辨率渲染并进行全分辨率放大。</string>
+    <string name="screen_effects_fsr_quality">FSR 质量</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">超高质量</string>
+    <string name="screen_effects_fsr_quality_quality">质量</string>
+    <string name="screen_effects_fsr_quality_balanced">平衡</string>
+    <string name="screen_effects_fsr_quality_performance">性能</string>
+    <string name="screen_effects_fsr_sharpness">FSR 锐度</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">启动锐度</string>
+    <string name="screen_effects_launch_sharpness_note">CAS 和 DLS 通过 vkBasalt 应用，将在下次启动游戏时生效。</string>
+
+    <!-- 设置：界面组 -->
+    <string name="settings_interface_icon_style">图标样式</string>
+
+    <!-- 工具：Wine 进程 -->
+    <string name="tools_wine_processes_empty">未检测到正在运行的EXE。</string>
+
+    <!-- LSFG-VK frame generation -->
+    <string name="lsfg_tab_title">LSFG-VK</string>
+    <string name="lsfg_description">使用 Lossless Scaling 的 Vulkan 层生成中间帧。已知仅在 Adreno 6xx 及更高版本上可用。</string>
+    <string name="lsfg_enable">启用 LSFG-VK 帧生成</string>
+    <string name="lsfg_multiplier">帧倍率</string>
+    <string name="lsfg_flow_scale">光流缩放</string>
+    <string name="lsfg_performance_mode">性能模式</string>
+    <string name="lsfg_not_supported">帧生成需要 Bionic 容器</string>
+    <string name="lsfg_install_prompt">Lossless Scaling 未安装。点击安装。已知仅在 Adreno 6xx 及更高版本上可用。</string>
+    <string name="lsfg_not_in_library">Lossless Scaling 不在你的 Steam 库中</string>
+    <string name="lsfg_install_title">安装 Lossless Scaling？</string>
+    <string name="lsfg_install_message">将从 Steam 下载 Lossless Scaling 以启用帧生成。</string>
+    <string name="lsfg_installing">正在下载 Lossless Scaling…</string>
+    <string name="lsfg_performance_mode_desc">降低画质以提升吞吐量</string>
 </resources>

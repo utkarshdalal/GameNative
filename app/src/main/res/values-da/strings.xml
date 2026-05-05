@@ -30,16 +30,13 @@
     <string name="gog_install_confirmation_message">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tTilgængelig plads: %2$s</string>
     <string name="epic_cancel_download_message">Er du sikker på, at du vil annullere download af appen?</string>
     <string name="epic_delete_download_message">Slet alle downloadede data for dette spil?</string>
-    <string name="epic_cloud_sync_starting">Starter synkronisering af cloud-gemmer…</string>
-    <string name="epic_cloud_sync_success">Cloud-gemmer synkroniseret med succes</string>
-    <string name="epic_cloud_sync_failed">Synkronisering af cloud-gemmer mislykkedes</string>
-    <string name="epic_cloud_sync_error">Fejl ved synkronisering af cloud-gemmer: %1$s</string>
     <string name="epic_uninstall_failed">Afinstallation mislykkedes: %1$s</string>
     <string name="epic_uninstall_error">Afinstallationsfejl: %1$s</string>
     <string name="download_prompt_title">Installér app</string>
     <string name="delete_prompt_title">Slet app</string>
     <string name="cancel_download_prompt_title">Annullér download</string>
     <string name="acknowledge">OK</string>
+    <string name="steam_cloud_sync_downloading_save_files">Downloader gemfiler %1$d/%2$d</string>
     <string name="yes">Ja</string>
     <string name="no">Nej</string>
     <string name="not_enough_space">Ikke nok plads</string>
@@ -49,6 +46,7 @@
     <string name="confirm_delete">Bekræft sletning</string>
     <string name="destination_library">Bibliotek</string>
     <string name="destination_downloads">Downloads &amp; lager</string>
+    <string name="downloads_section_title">Downloads</string>
 
     <string name="downloads_empty">Ingen aktive downloads</string>
     <string name="downloads_overview_subtitle">Følg aktive, pausede og genoptagelige downloads</string>
@@ -155,6 +153,7 @@
     <string name="intent_launch_service_pending">Spillet starter, når tjenesten er klar</string>
     <string name="intent_launch_steam_login_failed">Steam-login mislykkedes — spilstart annulleret</string>
     <string name="intent_launch_service_timeout">Spiltjenesten kunne ikke starte — spilstart annulleret</string>
+    <string name="back_press_exit_warning">Tryk tilbage igen for at afslutte</string>
     <string name="game_executable_not_found_title">Kan ikke starte</string>
     <string name="game_executable_not_found">Den eksekverbare fil kunne ikke vælges automatisk. Angiv stien til den eksekverbare fil i containerindstillinger.</string>
     <string name="save_container_settings_title">Gem containerkonfiguration?</string>
@@ -177,6 +176,7 @@
     <string name="toggle_fullscreen">Skift fuldskærm</string>
     <string name="toggle_orientation">Skift orientering</string>
     <string name="task_manager">Jobliste</string>
+    <string name="tools_wine_processes_running_hint">%1$d kører, tryk/klik på en proces for at lukke den</string>
     <string name="magnifier">Forstørrelsesglas</string>
     <string name="logs">Logfiler</string>
     <string name="exit_game">Afslut</string>
@@ -216,6 +216,8 @@
     <string name="screen_effects_toon_description">Tilføjer mørke konturer for et cel-shadet udseende.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Udglatter takkede kanter med en let efterbehandlet anti-aliasing-effekt.</string>
+    <string name="screen_effects_vivid">Vivid</string>
+    <string name="screen_effects_vivid_description">Tilføjer bloom og øget kontrast for et mere slagkraftigt billede.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Tilføjer scanlines og let kromatisk aberration.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -226,6 +228,11 @@
     <string name="quick_menu_tab_controller">Controller</string>
     <string name="performance_hud">Ydelses-HUD</string>
     <string name="performance_hud_description">Vis eller skjul overlayet i spillet.</string>
+    <string name="performance_hud_fps_limiter">FPS-begrænser</string>
+    <string name="performance_hud_fps_limiter_description">Begrænser billedhastigheden i spillet. Maks.: %1$d Hz.</string>
+    <string name="performance_hud_fps_limiter_target">Mål-FPS</string>
+    <string name="performance_hud_fps_limiter_off">Ubegrænset</string>
+    <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
     <string name="performance_hud_presets">Forudindstillinger</string>
     <string name="performance_hud_presets_description">Skift hurtigt mellem almindelige HUD-layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -559,6 +566,31 @@
     <string name="gesture_zoom_page_up_down">Side op/ned</string>
     <string name="gesture_action_label">Handling</string>
     <string name="gesture_delay_label">Forsinkelse</string>
+    <string name="gesture_section_single_finger">En finger</string>
+    <string name="gesture_section_two_finger">To fingre</string>
+    <string name="gesture_section_three_finger">Tre fingre</string>
+    <string name="gesture_section_other">Andet</string>
+    <string name="gesture_pan_left_click_drag">Træk med venstreklik</string>
+    <string name="gesture_pan_right_click_drag">Træk med højreklik</string>
+    <string name="gesture_action_show_keyboard">Vis tastatur</string>
+    <string name="gesture_header_special">Særlige</string>
+    <string name="gesture_header_mouse">Mus</string>
+    <string name="gesture_header_common_game">Almindelige spiltaster</string>
+    <string name="gesture_header_letters">Bogstaver A-Z</string>
+    <string name="gesture_header_numbers">Tal 0-9</string>
+    <string name="gesture_header_function_keys">Funktionstaster</string>
+    <string name="gesture_two_finger_hold">Hold med to fingre</string>
+    <string name="gesture_two_finger_hold_delay">Forsinkelse for hold med to fingre (ms)</string>
+    <string name="gesture_three_finger_tap">Tryk med tre fingre</string>
+    <string name="gesture_three_finger_drag">Træk med tre fingre</string>
+    <string name="gesture_three_finger_hold">Hold med tre fingre</string>
+    <string name="gesture_three_finger_hold_delay">Forsinkelse for hold med tre fingre (ms)</string>
+    <string name="gesture_threshold">Gestus-tærskel (px)</string>
+    <string name="gesture_threshold_subtitle">Bevægelse, der kræves for at låse gestustypen (lavere = mere responsiv)</string>
+    <string name="gesture_show_click_highlight">Vis klikfremhævning</string>
+    <string name="gesture_show_click_highlight_subtitle">Vis en cirkel ved trykplacering</string>
+    <string name="gesture_show_debug_overlay">Vis fejlfindings-overlay for gestus</string>
+    <string name="gesture_show_debug_overlay_subtitle">Vis midlertidige gestusetiketter øverst i midten</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Indstillinger for dynamiske joysticks</string>
@@ -715,6 +747,8 @@
     <string name="settings_info_libraries_subtitle">Se hvilke teknologier der gør GameNative mulig</string>
     <string name="settings_info_privacy_title">Privatlivspolitik</string>
     <string name="settings_info_privacy_subtitle">Åbner et link til GameNatives privatlivspolitik</string>
+    <string name="settings_info_usage_analytics_title">Brugsanalyse</string>
+    <string name="settings_info_usage_analytics_subtitle">Vi sporer aldrig personlige oplysninger. Deaktivering stopper ikke-essentiel analyse, men grundlæggende spilydelsesdata indsamles stadig som en berettiget interesse for at forbedre kompatibilitet.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Grænseflade</string>
@@ -722,6 +756,10 @@
     <string name="settings_interface_external_links_subtitle">Links åbnes med din primære webbrowser</string>
     <string name="settings_interface_hide_statusbar_title">Skjul statuslinje når ikke i spillet</string>
     <string name="settings_interface_hide_statusbar_subtitle">Skjul Android-statuslinje i spilliste, indstillinger osv. Appen genstarter når den ændres.</string>
+    <string name="settings_interface_warn_before_exit_title">Advar før afslutning</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Kræver dobbelt tilbagetryk for at afslutte — første tryk viser en advarsel</string>
+    <string name="settings_interface_show_gamepad_hints_title">Vis controller-tip</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Viser bjælken med controller-knaptip nederst på skærmen</string>
     <string name="settings_interface_icon_style">Ikonstil</string>
     <string name="settings_interface_wifi_only_title">Download kun via Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Forhindrer downloads på mobildata</string>
@@ -792,9 +830,11 @@
     <string name="library_export_cancelled">Eksport annulleret</string>
     <string name="library_shortcut_created">Genvej oprettet</string>
     <string name="library_failed_to_create_shortcut">Kunne ikke oprette genvej: %s</string>
+    <string name="library_cloud_sync_starting">Starter synkronisering af cloud-gemmer…</string>
     <string name="library_cloud_sync_success">Sky-synkronisering fuldført</string>
     <string name="library_cloud_sync_up_to_date">Gemfiler er allerede opdaterede</string>
-    <string name="library_cloud_sync_failed">Sky-synkronisering fejlede: %s</string>
+    <string name="library_cloud_sync_failed">Sky-synkronisering fejlede</string>
+    <string name="library_cloud_sync_error">Fejl ved synkronisering af cloud-gemmer: %1$s</string>
 
     <!-- TODO: Manual review - LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Internet påkrævet for installation</string>
@@ -834,6 +874,7 @@
     <string name="main_app_running_message">Du er logget ind på en anden enhed og spiller allerede %s. \nDu kan stadig spille dette spil, men det vil afbryde den anden session fra Steam.</string>
     <string name="main_app_running_other_device">Du er logget ind på en anden enhed (%1$s) og spiller allerede %2$s (%3$s), og den gemfil er ikke i skyen endnu. \nDu kan stadig spille dette spil, men det vil afbryde den anden session fra Steam og kan skabe en gemfilkonflikt når sessionsframgangen synkroniseres</string>
     <string name="main_play_anyway">Spil alligevel</string>
+    <string name="main_app_running_unknown_game">et spil</string>
 
     <!-- TODO: Manual review - PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Gemfilkonflikt</string>
@@ -920,11 +961,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">Konfiguration anvendt med succes</string>
+    <string name="best_config_missing_components_title">Konfiguration ikke anvendt</string>
+    <string name="best_config_missing_components_message">Følgende nødvendige komponenter er ikke tilgængelige på denne enhed:\n\n%1$s\n\nInstaller de manglende komponenter og prøv igen.</string>
     <string name="best_config_known_config_invalid">Kendt konfiguration ugyldig</string>
     <string name="best_config_no_config_available">Ingen bedste konfiguration tilgængelig for dette spil</string>
     <string name="best_config_fetch_failed">Kunne ikke hente konfiguration. Kontrollér din netværksforbindelse.</string>
+    <string name="best_config_apply_anyway">Anvend alligevel</string>
+    <string name="best_config_applied_with_defaults">Konfiguration anvendt, manglende komponenter erstattet med standardværdier</string>
     <string name="best_config_apply_failed">Kunne ikke anvende konfiguration: %s</string>
-    <string name="best_config_missing_content">%s mangler</string>
     <string name="import_config">Importér konfiguration</string>
     <string name="export_config">Eksportér konfiguration</string>
 
@@ -1076,9 +1120,6 @@
     <string name="steam_verify_files_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før verificering, da de ellers kan blive overskrevet.</string>
     <string name="steam_update_title">Opdatering</string>
     <string name="steam_update_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før opdatering, da de ellers kan blive overskrevet.</string>
-    <string name="steam_cloud_sync_success">Sky-synkronisering fuldført</string>
-    <string name="steam_cloud_sync_up_to_date">Gemfiler er allerede opdaterede</string>
-    <string name="steam_cloud_sync_failed">Sky-synkronisering fejlede: %s</string>
     <string name="steam_storage_permission_required">Lagertilladelse påkrævet</string>
     <string name="steam_container_reset_success">Container nulstillet til standard</string>
     <string name="steam_imagefs_installed">ImageFS installeret. Prøv at redigere container igen.</string>
@@ -1129,6 +1170,7 @@
     <!-- Settings additions -->
     <string name="settings_save_logcat_subtitle">Gemmer et snapshot af logcat kun for denne apps PID</string>
     <string name="settings_save_logcat_title">Gem logcat</string>
+    <string name="settings_achievement_show_notification">Vis præstationsmeddelelser</string>
 
     <!-- Misc additions -->
     <string name="calculating_space_requirements">Beregner pladskrav...</string>
@@ -1231,4 +1273,41 @@
     <string name="workshop_processing">Behandler mods…</string>
     <string name="workshop_failed_count">%1$d workshop-mod(s) kunne ikke opdateres</string>
     <string name="workshop_download_failed">Download mislykkedes</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Anbefalet</string>
+    <string name="recommended_buy_button">Se spillet</string>
+    <string name="recommended_support_message">Køb via dette link hjælper med at støtte udviklingen af GameNative.</string>
+    <string name="recommended_about_heading">Om dette spil</string>
+    <string name="recommended_review_count">Baseret på %1$s anmeldelser</string>
+    <string name="review_overwhelmingly_positive">Overvældende positiv</string>
+    <string name="review_very_positive">Meget positiv</string>
+    <string name="review_mostly_positive">Overvejende positiv</string>
+    <string name="review_mixed">Blandet</string>
+    <string name="review_mostly_negative">Overvejende negativ</string>
+    <string name="review_overwhelmingly_negative">Overvældende negativ</string>
+    <string name="settings_interface_show_recommendations_title">Vis spilanbefalinger</string>
+    <string name="settings_interface_show_recommendations_subtitle">Vis udvalgte indie-spil i dit bibliotek. At holde dette aktiveret hjælper med at støtte indie-udviklere og GameNative.</string>
+     <string name="steam_save_export_success">Gemte filer eksporteret</string>
+     <string name="steam_save_export_no_saves_found">Ingen gemte filer fundet</string>
+     <string name="steam_save_export_failed">Kunne ikke eksportere gemte filer: %s</string>
+     <string name="steam_save_import_success">Gemte filer importeret</string>
+     <string name="steam_save_import_failed">Kunne ikke importere gemte filer: %s</string>
+    <string name="option_import_saves">Importér gemte spil</string>
+    <string name="option_export_saves">Eksportér gemte spil</string>
+
+    <!-- LSFG-VK frame generation -->
+    <string name="lsfg_tab_title">LSFG-VK</string>
+    <string name="lsfg_description">Generer mellemliggende billeder ved hjælp af Lossless Scalings Vulkan-lag. Virkede kun på Adreno 6xx og nyere, så vidt vides.</string>
+    <string name="lsfg_enable">Aktivér LSFG-VK billedgenerering</string>
+    <string name="lsfg_multiplier">Billedmultiplikator</string>
+    <string name="lsfg_flow_scale">Flow-skala</string>
+    <string name="lsfg_performance_mode">Ydelsestilstand</string>
+    <string name="lsfg_not_supported">Billedgenerering kræver en Bionic-container</string>
+    <string name="lsfg_install_prompt">Lossless Scaling er ikke installeret. Tryk for at installere. Virkede kun på Adreno 6xx og nyere, så vidt vides.</string>
+    <string name="lsfg_not_in_library">Lossless Scaling er ikke i dit Steam-bibliotek</string>
+    <string name="lsfg_install_title">Installer Lossless Scaling?</string>
+    <string name="lsfg_install_message">Dette downloader Lossless Scaling fra Steam for at aktivere billedgenerering.</string>
+    <string name="lsfg_installing">Downloader Lossless Scaling…</string>
+    <string name="lsfg_performance_mode_desc">Reducerer kvalitet for højere gennemstrømning</string>
 </resources>

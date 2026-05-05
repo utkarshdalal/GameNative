@@ -19,6 +19,7 @@ class DepotFilteringTest {
         osArch: OSArch = OSArch.Arch64,
         dlcAppId: Int = SteamService.INVALID_APP_ID,
         language: String = "",
+        systemDefined: Boolean = false,
         steamDeck: Boolean = false,
     ) = DepotInfo(
         depotId = depotId,
@@ -30,6 +31,7 @@ class DepotFilteringTest {
         manifests = manifests,
         encryptedManifests = encryptedManifests,
         language = language,
+        systemDefined = systemDefined,
         steamDeck = steamDeck,
     )
 
@@ -119,6 +121,18 @@ class DepotFilteringTest {
         assertTrue(SteamService.filterForDownloadableDepots(d, true, false, "english", null, null))
     }
 
+    @Test
+    fun `systemDefined depot bypasses license check`() {
+        val d = depot(depotId = 551, manifests = mapOf("public" to manifest()), systemDefined = true)
+        assertTrue(SteamService.filterForDownloadableDepots(d, true, false, "english", null, setOf(552, 553)))
+    }
+
+    @Test
+    fun `non-systemDefined depot still rejected when unlicensed`() {
+        val d = depot(depotId = 100, manifests = mapOf("public" to manifest()), systemDefined = false)
+        assertFalse(SteamService.filterForDownloadableDepots(d, true, false, "english", null, setOf(200, 300)))
+    }
+
     // -- Steam Deck depot filtering --
 
     @Test
@@ -137,5 +151,47 @@ class DepotFilteringTest {
     fun `non-deck depot passes regardless of preferNonDeckWindows`() {
         val d = depot(manifests = mapOf("public" to manifest()), steamDeck = false)
         assertTrue(SteamService.filterForDownloadableDepots(d, true, true, "english", null))
+    }
+
+    // -- language filter fallback (publisher-mistagged single-language DLCs) --
+
+    @Test
+    fun `non-matching language depot rejected when group has preferred-language alternative`() {
+        val d = depot(
+            manifests = mapOf("public" to manifest()),
+            dlcAppId = 42,
+            language = "english",
+        )
+        assertFalse(
+            SteamService.filterForDownloadableDepots(
+                d, true, false, "french", null, null, false,
+                dlcGroupsWithPreferredLanguage = setOf(42),
+            ),
+        )
+    }
+
+    @Test
+    fun `non-matching language depot accepted when group has no preferred-language alternative`() {
+        val d = depot(
+            manifests = mapOf("public" to manifest()),
+            dlcAppId = 42,
+            language = "english",
+        )
+        assertTrue(
+            SteamService.filterForDownloadableDepots(
+                d, true, false, "french", null, null, false,
+                dlcGroupsWithPreferredLanguage = emptySet(),
+            ),
+        )
+    }
+
+    @Test
+    fun `null dlcGroupsWithPreferredLanguage preserves strict legacy behavior`() {
+        val d = depot(
+            manifests = mapOf("public" to manifest()),
+            dlcAppId = 42,
+            language = "english",
+        )
+        assertFalse(SteamService.filterForDownloadableDepots(d, true, false, "french", null))
     }
 }

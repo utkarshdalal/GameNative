@@ -9,6 +9,32 @@ Thanks for your interest in contributing. We welcome pull requests, bug reports,
 3. See the **Building** section in [README](README.md) for setup instructions.
 4. Open a pull request with a clear description and attach a short recording/GIF of the change.
 
+## Scope of Contributions
+
+GameNative is currently focused on:
+- Core functionality
+- Stability and performance
+- Compatibility improvements
+
+Out of scope (unless explicitly approved beforehand):
+- New features
+- UI/UX changes
+- Cosmetic-only changes
+- Preference-driven behavior changes
+
+## Process
+
+Before opening a PR:
+1. Discuss the change in #code-changes
+2. Wait for it to be acknowledged/approved
+3. Then open a PR
+
+PRs that are not discussed beforehand or are out of scope may be closed without review.
+
+## Reviews
+
+PRs are reviewed once a week. Please be patient.
+
 ## Reporting Issues
 
 Please report bugs and request support through our [Discord server](https://discord.gg/2hKv4VfZfE). GitHub issues are automatically closed.
@@ -37,3 +63,12 @@ Grant of Copyright License: Subject to these terms, you hereby grant to the proj
 You represent that you are legally entitled to grant the above license and that your contributions are your original creation (or that you otherwise have sufficient rights to submit them).
 
 </details>
+
+### Maintainer Authority
+
+Maintainers have final discretion over:
+- Project direction and priorities
+- What contributions are accepted or rejected
+- When and how contributions are reviewed and merged
+
+Not all contributions will be accepted, and decisions may change as the project evolves.

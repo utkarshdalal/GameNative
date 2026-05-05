@@ -27,11 +27,9 @@
     <string name="base_app_reset_container_confirm">Reimposta</string>
     <string name="steam_verify_files_title">Verifica File</string>
     <string name="steam_verify_files_message">Assicurati che i tuoi salvataggi siano caricati sul cloud o sottoposti a backup prima della verifica, altrimenti potrebbero essere sovrascritti.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Download dei file di salvataggio %1$d/%2$d</string>
     <string name="steam_update_title">Aggiorna</string>
     <string name="steam_update_message">Assicurati che i tuoi salvataggi siano caricati sul cloud o sottoposti a backup prima dell\'aggiornamento, altrimenti potrebbero essere sovrascritti.</string>
-    <string name="steam_cloud_sync_success">Sincronizzazione cloud completata con successo</string>
-    <string name="steam_cloud_sync_up_to_date">I file di salvataggio sono già aggiornati</string>
-    <string name="steam_cloud_sync_failed">Sincronizzazione cloud fallita: %s</string>
     <string name="steam_not_logged_in">Devi aver effettuato l\'accesso a Steam per utilizzare questa funzione</string>
     <string name="steam_storage_permission_required">Permesso di archiviazione richiesto</string>
     <string name="steam_container_reset_success">Container reimpostato ai valori predefiniti</string>
@@ -59,10 +57,6 @@
     <string name="steam_never">Mai</string>
     <string name="epic_cancel_download_message">Sei sicuro di voler annullare il download dell\'app?</string>
     <string name="epic_delete_download_message">Eliminare tutti i dati scaricati per questo gioco?</string>
-    <string name="epic_cloud_sync_starting">Avvio sincronizzazione salvataggi cloud…</string>
-    <string name="epic_cloud_sync_success">Salvataggi cloud sincronizzati con successo</string>
-    <string name="epic_cloud_sync_failed">Sincronizzazione salvataggi cloud non riuscita</string>
-    <string name="epic_cloud_sync_error">Errore sincronizzazione salvataggi cloud: %1$s</string>
     <string name="epic_uninstall_failed">Disinstallazione non riuscita: %1$s</string>
     <string name="epic_uninstall_error">Errore di disinstallazione: %1$s</string>
     <string name="steam_continue">Continua</string>
@@ -94,6 +88,7 @@
     <string name="confirm_delete">Conferma Eliminazione</string>
     <string name="destination_library">Libreria</string>
     <string name="destination_downloads">Download e archiviazione</string>
+    <string name="downloads_section_title">Download</string>
 
     <string name="downloads_empty">Nessun download attivo</string>
     <string name="downloads_overview_subtitle">Monitora download attivi, in pausa e riprendibili</string>
@@ -231,6 +226,7 @@
     <string name="intent_launch_service_pending">Il gioco verrà avviato quando il servizio è pronto</string>
     <string name="intent_launch_steam_login_failed">Accesso a Steam non riuscito — avvio del gioco annullato</string>
     <string name="intent_launch_service_timeout">Avvio del servizio di gioco non riuscito — avvio del gioco annullato</string>
+    <string name="back_press_exit_warning">Premi indietro di nuovo per uscire</string>
     <string name="game_executable_not_found_title">Impossibile avviare</string>
     <string name="game_executable_not_found">L\'eseguibile non è stato selezionato automaticamente. Imposta il percorso dell\'eseguibile nelle impostazioni del Container.</string>
     <string name="save_container_settings_title">Salvare Configurazione Container?</string>
@@ -253,6 +249,7 @@
     <string name="toggle_fullscreen">Attiva/Disattiva Schermo Intero</string>
     <string name="toggle_orientation">Cambia Orientamento</string>
     <string name="task_manager">Gestione Attività</string>
+    <string name="tools_wine_processes_running_hint">%1$d in esecuzione, tocca/fai clic su un processo per chiuderlo</string>
     <string name="magnifier">Lente d\'ingrandimento</string>
     <string name="logs">Log</string>
     <string name="exit_game">Esci</string>
@@ -292,6 +289,8 @@
     <string name="screen_effects_toon_description">Aggiunge contorni scuri per un look cel-shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Smussa i bordi frastagliati con un leggero anti-aliasing in post-processo.</string>
+    <string name="screen_effects_vivid">Vivido</string>
+    <string name="screen_effects_vivid_description">Aggiunge bloom e un aumento del contrasto per una immagine più incisiva.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Aggiunge scanline e una sottile aberrazione cromatica.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -302,6 +301,11 @@
     <string name="quick_menu_tab_controller">Controller</string>
     <string name="performance_hud">HUD prestazioni</string>
     <string name="performance_hud_description">Mostra o nascondi l’overlay di gioco.</string>
+    <string name="performance_hud_fps_limiter">Limitatore FPS</string>
+    <string name="performance_hud_fps_limiter_description">Limita il frame rate in gioco. Max: %1$d Hz.</string>
+    <string name="performance_hud_fps_limiter_target">FPS obiettivo</string>
+    <string name="performance_hud_fps_limiter_off">Illimitato</string>
+    <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
     <string name="performance_hud_presets">Predefiniti</string>
     <string name="performance_hud_presets_description">Passa rapidamente tra layout HUD comuni.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -448,6 +452,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Salva un\'istantanea del logcat solo per il PID di questa app</string>
     <string name="settings_save_logcat_title">Salva logcat</string>
+    <string name="settings_achievement_show_notification">Mostra notifiche dei risultati</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Gestione dei flag sugli opcode CALL/RET<br /><br />
@@ -739,6 +744,31 @@
     <string name="gesture_zoom_page_up_down">Pag su/giù</string>
     <string name="gesture_action_label">Azione</string>
     <string name="gesture_delay_label">Ritardo</string>
+    <string name="gesture_section_single_finger">Un dito</string>
+    <string name="gesture_section_two_finger">Due dita</string>
+    <string name="gesture_section_three_finger">Tre dita</string>
+    <string name="gesture_section_other">Altro</string>
+    <string name="gesture_pan_left_click_drag">Trascina con clic sinistro</string>
+    <string name="gesture_pan_right_click_drag">Trascina con clic destro</string>
+    <string name="gesture_action_show_keyboard">Mostra tastiera</string>
+    <string name="gesture_header_special">Speciale</string>
+    <string name="gesture_header_mouse">Mouse</string>
+    <string name="gesture_header_common_game">Tasti di gioco comuni</string>
+    <string name="gesture_header_letters">Lettere A-Z</string>
+    <string name="gesture_header_numbers">Numeri 0-9</string>
+    <string name="gesture_header_function_keys">Tasti funzione</string>
+    <string name="gesture_two_finger_hold">Pressione con due dita</string>
+    <string name="gesture_two_finger_hold_delay">Ritardo pressione con due dita (ms)</string>
+    <string name="gesture_three_finger_tap">Tocco con tre dita</string>
+    <string name="gesture_three_finger_drag">Trascinamento con tre dita</string>
+    <string name="gesture_three_finger_hold">Pressione con tre dita</string>
+    <string name="gesture_three_finger_hold_delay">Ritardo pressione con tre dita (ms)</string>
+    <string name="gesture_threshold">Soglia gesto (px)</string>
+    <string name="gesture_threshold_subtitle">Movimento necessario per bloccare il tipo di gesto (più basso = più reattivo)</string>
+    <string name="gesture_show_click_highlight">Mostra evidenziazione clic</string>
+    <string name="gesture_show_click_highlight_subtitle">Mostra un cerchio nella posizione del tocco</string>
+    <string name="gesture_show_debug_overlay">Mostra overlay debug gesture</string>
+    <string name="gesture_show_debug_overlay_subtitle">Mostra etichette temporanee dei gesti in alto al centro</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Impostazioni joystick dinamici</string>
@@ -889,6 +919,8 @@
     <string name="settings_info_libraries_subtitle">Vedi quali tecnologie rendono possibile GameNative</string>
     <string name="settings_info_privacy_title">Informativa sulla Privacy</string>
     <string name="settings_info_privacy_subtitle">Apre un link all\'informativa sulla privacy di GameNative</string>
+    <string name="settings_info_usage_analytics_title">Analisi di utilizzo</string>
+    <string name="settings_info_usage_analytics_subtitle">Non raccogliamo mai informazioni personali. Disabilitando questa opzione si interrompono le analisi non essenziali, tuttavia i dati sulle prestazioni di gioco vengono comunque raccolti come interesse legittimo per migliorare la compatibilità.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfaccia</string>
@@ -896,6 +928,10 @@
     <string name="settings_interface_external_links_subtitle">I link si aprono con il tuo browser web principale</string>
     <string name="settings_interface_hide_statusbar_title">Nascondi barra di stato quando non in gioco</string>
     <string name="settings_interface_hide_statusbar_subtitle">Nascondi barra di stato Android nell\'elenco giochi, impostazioni, ecc. L\'app si riavvierà se modificato.</string>
+    <string name="settings_interface_warn_before_exit_title">Avvisa prima di uscire</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Richiede doppia pressione di indietro per uscire — la prima mostra un avviso</string>
+    <string name="settings_interface_show_gamepad_hints_title">Mostra suggerimenti del controller</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Mostra la barra dei suggerimenti dei pulsanti del controller nella parte inferiore dello schermo</string>
     <string name="settings_interface_icon_style">Stile icona</string>
     <string name="settings_interface_wifi_only_title">Scarica solo tramite Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Impedisci download su rete cellulare</string>
@@ -964,9 +1000,11 @@
     <string name="library_export_cancelled">Esportazione annullata</string>
     <string name="library_shortcut_created">Scorciatoia creata</string>
     <string name="library_failed_to_create_shortcut">Impossibile creare scorciatoia: %s</string>
+    <string name="library_cloud_sync_starting">Avvio sincronizzazione salvataggi cloud…</string>
     <string name="library_cloud_sync_success">Sincronizzazione cloud completata con successo</string>
     <string name="library_cloud_sync_up_to_date">I file di salvataggio sono già aggiornati</string>
-    <string name="library_cloud_sync_failed">Sincronizzazione cloud fallita: %s</string>
+    <string name="library_cloud_sync_failed">Sincronizzazione cloud fallita</string>
+    <string name="library_cloud_sync_error">Errore sincronizzazione salvataggi cloud: %1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Serve internet per installare</string>
@@ -1006,6 +1044,7 @@
     <string name="main_app_running_message">Sei connesso su un altro dispositivo che sta già giocando a %s. \nPuoi comunque giocare a questo gioco, ma ciò disconnetterà l\'altra sessione da Steam.</string>
     <string name="main_app_running_other_device">Sei connesso su un altro dispositivo (%1$s) che sta già giocando a %2$s (%3$s), e quel salvataggio non è ancora nel cloud. \nPuoi comunque giocare a questo gioco, ma ciò disconnetterà l\'altra sessione da Steam e potrebbe creare un conflitto di salvataggio quando il progresso di quella sessione verrà sincronizzato</string>
     <string name="main_play_anyway">Gioca comunque</string>
+    <string name="main_app_running_unknown_game">un gioco</string>
 
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Conflitto Salvataggio</string>
@@ -1092,11 +1131,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">Config applicata con successo</string>
+    <string name="best_config_missing_components_title">Configurazione non applicata</string>
+    <string name="best_config_missing_components_message">I seguenti componenti necessari non sono disponibili su questo dispositivo:\n\n%1$s\n\nInstalla i componenti mancanti e riprova.</string>
     <string name="best_config_known_config_invalid">Config nota non valida</string>
     <string name="best_config_no_config_available">Nessuna miglior config disponibile per questo gioco</string>
     <string name="best_config_fetch_failed">Impossibile recuperare la configurazione. Controlla la connessione di rete.</string>
+    <string name="best_config_apply_anyway">Applica comunque</string>
+    <string name="best_config_applied_with_defaults">Configurazione applicata, componenti mancanti sostituiti con valori predefiniti</string>
     <string name="best_config_apply_failed">Impossibile applicare config: %s</string>
-    <string name="best_config_missing_content">%s mancante</string>
     <string name="import_config">Importa configurazione</string>
     <string name="export_config">Esporta configurazione</string>
     <string name="library_app_type">Tipo App</string>
@@ -1357,4 +1399,41 @@
     <string name="workshop_processing">Elaborazione mod…</string>
     <string name="workshop_failed_count">%1$d mod del Workshop non aggiornati</string>
     <string name="workshop_download_failed">Download non riuscito</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Consigliato</string>
+    <string name="recommended_buy_button">Scopri il gioco</string>
+    <string name="recommended_support_message">Acquistare tramite questo link aiuta a sostenere lo sviluppo di GameNative.</string>
+    <string name="recommended_about_heading">Informazioni sul gioco</string>
+    <string name="recommended_review_count">Basato su %1$s recensioni</string>
+    <string name="review_overwhelmingly_positive">Estremamente positivo</string>
+    <string name="review_very_positive">Molto positivo</string>
+    <string name="review_mostly_positive">Perlopiù positivo</string>
+    <string name="review_mixed">Nella media</string>
+    <string name="review_mostly_negative">Perlopiù negativo</string>
+    <string name="review_overwhelmingly_negative">Estremamente negativo</string>
+    <string name="settings_interface_show_recommendations_title">Mostra consigli di gioco</string>
+    <string name="settings_interface_show_recommendations_subtitle">Mostra giochi indie selezionati nella tua libreria. Mantenere attiva questa opzione aiuta a sostenere gli sviluppatori indie e GameNative.</string>
+     <string name="steam_save_export_success">Salvataggi esportati</string>
+     <string name="steam_save_export_no_saves_found">Nessun salvataggio trovato</string>
+     <string name="steam_save_export_failed">Esportazione salvataggi fallita: %s</string>
+     <string name="steam_save_import_success">Salvataggi importati</string>
+     <string name="steam_save_import_failed">Importazione salvataggi fallita: %s</string>
+    <string name="option_import_saves">Importa salvataggi</string>
+    <string name="option_export_saves">Esporta salvataggi</string>
+
+    <!-- LSFG-VK frame generation -->
+    <string name="lsfg_tab_title">LSFG-VK</string>
+    <string name="lsfg_description">Genera fotogrammi intermedi usando il layer Vulkan di Lossless Scaling. Funziona solo su Adreno 6xx e successivi, a quanto se ne sa.</string>
+    <string name="lsfg_enable">Abilita generazione fotogrammi LSFG-VK</string>
+    <string name="lsfg_multiplier">Moltiplicatore fotogrammi</string>
+    <string name="lsfg_flow_scale">Scala di flusso</string>
+    <string name="lsfg_performance_mode">Modalità prestazioni</string>
+    <string name="lsfg_not_supported">La generazione di fotogrammi richiede un contenitore Bionic</string>
+    <string name="lsfg_install_prompt">Lossless Scaling non installato. Tocca per installare. Funziona solo su Adreno 6xx e successivi, a quanto se ne sa.</string>
+    <string name="lsfg_not_in_library">Lossless Scaling non è nella tua libreria Steam</string>
+    <string name="lsfg_install_title">Installare Lossless Scaling?</string>
+    <string name="lsfg_install_message">Scaricherà Lossless Scaling da Steam per abilitare la generazione di fotogrammi.</string>
+    <string name="lsfg_installing">Download di Lossless Scaling in corso…</string>
+    <string name="lsfg_performance_mode_desc">Riduce la qualità per una maggiore velocità</string>
 </resources>
