@@ -182,7 +182,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         // Always pre-create all 4 mem files so controllers can be hot-plugged during gameplay.
         // Unused gamepads just read zeroes (no-op in evshim).
-        final int enabledPlayerCount = WinHandler.MAX_PLAYERS;
+        final int enabledPlayerCount = 1;
         for (int i = 0; i < enabledPlayerCount; i++) {
             String memPath;
             if (i == 0) {
