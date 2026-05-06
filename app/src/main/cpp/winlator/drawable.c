@@ -7,6 +7,10 @@
 #include <android/bitmap.h>
 #include <android/log.h>
 
+#ifdef __ARM_NEON
+#include <arm_neon.h>
+#endif
+
 #define WHITE 0xffffff
 #define BLACK 0x000000
 #define printf(...) __android_log_print(ANDROID_LOG_DEBUG, "System.out", __VA_ARGS__);
@@ -85,8 +89,24 @@ Java_com_winlator_xserver_Drawable_drawBitmap(JNIEnv *env, jclass obj,
     }
 
     int stride = getBitmapBytePad(width);
-    for (int16_t y = 0, x; y < height; y++) {
-        for (x = 0; x < width; x++) *dstDataAddr++ = getBit(srcDataAddr, x) ? WHITE : BLACK;
+    int fullBytes = width >> 3;   // number of complete 8-pixel bytes per row
+    int remainder = width & 7;    // leftover pixels in the last partial byte  */
+
+    for (int16_t y = 0; y < height; y++) {
+        // Unpack all 8 pixels from full byte
+        for (int b = 0; b < fullBytes; b++) {
+            uint8_t byte = srcDataAddr[b];
+            for (int bit = 0; bit < 8; bit++) {
+                *dstDataAddr++ = (byte >> bit) & 1 ? WHITE : BLACK;
+            }
+        }
+        // Handle remainders and grab only first 4 bits (X11 pads out last 4)
+        if (remainder) {
+            uint8_t byte = srcDataAddr[fullBytes];
+            for (int bit = 0; bit < remainder; bit++) {
+                *dstDataAddr++ = (byte >> bit) & 1 ? WHITE : BLACK;
+            }
+        }
         srcDataAddr += stride;
     }
 }
@@ -137,6 +157,21 @@ Java_com_winlator_xserver_Drawable_copyAreaOp(JNIEnv *env, jclass obj, jshort sr
         return;
     }
 
+    // Fast path: GCF_COPY is plain pixel blitting — copy only RGB bytes to match
+    if (gcFunction == GCF_COPY) {
+        for (int16_t y = 0; y < height; y++) {
+            for (int16_t x = 0; x < width; x++) {
+                int i = (x + srcX + (y + srcY) * srcStride) * 4;
+                int j = (x + dstX + (y + dstY) * dstStride) * 4;
+                dstDataAddr[j+0] = srcDataAddr[i+0];
+                dstDataAddr[j+1] = srcDataAddr[i+1];
+                dstDataAddr[j+2] = srcDataAddr[i+2];
+                /* byte 3 (alpha) intentionally not copied */
+            }
+        }
+        return;
+    }
+
     for (int16_t y = 0; y < height; y++) {
         for (int16_t x = 0; x < width; x++) {
             int i = (x + srcX + (y + srcY) * srcStride) * 4;
@@ -168,18 +203,26 @@ Java_com_winlator_xserver_Drawable_fillRect(JNIEnv *env, jclass obj, jshort x, j
     unpackColor(color, rgba);
 
     int rowSize = width * 4;
-    uint8_t *row = malloc(rowSize);
-    if (!row) {
-        printf("Error: Failed to allocate memory for row\n");
-        return;
+    uint8_t stackRow[4096 * 4];
+    uint8_t *row = stackRow;
+    bool heapRow = false;
+    if (width > 4096) {
+        row = malloc(rowSize);
+        if (!row) {
+            printf("Error: Failed to allocate memory for row\n");
+            return;
+        }
+        heapRow = true;
     }
 
-    for (int i = 0; i < rowSize; i += 4) memcpy(row + i, rgba, 4);
+    uint32_t color32 = ((uint32_t)rgba[3] << 24) | ((uint32_t)rgba[2] << 16) | ((uint32_t)rgba[1] << 8) | rgba[0];
+    uint32_t *row32 = (uint32_t *)row;
+    for (int i = 0; i < width; i++) row32[i] = color32;
     for (int16_t i = 0; i < height; i++) {
         memcpy(dataAddr + (x + (i + y) * stride) * 4, row, rowSize);
     }
 
-    free(row);
+    if (heapRow) free(row);
 }
 
 JNIEXPORT void JNICALL
@@ -203,19 +246,37 @@ Java_com_winlator_xserver_Drawable_drawLine(JNIEnv *env, jclass obj, jshort x0, 
     unpackColor(color, rgba);
 
     int rowSize = lineWidth * 4;
-    uint8_t *row = malloc(rowSize);
-    if (!row) {
-        printf("Error: Failed to allocate memory for row\n");
-        return;
+    uint8_t stackRow[4096 * 4];
+    uint8_t *row = stackRow;
+    bool heapRow = false;
+    if (lineWidth > 4096) {
+        row = malloc(rowSize);
+        if (!row) {
+            printf("Error: Failed to allocate memory for row\n");
+            return;
+        }
+        heapRow = true;
     }
 
-    for (int i = 0; i < rowSize; i += 4) {
-        memcpy(row + i, rgba, 4);
-    }
+    uint32_t color32 = ((uint32_t)rgba[3] << 24) | ((uint32_t)rgba[2] << 16) | ((uint32_t)rgba[1] << 8) | rgba[0];
+    uint32_t *row32 = (uint32_t *)row;
+    for (int i = 0; i < lineWidth; i++) row32[i] = color32;
+
+    /* Determine dominant direction once before the loop — not per-step,
+     * since x0/y0 change each iteration and would flip the branch mid-line. */
+    bool isHorizontal = abs(x1 - x0) >= abs(y1 - y0);
 
     while (true) {
-        for (int16_t i = 0; i < lineWidth; i++) {
-            memcpy(dataAddr + (x0 + (i + y0) * stride) * 4, row, rowSize);
+        if (isHorizontal) {
+            // Horizontal-ish: write a full row of pixels at once
+            for (int16_t i = 0; i < lineWidth; i++) {
+                memcpy(dataAddr + (x0 + (i + y0) * stride) * 4, row, rowSize);
+            }
+        } else {
+            // Vertical-ish: write individual pixels
+            for (int16_t i = 0; i < lineWidth; i++) {
+                ((uint32_t *)dataAddr)[(x0 + i) + y0 * stride] = color32;
+            }
         }
         if (x0 == x1 && y0 == y1) break;
 
@@ -230,7 +291,7 @@ Java_com_winlator_xserver_Drawable_drawLine(JNIEnv *env, jclass obj, jshort x0, 
         }
     }
 
-    free(row);
+    if (heapRow) free(row);
 }
 
 JNIEXPORT void JNICALL
@@ -240,22 +301,47 @@ Java_com_winlator_xserver_Drawable_drawAlphaMaskedBitmap(JNIEnv *env, jclass obj
                                                          jbyte backGreen, jbyte backBlue,
                                                          jobject srcData, jobject maskData,
                                                          jobject dstData) {
-    int *srcDataAddr = (*env)->GetDirectBufferAddress(env, srcData);
-    int *maskDataAddr = (*env)->GetDirectBufferAddress(env, maskData);
-    int *dstDataAddr = (*env)->GetDirectBufferAddress(env, dstData);
+    uint32_t *srcDataAddr  = (*env)->GetDirectBufferAddress(env, srcData);
+    uint32_t *maskDataAddr = (*env)->GetDirectBufferAddress(env, maskData);
+    uint32_t *dstDataAddr  = (*env)->GetDirectBufferAddress(env, dstData);
 
     if (!srcDataAddr || !maskDataAddr || !dstDataAddr) {
         printf("Error: NULL buffer address in drawAlphaMaskedBitmap\n");
         return;
     }
 
-    int foreColor = packColor(foreRed, foreGreen, foreBlue);
-    int backColor = packColor(backRed, backGreen, backBlue);
+    uint32_t foreColor = (uint32_t)packColor(foreRed, foreGreen, foreBlue) | 0xff000000u;
+    uint32_t backColor = (uint32_t)packColor(backRed, backGreen, backBlue) | 0xff000000u;
 
     jlong dstLength = (*env)->GetDirectBufferCapacity(env, dstData) / 4;
-    for (int i = 0; i < dstLength; i++) {
-        dstDataAddr[i] = maskDataAddr[i] == WHITE ? (srcDataAddr[i] == WHITE ? foreColor : backColor) | 0xff000000 : 0x00000000;
+    const uint32_t whiteMask = (uint32_t)WHITE;
+#ifdef __ARM_NEON
+    uint32x4_t vFore  = vdupq_n_u32(foreColor);
+    uint32x4_t vBack  = vdupq_n_u32(backColor);
+    uint32x4_t vWhite = vdupq_n_u32(whiteMask);
+    uint32x4_t vZero  = vdupq_n_u32(0u);
+    jlong i = 0;
+    for (; i + 3 < dstLength; i += 4) {
+        uint32x4_t vMask       = vld1q_u32(maskDataAddr + i);
+        uint32x4_t vSrc        = vld1q_u32(srcDataAddr  + i);
+        uint32x4_t maskIsWhite = vceqq_u32(vMask, vWhite);
+        uint32x4_t srcIsWhite  = vceqq_u32(vSrc,  vWhite);
+        uint32x4_t color       = vbslq_u32(srcIsWhite,  vFore, vBack);
+        uint32x4_t result      = vbslq_u32(maskIsWhite, color,  vZero);
+        vst1q_u32(dstDataAddr + i, result);
     }
+    for (; i < dstLength; i++) {
+        dstDataAddr[i] = maskDataAddr[i] == whiteMask
+            ? (srcDataAddr[i] == whiteMask ? foreColor : backColor)
+            : 0u;
+    }
+#else
+    for (jlong i = 0; i < dstLength; i++) {
+        dstDataAddr[i] = maskDataAddr[i] == whiteMask
+            ? (srcDataAddr[i] == whiteMask ? foreColor : backColor)
+            : 0u;
+    }
+#endif
 }
 
 /* replace the whole JNI body */
@@ -302,12 +388,60 @@ Java_com_winlator_xserver_Pixmap_toBitmap(JNIEnv *env, jclass obj, jobject color
         return;
     }
 
-    for (int i = 0, size = info.width * info.height * 4; i < size; i += 4) {
-        pixels[i+2] = colorDataAddr[i+0];
-        pixels[i+1] = colorDataAddr[i+1];
-        pixels[i+0] = colorDataAddr[i+2];
-        pixels[i+3] = maskDataAddr ? maskDataAddr[i+0] : colorDataAddr[i+3];
+    int size = info.width * info.height;
+    uint8_t *src = (uint8_t *)colorDataAddr;
+
+// Byte-Swapping using ARM NEON in order to rely on a shuffle table
+// to reduce operations since they're deterministic.
+#ifdef __ARM_NEON
+    if (!maskDataAddr) {
+        /* Fast path: no mask — swap R and B channels across 4 pixels at a time.
+         * src layout per pixel: [R, G, B, A]
+         * dst layout per pixel: [B, G, R, A]
+         * vrev32q_u8 reverses the 4 bytes within each 32-bit pixel: RGBA → ABGR,
+         * which maps R→B and B→R with G and A landing in wrong positions.
+         * Instead we use vtbl (byte table lookup) to do an exact per-byte shuffle. */
+        static const uint8_t shuffle[16] = {
+            2, 1, 0, 3,   /* pixel 0: swap bytes 0 and 2 (R↔B), keep 1 (G) and 3 (A) */
+            6, 5, 4, 7,   /* pixel 1 */
+            10, 9, 8, 11, /* pixel 2 */
+            14, 13, 12, 15 /* pixel 3 */
+        };
+        uint8x16_t vShuffle = vld1q_u8(shuffle);
+        int i = 0;
+        for (; i + 3 < size; i += 4) {
+            uint8x16_t vSrc = vld1q_u8(src + i * 4);
+            uint8x16_t vDst = vqtbl1q_u8(vSrc, vShuffle);
+            vst1q_u8(pixels + i * 4, vDst);
+        }
+        /* Scalar cleanup for remaining 0-3 pixels */
+        for (; i < size; i++) {
+            int j = i * 4;
+            pixels[j+0] = src[j+2];
+            pixels[j+1] = src[j+1];
+            pixels[j+2] = src[j+0];
+            pixels[j+3] = src[j+3];
+        }
+    } else {
+        /* Mask path — scalar, same as before */
+        uint8_t *mask = (uint8_t *)maskDataAddr;
+        for (int i = 0; i < size; i++) {
+            int j = i * 4;
+            pixels[j+0] = src[j+2];
+            pixels[j+1] = src[j+1];
+            pixels[j+2] = src[j+0];
+            pixels[j+3] = mask[j];
+        }
     }
+#else
+    for (int i = 0; i < size; i++) {
+        int j = i * 4;
+        pixels[j+0] = src[j+2];
+        pixels[j+1] = src[j+1];
+        pixels[j+2] = src[j+0];
+        pixels[j+3] = maskDataAddr ? ((uint8_t *)maskDataAddr)[j] : src[j+3];
+    }
+#endif
 
     AndroidBitmap_unlockPixels(env, bitmap);
 }
