@@ -3937,7 +3937,12 @@ private fun unpackExecutableFile(
             Timber.i("Install mono command $monoCmd")
             val monoOutput = guestProgramLauncherComponent.execShellCommand(monoCmd)
             output.append(monoOutput)
-            Timber.i("Result of mono command " + output)
+            // Cap log: Mono install produces up to 50 MB of wine debug output.
+            // Show head + tail so both startup noise and any trailing errors are visible.
+            val logSnippet = if (monoOutput.length > 1000) {
+                monoOutput.take(400) + "\n…(${monoOutput.length} chars total)…\n" + monoOutput.takeLast(400)
+            } else monoOutput
+            Timber.i("Result of mono command: %s", logSnippet)
         } catch (e: Exception) {
             Timber.e("Error during mono installation: $e")
         }

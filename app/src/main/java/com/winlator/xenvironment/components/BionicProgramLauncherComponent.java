@@ -50,6 +50,7 @@ import java.io.RandomAccessFile;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import app.gamenative.PluviaApp;
 import app.gamenative.events.AndroidEvent;
@@ -502,22 +503,32 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             FileUtils.chmod(box64File, 0755);
         }
 
-        // Execute the command and capture its output
+        // Execute the command and capture its output.
+        // Use ProcessBuilder with redirectErrorStream(true) — merges stderr into stdout at the
+        // OS level so there is only one pipe to read. A single pipe cannot deadlock regardless
+        // of log volume (no 64 KB pipe-buffer race), so no extra drain threads are needed.
         try {
             Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
-            java.lang.Process process = Runtime.getRuntime().exec(finalCommand, envVars.toStringArray(), workingDir != null ? workingDir : imageFs.getRootDir());
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            ProcessBuilder pb = new ProcessBuilder(ProcessHelper.splitCommand(finalCommand));
+            Map<String, String> env = pb.environment();
+            env.clear();
+            for (String kv : envVars.toStringArray()) {
+                int eq = kv.indexOf('=');
+                if (eq > 0) env.put(kv.substring(0, eq), kv.substring(eq + 1));
+            }
+            pb.directory(workingDir != null ? workingDir : imageFs.getRootDir());
+            pb.redirectErrorStream(true); // stderr merged into stdout — one pipe, zero deadlock risk
 
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
+            java.lang.Process process = pb.start();
+
+            // Read the single merged stream inline; EOF only arrives after the process exits.
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String l;
+                while ((l = r.readLine()) != null) output.append(l).append("\n");
             }
-            if (includeStderr) {
-                while ((line = errorReader.readLine()) != null) {
-                    output.append(line).append("\n");
-                }
-            }
+
+            // Process has already exited (we just read its EOF).
+            // waitFor() reaps the OS process-table entry immediately
             process.waitFor();
         } catch (Exception e) {
             output.append("Error: ").append(e.getMessage());
