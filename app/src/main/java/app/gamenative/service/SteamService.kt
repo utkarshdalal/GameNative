@@ -3687,17 +3687,16 @@ class SteamService : Service(), IChallengeUrlChanged {
             scope.launch { stop() }
         } else if (callback.result == EResult.LoggedInElsewhere) {
             // received when a client runs an app and wants to forcibly close another
-            // client running an app
+            // client running an app. The callback doesn't carry the remote app id, so the
+            // dialog falls back to a generic "another game" label.
             if (PluviaApp.xEnvironment != null) {
                 if (!_isHandlingConflict.getAndSet(true)) {
                     _isPlayingBlocked.value = true
-                    val event = SteamEvent.PlayingBlocked
-                    PluviaApp.events.emit(event)
+                    PluviaApp.events.emit(SteamEvent.PlayingBlocked(remoteAppName = null))
                 }
                 reconnect()
             } else {
-                val event = SteamEvent.ForceCloseApp
-                PluviaApp.events.emit(event)
+                PluviaApp.events.emit(SteamEvent.ForceCloseApp)
                 reconnect()
             }
         } else {
@@ -3706,11 +3705,20 @@ class SteamService : Service(), IChallengeUrlChanged {
     }
 
     private fun onPlayingSessionState(callback: PlayingSessionStateCallback) {
-        Timber.d("onPlayingSessionState called with isPlayingBlocked = " + callback.isPlayingBlocked)
+        Timber.d("onPlayingSessionState: blocked=${callback.isPlayingBlocked} remoteAppId=${callback.playingAppID}")
         _isPlayingBlocked.value = callback.isPlayingBlocked
-        if (callback.isPlayingBlocked && _isHandlingConflict.compareAndSet(false, true)) {
-            val event = SteamEvent.PlayingBlocked
-            PluviaApp.events.emit(event)
+
+        if (!callback.isPlayingBlocked) return
+
+        // Only show the dialog if the remote app is in our local DB. Non-Steam shortcuts get
+        // synthetic IDs we can't kick and have no name for, so let the local launch proceed.
+        val knownApp = callback.playingAppID
+            .takeIf { it != 0 }
+            ?.let { getAppInfoOf(it) }
+            ?: return
+
+        if (_isHandlingConflict.compareAndSet(false, true)) {
+            PluviaApp.events.emit(SteamEvent.PlayingBlocked(remoteAppName = knownApp.name))
         }
     }
 
