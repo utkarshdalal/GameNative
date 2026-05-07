@@ -1030,13 +1030,9 @@ object ContainerUtils {
         } else {
             Timber.w("[ContainerDeletion] No container found for appId=$appId — deletion aborted.")
 
-            // Containers successfully parsed by ContainerManager (config file was readable)
             val loadedIds = manager.containers.map { it.id }
             Timber.w("[ContainerDeletion] Loaded containers (${loadedIds.size}): $loadedIds")
 
-            // Raw filesystem scan — catches directories whose config file was empty/corrupt and
-            // were silently skipped by ContainerManager. These are potential orphans.
-            // Directory layout: <rootDir>/home/xuser-<containerId>
             val homeDir = java.io.File(com.winlator.xenvironment.ImageFs.find(context).rootDir, "home")
             val prefix = "${com.winlator.xenvironment.ImageFs.USER}-"
             val rawDirs = homeDir.listFiles()
@@ -1049,7 +1045,6 @@ object ContainerUtils {
                 Timber.w("[ContainerDeletion] Dirs present on disk but NOT loaded by ContainerManager (corrupt/empty config): $unloadedIds")
             }
 
-            // If there is an orphaned directory for the requested appId, attempt to delete it.
             val orphanDir = java.io.File(homeDir, "$prefix$appId")
             if (orphanDir.exists()) {
                 try {
