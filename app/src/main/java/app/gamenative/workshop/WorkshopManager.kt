@@ -2132,7 +2132,6 @@ object WorkshopManager {
         val isSourceEngine = isSourceEngine(gameRootDir)
         val isRenPy = isRenPyGame(gameRootDir)
         if (isRenPy) {
-            cleanupNestedSteamSettingsWorkshopArtifacts(workshopContentDir)
             cleanupNestedSteamSettingsWorkshopArtifacts(gameRootDir)
         }
 
