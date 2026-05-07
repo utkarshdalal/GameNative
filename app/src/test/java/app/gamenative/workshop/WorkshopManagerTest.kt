@@ -51,7 +51,25 @@ class WorkshopManagerTest {
 
     private fun addContent(itemId: Long, fileName: String = "data.bin") {
         val dir = File(workshopContentDir, itemId.toString()).apply { mkdirs() }
-        File(dir, fileName).writeText("content")
+        val file = File(dir, fileName)
+        file.parentFile?.mkdirs()
+        file.writeText("content")
+    }
+
+    private fun useSteamWorkshopContentDir(appId: Int = 331470) {
+        workshopContentDir = File(
+            tempDir,
+            "Steam/steamapps/workshop/content/$appId",
+        ).apply { mkdirs() }
+    }
+
+    private fun makeRenPyGameRoot(): File {
+        val gameRootDir = File(tempDir, "renpy_game").apply { mkdirs() }
+        File(gameRootDir, "renpy").mkdirs()
+        val gameDir = File(gameRootDir, "game").apply { mkdirs() }
+        File(gameDir, "script.rpyc").writeText("compiled")
+        File(gameRootDir, "steam_api.dll").writeText("dll")
+        return gameRootDir
     }
 
     // ── parseEnabledIds ─────────────────────────────────────────────────
@@ -362,7 +380,53 @@ class WorkshopManagerTest {
         )
     }
 
-    // ── getWorkshopContentDir ───────────────────────────────────────────
+    // Ren'Py Workshop routing
+
+    @Test
+    fun configureSymlinks_renPyUsesModsJsonOnly() {
+        useSteamWorkshopContentDir()
+        addContent(111, "extra_resources/extra_map.rpyc")
+        val gameRootDir = makeRenPyGameRoot()
+        File(gameRootDir, "game/mods").mkdirs()
+        val winePrefix = File(tempDir, "wine").apply { mkdirs() }.absolutePath
+
+        WorkshopManager.configureModSymlinks(
+            gameRootDir = gameRootDir,
+            workshopContentDir = workshopContentDir,
+            items = listOf(makeItem(111)),
+            winePrefix = winePrefix,
+            gameName = "RenPy Game",
+        )
+
+        val settingsDir = File(gameRootDir, "steam_settings")
+        assertTrue(File(settingsDir, "mods.json").isFile)
+        assertFalse(File(settingsDir, "mods").exists())
+        assertFalse(File(gameRootDir, "game/mods/111").exists())
+    }
+
+    @Test
+    fun configureSymlinks_renPyIgnoresManualGameModPath() {
+        useSteamWorkshopContentDir()
+        addContent(111)
+        val gameRootDir = makeRenPyGameRoot()
+        val manualModsDir = File(gameRootDir, "game/mods").apply { mkdirs() }
+        val winePrefix = File(tempDir, "wine").apply { mkdirs() }.absolutePath
+
+        WorkshopManager.configureModSymlinks(
+            gameRootDir = gameRootDir,
+            workshopContentDir = workshopContentDir,
+            items = listOf(makeItem(111)),
+            winePrefix = winePrefix,
+            gameName = "RenPy Game",
+            workshopModPath = manualModsDir.absolutePath,
+        )
+
+        assertTrue(File(gameRootDir, "steam_settings/mods.json").isFile)
+        assertFalse(File(gameRootDir, "steam_settings/mods").exists())
+        assertFalse(File(manualModsDir, "111").exists())
+    }
+
+    // getWorkshopContentDir
 
     @Test
     fun getWorkshopContentDir_buildsCorrectPath() {
