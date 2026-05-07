@@ -358,7 +358,7 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun isValidToDownload(context: Context, libraryItem: LibraryItem): Boolean {
         val appInfo = SteamService.getAppInfoOf(libraryItem.gameId) ?: return false
-        return appInfo.branches.isNotEmpty() && appInfo.depots.isNotEmpty()
+        return appInfo.depots.isNotEmpty()
     }
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
