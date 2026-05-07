@@ -160,12 +160,11 @@ Java_com_winlator_xserver_Drawable_copyAreaOp(JNIEnv *env, jclass obj, jshort sr
     // Fast path: GCF_COPY is plain pixel blitting — copy only RGB bytes to match
     if (gcFunction == GCF_COPY) {
         for (int16_t y = 0; y < height; y++) {
-            for (int16_t x = 0; x < width; x++) {
-                int i = (x + srcX + (y + srcY) * srcStride) * 4;
-                int j = (x + dstX + (y + dstY) * dstStride) * 4;
-                dstDataAddr[j+0] = srcDataAddr[i+0];
-                dstDataAddr[j+1] = srcDataAddr[i+1];
-                dstDataAddr[j+2] = srcDataAddr[i+2];
+            // Hoist row base pointers: eliminates a multiply per pixel in the inner loop
+            uint8_t *s = srcDataAddr + (srcX + (y + srcY) * srcStride) * 4;
+            uint8_t *d = dstDataAddr + (dstX + (y + dstY) * dstStride) * 4;
+            for (int16_t x = 0; x < width; x++, s += 4, d += 4) {
+                d[0] = s[0]; d[1] = s[1]; d[2] = s[2];
                 /* byte 3 (alpha) intentionally not copied */
             }
         }
@@ -173,17 +172,18 @@ Java_com_winlator_xserver_Drawable_copyAreaOp(JNIEnv *env, jclass obj, jshort sr
     }
 
     for (int16_t y = 0; y < height; y++) {
-        for (int16_t x = 0; x < width; x++) {
-            int i = (x + srcX + (y + srcY) * srcStride) * 4;
-            int j = (x + dstX + (y + dstY) * dstStride) * 4;
-            int srcColor = (srcDataAddr[i+0] << 16) | (srcDataAddr[i+1] << 8) | srcDataAddr[i+2];
-            int dstColor = (dstDataAddr[j+0] << 16) | (dstDataAddr[j+1] << 8) | dstDataAddr[j+2];
+        // Hoist row base pointers: eliminates a multiply per pixel in the inner loop
+        uint8_t *s = srcDataAddr + (srcX + (y + srcY) * srcStride) * 4;
+        uint8_t *d = dstDataAddr + (dstX + (y + dstY) * dstStride) * 4;
+        for (int16_t x = 0; x < width; x++, s += 4, d += 4) {
+            int srcColor = ((int)s[0] << 16) | ((int)s[1] << 8) | s[2];
+            int dstColor = ((int)d[0] << 16) | ((int)d[1] << 8) | d[2];
 
             dstColor = setPixelOp(srcColor, dstColor, gcFunction);
 
-            dstDataAddr[j+0] = (dstColor >> 16) & 0xff;
-            dstDataAddr[j+1] = (dstColor >> 8) & 0xff;
-            dstDataAddr[j+2] = dstColor & 0xff;
+            d[0] = (dstColor >> 16) & 0xff;
+            d[1] = (dstColor >> 8) & 0xff;
+            d[2] = dstColor & 0xff;
         }
     }
 }
@@ -216,7 +216,7 @@ Java_com_winlator_xserver_Drawable_fillRect(JNIEnv *env, jclass obj, jshort x, j
     }
 
     uint32_t color32 = ((uint32_t)rgba[3] << 24) | ((uint32_t)rgba[2] << 16) | ((uint32_t)rgba[1] << 8) | rgba[0];
-    uint32_t *row32 = (uint32_t *)row;
+    uint32_t *row32 = (uint32_t *)(void *)row;  // (void*) cast silences strict-aliasing warning
     for (int i = 0; i < width; i++) row32[i] = color32;
     for (int16_t i = 0; i < height; i++) {
         memcpy(dataAddr + (x + (i + y) * stride) * 4, row, rowSize);
@@ -235,7 +235,7 @@ Java_com_winlator_xserver_Drawable_drawLine(JNIEnv *env, jclass obj, jshort x0, 
         printf("Error: NULL buffer address in drawLine\n");
         return;
     }
-
+ 
     int dx =  abs(x1-x0);
     int dy = -abs(y1-y0);
     int8_t sx = x0 < x1 ? 1 : -1;
@@ -259,7 +259,7 @@ Java_com_winlator_xserver_Drawable_drawLine(JNIEnv *env, jclass obj, jshort x0, 
     }
 
     uint32_t color32 = ((uint32_t)rgba[3] << 24) | ((uint32_t)rgba[2] << 16) | ((uint32_t)rgba[1] << 8) | rgba[0];
-    uint32_t *row32 = (uint32_t *)row;
+    uint32_t *row32 = (uint32_t *)(void *)row;
     for (int i = 0; i < lineWidth; i++) row32[i] = color32;
 
     /* Determine dominant direction once before the loop — not per-step,
