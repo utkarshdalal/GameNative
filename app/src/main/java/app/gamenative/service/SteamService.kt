@@ -953,13 +953,16 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             val indirectDlcApps = getDownloadableDlcAppsOf(appId).orEmpty()
             indirectDlcApps.forEach { dlcApp ->
+                val dlcAppIdsWithSingleDepots = getDlcAppIdsWithSingleDepot(dlcApp.depots)
                 val dlcLicensedDepots = getLicensedDepotIds(dlcApp.id)
                 val dlcEligible = eligibleDepots(dlcApp.depots, preferredLanguage, null, dlcLicensedDepots)
                 val dlcHasNonDeckWin = dlcEligible.any { !it.steamDeck && it.isWindowsCompatible }
                 dlcApp.depots
                     .filter { (_, depot) ->
-                        filterForDownloadableDepots(depot, has64Bit, dlcHasNonDeckWin, preferredLanguage, null, dlcLicensedDepots,
-                            hasSteamUnlockedBranch)
+                        filterForDownloadableDepots(depot, has64Bit, dlcHasNonDeckWin, preferredLanguage,
+                            null, dlcLicensedDepots, hasSteamUnlockedBranch,
+                            dlcAppIdsWithSingleDepots = dlcAppIdsWithSingleDepots
+                        )
                     }
                     .forEach { (depotId, depot) ->
                         // Add DLC Depots with custom object
