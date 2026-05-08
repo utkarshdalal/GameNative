@@ -781,6 +781,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             ownedDlc: Map<Int, DepotInfo>?,
             licensedDepotIds: Set<Int>? = null,
             hasSteamUnlockedBranch: Boolean = false,
+            dlcAppIdsWithSingleDepots: Set<Int>? = null,
         ): Boolean {
             if (depot.manifests.isEmpty() && depot.encryptedManifests.isNotEmpty() && !hasSteamUnlockedBranch)
                 return false
@@ -808,8 +809,17 @@ class SteamService : Service(), IChallengeUrlChanged {
             if (depot.dlcAppId != INVALID_APP_ID && ownedDlc != null && !ownedDlc.containsKey(depot.depotId))
                 return false
             // 5. Language filter - if depot has language, it must match preferred language
-            if (depot.language.isNotEmpty() && depot.language != preferredLanguage)
-                return false
+            if (depot.language.isNotEmpty() && depot.language != preferredLanguage) {
+                // Note here, this logic is added to resolve A Date with Death - Expansion DLC (depotID: 2696090)
+                // the depot is in english language but there is only 1 depot in the dlcApp, we should always include it
+                if (depot.dlcAppId != INVALID_APP_ID) {
+                    if (dlcAppIdsWithSingleDepots != null && !dlcAppIdsWithSingleDepots.contains(depot.dlcAppId)) {
+                        return false
+                    }
+                } else {
+                    return false
+                }
+            }
             // 6. Package grants this depot — prevents grabbing region depots the user has no license for.
             //    Skip for DLC and systemDefined depots: DLC licensed via own package (check 4), systemDefined always granted.
             if (depot.dlcAppId == INVALID_APP_ID && !depot.systemDefined && licensedDepotIds != null && depot.depotId !in licensedDepotIds)
@@ -819,6 +829,19 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return false
 
             return true
+        }
+
+
+        /**
+         * Returns all DLC App IDs that have exactly one depot.
+         * Used to identify DLCs with a single depot configuration.
+         */
+        fun getDlcAppIdsWithSingleDepot(depots: Map<Int, DepotInfo>): Set<Int> {
+            return depots.values
+                .filter { it.dlcAppId != INVALID_APP_ID }
+                .groupBy { it.dlcAppId }
+                .filterValues { it.size == 1 }
+                .keys
         }
 
         /**
@@ -832,8 +855,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             preferredLanguage: String,
             ownedDlc: Map<Int, DepotInfo>?,
             licensedDepotIds: Set<Int>?,
-        ): Collection<DepotInfo> = depots.values.filter { depot ->
-            filterForDownloadableDepots(depot, prefer64Bit = false, preferNonDeckWindows = false, preferredLanguage, ownedDlc, licensedDepotIds)
+        ): Collection<DepotInfo> {
+            val dlcAppIdsWithSingleDepots = getDlcAppIdsWithSingleDepot(depots)
+            return depots.values.filter { depot ->
+                filterForDownloadableDepots(depot, prefer64Bit = false, preferNonDeckWindows = false, preferredLanguage,
+                    ownedDlc, licensedDepotIds,
+                    dlcAppIdsWithSingleDepots = dlcAppIdsWithSingleDepots
+                )
+            }
         }
 
         /**
@@ -847,11 +876,15 @@ class SteamService : Service(), IChallengeUrlChanged {
             licensedDepotIds: Set<Int>?,
             hasSteamUnlockedBranch: Boolean = false,
         ): Map<Int, DepotInfo> {
+            val dlcAppIdsWithSingleDepots = getDlcAppIdsWithSingleDepot(depots)
             val eligible = eligibleDepots(depots, preferredLanguage, ownedDlc, licensedDepotIds)
             val has64Bit = eligible.any { it.osArch == OSArch.Arch64 }
             val hasNonDeckWin = eligible.any { !it.steamDeck && it.isWindowsCompatible }
             return depots.filter { (_, depot) ->
-                filterForDownloadableDepots(depot, has64Bit, hasNonDeckWin, preferredLanguage, ownedDlc, licensedDepotIds)
+                filterForDownloadableDepots(depot, has64Bit, hasNonDeckWin, preferredLanguage,
+                    ownedDlc, licensedDepotIds,
+                    dlcAppIdsWithSingleDepots = dlcAppIdsWithSingleDepots
+                )
             }
         }
 
