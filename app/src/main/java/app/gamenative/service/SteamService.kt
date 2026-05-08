@@ -781,7 +781,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             ownedDlc: Map<Int, DepotInfo>?,
             licensedDepotIds: Set<Int>? = null,
             hasSteamUnlockedBranch: Boolean = false,
-            dlcGroupsWithPreferredLanguage: Set<Int>? = null,
         ): Boolean {
             if (depot.manifests.isEmpty() && depot.encryptedManifests.isNotEmpty() && !hasSteamUnlockedBranch)
                 return false
@@ -809,11 +808,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             if (depot.dlcAppId != INVALID_APP_ID && ownedDlc != null && !ownedDlc.containsKey(depot.depotId))
                 return false
             // 5. Language filter - if depot has language, it must match preferred language
-            //    unless the DLC only exists for a tagged language that is not the preferred language
-            if (depot.language.isNotEmpty() && depot.language != preferredLanguage) {
-                val groupHasPreferred = dlcGroupsWithPreferredLanguage?.contains(depot.dlcAppId) ?: true
-                if (groupHasPreferred) return false
-            }
+            if (depot.language.isNotEmpty() && depot.language != preferredLanguage)
+                return false
             // 6. Package grants this depot — prevents grabbing region depots the user has no license for.
             //    Skip for DLC and systemDefined depots: DLC licensed via own package (check 4), systemDefined always granted.
             if (depot.dlcAppId == INVALID_APP_ID && !depot.systemDefined && licensedDepotIds != null && depot.depotId !in licensedDepotIds)
@@ -836,24 +832,9 @@ class SteamService : Service(), IChallengeUrlChanged {
             preferredLanguage: String,
             ownedDlc: Map<Int, DepotInfo>?,
             licensedDepotIds: Set<Int>?,
-        ): Collection<DepotInfo> {
-            val dlcGroupsWithPreferredLanguage = dlcGroupsWithPreferredLanguageFor(depots, preferredLanguage)
-            return depots.values.filter { depot ->
-                filterForDownloadableDepots(
-                    depot, prefer64Bit = false, preferNonDeckWindows = false, preferredLanguage,
-                    ownedDlc, licensedDepotIds,
-                    dlcGroupsWithPreferredLanguage = dlcGroupsWithPreferredLanguage,
-                )
-            }
+        ): Collection<DepotInfo> = depots.values.filter { depot ->
+            filterForDownloadableDepots(depot, prefer64Bit = false, preferNonDeckWindows = false, preferredLanguage, ownedDlc, licensedDepotIds)
         }
-
-        /** Set of dlcAppIds (incl. INVALID_APP_ID for base) that have a depot in [preferredLanguage]. */
-        private fun dlcGroupsWithPreferredLanguageFor(
-            depots: Map<Int, DepotInfo>,
-            preferredLanguage: String,
-        ): Set<Int> = depots.values
-            .filter { it.language == preferredLanguage }
-            .mapTo(mutableSetOf()) { it.dlcAppId }
 
         /**
          * Two-pass depot resolution: derives preference flags from [eligibleDepots],
@@ -866,15 +847,11 @@ class SteamService : Service(), IChallengeUrlChanged {
             licensedDepotIds: Set<Int>?,
             hasSteamUnlockedBranch: Boolean = false,
         ): Map<Int, DepotInfo> {
-            val dlcGroupsWithPreferredLanguage = dlcGroupsWithPreferredLanguageFor(depots, preferredLanguage)
             val eligible = eligibleDepots(depots, preferredLanguage, ownedDlc, licensedDepotIds)
             val has64Bit = eligible.any { it.osArch == OSArch.Arch64 }
             val hasNonDeckWin = eligible.any { !it.steamDeck && it.isWindowsCompatible }
             return depots.filter { (_, depot) ->
-                filterForDownloadableDepots(
-                    depot, has64Bit, hasNonDeckWin, preferredLanguage, ownedDlc, licensedDepotIds,
-                    dlcGroupsWithPreferredLanguage = dlcGroupsWithPreferredLanguage,
-                )
+                filterForDownloadableDepots(depot, has64Bit, hasNonDeckWin, preferredLanguage, ownedDlc, licensedDepotIds)
             }
         }
 
@@ -946,11 +923,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                 val dlcLicensedDepots = getLicensedDepotIds(dlcApp.id)
                 val dlcEligible = eligibleDepots(dlcApp.depots, preferredLanguage, null, dlcLicensedDepots)
                 val dlcHasNonDeckWin = dlcEligible.any { !it.steamDeck && it.isWindowsCompatible }
-                val dlcGroupsWithPreferredLanguage = dlcGroupsWithPreferredLanguageFor(dlcApp.depots, preferredLanguage)
                 dlcApp.depots
                     .filter { (_, depot) ->
                         filterForDownloadableDepots(depot, has64Bit, dlcHasNonDeckWin, preferredLanguage, null, dlcLicensedDepots,
-                            hasSteamUnlockedBranch, dlcGroupsWithPreferredLanguage)
+                            hasSteamUnlockedBranch)
                     }
                     .forEach { (depotId, depot) ->
                         // Add DLC Depots with custom object
