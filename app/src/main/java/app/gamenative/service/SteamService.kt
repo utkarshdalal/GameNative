@@ -907,6 +907,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // Make sure licensedDepots contains the dlc depots
                 licensedDepots.addAll(dlcDepotIds)
 
+                if (mainPackageDepotIds.isEmpty()) return@forEach
+
                 val dlcOnlyDepotIds = dlcDepotIds.filter { it !in mainPackageDepotIds }
                 if (dlcOnlyDepotIds.isNotEmpty()) {
                     mapDlcDepotIds[dlcAppId] = dlcOnlyDepotIds
@@ -1750,7 +1752,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     val mInfo = depot.manifests[branch]
                         ?: depot.encryptedManifests[branch]
                         ?: return@map 1L
-                    (mInfo.size ?: 1).toLong()
+                    SteamUtils.getDownloadBytes(mInfo).coerceAtLeast(1L)
                 }
                 sizes.forEachIndexed { i, bytes -> di.setWeight(i, bytes) }
 
@@ -2151,9 +2153,10 @@ class SteamService : Service(), IChallengeUrlChanged {
             private val downloadInfo: DownloadInfo,
             private val depotIdToIndex: Map<Int, Int>,
         ) : IDownloadListener {
-            // Track cumulative uncompressed bytes per depot to calculate deltas
-            // (uncompressedBytes from onChunkCompleted is cumulative per depot)
-            private val depotCumulativeUncompressedBytes = mutableMapOf<Int, Long>()
+            // Track cumulative compressed (network) bytes per depot to calculate deltas.
+            // compressedBytes from onChunkCompleted is cumulative per depot, and matches the
+            // unit of totalExpectedBytes which is summed from manifest.download.
+            private val depotCumulativeCompressedBytes = mutableMapOf<Int, Long>()
             override fun onItemAdded(item: DownloadItem) {
                 Timber.d("Item ${item.appId} added to queue")
             }
@@ -2192,15 +2195,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                 compressedBytes: Long,
                 uncompressedBytes: Long,
             ) {
-                val isFirstCallForDepot = !depotCumulativeUncompressedBytes.containsKey(depotId)
+                val isFirstCallForDepot = !depotCumulativeCompressedBytes.containsKey(depotId)
 
-                // uncompressedBytes is cumulative per depot, so calculate delta
-                val previousBytes = depotCumulativeUncompressedBytes[depotId] ?: 0L
-                val deltaBytes = uncompressedBytes - previousBytes
-                depotCumulativeUncompressedBytes[depotId] = uncompressedBytes
+                val previousBytes = depotCumulativeCompressedBytes[depotId] ?: 0L
+                val deltaBytes = compressedBytes - previousBytes
+                depotCumulativeCompressedBytes[depotId] = compressedBytes
 
                 if (deltaBytes > 0L) {
-                    // Normal case: add the delta
                     downloadInfo.updateBytesDownloaded(deltaBytes, System.currentTimeMillis())
                 }
 
@@ -2215,10 +2216,9 @@ class SteamService : Service(), IChallengeUrlChanged {
             override fun onDepotCompleted(depotId: Int, compressedBytes: Long, uncompressedBytes: Long) {
                 Timber.i("Depot $depotId completed (compressed: $compressedBytes, uncompressed: $uncompressedBytes)")
 
-                // Ensure we capture any remaining bytes
-                val previousBytes = depotCumulativeUncompressedBytes[depotId] ?: 0L
-                val deltaBytes = uncompressedBytes - previousBytes
-                depotCumulativeUncompressedBytes[depotId] = uncompressedBytes
+                val previousBytes = depotCumulativeCompressedBytes[depotId] ?: 0L
+                val deltaBytes = compressedBytes - previousBytes
+                depotCumulativeCompressedBytes[depotId] = compressedBytes
 
                 if (deltaBytes > 0L) {
                     downloadInfo.updateBytesDownloaded(deltaBytes, System.currentTimeMillis())

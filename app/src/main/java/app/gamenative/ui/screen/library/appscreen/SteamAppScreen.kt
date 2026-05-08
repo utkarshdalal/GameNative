@@ -363,8 +363,7 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
         val downloadInfo = SteamService.getAppDownloadInfo(libraryItem.gameId) ?: return false
-        val progress = downloadInfo.getProgress() ?: 0f
-        return downloadInfo.isPostInstallSyncing() || (downloadInfo.isActive() && progress < 1f)
+        return downloadInfo.isPostInstallSyncing() || downloadInfo.isActive()
     }
 
     override fun getDownloadProgress(context: Context, libraryItem: LibraryItem): Float {
