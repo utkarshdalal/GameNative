@@ -1,5 +1,9 @@
 package app.gamenative.workshop
 
+import app.gamenative.data.GameSource
+import app.gamenative.workshop.compatibility.WorkshopCompatibilityOverride
+import app.gamenative.workshop.compatibility.WorkshopCompatibilityRegistry
+import app.gamenative.workshop.compatibility.WorkshopExposureMode
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -71,6 +75,12 @@ class WorkshopManagerTest {
         File(gameRootDir, "steam_api.dll").writeText("dll")
         return gameRootDir
     }
+
+    private fun metadataOnlyWorkshopOverride() = WorkshopCompatibilityOverride(
+        exposureMode = WorkshopExposureMode.METADATA_ONLY,
+        ignoreManualModPath = true,
+        cleanupNestedSteamSettingsArtifacts = true,
+    )
 
     // ── parseEnabledIds ─────────────────────────────────────────────────
 
@@ -380,10 +390,20 @@ class WorkshopManagerTest {
         )
     }
 
-    // Ren'Py Workshop routing
+    // Workshop compatibility overrides
 
     @Test
-    fun configureSymlinks_renPyUsesModsJsonOnly() {
+    fun workshopCompatibilityRegistry_everlastingSummerUsesMetadataOnlyOverride() {
+        val override = WorkshopCompatibilityRegistry.get(GameSource.STEAM, "331470")
+
+        assertEquals(WorkshopExposureMode.METADATA_ONLY, override?.exposureMode)
+        assertTrue(override?.ignoreManualModPath == true)
+        assertTrue(override?.cleanupNestedSteamSettingsArtifacts == true)
+        assertEquals(null, WorkshopCompatibilityRegistry.get(GameSource.STEAM, "12345"))
+    }
+
+    @Test
+    fun configureSymlinks_metadataOnlyOverrideUsesModsJsonOnly() {
         useSteamWorkshopContentDir()
         addContent(111, "extra_resources/extra_map.rpyc")
         val gameRootDir = makeRenPyGameRoot()
@@ -396,16 +416,19 @@ class WorkshopManagerTest {
             items = listOf(makeItem(111)),
             winePrefix = winePrefix,
             gameName = "RenPy Game",
+            compatibilityOverride = metadataOnlyWorkshopOverride(),
         )
 
         val settingsDir = File(gameRootDir, "steam_settings")
-        assertTrue(File(settingsDir, "mods.json").isFile)
+        val modsJson = File(settingsDir, "mods.json")
+        assertTrue(modsJson.isFile)
+        assertTrue(modsJson.readText().contains("\"111\""))
         assertFalse(File(settingsDir, "mods").exists())
         assertFalse(File(gameRootDir, "game/mods/111").exists())
     }
 
     @Test
-    fun configureSymlinks_renPyIgnoresManualGameModPath() {
+    fun configureSymlinks_metadataOnlyOverrideIgnoresManualGameModPath() {
         useSteamWorkshopContentDir()
         addContent(111)
         val gameRootDir = makeRenPyGameRoot()
@@ -419,11 +442,30 @@ class WorkshopManagerTest {
             winePrefix = winePrefix,
             gameName = "RenPy Game",
             workshopModPath = manualModsDir.absolutePath,
+            compatibilityOverride = metadataOnlyWorkshopOverride(),
         )
 
-        assertTrue(File(gameRootDir, "steam_settings/mods.json").isFile)
+        val modsJson = File(gameRootDir, "steam_settings/mods.json")
+        assertTrue(modsJson.isFile)
+        assertTrue(modsJson.readText().contains("\"111\""))
         assertFalse(File(gameRootDir, "steam_settings/mods").exists())
         assertFalse(File(manualModsDir, "111").exists())
+    }
+
+    @Test
+    fun configureSymlinks_withoutOverrideKeepsDefaultWorkshopBehavior() {
+        useSteamWorkshopContentDir()
+        addContent(111)
+        val gameRootDir = makeRenPyGameRoot()
+
+        WorkshopManager.configureModSymlinks(
+            gameRootDir = gameRootDir,
+            workshopContentDir = workshopContentDir,
+            items = listOf(makeItem(111)),
+            gameName = "RenPy Game",
+        )
+
+        assertTrue(File(gameRootDir, "steam_settings/mods").isDirectory)
     }
 
     // getWorkshopContentDir

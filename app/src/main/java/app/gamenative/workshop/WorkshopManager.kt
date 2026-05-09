@@ -16,6 +16,7 @@ import android.content.Context
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.DownloadInfo
+import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
 import app.gamenative.utils.ContainerUtils
 import com.winlator.xenvironment.ImageFs
@@ -39,6 +40,9 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import app.gamenative.utils.Net
+import app.gamenative.workshop.compatibility.WorkshopCompatibilityOverride
+import app.gamenative.workshop.compatibility.WorkshopCompatibilityRegistry
+import app.gamenative.workshop.compatibility.WorkshopExposureMode
 import okhttp3.Request
 import org.json.JSONObject
 import org.tukaani.xz.LZMAInputStream
@@ -1476,27 +1480,6 @@ object WorkshopManager {
             .any { it.isFile && it.name == "gameinfo.txt" && !it.absolutePath.contains("steam_settings") }
 
     /**
-     * Detects Ren'Py installs by their standard runtime layout.
-     *
-     * Ren'Py recursively scans the install's game/ tree. Workshop item
-     * symlinks placed under game/ or game/steam_settings/mods therefore expose
-     * the same scripts a second time when the game also loads Workshop items
-     * through Steam/Ren'Py integration.
-     */
-    private fun isRenPyGame(gameRootDir: File): Boolean {
-        val gameDir = File(gameRootDir, "game")
-        if (!gameDir.isDirectory) return false
-
-        if (File(gameRootDir, "renpy").isDirectory) return true
-        if (File(gameRootDir, "renpy.py").isFile) return true
-
-        val hasRenPyPayload = gameDir.listFiles()?.any { file ->
-            file.isFile && file.extension.lowercase() in setOf("rpy", "rpyc", "rpym", "rpymc", "rpa")
-        } == true
-        return hasRenPyPayload && File(gameRootDir, "lib").isDirectory
-    }
-
-    /**
      * Copies preview images from workshop item directories into a
      * `mod_images/<itemId>/` tree under [settingsDir] for gbe_fork.
      */
@@ -2074,6 +2057,7 @@ object WorkshopManager {
      * @param items The subscribed workshop items with metadata
      * @param winePrefix The Wine prefix path (for AppData detection)
      * @param gameName The game's display name (for fuzzy AppData matching)
+     * @param compatibilityOverride Optional per-game Workshop compatibility behavior.
      */
     fun configureModSymlinks(
         gameRootDir: File,
@@ -2082,6 +2066,7 @@ object WorkshopManager {
         winePrefix: String = "",
         gameName: String = "",
         workshopModPath: String = "",
+        compatibilityOverride: WorkshopCompatibilityOverride? = null,
     ) {
         if (!workshopContentDir.exists()) {
             Timber.tag(TAG).d("Workshop content dir doesn't exist yet, skipping symlink config")
@@ -2130,8 +2115,9 @@ object WorkshopManager {
         val isLeft4Dead2 = appId == 550
         val isSkyrim = appId == 72850 || gameName.contains("skyrim", ignoreCase = true)
         val isSourceEngine = isSourceEngine(gameRootDir)
-        val isRenPy = isRenPyGame(gameRootDir)
-        if (isRenPy) {
+        val useMetadataOnly =
+            compatibilityOverride?.exposureMode == WorkshopExposureMode.METADATA_ONLY
+        if (compatibilityOverride?.cleanupNestedSteamSettingsArtifacts == true) {
             cleanupNestedSteamSettingsWorkshopArtifacts(gameRootDir)
         }
 
@@ -2140,11 +2126,12 @@ object WorkshopManager {
         // items into that directory. mods.json is still populated for games
         // that use ISteamUGC. All automatic detection is bypassed.
         val hasManualModPath = workshopModPath.isNotEmpty()
-        val useManualModPath = hasManualModPath && !isRenPy
-        if (hasManualModPath && isRenPy) {
+        val ignoreManualModPath =
+            compatibilityOverride?.ignoreManualModPath == true || useMetadataOnly
+        val useManualModPath = hasManualModPath && !ignoreManualModPath
+        if (hasManualModPath && ignoreManualModPath) {
             Timber.tag(TAG).i(
-                "Ren'Py game detected for $gameName; ignoring manual Workshop mod path " +
-                    "to avoid duplicate script loading"
+                "Workshop compatibility override for $gameName ignores manual Workshop mod path"
             )
         }
         if (useManualModPath) {
@@ -2297,9 +2284,9 @@ object WorkshopManager {
             // alongside the manual symlinks (covers ISteamUGC games too)
             Timber.tag(TAG).i("Manual mod path set for $gameName — forcing ISteamUGC mods.json")
             false
-        } else if (isRenPy) {
+        } else if (useMetadataOnly) {
             Timber.tag(TAG).i(
-                "Ren'Py game detected for $gameName; using Steam Workshop metadata only"
+                "Workshop compatibility override for $gameName: using Steam metadata only"
             )
             false
         } else if (appId in forceStandardAppIds) {
@@ -2333,7 +2320,8 @@ object WorkshopManager {
         } else {
             Timber.tag(TAG).d(
                 "Strategy detection skipped (winePrefix=${winePrefix.isNotEmpty()}, " +
-                    "isSkyrim=$isSkyrim, isSourceEngine=$isSourceEngine, isRenPy=$isRenPy)"
+                    "isSkyrim=$isSkyrim, isSourceEngine=$isSourceEngine, " +
+                    "useMetadataOnly=$useMetadataOnly)"
             )
             false
         }
@@ -2419,7 +2407,7 @@ object WorkshopManager {
                         clearModEntries(modsDir)
                         modsDir.delete()
                     }
-                    if (!isRenPy) {
+                    if (!useMetadataOnly) {
                         modsDir.mkdirs()
 
                         modDirs.forEach { itemDir ->
@@ -2437,9 +2425,10 @@ object WorkshopManager {
                     copyPreviewImages(modDirs, settingsDir)
 
                     configuredCount++
-                    if (isRenPy) {
+                    if (useMetadataOnly) {
                         Timber.tag(TAG).d(
-                            "Configured mods.json only at ${settingsDir.absolutePath} for Ren'Py"
+                            "Configured mods.json only at ${settingsDir.absolutePath} " +
+                                "by compatibility override"
                         )
                     } else {
                         Timber.tag(TAG).d(
@@ -2969,7 +2958,14 @@ object WorkshopManager {
         // already fully handled by the VPK→addons/ and BSP→maps/workshop/
         // symlinks above. Running the detector on them causes regressions
         // (e.g. item-directory symlinks in maps/ confuse L4D2).
-        if (winePrefix.isNotEmpty() && modDirs.isNotEmpty() && !isSourceEngine && !isRenPy && !stdSeenWithHighDir && !useManualModPath) {
+        if (
+            winePrefix.isNotEmpty() &&
+            modDirs.isNotEmpty() &&
+            !isSourceEngine &&
+            !useMetadataOnly &&
+            !stdSeenWithHighDir &&
+            !useManualModPath
+        ) {
             // Check if Phase 7 (Unity AppData) will handle mod directories.
             // If it does, skip Phase 6 SymlinkIntoDir for the same directory
             // names so mods aren't placed at both the install dir AND AppData.
@@ -3226,7 +3222,7 @@ object WorkshopManager {
         // launches may have created symlinks in the game's mod directories
         // (e.g. mods/). Remove them so the game doesn't see duplicate
         // workshop items (one from ISteamUGC/mods.json and one from the filesystem).
-        if ((stdSeenWithHighDir || isRenPy) && winePrefix.isNotEmpty() && !useManualModPath) {
+        if ((stdSeenWithHighDir || useMetadataOnly) && winePrefix.isNotEmpty() && !useManualModPath) {
             try {
                 val detection = getOrDetectStrategy(gameRootDir, winePrefix, gameName)
                 val strategy = detection.strategy
@@ -3322,8 +3318,8 @@ object WorkshopManager {
 
     /**
      * Removes GameNative Workshop exposure artifacts accidentally created inside
-     * trees that Ren'Py may scan for scripts. Nested steam_settings/mods links
-     * can make the same .rpy/.rpyc files visible twice.
+     * trees covered by a per-game compatibility override. Nested
+     * steam_settings/mods links can expose the same Workshop files twice.
      */
     private fun cleanupNestedSteamSettingsWorkshopArtifacts(rootDir: File) {
         if (!rootDir.isDirectory) return
@@ -3382,6 +3378,10 @@ object WorkshopManager {
     ) {
         val gameRootDir = File(SteamService.getAppDirPath(appId))
         val gameName = SteamService.getAppInfoOf(appId)?.name ?: ""
+        val compatibilityOverride = WorkshopCompatibilityRegistry.get(
+            GameSource.STEAM,
+            appId.toString(),
+        )
 
         // Read the user's manual mod path override from the container
         val containerId = "STEAM_$appId"
@@ -3400,6 +3400,7 @@ object WorkshopManager {
             winePrefix = winePrefix,
             gameName = gameName,
             workshopModPath = modPathOverride,
+            compatibilityOverride = compatibilityOverride,
         )
     }
 
