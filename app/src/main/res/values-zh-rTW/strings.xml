@@ -300,6 +300,7 @@
     <string name="performance_hud_fps_limiter_target">目標 FPS</string>
     <string name="performance_hud_fps_limiter_off">無限制</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">LSFG 啟用時，限制器被覆蓋。來源幀率由倍數控制。</string>
     <string name="performance_hud_presets">預設</string>
     <string name="performance_hud_presets_description">快速切換常用 HUD 版面配置。</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1497,6 +1498,7 @@
     <string name="lsfg_enable">啟用 LSFG-VK 幀生成</string>
     <string name="lsfg_multiplier">幀倍率</string>
     <string name="lsfg_flow_scale">光流縮放</string>
+    <string name="lsfg_flow_scale_desc">數值越低越穩定；越高越流暢，但可能出現偽影。</string>
     <string name="lsfg_performance_mode">效能模式</string>
     <string name="lsfg_not_supported">幀生成需要 Bionic 容器</string>
     <string name="lsfg_install_prompt">Lossless Scaling 未安裝。點擊安裝。已知僅在 Adreno 6xx 及更高版本上可用。</string>

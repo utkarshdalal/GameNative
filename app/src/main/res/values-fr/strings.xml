@@ -302,6 +302,7 @@
     <string name="performance_hud_fps_limiter_target">FPS cible</string>
     <string name="performance_hud_fps_limiter_off">Illimité</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Limiteur ignoré tant que LSFG est actif. La fréquence source est contrôlée par le multiplicateur.</string>
     <string name="performance_hud_presets">Préréglages</string>
     <string name="performance_hud_presets_description">Basculer rapidement entre des dispositions HUD courantes.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1432,6 +1433,7 @@
     <string name="lsfg_enable">Activer la génération d\'images LSFG-VK</string>
     <string name="lsfg_multiplier">Multiplicateur d\'images</string>
     <string name="lsfg_flow_scale">Échelle de flux</string>
+    <string name="lsfg_flow_scale_desc">Plus bas = plus stable ; plus élevé = plus fluide mais peut créer des artefacts.</string>
     <string name="lsfg_performance_mode">Mode performance</string>
     <string name="lsfg_not_supported">La génération d\'images nécessite un conteneur Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling n\'est pas installé. Appuyez pour installer. Fonctionne uniquement sur Adreno 6xx et supérieur, à notre connaissance.</string>

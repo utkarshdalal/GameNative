@@ -315,6 +315,7 @@
     <string name="performance_hud_fps_limiter_target">목표 FPS</string>
     <string name="performance_hud_fps_limiter_off">무제한</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">LSFG 사용 중에는 제한기가 비활성화됩니다. 소스 속도는 배수로 결정됩니다.</string>
     <string name="performance_hud_presets">프리셋</string>
     <string name="performance_hud_presets_description">일반적인 HUD 레이아웃으로 빠르게 전환합니다.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1436,6 +1437,7 @@
     <string name="lsfg_enable">LSFG-VK 프레임 생성 활성화</string>
     <string name="lsfg_multiplier">프레임 배율</string>
     <string name="lsfg_flow_scale">플로우 스케일</string>
+    <string name="lsfg_flow_scale_desc">낮을수록 더 안정적이고, 높을수록 더 부드럽지만 아티팩트가 생길 수 있습니다.</string>
     <string name="lsfg_performance_mode">성능 모드</string>
     <string name="lsfg_not_supported">프레임 생성에는 Bionic 컨테이너가 필요합니다</string>
     <string name="lsfg_install_prompt">Lossless Scaling이 설치되지 않았습니다. 탭하여 설치하세요. Adreno 6xx 이상에서만 작동하는 것으로 알려져 있습니다.</string>

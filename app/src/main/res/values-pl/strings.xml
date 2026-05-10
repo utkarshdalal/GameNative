@@ -314,6 +314,7 @@
     <string name="performance_hud_fps_limiter_target">Docelowy FPS</string>
     <string name="performance_hud_fps_limiter_off">Bez limitu</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Limiter pomijany gdy LSFG jest aktywny. Tempo źródła kontroluje mnożnik.</string>
     <string name="performance_hud_presets">Presety</string>
     <string name="performance_hud_presets_description">Szybko przełączaj między typowymi układami HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1435,6 +1436,7 @@
     <string name="lsfg_enable">Włącz generowanie klatek LSFG-VK</string>
     <string name="lsfg_multiplier">Mnożnik klatek</string>
     <string name="lsfg_flow_scale">Skala przepływu</string>
+    <string name="lsfg_flow_scale_desc">Niższa wartość jest stabilniejsza; wyższa jest płynniejsza, ale może powodować artefakty.</string>
     <string name="lsfg_performance_mode">Tryb wydajności</string>
     <string name="lsfg_not_supported">Generowanie klatek wymaga kontenera Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling nie jest zainstalowany. Dotknij, aby zainstalować. Wiadomo, że działa tylko na Adreno 6xx i nowszych.</string>

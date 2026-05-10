@@ -878,6 +878,7 @@ https://gamenative.app
     <string name="performance_hud_fps_limiter_target">Целевой FPS</string>
     <string name="performance_hud_fps_limiter_off">Без ограничений</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Ограничитель отключён, пока активен LSFG. Частоту источника задаёт множитель.</string>
     <string name="performance_hud_presets">Предустановки</string>
     <string name="performance_hud_presets_description">Быстро переключаться между типовыми макетами HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1365,6 +1366,7 @@ https://gamenative.app
     <string name="lsfg_enable">Включить генерацию кадров LSFG-VK</string>
     <string name="lsfg_multiplier">Множитель кадров</string>
     <string name="lsfg_flow_scale">Масштаб потока</string>
+    <string name="lsfg_flow_scale_desc">Ниже — стабильнее; выше — плавнее, но могут появляться артефакты.</string>
     <string name="lsfg_performance_mode">Режим производительности</string>
     <string name="lsfg_not_supported">Для генерации кадров требуется контейнер Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling не установлен. Нажмите для установки. Известно, что работает только на Adreno 6xx и новее.</string>

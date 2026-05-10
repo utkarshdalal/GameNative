@@ -301,6 +301,7 @@
     <string name="performance_hud_fps_limiter_target">Цільовий FPS</string>
     <string name="performance_hud_fps_limiter_off">Без обмежень</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Обмежувач вимкнено, поки активний LSFG. Частоту джерела задає множник.</string>
     <string name="performance_hud_presets">Набори</string>
     <string name="performance_hud_presets_description">Швидко перемикайтеся між типовими макетами HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1431,6 +1432,7 @@
     <string name="lsfg_enable">Увімкнути генерацію кадрів LSFG-VK</string>
     <string name="lsfg_multiplier">Множник кадрів</string>
     <string name="lsfg_flow_scale">Масштаб потоку</string>
+    <string name="lsfg_flow_scale_desc">Нижче — стабільніше; вище — плавніше, але можуть з’являтися артефакти.</string>
     <string name="lsfg_performance_mode">Режим продуктивності</string>
     <string name="lsfg_not_supported">Для генерації кадрів потрібен контейнер Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling не встановлено. Натисніть для встановлення. Відомо, що працює лише на Adreno 6xx і новіших.</string>

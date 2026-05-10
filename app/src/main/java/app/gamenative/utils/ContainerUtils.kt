@@ -1,6 +1,7 @@
 package app.gamenative.utils
 
 import android.content.Context
+import android.os.Build
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
@@ -18,6 +19,7 @@ import com.winlator.container.ContainerManager
 import com.winlator.core.DefaultVersion
 import com.winlator.core.FileUtils
 import com.winlator.core.GPUInformation
+import com.winlator.core.envvars.EnvVars
 import com.winlator.core.WineRegistryEditor
 import com.winlator.core.WineThemeManager
 import com.winlator.fexcore.FEXCoreManager
@@ -865,6 +867,14 @@ object ContainerUtils {
             applyBestConfigMapToContainerData(containerData, bestConfigMap)
         } else {
             containerData
+        }
+
+        if (Build.MANUFACTURER.equals("samsung", ignoreCase = true)) {
+            val ev = EnvVars(containerData.envVars)
+            if (!ev.has("FD_DEV_FEATURES")) {
+                ev.put("FD_DEV_FEATURES", "enable_tp_ubwc_flag_hint=1")
+                containerData = containerData.copy(envVars = ev.toString())
+            }
         }
 
         // If custom config is provided, just apply it and return

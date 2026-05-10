@@ -233,6 +233,7 @@
     <string name="performance_hud_fps_limiter_target">Mål-FPS</string>
     <string name="performance_hud_fps_limiter_off">Ubegrænset</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Begrænser tilsidesat, mens LSFG er aktiv. Kildehastigheden styres af multiplikatoren.</string>
     <string name="performance_hud_presets">Forudindstillinger</string>
     <string name="performance_hud_presets_description">Skift hurtigt mellem almindelige HUD-layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1302,6 +1303,7 @@
     <string name="lsfg_enable">Aktivér LSFG-VK billedgenerering</string>
     <string name="lsfg_multiplier">Billedmultiplikator</string>
     <string name="lsfg_flow_scale">Flow-skala</string>
+    <string name="lsfg_flow_scale_desc">Lavere er mere stabilt; højere er mere flydende men kan give artefakter.</string>
     <string name="lsfg_performance_mode">Ydelsestilstand</string>
     <string name="lsfg_not_supported">Billedgenerering kræver en Bionic-container</string>
     <string name="lsfg_install_prompt">Lossless Scaling er ikke installeret. Tryk for at installere. Virkede kun på Adreno 6xx og nyere, så vidt vides.</string>
