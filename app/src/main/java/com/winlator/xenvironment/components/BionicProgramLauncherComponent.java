@@ -45,6 +45,7 @@ import com.winlator.xenvironment.ImageFs;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.net.InetAddress;
@@ -504,9 +505,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
 
         // Execute the command and capture its output.
-        // Use ProcessBuilder with redirectErrorStream(true) — merges stderr into stdout at the
-        // OS level so there is only one pipe to read. A single pipe cannot deadlock regardless
-        // of log volume (no 64 KB pipe-buffer race), so no extra drain threads are needed.
+        // Use ProcessBuilder to merge stderr merged into stdout
+        // Deadlock-safe strategy:
+        //   includeStderr=true  → redirectErrorStream(true): stderr merged into stdout at the OS
+        //                         level, single pipe, zero deadlock risk.
+        //   includeStderr=false → streams are kept separate; a daemon thread drains and discards
+        //                         stderr concurrently so the 64 KB pipe buffer never fills while
+        //                         the main thread reads stdout. This keeps stdout clean for callers
+        //                         such as SteamTokenLogin
         try {
             Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
             ProcessBuilder pb = new ProcessBuilder(ProcessHelper.splitCommand(finalCommand));
@@ -517,19 +523,38 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 if (eq > 0) env.put(kv.substring(0, eq), kv.substring(eq + 1));
             }
             pb.directory(workingDir != null ? workingDir : imageFs.getRootDir());
-            pb.redirectErrorStream(true); // stderr merged into stdout — one pipe, zero deadlock risk
+            pb.redirectErrorStream(includeStderr); // merge only when caller wants stderr
 
             java.lang.Process process = pb.start();
 
-            // Read the single merged stream inline; EOF only arrives after the process exits.
+            // When not merging, drain stderr on a daemon thread to prevent pipe-buffer deadlock.
+            // SteamTokenLogin uses this when calling includeStderr=false
+            Thread stderrDrainer = null;
+            if (!includeStderr) {
+                final InputStream stderrStream = process.getErrorStream();
+                stderrDrainer = new Thread(() -> {
+                    try {
+                        byte[] buf = new byte[4096];
+                        while (stderrStream.read(buf) != -1) { /* drain & discard */ }
+                    } catch (IOException ignored) {}
+                }, "stderr-drainer");
+                stderrDrainer.setDaemon(true); // won't block app shutdown if something goes wrong
+                stderrDrainer.start();
+            }
+
+            // Read stdout (or the merged stream) inline; EOF arrives after the process exits.
             try (BufferedReader r = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String l;
                 while ((l = r.readLine()) != null) output.append(l).append("\n");
             }
 
-            // Process has already exited (we just read its EOF).
-            // waitFor() reaps the OS process-table entry immediately
+            // Process has already exited (we drained its stdout to EOF).
+            // waitFor() reaps the OS process-table entry.
             process.waitFor();
+
+            if (stderrDrainer != null) {
+                stderrDrainer.join(5_000); // bounded wait; daemon thread is reaped on JVM exit anyway
+            }
         } catch (Exception e) {
             output.append("Error: ").append(e.getMessage());
         }
