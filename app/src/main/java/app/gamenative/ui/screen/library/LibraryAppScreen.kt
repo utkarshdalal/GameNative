@@ -943,7 +943,7 @@ internal fun AppScreenContent(
                         Text(
                             text = displayInfo.disabledWarning,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error,
+                            color = Color.Red.copy(alpha = 0.8f),
                         )
                     }
                 }
