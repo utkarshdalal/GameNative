@@ -530,7 +530,7 @@ fun XServerScreen(
     }
 
     fun effectiveFpsLimit(): Int =
-        if (lsfgMultiplier >= 2) 0
+        if (isLsfgAvailable && lsfgMultiplier >= 2) 0
         else if (fpsLimiterEnabled) fpsLimiterTarget
         else 0
 
