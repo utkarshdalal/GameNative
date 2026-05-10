@@ -273,12 +273,12 @@ class EpicAppScreen : BaseAppScreen() {
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
             disabledWarning = if (game != null && game.thirdPartyManagedApp.isNotEmpty()) {
-                context.getString(R.string.epic_disabled_warning_third_party_client, game.thirdPartyManagedApp)
+                context.getString(R.string.epic_disabled_warning_third_party_client)
             } else {
                 null
             }
         )
-        Timber.tag(TAG).d("Returning GameDisplayInfo: name=${displayInfo.name}, iconUrl=${displayInfo.iconUrl}, heroImageUrl=${displayInfo.heroImageUrl}, developer=${displayInfo.developer}, installLocation=${displayInfo.installLocation}")
+        Timber.tag(TAG).d("Returning GameDisplayInfo: name=${displayInfo.name}, iconUrl=${displayInfo.iconUrl}, heroImageUrl=${displayInfo.heroImageUrl}, developer=${displayInfo.developer}, installLocation=${displayInfo.installLocation} thirdPartyApp=${game?.thirdPartyManagedApp}")
         return displayInfo
     }
 

@@ -1364,7 +1364,7 @@
     <string name="amazon_logout_in_progress">Déconnexion d\'Amazon Games…</string>
 
     <!-- Epic Install/Uninstall -->
-    <string name="epic_disabled_warning_third_party_client">Les jeux nécessitant un lanceur tiers ne sont pas pris en charge (%1$s)</string>
+    <string name="epic_disabled_warning_third_party_client">Les jeux nécessitant un lanceur tiers ne sont actuellement pas pris en charge sur Epic Store</string>
     <string name="epic_uninstall_game_title">Désinstaller le jeu</string>
     <string name="epic_uninstall_game_message">Êtes-vous sûr de vouloir désinstaller %1$s ? Cette action ne peut pas être annulée.</string>
     <string name="epic_install_game_title">Télécharger le jeu</string>

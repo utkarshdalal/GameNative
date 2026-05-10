@@ -54,7 +54,7 @@
     <string name="gog_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
     <string name="gog_install_game_title">게임 다운로드</string>
     <string name="gog_install_confirmation_message">설치할 앱의 공간 요구사항은 다음과 같습니다. 계속하시겠습니까?\n\n\t다운로드 크기: %1$s\n\t사용 가능한 공간: %2$s</string>
-    <string name="epic_disabled_warning_third_party_client">서드파티 런처 게임은 지원되지 않습니다 (%1$s)</string>
+    <string name="epic_disabled_warning_third_party_client">서드파티 런처 게임은 현재 Epic Store에서 지원되지 않습니다</string>
     <string name="epic_uninstall_game_title">게임 제거</string>
     <string name="epic_uninstall_game_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
     <string name="epic_install_game_title">게임 다운로드</string>

@@ -374,7 +374,7 @@
     <string name="epic_uninstall_error">Ошибка удаления: %1$s</string>
     <string name="epic_uninstall_failed">Ошибка удаления: %1$s</string>
     <string name="epic_uninstall_game_message">Вы уверены, что хотите удалить %1$s? Это действие не может быть отменено.</string>
-    <string name="epic_disabled_warning_third_party_client">Игры со сторонними лаунчерами не поддерживаются (%1$s)</string>
+    <string name="epic_disabled_warning_third_party_client">Игры со сторонними лаунчерами в настоящее время не поддерживаются в Epic Store</string>
     <string name="epic_uninstall_game_title">Удалить игру</string>
     <string name="error_a11y_label">Ошибка: невалидно</string>
     <string name="error_icon_content_description">Ошибка</string>

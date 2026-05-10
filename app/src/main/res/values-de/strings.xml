@@ -1304,7 +1304,7 @@
     <string name="amazon_logout_in_progress">Melde von Amazon Games ab…</string>
 
     <!-- Epic Install/Uninstall -->
-    <string name="epic_disabled_warning_third_party_client">Spiele mit Drittanbieter-Launcher werden nicht unterstützt (%1$s)</string>
+    <string name="epic_disabled_warning_third_party_client">Spiele mit Drittanbieter-Launcher werden im Epic Store derzeit nicht unterstützt</string>
     <string name="epic_uninstall_game_title">Spiel deinstallieren</string>
     <string name="epic_uninstall_game_message">Möchtest du %1$s wirklich deinstallieren? Diese Aktion kann nicht rückgängig gemacht werden.</string>
     <string name="epic_install_game_title">Spiel herunterladen</string>
