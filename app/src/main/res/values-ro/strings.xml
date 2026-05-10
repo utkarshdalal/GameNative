@@ -28,6 +28,7 @@
     <string name="steam_verify_files_title">Verificare fișiere</string>
     <string name="steam_verify_files_message">Asigură-te că salvările sunt încărcate în cloud sau copiate în altă parte înainte de verificare, deoarece pot fi suprascrise.</string>
     <string name="steam_cloud_sync_downloading_save_files">Se descarcă fișierele de salvare %1$d/%2$d</string>
+    <string name="steam_verify_files_message_local_saves">Sincronizarea cloud va fi omisă în timpul verificării deoarece opțiunea „Doar salvări locale” este activată.</string>
     <string name="steam_update_title">Actualizare</string>
     <string name="steam_update_message">Asigură-te că salvările sunt încărcate în cloud sau copiate în altă parte înainte de actualizare, deoarece pot fi suprascrise.</string>
     <string name="steam_not_logged_in">Trebuie să fii autentificat în Steam pentru a folosi această funcție</string>
@@ -652,6 +653,8 @@
 	<string name="unpack_files_description">Folosește doar dacă primești \'Application Load Error 3:0000065432\'.</string>
 	<string name="force_dlc">Forțează DLC</string>
 	<string name="force_dlc_description">Activează doar dacă DLC‑urile nu sunt detectate sau salvările cu DLC nu funcționează</string>
+	<string name="local_saves_only">Doar salvări locale</string>
+	<string name="local_saves_only_description">Dezactivează sincronizarea salvărilor în cloud pentru acest joc și păstrează salvările doar pe dispozitiv</string>
 	<string name="launch_steam_client_beta">Pornește Steam Client (Beta)</string>
 	<string name="steam_offline_mode">Mod Offline Steam</string>
 	<string name="steam_offline_mode_description">Pornește jocurile Steam în mod offline</string>
@@ -1013,6 +1016,7 @@
 	<string name="library_cloud_sync_up_to_date">Fișierele de salvare sunt deja la zi</string>
 	<string name="library_cloud_sync_failed">Sincronizare cloud eșuată</string>
 	<string name="library_cloud_sync_error">Eroare la sincronizarea salvărilor din cloud: %1$s</string>
+	<string name="library_cloud_sync_in_progress">Sincronizarea cloud este deja în curs</string>
 
 	<!-- LibraryAppScreen: UI Labels -->
 	<string name="library_need_internet">Este necesar internet pentru instalare</string>
@@ -1445,4 +1449,6 @@
     <string name="lsfg_install_message">Aceasta va descărca Lossless Scaling din Steam pentru a activa generarea de cadre.</string>
     <string name="lsfg_installing">Se descarcă Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Reduce calitatea pentru un debit mai mare</string>
+    <string name="cloud_sync_local_saves_only_title">Doar salvări locale</string>
+    <string name="cloud_sync_local_saves_only_message">Opțiunea „Doar salvări locale” este activată pentru acest joc. Salvările din cloud pot fi diferite de cele locale. Pe care vrei să le păstrezi?</string>
 </resources>

@@ -28,6 +28,7 @@
     <string name="steam_verify_files_title">Verificar archivos</string>
     <string name="steam_verify_files_message">Asegúrate de que tus archivos de guardado están en la nube o respaldados antes de verificar, ya que podrían sobrescribirse.</string>
     <string name="steam_cloud_sync_downloading_save_files">Descargando archivos de guardado %1$d/%2$d</string>
+    <string name="steam_verify_files_message_local_saves">La sincronización en la nube se omitirá durante la verificación porque \"Solo guardados locales\" está activado.</string>
     <string name="steam_update_title">Actualizar</string>
     <string name="steam_update_message">Asegúrate de que tus archivos de guardado están en la nube o respaldados antes de actualizar, ya que podrían sobrescribirse.</string>
     <string name="steam_not_logged_in">Debes iniciar sesión en Steam para usar esta función.</string>
@@ -696,6 +697,8 @@
     <string name="unpack_files_description">Úsalo solo si obtienes el error \'Application Load Error 3:0000065432\'.</string>
     <string name="force_dlc">Forzar DLC</string>
     <string name="force_dlc_description">Actívalo solo si los DLC no se detectan o los archivos de guardados con DLC no funcionan.</string>
+    <string name="local_saves_only">Solo guardados locales</string>
+    <string name="local_saves_only_description">Desactiva la sincronización de guardados en la nube para este juego y mantén los guardados solo en el dispositivo</string>
     <string name="launch_steam_client_beta">Iniciar cliente de Steam (Beta)</string>
     <string name="launch_steam_client_description">Reduce el rendimiento y ralentiza el inicio.\nPermite el juego en línea y soluciona problemas de DRM y de mando.\nNo todos los juegos funcionan.</string>
     <string name="steam_offline_mode">Modo sin conexión de Steam</string>
@@ -1023,6 +1026,7 @@
     <string name="library_cloud_sync_up_to_date">Los archivos de guardado ya están actualizados.</string>
     <string name="library_cloud_sync_failed">Fallo en la sincronización con la nube.</string>
     <string name="library_cloud_sync_error">Error de sincronización en la nube: %1$s.</string>
+    <string name="library_cloud_sync_in_progress">La sincronización en la nube ya está en curso</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Necesitas conexión a internet para instalar.</string>
@@ -1446,4 +1450,6 @@
     <string name="lsfg_install_message">Esto descargará Lossless Scaling de Steam para habilitar la generación de fotogramas.</string>
     <string name="lsfg_installing">Descargando Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Reduce calidad para mayor rendimiento</string>
+    <string name="cloud_sync_local_saves_only_title">Solo guardados locales</string>
+    <string name="cloud_sync_local_saves_only_message">"Solo guardados locales" está activado para este juego. Los guardados en la nube pueden diferir de los guardados locales. ¿Cuáles deseas conservar?</string>
 </resources>

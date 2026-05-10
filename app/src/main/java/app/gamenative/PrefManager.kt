@@ -482,6 +482,18 @@ object PrefManager {
             setPref(LOCAL_SAVES_ONLY, value)
         }
 
+    // app IDs whose cloud cache was cleared because local-saves-only was toggled off
+    // (not an upgrade) — checked in SteamAutoCloud to avoid showing upgrade conflict text
+    private val PENDING_CLOUD_RESYNC = stringPreferencesKey("pending_cloud_resync")
+    var pendingCloudResync: Set<Int>
+        get() {
+            val raw = getPref(PENDING_CLOUD_RESYNC, "")
+            return if (raw.isEmpty()) emptySet() else raw.split(',').mapNotNull { it.toIntOrNull() }.toSet()
+        }
+        set(value) {
+            setPref(PENDING_CLOUD_RESYNC, value.joinToString(","))
+        }
+
     private val STEAM_OFFLINE_MODE = booleanPreferencesKey("steam_offline_mode")
     var steamOfflineMode: Boolean
         get() = getPref(STEAM_OFFLINE_MODE, false)

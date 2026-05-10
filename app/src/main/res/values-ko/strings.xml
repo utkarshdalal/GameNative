@@ -28,6 +28,7 @@
     <string name="steam_verify_files_title">파일 검증</string>
     <string name="steam_verify_files_message">검증하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
     <string name="steam_cloud_sync_downloading_save_files">저장 파일 다운로드 중 %1$d/%2$d</string>
+    <string name="steam_verify_files_message_local_saves">로컬 저장 데이터만 사용이 활성화되어 있어 검증 중 클라우드 동기화를 건너뜁니다.</string>
     <string name="steam_update_title">업데이트</string>
     <string name="steam_update_message">업데이트하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
     <string name="steam_not_logged_in">이 기능을 사용하려면 Steam에 로그인해야 합니다</string>
@@ -661,6 +662,8 @@
     <string name="unpack_files_description">\'Application Load Error 3:0000065432\'가 발생하는 경우에만 사용하세요.</string>
     <string name="force_dlc">DLC 강제</string>
     <string name="force_dlc_description">DLC가 감지되지 않거나 DLC가 있는 저장 파일이 작동하지 않는 경우에만 활성화</string>
+    <string name="local_saves_only">로컬 저장 데이터만 사용</string>
+    <string name="local_saves_only_description">이 게임의 클라우드 저장 동기화를 비활성화하고 기기에만 저장</string>
     <string name="launch_steam_client_beta">Steam 클라이언트 실행(베타)</string>
     <string name="steam_offline_mode">Steam 오프라인 모드</string>
     <string name="steam_offline_mode_description">Steam 게임을 오프라인 모드로 실행</string>
@@ -1023,6 +1026,7 @@
     <string name="library_cloud_sync_up_to_date">저장 파일이 이미 최신 상태입니다</string>
     <string name="library_cloud_sync_failed">클라우드 동기화 실패</string>
     <string name="library_cloud_sync_error">클라우드 저장 파일 동기화 오류: %1$s</string>
+    <string name="library_cloud_sync_in_progress">클라우드 동기화가 이미 진행 중입니다</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">설치하려면 인터넷이 필요합니다</string>
@@ -1444,4 +1448,6 @@
     <string name="lsfg_install_message">프레임 생성을 활성화하기 위해 Steam에서 Lossless Scaling을 다운로드합니다.</string>
     <string name="lsfg_installing">Lossless Scaling 다운로드 중…</string>
     <string name="lsfg_performance_mode_desc">처리량 향상을 위해 품질 감소</string>
+    <string name="cloud_sync_local_saves_only_title">로컬 저장 데이터만 사용</string>
+    <string name="cloud_sync_local_saves_only_message">이 게임에 "로컬 저장 데이터만 사용"이 활성화되어 있습니다. 클라우드 저장 데이터가 로컬 저장 데이터와 다를 수 있습니다. 어떤 데이터를 유지하시겠습니까?</string>
 </resources>

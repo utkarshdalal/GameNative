@@ -422,6 +422,8 @@
     <string name="fexcore_version">Версия FEXCore</string>
     <string name="force_dlc">Принудительно включить DLC</string>
     <string name="force_dlc_description">Включайте только если DLC не обнаружены или сохранения с DLC не работают</string>
+    <string name="local_saves_only">Только локальные сохранения</string>
+    <string name="local_saves_only_description">Отключить облачную синхронизацию сохранений для этой игры и хранить сохранения только на устройстве</string>
     <string name="frame_synchronization">Синхронизация кадров</string>
     <string name="game_executable_not_found">Исполняемый файл не смог быть автоматически выбран. Пожалуйста, установите путь исполняемого файла в настройках контейнера.</string>
     <string name="game_executable_not_found_title">Невозможно запустить</string>
@@ -571,6 +573,7 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="library_cloud_sync_up_to_date">Файлы сохранения уже актуальны</string>
     <string name="library_cloud_sync_failed">Ошибка синхронизации облака</string>
     <string name="library_cloud_sync_error">Ошибка синхронизации облачного сохранения: %1$s</string>
+    <string name="library_cloud_sync_in_progress">Синхронизация облачных сохранений уже выполняется</string>
     <string name="library_compatibility_unknown">Неизвестно</string>
     <string name="library_compatible">Совместимо</string>
     <string name="library_config_title">Конфигурация %s</string>
@@ -1131,6 +1134,7 @@ https://gamenative.app
     <string name="steam_update_message">Пожалуйста, убедитесь, что ваши сохранения загружены в облако или скопированы, поскольку они могут быть перезаписаны.</string>
     <string name="steam_update_title">Обновление</string>
     <string name="steam_verify_files_message">Пожалуйста, убедитесь, что ваши сохранения загружены в облако или скопированы, поскольку они могут быть перезаписаны.</string>
+    <string name="steam_verify_files_message_local_saves">Облачная синхронизация будет пропущена при проверке, так как включены только локальные сохранения.</string>
     <string name="steam_verify_files_title">Проверить файлы</string>
     <string name="storage_info">Информация о хранилище</string>
     <string name="summary_collapsed_preference_list">%1$s, %2$s</string>
@@ -1373,4 +1377,6 @@ https://gamenative.app
     <string name="lsfg_install_message">Это загрузит Lossless Scaling из Steam для включения генерации кадров.</string>
     <string name="lsfg_installing">Загрузка Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Снижает качество для повышения пропускной способности</string>
+    <string name="cloud_sync_local_saves_only_title">Только локальные сохранения</string>
+    <string name="cloud_sync_local_saves_only_message">"Только локальные сохранения" включено для этой игры. Облачные сохранения могут отличаться от локальных. Какие вы хотите оставить?</string>
 </resources>

@@ -486,6 +486,8 @@
     <!-- Container Configuration: Steam Integration -->
     <string name="force_dlc">Gennemtving DLC</string>
     <string name="force_dlc_description">Kun aktiver hvis DLC\'er ikke opdages, eller gemfiler med DLC ikke virker</string>
+    <string name="local_saves_only">Kun lokale gemte data</string>
+    <string name="local_saves_only_description">Deaktiver cloud-synkronisering af gemte data for dette spil og behold kun gemte data på enheden</string>
     <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
     <string name="steam_offline_mode">Steam Offline-tilstand</string>
     <string name="steam_offline_mode_description">Start Steam-spil i offline-tilstand</string>
@@ -835,6 +837,7 @@
     <string name="library_cloud_sync_up_to_date">Gemfiler er allerede opdaterede</string>
     <string name="library_cloud_sync_failed">Sky-synkronisering fejlede</string>
     <string name="library_cloud_sync_error">Fejl ved synkronisering af cloud-gemmer: %1$s</string>
+    <string name="library_cloud_sync_in_progress">Synkronisering af cloud-gemmer er allerede i gang</string>
 
     <!-- TODO: Manual review - LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Internet påkrævet for installation</string>
@@ -1118,6 +1121,7 @@
     <string name="steam_reset_container_message">Dette vil nulstille din container til standardkonfigurationen.</string>
     <string name="steam_verify_files_title">Verificér filer</string>
     <string name="steam_verify_files_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før verificering, da de ellers kan blive overskrevet.</string>
+    <string name="steam_verify_files_message_local_saves">Cloud-synkronisering springes over under verificering, fordi kun lokale gemte data er aktiveret.</string>
     <string name="steam_update_title">Opdatering</string>
     <string name="steam_update_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før opdatering, da de ellers kan blive overskrevet.</string>
     <string name="steam_storage_permission_required">Lagertilladelse påkrævet</string>
@@ -1310,4 +1314,6 @@
     <string name="lsfg_install_message">Dette downloader Lossless Scaling fra Steam for at aktivere billedgenerering.</string>
     <string name="lsfg_installing">Downloader Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Reducerer kvalitet for højere gennemstrømning</string>
+    <string name="cloud_sync_local_saves_only_title">Kun lokale gemte data</string>
+    <string name="cloud_sync_local_saves_only_message">"Kun lokale gemte data" er aktiveret for dette spil. Cloud-gemte data kan afvige fra lokale gemte data. Hvilke vil du beholde?</string>
 </resources>

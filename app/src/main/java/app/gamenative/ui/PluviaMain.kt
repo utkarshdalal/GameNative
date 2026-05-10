@@ -2042,6 +2042,9 @@ fun preLaunchApp(
 
         when (postSyncInfo.syncResult) {
             SyncResult.Conflict -> {
+                // clear pending resync flag if present — it already prevented
+                // SteamAutoCloud from setting conflictUfsVersion
+                PrefManager.pendingCloudResync = PrefManager.pendingCloudResync - gameId
                 val localDate = Date(postSyncInfo.localTimestamp).toString()
                 val remoteDate = Date(postSyncInfo.remoteTimestamp).toString()
                 val (conflictTitle, conflictMessage) = postSyncInfo.conflictUfsVersion

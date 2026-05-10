@@ -486,6 +486,8 @@
     <!-- Container Configuration: Steam Integration -->
     <string name="force_dlc">Forçar DLC</string>
     <string name="force_dlc_description">Ative somente se os DLCs não forem detectados ou os saves com DLC não estiverem funcionando</string>
+    <string name="local_saves_only">Apenas saves locais</string>
+    <string name="local_saves_only_description">Desativar sincronização de saves na nuvem para este jogo e manter saves apenas no dispositivo</string>
     <string name="launch_steam_client_beta">Iniciar o cliente Steam (Beta)</string>
     <string name="steam_offline_mode">Modo Offline do Steam</string>
     <string name="steam_offline_mode_description">Iniciar jogos Steam no modo offline</string>
@@ -835,6 +837,7 @@
     <string name="library_cloud_sync_up_to_date">Os arquivos de save já estão atualizados</string>
     <string name="library_cloud_sync_failed">Sincronização na nuvem falhou</string>
     <string name="library_cloud_sync_error">Erro na sincronização de salvamentos na nuvem: %1$s</string>
+    <string name="library_cloud_sync_in_progress">A sincronização na nuvem já está em andamento</string>
 
     <!-- TODO: Revisão manual - LibraryAppScreen: Rótulos de UI -->
     <string name="library_need_internet">Internet necessária para instalar</string>
@@ -1118,6 +1121,7 @@
     <string name="steam_reset_container_message">Isso redefinirá seu contêiner para a configuração padrão.</string>
     <string name="steam_verify_files_title">Verificar arquivos</string>
     <string name="steam_verify_files_message">Certifique-se de que seus saves foram enviados para a nuvem ou foram feitos backups antes de verificar, caso contrário, eles podem ser sobrescritos.</string>
+    <string name="steam_verify_files_message_local_saves">A sincronização na nuvem será ignorada durante a verificação porque apenas os saves locais estão ativados.</string>
     <string name="steam_update_title">Atualização</string>
     <string name="steam_update_message">Certifique-se de que seus saves foram enviados para a nuvem ou foram feitos backups antes de atualizar, caso contrário, eles podem ser sobrescritos.</string>
     <string name="steam_storage_permission_required">Permissão de armazenamento necessária</string>
@@ -1310,4 +1314,6 @@
     <string name="lsfg_install_message">Isso baixará o Lossless Scaling do Steam para ativar a geração de quadros.</string>
     <string name="lsfg_installing">Baixando Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Reduz qualidade para maior taxa de processamento</string>
+    <string name="cloud_sync_local_saves_only_title">Apenas saves locais</string>
+    <string name="cloud_sync_local_saves_only_message">"Apenas saves locais" está ativado para este jogo. Os saves na nuvem podem ser diferentes dos saves locais. Quais você deseja manter?</string>
 </resources>
