@@ -192,6 +192,7 @@ private fun PrimaryActionButton(
     val buttonColor = when {
         isDownloading -> PluviaTheme.colors.statusDownloading
         isInstalled -> PluviaTheme.colors.statusInstalled
+        !enabled -> PluviaTheme.colors.textMuted
         else -> PluviaTheme.colors.statusAvailable
     }
 
@@ -272,7 +273,8 @@ private fun PrimaryActionButton(
                     )
                 }
             }
-        } else {
+        }
+        else {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -935,6 +937,15 @@ internal fun AppScreenContent(
                             color = Color(displayInfo.compatibilityColor),
                         )
                     }
+                    // Compatibility status (if applicable)
+                    if (displayInfo.disabledWarning != null && buttonEnabled == false) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = displayInfo.disabledWarning,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
             }
 
@@ -1242,6 +1253,7 @@ private fun Preview_AppScreen() {
         sizeFromStore = null,
         lastPlayedText = null,
         playtimeText = null,
+        disabledWarning = "3rd Party games not supported"
     )
     PluviaTheme {
         Surface {

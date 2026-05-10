@@ -1363,6 +1363,7 @@
     <string name="amazon_logout_in_progress">Вихід з Amazon Games…</string>
 
     <!-- Epic Install/Uninstall -->
+    <string name="epic_disabled_warning_third_party_client">Ігри зі стороннім лаунчером не підтримуються (%1$s)</string>
     <string name="epic_uninstall_game_title">Деінсталювати гру</string>
     <string name="epic_uninstall_game_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
     <string name="epic_install_game_title">Завантажити гру</string>

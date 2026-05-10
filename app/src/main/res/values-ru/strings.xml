@@ -374,6 +374,7 @@
     <string name="epic_uninstall_error">Ошибка удаления: %1$s</string>
     <string name="epic_uninstall_failed">Ошибка удаления: %1$s</string>
     <string name="epic_uninstall_game_message">Вы уверены, что хотите удалить %1$s? Это действие не может быть отменено.</string>
+    <string name="epic_disabled_warning_third_party_client">Игры со сторонними лаунчерами не поддерживаются (%1$s)</string>
     <string name="epic_uninstall_game_title">Удалить игру</string>
     <string name="error_a11y_label">Ошибка: невалидно</string>
     <string name="error_icon_content_description">Ошибка</string>
@@ -675,9 +676,9 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="m3c_dropdown_menu_toggle">Переключить выпадающее меню</string>
     <string name="m3c_snackbar_dismiss">Закрыть</string>
     <string name="magnifier">Лупа</string>
-    <string name="main_app_running_message">Вы уже вошли на другом устройстве и играете в %s. 
+    <string name="main_app_running_message">Вы уже вошли на другом устройстве и играете в %s.
 Вы всё ещё можете играть в эту игру, но это отключит другой сеанс от Steam.</string>
-    <string name="main_app_running_other_device">Вы уже вошли на другом устройстве (%1$s) и играете в %2$s (%3$s), и это сохранение ещё не в облаке. 
+    <string name="main_app_running_other_device">Вы уже вошли на другом устройстве (%1$s) и играете в %2$s (%3$s), и это сохранение ещё не в облаке.
 Вы всё ещё можете играть в эту игру, но это отключит другой сеанс от Steam и может создать конфликт сохранений, когда прогресс того сеанса синхронизируется</string>
     <string name="main_app_running_title">Приложение запущено</string>
     <string name="main_app_session_suspended">Сеанс приложения приостановлен. Пожалуйста, перезапустите приложение.</string>

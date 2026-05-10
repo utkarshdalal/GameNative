@@ -45,7 +45,6 @@ import kotlinx.coroutines.withContext
 import app.gamenative.ui.util.SnackbarManager
 import timber.log.Timber
 
-// TODO: Verify all tests and do DLC auto-install with base game.
 class EpicAppScreen : BaseAppScreen() {
 
     companion object {
@@ -273,6 +272,11 @@ class EpicAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
+            disabledWarning = if (game != null && game.thirdPartyManagedApp.isNotEmpty()) {
+                context.getString(R.string.epic_disabled_warning_third_party_client, game.thirdPartyManagedApp)
+            } else {
+                null
+            }
         )
         Timber.tag(TAG).d("Returning GameDisplayInfo: name=${displayInfo.name}, iconUrl=${displayInfo.iconUrl}, heroImageUrl=${displayInfo.heroImageUrl}, developer=${displayInfo.developer}, installLocation=${displayInfo.installLocation}")
         return displayInfo
@@ -293,10 +297,15 @@ class EpicAppScreen : BaseAppScreen() {
 
     override fun isValidToDownload(context: Context, libraryItem: LibraryItem): Boolean {
         Timber.tag(TAG).d("isValidToDownload: checking appId=${libraryItem.appId}")
+
         // Epic games can be downloaded if not already installed or downloading
         val installed = isInstalled(context, libraryItem)
         val downloading = isDownloading(context, libraryItem)
-        val valid = !installed && !downloading
+
+        val game = EpicService.getEpicGameOf(libraryItem.gameId)
+        val requiresThirdPartyApp = game?.thirdPartyManagedApp?.isNotEmpty() == true
+
+        val valid = !installed && !downloading && !requiresThirdPartyApp
         Timber.tag(TAG).d("isValidToDownload: appId=${libraryItem.appId}, installed=$installed, downloading=$downloading, valid=$valid")
         return valid
     }
