@@ -163,6 +163,7 @@ import app.gamenative.data.DownloadingAppInfo
 import app.gamenative.data.SteamUnlockedBranch
 import app.gamenative.db.dao.DownloadingAppInfoDao
 import app.gamenative.db.dao.SteamUnlockedBranchDao
+import app.gamenative.enums.SteamRealm
 import kotlinx.coroutines.flow.update
 import java.util.concurrent.CopyOnWriteArrayList
 import okhttp3.OkHttpClient
@@ -781,6 +782,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             ownedDlc: Map<Int, DepotInfo>?,
             licensedDepotIds: Set<Int>? = null,
             hasSteamUnlockedBranch: Boolean = false,
+            dlcAppIdsWithSingleDepots: Set<Int>? = null,
         ): Boolean {
             if (depot.manifests.isEmpty() && depot.encryptedManifests.isNotEmpty() && !hasSteamUnlockedBranch)
                 return false
@@ -808,8 +810,17 @@ class SteamService : Service(), IChallengeUrlChanged {
             if (depot.dlcAppId != INVALID_APP_ID && ownedDlc != null && !ownedDlc.containsKey(depot.depotId))
                 return false
             // 5. Language filter - if depot has language, it must match preferred language
-            if (depot.language.isNotEmpty() && depot.language != preferredLanguage)
-                return false
+            if (depot.language.isNotEmpty() && depot.language != preferredLanguage) {
+                // Note here, this logic is added to resolve A Date with Death - Expansion DLC (depotID: 2696090)
+                // the depot is in english language but there is only 1 depot in the dlcApp, we should always include it
+                if (depot.dlcAppId != INVALID_APP_ID) {
+                    if (dlcAppIdsWithSingleDepots != null && !dlcAppIdsWithSingleDepots.contains(depot.dlcAppId)) {
+                        return false
+                    }
+                } else {
+                    return false
+                }
+            }
             // 6. Package grants this depot — prevents grabbing region depots the user has no license for.
             //    Skip for DLC and systemDefined depots: DLC licensed via own package (check 4), systemDefined always granted.
             if (depot.dlcAppId == INVALID_APP_ID && !depot.systemDefined && licensedDepotIds != null && depot.depotId !in licensedDepotIds)
@@ -817,8 +828,24 @@ class SteamService : Service(), IChallengeUrlChanged {
             // 7. Prefer non-Steam-Deck depot when both exist (we're on Android, not Deck)
             if (depot.steamDeck && preferNonDeckWindows)
                 return false
+            // 8. Skip depot if the realm is SteamChina
+            if (depot.realm == SteamRealm.SteamChina)
+                return false
 
             return true
+        }
+
+
+        /**
+         * Returns all DLC App IDs that have exactly one depot.
+         * Used to identify DLCs with a single depot configuration.
+         */
+        fun getDlcAppIdsWithSingleDepot(depots: Map<Int, DepotInfo>): Set<Int> {
+            return depots.values
+                .filter { it.dlcAppId != INVALID_APP_ID }
+                .groupBy { it.dlcAppId }
+                .filterValues { it.size == 1 }
+                .keys
         }
 
         /**
@@ -832,8 +859,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             preferredLanguage: String,
             ownedDlc: Map<Int, DepotInfo>?,
             licensedDepotIds: Set<Int>?,
-        ): Collection<DepotInfo> = depots.values.filter { depot ->
-            filterForDownloadableDepots(depot, prefer64Bit = false, preferNonDeckWindows = false, preferredLanguage, ownedDlc, licensedDepotIds)
+        ): Collection<DepotInfo> {
+            val dlcAppIdsWithSingleDepots = getDlcAppIdsWithSingleDepot(depots)
+            return depots.values.filter { depot ->
+                filterForDownloadableDepots(depot, prefer64Bit = false, preferNonDeckWindows = false, preferredLanguage,
+                    ownedDlc, licensedDepotIds,
+                    dlcAppIdsWithSingleDepots = dlcAppIdsWithSingleDepots
+                )
+            }
         }
 
         /**
@@ -847,11 +880,15 @@ class SteamService : Service(), IChallengeUrlChanged {
             licensedDepotIds: Set<Int>?,
             hasSteamUnlockedBranch: Boolean = false,
         ): Map<Int, DepotInfo> {
+            val dlcAppIdsWithSingleDepots = getDlcAppIdsWithSingleDepot(depots)
             val eligible = eligibleDepots(depots, preferredLanguage, ownedDlc, licensedDepotIds)
             val has64Bit = eligible.any { it.osArch == OSArch.Arch64 }
             val hasNonDeckWin = eligible.any { !it.steamDeck && it.isWindowsCompatible }
             return depots.filter { (_, depot) ->
-                filterForDownloadableDepots(depot, has64Bit, hasNonDeckWin, preferredLanguage, ownedDlc, licensedDepotIds)
+                filterForDownloadableDepots(depot, has64Bit, hasNonDeckWin, preferredLanguage,
+                    ownedDlc, licensedDepotIds,
+                    dlcAppIdsWithSingleDepots = dlcAppIdsWithSingleDepots
+                )
             }
         }
 
@@ -862,13 +899,20 @@ class SteamService : Service(), IChallengeUrlChanged {
             val licensedDepots = getLicensedDepotIds(appId).orEmpty().toMutableSet()
 
             // Use the dlcAppID of the ownedDlc, to find the licensed depotIds from steam_license
+            val mainPackageDepotIds = getPkgInfoOf(appId)?.depotIds.orEmpty().toSet()
             val mapDlcDepotIds = mutableMapOf<Int, List<Int>>()
             ownedDlc.forEach { (dlcAppId, info) ->
                 val dlcDepotIds = getPkgInfoOf(dlcAppId)?.depotIds.orEmpty()
-                mapDlcDepotIds[dlcAppId] = dlcDepotIds
 
                 // Make sure licensedDepots contains the dlc depots
                 licensedDepots.addAll(dlcDepotIds)
+
+                if (mainPackageDepotIds.isEmpty()) return@forEach
+
+                val dlcOnlyDepotIds = dlcDepotIds.filter { it !in mainPackageDepotIds }
+                if (dlcOnlyDepotIds.isNotEmpty()) {
+                    mapDlcDepotIds[dlcAppId] = dlcOnlyDepotIds
+                }
             }
 
             val baseDepots = resolveDownloadableDepots(appInfo.depots, containerLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch)
@@ -915,13 +959,16 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             val indirectDlcApps = getDownloadableDlcAppsOf(appId).orEmpty()
             indirectDlcApps.forEach { dlcApp ->
+                val dlcAppIdsWithSingleDepots = getDlcAppIdsWithSingleDepot(dlcApp.depots)
                 val dlcLicensedDepots = getLicensedDepotIds(dlcApp.id)
                 val dlcEligible = eligibleDepots(dlcApp.depots, preferredLanguage, null, dlcLicensedDepots)
                 val dlcHasNonDeckWin = dlcEligible.any { !it.steamDeck && it.isWindowsCompatible }
                 dlcApp.depots
                     .filter { (_, depot) ->
-                        filterForDownloadableDepots(depot, has64Bit, dlcHasNonDeckWin, preferredLanguage, null, dlcLicensedDepots,
-                            hasSteamUnlockedBranch)
+                        filterForDownloadableDepots(depot, has64Bit, dlcHasNonDeckWin, preferredLanguage,
+                            null, dlcLicensedDepots, hasSteamUnlockedBranch,
+                            dlcAppIdsWithSingleDepots = dlcAppIdsWithSingleDepots
+                        )
                     }
                     .forEach { (depotId, depot) ->
                         // Add DLC Depots with custom object
@@ -1705,7 +1752,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     val mInfo = depot.manifests[branch]
                         ?: depot.encryptedManifests[branch]
                         ?: return@map 1L
-                    (mInfo.size ?: 1).toLong()
+                    SteamUtils.getDownloadBytes(mInfo).coerceAtLeast(1L)
                 }
                 sizes.forEachIndexed { i, bytes -> di.setWeight(i, bytes) }
 
@@ -2106,9 +2153,10 @@ class SteamService : Service(), IChallengeUrlChanged {
             private val downloadInfo: DownloadInfo,
             private val depotIdToIndex: Map<Int, Int>,
         ) : IDownloadListener {
-            // Track cumulative uncompressed bytes per depot to calculate deltas
-            // (uncompressedBytes from onChunkCompleted is cumulative per depot)
-            private val depotCumulativeUncompressedBytes = mutableMapOf<Int, Long>()
+            // Track cumulative compressed (network) bytes per depot to calculate deltas.
+            // compressedBytes from onChunkCompleted is cumulative per depot, and matches the
+            // unit of totalExpectedBytes which is summed from manifest.download.
+            private val depotCumulativeCompressedBytes = mutableMapOf<Int, Long>()
             override fun onItemAdded(item: DownloadItem) {
                 Timber.d("Item ${item.appId} added to queue")
             }
@@ -2147,15 +2195,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                 compressedBytes: Long,
                 uncompressedBytes: Long,
             ) {
-                val isFirstCallForDepot = !depotCumulativeUncompressedBytes.containsKey(depotId)
+                val isFirstCallForDepot = !depotCumulativeCompressedBytes.containsKey(depotId)
 
-                // uncompressedBytes is cumulative per depot, so calculate delta
-                val previousBytes = depotCumulativeUncompressedBytes[depotId] ?: 0L
-                val deltaBytes = uncompressedBytes - previousBytes
-                depotCumulativeUncompressedBytes[depotId] = uncompressedBytes
+                val previousBytes = depotCumulativeCompressedBytes[depotId] ?: 0L
+                val deltaBytes = compressedBytes - previousBytes
+                depotCumulativeCompressedBytes[depotId] = compressedBytes
 
                 if (deltaBytes > 0L) {
-                    // Normal case: add the delta
                     downloadInfo.updateBytesDownloaded(deltaBytes, System.currentTimeMillis())
                 }
 
@@ -2170,10 +2216,9 @@ class SteamService : Service(), IChallengeUrlChanged {
             override fun onDepotCompleted(depotId: Int, compressedBytes: Long, uncompressedBytes: Long) {
                 Timber.i("Depot $depotId completed (compressed: $compressedBytes, uncompressed: $uncompressedBytes)")
 
-                // Ensure we capture any remaining bytes
-                val previousBytes = depotCumulativeUncompressedBytes[depotId] ?: 0L
-                val deltaBytes = uncompressedBytes - previousBytes
-                depotCumulativeUncompressedBytes[depotId] = uncompressedBytes
+                val previousBytes = depotCumulativeCompressedBytes[depotId] ?: 0L
+                val deltaBytes = compressedBytes - previousBytes
+                depotCumulativeCompressedBytes[depotId] = compressedBytes
 
                 if (deltaBytes > 0L) {
                     downloadInfo.updateBytesDownloaded(deltaBytes, System.currentTimeMillis())
@@ -3475,7 +3520,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         var isAutoLoggingIn = false
 
-        if (PrefManager.username.isNotEmpty() && PrefManager.refreshToken.isNotEmpty()) {
+        if (SteamUtils.hasStoredCredentials()) {
             isAutoLoggingIn = true
 
             login(
@@ -4018,7 +4063,39 @@ class SteamService : Service(), IChallengeUrlChanged {
                         val queue = Collections.synchronizedList(mutableListOf<Int>())
 
                         db.withTransaction {
-                            picsCallback.packages.values.forEach { pkg ->
+                            // When the same app appears in multiple packages (e.g. user owns the game and
+                            // also has a free-weekend / demo / family-shared sub for it), the previous
+                            // implementation overwrote SteamApp.packageId with whichever pkg was iterated
+                            // last — non-deterministic and prone to landing on a non-user-owned package,
+                            // which then makes the user's own game appear as family-shared in the library.
+                            // To fix that we (a) process user-owned packages last so they win the
+                            // last-write-wins assignment within this batch and (b) refuse to downgrade an
+                            // existing user-owned packageId across batches.
+                            val accountId = userSteamId?.accountID?.toInt()
+                            val packageLicenses: Map<Int, SteamLicense> = if (accountId != null) {
+                                val packageIds = picsCallback.packages.values.map { it.id }
+                                licenseDao.findLicenses(packageIds).associateBy { it.packageId }
+                            } else {
+                                emptyMap()
+                            }
+                            val userOwnedPackageIds: Set<Int> = if (accountId != null) {
+                                packageLicenses.values
+                                    .filter { it.ownerAccountId.contains(accountId) }
+                                    .mapTo(HashSet()) { it.packageId }
+                            } else {
+                                emptySet()
+                            }
+
+                            // Prefer non-expired user-owned packages so a live sub wins over an expired remnant.
+                            fun pkgRank(pkgId: Int): Int {
+                                if (pkgId !in userOwnedPackageIds) return 0
+                                val expired = packageLicenses[pkgId]?.licenseFlags?.contains(ELicenseFlags.Expired) == true
+                                return if (expired) 1 else 2
+                            }
+
+                            val orderedPackages = picsCallback.packages.values.sortedBy { pkgRank(it.id) }
+
+                            orderedPackages.forEach { pkg ->
                                 val appIds = pkg.keyValues["appids"].children.map { it.asInteger() }
                                 licenseDao.updateApps(pkg.id, appIds)
 
@@ -4027,13 +4104,28 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                                 // Insert a stub row (or update) of SteamApps to the database.
                                 appIds.forEach { appid ->
-                                    val steamApp = appDao.findApp(appid)?.copy(packageId = pkg.id)
-                                    if (steamApp != null) {
-                                        appDao.update(steamApp)
-                                    } else {
-                                        val stubSteamApp = SteamApp(id = appid, packageId = pkg.id)
-                                        appDao.insert(stubSteamApp)
+                                    val existing = appDao.findApp(appid)
+                                    if (existing == null) {
+                                        appDao.insert(SteamApp(id = appid, packageId = pkg.id))
+                                        return@forEach
                                     }
+                                    if (existing.packageId == pkg.id) {
+                                        return@forEach
+                                    }
+                                    if (accountId != null && existing.packageId != INVALID_PKG_ID) {
+                                        val existingLicense = packageLicenses[existing.packageId]
+                                            ?: licenseDao.findLicense(existing.packageId)
+                                        val existingRank = when {
+                                            existingLicense == null -> 0
+                                            !existingLicense.ownerAccountId.contains(accountId) -> 0
+                                            ELicenseFlags.Expired in existingLicense.licenseFlags -> 1
+                                            else -> 2
+                                        }
+                                        if (existingRank > pkgRank(pkg.id)) {
+                                            return@forEach
+                                        }
+                                    }
+                                    appDao.update(existing.copy(packageId = pkg.id))
                                 }
 
                                 queue.addAll(appIds)

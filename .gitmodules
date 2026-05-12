@@ -1,3 +1,6 @@
 [submodule "app/src/main/cpp/extras/adrenotools"]
 	path = app/src/main/cpp/extras/adrenotools
 	url = https://github.com/Pipetto-crypto/libadrenotools.git
+[submodule "app/src/main/cpp/lsfg-vk-android"]
+	path = app/src/main/cpp/lsfg-vk-android
+	url = https://github.com/GameNative/lsfg-vk-android.git

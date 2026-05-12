@@ -439,6 +439,41 @@ fun ContainerConfigDialog(
                 expectedType = null,
                 onInstalled = onInstalled,
             )
+
+        fun launchSteamAppDownload(appId: Int, label: String, onDownloaded: () -> Unit) {
+            if (manifestInstallInProgress) return
+            val downloadInfo = SteamService.downloadApp(appId) ?: run {
+                onDownloaded()
+                return
+            }
+            manifestInstallInProgress = true
+            showManifestDownloadDialog = true
+            manifestDownloadProgress = downloadInfo.getProgress().coerceIn(0f, 1f)
+            manifestDownloadLabel = label
+            SnackbarManager.show(context.getString(R.string.manifest_downloading_item, label))
+
+            val progressListener: (Float) -> Unit = { progress ->
+                installScope.launch(Dispatchers.Main.immediate) {
+                    manifestDownloadProgress = progress.coerceIn(0f, 1f)
+                }
+            }
+            downloadInfo.addProgressListener(progressListener)
+
+            installScope.launch {
+                try {
+                    withContext(Dispatchers.IO) {
+                        downloadInfo.awaitCompletion(timeoutMs = 7L * 24L * 60L * 60L * 1000L)
+                    }
+                    onDownloaded()
+                } finally {
+                    downloadInfo.removeProgressListener(progressListener)
+                    manifestInstallInProgress = false
+                    showManifestDownloadDialog = false
+                    manifestDownloadProgress = -1f
+                    manifestDownloadLabel = ""
+                }
+            }
+        }
         // Vortek/Adreno graphics driver config (vkMaxVersion, imageCacheSize, exposedDeviceExtensions)
         val vkMaxVersionIndexRef = rememberSaveable { mutableIntStateOf(3) }
         var vkMaxVersionIndex by vkMaxVersionIndexRef
@@ -1022,6 +1057,7 @@ fun ContainerConfigDialog(
                 launchManifestContentInstall(entry, expectedType, onInstalled)
             },
             launchManifestDriverInstall = { entry, onInstalled -> launchManifestDriverInstall(entry, onInstalled) },
+            launchSteamAppDownload = { appId, label, onDownloaded -> launchSteamAppDownload(appId, label, onDownloaded) },
             getStartupSelectionOptions = { getStartupSelectionOptions() },
             launchFolderPicker = {
                 showAddDriveDialogRef.value = false
@@ -1125,7 +1161,7 @@ fun ContainerConfigDialog(
                                 .weight(1f),
                         ) {
                             if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError, aspectResolutionError)
-                            if (selectedTab == 1) GraphicsTabContent(state)
+                            if (selectedTab == 1) GraphicsTabContent(state, default)
                             if (selectedTab == 2) EmulationTabContent(state)
                             if (selectedTab == 3) ControllerTabContent(state, default)
                             if (selectedTab == 4) WineTabContent(state)

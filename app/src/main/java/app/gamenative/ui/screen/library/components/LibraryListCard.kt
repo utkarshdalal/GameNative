@@ -268,6 +268,7 @@ private fun InstallStatusBadge(
  * Gets the icon URL for a game in list view.
  */
 private fun getListIconUrl(context: Context, appInfo: LibraryItem): String {
+    if (appInfo.isRecommended) return appInfo.iconHash
     return if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
         val path = CustomGameScanner.findIconFileForCustomGame(context, appInfo.appId)
         if (!path.isNullOrEmpty()) {

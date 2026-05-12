@@ -106,6 +106,7 @@ import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.PlatformOAuthHandlers
+import app.gamenative.utils.SteamUtils
 import kotlinx.coroutines.launch
 import android.os.SystemClock
 
@@ -860,10 +861,9 @@ private fun LibraryScreenContent(
         if (selectedAppId == null) {
             // Use Box to allow content to scroll behind the tab bar
             Box(modifier = Modifier.fillMaxSize()) {
-                val hasSteamCredentials = PrefManager.refreshToken.isNotEmpty() && PrefManager.username.isNotEmpty()
                 // When on Steam/GOG/Epic/Amazon tab and not logged in, or LOCAL tab with no custom games, show splash
                 val showEmptyStateSplash = when (state.currentTab) {
-                    LibraryTab.STEAM -> !hasSteamCredentials && !state.isLoading
+                    LibraryTab.STEAM -> !SteamUtils.hasStoredCredentials() && !state.isLoading
                     LibraryTab.GOG -> !GOGService.hasStoredCredentials(context)
                     LibraryTab.EPIC -> !EpicService.hasStoredCredentials(context)
                     LibraryTab.AMAZON -> !AmazonService.hasStoredCredentials(context)

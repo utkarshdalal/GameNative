@@ -10,13 +10,18 @@ import java.io.File;
 public final class ImageFSLegacyMigrator {
     private ImageFSLegacyMigrator() {}
 
-    public static boolean migrateLegacyDirsIfNeeded(Context context, File legacyImageFsRoot) {
+    /**
+     * Migrate legacy directories if needed. After that, ensure the shared home and proton are symlinked.
+     */
+    public static boolean migrateLegacyDirsIfNeeded(Context context, File legacyImageFsRoot, String wineVersion) {
         if (!migrateLegacyHomeToShared(context, legacyImageFsRoot)) {
             return false;
         }
         if (!migrateLegacyProtonToShared(context, legacyImageFsRoot)) {
             return false;
         }
+        ImageFsInstaller.ensureSharedHomeRoot(context, legacyImageFsRoot);
+        ImageFsInstaller.ensureProtonVersionSymlink(context, legacyImageFsRoot, wineVersion);
         return true;
     }
 

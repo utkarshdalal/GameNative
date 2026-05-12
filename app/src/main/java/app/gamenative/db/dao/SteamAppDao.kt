@@ -14,14 +14,37 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 
+// An app is considered "owned" if there's any non-expired license that grants access
+// to it: either its own package's license, or any DLC of it (e.g. for free-to-start
+// titles like Diablo IV where the actual purchase is a separate "Standard Edition"
+// DLC sub that unlocks the base appid). Without the DLC arm, F2P-with-paid-DLC games
+// disappear after the user's free-weekend sub on the base appid expires, even though
+// they still own the game via the DLC entitlement.
+//
+// The two arms are split into two separate EXISTS clauses on purpose: most apps will
+// be decided by the first (own-license) arm, which is an O(1) PK lookup on
+// steam_license. SQLite short-circuits the second (DLC scan) arm in that common case,
+// keeping load times comparable to the original PR #985 query for large libraries.
+//
+// When :includeExpired is 1, the license predicate is bypassed entirely, surfacing
+// apps that are normally hidden (used by the "Expired" library filter for diagnostics).
 private const val OWNED_APPS_WHERE =
     "WHERE app.id != 480 " + // Actively filter out Spacewar
     "AND app.package_id != :invalidPkgId " +
     "AND app.type != 0 " +
-    "AND EXISTS (" +
-    "  SELECT 1 FROM steam_license AS license " +
-    "  WHERE license.packageId = app.package_id " +
-    "  AND (license.license_flags & 8 = 0) " + // exclude expired licenses (e.g. free weekends)
+    "AND (" +
+    "  :includeExpired = 1 " +
+    "  OR EXISTS (" +
+    "    SELECT 1 FROM steam_license AS license " +
+    "    WHERE license.packageId = app.package_id " +
+    "    AND (license.license_flags & 8) = 0 " + // exclude expired licenses (e.g. free weekends)
+    "  ) " +
+    "  OR EXISTS (" +
+    "    SELECT 1 FROM steam_app AS dlc " +
+    "    INNER JOIN steam_license AS license ON dlc.package_id = license.packageId " +
+    "    WHERE dlc.dlc_for_app_id = app.id " +
+    "    AND (license.license_flags & 8) = 0 " +
+    "  ) " +
     ") "
 
 private const val PAGE_SIZE = 50
@@ -44,6 +67,7 @@ interface SteamAppDao {
     )
     fun _observeOwnedAppCount(
         invalidPkgId: Int = INVALID_PKG_ID,
+        includeExpired: Int = 0,
     ): Flow<Int>
 
     // paged data load — each page fits comfortably in a CursorWindow
@@ -55,10 +79,14 @@ interface SteamAppDao {
         limit: Int,
         offset: Int,
         invalidPkgId: Int = INVALID_PKG_ID,
+        includeExpired: Int = 0,
     ): List<SteamApp>
 
     @Transaction
-    suspend fun _getAllOwnedAppsPaged(invalidPkgId: Int = INVALID_PKG_ID): List<SteamApp> {
+    suspend fun _getAllOwnedAppsPaged(
+        invalidPkgId: Int = INVALID_PKG_ID,
+        includeExpired: Int = 0,
+    ): List<SteamApp> {
         val result = mutableListOf<SteamApp>()
         var offset = 0
         while (true) {
@@ -66,7 +94,7 @@ interface SteamAppDao {
             var pageSize = if (offset == 0) Int.MAX_VALUE else PAGE_SIZE
             while (true) {
                 try {
-                    val page = _getOwnedAppsPage(pageSize, offset, invalidPkgId)
+                    val page = _getOwnedAppsPage(pageSize, offset, invalidPkgId, includeExpired)
                     if (page.isEmpty()) return result
                     result += page
                     if (pageSize == Int.MAX_VALUE) return result // got everything in one shot
@@ -82,14 +110,20 @@ interface SteamAppDao {
 
     // emits full list on count changes, loaded in pages to avoid CursorWindow overflow.
     // property-only updates (name, icon) won't re-emit until the next count change.
+    // Pass includeExpired = true to surface apps whose license is flagged Expired or
+    // is missing entirely — used by the library "Expired" filter for diagnostics.
     @OptIn(ExperimentalCoroutinesApi::class)
     fun getAllOwnedApps(
         invalidPkgId: Int = INVALID_PKG_ID,
-    ): Flow<List<SteamApp>> = _observeOwnedAppCount(invalidPkgId)
-        .distinctUntilChanged() // skip reload when count unchanged
-        .flatMapLatest { // cancel stale reloads during rapid PICS inserts
-            flow { emit(_getAllOwnedAppsPaged(invalidPkgId)) }
-        }
+        includeExpired: Boolean = false,
+    ): Flow<List<SteamApp>> {
+        val includeExpiredFlag = if (includeExpired) 1 else 0
+        return _observeOwnedAppCount(invalidPkgId, includeExpiredFlag)
+            .distinctUntilChanged() // skip reload when count unchanged
+            .flatMapLatest { // cancel stale reloads during rapid PICS inserts
+                flow { emit(_getAllOwnedAppsPaged(invalidPkgId, includeExpiredFlag)) }
+            }
+    }
 
     @Query(
         "SELECT * FROM steam_app " +

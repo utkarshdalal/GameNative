@@ -655,7 +655,8 @@ private fun StorageEntryCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            if (canMoveToExternal || canMoveToInternal || entry.canUninstallGame || entry.hasContainer) {
+            val canRemoveOrphanContainer = entry.hasContainer && !entry.canUninstallGame
+            if (canMoveToExternal || canMoveToInternal || entry.canUninstallGame || canRemoveOrphanContainer) {
                 Spacer(modifier = Modifier.height(14.dp))
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -692,7 +693,7 @@ private fun StorageEntryCard(
                             contentColor = MaterialTheme.colorScheme.onErrorContainer,
                         )
                     }
-                    if (entry.hasContainer) {
+                    if (canRemoveOrphanContainer) {
                         StorageActionButton(
                             text = stringResource(R.string.container_storage_remove_button),
                             icon = Icons.Default.Delete,
