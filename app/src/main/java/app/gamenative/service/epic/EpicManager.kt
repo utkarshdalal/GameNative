@@ -7,6 +7,7 @@ import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.db.dao.EpicGameDao
 import app.gamenative.utils.Net
+import app.gamenative.utils.sanitizeForFilename
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,6 +29,11 @@ class EpicManager @Inject constructor(
 ) {
 
     private val REFRESH_BATCH_SIZE = 10
+
+    // Deployment ID cache TTL — deployment IDs rarely change, but a periodic re-probe
+    // gives automatic recovery from any poisoned cache entry (stale negative, truncated
+    // value, etc.) without requiring manual intervention.
+    private val DEPLOYMENT_ID_CACHE_TTL_MS = 30L * 24 * 60 * 60 * 1000  // 30 days
 
     private val httpClient = Net.http
 
@@ -111,6 +117,7 @@ class EpicManager @Inject constructor(
     // Custom Attributes from the payload.
     data class EpicCustomAttributes(
         val canRunOffline: Boolean = false,
+        val ownershipToken: Boolean = false,
         val cloudSaveFolder: String? = null,
         val cloudIncludeList: String? = null,
         val neverUpdate: Boolean = false,
@@ -204,18 +211,23 @@ class EpicManager @Inject constructor(
                 return@withContext Result.success(0)
             }
 
-            // Get existing game IDs from database to avoid re-fetching
-            val existingCatalogIds = epicGameDao.getAllCatalogIds().toSet()
-            Timber.tag("Epic").d("Found ${existingCatalogIds.size} games already in database")
-
-            // Filter to only new games that need details fetched
-            val newGamesList = gamesList.filter { it.catalogItemId !in existingCatalogIds }
-            Timber.tag("Epic").d("${newGamesList.size} new games need details fetched")
+            // Re-fetch catalog metadata for every game so customAttributes-derived
+            // fields (requiresOT, canRunOffline, ...) backfill on existing rows.
+            // Hoist credential read out of the per-game loop — refreshing once is
+            // sufficient since a library scan completes in seconds and the token
+            // has a 5-minute expiry buffer in getStoredCredentials.
+            val credentialsResult = EpicAuthManager.getStoredCredentials(context)
+            val accessToken = credentialsResult.getOrNull()?.accessToken
+            if (credentialsResult.isFailure || accessToken.isNullOrEmpty()) {
+                val error = credentialsResult.exceptionOrNull() ?: Exception("No access token")
+                Timber.tag("Epic").e(error, "Cannot refresh library: ${error.message}")
+                return@withContext Result.failure(error)
+            }
 
             val epicGames = mutableListOf<EpicGame>()
             var processedCount = 0
-            for ((index, game) in newGamesList.withIndex()) {
-                val result = fetchGameInfo(context, game)
+            for ((index, game) in gamesList.withIndex()) {
+                val result = fetchGameInfo(context, game, accessToken)
 
                 if (result.isSuccess) {
                     val epicGame = result.getOrNull()
@@ -228,10 +240,10 @@ class EpicManager @Inject constructor(
                     Timber.tag("Epic").w("Epic game ${game.appName} could not be fetched")
                 }
 
-                if ((index + 1) % REFRESH_BATCH_SIZE == 0 || index == newGamesList.lastIndex) {
+                if ((index + 1) % REFRESH_BATCH_SIZE == 0 || index == gamesList.lastIndex) {
                     if (epicGames.isNotEmpty()) {
                         epicGameDao.upsertPreservingInstallStatus(epicGames)
-                        Timber.tag("Epic").d("Batch inserted ${epicGames.size} games (processed ${index + 1}/${newGamesList.size})")
+                        Timber.tag("Epic").d("Batch inserted ${epicGames.size} games (processed ${index + 1}/${gamesList.size})")
                         epicGames.clear()
                     }
                 }
@@ -402,59 +414,62 @@ class EpicManager @Inject constructor(
     private suspend fun fetchGameInfo(
         context: Context,
         game: ParsedLibraryItem,
+        accessToken: String,
     ): Result<EpicGame> = withContext(Dispatchers.IO) {
         try {
-            // Get Credentials and restore them
-            val credentials = EpicAuthManager.getStoredCredentials(context)
-            if (credentials.isFailure) {
-                return@withContext Result.failure(credentials.exceptionOrNull() ?: Exception("No credentials"))
-            }
-
-            val accessToken = credentials.getOrNull()?.accessToken
-            if (accessToken.isNullOrEmpty()) {
-                return@withContext Result.failure(Exception("No access token"))
-            }
-
-            val country = game.country ?: "US" // Do we really need this?
-
             // ! We should expertiment with the country to see what affects language downloads
-            val url = "${EpicConstants.EPIC_CATALOG_API_URL}/shared/namespace/${game.namespace}/bulk/items" +
-                "?id=${game.catalogItemId}&includeDLCDetails=true&includeMainGameDetails=true" +
-                "&country=$country"
+            val gameData = fetchCatalogItem(
+                namespace = game.namespace,
+                catalogItemId = game.catalogItemId,
+                accessToken = accessToken,
+                country = game.country ?: "US",
+                includeDLCDetails = true,
+                includeMainGameDetails = true,
+            ) ?: return@withContext Result.failure(Exception("Game data not found in response"))
 
-            Timber.tag("Epic").d("fetching game info for ${game.appName} - url: $url")
-
-            val request = Request.Builder()
-                .url(url)
-                .header("Authorization", "Bearer $accessToken")
-                .header("User-Agent", EpicConstants.EPIC_USER_AGENT)
-                .get()
-                .build()
-
-            val response = httpClient.newCall(request).execute()
-
-            if (!response.isSuccessful) {
-                Timber.w("Failed to fetch game info for ${game.catalogItemId}: ${response.code}")
-                return@withContext Result.failure(Exception("Could not fetch game info: ${response.code}"))
-            }
-
-            val body = response.body?.string()
-            if (body.isNullOrEmpty()) {
-                return@withContext Result.failure(Exception("Could not fetch game info for ${game.catalogItemId}"))
-            }
-
-            val json = JSONObject(body)
-            val gameData: JSONObject? = json.optJSONObject(game.catalogItemId)
-
-            if (gameData != null) {
-                val epicGame = parseGameFromCatalog(gameData, game.appName)
-                return@withContext Result.success(epicGame)
-            } else {
-                return@withContext Result.failure(Exception("Game data not found in response"))
-            }
+            Result.success(parseGameFromCatalog(gameData, game.appName))
         } catch (e: Exception) {
             Timber.w(e, "Error fetching game info for ${game.catalogItemId}")
-            return@withContext Result.failure(e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * GET a single item from `/shared/namespace/{ns}/bulk/items` and return the
+     * per-`catalogItemId` JSONObject (or null if the request failed / item missing).
+     * Caller must be on a background dispatcher; the underlying HTTP call is blocking.
+     */
+    private fun fetchCatalogItem(
+        namespace: String,
+        catalogItemId: String,
+        accessToken: String,
+        country: String = "US",
+        includeDLCDetails: Boolean = false,
+        includeMainGameDetails: Boolean = false,
+    ): JSONObject? {
+        val params = buildString {
+            append("?id=").append(catalogItemId)
+            if (includeDLCDetails) append("&includeDLCDetails=true")
+            if (includeMainGameDetails) append("&includeMainGameDetails=true")
+            append("&country=").append(country)
+        }
+        val url = "${EpicConstants.EPIC_CATALOG_API_URL}/shared/namespace/$namespace/bulk/items$params"
+
+        val request = Request.Builder()
+            .url(url)
+            .header("Authorization", "Bearer $accessToken")
+            .header("User-Agent", EpicConstants.EPIC_USER_AGENT)
+            .get()
+            .build()
+
+        return httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                Timber.tag("Epic").w("Catalog fetch failed for $namespace:$catalogItemId: ${response.code}")
+                return@use null
+            }
+            val body = response.body?.string()
+            if (body.isNullOrEmpty()) return@use null
+            JSONObject(body).optJSONObject(catalogItemId)
         }
     }
 
@@ -484,6 +499,7 @@ class EpicManager @Inject constructor(
 
         return EpicCustomAttributes(
             canRunOffline = getBooleanAttribute("CanRunOffline", false),
+            ownershipToken = getBooleanAttribute("OwnershipToken", false),
             cloudSaveFolder = getAttribute("CloudSaveFolder"),
             cloudIncludeList = getAttribute("CloudIncludeList"),
             folderName = getAttribute("FolderName"),
@@ -494,6 +510,7 @@ class EpicManager @Inject constructor(
             thirdPartyManagedApp = getAttribute("ThirdPartyManagedApp"),
             thirdPartyManagedProvider = getAttribute("ThirdPartyManagedProvider"),
             partnerLinkType = getAttribute("partnerLinkType"),
+            additionalCommandline = getAttribute("AdditionalCommandLine"),
             executableName = getAttribute("MainWindowProcessName"),
         )
     }
@@ -580,6 +597,7 @@ class EpicManager @Inject constructor(
         // Parse custom attributes for cloud saves and offline support
         val parsedAttributes = parseCustomAttributes(data.optJSONObject("customAttributes"))
         val canRunOffline = parsedAttributes.canRunOffline
+        val requiresOwnershipToken = parsedAttributes.ownershipToken
         val cloudSaveEnabled = !parsedAttributes.cloudSaveFolder.isNullOrEmpty()
         val saveFolder = parsedAttributes.cloudSaveFolder ?: ""
         val executable = parsedAttributes.executableName ?: ""
@@ -624,8 +642,8 @@ class EpicManager @Inject constructor(
             executable = executable,
             installSize = 0,
             downloadSize = 0,
-            canRunOffline = canRunOffline, // Unknown from catalog API, will need manifest
-            requiresOT = false,
+            canRunOffline = canRunOffline,
+            requiresOT = requiresOwnershipToken,
             cloudSaveEnabled = cloudSaveEnabled,
             saveFolder = saveFolder,
             thirdPartyManagedApp = thirdPartyApp,
@@ -921,6 +939,147 @@ class EpicManager @Inject constructor(
         } catch (e: Exception) {
             Timber.tag("Epic").e(e, "Exception fetching manifest")
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Fetch the EOS deployment id for a game from the launcher manifest API.
+     *
+     * Mirrors Legendary's sidecar handling (legendary/core.py, _update_assets_and_meta
+     * and get_launch_parameters): the manifest API response contains
+     * `elements[0].sidecar.config` as a JSON-encoded string, which carries the
+     * game's `deploymentId`.  Passing `-epicdeploymentid=<id>` on the command
+     * line is required for modern EOS-integrated games; without it, titles
+     * such as "Deliver At All Costs" refuse to start with
+     * "Failed to connect to the Epic Launcher".
+     *
+     * Cached per app-name under [Context.filesDir]/epic/deployment_ids/.
+     *
+     * @return the deployment id if the game exposes one, otherwise null. Null
+     *         is a valid result – most titles do not have a sidecar.
+     */
+    suspend fun fetchDeploymentId(
+        context: Context,
+        namespace: String,
+        catalogItemId: String,
+        appName: String,
+        forceRefresh: Boolean = false,
+    ): String? = withContext(Dispatchers.IO) {
+        val cacheDir = File(context.filesDir, "epic/deployment_ids").also { it.mkdirs() }
+        val cacheFile = File(cacheDir, "${appName.sanitizeForFilename()}.txt")
+
+        if (!forceRefresh && cacheFile.exists()) {
+            val cacheAgeMs = System.currentTimeMillis() - cacheFile.lastModified()
+            if (cacheAgeMs < DEPLOYMENT_ID_CACHE_TTL_MS) {
+                return@withContext cacheFile.readText().trim().takeIf { it.isNotEmpty() }
+            }
+            Timber.tag("Epic").d(
+                "fetchDeploymentId cache for $appName is stale (age=${cacheAgeMs}ms), refetching",
+            )
+        }
+
+        try {
+            val credentialsResult = EpicAuthManager.getStoredCredentials(context)
+            val accessToken = credentialsResult.getOrNull()?.accessToken
+            if (accessToken.isNullOrEmpty()) {
+                Timber.tag("Epic").w("fetchDeploymentId: no access token")
+                return@withContext null
+            }
+
+            val manifestUrl = "${EpicConstants.EPIC_LAUNCHER_API_URL}/launcher/api/public/assets/v2/platform" +
+                "/Windows/namespace/$namespace/catalogItem/$catalogItemId/app" +
+                "/$appName/label/Live"
+
+            val request = Request.Builder()
+                .url(manifestUrl)
+                .header("Authorization", "Bearer $accessToken")
+                .header("User-Agent", EpicConstants.EPIC_USER_AGENT)
+                .get()
+                .build()
+
+            val manifestJson = httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Timber.tag("Epic").w("fetchDeploymentId: manifest API ${response.code} for $appName")
+                    return@withContext null
+                }
+                val body = response.body?.string()
+                if (body.isNullOrEmpty()) return@withContext null
+                JSONObject(body)
+            }
+
+            val elements = manifestJson.optJSONArray("elements")
+            if (elements == null || elements.length() == 0) return@withContext null
+
+            val sidecar = elements.getJSONObject(0).optJSONObject("sidecar")
+            // sidecar.config is a JSON-encoded string, NOT a nested JSON object
+            val configStr = sidecar?.optString("config", "") ?: ""
+            if (configStr.isEmpty()) {
+                // Cache negative result to avoid refetching every launch
+                cacheFile.writeText("")
+                return@withContext null
+            }
+
+            val deploymentId = try {
+                JSONObject(configStr).optString("deploymentId", "").takeIf { it.isNotEmpty() }
+            } catch (e: Exception) {
+                // Malformed sidecar (transient Epic API hiccup or schema change).
+                // Do NOT persist a negative cache here — next launch will retry the parse
+                // rather than permanently treating this game as having no deployment id.
+                Timber.tag("Epic").w(e, "fetchDeploymentId: failed to parse sidecar.config for $appName")
+                return@withContext null
+            }
+
+            cacheFile.writeText(deploymentId ?: "")
+            Timber.tag("Epic").d("fetchDeploymentId($appName) = ${deploymentId ?: "<none>"}")
+            deploymentId
+        } catch (e: Exception) {
+            Timber.tag("Epic").e(e, "Exception fetching deployment id for $appName")
+            null
+        }
+    }
+
+    /**
+     * Fetch `customAttributes.AdditionalCommandLine` from the Epic catalog API.
+     * Mirrors legendary `Game.additional_command_line`. Cached per app-name with
+     * the same TTL as deployment ids.
+     */
+    suspend fun fetchAdditionalCommandLine(
+        context: Context,
+        namespace: String,
+        catalogItemId: String,
+        appName: String,
+        forceRefresh: Boolean = false,
+    ): String? = withContext(Dispatchers.IO) {
+        val cacheDir = File(context.filesDir, "epic/additional_cmdline").also { it.mkdirs() }
+        val cacheFile = File(cacheDir, "${appName.sanitizeForFilename()}.txt")
+
+        if (!forceRefresh && cacheFile.exists()) {
+            val cacheAgeMs = System.currentTimeMillis() - cacheFile.lastModified()
+            if (cacheAgeMs < DEPLOYMENT_ID_CACHE_TTL_MS) {
+                return@withContext cacheFile.readText().trim().takeIf { it.isNotEmpty() }
+            }
+        }
+
+        try {
+            val credentials = EpicAuthManager.getStoredCredentials(context)
+            val accessToken = credentials.getOrNull()?.accessToken
+            if (accessToken.isNullOrEmpty()) return@withContext null
+
+            val gameData = fetchCatalogItem(
+                namespace = namespace,
+                catalogItemId = catalogItemId,
+                accessToken = accessToken,
+            ) ?: return@withContext null
+
+            val additionalCommandLine = parseCustomAttributes(
+                gameData.optJSONObject("customAttributes"),
+            ).additionalCommandline
+
+            cacheFile.writeText(additionalCommandLine ?: "")
+            additionalCommandLine
+        } catch (e: Exception) {
+            Timber.tag("Epic").e(e, "Exception fetching additional command line for $appName")
+            null
         }
     }
 

@@ -15,11 +15,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -101,6 +106,7 @@ import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.PlatformOAuthHandlers
+import app.gamenative.utils.SteamUtils
 import kotlinx.coroutines.launch
 import android.os.SystemClock
 
@@ -459,17 +465,25 @@ private fun LibraryScreenContent(
     }
 
 
-    // Apply top padding differently for list vs game detail pages.
-    // On the game page we want to hide the top padding when the status bar is hidden.
-    val safePaddingModifier = if (selectedLibraryItem != null) {
-        // Detail (game) page: use actual status bar height when status bar is visible,
-        // or 0.dp when status bar is hidden
-        val topPadding = if (PrefManager.hideStatusBarWhenNotInGame) {
-            0.dp
-        } else {
-            WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-        }
-        Modifier.padding(top = topPadding)
+    // Padding for the library *list* view (tab bar, grid, search bar) so content
+    // never draws behind the display cutout. The window now opts in to
+    // LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES via Theme.Pluvia, so:
+    //   * Status bar visible (portrait):   statusBars insets already cover the top notch.
+    //   * Status bar hidden (portrait):    statusBars insets are 0; displayCutout supplies
+    //                                       the notch height so content isn't behind the notch.
+    //   * Landscape (cutout on a side):    statusBars is top-only; displayCutout supplies
+    //                                       the side inset so the tab bar isn't clipped.
+    // Bottom is intentionally excluded so scroll content can reach the bottom edge.
+    //
+    // The detail (game) page deliberately does NOT use this — the hero image is meant
+    // to bleed through the cutout, so AppScreenContent insets only the elements that
+    // need to stay tappable (e.g. the back button) instead.
+    val safePaddingModifier = if (selectedLibraryItem == null) {
+        Modifier.windowInsetsPadding(
+            WindowInsets.statusBars
+                .union(WindowInsets.displayCutout)
+                .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+        )
     } else {
         Modifier
     }
@@ -847,10 +861,9 @@ private fun LibraryScreenContent(
         if (selectedAppId == null) {
             // Use Box to allow content to scroll behind the tab bar
             Box(modifier = Modifier.fillMaxSize()) {
-                val hasSteamCredentials = PrefManager.refreshToken.isNotEmpty() && PrefManager.username.isNotEmpty()
                 // When on Steam/GOG/Epic/Amazon tab and not logged in, or LOCAL tab with no custom games, show splash
                 val showEmptyStateSplash = when (state.currentTab) {
-                    LibraryTab.STEAM -> !hasSteamCredentials && !state.isLoading
+                    LibraryTab.STEAM -> !SteamUtils.hasStoredCredentials() && !state.isLoading
                     LibraryTab.GOG -> !GOGService.hasStoredCredentials(context)
                     LibraryTab.EPIC -> !EpicService.hasStoredCredentials(context)
                     LibraryTab.AMAZON -> !AmazonService.hasStoredCredentials(context)

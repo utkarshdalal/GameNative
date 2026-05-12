@@ -237,6 +237,7 @@ fun LibraryOptionsPanel(
                                         AppFilter.INSTALLED,
                                         AppFilter.SHARED,
                                         AppFilter.COMPATIBLE,
+                                        AppFilter.EXPIRED,
                                     )
                                 ) {
                                     OptionListItem(

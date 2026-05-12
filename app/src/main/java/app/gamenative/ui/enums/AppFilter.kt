@@ -5,6 +5,7 @@ import androidx.compose.material.icons.filled.AvTimer
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Diversity3
+import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.InstallMobile
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material.icons.rounded.Verified
@@ -52,6 +53,11 @@ enum class AppFilter(
         code = 0x40,
         displayText = "Compatible",
         icon = Icons.Rounded.Verified,
+    ),
+    EXPIRED(
+        code = 0x80,
+        displayText = "Expired",
+        icon = Icons.Default.HourglassEmpty,
     ),
     // ALPHABETIC(
     //     code = 0x20,

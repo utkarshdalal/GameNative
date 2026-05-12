@@ -102,7 +102,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 val latch = CountDownLatch(1)
                 try {
                     mgr.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
-                        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
+                        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
                             failReason = reason
                             err = e
                             latch.countDown()
@@ -407,7 +407,7 @@ private suspend fun performFinishInstall(
         val latch = CountDownLatch(1)
         try {
             mgr.finishInstallContent(profile, object : ContentsManager.OnInstallFinishedCallback {
-                override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
+                override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
                     message = when (reason) {
                         ContentsManager.InstallFailedReason.ERROR_EXIST -> "Content already exists"
                         ContentsManager.InstallFailedReason.ERROR_NOSPACE -> "Not enough space"

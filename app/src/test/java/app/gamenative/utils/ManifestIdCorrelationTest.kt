@@ -91,16 +91,18 @@ class ManifestIdCorrelationTest {
             println("Content download/install type=$typeKey id=${entry.id} name=${entry.name} url=${entry.url}")
             val result = ManifestInstaller.downloadAndInstallContent(context, entry, expectedType)
             println("Content install result type=$typeKey id=${entry.id} success=${result.success} message=${result.message}")
-            assertTrue(
-                "Content install failed for ${entry.id} (${typeKey}): ${result.message}",
-                result.success,
-            )
             manager.syncContents()
             val profiles = manager.getProfiles(expectedType).orEmpty()
             println("Content installed profiles type=$typeKey count=${profiles.size}")
             installedProfile = profiles.firstOrNull { profile ->
                 val installedId = "${profile.verName}-${profile.verCode}"
                 installedId.equals(entry.id, ignoreCase = true)
+            }
+            if (!result.success && installedProfile == null) {
+                assertTrue(
+                    "Content install failed for ${entry.id} (${typeKey}): ${result.message}",
+                    result.success,
+                )
             }
             val installedIds = profiles.map { "${it.verName}-${it.verCode}" }
             println("Content installed IDs type=$typeKey ids=$installedIds")

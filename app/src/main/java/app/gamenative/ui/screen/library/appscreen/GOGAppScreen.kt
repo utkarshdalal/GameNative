@@ -232,13 +232,11 @@ class GOGAppScreen : BaseAppScreen() {
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
         Timber.tag(TAG).d("isDownloading: checking appId=${libraryItem.appId}")
-        // Check if there's an active download for this GOG game
-        // GOGService expects numeric gameId
-        val downloadInfo = GOGService.getDownloadInfo(libraryItem.gameId.toString())
-        val progress = downloadInfo?.getProgress() ?: 0f
-        val isActive = downloadInfo?.isActive() ?: false
-        val downloading = downloadInfo != null && isActive && progress < 1f
-        Timber.tag(TAG).d("isDownloading: appId=${libraryItem.appId}, hasDownloadInfo=${downloadInfo != null}, active=$isActive, progress=$progress, result=$downloading")
+        val downloadInfo = GOGService.getDownloadInfo(libraryItem.gameId.toString()) ?: return false
+        val downloading = downloadInfo.isPostInstallSyncing() || downloadInfo.isActive()
+        Timber.tag(TAG).d(
+            "isDownloading: appId=${libraryItem.appId}, postInstallSyncing=${downloadInfo.isPostInstallSyncing()}, active=${downloadInfo.isActive()}, result=$downloading",
+        )
         return downloading
     }
 
@@ -617,6 +615,16 @@ class GOGAppScreen : BaseAppScreen() {
         app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
         disposables +=
             { app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener) }
+
+        val postInstallSyncListener: (app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged) -> Unit = { event ->
+            if (event.appId == libraryItem.gameId) {
+                Timber.tag(TAG).d("[OBSERVE] PostInstallSyncStatusChanged for ${libraryItem.appId}, isSyncing=${event.isSyncing}")
+                onStateChanged()
+            }
+        }
+        app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener)
+        disposables +=
+            { app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener) }
 
         // Return cleanup function
         return {

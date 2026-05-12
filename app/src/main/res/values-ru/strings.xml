@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="abc_action_bar_up_description">Перейти вверх</string>
     <string name="abc_action_mode_done">Готово</string>
     <string name="abc_capital_off">ВЫКЛ</string>
@@ -21,6 +21,7 @@
     <string name="abc_toolbar_collapse_description">Свернуть</string>
     <string name="about">О программе</string>
     <string name="acknowledge">ОК</string>
+    <string name="steam_cloud_sync_downloading_save_files">Загрузка файлов сохранения %1$d/%2$d</string>
     <string name="action_add_game">Добавить игру</string>
     <string name="action_details">Подробности</string>
     <string name="action_refresh">Обновить</string>
@@ -104,11 +105,14 @@
     <string name="bcn_emulation">Эмуляция BCn</string>
     <string name="bcn_emulation_type">Тип эмуляции BCn</string>
     <string name="best_config_applied_successfully">Конфигурация успешно применена</string>
+    <string name="best_config_applied_with_defaults">Конфигурация применена, отсутствующие компоненты заменены значениями по умолчанию</string>
+    <string name="best_config_apply_anyway">Применить всё равно</string>
     <string name="best_config_apply_failed">Ошибка применения конфигурации: %s</string>
     <string name="best_config_exact_gpu_match">Известная конфигурация работает на вашем GPU</string>
     <string name="best_config_fallback_match">Известная конфигурация может работать на вашем GPU</string>
     <string name="best_config_known_config_invalid">Известная конфигурация невалидна</string>
-    <string name="best_config_missing_content">%s отсутствует</string>
+    <string name="best_config_missing_components_message">Следующие необходимые компоненты недоступны на этом устройстве:\n\n%1$s\n\nУстановите недостающие компоненты и повторите попытку.</string>
+    <string name="best_config_missing_components_title">Конфигурация не применена</string>
     <string name="best_config_no_config_available">Нет доступной лучшей конфигурации для этой игры</string>
     <string name="best_config_fetch_failed">Не удалось получить конфигурацию. Проверьте сетевое подключение.</string>
     <string name="bind_button">Привязать: %1$s</string>
@@ -448,6 +452,31 @@
     <string name="gesture_action_middle_click">Средний клик</string>
     <string name="gesture_action_right_click">Правый клик</string>
     <string name="gesture_delay_label">Задержка</string>
+    <string name="gesture_section_single_finger">Один палец</string>
+    <string name="gesture_section_two_finger">Два пальца</string>
+    <string name="gesture_section_three_finger">Три пальца</string>
+    <string name="gesture_section_other">Другое</string>
+    <string name="gesture_pan_left_click_drag">Перетаскивание левой кнопкой мыши</string>
+    <string name="gesture_pan_right_click_drag">Перетаскивание правой кнопкой мыши</string>
+    <string name="gesture_action_show_keyboard">Показать клавиатуру</string>
+    <string name="gesture_header_special">Специальные</string>
+    <string name="gesture_header_mouse">Мышь</string>
+    <string name="gesture_header_common_game">Частые игровые клавиши</string>
+    <string name="gesture_header_letters">Буквы A-Z</string>
+    <string name="gesture_header_numbers">Цифры 0-9</string>
+    <string name="gesture_header_function_keys">Функциональные клавиши</string>
+    <string name="gesture_two_finger_hold">Удержание двумя пальцами</string>
+    <string name="gesture_two_finger_hold_delay">Задержка удержания двумя пальцами (мс)</string>
+    <string name="gesture_three_finger_tap">Касание тремя пальцами</string>
+    <string name="gesture_three_finger_drag">Перетаскивание тремя пальцами</string>
+    <string name="gesture_three_finger_hold">Удержание тремя пальцами</string>
+    <string name="gesture_three_finger_hold_delay">Задержка удержания тремя пальцами (мс)</string>
+    <string name="gesture_threshold">Порог жеста (px)</string>
+    <string name="gesture_threshold_subtitle">Движение, необходимое для фиксации типа жеста (меньше = быстрее отклик)</string>
+    <string name="gesture_show_click_highlight">Показывать подсветку клика</string>
+    <string name="gesture_show_click_highlight_subtitle">Показывать круг в месте касания</string>
+    <string name="gesture_show_debug_overlay">Показывать отладочный оверлей жестов</string>
+    <string name="gesture_show_debug_overlay_subtitle">Показывать временные подписи жестов вверху по центру</string>
     <string name="gesture_double_tap">Двойной тап</string>
     <string name="gesture_double_tap_delay">Задержка двойного тапа (мс)</string>
     <string name="gesture_double_tap_subtitle">Двойной левый клик</string>
@@ -673,6 +702,7 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
 Вы всё ещё можете играть в эту игру, но это может создать конфликт, когда ваш предыдущий прогресс успешно загрузится.</string>
     <string name="main_pending_upload_title">Ожидание загрузки</string>
     <string name="main_play_anyway">Играть в любом случае</string>
+    <string name="main_app_running_unknown_game">игру</string>
     <string name="main_recent_crash_message">Приносим извинения!
 Было бы хорошо узнать о недавней проблеме, которая у вас была.
 Вы можете просмотреть и экспортировать самый последний журнал сбоев в настройках приложения и приложить его как Github проблему в репозитории проекта.
@@ -845,6 +875,12 @@ https://gamenative.app
     <string name="quick_menu_tab_controller">Контроллер</string>
     <string name="performance_hud">HUD производительности</string>
     <string name="performance_hud_description">Показывать или скрывать игровое наложение.</string>
+    <string name="performance_hud_fps_limiter">Ограничитель FPS</string>
+    <string name="performance_hud_fps_limiter_description">Ограничивает частоту кадров в игре. Макс.: %1$d Гц.</string>
+    <string name="performance_hud_fps_limiter_target">Целевой FPS</string>
+    <string name="performance_hud_fps_limiter_off">Без ограничений</string>
+    <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Ограничитель отключён, пока активен LSFG. Частоту источника задаёт множитель.</string>
     <string name="performance_hud_presets">Предустановки</string>
     <string name="performance_hud_presets_description">Быстро переключаться между типовыми макетами HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -978,6 +1014,8 @@ https://gamenative.app
     <string name="settings_info_libraries_title">Используемые библиотеки</string>
     <string name="settings_info_privacy_subtitle">Открывает ссылку на политику конфиденциальности GameNative</string>
     <string name="settings_info_privacy_title">Политика конфиденциальности</string>
+    <string name="settings_info_usage_analytics_title">Аналитика использования</string>
+    <string name="settings_info_usage_analytics_subtitle">Мы никогда не отслеживаем личную информацию. Отключение останавливает несущественную аналитику, однако основные данные о производительности игр по-прежнему собираются как законный интерес для улучшения совместимости.</string>
     <string name="settings_info_send_tip_subtitle">Внесите вклад в продолжающуюся разработку</string>
     <string name="settings_info_send_tip_title">Отправить чаевые</string>
     <string name="settings_info_source_subtitle">Просмотреть исходный код этого проекта</string>
@@ -1009,6 +1047,7 @@ https://gamenative.app
     <string name="settings_region_default">По умолчанию</string>
     <string name="settings_save_logcat_subtitle">Сохраняет снимок logcat только для PID этого приложения</string>
     <string name="settings_save_logcat_title">Сохранить logcat</string>
+    <string name="settings_achievement_show_notification">Показывать уведомления о достижениях</string>
     <string name="settings_saving_restarting">Сохранение настроек и перезагрузка…</string>
     <string name="settings_select_language">Выберите язык</string>
     <string name="settings_subtitle">Настройте ваш опыт</string>
@@ -1170,6 +1209,7 @@ https://gamenative.app
     <string name="tab_local">Пользовательское</string>
     <string name="tab_steam">Steam</string>
     <string name="task_manager">Менеджер задач</string>
+    <string name="tools_wine_processes_running_hint">%1$d запущено, нажмите/кликните по процессу, чтобы закрыть его</string>
     <string name="template_percent">%1$d процент.</string>
     <string name="thumbstick_buttons">Кнопки джойстика</string>
     <string name="thumbstick_buttons_category">Кнопки джойстика</string>
@@ -1299,4 +1339,67 @@ https://gamenative.app
     <string name="workshop_processing">Обработка модов…</string>
     <string name="workshop_failed_count">Не удалось обновить %1$d мод(ов) Мастерской</string>
     <string name="workshop_download_failed">Ошибка загрузки</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Рекомендуемое</string>
+    <string name="recommended_buy_button">Посмотреть игру</string>
+    <string name="recommended_support_message">Покупка по этой ссылке помогает поддержать разработку GameNative.</string>
+    <string name="recommended_about_heading">Об этой игре</string>
+    <string name="recommended_review_count">На основе %1$s отзывов</string>
+    <string name="review_overwhelmingly_positive">Крайне положительные</string>
+    <string name="review_very_positive">Очень положительные</string>
+    <string name="review_mostly_positive">В основном положительные</string>
+    <string name="review_mixed">Смешанные</string>
+    <string name="review_mostly_negative">В основном отрицательные</string>
+    <string name="review_overwhelmingly_negative">Крайне отрицательные</string>
+    <string name="settings_interface_show_recommendations_title">Показывать рекомендации игр</string>
+    <string name="settings_interface_show_recommendations_subtitle">Показывает подобранные инди-игры в вашей библиотеке. Оставляя это включённым, вы поддерживаете инди-разработчиков и GameNative.</string>
+     <string name="steam_save_export_success">Сохранения экспортированы</string>
+     <string name="steam_save_export_no_saves_found">Сохранения не найдены</string>
+     <string name="steam_save_export_failed">Не удалось экспортировать сохранения: %s</string>
+     <string name="steam_save_import_success">Сохранения импортированы</string>
+     <string name="steam_save_import_failed">Не удалось импортировать сохранения: %s</string>
+    <string name="option_import_saves">Импортировать сохранения</string>
+    <string name="option_export_saves">Экспортировать сохранения</string>
+
+    <!-- LSFG-VK frame generation -->
+    <string name="lsfg_tab_title">LSFG-VK</string>
+    <string name="lsfg_description">Генерация промежуточных кадров с помощью слоя Vulkan Lossless Scaling. Известно, что работает только на Adreno 6xx и новее.</string>
+    <string name="lsfg_enable">Включить генерацию кадров LSFG-VK</string>
+    <string name="lsfg_multiplier">Множитель кадров</string>
+    <string name="lsfg_flow_scale">Масштаб потока</string>
+    <string name="lsfg_flow_scale_desc">Ниже — стабильнее; выше — плавнее, но могут появляться артефакты.</string>
+    <string name="lsfg_performance_mode">Режим производительности</string>
+    <string name="lsfg_not_supported">Для генерации кадров требуется контейнер Bionic</string>
+    <string name="lsfg_install_prompt">Lossless Scaling не установлен. Нажмите для установки. Известно, что работает только на Adreno 6xx и новее.</string>
+    <string name="lsfg_not_in_library">Lossless Scaling нет в вашей библиотеке Steam</string>
+    <string name="lsfg_install_title">Установить Lossless Scaling?</string>
+    <string name="lsfg_install_message">Это загрузит Lossless Scaling из Steam для включения генерации кадров.</string>
+    <string name="lsfg_installing">Загрузка Lossless Scaling…</string>
+    <string name="lsfg_performance_mode_desc">Снижает качество для повышения пропускной способности</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">Загрузка может занять несколько минут при первом запуске</string>
+    <string name="game_launch_tip_2">Совет: Вы можете просмотреть файлы игры, нажав \"%s\" в настройках игры.</string>
+    <string name="game_launch_tip_3">Совет: Вы можете перейти в главное меню настроек и загрузить пользовательские драйверы для вашего устройства для использования на Bionic.</string>
+    <string name="game_launch_tip_4">Совет: Если вы получаете ошибку DirectX, убедитесь, что вы используете DXVK 1.10.3-async и leegao-wrapper на Bionic.</string>
+    <string name="game_launch_tip_5">Совет: Попробуйте тест Direct3D в меню «Пуск» после нажатия \"%s\", чтобы проверить, правильно ли работает ваше устройство.</string>
+    <string name="game_launch_tip_6">Совет: Используйте DXVK для игр DirectX 8/9/10/11, VKD3D для игр DirectX 12 и VirGL + WineD3D для игр OpenGL.</string>
+    <string name="game_launch_tip_7">Совет: Используйте Turnip на glibc или bionic для игр DirectX 12. Поддержка DirectX 12 для устройств, не поддерживающих Turnip, в настоящее время ограничена.</string>
+    <string name="game_launch_tip_8">Совет: Попробуйте драйверы Adreno или Snapdragon 8 Elite на glibc, если у вас совместимое устройство.</string>
+    <string name="game_launch_tip_9">Совет: Если при запуске игры появляется черный экран, попробуйте \"%s\" и запустить игру с диска A:.</string>
+    <string name="game_launch_tip_10">Совет: Вы можете добавить разные расположения для пользовательских игр в настройках.</string>
+    <string name="game_launch_tip_11">Совет: Используйте HUD производительности в быстром меню, когда хотите видеть статистику FPS в игре.</string>
+    <string name="game_launch_tip_12">Совет: Установите пакеты в A:\\_CommonRedist, если игра не запускается.</string>
+    <string name="game_launch_tip_13">Совет: Вы можете включить или отключить экранный контроллер с помощью кнопки «Назад» на устройстве.</string>
+    <string name="game_launch_tip_14">Совет: Вы можете вызвать клавиатуру с помощью кнопки «Назад» на устройстве.</string>
+    <string name="game_launch_tip_15">Совет: Вы можете нажать двумя пальцами внутри контейнера для щелчка правой кнопкой мыши.</string>
+    <string name="game_launch_tip_16">Совет: Если вы используете экранный контроллер, вы можете отключить мышь, чтобы предотвратить случайные касания.</string>
+    <string name="game_launch_tip_17">Совет: Сообщайте о проблемах в Discord, чтобы мы могли их исправить.</string>
+    <string name="game_launch_tip_18">Совет: Используйте драйвер Vortek на glibc или wrapper-leegao на Bionic, если у вас не-Adreno GPU.</string>
+    <string name="game_launch_tip_19">Совет: Уменьшите разрешение и используйте box64 в режиме производительности для повышения FPS.</string>
+    <string name="game_launch_tip_20">Совет: Если игра вылетает после загрузки, увеличьте видеопамять.</string>
+    <string name="game_launch_tip_21">Совет: Если вы видите визуальные артефакты, отключите DRI3.</string>
+    <string name="game_launch_tip_22">Совет: Вы можете включить режим сенсорного экрана.</string>
+    <string name="game_launch_tip_23">Совет: Если у вас GPU Mali, используйте системные драйверы.</string>
+    <string name="game_launch_tip_24">Совет: Черный экран? Попробуйте использовать опцию \"%s\" в меню, чтобы проверить, правильно ли работают ваши драйверы.</string>
 </resources>

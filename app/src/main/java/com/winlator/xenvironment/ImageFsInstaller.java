@@ -19,6 +19,7 @@ import com.winlator.PrefManager;
 import com.winlator.container.Container;
 import com.winlator.container.ContainerManager;
 // import com.winlator.core.DownloadProgressDialog;
+import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
 import com.winlator.core.Callback;
 import com.winlator.core.DefaultVersion;
@@ -34,6 +35,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -86,7 +88,13 @@ public abstract class ImageFsInstaller {
         }
     }
 
-    private static Future<Boolean> installFromAssetsFuture(final Context context, AssetManager assetManager, String containerVariant, Callback<Integer> onProgress) {
+    private static Future<Boolean> installFromAssetsFuture(
+            final Context context,
+            AssetManager assetManager,
+            String containerVariant,
+            String wineVersion,
+            Callback<Integer> onProgress
+    ) {
         // AppUtils.keepScreenOn(context);
         ImageFs imageFs = ImageFs.find(context);
         final File rootDir = imageFs.getRootDir();
@@ -98,6 +106,9 @@ public abstract class ImageFsInstaller {
         // dialog.show(R.string.installing_system_files);
         return Executors.newSingleThreadExecutor().submit(() -> {
             clearRootDir(context, rootDir);
+            ensureSharedHomeRoot(context, rootDir);
+            ensureProtonVersionSymlink(context, rootDir, wineVersion);
+
             final byte compressionRatio = 22;
             String imagefsFile = containerVariant.equals(Container.GLIBC) ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
             File downloaded = new File(imageFs.getFilesDir(), imagefsFile);
@@ -197,17 +208,27 @@ public abstract class ImageFsInstaller {
 
     private static void chmod(File f) { if (f.exists()) FileUtils.chmod(f, 0755);}
 
-    public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager) {
-        return installIfNeededFuture(context, assetManager, null, null);
-    }
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager, Container container, Callback<Integer> onProgress) {
         ImageFs imageFs = ImageFs.find(context);
+        String wineVersion = container.getWineVersion();
+        if (!ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(context, imageFs.getRootDir(), wineVersion)) {
+            Log.w("ImageFsInstaller", "Failed to migrate legacy directories before installation.");
+            return Executors.newSingleThreadExecutor().submit(() -> false);
+        }
         if (!imageFs.isValid() || imageFs.getVersion() < LATEST_VERSION || !imageFs.getVariant().equals(container.getContainerVariant())) {
             Log.d("ImageFsInstaller", "Installing image from assets");
-            return installFromAssetsFuture(context, assetManager, container.getContainerVariant(), onProgress);
+            return installFromAssetsFuture(
+                    context,
+                    assetManager,
+                    container.getContainerVariant(),
+                    wineVersion,
+                    onProgress
+            );
         } else {
             Log.d("ImageFsInstaller", "Image FS already valid and at latest version");
-            return Executors.newSingleThreadExecutor().submit(() -> true);
+            return Executors.newSingleThreadExecutor().submit(() -> {
+                return true;
+            });
         }
     }
 
@@ -376,6 +397,119 @@ public abstract class ImageFsInstaller {
             Log.i("ImageFsInstaller", "Finished clearing Steam DLL markers for all containers");
         } catch (Exception e) {
             Log.e("ImageFsInstaller", "Error clearing Steam DLL markers: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Ensures that:
+     * - A shared home backing directory exists at imagefs_shared/home (containing xuser, etc.)
+     * - The given imagefs rootDir exposes /home as a symlink to that shared root.
+     *
+     * This allows the same user home (e.g. .wine, .cache) to be shared across variants.
+     */
+    public static void ensureSharedHomeRoot(Context context, File rootDir) {
+        File sharedHomeRoot = new File(ImageFs.getImageFsSharedDir(context), "home");
+        if (!sharedHomeRoot.exists()) {
+            sharedHomeRoot.mkdirs();
+        }
+
+        File homePathInImageFs = new File(rootDir, "home");
+        if (FileUtils.isSymlink(homePathInImageFs)) {
+            // Already symlinked: /imagefs/home is a symlink to imagefs_shared/home.
+            return;
+        }
+
+        FileUtils.symlink(sharedHomeRoot.getPath(), homePathInImageFs.getPath());
+    }
+
+    /**
+     * For Bionic: ensures rootDir/opt/<protonVersion> points to imagefs_shared/proton/<protonVersion>.
+     * This keeps only the active Proton version linked in opt, matching pre-branch layout.
+     */
+    public static void ensureProtonVersionSymlink(Context context, File rootDir, String protonVersion) {
+        if (protonVersion == null || protonVersion.isEmpty() || !protonVersion.startsWith("proton-")) return;
+        File optDir = new File(rootDir, "opt");
+        if (!optDir.exists() && !optDir.mkdirs()) {
+            Log.e("ImageFsInstaller", "Failed to create opt directory: " + optDir.getAbsolutePath());
+            return;
+        }
+        removeCurrentProtonSymlink(optDir, protonVersion);
+
+        File targetVersionDir = resolveInstalledProtonDir(context, protonVersion);
+        if (!targetVersionDir.isDirectory()) {
+            Log.w("ImageFsInstaller", "Skipping Proton symlink; shared dir missing for " + protonVersion);
+            return;
+        }
+        File optVersionLink = new File(optDir, protonVersion);
+        try {
+            File desiredTarget = targetVersionDir.getCanonicalFile();
+            if (isLinkAlreadyCorrect(optVersionLink, desiredTarget)) return;
+            if (!deleteExistingPathIfPresent(optVersionLink)) return;
+
+            FileUtils.symlink(targetVersionDir.getAbsolutePath(), optVersionLink.getAbsolutePath());
+            if (!Files.isSymbolicLink(optVersionLink.toPath())) {
+                Log.e("ImageFsInstaller", "Failed to create Proton symlink at: " + optVersionLink.getAbsolutePath());
+                return;
+            }
+            File linkedTarget = optVersionLink.getCanonicalFile();
+            if (!linkedTarget.equals(desiredTarget)) {
+                Log.e("ImageFsInstaller", "Proton symlink points to unexpected target: " + linkedTarget);
+                return;
+            }
+            Log.d("ImageFsInstaller", "Created opt/" + protonVersion + " -> " + targetVersionDir.getAbsolutePath());
+        } catch (Exception e) {
+            Log.e("ImageFsInstaller", "ensureProtonVersionSymlink failed for " + protonVersion, e);
+        }
+    }
+
+    private static boolean isLinkAlreadyCorrect(File optVersionLink, File desiredTarget) {
+        if (!Files.isSymbolicLink(optVersionLink.toPath())) return false;
+        try {
+            return optVersionLink.getCanonicalFile().equals(desiredTarget);
+        } catch (IOException ignored) {
+            // Dangling symlink (or inaccessible target): treat as incorrect and replace.
+            return false;
+        }
+    }
+
+    private static boolean deleteExistingPathIfPresent(File path) {
+        if (!Files.isSymbolicLink(path.toPath()) && !path.exists()) return true;
+        if (FileUtils.delete(path)) return true;
+        Log.e("ImageFsInstaller", "Failed to delete existing Proton path: " + path.getAbsolutePath());
+        return false;
+    }
+
+    private static File resolveInstalledProtonDir(Context context, String protonVersion) {
+        ContentsManager contentsManager = new ContentsManager(context);
+        contentsManager.syncContents();
+        ContentProfile profile = contentsManager.getProfileByEntryName(protonVersion);
+        if (profile != null && (profile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE
+                || profile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON)) {
+            return ContentsManager.getInstallDir(context, profile);
+        }
+        return new File(ImageFs.getSharedProtonDir(context), protonVersion);
+    }
+
+    /**
+     * Removes the current Proton symlink(s) from opt/ so it can be replaced with the current proton
+     * version symlink.
+     */
+    private static void removeCurrentProtonSymlink(File optDir, String activeProtonVersion) {
+        File[] optEntries = optDir.listFiles();
+        if (optEntries == null) {
+            return;
+        }
+
+        for (File entry : optEntries) {
+            if (!entry.getName().startsWith("proton-")) {
+                continue;
+            }
+            if (entry.getName().equals(activeProtonVersion)) {
+                continue;
+            }
+            if (FileUtils.isSymlink(entry)) {
+                FileUtils.delete(entry);
+            }
         }
     }
 }

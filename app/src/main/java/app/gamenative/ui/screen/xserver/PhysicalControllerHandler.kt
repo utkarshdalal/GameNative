@@ -7,7 +7,6 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.ControlElement
-import com.winlator.inputcontrols.ControllerManager
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.ExternalControllerBinding
@@ -23,7 +22,8 @@ import java.util.TimerTask
 class PhysicalControllerHandler(
     private var profile: ControlsProfile?,
     private val xServer: XServer?,
-    private val onOpenNavigationMenu: (() -> Unit)? = null
+    private val onOpenNavigationMenu: (() -> Unit)? = null,
+    private val onShowKeyboard: (() -> Unit)? = null
 ) {
     private val TAG = "gncontrol"
     private val mouseMoveOffset = PointF(0f, 0f)
@@ -31,6 +31,9 @@ class PhysicalControllerHandler(
     // track which axis keycodes are currently "pressed" so we only release on actual transitions.
     // accessed only from main thread (MotionEvent dispatch + Compose lifecycle), no sync needed.
     private val activeAxisBindings = mutableSetOf<Int>()
+
+    // Tracks whether SHOW_KEYBOARD is currently held, so onShowKeyboard fires once per press (rising edge only)
+    private var showKeyboardPressed = false
 
     private fun releaseActiveAxes() {
         val controller = profile?.getController("*") ?: return
@@ -63,6 +66,7 @@ class PhysicalControllerHandler(
         mouseMoveTimer?.cancel()
         mouseMoveTimer = null
         mouseMoveOffset.set(0f, 0f)
+        showKeyboardPressed = false
     }
 
     /**
@@ -87,7 +91,7 @@ class PhysicalControllerHandler(
                     val offset = if (event.action == KeyEvent.ACTION_DOWN &&
                         (controllerBinding.binding == Binding.GAMEPAD_BUTTON_L2 || controllerBinding.binding == Binding.GAMEPAD_BUTTON_R2)
                     ) 1f else 0f
-                    handleInputEvent(controllerBinding.binding, event.action == KeyEvent.ACTION_DOWN, offset, event.deviceId)
+                    handleInputEvent(controllerBinding.binding, event.action == KeyEvent.ACTION_DOWN, offset)
                     return true
                 }
             }
@@ -120,16 +124,13 @@ class PhysicalControllerHandler(
         if (profile != null) {
             val controller = profile?.getController(event.deviceId)
             if (controller != null && controller.updateStateFromMotionEvent(event)) {
-                val deviceId = event.deviceId
-
                 // Process trigger buttons (L2/R2)
                 var controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_L2)
                 if (controllerBinding != null) {
                     handleInputEvent(
                         controllerBinding.binding,
                         controller.state.triggerL > 0f,
-                        controller.state.triggerL,
-                        deviceId
+                        controller.state.triggerL
                     )
                 }
 
@@ -138,13 +139,12 @@ class PhysicalControllerHandler(
                     handleInputEvent(
                         controllerBinding.binding,
                         controller.state.triggerR > 0f,
-                        controller.state.triggerR,
-                        deviceId
+                        controller.state.triggerR
                     )
                 }
 
                 // Process analog stick input
-                processJoystickInput(controller, deviceId)
+                processJoystickInput(controller)
                 return true
             }
         }
@@ -178,7 +178,7 @@ class PhysicalControllerHandler(
      * Process analog stick input and apply bindings.
      * Extracted from InputControlsView.processJoystickInput()
      */
-    private fun processJoystickInput(controller: ExternalController, deviceId: Int = -1) {
+    private fun processJoystickInput(controller: ExternalController) {
         // Reset mouse movement offset at the start - contributions will be added during processing
         mouseMoveOffset.set(0f, 0f)
 
@@ -207,24 +207,27 @@ class PhysicalControllerHandler(
                 val activeKey = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
                 val oppositeKey = if (activeKey == posKeyCode) negKeyCode else posKeyCode
 
+                // always send press (gamepad bindings need continuous offset updates)
                 activeAxisBindings.add(activeKey)
                 controller.getControllerBinding(activeKey)?.let {
-                    handleInputEvent(it.binding, true, values[i], deviceId)
+                    handleInputEvent(it.binding, true, values[i])
                 }
+                // release opposite direction (if it was active)
                 if (activeAxisBindings.remove(oppositeKey)) {
                     controller.getControllerBinding(oppositeKey)?.let {
-                        handleInputEvent(it.binding, false, 0f, deviceId)
+                        handleInputEvent(it.binding, false, 0f)
                     }
                 }
             } else {
+                // release both directions only if they were active
                 if (activeAxisBindings.remove(posKeyCode)) {
                     controller.getControllerBinding(posKeyCode)?.let {
-                        handleInputEvent(it.binding, false, 0f, deviceId)
+                        handleInputEvent(it.binding, false, 0f)
                     }
                 }
                 if (activeAxisBindings.remove(negKeyCode)) {
                     controller.getControllerBinding(negKeyCode)?.let {
-                        handleInputEvent(it.binding, false, 0f, deviceId)
+                        handleInputEvent(it.binding, false, 0f)
                     }
                 }
             }
@@ -235,92 +238,78 @@ class PhysicalControllerHandler(
      * Apply a binding to the virtual gamepad state and send to WinHandler.
      * Extracted from InputControlsView.handleInputEvent()
      */
-    private fun handleInputEvent(binding: Binding, isActionDown: Boolean, offset: Float = 0f, deviceId: Int = -1) {
+    // offset: analog axis value for presses; must be 0f for releases (triggers use offset > 0f
+    // to determine pressed state, sticks gate on isActionDown, everything else ignores offset)
+    private fun handleInputEvent(binding: Binding, isActionDown: Boolean, offset: Float = 0f) {
         if (binding.isGamepad) {
-            val winHandler = xServer?.winHandler ?: return
-            val controllerManager = ControllerManager.getInstance()
+            val winHandler = xServer?.winHandler
+            val state = profile?.gamepadState
 
-            // Determine which player slot this device belongs to
-            val slot = if (deviceId >= 0) controllerManager.autoAssignDevice(deviceId) else 0
-            if (slot < 0) return
-
-            // Ensure we have a controller in this slot
-            var slotController = winHandler.getControllerForSlot(slot)
-            if (slotController == null || (deviceId >= 0 && slotController.deviceId != deviceId)) {
-                val adopted = profile?.getController(deviceId)
-                    ?: ExternalController.getController(deviceId)
-                    ?: return
-                winHandler.setControllerForSlot(slot, adopted)
-                slotController = adopted
-            }
-
-            val state = slotController.state
-
-            val buttonIdx = binding.ordinal - Binding.GAMEPAD_BUTTON_A.ordinal
-            if (buttonIdx <= ExternalController.IDX_BUTTON_R2.toInt()) {
-                when (buttonIdx) {
-                    ExternalController.IDX_BUTTON_L2.toInt() -> {
-                        state.triggerL = offset
-                        state.setPressed(ExternalController.IDX_BUTTON_L2.toInt(), offset > 0f)
+            if (state != null) {
+                val buttonIdx = binding.ordinal - Binding.GAMEPAD_BUTTON_A.ordinal
+                if (buttonIdx <= ExternalController.IDX_BUTTON_R2.toInt()) {
+                    when (buttonIdx) {
+                        ExternalController.IDX_BUTTON_L2.toInt() -> {
+                            state.triggerL = offset
+                            state.setPressed(ExternalController.IDX_BUTTON_L2.toInt(), offset > 0f)
+                        }
+                        ExternalController.IDX_BUTTON_R2.toInt() -> {
+                            state.triggerR = offset
+                            state.setPressed(ExternalController.IDX_BUTTON_R2.toInt(), offset > 0f)
+                        }
+                        else -> state.setPressed(buttonIdx, isActionDown)
                     }
-                    ExternalController.IDX_BUTTON_R2.toInt() -> {
-                        state.triggerR = offset
-                        state.setPressed(ExternalController.IDX_BUTTON_R2.toInt(), offset > 0f)
-                    }
-                    else -> state.setPressed(buttonIdx, isActionDown)
                 }
-            }
-            else {
-                when (binding) {
-                    Binding.GAMEPAD_LEFT_THUMB_UP, Binding.GAMEPAD_LEFT_THUMB_DOWN -> {
-                        state.thumbLY = if (isActionDown) offset else 0f
-                    }
-                    Binding.GAMEPAD_LEFT_THUMB_LEFT, Binding.GAMEPAD_LEFT_THUMB_RIGHT -> {
-                        state.thumbLX = if (isActionDown) offset else 0f
-                    }
-                    Binding.GAMEPAD_RIGHT_THUMB_UP, Binding.GAMEPAD_RIGHT_THUMB_DOWN -> {
-                        state.thumbRY = if (isActionDown) offset else 0f
-                    }
-                    Binding.GAMEPAD_RIGHT_THUMB_LEFT, Binding.GAMEPAD_RIGHT_THUMB_RIGHT -> {
-                        state.thumbRX = if (isActionDown) offset else 0f
-                    }
-                    Binding.GAMEPAD_DPAD_UP  -> {
-                        state.dpad[0] = isActionDown
-                        if(isActionDown) {
-                            state.dpad[Binding.GAMEPAD_DPAD_DOWN.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal ] = false
+                else {
+                    when (binding) {
+                        Binding.GAMEPAD_LEFT_THUMB_UP, Binding.GAMEPAD_LEFT_THUMB_DOWN -> {
+                            state.thumbLY = if (isActionDown) offset else 0f
                         }
-                    }
-                    Binding.GAMEPAD_DPAD_DOWN -> {
-                        state.dpad[binding.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal] = isActionDown
-                        if(isActionDown) {
-                            state.dpad[0] = false
+                        Binding.GAMEPAD_LEFT_THUMB_LEFT, Binding.GAMEPAD_LEFT_THUMB_RIGHT -> {
+                            state.thumbLX = if (isActionDown) offset else 0f
                         }
-                    }
-                    Binding.GAMEPAD_DPAD_LEFT -> {
-                        state.dpad[binding.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal] = isActionDown
-                        if(isActionDown) {
-                            state.dpad[Binding.GAMEPAD_DPAD_RIGHT.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal ] = false
+                        Binding.GAMEPAD_RIGHT_THUMB_UP, Binding.GAMEPAD_RIGHT_THUMB_DOWN -> {
+                            state.thumbRY = if (isActionDown) offset else 0f
                         }
-                    }
-                    Binding.GAMEPAD_DPAD_RIGHT -> {
-                        state.dpad[binding.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal] = isActionDown
-                        if(isActionDown) {
-                            state.dpad[Binding.GAMEPAD_DPAD_LEFT.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal ] = false
+                        Binding.GAMEPAD_RIGHT_THUMB_LEFT, Binding.GAMEPAD_RIGHT_THUMB_RIGHT -> {
+                            state.thumbRX = if (isActionDown) offset else 0f
                         }
+                        Binding.GAMEPAD_DPAD_UP  -> {
+                            state.dpad[0] = isActionDown
+                            if(isActionDown) {
+                                state.dpad[Binding.GAMEPAD_DPAD_DOWN.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal ] = false
+                            }
+                        }
+                        Binding.GAMEPAD_DPAD_DOWN -> {
+                            state.dpad[binding.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal] = isActionDown
+                            if(isActionDown) {
+                                state.dpad[0] = false
+                            }
+                        }
+                       Binding.GAMEPAD_DPAD_LEFT -> {
+                            state.dpad[binding.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal] = isActionDown
+                            if(isActionDown) {
+                              state.dpad[Binding.GAMEPAD_DPAD_RIGHT.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal ] = false
+                          }
+                        }
+                        Binding.GAMEPAD_DPAD_RIGHT -> {
+                            state.dpad[binding.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal] = isActionDown
+                            if(isActionDown) {
+                                state.dpad[Binding.GAMEPAD_DPAD_LEFT.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal ] = false
+                            }
+                        }
+                        else -> {}
                     }
-                    else -> {}
                 }
-            }
 
-            // Write state to the correct .mem buffer for this player slot
-            val buffer = winHandler.getBufferForSlot(slot)
-            if (buffer != null) winHandler.sendMemoryFileState(slotController, buffer)
-
-            // UDP and virtual gamepad only for P1 (slot 0) for backward compat
-            if (slot == 0) {
-                profile?.gamepadState?.copy(state)
-                winHandler.sendGamepadState()
-                winHandler.sendVirtualGamepadState(state)
+                if (winHandler != null) {
+                    val controller = winHandler.currentController
+                    if (controller != null) {
+                        controller.state.copy(state)
+                    }
+                    winHandler.sendGamepadState()
+                    winHandler.sendVirtualGamepadState(state)
+                }
             }
         } else {
             // Handle special bindings
@@ -328,6 +317,16 @@ class PhysicalControllerHandler(
                 if (isActionDown) {
                     Log.d(TAG, "Opening navigation menu from controller binding")
                     onOpenNavigationMenu?.invoke()
+                }
+            } else if (binding == Binding.SHOW_KEYBOARD) {
+                if (isActionDown) {
+                    if (!showKeyboardPressed) {
+                        showKeyboardPressed = true
+                        Log.d(TAG, "Showing keyboard from controller binding")
+                        onShowKeyboard?.invoke()
+                    }
+                } else {
+                    showKeyboardPressed = false
                 }
             } else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
                 // Handle horizontal mouse movement - ADD contribution from this input

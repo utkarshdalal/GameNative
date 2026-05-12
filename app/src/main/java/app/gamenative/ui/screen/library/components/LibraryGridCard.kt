@@ -149,10 +149,13 @@ internal fun GridViewCard(
             colors = CardDefaults.cardColors(
                 containerColor = Color.Transparent,
             ),
-            border = if (isFocused) {
-                BorderStroke(2.dp, focusBorderBrush)
-            } else {
-                null
+            border = when {
+                isFocused -> BorderStroke(2.dp, focusBorderBrush)
+                appInfo.isRecommended -> BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                )
+                else -> null
             },
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
@@ -273,8 +276,13 @@ internal fun GridViewCard(
                     GridStatusIcons(appInfo = appInfo)
                 }
 
-                // Compatibility badge (top left, including UNKNOWN)
-                compatibilityStatus?.let { status ->
+                // Compatibility / Recommended badge (top left)
+                val badgeStatus = if (appInfo.isRecommended) {
+                    GameCompatibilityStatus.RECOMMENDED
+                } else {
+                    compatibilityStatus
+                }
+                badgeStatus?.let { status ->
                     CompatibilityBadge(
                         status = status,
                         showLabel = true,
@@ -284,13 +292,15 @@ internal fun GridViewCard(
                     )
                 }
 
-                GameSourceIcon(
-                    gameSource = appInfo.gameSource,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = topIconPadding, end = topIconPadding),
-                    iconSize = if (isCapsule) 14 else 12,
-                )
+                if (!appInfo.isRecommended) {
+                    GameSourceIcon(
+                        gameSource = appInfo.gameSource,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = topIconPadding, end = topIconPadding),
+                        iconSize = if (isCapsule) 14 else 12,
+                    )
+                }
             }
         }
     }

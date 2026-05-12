@@ -15,6 +15,7 @@ import app.gamenative.enums.OS
 import app.gamenative.enums.PathType
 import app.gamenative.enums.ReleaseState
 import app.gamenative.enums.SaveLocation
+import app.gamenative.utils.Net
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
@@ -40,8 +41,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import kotlinx.coroutines.future.await
-import kotlinx.coroutines.test.runBlockingTest
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
@@ -50,6 +52,7 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
 import java.io.File
+import java.io.IOException
 import java.lang.reflect.Field
 import java.util.EnumSet
 import java.util.concurrent.CompletableFuture
@@ -63,12 +66,19 @@ class SteamAutoCloudTest {
     private lateinit var db: PluviaDatabase
     private lateinit var mockSteamService: SteamService
     private lateinit var mockSteamCloud: SteamCloud
+    private lateinit var mockParallelHttpClient: OkHttpClient
     private val testAppId = "STEAM_123456"
     private val steamAppId = 123456
     private val clientId = 1L
 
     @Before
     fun setUp() {
+        mockkObject(Net)
+        mockParallelHttpClient = mockk(relaxed = true)
+        // Safe default: relaxed client returns null for newCall(), causing downloads to no-op.
+        // Tests that exercise the download path override this stub with a test-specific mock.
+        every { Net.httpForParallelDownloads(any()) } returns mockParallelHttpClient
+
         context = ApplicationProvider.getApplicationContext()
         tempDir = File.createTempFile("steam_autocloud_test_", null)
         tempDir.delete()
@@ -235,6 +245,8 @@ class SteamAutoCloudTest {
 
     @After
     fun tearDown() {
+        unmockkObject(Net)
+
         // Clean up ImageFs directory first (files created in wineprefix)
         // This is critical because ImageFs uses context.getFilesDir() which is inside Robolectric's temp directory
         try {
@@ -418,6 +430,7 @@ class SteamAutoCloudTest {
 
         // Mock HTTP client to return file content
         val mockHttpClient = mock<OkHttpClient>()
+        every { Net.httpForParallelDownloads(any()) } returns mockHttpClient
         val mockCall = mock<Call>()
         whenever(mockHttpClient.newCall(any())).thenReturn(mockCall)
 
@@ -956,54 +969,57 @@ class SteamAutoCloudTest {
                 val downloadInfo = mock<FileDownloadInfo>()
                 whenever(downloadInfo.urlHost).thenReturn("test.example.com")
                 whenever(downloadInfo.urlPath).thenReturn("/download/file$it")
+                whenever(downloadInfo.useHttps).thenReturn(true)
                 whenever(downloadInfo.requestHeaders).thenReturn(emptyList())
                 whenever(downloadInfo.fileSize).thenReturn(contents[it].size)
                 whenever(downloadInfo.rawFileSize).thenReturn(contents[it].size)
                 downloadInfo
             }
 
-        // Mock clientFileDownload to return appropriate download info based on filename in the path
-        var downloadCallCount = -1
+        val downloadInfoByFilename = (0..<count).associate { index ->
+            "%GameInstall%/save$index.dat" to mockDownloadFiles[index]
+        }
+
         every { mockSteamCloud.clientFileDownload(any(), any()) } answers {
-            ++downloadCallCount
-            CompletableFuture.completedFuture(mockDownloadFiles[downloadCallCount])
+            val filename = secondArg<String>()
+            CompletableFuture.completedFuture(
+                downloadInfoByFilename[filename] ?: error("Unexpected filename: $filename"),
+            )
         }
 
         every { mockSteamCloud.clientFileDownload(any(), any(), any(), any(), any()) } answers {
-            ++downloadCallCount
-            CompletableFuture.completedFuture(mockDownloadFiles[downloadCallCount])
+            val filename = secondArg<String>()
+            CompletableFuture.completedFuture(
+                downloadInfoByFilename[filename] ?: error("Unexpected filename: $filename"),
+            )
         }
 
         // Mock HTTP client to return file content
         val mockHttpClient = mock<OkHttpClient>()
-        val mockCall = mock<Call>()
-        whenever(mockHttpClient.newCall(any())).thenReturn(mockCall)
+        every { Net.httpForParallelDownloads(any()) } returns mockHttpClient
+        val callsByPath = (0..<count).associate { index ->
+            val call = mock<Call>()
+            whenever(call.execute()).thenReturn(
+                Response.Builder()
+                    .request(okhttp3.Request.Builder().url("https://test.example.com/download/file$index").build())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(contents[index].toResponseBody(null))
+                    .build(),
+            )
+            "/download/file$index" to call
+        }
+        whenever(mockHttpClient.newCall(any())).thenAnswer { invocation ->
+            val request = invocation.getArgument<okhttp3.Request>(0)
+            callsByPath[request.url.encodedPath] ?: error("Unexpected URL: ${request.url}")
+        }
 
         // Set up HTTP client on the existing mock steam client
         val mockSteamClient = mockSteamService.steamClient!!
         val mockConfig = mock<SteamConfiguration>()
         whenever(mockSteamClient.configuration).thenReturn(mockConfig)
         whenever(mockConfig.httpClient).thenReturn(mockHttpClient)
-
-        val responseBodies = (0..<count).toList()
-            .map { contents[it].toResponseBody(null) }
-        val responses = (0..<count).toList()
-            .map {
-                Response.Builder()
-                    .request(okhttp3.Request.Builder().url("https://test.example.com/download/file$it").build())
-                    .protocol(Protocol.HTTP_1_1)
-                    .code(200)
-                    .message("OK")
-                    .body(responseBodies[it])
-                    .build()
-            }
-
-        // Return responses in order
-        var callCount = 0
-        whenever(mockCall.execute()).thenAnswer {
-            callCount++
-            responses[callCount - 1]
-        }
 
         // Create prefixToPath function
         val prefixToPath: (String) -> String = { prefix ->
@@ -1044,6 +1060,119 @@ class SteamAutoCloudTest {
             assertNotNull("Change number should exist", changeNumber)
             assertEquals("Change number should match cloud", cloudChangeNumber, changeNumber!!.changeNumber)
         }
+    }
+
+    /**
+     * Danganronpa 2 sends cloud files with the GameInstall placeholder embedded in the filename
+     * (e.g. filename="%GameInstall%savedata.vfs", pathPrefixes=[]) because its PICS UFS entry has
+     * path="/". A Windows rootoverride maps GameInstall → WinMyDocuments + My Games/Danganronpa2/.
+     * The downloaded file must land in the WinMyDocuments subdirectory, NOT the game install dir.
+     */
+    @Test
+    fun downloadWithEmbeddedGameInstallPrefixUsesRootoverrideLocalPath() = runBlocking {
+        saveFilesDir.listFiles()?.forEach { it.delete() }
+        runBlocking {
+            db.appChangeNumbersDao().deleteByAppId(steamAppId)
+            db.appFileChangeListsDao().deleteByAppId(steamAppId)
+            db.appChangeNumbersDao().insert(app.gamenative.data.ChangeNumbers(steamAppId, 0))
+            db.appFileChangeListsDao().insert(steamAppId, emptyList())
+        }
+
+        val docsRoot = File(tempDir, "Documents")
+        val gameInstallRoot = File(tempDir, "GameInstall")
+        val expectedSaveDir = File(docsRoot, "My Games/Danganronpa2")
+        docsRoot.mkdirs()
+        gameInstallRoot.mkdirs()
+        expectedSaveDir.mkdirs()
+
+        // Danganronpa 2 SaveFilePattern after KeyValueUtils fix: "/" path normalised to ""
+        val saveFilePatterns = listOf(
+            SaveFilePattern(
+                root = PathType.WinMyDocuments,
+                path = "My Games/Danganronpa2",
+                pattern = "savedata.vfs",
+                uploadRoot = PathType.GameInstall,
+                uploadPath = "",
+            ),
+        )
+        val danganApp = db.steamAppDao().findApp(steamAppId)!!
+            .copy(ufs = UFS(saveFilePatterns = saveFilePatterns))
+
+        val fileContent = "save file content".toByteArray()
+        val fileHash = CryptoHelper.shaHash(fileContent)
+
+        // Steam sends filename with embedded %GameInstall% prefix (no separate pathPrefixes entry)
+        val mockFile = mock<AppFileInfo>()
+        whenever(mockFile.filename).thenReturn("%GameInstall%savedata.vfs")
+        whenever(mockFile.shaFile).thenReturn(fileHash)
+        whenever(mockFile.pathPrefixIndex).thenReturn(0)
+        whenever(mockFile.timestamp).thenReturn(Date())
+        whenever(mockFile.rawFileSize).thenReturn(fileContent.size)
+
+        val cloudChangeNumber = 5L
+        val mockAppFileChangeList = mock<AppFileChangeList>()
+        whenever(mockAppFileChangeList.currentChangeNumber).thenReturn(cloudChangeNumber)
+        whenever(mockAppFileChangeList.isOnlyDelta).thenReturn(false)
+        whenever(mockAppFileChangeList.appBuildIDHwm).thenReturn(0)
+        whenever(mockAppFileChangeList.pathPrefixes).thenReturn(listOf())
+        whenever(mockAppFileChangeList.machineNames).thenReturn(listOf())
+        whenever(mockAppFileChangeList.files).thenReturn(listOf(mockFile))
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(mockAppFileChangeList)
+
+        val downloadInfo = mock<FileDownloadInfo>()
+        whenever(downloadInfo.urlHost).thenReturn("test.example.com")
+        whenever(downloadInfo.urlPath).thenReturn("/download/savedata.vfs")
+        whenever(downloadInfo.useHttps).thenReturn(true)
+        whenever(downloadInfo.requestHeaders).thenReturn(emptyList())
+        whenever(downloadInfo.fileSize).thenReturn(fileContent.size)
+        whenever(downloadInfo.rawFileSize).thenReturn(fileContent.size)
+
+        every { mockSteamCloud.clientFileDownload(any(), any()) } returns
+            CompletableFuture.completedFuture(downloadInfo)
+        every { mockSteamCloud.clientFileDownload(any(), any(), any(), any(), any()) } returns
+            CompletableFuture.completedFuture(downloadInfo)
+
+        val mockHttpClient = mock<OkHttpClient>()
+        every { Net.httpForParallelDownloads(any()) } returns mockHttpClient
+        val call = mock<Call>()
+        whenever(call.execute()).thenReturn(
+            Response.Builder()
+                .request(okhttp3.Request.Builder().url("https://test.example.com/download/savedata.vfs").build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body(fileContent.toResponseBody(null))
+                .build(),
+        )
+        whenever(mockHttpClient.newCall(any())).thenReturn(call)
+
+        val prefixToPath: (String) -> String = { prefix ->
+            when (prefix) {
+                "WinMyDocuments" -> docsRoot.absolutePath
+                "GameInstall" -> gameInstallRoot.absolutePath
+                "SteamUserData" -> File(tempDir, "userdata").absolutePath
+                else -> tempDir.absolutePath
+            }
+        }
+
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = danganApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = prefixToPath,
+        ).await()
+
+        assertNotNull("Result should not be null", result)
+        assertEquals("Should download 1 file", 1, result!!.filesDownloaded)
+
+        // File must land in WinMyDocuments/My Games/Danganronpa2/, NOT the game install dir
+        val expectedFile = File(expectedSaveDir, "savedata.vfs")
+        assertTrue("savedata.vfs must be in WinMyDocuments/My Games/Danganronpa2/, not game install dir: ${expectedFile.absolutePath}", expectedFile.exists())
+        assertFalse("savedata.vfs must NOT be in game install dir", File(gameInstallRoot, "savedata.vfs").exists())
     }
 
     @Test
@@ -1577,6 +1706,7 @@ class SteamAutoCloudTest {
             CompletableFuture.completedFuture(mockDownloadInfo)
 
         val mockHttpClient = mock<OkHttpClient>()
+        every { Net.httpForParallelDownloads(any()) } returns mockHttpClient
         val mockCall = mock<Call>()
         whenever(mockHttpClient.newCall(any())).thenReturn(mockCall)
         val response = Response.Builder()
@@ -1642,10 +1772,11 @@ class SteamAutoCloudTest {
         )
         val contents = listOf(file1Content, file2Content, file3Content)
 
+        val pathPrefix = "%WinMyDocuments%/My Games/TestGame/Steam/76561198025127569/SaveGames"
         val cloudFileChangeList = makeCloudFileChangeList(
             cloudChangeNumber = 5,
             files = cloudFiles,
-            pathPrefixes = listOf("%WinMyDocuments%/My Games/TestGame/Steam/76561198025127569/SaveGames"),
+            pathPrefixes = listOf(pathPrefix),
         )
         every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
             CompletableFuture.completedFuture(cloudFileChangeList)
@@ -1662,27 +1793,39 @@ class SteamAutoCloudTest {
             }
         }
 
-        // must match all 5 JVM params (Kotlin default-param bridge)
-        var dlCount = 0
+        val downloadInfoByPath = mapOf(
+            "$pathPrefix/${cloudFiles[0].filename}" to downloadInfos[0],
+            "$pathPrefix/${cloudFiles[1].filename}" to downloadInfos[1],
+            "$pathPrefix/${cloudFiles[2].filename}" to downloadInfos[2],
+        )
+
         every { mockSteamCloud.clientFileDownload(any(), any(), any(), any(), any()) } answers {
-            CompletableFuture.completedFuture(downloadInfos[dlCount++])
+            val path = secondArg<String>()
+            CompletableFuture.completedFuture(
+                downloadInfoByPath[path] ?: error("Unexpected path: $path"),
+            )
         }
 
         // mock HTTP responses
         val mockHttpClient = mock<OkHttpClient>()
-        val mockCall = mock<Call>()
-        whenever(mockHttpClient.newCall(any())).thenReturn(mockCall)
-
-        var httpCount = 0
-        whenever(mockCall.execute()).thenAnswer {
-            val content = contents[httpCount++]
-            Response.Builder()
-                .request(okhttp3.Request.Builder().url("https://test.example.com/download/file$httpCount").build())
-                .protocol(Protocol.HTTP_1_1)
-                .code(200)
-                .message("OK")
-                .body(content.toResponseBody())
-                .build()
+        every { Net.httpForParallelDownloads(any()) } returns mockHttpClient
+        val callsByPath = contents.mapIndexed { index, content ->
+            val path = "/download/file${index + 1}"
+            val call = mock<Call>()
+            whenever(call.execute()).thenReturn(
+                Response.Builder()
+                    .request(okhttp3.Request.Builder().url("https://test.example.com$path").build())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(content.toResponseBody())
+                    .build(),
+            )
+            path to call
+        }.toMap()
+        whenever(mockHttpClient.newCall(any())).thenAnswer { invocation ->
+            val request = invocation.getArgument<okhttp3.Request>(0)
+            callsByPath[request.url.encodedPath] ?: error("Unexpected URL: ${request.url}")
         }
 
         val mockSteamClient = mockSteamService.steamClient!!
@@ -1825,6 +1968,7 @@ class SteamAutoCloudTest {
             CompletableFuture.completedFuture(mockDownloadInfo)
 
         val mockHttpClient = mock<OkHttpClient>()
+        every { Net.httpForParallelDownloads(any()) } returns mockHttpClient
         val mockCall = mock<Call>()
         whenever(mockHttpClient.newCall(any())).thenReturn(mockCall)
         val response = Response.Builder()
@@ -2070,6 +2214,7 @@ class SteamAutoCloudTest {
             CompletableFuture.completedFuture(mockDownloadInfo)
 
         val mockHttpClient = mock<OkHttpClient>()
+        every { Net.httpForParallelDownloads(any()) } returns mockHttpClient
         val mockCall = mock<Call>()
         whenever(mockHttpClient.newCall(any())).thenReturn(mockCall)
         val response = Response.Builder()
@@ -2138,6 +2283,7 @@ class SteamAutoCloudTest {
             CompletableFuture.completedFuture(mockDownloadInfo)
 
         val mockHttpClient = mock<OkHttpClient>()
+        every { Net.httpForParallelDownloads(any()) } returns mockHttpClient
         val mockCall = mock<Call>()
         whenever(mockHttpClient.newCall(any())).thenReturn(mockCall)
         val response = Response.Builder()
@@ -2168,5 +2314,165 @@ class SteamAutoCloudTest {
         assertEquals(SyncResult.Success, result!!.syncResult)
         assertTrue("Should have downloaded files", result.filesDownloaded > 0)
     }
-}
 
+    @Test
+    fun synced_cloudAdvanced_metadataFailure_doesNotCancelSiblingDownloads() = runBlocking {
+        val localCn = 5L
+        cacheCurrentLocalFiles(localCn)
+
+        val successfulCloudContent = "fresh autosave from cloud".toByteArray()
+        val successfulFile = mock<AppFileInfo>()
+        whenever(successfulFile.filename).thenReturn("SaveGames/AutoSaveData.sav")
+        whenever(successfulFile.shaFile).thenReturn(sha1(successfulCloudContent))
+        whenever(successfulFile.pathPrefixIndex).thenReturn(0)
+        whenever(successfulFile.timestamp).thenReturn(Date())
+        whenever(successfulFile.rawFileSize).thenReturn(successfulCloudContent.size)
+
+        val metadataFailureFile = mock<AppFileInfo>()
+        whenever(metadataFailureFile.filename).thenReturn("SaveGames/SaveData_0.sav")
+        whenever(metadataFailureFile.shaFile).thenReturn(sha1("savedata0 content".toByteArray()))
+        whenever(metadataFailureFile.pathPrefixIndex).thenReturn(0)
+        whenever(metadataFailureFile.timestamp).thenReturn(Date())
+        whenever(metadataFailureFile.rawFileSize).thenReturn("savedata0 content".toByteArray().size)
+
+        val pathPrefix = "%WinMyDocuments%/My Games/TestGame/Steam/76561198025127569"
+        val cloudFileChangeList = makeCloudFileChangeList(
+            cloudChangeNumber = localCn + 1,
+            files = listOf(successfulFile, metadataFailureFile),
+            pathPrefixes = listOf(pathPrefix),
+        )
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(cloudFileChangeList)
+
+        val successfulDownloadInfo = mock<FileDownloadInfo>()
+        whenever(successfulDownloadInfo.urlHost).thenReturn("test.example.com")
+        whenever(successfulDownloadInfo.urlPath).thenReturn("/download/autosave")
+        whenever(successfulDownloadInfo.useHttps).thenReturn(true)
+        whenever(successfulDownloadInfo.requestHeaders).thenReturn(emptyList())
+        whenever(successfulDownloadInfo.fileSize).thenReturn(successfulCloudContent.size)
+        whenever(successfulDownloadInfo.rawFileSize).thenReturn(successfulCloudContent.size)
+
+        every { mockSteamCloud.clientFileDownload(any(), any(), any(), any(), any()) } answers {
+            when (val path = secondArg<String>()) {
+                "$pathPrefix/SaveGames/AutoSaveData.sav" -> CompletableFuture.completedFuture(successfulDownloadInfo)
+                "$pathPrefix/SaveGames/SaveData_0.sav" -> CompletableFuture<FileDownloadInfo>().also {
+                    it.completeExceptionally(IOException("metadata lookup failed"))
+                }
+                else -> error("Unexpected path: $path")
+            }
+        }
+
+        val mockHttpClient = mock<OkHttpClient>()
+        every { Net.httpForParallelDownloads(any()) } returns mockHttpClient
+        val successfulCall = mock<Call>()
+        whenever(mockHttpClient.newCall(any())).thenReturn(successfulCall)
+        whenever(successfulCall.execute()).thenReturn(
+            Response.Builder()
+                .request(okhttp3.Request.Builder().url("https://test.example.com/download/autosave").build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body(successfulCloudContent.toResponseBody())
+                .build(),
+        )
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.Success, result!!.syncResult)
+        assertEquals("Only the healthy file should count as downloaded", 1, result.filesDownloaded)
+        assertEquals(
+            "Successful sibling download should still update local file",
+            successfulCloudContent.contentToString(),
+            File(saveFilesDir, "AutoSaveData.sav").readBytes().contentToString(),
+        )
+    }
+
+    // ── Scenario 16: DB cache wiped by destructive migration, local == remote ──
+    // Repro of the "every steam game reports conflict post-update" bug. When
+    // fallbackToDestructiveMigration wipes file_change_lists but local save files
+    // are byte-identical to the cloud manifest, we must rehydrate the cache
+    // silently and NOT show a conflict dialog.
+    @Test
+    fun dbCleared_localMatchesRemote_rehydratesSilently_noConflict() = runBlocking {
+        db.appChangeNumbersDao().deleteByAppId(steamAppId)
+        db.appFileChangeListsDao().deleteByAppId(steamAppId)
+
+        // the 5 files created in setUp() — cloud manifest must match exactly.
+        // local scan basePath = %WinMyDocuments%/My Games/TestGame/Steam/{id},
+        // files live under SaveGames/ → filename (relativized) includes that prefix.
+        val localFiles = mapOf(
+            "SaveGames/AutoSaveData.sav" to "autosave content".toByteArray(),
+            "SaveGames/SaveData_0.sav" to "savedata0 content".toByteArray(),
+            "SaveGames/ContinueSaveData.sav" to "continue content".toByteArray(),
+            "SaveGames/SaveData_1.sav" to "savedata1 content".toByteArray(),
+            "SaveGames/SystemData_0.sav" to "systemdata content".toByteArray(),
+        )
+
+        assertTrue("Precondition: local save files exist", saveFilesDir.listFiles()!!.isNotEmpty())
+
+        val cloudFiles = localFiles.map { (name, content) ->
+            val m = mock<AppFileInfo>()
+            whenever(m.filename).thenReturn(name)
+            whenever(m.shaFile).thenReturn(sha1(content))
+            whenever(m.pathPrefixIndex).thenReturn(0)
+            whenever(m.timestamp).thenReturn(Date())
+            whenever(m.rawFileSize).thenReturn(content.size)
+            m
+        }
+
+        val cloudFileChangeList = makeCloudFileChangeList(
+            cloudChangeNumber = 5,
+            files = cloudFiles,
+            pathPrefixes = listOf("%WinMyDocuments%/My Games/TestGame/Steam/76561198025127569"),
+        )
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(cloudFileChangeList)
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(
+            "local matches remote exactly — should be UpToDate, not Conflict",
+            SyncResult.UpToDate,
+            result!!.syncResult,
+        )
+        assertNull(
+            "no conflict dialog — conflictUfsVersion must be null",
+            result.conflictUfsVersion,
+        )
+        assertEquals("no downloads", 0, result.filesDownloaded)
+        assertEquals("no uploads", 0, result.filesUploaded)
+
+        // cache must be rehydrated so next launch doesn't trip the same path
+        val rehydrated = db.appFileChangeListsDao().getByAppId(steamAppId)
+        assertNotNull("cache should be rehydrated", rehydrated)
+        assertEquals(
+            "rehydrated cache should contain all 5 local files",
+            5,
+            rehydrated!!.userFileInfo.size,
+        )
+        val rehydratedCn = db.appChangeNumbersDao().getByAppId(steamAppId)
+        assertEquals(
+            "rehydrated change number should match cloud",
+            5L,
+            rehydratedCn!!.changeNumber,
+        )
+    }
+}

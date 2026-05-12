@@ -53,7 +53,7 @@ android {
         targetSdk = 28
 
         versionCode = 14
-        versionName = "0.9.0"
+        versionName = "0.9.2"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -247,6 +247,9 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
     implementation(libs.landscapist.coil)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.exoplayer.hls)
+    implementation(libs.media3.ui)
     debugImplementation(libs.androidx.ui.tooling)
 
     // Support

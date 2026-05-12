@@ -46,7 +46,8 @@ import app.gamenative.R
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.theme.PluviaTheme
 
-private const val TIMEOUT_SHOW_OFFLINE_OPTION_SECONDS = 5
+// shared with SteamUtils.awaitSteamLogin so banner UI and intent-launch await fall back to offline together.
+const val TIMEOUT_SHOW_OFFLINE_OPTION_SECONDS = 5
 
 @Composable
 fun ConnectionStatusBanner(

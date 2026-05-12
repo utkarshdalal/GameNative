@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Brugerlogin</string>
     <string name="login_2fa">Tofaktorgodkendelse</string>
@@ -36,6 +36,7 @@
     <string name="delete_prompt_title">Slet app</string>
     <string name="cancel_download_prompt_title">Annullér download</string>
     <string name="acknowledge">OK</string>
+    <string name="steam_cloud_sync_downloading_save_files">Downloader gemfiler %1$d/%2$d</string>
     <string name="yes">Ja</string>
     <string name="no">Nej</string>
     <string name="not_enough_space">Ikke nok plads</string>
@@ -177,6 +178,7 @@
     <string name="toggle_fullscreen">Skift fuldskærm</string>
     <string name="toggle_orientation">Skift orientering</string>
     <string name="task_manager">Jobliste</string>
+    <string name="tools_wine_processes_running_hint">%1$d kører, tryk/klik på en proces for at lukke den</string>
     <string name="magnifier">Forstørrelsesglas</string>
     <string name="logs">Logfiler</string>
     <string name="exit_game">Afslut</string>
@@ -228,6 +230,12 @@
     <string name="quick_menu_tab_controller">Controller</string>
     <string name="performance_hud">Ydelses-HUD</string>
     <string name="performance_hud_description">Vis eller skjul overlayet i spillet.</string>
+    <string name="performance_hud_fps_limiter">FPS-begrænser</string>
+    <string name="performance_hud_fps_limiter_description">Begrænser billedhastigheden i spillet. Maks.: %1$d Hz.</string>
+    <string name="performance_hud_fps_limiter_target">Mål-FPS</string>
+    <string name="performance_hud_fps_limiter_off">Ubegrænset</string>
+    <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Begrænser tilsidesat, mens LSFG er aktiv. Kildehastigheden styres af multiplikatoren.</string>
     <string name="performance_hud_presets">Forudindstillinger</string>
     <string name="performance_hud_presets_description">Skift hurtigt mellem almindelige HUD-layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -561,6 +569,31 @@
     <string name="gesture_zoom_page_up_down">Side op/ned</string>
     <string name="gesture_action_label">Handling</string>
     <string name="gesture_delay_label">Forsinkelse</string>
+    <string name="gesture_section_single_finger">En finger</string>
+    <string name="gesture_section_two_finger">To fingre</string>
+    <string name="gesture_section_three_finger">Tre fingre</string>
+    <string name="gesture_section_other">Andet</string>
+    <string name="gesture_pan_left_click_drag">Træk med venstreklik</string>
+    <string name="gesture_pan_right_click_drag">Træk med højreklik</string>
+    <string name="gesture_action_show_keyboard">Vis tastatur</string>
+    <string name="gesture_header_special">Særlige</string>
+    <string name="gesture_header_mouse">Mus</string>
+    <string name="gesture_header_common_game">Almindelige spiltaster</string>
+    <string name="gesture_header_letters">Bogstaver A-Z</string>
+    <string name="gesture_header_numbers">Tal 0-9</string>
+    <string name="gesture_header_function_keys">Funktionstaster</string>
+    <string name="gesture_two_finger_hold">Hold med to fingre</string>
+    <string name="gesture_two_finger_hold_delay">Forsinkelse for hold med to fingre (ms)</string>
+    <string name="gesture_three_finger_tap">Tryk med tre fingre</string>
+    <string name="gesture_three_finger_drag">Træk med tre fingre</string>
+    <string name="gesture_three_finger_hold">Hold med tre fingre</string>
+    <string name="gesture_three_finger_hold_delay">Forsinkelse for hold med tre fingre (ms)</string>
+    <string name="gesture_threshold">Gestus-tærskel (px)</string>
+    <string name="gesture_threshold_subtitle">Bevægelse, der kræves for at låse gestustypen (lavere = mere responsiv)</string>
+    <string name="gesture_show_click_highlight">Vis klikfremhævning</string>
+    <string name="gesture_show_click_highlight_subtitle">Vis en cirkel ved trykplacering</string>
+    <string name="gesture_show_debug_overlay">Vis fejlfindings-overlay for gestus</string>
+    <string name="gesture_show_debug_overlay_subtitle">Vis midlertidige gestusetiketter øverst i midten</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Indstillinger for dynamiske joysticks</string>
@@ -717,6 +750,8 @@
     <string name="settings_info_libraries_subtitle">Se hvilke teknologier der gør GameNative mulig</string>
     <string name="settings_info_privacy_title">Privatlivspolitik</string>
     <string name="settings_info_privacy_subtitle">Åbner et link til GameNatives privatlivspolitik</string>
+    <string name="settings_info_usage_analytics_title">Brugsanalyse</string>
+    <string name="settings_info_usage_analytics_subtitle">Vi sporer aldrig personlige oplysninger. Deaktivering stopper ikke-essentiel analyse, men grundlæggende spilydelsesdata indsamles stadig som en berettiget interesse for at forbedre kompatibilitet.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Grænseflade</string>
@@ -842,6 +877,7 @@
     <string name="main_app_running_message">Du er logget ind på en anden enhed og spiller allerede %s. \nDu kan stadig spille dette spil, men det vil afbryde den anden session fra Steam.</string>
     <string name="main_app_running_other_device">Du er logget ind på en anden enhed (%1$s) og spiller allerede %2$s (%3$s), og den gemfil er ikke i skyen endnu. \nDu kan stadig spille dette spil, men det vil afbryde den anden session fra Steam og kan skabe en gemfilkonflikt når sessionsframgangen synkroniseres</string>
     <string name="main_play_anyway">Spil alligevel</string>
+    <string name="main_app_running_unknown_game">et spil</string>
 
     <!-- TODO: Manual review - PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Gemfilkonflikt</string>
@@ -928,11 +964,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">Konfiguration anvendt med succes</string>
+    <string name="best_config_missing_components_title">Konfiguration ikke anvendt</string>
+    <string name="best_config_missing_components_message">Følgende nødvendige komponenter er ikke tilgængelige på denne enhed:\n\n%1$s\n\nInstaller de manglende komponenter og prøv igen.</string>
     <string name="best_config_known_config_invalid">Kendt konfiguration ugyldig</string>
     <string name="best_config_no_config_available">Ingen bedste konfiguration tilgængelig for dette spil</string>
     <string name="best_config_fetch_failed">Kunne ikke hente konfiguration. Kontrollér din netværksforbindelse.</string>
+    <string name="best_config_apply_anyway">Anvend alligevel</string>
+    <string name="best_config_applied_with_defaults">Konfiguration anvendt, manglende komponenter erstattet med standardværdier</string>
     <string name="best_config_apply_failed">Kunne ikke anvende konfiguration: %s</string>
-    <string name="best_config_missing_content">%s mangler</string>
     <string name="import_config">Importér konfiguration</string>
     <string name="export_config">Eksportér konfiguration</string>
 
@@ -1134,6 +1173,7 @@
     <!-- Settings additions -->
     <string name="settings_save_logcat_subtitle">Gemmer et snapshot af logcat kun for denne apps PID</string>
     <string name="settings_save_logcat_title">Gem logcat</string>
+    <string name="settings_achievement_show_notification">Vis præstationsmeddelelser</string>
 
     <!-- Misc additions -->
     <string name="calculating_space_requirements">Beregner pladskrav...</string>
@@ -1236,4 +1276,67 @@
     <string name="workshop_processing">Behandler mods…</string>
     <string name="workshop_failed_count">%1$d workshop-mod(s) kunne ikke opdateres</string>
     <string name="workshop_download_failed">Download mislykkedes</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Anbefalet</string>
+    <string name="recommended_buy_button">Se spillet</string>
+    <string name="recommended_support_message">Køb via dette link hjælper med at støtte udviklingen af GameNative.</string>
+    <string name="recommended_about_heading">Om dette spil</string>
+    <string name="recommended_review_count">Baseret på %1$s anmeldelser</string>
+    <string name="review_overwhelmingly_positive">Overvældende positiv</string>
+    <string name="review_very_positive">Meget positiv</string>
+    <string name="review_mostly_positive">Overvejende positiv</string>
+    <string name="review_mixed">Blandet</string>
+    <string name="review_mostly_negative">Overvejende negativ</string>
+    <string name="review_overwhelmingly_negative">Overvældende negativ</string>
+    <string name="settings_interface_show_recommendations_title">Vis spilanbefalinger</string>
+    <string name="settings_interface_show_recommendations_subtitle">Vis udvalgte indie-spil i dit bibliotek. At holde dette aktiveret hjælper med at støtte indie-udviklere og GameNative.</string>
+     <string name="steam_save_export_success">Gemte filer eksporteret</string>
+     <string name="steam_save_export_no_saves_found">Ingen gemte filer fundet</string>
+     <string name="steam_save_export_failed">Kunne ikke eksportere gemte filer: %s</string>
+     <string name="steam_save_import_success">Gemte filer importeret</string>
+     <string name="steam_save_import_failed">Kunne ikke importere gemte filer: %s</string>
+    <string name="option_import_saves">Importér gemte spil</string>
+    <string name="option_export_saves">Eksportér gemte spil</string>
+
+    <!-- LSFG-VK frame generation -->
+    <string name="lsfg_tab_title">LSFG-VK</string>
+    <string name="lsfg_description">Generer mellemliggende billeder ved hjælp af Lossless Scalings Vulkan-lag. Virkede kun på Adreno 6xx og nyere, så vidt vides.</string>
+    <string name="lsfg_enable">Aktivér LSFG-VK billedgenerering</string>
+    <string name="lsfg_multiplier">Billedmultiplikator</string>
+    <string name="lsfg_flow_scale">Flow-skala</string>
+    <string name="lsfg_flow_scale_desc">Lavere er mere stabilt; højere er mere flydende men kan give artefakter.</string>
+    <string name="lsfg_performance_mode">Ydelsestilstand</string>
+    <string name="lsfg_not_supported">Billedgenerering kræver en Bionic-container</string>
+    <string name="lsfg_install_prompt">Lossless Scaling er ikke installeret. Tryk for at installere. Virkede kun på Adreno 6xx og nyere, så vidt vides.</string>
+    <string name="lsfg_not_in_library">Lossless Scaling er ikke i dit Steam-bibliotek</string>
+    <string name="lsfg_install_title">Installer Lossless Scaling?</string>
+    <string name="lsfg_install_message">Dette downloader Lossless Scaling fra Steam for at aktivere billedgenerering.</string>
+    <string name="lsfg_installing">Downloader Lossless Scaling…</string>
+    <string name="lsfg_performance_mode_desc">Reducerer kvalitet for højere gennemstrømning</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">Opstart kan tage et par minutter ved første lancering</string>
+    <string name="game_launch_tip_2">Tip: Du kan se spilfilerne ved at trykke på \"%s\" i spilindstillingerne.</string>
+    <string name="game_launch_tip_3">Tip: Gå til hovedindstillingsmenuen for at downloade brugerdefinerede drivere til din enhed, der skal bruges på Bionic.</string>
+    <string name="game_launch_tip_4">Tip: Hvis du får en DirectX-fejl, skal du sørge for at bruge DXVK 1.10.3-async og leegao-wrapper på Bionic.</string>
+    <string name="game_launch_tip_5">Tip: Prøv Direct3D-testen i Startmenuen efter at have klikket på \"%s\" for at kontrollere, om din enhed fungerer korrekt.</string>
+    <string name="game_launch_tip_6">Tip: Brug DXVK til DirectX 8/9/10/11 spil, VKD3D til DirectX 12 spil og VirGL + WineD3D til OpenGL spil.</string>
+    <string name="game_launch_tip_7">Tip: Brug Turnip på glibc eller bionic til at spille DirectX 12 spil. DirectX 12-understøttelse til enheder, der ikke understøtter Turnip, er i øjeblikket begrænset.</string>
+    <string name="game_launch_tip_8">Tip: Prøv Adreno- eller Snapdragon 8 Elite-driverne på glibc, hvis du har en kompatibel enhed.</string>
+    <string name="game_launch_tip_9">Tip: Hvis du får en sort skærm, når du starter et spil, så prøv at \"%s\" og start spillet fra A:-drevet.</string>
+    <string name="game_launch_tip_10">Tip: Du kan tilføje forskellige placeringer til brugerdefinerede spil i indstillingerne.</string>
+    <string name="game_launch_tip_11">Tip: Brug performance HUD i hurtigmenuen, når du vil have FPS-statistik i spillet.</string>
+    <string name="game_launch_tip_12">Tip: Installer pakker i A:\\_CommonRedist, hvis dit spil ikke starter.</string>
+    <string name="game_launch_tip_13">Tip: Du kan aktivere eller deaktivere skærmcontrolleren med din enheds tilbage-knap.</string>
+    <string name="game_launch_tip_14">Tip: Du kan få tastaturet frem med din enheds tilbage-knap.</string>
+    <string name="game_launch_tip_15">Tip: Du kan trykke med to fingre inde i containeren for at højreklikke.</string>
+    <string name="game_launch_tip_16">Tip: Hvis du bruger skærmcontrolleren, kan du deaktivere musen for at forhindre utilsigtede berøringer.</string>
+    <string name="game_launch_tip_17">Tip: Rapporter problemer på Discord, så vi kan rette dem.</string>
+    <string name="game_launch_tip_18">Tip: Brug Vortek-driveren på glibc eller wrapper-leegao på Bionic, hvis du har et ikke-Adreno GPU.</string>
+    <string name="game_launch_tip_19">Tip: Sænk opløsningen og brug box64 i performance-tilstand for at øge FPS.</string>
+    <string name="game_launch_tip_20">Tip: Hvis spillet går ned efter indlæsning, skal du øge videohukommelsen.</string>
+    <string name="game_launch_tip_21">Tip: Hvis du ser visuelle fejl, skal du deaktivere DRI3.</string>
+    <string name="game_launch_tip_22">Tip: Du kan aktivere touchscreen-tilstand.</string>
+    <string name="game_launch_tip_23">Tip: Hvis du har et Mali GPU, skal du bruge systemdrivere.</string>
+    <string name="game_launch_tip_24">Tip: Får du en sort skærm? Prøv at bruge \"%s\"-indstillingen i menuen for at kontrollere, om dine drivere fungerer korrekt.</string>
 </resources>

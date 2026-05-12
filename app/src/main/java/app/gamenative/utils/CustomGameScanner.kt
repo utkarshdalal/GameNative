@@ -10,17 +10,26 @@ import android.provider.Settings
 import androidx.core.content.ContextCompat
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.data.AppInfo
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.DownloadService
+import app.gamenative.service.SteamService
+import app.gamenative.service.SteamService.Companion.INVALID_APP_ID
+import app.gamenative.service.SteamService.Companion.getMainAppDepots
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
 import java.io.File
 import kotlin.math.abs
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import timber.log.Timber
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.text.ifEmpty
 
 object CustomGameScanner {
 
@@ -498,6 +507,53 @@ object CustomGameScanner {
         if (!folder.exists() || !folder.isDirectory) {
             Timber.tag("CustomGameScanner").w("Folder does not exist or is not a directory: $folderPath")
             return null
+        }
+
+        if (SteamService.instance != null) {
+            val steamApps = SteamService.findSteamAppWithInstallDir(dirName = folder.name)
+            if (steamApps?.size == 1) {
+                val steamApp = steamApps[0]
+                if (SteamService.isAppLicensed(steamApp.packageId)) {
+                    if (SteamService.getInstalledApp(steamApp.id) == null) {
+                        val preferredLanguage = PrefManager.containerLanguage
+                        val mainDepots = getMainAppDepots(steamApp.id, preferredLanguage)
+                        val mainAppDepots = mainDepots.filter { (_, depot) ->
+                            depot.dlcAppId == INVALID_APP_ID
+                        }
+                        val mainAppDepotIds = mainAppDepots.keys.sorted()
+
+                        runBlocking {
+                            SteamService.instance?.appInfoDao?.insert(
+                                AppInfo(
+                                    steamApp.id,
+                                    isDownloaded = true,
+                                    downloadedDepots = mainAppDepotIds,
+                                    dlcDepots = emptyList(),
+                                    branch = "public",
+                                    customInstallPath = folderPath
+                                ),
+                            )
+                        }
+
+                        MarkerUtils.addMarker(folderPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                    }
+
+                    val idPart = steamApp.id
+                    val appId = "${GameSource.STEAM.name}_$idPart"
+
+                    return LibraryItem(
+                        index = 0,
+                        appId = appId,
+                        name = steamApp.name,
+                        iconHash = steamApp.clientIconHash,
+                        capsuleImageUrl = steamApp.getCapsuleUrl(),
+                        headerImageUrl = steamApp.getHeaderImageUrl().orEmpty().ifEmpty { steamApp.headerUrl },
+                        heroImageUrl = steamApp.getHeroUrl().ifEmpty { steamApp.headerUrl },
+                        isShared = false,
+                        gameSource = GameSource.STEAM,
+                    )
+                }
+            }
         }
 
         val idPart = getOrGenerateGameId(folder)

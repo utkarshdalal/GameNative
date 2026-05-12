@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Login do Usuário</string>
     <string name="login_2fa">Dois Fatores</string>
@@ -32,6 +32,7 @@
     <string name="delete_prompt_title">Deletar App</string>
     <string name="cancel_download_prompt_title">Cancelar Download</string>
     <string name="acknowledge">OK</string>
+    <string name="steam_cloud_sync_downloading_save_files">Baixando arquivos de salvamento %1$d/%2$d</string>
     <string name="yes">Sim</string>
     <string name="no">Não</string>
     <string name="not_enough_space">Sem espaço suficiente</string>
@@ -177,6 +178,7 @@
     <string name="toggle_fullscreen">Alternar Tela Cheia</string>
     <string name="toggle_orientation">Alternar Orientação</string>
     <string name="task_manager">Gerenciador de tarefas</string>
+    <string name="tools_wine_processes_running_hint">%1$d em execução, toque/clique em um processo para fechá-lo</string>
     <string name="magnifier">Lupa</string>
     <string name="logs">Logs</string>
     <string name="exit_game">Sair</string>
@@ -228,6 +230,12 @@
     <string name="quick_menu_tab_controller">Controle</string>
     <string name="performance_hud">HUD de desempenho</string>
     <string name="performance_hud_description">Mostrar ou ocultar a sobreposição no jogo.</string>
+    <string name="performance_hud_fps_limiter">Limitador de FPS</string>
+    <string name="performance_hud_fps_limiter_description">Limita a taxa de quadros no jogo. Máx.: %1$d Hz.</string>
+    <string name="performance_hud_fps_limiter_target">FPS alvo</string>
+    <string name="performance_hud_fps_limiter_off">Ilimitado</string>
+    <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Limitador ignorado enquanto LSFG está ativo. A taxa da fonte é controlada pelo multiplicador.</string>
     <string name="performance_hud_presets">Predefinições</string>
     <string name="performance_hud_presets_description">Alterne rapidamente entre layouts comuns de HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -561,6 +569,31 @@
     <string name="gesture_zoom_page_up_down">PgUp/PgDn</string>
     <string name="gesture_action_label">Ação</string>
     <string name="gesture_delay_label">Atraso</string>
+    <string name="gesture_section_single_finger">Um dedo</string>
+    <string name="gesture_section_two_finger">Dois dedos</string>
+    <string name="gesture_section_three_finger">Três dedos</string>
+    <string name="gesture_section_other">Outro</string>
+    <string name="gesture_pan_left_click_drag">Arrastar com clique esquerdo</string>
+    <string name="gesture_pan_right_click_drag">Arrastar com clique direito</string>
+    <string name="gesture_action_show_keyboard">Mostrar teclado</string>
+    <string name="gesture_header_special">Especial</string>
+    <string name="gesture_header_mouse">Mouse</string>
+    <string name="gesture_header_common_game">Teclas comuns de jogo</string>
+    <string name="gesture_header_letters">Letras A-Z</string>
+    <string name="gesture_header_numbers">Números 0-9</string>
+    <string name="gesture_header_function_keys">Teclas de função</string>
+    <string name="gesture_two_finger_hold">Segurar com dois dedos</string>
+    <string name="gesture_two_finger_hold_delay">Atraso ao segurar com dois dedos (ms)</string>
+    <string name="gesture_three_finger_tap">Toque com três dedos</string>
+    <string name="gesture_three_finger_drag">Arrastar com três dedos</string>
+    <string name="gesture_three_finger_hold">Segurar com três dedos</string>
+    <string name="gesture_three_finger_hold_delay">Atraso ao segurar com três dedos (ms)</string>
+    <string name="gesture_threshold">Limite do gesto (px)</string>
+    <string name="gesture_threshold_subtitle">Movimento necessário para travar o tipo de gesto (menor = mais responsivo)</string>
+    <string name="gesture_show_click_highlight">Mostrar destaque de clique</string>
+    <string name="gesture_show_click_highlight_subtitle">Mostrar um círculo no local do toque</string>
+    <string name="gesture_show_debug_overlay">Mostrar sobreposição de depuração de gestos</string>
+    <string name="gesture_show_debug_overlay_subtitle">Mostrar rótulos temporários de gestos no topo central</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Configurações de joysticks dinâmicos</string>
@@ -717,6 +750,8 @@
     <string name="settings_info_libraries_subtitle">Veja quais tecnologias tornam o GameNative possível</string>
     <string name="settings_info_privacy_title">Política de privacidade</string>
     <string name="settings_info_privacy_subtitle">Abre um link para a política de privacidade do GameNative</string>
+    <string name="settings_info_usage_analytics_title">Análise de uso</string>
+    <string name="settings_info_usage_analytics_subtitle">Nunca rastreamos informações pessoais. Desativar isso interrompe análises não essenciais, porém dados de desempenho de jogos ainda são coletados como interesse legítimo para melhorar a compatibilidade.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>
@@ -842,6 +877,7 @@
     <string name="main_app_running_message">Você já está logado em outro dispositivo jogando %s. \nVocê ainda pode jogar este jogo, mas isso desconectará a outra sessão do Steam.</string>
     <string name="main_app_running_other_device">Você já está logado em outro dispositivo (%1$s) jogando %2$s (%3$s), e esse save ainda não está na nuvem. \nVocê ainda pode jogar este jogo, mas isso desconectará a outra sessão do Steam e pode criar um conflito de save quando o progresso da sessão for sincronizado</string>
     <string name="main_play_anyway">Jogar mesmo assim</string>
+    <string name="main_app_running_unknown_game">um jogo</string>
 
     <!-- TODO: Revisão manual - PluviaMain: Conflitos de save -->
     <string name="main_save_conflict_title">Conflito de save</string>
@@ -928,11 +964,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">Config aplicada com sucesso</string>
+    <string name="best_config_missing_components_title">Configuração não aplicada</string>
+    <string name="best_config_missing_components_message">Os seguintes componentes necessários não estão disponíveis neste dispositivo:\n\n%1$s\n\nInstale os componentes ausentes e tente novamente.</string>
     <string name="best_config_known_config_invalid">Config conhecida inválida</string>
     <string name="best_config_no_config_available">Nenhuma melhor config disponível para este jogo</string>
     <string name="best_config_fetch_failed">Falha ao obter a configuração. Verifique sua conexão de rede.</string>
+    <string name="best_config_apply_anyway">Aplicar mesmo assim</string>
+    <string name="best_config_applied_with_defaults">Configuração aplicada, componentes ausentes substituídos por padrões</string>
     <string name="best_config_apply_failed">Falha ao aplicar config: %s</string>
-    <string name="best_config_missing_content">%s ausente</string>
     <string name="import_config">Importar configuração</string>
     <string name="export_config">Exportar configuração</string>
 
@@ -1134,6 +1173,7 @@
     <!-- Adições de configurações -->
     <string name="settings_save_logcat_subtitle">Salva um snapshot do logcat apenas para o PID deste aplicativo</string>
     <string name="settings_save_logcat_title">Salvar logcat</string>
+    <string name="settings_achievement_show_notification">Mostrar notificações de conquistas</string>
 
     <!-- Adições diversas -->
     <string name="calculating_space_requirements">Calculando requisitos de espaço...</string>
@@ -1236,4 +1276,67 @@
     <string name="workshop_processing">Processando mods…</string>
     <string name="workshop_failed_count">%1$d mod(s) da Oficina não puderam ser atualizados</string>
     <string name="workshop_download_failed">Falha no download</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Recomendado</string>
+    <string name="recommended_buy_button">Conferir jogo</string>
+    <string name="recommended_support_message">Comprar através deste link ajuda a apoiar o desenvolvimento do GameNative.</string>
+    <string name="recommended_about_heading">Sobre este jogo</string>
+    <string name="recommended_review_count">Baseado em %1$s avaliações</string>
+    <string name="review_overwhelmingly_positive">Extremamente positivo</string>
+    <string name="review_very_positive">Muito positivo</string>
+    <string name="review_mostly_positive">Majoritariamente positivo</string>
+    <string name="review_mixed">Misto</string>
+    <string name="review_mostly_negative">Majoritariamente negativo</string>
+    <string name="review_overwhelmingly_negative">Extremamente negativo</string>
+    <string name="settings_interface_show_recommendations_title">Mostrar recomendações de jogos</string>
+    <string name="settings_interface_show_recommendations_subtitle">Mostra jogos indie selecionados na sua biblioteca. Manter ativado ajuda a apoiar desenvolvedores indie e o GameNative.</string>
+     <string name="steam_save_export_success">Saves exportados</string>
+     <string name="steam_save_export_no_saves_found">Nenhum save encontrado</string>
+     <string name="steam_save_export_failed">Falha ao exportar saves: %s</string>
+     <string name="steam_save_import_success">Saves importados</string>
+     <string name="steam_save_import_failed">Falha ao importar saves: %s</string>
+    <string name="option_import_saves">Importar saves</string>
+    <string name="option_export_saves">Exportar saves</string>
+
+    <!-- LSFG-VK frame generation -->
+    <string name="lsfg_tab_title">LSFG-VK</string>
+    <string name="lsfg_description">Gerar quadros intermediários usando a camada Vulkan do Lossless Scaling. Funciona apenas em Adreno 6xx e posteriores, conforme se sabe.</string>
+    <string name="lsfg_enable">Ativar geração de quadros LSFG-VK</string>
+    <string name="lsfg_multiplier">Multiplicador de quadros</string>
+    <string name="lsfg_flow_scale">Escala de fluxo</string>
+    <string name="lsfg_flow_scale_desc">Mais baixo é mais estável; mais alto é mais suave, mas pode gerar artefatos.</string>
+    <string name="lsfg_performance_mode">Modo de desempenho</string>
+    <string name="lsfg_not_supported">A geração de quadros requer um contêiner Bionic</string>
+    <string name="lsfg_install_prompt">Lossless Scaling não instalado. Toque para instalar. Funciona apenas em Adreno 6xx e posteriores, conforme se sabe.</string>
+    <string name="lsfg_not_in_library">Lossless Scaling não está na sua biblioteca Steam</string>
+    <string name="lsfg_install_title">Instalar Lossless Scaling?</string>
+    <string name="lsfg_install_message">Isso baixará o Lossless Scaling do Steam para ativar a geração de quadros.</string>
+    <string name="lsfg_installing">Baixando Lossless Scaling…</string>
+    <string name="lsfg_performance_mode_desc">Reduz qualidade para maior taxa de processamento</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">A inicialização pode levar alguns minutos na primeira execução</string>
+    <string name="game_launch_tip_2">Dica: Você pode visualizar os arquivos do jogo pressionando \"%s\" nas configurações do jogo.</string>
+    <string name="game_launch_tip_3">Dica: Você pode ir ao menu de configurações principal e baixar drivers personalizados para seu dispositivo para usar no Bionic.</string>
+    <string name="game_launch_tip_4">Dica: Se estiver recebendo um erro DirectX, certifique-se de estar usando DXVK 1.10.3-async e leegao-wrapper no Bionic.</string>
+    <string name="game_launch_tip_5">Dica: Experimente o teste Direct3D no Menu Iniciar após clicar em \"%s\" para verificar se seu dispositivo está funcionando corretamente.</string>
+    <string name="game_launch_tip_6">Dica: Use DXVK para jogos DirectX 8/9/10/11, VKD3D para jogos DirectX 12 e VirGL + WineD3D para jogos OpenGL.</string>
+    <string name="game_launch_tip_7">Dica: Use Turnip no glibc ou bionic para jogar jogos DirectX 12. O suporte a DirectX 12 para dispositivos que não suportam Turnip é atualmente limitado.</string>
+    <string name="game_launch_tip_8">Dica: Experimente os drivers Adreno ou Snapdragon 8 Elite no glibc se você tiver um dispositivo compatível.</string>
+    <string name="game_launch_tip_9">Dica: Se estiver com tela preta ao iniciar um jogo, tente usar \"%s\" e iniciar o jogo a partir da unidade A:.</string>
+    <string name="game_launch_tip_10">Dica: Você pode adicionar diferentes locais para jogos personalizados nas configurações.</string>
+    <string name="game_launch_tip_11">Dica: Use o HUD de desempenho do menu rápido quando quiser estatísticas de FPS no jogo.</string>
+    <string name="game_launch_tip_12">Dica: Instale os pacotes em A:\\_CommonRedist se o jogo não iniciar.</string>
+    <string name="game_launch_tip_13">Dica: Você pode ativar ou desativar o controle na tela com a tecla voltar do seu dispositivo.</string>
+    <string name="game_launch_tip_14">Dica: Você pode abrir o teclado com a tecla voltar do seu dispositivo.</string>
+    <string name="game_launch_tip_15">Dica: Você pode tocar com dois dedos dentro do contêiner para clicar com o botão direito.</string>
+    <string name="game_launch_tip_16">Dica: Se estiver usando o controle na tela, você pode desativar o mouse para evitar toques acidentais.</string>
+    <string name="game_launch_tip_17">Dica: Relate problemas no Discord para que possamos corrigi-los.</string>
+    <string name="game_launch_tip_18">Dica: Use o driver Vortek no glibc ou wrapper-leegao no Bionic se você tiver uma GPU que não seja Adreno.</string>
+    <string name="game_launch_tip_19">Dica: Reduza a resolução e use box64 no modo de desempenho para aumentar os FPS.</string>
+    <string name="game_launch_tip_20">Dica: Se o jogo travar após carregar, aumente a memória de vídeo.</string>
+    <string name="game_launch_tip_21">Dica: Se estiver vendo falhas visuais, desative o DRI3.</string>
+    <string name="game_launch_tip_22">Dica: Você pode ativar o modo touchscreen.</string>
+    <string name="game_launch_tip_23">Dica: Se você tiver uma GPU Mali, use os drivers do sistema.</string>
+    <string name="game_launch_tip_24">Dica: Tela preta? Experimente a opção \"%s\" no menu para verificar se seus drivers estão funcionando corretamente.</string>
 </resources>

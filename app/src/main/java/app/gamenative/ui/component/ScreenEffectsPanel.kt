@@ -67,71 +67,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.ScreenEffectsConfig
 import app.gamenative.ui.util.adaptivePanelWidth
+import app.gamenative.ui.util.applyScreenEffectsConfig
+import app.gamenative.ui.util.loadScreenEffectsConfig
+import app.gamenative.ui.util.persistScreenEffectsConfig
+import com.winlator.container.Container
 import com.winlator.renderer.GLRenderer
-import com.winlator.renderer.effects.ColorEffect
-import com.winlator.renderer.effects.CRTEffect
-import com.winlator.renderer.effects.Effect
-import com.winlator.renderer.effects.FSR1EasuEffect
-import com.winlator.renderer.effects.FSR1RcasEffect
-import com.winlator.renderer.effects.FXAAEffect
-import com.winlator.renderer.effects.VividEffect
-import com.winlator.renderer.effects.NTSCCombinedEffect
-import com.winlator.renderer.effects.ScalingModeEffect
-import com.winlator.renderer.effects.ToonEffect
+import kotlinx.coroutines.delay
 import kotlin.math.abs
 
 private const val SCREEN_EFFECT_PERCENT_STEP = 5f
 private const val SCREEN_EFFECT_GAMMA_STEP = 0.1f
-private const val SCREEN_EFFECT_FSR_MIN_LEVEL = 1
-private const val SCREEN_EFFECT_FSR_MAX_LEVEL = 5
-private const val SCREEN_EFFECT_FSR_DEFAULT_LEVEL = 3
-private const val SCREEN_EFFECT_SCALE_MODE_NONE = 0
-private const val SCREEN_EFFECT_SCALE_MODE_NEAREST = 1
-private const val SCREEN_EFFECT_SCALE_MODE_LINEAR = 2
-private const val SCREEN_EFFECT_SCALE_MODE_FILL = 3
-private const val SCREEN_EFFECT_SCALE_MODE_STRETCH = 4
-private const val SCREEN_EFFECT_SCALE_MODE_FSR = 5
-
-private fun fsrQuickMenuLevelToStops(level: Int): Float {
-    val clamped = level.coerceIn(SCREEN_EFFECT_FSR_MIN_LEVEL, SCREEN_EFFECT_FSR_MAX_LEVEL)
-    return when (clamped) {
-        1 -> 2.0f
-        2 -> 1.5f
-        3 -> 1.0f
-        4 -> 0.5f
-        else -> 0.0f
-    }
-}
-
-private fun fsrStopsToQuickMenuLevel(stops: Float): Int = when {
-    stops >= 1.75f -> 1
-    stops >= 1.25f -> 2
-    stops >= 0.75f -> 3
-    stops >= 0.25f -> 4
-    else -> 5
-}
-
-private fun scalingEffectModeToQuickMenuMode(mode: ScalingModeEffect.Mode?): Int = when (mode) {
-    ScalingModeEffect.Mode.NEAREST -> SCREEN_EFFECT_SCALE_MODE_NEAREST
-    ScalingModeEffect.Mode.FILL -> SCREEN_EFFECT_SCALE_MODE_FILL
-    ScalingModeEffect.Mode.STRETCH -> SCREEN_EFFECT_SCALE_MODE_STRETCH
-    else -> SCREEN_EFFECT_SCALE_MODE_LINEAR
-}
-
-private fun quickMenuModeToScalingEffectMode(mode: Int): ScalingModeEffect.Mode = when (mode) {
-    SCREEN_EFFECT_SCALE_MODE_NEAREST -> ScalingModeEffect.Mode.NEAREST
-    SCREEN_EFFECT_SCALE_MODE_FILL -> ScalingModeEffect.Mode.FILL
-    SCREEN_EFFECT_SCALE_MODE_STRETCH -> ScalingModeEffect.Mode.STRETCH
-    else -> ScalingModeEffect.Mode.LINEAR
-}
 
 private fun scalingModeLabelRes(mode: Int): Int = when (mode) {
-    SCREEN_EFFECT_SCALE_MODE_NEAREST -> R.string.screen_effects_scaling_mode_nearest
-    SCREEN_EFFECT_SCALE_MODE_LINEAR -> R.string.screen_effects_scaling_mode_linear
-    SCREEN_EFFECT_SCALE_MODE_FILL -> R.string.screen_effects_scaling_mode_fill
-    SCREEN_EFFECT_SCALE_MODE_STRETCH -> R.string.screen_effects_scaling_mode_stretch
-    SCREEN_EFFECT_SCALE_MODE_FSR -> R.string.screen_effects_scaling_mode_fsr
+    ScreenEffectsConfig.SCALING_MODE_NEAREST -> R.string.screen_effects_scaling_mode_nearest
+    ScreenEffectsConfig.SCALING_MODE_LINEAR -> R.string.screen_effects_scaling_mode_linear
+    ScreenEffectsConfig.SCALING_MODE_FILL -> R.string.screen_effects_scaling_mode_fill
+    ScreenEffectsConfig.SCALING_MODE_STRETCH -> R.string.screen_effects_scaling_mode_stretch
+    ScreenEffectsConfig.SCALING_MODE_FSR -> R.string.screen_effects_scaling_mode_fsr
+    ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> R.string.screen_effects_scaling_mode_fsr_aspect
     else -> R.string.screen_effects_scaling_mode_none
 }
 
@@ -139,53 +94,41 @@ private fun scalingModeLabelRes(mode: Int): Int = when (mode) {
 fun ScreenEffectsTabContent(
     renderer: GLRenderer,
     modifier: Modifier = Modifier,
+    container: Container? = null,
     firstItemFocusRequester: FocusRequester? = null,
     scrollState: ScrollState = rememberScrollState(),
 ) {
-    val composer = renderer.effectComposer
-    val initialColorEffect = composer.getEffect(ColorEffect::class.java)
-    val initialScalingEffect = composer.getEffect(ScalingModeEffect::class.java)
-    val initialFsrEasuEffect = composer.getEffect(FSR1EasuEffect::class.java)
-    val initialFsrRcasEffect = composer.getEffect(FSR1RcasEffect::class.java)
+    val initialConfig = remember(renderer, container) { loadScreenEffectsConfig(container) }
 
-    var brightness by remember(renderer) {
-        mutableFloatStateOf((initialColorEffect?.brightness ?: 0f) * 100f)
+    var brightness by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.brightness)
     }
-    var contrast by remember(renderer) {
-        mutableFloatStateOf((initialColorEffect?.contrast ?: 0f) * 100f)
+    var contrast by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.contrast)
     }
-    var gamma by remember(renderer) {
-        mutableFloatStateOf(initialColorEffect?.gamma ?: 1.0f)
+    var gamma by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.gamma)
     }
-    var scalingMode by remember(renderer) {
-        mutableIntStateOf(
-            when {
-                initialFsrEasuEffect != null && initialFsrRcasEffect != null -> SCREEN_EFFECT_SCALE_MODE_FSR
-                initialScalingEffect != null -> scalingEffectModeToQuickMenuMode(initialScalingEffect.mode)
-                else -> SCREEN_EFFECT_SCALE_MODE_NONE
-            },
-        )
+    var scalingMode by remember(renderer, container) {
+        mutableIntStateOf(initialConfig.scalingMode)
     }
-    var fsrSharpnessLevel by remember(renderer) {
-        mutableIntStateOf(
-            initialFsrRcasEffect?.sharpnessStops?.let(::fsrStopsToQuickMenuLevel)
-                ?: SCREEN_EFFECT_FSR_DEFAULT_LEVEL,
-        )
+    var fsrSharpnessLevel by remember(renderer, container) {
+        mutableIntStateOf(initialConfig.fsrSharpnessLevel)
     }
-    var enableToon by remember(renderer) {
-        mutableStateOf(composer.getEffect(ToonEffect::class.java) != null)
+    var enableToon by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableToon)
     }
-    var enableFXAA by remember(renderer) {
-        mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
+    var enableFXAA by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableFXAA)
     }
-    var enableVivid by remember(renderer) {
-        mutableStateOf(composer.getEffect(VividEffect::class.java) != null)
+    var enableVivid by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableVivid)
     }
-    var enableCRT by remember(renderer) {
-        mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
+    var enableCRT by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableCRT)
     }
-    var enableNTSC by remember(renderer) {
-        mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
+    var enableNTSC by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableNTSC)
     }
 
     LaunchedEffect(
@@ -200,58 +143,32 @@ fun ScreenEffectsTabContent(
         enableCRT,
         enableNTSC,
     ) {
-        val effects = mutableListOf<Effect>()
-
-        when (scalingMode) {
-            SCREEN_EFFECT_SCALE_MODE_FSR -> {
-                effects += composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
-                val rcasEffect = composer.getEffect(FSR1RcasEffect::class.java) ?: FSR1RcasEffect()
-                rcasEffect.sharpnessStops = fsrQuickMenuLevelToStops(fsrSharpnessLevel)
-                effects += rcasEffect
-            }
-
-            SCREEN_EFFECT_SCALE_MODE_NONE -> Unit
-
-            else -> {
-                val scalingEffect = composer.getEffect(ScalingModeEffect::class.java) ?: ScalingModeEffect()
-                scalingEffect.mode = quickMenuModeToScalingEffectMode(scalingMode)
-                effects += scalingEffect
-            }
-        }
-
-        if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
-            val colorEffect = ColorEffect()
-            colorEffect.brightness = brightness / 100f
-            colorEffect.contrast = contrast / 100f
-            colorEffect.gamma = gamma
-            effects += colorEffect
-        }
-
-        if (enableToon) {
-            effects += composer.getEffect(ToonEffect::class.java) ?: ToonEffect()
-        }
-        if (enableFXAA) {
-            effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
-        }
-        if (enableVivid) {
-            effects += composer.getEffect(VividEffect::class.java) ?: VividEffect()
-        }
-        if (enableCRT) {
-            effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
-        }
-        if (enableNTSC) {
-            effects += composer.getEffect(NTSCCombinedEffect::class.java) ?: NTSCCombinedEffect()
-        }
-
-        composer.setEffects(effects)
+        val config = ScreenEffectsConfig(
+            brightness = brightness,
+            contrast = contrast,
+            gamma = gamma,
+            scalingMode = scalingMode,
+            fsrSharpnessLevel = fsrSharpnessLevel,
+            enableToon = enableToon,
+            enableFXAA = enableFXAA,
+            enableVivid = enableVivid,
+            enableCRT = enableCRT,
+            enableNTSC = enableNTSC,
+        )
+        // Apply immediately for live preview
+        applyScreenEffectsConfig(renderer, config)
+        // Debounce persist to disk
+        delay(300)
+        persistScreenEffectsConfig(container, config)
+        container?.saveData()
     }
 
     fun resetEffects() {
         brightness = 0f
         contrast = 0f
         gamma = 1.0f
-        scalingMode = SCREEN_EFFECT_SCALE_MODE_NONE
-        fsrSharpnessLevel = SCREEN_EFFECT_FSR_DEFAULT_LEVEL
+        scalingMode = ScreenEffectsConfig.SCALING_MODE_NONE
+        fsrSharpnessLevel = ScreenEffectsConfig.FSR_DEFAULT_LEVEL
         enableToon = false
         enableFXAA = false
         enableVivid = false
@@ -272,31 +189,31 @@ fun ScreenEffectsTabContent(
             valueText = stringResource(scalingModeLabelRes(scalingMode)),
             progress = normalizedProgress(
                 scalingMode.toFloat(),
-                SCREEN_EFFECT_SCALE_MODE_NONE.toFloat(),
-                SCREEN_EFFECT_SCALE_MODE_FSR.toFloat(),
+                ScreenEffectsConfig.SCALING_MODE_NONE.toFloat(),
+                ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT.toFloat(),
             ),
             onDecrease = {
-                scalingMode = (scalingMode - 1).coerceAtLeast(SCREEN_EFFECT_SCALE_MODE_NONE)
+                scalingMode = (scalingMode - 1).coerceAtLeast(ScreenEffectsConfig.SCALING_MODE_NONE)
             },
             onIncrease = {
-                scalingMode = (scalingMode + 1).coerceAtMost(SCREEN_EFFECT_SCALE_MODE_FSR)
+                scalingMode = (scalingMode + 1).coerceAtMost(ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT)
             },
             focusRequester = firstItemFocusRequester,
         )
-        if (scalingMode == SCREEN_EFFECT_SCALE_MODE_FSR) {
+        if (scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR || scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT) {
             ScreenEffectAdjustmentRow(
                 title = stringResource(R.string.screen_effects_fsr_sharpness),
                 valueText = stringResource(R.string.screen_effects_fsr_sharpness_value, fsrSharpnessLevel),
                 progress = normalizedProgress(
                     fsrSharpnessLevel.toFloat(),
-                    SCREEN_EFFECT_FSR_MIN_LEVEL.toFloat(),
-                    SCREEN_EFFECT_FSR_MAX_LEVEL.toFloat(),
+                    ScreenEffectsConfig.FSR_MIN_LEVEL.toFloat(),
+                    ScreenEffectsConfig.FSR_MAX_LEVEL.toFloat(),
                 ),
                 onDecrease = {
-                    fsrSharpnessLevel = (fsrSharpnessLevel - 1).coerceAtLeast(SCREEN_EFFECT_FSR_MIN_LEVEL)
+                    fsrSharpnessLevel = (fsrSharpnessLevel - 1).coerceAtLeast(ScreenEffectsConfig.FSR_MIN_LEVEL)
                 },
                 onIncrease = {
-                    fsrSharpnessLevel = (fsrSharpnessLevel + 1).coerceAtMost(SCREEN_EFFECT_FSR_MAX_LEVEL)
+                    fsrSharpnessLevel = (fsrSharpnessLevel + 1).coerceAtMost(ScreenEffectsConfig.FSR_MAX_LEVEL)
                 },
             )
         }
@@ -393,64 +310,51 @@ fun ScreenEffectsPanel(
     renderer: GLRenderer,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    container: Container? = null,
 ) {
-    val composer = renderer.effectComposer
-    val initialColorEffect = composer.getEffect(ColorEffect::class.java)
+    val initialConfig = remember(renderer, container) { loadScreenEffectsConfig(container) }
     val firstItemFocusRequester = remember { FocusRequester() }
 
-    var brightness by remember(renderer) {
-        mutableFloatStateOf((initialColorEffect?.brightness ?: 0f) * 100f)
+    var brightness by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.brightness)
     }
-    var contrast by remember(renderer) {
-        mutableFloatStateOf((initialColorEffect?.contrast ?: 0f) * 100f)
+    var contrast by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.contrast)
     }
-    var gamma by remember(renderer) {
-        mutableFloatStateOf(initialColorEffect?.gamma ?: 1.0f)
+    var gamma by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.gamma)
     }
-    var enableToon by remember(renderer) {
-        mutableStateOf(composer.getEffect(ToonEffect::class.java) != null)
+    var enableToon by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableToon)
     }
-    var enableFXAA by remember(renderer) {
-        mutableStateOf(composer.getEffect(FXAAEffect::class.java) != null)
+    var enableFXAA by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableFXAA)
     }
-    var enableVivid by remember(renderer) {
-        mutableStateOf(composer.getEffect(VividEffect::class.java) != null)
+    var enableVivid by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableVivid)
     }
-    var enableCRT by remember(renderer) {
-        mutableStateOf(composer.getEffect(CRTEffect::class.java) != null)
+    var enableCRT by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableCRT)
     }
-    var enableNTSC by remember(renderer) {
-        mutableStateOf(composer.getEffect(NTSCCombinedEffect::class.java) != null)
+    var enableNTSC by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableNTSC)
     }
 
     LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableVivid, enableCRT, enableNTSC) {
-        val effects = mutableListOf<Effect>()
-
-        if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
-            val colorEffect = ColorEffect()
-            colorEffect.brightness = brightness / 100f
-            colorEffect.contrast = contrast / 100f
-            colorEffect.gamma = gamma
-            effects += colorEffect
-        }
-
-        if (enableToon) {
-            effects += composer.getEffect(ToonEffect::class.java) ?: ToonEffect()
-        }
-        if (enableFXAA) {
-            effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
-        }
-        if (enableVivid) {
-            effects += composer.getEffect(VividEffect::class.java) ?: VividEffect()
-        }
-        if (enableCRT) {
-            effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
-        }
-        if (enableNTSC) {
-            effects += composer.getEffect(NTSCCombinedEffect::class.java) ?: NTSCCombinedEffect()
-        }
-
-        composer.setEffects(effects)
+        val config = ScreenEffectsConfig(
+            brightness = brightness,
+            contrast = contrast,
+            gamma = gamma,
+            enableToon = enableToon,
+            enableFXAA = enableFXAA,
+            enableVivid = enableVivid,
+            enableCRT = enableCRT,
+            enableNTSC = enableNTSC,
+        )
+        applyScreenEffectsConfig(renderer, config)
+        delay(300)
+        persistScreenEffectsConfig(container, config)
+        container?.saveData()
     }
 
     fun resetEffects() {

@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Autentificare utilizator</string>
     <string name="login_2fa">Autentificare în doi pași</string>
@@ -27,6 +27,7 @@
     <string name="base_app_reset_container_confirm">Resetează</string>
     <string name="steam_verify_files_title">Verificare fișiere</string>
     <string name="steam_verify_files_message">Asigură-te că salvările sunt încărcate în cloud sau copiate în altă parte înainte de verificare, deoarece pot fi suprascrise.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Se descarcă fișierele de salvare %1$d/%2$d</string>
     <string name="steam_update_title">Actualizare</string>
     <string name="steam_update_message">Asigură-te că salvările sunt încărcate în cloud sau copiate în altă parte înainte de actualizare, deoarece pot fi suprascrise.</string>
     <string name="steam_not_logged_in">Trebuie să fii autentificat în Steam pentru a folosi această funcție</string>
@@ -248,6 +249,7 @@
     <string name="toggle_fullscreen">Comută pe ecran complet</string>
     <string name="toggle_orientation">Comută orientarea</string>
     <string name="task_manager">Manager de activități</string>
+    <string name="tools_wine_processes_running_hint">%1$d în execuție, atinge/clic pe un proces pentru a-l închide</string>
     <string name="magnifier">Lupă</string>
     <string name="logs">Loguri</string>
     <string name="exit_game">Ieșire</string>
@@ -299,6 +301,12 @@
     <string name="quick_menu_tab_controller">Controller</string>
     <string name="performance_hud">HUD de performanță</string>
     <string name="performance_hud_description">Afișează sau ascunde suprapunerea din joc.</string>
+    <string name="performance_hud_fps_limiter">Limitator FPS</string>
+    <string name="performance_hud_fps_limiter_description">Limitează rata de cadre în joc. Max.: %1$d Hz.</string>
+    <string name="performance_hud_fps_limiter_target">FPS țintă</string>
+    <string name="performance_hud_fps_limiter_off">Nelimitat</string>
+    <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Limitatorul este ignorat cât timp LSFG este activ. Rata sursei este controlată de multiplicator.</string>
     <string name="performance_hud_presets">Presetări</string>
     <string name="performance_hud_presets_description">Comută rapid între aspecte HUD comune.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -445,6 +453,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Salvează un snapshot al logcat doar pentru PID-ul acestei aplicații</string>
     <string name="settings_save_logcat_title">Salvează logcat</string>
+    <string name="settings_achievement_show_notification">Afișați notificările de realizări</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
             Gestionarea flag-urilor pentru opcode‑urile CALL/RET<br /><br />
             <b>0</b> : Tratează CALL/RET ca și cum nu ar avea nevoie de flag-uri (mai rapid, instabil)<br />
@@ -739,6 +748,31 @@
 	<string name="gesture_zoom_page_up_down">PgSus/PgJos</string>
 	<string name="gesture_action_label">Acțiune</string>
 	<string name="gesture_delay_label">Întârziere</string>
+    <string name="gesture_section_single_finger">Un deget</string>
+    <string name="gesture_section_two_finger">Două degete</string>
+    <string name="gesture_section_three_finger">Trei degete</string>
+    <string name="gesture_section_other">Altul</string>
+    <string name="gesture_pan_left_click_drag">Tragere cu clic stânga</string>
+    <string name="gesture_pan_right_click_drag">Tragere cu clic dreapta</string>
+    <string name="gesture_action_show_keyboard">Afișează tastatura</string>
+    <string name="gesture_header_special">Special</string>
+    <string name="gesture_header_mouse">Mouse</string>
+    <string name="gesture_header_common_game">Taste comune de joc</string>
+    <string name="gesture_header_letters">Litere A-Z</string>
+    <string name="gesture_header_numbers">Numere 0-9</string>
+    <string name="gesture_header_function_keys">Taste funcționale</string>
+    <string name="gesture_two_finger_hold">Menținere cu două degete</string>
+    <string name="gesture_two_finger_hold_delay">Întârziere menținere cu două degete (ms)</string>
+    <string name="gesture_three_finger_tap">Atingere cu trei degete</string>
+    <string name="gesture_three_finger_drag">Tragere cu trei degete</string>
+    <string name="gesture_three_finger_hold">Menținere cu trei degete</string>
+    <string name="gesture_three_finger_hold_delay">Întârziere menținere cu trei degete (ms)</string>
+    <string name="gesture_threshold">Prag gest (px)</string>
+    <string name="gesture_threshold_subtitle">Mișcare necesară pentru a bloca tipul de gest (mai mic = mai receptiv)</string>
+    <string name="gesture_show_click_highlight">Afișează evidențierea clicului</string>
+    <string name="gesture_show_click_highlight_subtitle">Afișează un cerc la locația atingerii</string>
+    <string name="gesture_show_debug_overlay">Afișează suprapunerea de depanare a gesturilor</string>
+    <string name="gesture_show_debug_overlay_subtitle">Afișează etichete temporare de gesturi în partea de sus, centru</string>
 
 	<!-- Shooter Mode -->
 	<string name="shooter_mode_settings">Setări joystick-uri dinamice</string>
@@ -897,6 +931,8 @@
 	<string name="settings_info_libraries_subtitle">Vezi tehnologiile care fac GameNative posibil</string>
 	<string name="settings_info_privacy_title">Politica de confidențialitate</string>
 	<string name="settings_info_privacy_subtitle">Deschide linkul către politica de confidențialitate GameNative</string>
+	<string name="settings_info_usage_analytics_title">Analiză utilizare</string>
+	<string name="settings_info_usage_analytics_subtitle">Nu urmărim niciodată informații personale. Dezactivarea oprește analizele neesențiale, însă datele de bază privind performanța jocurilor sunt în continuare colectate ca interes legitim pentru a îmbunătăți compatibilitatea.</string>
 
 	<!-- Settings: Interface Group -->
 	<string name="settings_interface_title">Interfață</string>
@@ -1019,6 +1055,7 @@
 	<string name="main_app_running_message">Ești autentificat pe un alt dispozitiv care deja rulează %s.\nPoți juca în continuare, dar asta va deconecta cealaltă sesiune din Steam.</string>
 	<string name="main_app_running_other_device">Ești autentificat pe un alt dispozitiv (%1$s) care rulează deja %2$s (%3$s), iar salvarea nu este încă în cloud.\nPoți juca în continuare, dar asta va deconecta cealaltă sesiune și poate crea conflicte de salvare când progresul este sincronizat.</string>
 	<string name="main_play_anyway">Joacă oricum</string>
+	<string name="main_app_running_unknown_game">un joc</string>
 
 	<!-- PluviaMain: Save Conflicts -->
 	<string name="main_save_conflict_title">Conflict de salvare</string>
@@ -1105,11 +1142,14 @@
 
 	<!-- Best Config Toast Messages -->
 	<string name="best_config_applied_successfully">Configurația a fost aplicată cu succes</string>
+	<string name="best_config_missing_components_title">Configurația nu a fost aplicată</string>
+	<string name="best_config_missing_components_message">Următoarele componente necesare nu sunt disponibile pe acest dispozitiv:\n\n%1$s\n\nInstalați componentele lipsă și încercați din nou.</string>
 	<string name="best_config_known_config_invalid">Config cunoscut invalid</string>
 	<string name="best_config_no_config_available">Nu există o configurație optimă pentru acest joc</string>
 	<string name="best_config_fetch_failed">Nu s-a putut obține configurația. Verificați conexiunea la rețea.</string>
+	<string name="best_config_apply_anyway">Aplică oricum</string>
+	<string name="best_config_applied_with_defaults">Configurație aplicată, componentele lipsă înlocuite cu valori implicite</string>
 	<string name="best_config_apply_failed">Aplicarea configurației a eșuat: %s</string>
-	<string name="best_config_missing_content">%s lipsește</string>
 	<string name="import_config">Importă configurarea</string>
 	<string name="export_config">Exportă configurarea</string>
 	<string name="library_app_type">Tip aplicație</string>
@@ -1371,4 +1411,67 @@
     <string name="workshop_processing">Se procesează modurile…</string>
     <string name="workshop_failed_count">%1$d mod(uri) Workshop nu au putut fi actualizate</string>
     <string name="workshop_download_failed">Descărcarea a eșuat</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Recomandat</string>
+    <string name="recommended_buy_button">Vezi jocul</string>
+    <string name="recommended_support_message">Cumpărarea prin acest link ajută la susținerea dezvoltării GameNative.</string>
+    <string name="recommended_about_heading">Despre acest joc</string>
+    <string name="recommended_review_count">Pe baza a %1$s recenzii</string>
+    <string name="review_overwhelmingly_positive">Copleșitor de pozitiv</string>
+    <string name="review_very_positive">Foarte pozitiv</string>
+    <string name="review_mostly_positive">Majoritar pozitiv</string>
+    <string name="review_mixed">Mixt</string>
+    <string name="review_mostly_negative">Majoritar negativ</string>
+    <string name="review_overwhelmingly_negative">Copleșitor de negativ</string>
+    <string name="settings_interface_show_recommendations_title">Afișează recomandări de jocuri</string>
+    <string name="settings_interface_show_recommendations_subtitle">Afișează jocuri indie selectate în biblioteca ta. Păstrând această opțiune activată, sprijini dezvoltatorii indie și GameNative.</string>
+     <string name="steam_save_export_success">Salvari exportate</string>
+     <string name="steam_save_export_no_saves_found">Nu s-au găsit fișiere de salvare</string>
+     <string name="steam_save_export_failed">Exportul salvărilor a eșuat: %s</string>
+     <string name="steam_save_import_success">Salvari importate</string>
+     <string name="steam_save_import_failed">Importul salvărilor a eșuat: %s</string>
+    <string name="option_import_saves">Importă salvări</string>
+    <string name="option_export_saves">Exportă salvări</string>
+
+    <!-- LSFG-VK frame generation -->
+    <string name="lsfg_tab_title">LSFG-VK</string>
+    <string name="lsfg_description">Generare cadre intermediare folosind stratul Vulkan din Lossless Scaling. Se știe că funcționează doar pe Adreno 6xx și mai nou.</string>
+    <string name="lsfg_enable">Activează generarea de cadre LSFG-VK</string>
+    <string name="lsfg_multiplier">Multiplicator cadre</string>
+    <string name="lsfg_flow_scale">Scară flux</string>
+    <string name="lsfg_flow_scale_desc">Mai mic este mai stabil; mai mare este mai fluid, dar poate produce artefacte.</string>
+    <string name="lsfg_performance_mode">Mod performanță</string>
+    <string name="lsfg_not_supported">Generarea de cadre necesită un container Bionic</string>
+    <string name="lsfg_install_prompt">Lossless Scaling nu este instalat. Atingeți pentru a instala. Se știe că funcționează doar pe Adreno 6xx și mai nou.</string>
+    <string name="lsfg_not_in_library">Lossless Scaling nu este în biblioteca dumneavoastră Steam</string>
+    <string name="lsfg_install_title">Instalați Lossless Scaling?</string>
+    <string name="lsfg_install_message">Aceasta va descărca Lossless Scaling din Steam pentru a activa generarea de cadre.</string>
+    <string name="lsfg_installing">Se descarcă Lossless Scaling…</string>
+	<string name="lsfg_performance_mode_desc">Reduce calitatea pentru un debit mai mare</string>
+	<!-- Game Launch Tips -->
+	<string name="game_launch_tip_1">Pornirea poate dura câteva minute la prima lansare</string>
+	<string name="game_launch_tip_2">Sfat: Puteți vizualiza fișierele jocului apăsând \"%s\" în setările jocului.</string>
+	<string name="game_launch_tip_3">Sfat: Puteți merge la meniul principal de setări și descărca drivere personalizate pentru dispozitivul dvs. pentru a fi utilizate pe Bionic.</string>
+	<string name="game_launch_tip_4">Sfat: Dacă primiți o eroare DirectX, asigurați-vă că utilizați DXVK 1.10.3-async și leegao-wrapper pe Bionic.</string>
+	<string name="game_launch_tip_5">Sfat: Încercați testul Direct3D din meniul Start după ce faceți clic pe \"%s\" pentru a verifica dacă dispozitivul dvs. funcționează corect.</string>
+	<string name="game_launch_tip_6">Sfat: Utilizați DXVK pentru jocurile DirectX 8/9/10/11, VKD3D pentru jocurile DirectX 12 și VirGL + WineD3D pentru jocurile OpenGL.</string>
+	<string name="game_launch_tip_7">Sfat: Utilizați Turnip pe glibc sau bionic pentru a juca jocuri DirectX 12. Suportul DirectX 12 pentru dispozitivele care nu acceptă Turnip este în prezent limitat.</string>
+	<string name="game_launch_tip_8">Sfat: Încercați driverele Adreno sau Snapdragon 8 Elite pe glibc dacă aveți un dispozitiv compatibil.</string>
+	<string name="game_launch_tip_9">Sfat: Dacă primiți un ecran negru la lansarea unui joc, încercați \"%s\" și să lansați jocul de pe unitatea A:.</string>
+	<string name="game_launch_tip_10">Sfat: Puteți adăuga diferite locații pentru jocuri personalizate în setări.</string>
+	<string name="game_launch_tip_11">Sfat: Utilizați HUD-ul de performanță din meniul rapid când doriți statistici FPS în joc.</string>
+	<string name="game_launch_tip_12">Sfat: Instalați pachetele în A:\\_CommonRedist dacă jocul dvs. nu se lansează.</string>
+	<string name="game_launch_tip_13">Sfat: Puteți activa sau dezactiva controllerul pe ecran cu tasta de revenire a dispozitivului dvs.</string>
+	<string name="game_launch_tip_14">Sfat: Puteți afișa tastatura cu tasta de revenire a dispozitivului dvs.</string>
+	<string name="game_launch_tip_15">Sfat: Puteți atinge cu două degete în interiorul containerului pentru a face clic dreapta.</string>
+	<string name="game_launch_tip_16">Sfat: Dacă utilizați controllerul pe ecran, puteți dezactiva mouse-ul pentru a preveni atingerile accidentale.</string>
+	<string name="game_launch_tip_17">Sfat: Raportați problemele pe Discord pentru a le putea remedia.</string>
+	<string name="game_launch_tip_18">Sfat: Utilizați driverul Vortek pe glibc sau wrapper-leegao pe Bionic dacă aveți un GPU non-Adreno.</string>
+	<string name="game_launch_tip_19">Sfat: Reduceți rezoluția și utilizați box64 în modul de performanță pentru a crește FPS-ul.</string>
+	<string name="game_launch_tip_20">Sfat: Dacă jocul se blochează după încărcare, măriți memoria video.</string>
+	<string name="game_launch_tip_21">Sfat: Dacă vedeți artefacte vizuale, dezactivați DRI3.</string>
+	<string name="game_launch_tip_22">Sfat: Puteți activa modul ecran tactil.</string>
+	<string name="game_launch_tip_23">Sfat: Dacă aveți un GPU Mali, vă rugăm să utilizați driverele de sistem.</string>
+	<string name="game_launch_tip_24">Sfat: Ecran negru? Încercați opțiunea \"%s\" din meniu pentru a verifica dacă driverele dvs. funcționează corect.</string>
 </resources>

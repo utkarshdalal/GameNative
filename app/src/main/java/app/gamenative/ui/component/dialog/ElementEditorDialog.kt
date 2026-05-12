@@ -35,6 +35,19 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
+ * Normalise a [Binding]'s [toString] into the short label that appears on
+ * on-screen control buttons. Keeping this in one place so the derivation in
+ * [ElementEditorDialog] stays consistent with [ControlElement.getDisplayText].
+ */
+private fun bindingShortLabel(binding: com.winlator.inputcontrols.Binding?): String {
+    if (binding == null) return ""
+    return binding.toString()
+        .replace("NUMPAD ", "NP")
+        .replace("BUTTON ", "")
+        .replace("SHOW KEYBOARD", "KEY")
+}
+
+/**
  * Compose-based element editor dialog matching the app's settings design pattern.
  *
  * Features:
@@ -80,7 +93,7 @@ fun ElementEditorDialog(
             // Show what's actually displayed (based on first binding)
             val binding = element.getBindingAt(0)
             if (binding != null && binding != com.winlator.inputcontrols.Binding.NONE) {
-                var text = binding.toString().replace("NUMPAD ", "NP").replace("BUTTON ", "")
+                var text = bindingShortLabel(binding)
                 if (text.length > 7) {
                     // Abbreviate long binding names (e.g., "KEY A B" -> "KAB")
                     val parts = text.split(" ")
@@ -773,12 +786,12 @@ fun ElementEditorDialog(
                 if (element.type == ControlElement.Type.BUTTON && slotIndex == 0) {
                     // Check if custom text is empty or same as old binding text
                     val customText = element.text
-                    if (customText.isNullOrEmpty() || customText == currentBinding?.toString()?.replace("NUMPAD ", "NP")?.replace("BUTTON ", "")) {
+                    if (customText.isNullOrEmpty() || customText == bindingShortLabel(currentBinding)) {
                         // Clear custom text so new binding text will show
                         element.setText(null)
 
                         // Update currentText state to show what will actually be displayed (new binding text)
-                        val newBindingText = binding?.toString()?.replace("NUMPAD ", "NP")?.replace("BUTTON ", "") ?: ""
+                        val newBindingText = bindingShortLabel(binding)
                         currentText = if (newBindingText.length > 7) {
                             // Abbreviate long names to match getDisplayText() logic
                             val parts = newBindingText.split(" ")

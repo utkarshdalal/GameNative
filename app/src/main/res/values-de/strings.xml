@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Benutzeranmeldung</string>
     <string name="login_2fa">Zwei-Faktor-Authentifizierung</string>
@@ -26,6 +26,7 @@
     <string name="base_app_reset_container_confirm">Zurücksetzen</string>
     <string name="steam_verify_files_title">Dateien überprüfen</string>
     <string name="steam_verify_files_message">Stelle bitte sicher, dass deine Spielstände vorher in die Cloud hochgeladen oder gesichert wurden, da sie sonst überschrieben werden können.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Speicherstände werden heruntergeladen %1$d/%2$d</string>
     <string name="steam_update_title">Aktualisieren</string>
     <string name="steam_update_message">Stelle sicher, dass deine Speicherstände vor dem Aktualisieren in der Cloud gesichert oder gebackupt sind, um ein Überschreiben zu verhindern.</string>
     <string name="steam_not_logged_in">Du musst bei Steam angemeldet sein, um diese Funktion zu nutzen</string>
@@ -239,6 +240,7 @@
     <string name="toggle_fullscreen">Vollbild umschalten</string>
     <string name="toggle_orientation">Ausrichtung wechseln</string>
     <string name="task_manager">Task-Manager</string>
+    <string name="tools_wine_processes_running_hint">%1$d aktiv, tippe/klicke auf einen Prozess, um ihn zu schließen</string>
     <string name="magnifier">Lupe</string>
     <string name="logs">Logs</string>
     <string name="exit_game">Beenden</string>
@@ -290,6 +292,12 @@
     <string name="quick_menu_tab_controller">Controller</string>
     <string name="performance_hud">Leistungs-HUD</string>
     <string name="performance_hud_description">Leistungsoverlay im Spiel ein- oder ausblenden.</string>
+    <string name="performance_hud_fps_limiter">FPS-Begrenzer</string>
+    <string name="performance_hud_fps_limiter_description">Begrenzt die Bildrate im Spiel. Max.: %1$d Hz.</string>
+    <string name="performance_hud_fps_limiter_target">Ziel-FPS</string>
+    <string name="performance_hud_fps_limiter_off">Unbegrenzt</string>
+    <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Limiter wird bei aktivem LSFG ignoriert. Die Quellrate wird durch den Multiplikator bestimmt.</string>
     <string name="performance_hud_presets">Voreinstellungen</string>
     <string name="performance_hud_presets_description">Schnell zwischen gängigen HUD-Layouts wechseln.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -431,6 +439,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Speichert einen Logcat-Snapshot nur für diese App</string>
     <string name="settings_save_logcat_title">Logcat speichern</string>
+    <string name="settings_achievement_show_notification">Errungenschaften-Benachrichtigungen anzeigen</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Behandlung von Flags bei CALL/RET-Befehlen<br /><br />
         <b>0</b> : Behandelt CALL/RET als ob nie Flags benötigt werden (schneller, instabil)<br />
@@ -708,6 +717,31 @@
     <string name="gesture_zoom_page_up_down">Bild auf/ab</string>
     <string name="gesture_action_label">Aktion</string>
     <string name="gesture_delay_label">Verzögerung</string>
+    <string name="gesture_section_single_finger">Ein Finger</string>
+    <string name="gesture_section_two_finger">Zwei Finger</string>
+    <string name="gesture_section_three_finger">Drei Finger</string>
+    <string name="gesture_section_other">Andere</string>
+    <string name="gesture_pan_left_click_drag">Linksklick-Ziehen</string>
+    <string name="gesture_pan_right_click_drag">Rechtsklick-Ziehen</string>
+    <string name="gesture_action_show_keyboard">Tastatur anzeigen</string>
+    <string name="gesture_header_special">Spezial</string>
+    <string name="gesture_header_mouse">Maus</string>
+    <string name="gesture_header_common_game">Häufige Spieltasten</string>
+    <string name="gesture_header_letters">Buchstaben A-Z</string>
+    <string name="gesture_header_numbers">Zahlen 0-9</string>
+    <string name="gesture_header_function_keys">Funktionstasten</string>
+    <string name="gesture_two_finger_hold">Halten mit zwei Fingern</string>
+    <string name="gesture_two_finger_hold_delay">Verzögerung für Halten mit zwei Fingern (ms)</string>
+    <string name="gesture_three_finger_tap">Tippen mit drei Fingern</string>
+    <string name="gesture_three_finger_drag">Ziehen mit drei Fingern</string>
+    <string name="gesture_three_finger_hold">Halten mit drei Fingern</string>
+    <string name="gesture_three_finger_hold_delay">Verzögerung für Halten mit drei Fingern (ms)</string>
+    <string name="gesture_threshold">Gestenschwelle (px)</string>
+    <string name="gesture_threshold_subtitle">Bewegung zum Sperren des Gestentyps (niedriger = reaktionsschneller)</string>
+    <string name="gesture_show_click_highlight">Klickhervorhebung anzeigen</string>
+    <string name="gesture_show_click_highlight_subtitle">Kreis an Tipp-Position anzeigen</string>
+    <string name="gesture_show_debug_overlay">Gesten-Debug-Overlay anzeigen</string>
+    <string name="gesture_show_debug_overlay_subtitle">Temporäre Gestenbeschriftungen oben mittig anzeigen</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Dynamische Joystick-Einstellungen</string>
@@ -857,6 +891,8 @@
     <string name="settings_info_libraries_subtitle">Welche Technologien GameNative möglich machen</string>
     <string name="settings_info_privacy_title">Datenschutzerklärung</string>
     <string name="settings_info_privacy_subtitle">Öffnet die Datenschutzerklärung von GameNative</string>
+    <string name="settings_info_usage_analytics_title">Nutzungsanalysen</string>
+    <string name="settings_info_usage_analytics_subtitle">Wir erfassen niemals persönliche Daten. Durch Deaktivierung werden nicht wesentliche Analysen gestoppt, jedoch werden grundlegende Spiel-Performance-Daten weiterhin als berechtigtes Interesse zur Verbesserung der Kompatibilität erfasst.</string>
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Oberfläche</string>
     <string name="settings_interface_external_links_title">Weblinks extern öffnen</string>
@@ -967,6 +1003,7 @@
     <string name="main_app_running_message">Du bist auf einem anderen Gerät bereits mit %s angemeldet. Du kannst trotzdem spielen, aber das beendet die andere Steam-Sitzung.</string>
     <string name="main_app_running_other_device">Du bist auf einem anderen Gerät (%1$s) mit %2$s (%3$s) angemeldet, und dieser Spielstand wurde noch nicht in der Cloud gespeichert. Du kannst trotzdem spielen, doch wird dadurch die andere Sitzung getrennt und es kann zu Speicherstandskonflikten kommen, wenn die andere Sitzung synchronisiert wird.</string>
     <string name="main_play_anyway">Trotzdem starten</string>
+    <string name="main_app_running_unknown_game">ein Spiel</string>
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Speicherstandkonflikt</string>
     <string name="main_save_conflict_message">Es wurden ein neuer lokaler und ein neuer Cloud-Spielstand gefunden. Welchen möchtest du behalten?\n\nLokal:\n\t%1$s\nCloud:\n\t%2$s</string>
@@ -1043,11 +1080,14 @@
     <string name="best_config_compatibility_unknown">Keine bekannte Konfiguration</string>
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">Konfiguration erfolgreich übernommen</string>
+    <string name="best_config_missing_components_title">Konfiguration nicht angewendet</string>
+    <string name="best_config_missing_components_message">Die folgenden erforderlichen Komponenten sind auf diesem Gerät nicht verfügbar:\n\n%1$s\n\nInstallieren Sie die fehlenden Komponenten und versuchen Sie es erneut.</string>
     <string name="best_config_known_config_invalid">Bekannte Konfiguration ungültig</string>
     <string name="best_config_no_config_available">Keine optimale Konfiguration verfügbar</string>
     <string name="best_config_fetch_failed">Konfiguration konnte nicht abgerufen werden. Bitte überprüfen Sie Ihre Netzwerkverbindung.</string>
+    <string name="best_config_apply_anyway">Trotzdem anwenden</string>
+    <string name="best_config_applied_with_defaults">Konfiguration angewendet, fehlende Komponenten durch Standardwerte ersetzt</string>
     <string name="best_config_apply_failed">Konfiguration konnte nicht übernommen werden: %s</string>
-    <string name="best_config_missing_content">%s fehlt</string>
     <string name="import_config">Konfiguration importieren</string>
     <string name="export_config">Konfiguration exportieren</string>
     <string name="library_app_type">App-Typ</string>
@@ -1306,4 +1346,67 @@
     <string name="workshop_processing">Mods werden verarbeitet…</string>
     <string name="workshop_failed_count">%1$d Workshop-Mod(s) konnten nicht aktualisiert werden</string>
     <string name="workshop_download_failed">Download fehlgeschlagen</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Empfohlen</string>
+    <string name="recommended_buy_button">Spiel ansehen</string>
+    <string name="recommended_support_message">Ein Kauf über diesen Link unterstützt die Entwicklung von GameNative.</string>
+    <string name="recommended_about_heading">Über dieses Spiel</string>
+    <string name="recommended_review_count">Basierend auf %1$s Bewertungen</string>
+    <string name="review_overwhelmingly_positive">Überwältigend positiv</string>
+    <string name="review_very_positive">Sehr positiv</string>
+    <string name="review_mostly_positive">Größtenteils positiv</string>
+    <string name="review_mixed">Gemischt</string>
+    <string name="review_mostly_negative">Größtenteils negativ</string>
+    <string name="review_overwhelmingly_negative">Überwältigend negativ</string>
+    <string name="settings_interface_show_recommendations_title">Spielempfehlungen anzeigen</string>
+    <string name="settings_interface_show_recommendations_subtitle">Zeigt kuratierte Indie-Spiele in deiner Bibliothek. Aktiviert lassen unterstützt Indie-Entwickler und GameNative.</string>
+     <string name="steam_save_export_success">Spielstände exportiert</string>
+     <string name="steam_save_export_no_saves_found">Keine Spielstände gefunden</string>
+     <string name="steam_save_export_failed">Spielstände konnten nicht exportiert werden: %s</string>
+     <string name="steam_save_import_success">Spielstände importiert</string>
+     <string name="steam_save_import_failed">Spielstände konnten nicht importiert werden: %s</string>
+    <string name="option_import_saves">Spielstände importieren</string>
+    <string name="option_export_saves">Spielstände exportieren</string>
+
+    <!-- LSFG-VK frame generation -->
+    <string name="lsfg_tab_title">LSFG-VK</string>
+    <string name="lsfg_description">Zwischenbilder mit dem Vulkan-Layer von Lossless Scaling generieren. Funktioniert bekanntermaßen nur auf Adreno 6xx und neuer.</string>
+    <string name="lsfg_enable">LSFG-VK Bildgenerierung aktivieren</string>
+    <string name="lsfg_multiplier">Bildmultiplikator</string>
+    <string name="lsfg_flow_scale">Flow-Skala</string>
+    <string name="lsfg_flow_scale_desc">Niedriger ist stabiler; höher ist flüssiger, kann aber Artefakte verursachen.</string>
+    <string name="lsfg_performance_mode">Leistungsmodus</string>
+    <string name="lsfg_not_supported">Bildgenerierung erfordert einen Bionic-Container</string>
+    <string name="lsfg_install_prompt">Lossless Scaling nicht installiert. Zum Installieren tippen. Funktioniert bekanntermaßen nur auf Adreno 6xx und neuer.</string>
+    <string name="lsfg_not_in_library">Lossless Scaling ist nicht in deiner Steam-Bibliothek</string>
+    <string name="lsfg_install_title">Lossless Scaling installieren?</string>
+    <string name="lsfg_install_message">Dies lädt Lossless Scaling von Steam herunter, um Bildgenerierung zu aktivieren.</string>
+    <string name="lsfg_installing">Lossless Scaling wird heruntergeladen…</string>
+    <string name="lsfg_performance_mode_desc">Reduziert Qualität für höheren Durchsatz</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">Der Startvorgang kann beim ersten Mal einige Minuten dauern</string>
+    <string name="game_launch_tip_2">Tipp: Sie können die Spieldateien anzeigen, indem Sie in den Spieleinstellungen auf \"%s\" drücken.</string>
+    <string name="game_launch_tip_3">Tipp: Gehen Sie zum Haupt-Einstellungsmenü, um benutzerdefinierte Treiber für Ihr Gerät herunterzuladen, die auf Bionic verwendet werden.</string>
+    <string name="game_launch_tip_4">Tipp: Wenn Sie einen DirectX-Fehler erhalten, stellen Sie sicher, dass Sie DXVK 1.10.3-async und leegao-wrapper auf Bionic verwenden.</string>
+    <string name="game_launch_tip_5">Tipp: Führen Sie den Direct3D-Test im Startmenü aus, nachdem Sie auf \"%s\" geklickt haben, um zu überprüfen, ob Ihr Gerät korrekt funktioniert.</string>
+    <string name="game_launch_tip_6">Tipp: Verwenden Sie DXVK für DirectX 8/9/10/11-Spiele, VKD3D für DirectX 12-Spiele und VirGL + WineD3D für OpenGL-Spiele.</string>
+    <string name="game_launch_tip_7">Tipp: Verwenden Sie Turnip auf glibc oder bionic, um DirectX 12-Spiele zu spielen. Die DirectX 12-Unterstützung für Geräte, die Turnip nicht unterstützen, ist derzeit eingeschränkt.</string>
+    <string name="game_launch_tip_8">Tipp: Probieren Sie die Adreno- oder Snapdragon 8 Elite-Treiber auf glibc aus, wenn Sie ein kompatibles Gerät haben.</string>
+    <string name="game_launch_tip_9">Tipp: Wenn Sie beim Starten eines Spiels einen schwarzen Bildschirm sehen, versuchen Sie \"%s\" und das Spiel von Laufwerk A: zu starten.</string>
+    <string name="game_launch_tip_10">Tipp: Sie können in den Einstellungen verschiedene Orte für benutzerdefinierte Spiele hinzufügen.</string>
+    <string name="game_launch_tip_11">Tipp: Verwenden Sie das Performance-HUD im Schnellmenü, wenn Sie FPS-Statistiken im Spiel wünschen.</string>
+    <string name="game_launch_tip_12">Tipp: Installieren Sie Pakete in A:\\_CommonRedist, wenn Ihr Spiel nicht startet.</string>
+    <string name="game_launch_tip_13">Tipp: Sie können den Bildschirm-Controller mit der Zurück-Taste Ihres Geräts aktivieren oder deaktivieren.</string>
+    <string name="game_launch_tip_14">Tipp: Sie können die Tastatur mit der Zurück-Taste Ihres Geräts aufrufen.</string>
+    <string name="game_launch_tip_15">Tipp: Sie können mit zwei Fingern im Container tippen, um einen Rechtsklick auszuführen.</string>
+    <string name="game_launch_tip_16">Tipp: Wenn Sie den Bildschirm-Controller verwenden, können Sie die Maus deaktivieren, um versehentliche Berührungen zu vermeiden.</string>
+    <string name="game_launch_tip_17">Tipp: Melden Sie Probleme auf Discord, damit wir sie beheben können.</string>
+    <string name="game_launch_tip_18">Tipp: Verwenden Sie den Vortek-Treiber auf glibc oder wrapper-leegao auf Bionic, wenn Sie keine Adreno-GPU haben.</string>
+    <string name="game_launch_tip_19">Tipp: Verringern Sie die Auflösung und verwenden Sie box64 im Performance-Modus, um die FPS zu steigern.</string>
+    <string name="game_launch_tip_20">Tipp: Wenn das Spiel nach dem Laden abstürzt, erhöhen Sie den Videospeicher.</string>
+    <string name="game_launch_tip_21">Tipp: Wenn Sie visuelle Störungen sehen, deaktivieren Sie DRI3.</string>
+    <string name="game_launch_tip_22">Tipp: Sie können den Touchscreen-Modus aktivieren.</string>
+    <string name="game_launch_tip_23">Tipp: Wenn Sie eine Mali-GPU haben, verwenden Sie bitte die Systemtreiber.</string>
+    <string name="game_launch_tip_24">Tipp: Zeigt sich ein schwarzer Bildschirm? Versuchen Sie die \"%s\"-Option im Menü, um zu überprüfen, ob Ihre Treiber korrekt funktionieren.</string>
 </resources>

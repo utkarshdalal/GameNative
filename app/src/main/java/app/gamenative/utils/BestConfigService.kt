@@ -7,7 +7,9 @@ import app.gamenative.R
 import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
+import com.winlator.core.DefaultVersion
 import com.winlator.contents.ContentProfile
+import com.winlator.core.GPUBlackist
 import com.winlator.fexcore.FEXCorePresetManager
 import com.winlator.core.KeyValueSet
 import kotlinx.coroutines.Dispatchers
@@ -34,12 +36,12 @@ object BestConfigService {
     // In-memory cache keyed by "${gameName}_${gpuName}"
     private val cache = ConcurrentHashMap<String, BestConfigResponse>()
 
-    // Last missing content description from validation (e.g. "DXVK 1.10.3")
-    private var lastMissingContentDescription: String? = null
+    // unavailable components from last config validation
+    private var lastMissingComponents: List<String> = emptyList()
 
-    fun consumeLastMissingContentDescription(): String? {
-        val result = lastMissingContentDescription
-        lastMissingContentDescription = null
+    fun consumeLastMissingComponents(): List<String> {
+        val result = lastMissingComponents
+        lastMissingComponents = emptyList()
         return result
     }
     /**
@@ -182,6 +184,15 @@ object BestConfigService {
             filtered.remove("executablePath")
         }
 
+        if (config.toString().contains("turnip", ignoreCase = true) && GPUBlackist.isTurnipBlacklisted()) {
+            if (matchType == "exact_gpu_match" || matchType == "gpu_family_match" || matchType == "fallback_match") {
+                filtered.remove("graphicsDriver")
+                filtered.remove("graphicsDriverVersion")
+                filtered.remove("graphicsDriverConfig")
+                return JsonObject(filtered)
+            }
+        }
+
         if (matchType == "exact_gpu_match" || matchType == "gpu_family_match") {
             // Apply all fields
             return JsonObject(filtered)
@@ -203,10 +214,10 @@ object BestConfigService {
 
     /**
      * Validates component versions in the filtered JSON.
-     * Returns a human-readable description of the first missing component (e.g. "DXVK 1.10.3"),
-     * or null if all referenced versions exist.
+     * Returns list of human-readable descriptions of missing/unavailable components.
      */
-    private suspend fun validateComponentVersions(context: Context, filteredJson: JSONObject): String? {
+    private suspend fun validateComponentVersions(context: Context, filteredJson: JSONObject): List<String> {
+        val missing = mutableListOf<String>()
         // Get resource arrays (same as ContainerConfigDialog)
         val dxvkVersions = context.resources.getStringArray(R.array.dxvk_version_entries).toList()
         val vkd3dVersions = context.resources.getStringArray(R.array.vkd3d_version_entries).toList()
@@ -316,9 +327,8 @@ object BestConfigService {
             val kvs = KeyValueSet(dxwrapperConfig)
             val version = kvs.get("version")
             if (version.isNotEmpty() && !ManifestComponentHelper.versionExists(version, availableDxvk)) {
-                Timber.tag("BestConfigService").w("DXVK version $version not found, updating to PrefManager default")
-                return "DXVK $version"
-                filteredJson.put("dxwrapperConfig", PrefManager.dxWrapperConfig)
+                Timber.tag("BestConfigService").w("DXVK version $version not found")
+                missing.add("DXVK $version")
             }
         }
 
@@ -327,9 +337,8 @@ object BestConfigService {
             val kvs = KeyValueSet(dxwrapperConfig)
             val version = kvs.get("vkd3dVersion")
             if (version.isNotEmpty() && !ManifestComponentHelper.versionExists(version, availableVkd3d)) {
-                Timber.tag("BestConfigService").w("VKD3D version $version not found, updating to PrefManager default")
-                return "VKD3D $version"
-                filteredJson.put("dxwrapperConfig", PrefManager.dxWrapperConfig)
+                Timber.tag("BestConfigService").w("VKD3D version $version not found")
+                missing.add("VKD3D $version")
             }
         }
 
@@ -344,25 +353,23 @@ object BestConfigService {
                 }
             }
             if (!ManifestComponentHelper.versionExists(box64Version, box64VersionsToCheck)) {
-                Timber.tag("BestConfigService").w("Box64 version $box64Version not found in $containerVariant variant entries, updating to PrefManager default")
-                return "Box64 $box64Version"
-                filteredJson.put("box64Version", PrefManager.box64Version)
+                Timber.tag("BestConfigService").w("Box64 version $box64Version not found in $containerVariant variant")
+                missing.add("Box64 $box64Version")
             }
         }
 
         // Validate WoWBox64 version (if wineVersion contains arm64ec)
         if (wineVersion.contains("arm64ec", ignoreCase = true)) {
             if (box64Version.isNotEmpty() && !ManifestComponentHelper.versionExists(box64Version, availableWowBox64) && emulator != "FEXCore") {
-                Timber.tag("BestConfigService").w("WoWBox64 version $box64Version not found, updating to PrefManager default")
-                return "WoWBox64 $box64Version"
+                Timber.tag("BestConfigService").w("WoWBox64 version $box64Version not found")
+                missing.add("WoWBox64 $box64Version")
             }
         }
 
         // Validate FEXCore version
         if (fexcoreVersion.isNotEmpty() && !ManifestComponentHelper.versionExists(fexcoreVersion, availableFexcore)) {
-            Timber.tag("BestConfigService").w("FEXCore version $fexcoreVersion not found, updating to PrefManager default")
-            return "FEXCore $fexcoreVersion"
-            filteredJson.put("fexcoreVersion", PrefManager.fexcoreVersion)
+            Timber.tag("BestConfigService").w("FEXCore version $fexcoreVersion not found")
+            missing.add("FEXCore $fexcoreVersion")
         }
 
         // Validate Wine/Proton version (check separately based on container variant)
@@ -376,9 +383,8 @@ object BestConfigService {
                 }
             }
             if (!ManifestComponentHelper.versionExists(wineVersion, wineVersionsToCheck)) {
-                Timber.tag("BestConfigService").w("Wine version $wineVersion not found in $containerVariant variant entries, updating to PrefManager default")
-                return "Wine $wineVersion"
-                filteredJson.put("wineVersion", PrefManager.wineVersion)
+                Timber.tag("BestConfigService").w("Wine version $wineVersion not found in $containerVariant variant")
+                missing.add("Wine $wineVersion")
             }
         }
 
@@ -393,8 +399,8 @@ object BestConfigService {
             val driverVersion = configMap["version"] ?: ""
             if (driverVersion.isNotEmpty() && !ManifestComponentHelper.versionExists(driverVersion, availableDrivers)) {
                 Timber.tag("BestConfigService")
-                    .w("Graphics driver version $driverVersion not found for $containerVariant variant, updating to PrefManager default")
-                return "Graphics driver $driverVersion"
+                    .w("Graphics driver version $driverVersion not found for $containerVariant variant")
+                missing.add("Graphics driver $driverVersion")
             }
         }
 
@@ -402,9 +408,8 @@ object BestConfigService {
         if (box64Preset.isNotEmpty()) {
             val preset = Box86_64PresetManager.getPreset("box64", context, box64Preset)
             if (preset == null) {
-                Timber.tag("BestConfigService").w("Box64 preset $box64Preset not found, updating to PrefManager default")
-                return "Box64 preset $box64Preset"
-                filteredJson.put("box64Preset", PrefManager.box64Preset)
+                Timber.tag("BestConfigService").w("Box64 preset $box64Preset not found")
+                missing.add("Box64 preset $box64Preset")
             }
         }
 
@@ -413,13 +418,12 @@ object BestConfigService {
         if (fexcorePreset.isNotEmpty()) {
             val preset = FEXCorePresetManager.getPreset(context, fexcorePreset)
             if (preset == null) {
-                Timber.tag("BestConfigService").w("FEXCore preset $fexcorePreset not found, updating to PrefManager default")
-                return "FEXCore preset $fexcorePreset"
-                filteredJson.put("fexcorePreset", PrefManager.fexcorePreset)
+                Timber.tag("BestConfigService").w("FEXCore preset $fexcorePreset not found")
+                missing.add("FEXCore preset $fexcorePreset")
             }
         }
 
-        return null
+        return missing
     }
 
     suspend fun resolveMissingManifestInstallRequests(
@@ -634,9 +638,49 @@ object BestConfigService {
     }
 
     /**
+     * Replace missing component versions in filteredJson with defaults so config can still be applied.
+     */
+    private fun replaceWithDefaults(filteredJson: JSONObject, missing: List<String>) {
+        for (entry in missing) {
+            when {
+                entry.startsWith("DXVK ") -> {
+                    val kvs = KeyValueSet(filteredJson.optString("dxwrapperConfig", ""))
+                    kvs.put("version", DefaultVersion.DXVK)
+                    filteredJson.put("dxwrapperConfig", kvs.toString())
+                }
+                entry.startsWith("VKD3D ") -> {
+                    val kvs = KeyValueSet(filteredJson.optString("dxwrapperConfig", ""))
+                    kvs.put("vkd3dVersion", DefaultVersion.VKD3D)
+                    filteredJson.put("dxwrapperConfig", kvs.toString())
+                }
+                entry.startsWith("Box64 preset ") -> {
+                    filteredJson.put("box64Preset", PrefManager.box64Preset)
+                }
+                entry.startsWith("FEXCore preset ") -> {
+                    filteredJson.put("fexcorePreset", PrefManager.fexcorePreset)
+                }
+                entry.startsWith("Box64 ") || entry.startsWith("WoWBox64 ") -> {
+                    filteredJson.put("box64Version", DefaultVersion.BOX64)
+                }
+                entry.startsWith("FEXCore ") -> {
+                    filteredJson.put("fexcoreVersion", DefaultVersion.FEXCORE)
+                }
+                entry.startsWith("Wine ") -> {
+                    filteredJson.put("wineVersion", DefaultVersion.WINE_VERSION)
+                }
+                entry.startsWith("Graphics driver ") -> {
+                    filteredJson.put("graphicsDriverConfig", PrefManager.graphicsDriverConfig)
+                    filteredJson.put("graphicsDriverVersion", PrefManager.graphicsDriverVersion)
+                }
+            }
+        }
+    }
+
+    /**
      * Parses bestConfig JSON into a map of fields to update.
      * First parses values (using PrefManager defaults for validation), then validates component versions.
      * Returns map with only fields present in config (no defaults), or empty map if validation fails.
+     * When forceApply is true, missing components are replaced with defaults instead of rejecting.
      */
     suspend fun parseConfigToContainerData(
         context: Context,
@@ -644,6 +688,7 @@ object BestConfigService {
         matchType: String,
         applyKnownConfig: Boolean,
         storeMatch: Boolean = true,
+        forceApply: Boolean = false,
     ): Map<String, Any?>? {
         try {
             val originalJson = JSONObject(configJson.toString())
@@ -712,12 +757,15 @@ object BestConfigService {
                 val filteredConfig = filterConfigByMatchType(updatedConfigJson, matchType, storeMatch)
                 val filteredJson = JSONObject(filteredConfig.toString())
 
-                // Step 2: Validate component versions against resource arrays
-                val missingContent = validateComponentVersions(context, filteredJson)
-                if (missingContent != null) {
-                    lastMissingContentDescription = missingContent
-                    Timber.tag("BestConfigService").w("Component version validation failed for: $missingContent, returning empty map")
-                    return mapOf()
+                // Step 2: check for unavailable component versions
+                lastMissingComponents = validateComponentVersions(context, filteredJson)
+                if (lastMissingComponents.isNotEmpty()) {
+                    if (!forceApply) {
+                        Timber.tag("BestConfigService").w("Config rejected: missing components: ${lastMissingComponents.joinToString(", ")}")
+                        return mapOf()
+                    }
+                    Timber.tag("BestConfigService").w("Force-applying config, replacing missing components with defaults: ${lastMissingComponents.joinToString(", ")}")
+                    replaceWithDefaults(filteredJson, lastMissingComponents)
                 }
 
                 // Step 3: Build map with only fields present in filteredJson (not defaults)
@@ -783,7 +831,11 @@ object BestConfigService {
                     resultMap["steamOfflineMode"] = filteredJson.optBoolean("steamOfflineMode", PrefManager.steamOfflineMode)
                 }
                 if (filteredJson.has("envVars") && !filteredJson.isNull("envVars")) {
-                    resultMap["envVars"] = filteredJson.optString("envVars", PrefManager.envVars)
+                    var envVars = filteredJson.optString("envVars", PrefManager.envVars)
+                    // Strip DXVK/VKD3D frame rate caps from backend config - client-side limiter handles this
+                    envVars = envVars.replace(Regex("""\s*DXVK_FRAME_RATE=\d+"""), "")
+                    envVars = envVars.replace(Regex("""\s*VKD3D_FRAME_RATE=\d+"""), "")
+                    resultMap["envVars"] = envVars.trim()
                 }
                 if (filteredJson.has("cpuList") && !filteredJson.isNull("cpuList")) {
                     resultMap["cpuList"] = filteredJson.optString("cpuList", PrefManager.cpuList)

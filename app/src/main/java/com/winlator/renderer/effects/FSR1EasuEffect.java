@@ -14,9 +14,24 @@ import com.winlator.renderer.material.ShaderMaterial;
  * Released under the MIT license by AMD.
  */
 public class FSR1EasuEffect extends Effect implements RenderScaleEffect {
+    private boolean preserveAspect = false;
+
+    public boolean isPreserveAspect() {
+        return preserveAspect;
+    }
+
+    public void setPreserveAspect(boolean preserveAspect) {
+        this.preserveAspect = preserveAspect;
+    }
+
     @Override
     protected ShaderMaterial createMaterial() {
         return new FSR1EasuMaterial();
+    }
+
+    @Override
+    protected void onUse(ShaderMaterial material, GLRenderer renderer) {
+        material.setUniformFloat("preserveAspect", preserveAspect ? 1.0f : 0.0f);
     }
 
     @Override
@@ -31,7 +46,7 @@ public class FSR1EasuEffect extends Effect implements RenderScaleEffect {
 
     private static class FSR1EasuMaterial extends ScreenMaterial {
         public FSR1EasuMaterial() {
-            setUniformNames("screenTexture", "inputResolution", "outputResolution");
+            setUniformNames("screenTexture", "inputResolution", "outputResolution", "preserveAspect");
         }
 
         @Override
@@ -41,6 +56,7 @@ public class FSR1EasuEffect extends Effect implements RenderScaleEffect {
                 "uniform sampler2D screenTexture;\n" +
                 "uniform vec2 inputResolution;\n" +
                 "uniform vec2 outputResolution;\n" +
+                "uniform float preserveAspect;\n" +
                 "varying vec2 vUV;\n" +
                 "vec3 FsrEasuCF(vec2 p) { return texture2D(screenTexture, p).rgb; }\n" +
                 "void FsrEasuCon(out vec4 con0, out vec4 con1, out vec4 con2, out vec4 con3, vec2 inputViewportInPixels, vec2 inputSizeInPixels, vec2 outputSizeInPixels) {\n" +
@@ -144,11 +160,33 @@ public class FSR1EasuEffect extends Effect implements RenderScaleEffect {
                 "    pix = min(max4, max(min4, aC / max(aW, 1e-6)));\n" +
                 "}\n" +
                 "void main() {\n" +
-                "    vec3 color;\n" +
-                "    vec4 con0, con1, con2, con3;\n" +
-                "    FsrEasuCon(con0, con1, con2, con3, inputResolution, inputResolution, outputResolution);\n" +
-                "    FsrEasuF(color, gl_FragCoord.xy, con0, con1, con2, con3);\n" +
-                "    gl_FragColor = vec4(color, texture2D(screenTexture, vUV).a);\n" +
+                "    if (preserveAspect > 0.5) {\n" +
+                "        float inputAspect = inputResolution.x / inputResolution.y;\n" +
+                "        float outputAspect = outputResolution.x / outputResolution.y;\n" +
+                "        vec2 scaledOutput = outputResolution;\n" +
+                "        if (outputAspect > inputAspect) {\n" +
+                "            scaledOutput.x = outputResolution.y * inputAspect;\n" +
+                "        } else {\n" +
+                "            scaledOutput.y = outputResolution.x / inputAspect;\n" +
+                "        }\n" +
+                "        vec2 offset = 0.5 * (outputResolution - scaledOutput);\n" +
+                "        vec2 coord = gl_FragCoord.xy - offset;\n" +
+                "        if (coord.x < 0.0 || coord.x > scaledOutput.x || coord.y < 0.0 || coord.y > scaledOutput.y) {\n" +
+                "            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);\n" +
+                "            return;\n" +
+                "        }\n" +
+                "        vec3 color;\n" +
+                "        vec4 con0, con1, con2, con3;\n" +
+                "        FsrEasuCon(con0, con1, con2, con3, inputResolution, inputResolution, scaledOutput);\n" +
+                "        FsrEasuF(color, coord, con0, con1, con2, con3);\n" +
+                "        gl_FragColor = vec4(color, 1.0);\n" +
+                "    } else {\n" +
+                "        vec3 color;\n" +
+                "        vec4 con0, con1, con2, con3;\n" +
+                "        FsrEasuCon(con0, con1, con2, con3, inputResolution, inputResolution, outputResolution);\n" +
+                "        FsrEasuF(color, gl_FragCoord.xy, con0, con1, con2, con3);\n" +
+                "        gl_FragColor = vec4(color, texture2D(screenTexture, vUV).a);\n" +
+                "    }\n" +
                 "}";
         }
     }

@@ -35,6 +35,7 @@ import javax.microedition.khronos.opengles.GL10;
 public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindowModificationListener, Pointer.OnPointerMotionListener {
     public final XServerView xServerView;
     private final XServer xServer;
+    private Runnable onFrameRenderedListener;
     private final VertexAttribute quadVertices = new VertexAttribute("position", 2);
     private final float[] tmpXForm1 = XForm.getInstance();
     private final float[] tmpXForm2 = XForm.getInstance();
@@ -139,6 +140,9 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
         if (frameRating != null && frameRating.getVisibility() == View.VISIBLE) {
             frameRating.update();
+        }
+        if (onFrameRenderedListener != null) {
+            onFrameRenderedListener.run();
         }
     }
 
@@ -330,6 +334,10 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     public void toggleFullscreen() {
         toggleFullscreen = true;
         xServerView.requestRender();
+    }
+
+    public void setOnFrameRenderedListener(Runnable onFrameRenderedListener) {
+        this.onFrameRenderedListener = onFrameRenderedListener;
     }
 
     private Drawable createRootCursorDrawable() {

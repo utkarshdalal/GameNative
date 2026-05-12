@@ -105,6 +105,15 @@ class PluviaApp : SplitCompatApplication() {
         }
         PostHogAndroid.setup(this, postHogConfig)
 
+        if (PrefManager.usageAnalyticsEnabled) {
+            com.posthog.PostHog.capture(
+                event = "\$set",
+                properties = mapOf(
+                    "\$set" to mapOf("recommendation_enabled" to PrefManager.showRecommendations),
+                ),
+            )
+        }
+
         PlayIntegrity.warmUp(this)
 
     }
@@ -225,6 +234,7 @@ class PluviaApp : SplitCompatApplication() {
             touchpadView = null
             achievementWatcher = null
             SteamService.keepAlive = false
+            SteamService.clearPlayingConflict()
             clearActiveSuspendState()
         }
 
