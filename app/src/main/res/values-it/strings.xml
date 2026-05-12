@@ -869,6 +869,7 @@
     <string name="settings_language_restart_message">Cambiare la lingua richiede il riavvio dell\'app. Vuoi continuare?</string>
     <string name="settings_language_restart_confirm">Riavvia</string>
     <string name="settings_language_changing">Cambio lingua e riavvio...</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">cercare...</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulazione</string>
@@ -1421,5 +1422,4 @@
      <string name="steam_save_import_failed">Importazione salvataggi fallita: %s</string>
     <string name="option_import_saves">Importa salvataggi</string>
     <string name="option_export_saves">Esporta salvataggi</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">cercare...</string>
 </resources>

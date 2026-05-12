@@ -856,6 +856,7 @@
     <string name="settings_language_restart_message">Changing the language requires the app to restart. Do you want to continue?</string>
     <string name="settings_language_restart_confirm">Restart</string>
     <string name="settings_language_changing">Changing language and restarting...</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">尋找...</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulation</string>
@@ -1475,5 +1476,4 @@
     <string name="review_overwhelmingly_negative">Overwhelmingly Negative</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Show curated indie game picks in your library. Keeping this on helps support indie developers and GameNative.</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">search...</string>
 </resources>

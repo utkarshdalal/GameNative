@@ -886,6 +886,7 @@
     <string name="settings_language_restart_message">Zmiana języka wymaga ponownego uruchomienia aplikacji. Czy chcesz kontynuować?</string>
     <string name="settings_language_restart_confirm">Uruchom ponownie</string>
     <string name="settings_language_changing">Zmiana języka i ponowne uruchamianie...</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">szukać...</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulacja</string>
@@ -1428,5 +1429,4 @@
      <string name="steam_save_import_failed">Nie udało się zaimportować zapisów: %s</string>
     <string name="option_import_saves">Importuj zapisy</string>
     <string name="option_export_saves">Eksportuj zapisy</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">szukać...</string>
 </resources>

@@ -1038,6 +1038,7 @@ https://gamenative.app
     <string name="settings_interface_wifi_only_title">Загружать только через Wi-Fi/LAN</string>
     <string name="settings_language">Язык</string>
     <string name="settings_language_changing">Изменение языка и перезагрузка...</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">искать...</string>
     <string name="settings_language_restart_confirm">Перезагрузить</string>
     <string name="settings_language_restart_message">Изменение языка требует перезагрузки приложения. Вы хотите продолжить?</string>
     <string name="settings_language_restart_title">Требуется перезагрузка</string>
@@ -1358,5 +1359,4 @@ https://gamenative.app
      <string name="steam_save_import_failed">Не удалось импортировать сохранения: %s</string>
     <string name="option_import_saves">Импортировать сохранения</string>
     <string name="option_export_saves">Экспортировать сохранения</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">искать...</string>
 </resources>

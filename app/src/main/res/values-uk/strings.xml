@@ -872,6 +872,7 @@
     <string name="settings_language_restart_message">Зміна мови потребує перезапуску. Продовжити?</string>
     <string name="settings_language_restart_confirm">Перезапустити</string>
     <string name="settings_language_changing">Зміна мови та перезапуск...</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">шукати...</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Емуляція</string>
@@ -1424,5 +1425,4 @@
      <string name="steam_save_import_failed">Не вдалося імпортувати збереження: %s</string>
     <string name="option_import_saves">Імпортувати збереження</string>
     <string name="option_export_saves">Експортувати збереження</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">шукати...</string>
 </resources>

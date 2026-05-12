@@ -841,6 +841,7 @@
     <string name="settings_language_restart_message">Die Änderung der Sprache erfordert einen Neustart der App. Möchtest du fortfahren?</string>
     <string name="settings_language_restart_confirm">Neustart</string>
     <string name="settings_language_changing">Sprache wird geändert und Neustart durchgeführt…</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">Suchen...</string>
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulation</string>
     <string name="settings_emulation_orientations_title">Erlaubte Ausrichtungen</string>
@@ -1365,5 +1366,4 @@
      <string name="steam_save_import_failed">Spielstände konnten nicht importiert werden: %s</string>
     <string name="option_import_saves">Spielstände importieren</string>
     <string name="option_export_saves">Spielstände exportieren</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">Suchen...</string>
 </resources>

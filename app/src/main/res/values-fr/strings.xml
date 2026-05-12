@@ -873,6 +873,7 @@
     <string name="settings_language_restart_message">Le changement de langue nécessite un redémarrage de l\'application. Voulez-vous continuer ?</string>
     <string name="settings_language_restart_confirm">Redémarrer</string>
     <string name="settings_language_changing">Changement de langue et redémarrage…</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">chercher...</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Émulation</string>
@@ -1425,5 +1426,4 @@
      <string name="steam_save_import_failed">Échec de l\'importation des sauvegardes : %s</string>
     <string name="option_import_saves">Importer les sauvegardes</string>
     <string name="option_export_saves">Exporter les sauvegardes</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">chercher...</string>
 </resources>

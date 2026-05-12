@@ -878,6 +878,7 @@
 	<string name="settings_language_restart_message">Schimbarea limbii necesită repornirea aplicației. Vrei să continui?</string>
 	<string name="settings_language_restart_confirm">Repornește</string>
 	<string name="settings_language_changing">Se schimbă limba și se repornește...</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">a căuta...</string>
 
 	<!-- Settings: Emulation Group -->
 	<string name="settings_emulation_title">Emulare</string>
@@ -1430,5 +1431,4 @@
      <string name="steam_save_import_failed">Importul salvărilor a eșuat: %s</string>
     <string name="option_import_saves">Importă salvări</string>
     <string name="option_export_saves">Exportă salvări</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">a căuta...</string>
 </resources>

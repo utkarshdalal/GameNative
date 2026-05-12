@@ -868,6 +868,7 @@
     <string name="settings_language_restart_message">更改语言需要重新启动应用程序。是否继续？</string>
     <string name="settings_language_restart_confirm">重新启动</string>
     <string name="settings_language_changing">切换语言并重新启动中...</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">寻找...</string>
 
     <!-- 设置：模拟组 -->
     <string name="settings_emulation_title">模拟设置</string>
@@ -1497,5 +1498,4 @@
 
     <!-- 工具：Wine 进程 -->
     <string name="tools_wine_processes_empty">未检测到正在运行的EXE。</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">寻找...</string>
 </resources>

@@ -699,6 +699,7 @@
     <string name="settings_language_restart_message">Ændring af sprog kræver, at appen genstartes. Vil du fortsætte?</string>
     <string name="settings_language_restart_confirm">Genstart</string>
     <string name="settings_language_changing">Ændrer sprog og genstarter...</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">søge...</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulering</string>
@@ -1295,5 +1296,4 @@
      <string name="steam_save_import_failed">Kunne ikke importere gemte filer: %s</string>
     <string name="option_import_saves">Importér gemte spil</string>
     <string name="option_export_saves">Eksportér gemte spil</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">søge...</string>
 </resources>

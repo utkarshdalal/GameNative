@@ -887,6 +887,7 @@
     <string name="settings_language_restart_message">언어를 변경하려면 앱을 재시작해야 합니다. 계속하시겠습니까?</string>
     <string name="settings_language_restart_confirm">재시작</string>
     <string name="settings_language_changing">언어 변경 및 재시작 중...</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">찾다...</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">에뮬레이션</string>
@@ -1429,5 +1430,4 @@
      <string name="steam_save_import_failed">세이브 데이터 가져오기 실패: %s</string>
     <string name="option_import_saves">세이브 가져오기</string>
     <string name="option_export_saves">세이브 내보내기</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">찾다...</string>
 </resources>

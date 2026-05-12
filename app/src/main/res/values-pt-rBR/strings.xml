@@ -699,6 +699,7 @@
     <string name="settings_language_restart_message">Alterar o idioma requer que o aplicativo seja reiniciado. Deseja continuar?</string>
     <string name="settings_language_restart_confirm">Reiniciar</string>
     <string name="settings_language_changing">Alterando idioma e reiniciando...</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">procurar...</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulação</string>
@@ -1295,5 +1296,4 @@
      <string name="steam_save_import_failed">Falha ao importar saves: %s</string>
     <string name="option_import_saves">Importar saves</string>
     <string name="option_export_saves">Exportar saves</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">procurar...</string>
 </resources>
