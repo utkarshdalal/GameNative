@@ -344,7 +344,7 @@ private fun DxWrapperSection(state: ContainerConfigState) {
         val items = context.labels
         val itemIds = context.ids
         val itemMuted = context.muted
-        SettingsListDropdown(
+        SettingsListDropdownSearchable(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.dxvk_version)) },
             value = state.dxvkVersionIndex.value.coerceIn(0, (items.size - 1).coerceAtLeast(0)),
@@ -368,7 +368,7 @@ private fun DxWrapperSection(state: ContainerConfigState) {
                         else currentConfig.put("asyncCache", "0")
                         state.config.value = config.copy(dxwrapperConfig = currentConfig.toString())
                     }
-                    return@SettingsListDropdown
+                    return@SettingsListDropdownSearchable
                 }
                 val version = selectedId.ifEmpty { StringUtils.parseIdentifier(items.getOrNull(it).orEmpty()) }
                 val currentConfig = KeyValueSet(config.dxwrapperConfig)

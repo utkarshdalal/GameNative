@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsListDropdown
+import app.gamenative.ui.component.settings.SettingsListDropdownSearchable
 import com.alorma.compose.settings.ui.SettingsSwitch
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
@@ -143,7 +144,7 @@ fun GeneralTabContent(
                     state.containerVariants.indexOfFirst { it.equals(config.containerVariant, true) }.coerceAtLeast(0)
                 )
             }
-            SettingsListDropdown(
+            SettingsListDropdownSearchable(
                 colors = settingsTileColors(),
                 title = { Text(text = stringResource(R.string.container_variant)) },
                 value = variantIndex.value,
@@ -230,7 +231,7 @@ fun GeneralTabContent(
             )
             if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
                 val wineIndex = state.bionicWineOptions.ids.indexOfFirst { it == config.wineVersion }.coerceAtLeast(0)
-                SettingsListDropdown(
+                SettingsListDropdownSearchable(
                     colors = settingsTileColors(),
                     title = { Text(text = stringResource(R.string.wine_version)) },
                     value = wineIndex,
@@ -249,7 +250,7 @@ fun GeneralTabContent(
                             state.launchManifestContentInstall(manifestEntry, expectedType) {
                                 state.config.value = config.copy(wineVersion = selectedId)
                             }
-                            return@SettingsListDropdown
+                            return@SettingsListDropdownSearchable
                         }
                         state.config.value = config.copy(wineVersion = selectedId.ifEmpty { state.bionicWineOptions.labels[idx] })
                     },
