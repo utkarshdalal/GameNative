@@ -154,16 +154,16 @@ class ContainerStorageManagerUiState internal constructor(
                 }
             }
 
-            runCatching {
-                ContainerStorageManager.loadEntries(appContext)
-            }.onSuccess {
-                entries = it
+            try {
+                entries = ContainerStorageManager.loadEntries(appContext)
                 hasLoaded = true
-            }.onFailure { error ->
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 hasLoaded = false
-                Timber.e(error, "Failed to load storage inventory")
+                Timber.e(e, "Failed to load storage inventory")
                 SnackbarManager.show(
-                    error.message ?: appContext.getString(R.string.container_storage_unknown_error),
+                    e.message ?: appContext.getString(R.string.container_storage_unknown_error),
                 )
             }
 
