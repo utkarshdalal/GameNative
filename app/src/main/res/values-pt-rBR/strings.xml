@@ -60,6 +60,7 @@
     <string name="storage_internal">Interno</string>
     <string name="storage_external">Externo</string>
     <string name="storage_free_of_total">%1$s: %2$s livre de %3$s</string>
+    <string name="storage_calculating">%1$s: Calculando…</string>
     <string name="container_storage_title">Gerenciador de armazenamento</string>
     <string name="container_storage_subtitle">Mova instalações entre armazenamento interno e externo</string>
     <string name="container_storage_summary">%1$d itens • %2$s</string>

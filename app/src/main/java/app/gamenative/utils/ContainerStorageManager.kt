@@ -36,6 +36,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -77,30 +78,38 @@ object ContainerStorageManager {
         val totalBytes: Long,
     )
 
-    suspend fun getVolumeInfo(context: Context): List<VolumeInfo> = withContext(Dispatchers.IO) {
-        val volumes = mutableListOf<VolumeInfo>()
-        runCatching {
-            volumes += VolumeInfo(
+    suspend fun getInternalVolumeInfo(context: Context): VolumeInfo? = withContext(Dispatchers.IO) {
+        try {
+            VolumeInfo(
                 label = context.getString(R.string.storage_internal),
                 freeBytes = StorageUtils.getAvailableSpace(context.dataDir.path),
                 totalBytes = StorageUtils.getTotalSpace(context.dataDir.path),
             )
-        }.onFailure { e ->
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             Timber.w(e, "Failed to query internal storage volume info")
+            null
         }
+    }
+
+    suspend fun getExternalVolumeInfo(context: Context): VolumeInfo? = withContext(Dispatchers.IO) {
+        if (!PrefManager.useExternalStorage) return@withContext null
         val externalPath = PrefManager.externalStoragePath
-        if (PrefManager.useExternalStorage && externalPath.isNotBlank() && File(externalPath).isDirectory) {
-            runCatching {
-                volumes += VolumeInfo(
-                    label = context.getString(R.string.storage_external),
-                    freeBytes = StorageUtils.getAvailableSpace(externalPath),
-                    totalBytes = StorageUtils.getTotalSpace(externalPath),
-                )
-            }.onFailure { e ->
-                Timber.w(e, "Failed to query external storage volume info")
-            }
+        if (externalPath.isBlank() || !File(externalPath).isDirectory) return@withContext null
+
+        try {
+            VolumeInfo(
+                label = context.getString(R.string.storage_external),
+                freeBytes = StorageUtils.getAvailableSpace(externalPath),
+                totalBytes = StorageUtils.getTotalSpace(externalPath),
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to query external storage volume info")
+            null
         }
-        volumes
     }
 
     data class Entry(

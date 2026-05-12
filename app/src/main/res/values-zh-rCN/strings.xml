@@ -106,6 +106,7 @@
     <string name="storage_internal">内部</string>
     <string name="storage_external">外部</string>
     <string name="storage_free_of_total">%1$s：%3$s 中有 %2$s 可用</string>
+    <string name="storage_calculating">%1$s：计算中…</string>
     <string name="container_storage_title">存储管理</string>
     <string name="container_storage_subtitle">在内部存储与外部存储之间移动安装内容</string>
     <string name="container_storage_summary">%1$d 项 • %2$s</string>

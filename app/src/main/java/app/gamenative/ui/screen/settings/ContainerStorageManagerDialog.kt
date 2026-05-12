@@ -93,6 +93,9 @@ class ContainerStorageManagerUiState internal constructor(
     var volumeInfo by mutableStateOf<List<ContainerStorageManager.VolumeInfo>>(emptyList())
         private set
 
+    var isLoadingExternalVolume by mutableStateOf(false)
+        private set
+
     var isLoading by mutableStateOf(false)
         private set
 
@@ -134,14 +137,23 @@ class ContainerStorageManagerUiState internal constructor(
 
         scope.launch {
             isLoading = true
-            try {
-                volumeInfo = ContainerStorageManager.getVolumeInfo(appContext)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                volumeInfo = emptyList()
-                Timber.w(e, "Failed to query volume info")
+
+            val internal = ContainerStorageManager.getInternalVolumeInfo(appContext)
+            volumeInfo = listOfNotNull(internal)
+
+            val externalConfigured = ContainerStorageManager.isExternalStorageConfigured()
+            isLoadingExternalVolume = externalConfigured
+            val externalJob = launch {
+                try {
+                    val external = ContainerStorageManager.getExternalVolumeInfo(appContext)
+                    if (external != null) {
+                        volumeInfo = volumeInfo + external
+                    }
+                } finally {
+                    isLoadingExternalVolume = false
+                }
             }
+
             runCatching {
                 ContainerStorageManager.loadEntries(appContext)
             }.onSuccess {
@@ -154,6 +166,8 @@ class ContainerStorageManagerUiState internal constructor(
                     error.message ?: appContext.getString(R.string.container_storage_unknown_error),
                 )
             }
+
+            externalJob.join()
             isLoading = false
         }
     }
@@ -421,9 +435,12 @@ fun ContainerStorageManagerContent(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (state.volumeInfo.isNotEmpty()) {
+                if (state.volumeInfo.isNotEmpty() || state.isLoadingExternalVolume) {
                     Spacer(modifier = Modifier.height(2.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
                         state.volumeInfo.forEach { vol ->
                             Text(
                                 text = stringResource(
@@ -431,6 +448,16 @@ fun ContainerStorageManagerContent(
                                     vol.label,
                                     StorageUtils.formatBinarySize(vol.freeBytes, decimalPlaces = 1),
                                     StorageUtils.formatBinarySize(vol.totalBytes, decimalPlaces = 1),
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            )
+                        }
+                        if (state.isLoadingExternalVolume) {
+                            Text(
+                                text = stringResource(
+                                    R.string.storage_calculating,
+                                    stringResource(R.string.storage_external),
                                 ),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),

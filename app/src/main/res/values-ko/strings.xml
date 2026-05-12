@@ -115,6 +115,7 @@
     <string name="storage_internal">내부</string>
     <string name="storage_external">외부</string>
     <string name="storage_free_of_total">%1$s: %3$s 중 %2$s 사용 가능</string>
+    <string name="storage_calculating">%1$s: 계산 중…</string>
     <string name="container_storage_title">저장소 관리자</string>
     <string name="container_storage_subtitle">내부 저장소와 외부 저장소 사이에서 설치 항목을 이동합니다</string>
     <string name="container_storage_summary">%1$d개 항목 • %2$s</string>

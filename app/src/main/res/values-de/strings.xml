@@ -101,6 +101,7 @@
     <string name="storage_internal">Intern</string>
     <string name="storage_external">Extern</string>
     <string name="storage_free_of_total">%1$s: %2$s frei von %3$s</string>
+    <string name="storage_calculating">%1$s: Wird berechnet…</string>
     <string name="container_storage_title">Speicherverwaltung</string>
     <string name="container_storage_subtitle">Installationen zwischen internem und externem Speicher verschieben</string>
     <string name="container_storage_summary">%1$d Einträge • %2$s</string>
