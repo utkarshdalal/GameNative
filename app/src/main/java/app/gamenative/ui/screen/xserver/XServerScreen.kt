@@ -4227,7 +4227,6 @@ private fun setupWineSystemFiles(
     if (!wincomponents.equals(container.getExtra("wincomponents"))) {
         extractWinComponentFiles(context, firstTimeBoot, imageFs, container, containerManager, onExtractFileListener)
         container.putExtra("wincomponents", wincomponents)
-        container.putExtra("wineVersion", container.wineVersion)
         containerDataChanged = true
     }
 
