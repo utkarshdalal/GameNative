@@ -27,6 +27,7 @@ object XnaFrameworkStep : PreInstallStep {
         val searchDirs = listOf(
             File(gameDirPath, "_CommonRedist/xnafx"),
             File(gameDirPath, "_CommonRedist/XNA_40"),
+            File(gameDirPath, "_CommonRedist/XNA"),
             File(gameDirPath, "redist"),
             File(gameDirPath, "Redist"),
         )

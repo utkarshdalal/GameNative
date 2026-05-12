@@ -86,6 +86,7 @@ private fun scalingModeLabelRes(mode: Int): Int = when (mode) {
     ScreenEffectsConfig.SCALING_MODE_FILL -> R.string.screen_effects_scaling_mode_fill
     ScreenEffectsConfig.SCALING_MODE_STRETCH -> R.string.screen_effects_scaling_mode_stretch
     ScreenEffectsConfig.SCALING_MODE_FSR -> R.string.screen_effects_scaling_mode_fsr
+    ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> R.string.screen_effects_scaling_mode_fsr_aspect
     else -> R.string.screen_effects_scaling_mode_none
 }
 
@@ -189,17 +190,17 @@ fun ScreenEffectsTabContent(
             progress = normalizedProgress(
                 scalingMode.toFloat(),
                 ScreenEffectsConfig.SCALING_MODE_NONE.toFloat(),
-                ScreenEffectsConfig.SCALING_MODE_FSR.toFloat(),
+                ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT.toFloat(),
             ),
             onDecrease = {
                 scalingMode = (scalingMode - 1).coerceAtLeast(ScreenEffectsConfig.SCALING_MODE_NONE)
             },
             onIncrease = {
-                scalingMode = (scalingMode + 1).coerceAtMost(ScreenEffectsConfig.SCALING_MODE_FSR)
+                scalingMode = (scalingMode + 1).coerceAtMost(ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT)
             },
             focusRequester = firstItemFocusRequester,
         )
-        if (scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR) {
+        if (scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR || scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT) {
             ScreenEffectAdjustmentRow(
                 title = stringResource(R.string.screen_effects_fsr_sharpness),
                 valueText = stringResource(R.string.screen_effects_fsr_sharpness_value, fsrSharpnessLevel),

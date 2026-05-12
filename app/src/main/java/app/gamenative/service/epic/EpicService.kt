@@ -528,15 +528,16 @@ class EpicService : Service() {
 
         suspend fun buildLaunchParameters(
             context: Context,
+            container: Container,
             game: EpicGame,
             offline: Boolean = false,
             languageCode: String = "en-US"
         ): Result<List<String>> {
-            return EpicGameLauncher.buildLaunchParameters(context, game, offline, languageCode)
+            return EpicGameLauncher.buildLaunchParameters(context, container, game, offline, languageCode)
         }
 
-        fun cleanupLaunchTokens(context: Context) {
-            EpicGameLauncher.cleanupOwnershipTokens(context)
+        fun cleanupLaunchTokens(context: Context, container: Container? = null) {
+            EpicGameLauncher.cleanupOwnershipTokens(context, container)
         }
 
         // ==========================================================================

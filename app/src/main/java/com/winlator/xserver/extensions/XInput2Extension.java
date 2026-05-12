@@ -430,8 +430,7 @@ public class XInput2Extension implements Extension {
                 Timber.w("XInput2Extension: unhandled minor opcode=%d, requestData=%d, requestLength=%d",
                         opcode, client.getRequestData(), client.getRemainingRequestLength());
                 inputStream.skip(client.getRemainingRequestLength());
-                // throw new BadImplementation();
-                break;
+                throw new BadImplementation();
         }
     }
 

@@ -48,11 +48,15 @@ import javax.inject.Inject
 import kotlin.math.max
 import kotlin.math.min
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -124,17 +128,24 @@ class LibraryViewModel @Inject constructor(
     }
 
     init {
+        @OptIn(ExperimentalCoroutinesApi::class)
         viewModelScope.launch(Dispatchers.IO) {
-            steamAppDao.getAllOwnedApps(
-                // ownerIds = SteamService.familyMembers.ifEmpty { listOf(SteamService.userSteamId!!.accountID.toInt()) },
-            ).collect { apps ->
-                Timber.tag("LibraryViewModel").d("Collecting ${apps.size} apps")
-                // Check if the list has actually changed before triggering a re-filter
-                if (appList.size != apps.size) {
-                    appList = apps
-                    onFilterApps(paginationCurrentPage)
+            // Re-create the underlying DAO Flow whenever the EXPIRED filter is toggled,
+            // so apps with Expired or missing licenses are surfaced/hidden accordingly.
+            _state
+                .map { it.appInfoSortType.contains(AppFilter.EXPIRED) }
+                .distinctUntilChanged()
+                .flatMapLatest { includeExpired ->
+                    steamAppDao.getAllOwnedApps(includeExpired = includeExpired)
                 }
-            }
+                .collect { apps ->
+                    Timber.tag("LibraryViewModel").d("Collecting ${apps.size} apps")
+                    // Check if the list has actually changed before triggering a re-filter
+                    if (appList.size != apps.size) {
+                        appList = apps
+                        onFilterApps(paginationCurrentPage)
+                    }
+                }
         }
 
         // Collect GOG games
@@ -495,7 +506,6 @@ class LibraryViewModel @Inject constructor(
                 emptyList()
             }
             val customEntries = customGameItems
-                .filter { passesCompatibleFilter(it.name) }
                 .filter { !steamEntriesAppIds.contains(it.appId) } // Filter out imported steam appId
                 .map { LibraryEntry(it, true) }
 

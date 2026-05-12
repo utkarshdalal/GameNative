@@ -11,12 +11,10 @@ import android.view.KeyEvent;
 
 import app.gamenative.PrefManager;
 
-import com.winlator.winhandler.WinHandler;
-
 import java.util.ArrayList;
 import java.util.List;
 
-public class ControllerManager implements InputManager.InputDeviceListener {
+public class ControllerManager {
 
     @SuppressLint("StaticFieldLeak")
     private static ControllerManager instance;
@@ -46,7 +44,7 @@ public class ControllerManager implements InputManager.InputDeviceListener {
     private final SparseArray<String> slotAssignments = new SparseArray<>();
 
     // This tracks which of the 4 player slots are enabled by the user.
-    private final boolean[] enabledSlots = new boolean[WinHandler.MAX_PLAYERS];
+    private final boolean[] enabledSlots = new boolean[4];
 
     public static final String PREF_PLAYER_SLOT_PREFIX = "controller_slot_";
     public static final String PREF_ENABLED_SLOTS_PREFIX = "enabled_slot_";
@@ -64,28 +62,6 @@ public class ControllerManager implements InputManager.InputDeviceListener {
         // On startup, we load saved settings and scan for connected devices.
         loadAssignments();
         scanForDevices();
-
-        // Keep detectedDevices in sync with hot-plug events. null Handler dispatches
-        // callbacks on the main thread, the same thread that handles input events,
-        // so detectedDevices needs no synchronization.
-        inputManager.registerInputDeviceListener(this, null);
-
-        // Single-controller correction: if only one controller is connected and it's
-        // not in slot 0, move it so P1 is always populated for games that may only check P1
-        if (detectedDevices.size() == 1) {
-            String id = getDeviceIdentifier(detectedDevices.get(0));
-            if (id != null && !id.equals(slotAssignments.get(0))) {
-                // Remove from whatever slot it was in
-                for (int i = 0; i < WinHandler.MAX_PLAYERS; i++) {
-                    if (id.equals(slotAssignments.get(i))) {
-                        slotAssignments.remove(i);
-                    }
-                }
-                slotAssignments.put(0, id);
-                enabledSlots[0] = true;
-                saveAssignments();
-            }
-        }
     }
 
 
@@ -106,39 +82,12 @@ public class ControllerManager implements InputManager.InputDeviceListener {
         }
     }
 
-    @Override
-    public void onInputDeviceAdded(int deviceId) {
-        InputDevice device = inputManager.getInputDevice(deviceId);
-        if (device == null || device.isVirtual() || !isGameController(device)) return;
-        for (InputDevice existing : detectedDevices) {
-            if (existing.getId() == deviceId) return;
-        }
-        detectedDevices.add(device);
-    }
-
-    @Override
-    public void onInputDeviceRemoved(int deviceId) {
-        // getInputDevice returns null for a removed device, so match by id.
-        for (int i = 0; i < detectedDevices.size(); i++) {
-            if (detectedDevices.get(i).getId() == deviceId) {
-                detectedDevices.remove(i);
-                return;
-            }
-        }
-    }
-
-    @Override
-    public void onInputDeviceChanged(int deviceId) {
-        onInputDeviceRemoved(deviceId);
-        onInputDeviceAdded(deviceId);
-    }
-
     /**
      * Loads the saved player slot assignments and enabled states from SharedPreferences.
      */
     private void loadAssignments() {
         slotAssignments.clear();
-        for (int i = 0; i < WinHandler.MAX_PLAYERS; i++) {
+        for (int i = 0; i < 4; i++) {
             // Load which device is assigned to this slot
             String prefKey = PREF_PLAYER_SLOT_PREFIX + i;
             String deviceIdentifier = preferences.getString(prefKey, null);
@@ -157,7 +106,7 @@ public class ControllerManager implements InputManager.InputDeviceListener {
      */
     public void saveAssignments() {
         SharedPreferences.Editor editor = preferences.edit();
-        for (int i = 0; i < WinHandler.MAX_PLAYERS; i++) {
+        for (int i = 0; i < 4; i++) {
             // Save the assigned device identifier
             String deviceIdentifier = slotAssignments.get(i);
             String prefKey = PREF_PLAYER_SLOT_PREFIX + i;
@@ -253,13 +202,13 @@ public class ControllerManager implements InputManager.InputDeviceListener {
      * @param device The physical InputDevice to assign.
      */
     public void assignDeviceToSlot(int slotIndex, InputDevice device) {
-        if (slotIndex < 0 || slotIndex >= WinHandler.MAX_PLAYERS) return;
+        if (slotIndex < 0 || slotIndex >= 4) return;
 
         String newDeviceIdentifier = getDeviceIdentifier(device);
         if (newDeviceIdentifier == null) return;
 
         // First, remove the new device from any slot it might already be in.
-        for (int i = 0; i < WinHandler.MAX_PLAYERS; i++) {
+        for (int i = 0; i < 4; i++) {
             if (newDeviceIdentifier.equals(slotAssignments.get(i))) {
                 slotAssignments.remove(i);
             }
@@ -275,7 +224,7 @@ public class ControllerManager implements InputManager.InputDeviceListener {
      * @param slotIndex The player slot to un-assign (0-3).
      */
     public void unassignSlot(int slotIndex) {
-        if (slotIndex < 0 || slotIndex >= WinHandler.MAX_PLAYERS) return;
+        if (slotIndex < 0 || slotIndex >= 4) return;
         slotAssignments.remove(slotIndex);
         saveAssignments();
     }
@@ -328,58 +277,13 @@ public class ControllerManager implements InputManager.InputDeviceListener {
      * @param isEnabled The new enabled state.
      */
     public void setSlotEnabled(int slotIndex, boolean isEnabled) {
-        if (slotIndex < 0 || slotIndex >= WinHandler.MAX_PLAYERS) return;
+        if (slotIndex < 0 || slotIndex >= 4) return;
         enabledSlots[slotIndex] = isEnabled;
         saveAssignments();
     }
 
     public boolean isSlotEnabled(int slotIndex) {
-        if (slotIndex < 0 || slotIndex >= WinHandler.MAX_PLAYERS) return false;
+        if (slotIndex < 0 || slotIndex >= 4) return false;
         return enabledSlots[slotIndex];
-    }
-
-    /**
-     * Auto-assigns a device to the first available slot.
-     * If the device is already assigned, returns its existing slot.
-     * When only one controller is connected, it always gets slot 0 (P1) — this
-     * prevents stale multi-controller assignments from stranding a single controller
-     * in a non-P1 slot where games won't see it.
-     * @param deviceId The Android device ID from the input event.
-     * @return The slot index (0-3), or -1 if no slot available or device is not a controller.
-     */
-    public int autoAssignDevice(int deviceId) {
-        InputDevice device = inputManager.getInputDevice(deviceId);
-        if (device == null || !isGameController(device)) return -1;
-
-        int existingSlot = getSlotForDevice(deviceId);
-
-        // Single-controller fast path: if this is the only connected controller and
-        // it's not already in slot 0, move it there so P1 is always populated.
-        // Also require that detectedDevices actually contains the current device — without
-        // this, a stale cache (e.g. P2 just plugged in but onInputDeviceAdded hasn't fired
-        // yet) would see size==1 from the previous device and incorrectly evict P1 from slot 0.
-        if (detectedDevices.size() == 1 && detectedDevices.get(0).getId() == deviceId && existingSlot != 0) {
-            String deviceIdentifier = getDeviceIdentifier(device);
-            if (existingSlot >= 0) {
-                slotAssignments.remove(existingSlot);
-            }
-            slotAssignments.put(0, deviceIdentifier);
-            enabledSlots[0] = true;
-            saveAssignments();
-            return 0;
-        }
-
-        if (existingSlot >= 0) {
-            return isSlotEnabled(existingSlot) ? existingSlot : -1;
-        }
-
-        for (int i = 0; i < WinHandler.MAX_PLAYERS; i++) {
-            if (slotAssignments.get(i) == null) {
-                assignDeviceToSlot(i, device);
-                setSlotEnabled(i, true);
-                return i;
-            }
-        }
-        return -1;
     }
 }

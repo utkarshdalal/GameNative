@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">User Login</string>
     <string name="login_2fa">Two Factor</string>
@@ -252,6 +252,7 @@
     <string name="screen_effects_scaling_mode_fill">Fill</string>
     <string name="screen_effects_scaling_mode_stretch">Stretch</string>
     <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
     <string name="screen_effects_fsr">FSR 1.0</string>
     <string name="screen_effects_fsr_description">Official AMD FidelityFX Super Resolution 1.0 using EASU + RCAS with a lower internal render resolution and full-resolution upscale.</string>
     <string name="screen_effects_fsr_quality">FSR quality</string>
@@ -289,6 +290,7 @@
     <string name="performance_hud_fps_limiter_target">Target FPS</string>
     <string name="performance_hud_fps_limiter_off">Unlimited</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Limiter overridden while LSFG is active. Source rate is paced by the multiplier.</string>
     <string name="performance_hud_presets">Presets</string>
     <string name="performance_hud_presets_description">Quickly switch between common HUD layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1474,6 +1476,46 @@
     <string name="review_mixed">Mixed</string>
     <string name="review_mostly_negative">Mostly Negative</string>
     <string name="review_overwhelmingly_negative">Overwhelmingly Negative</string>
+    <!-- LSFG Frame Generation -->
+    <string name="lsfg_tab_title">LSFG-VK</string>
+    <string name="lsfg_description">Generate intermediate frames using Lossless Scaling\'s Vulkan layer. Only known to work on Adreno 6xx and above.</string>
+    <string name="lsfg_enable">Enable LSFG-VK frame generation</string>
+    <string name="lsfg_multiplier">Frame multiplier</string>
+    <string name="lsfg_flow_scale">Flow scale</string>
+    <string name="lsfg_flow_scale_desc">Lower is more stable; higher is smoother but can artifact.</string>
+    <string name="lsfg_performance_mode">Performance mode</string>
+    <string name="lsfg_not_supported">Frame generation requires a Bionic container</string>
+    <string name="lsfg_install_prompt">Lossless Scaling not installed. Tap to install. Only known to work on Adreno 6xx and above.</string>
+    <string name="lsfg_not_in_library">Lossless Scaling not in your Steam library</string>
+    <string name="lsfg_install_title">Install Lossless Scaling?</string>
+    <string name="lsfg_install_message">This will download Lossless Scaling from Steam to enable frame generation.</string>
+    <string name="lsfg_installing">Downloading Lossless Scaling…</string>
+    <string name="lsfg_performance_mode_desc">Reduces quality for higher throughput</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Show curated indie game picks in your library. Keeping this on helps support indie developers and GameNative.</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">Booting may take a few minutes on first launch</string>
+    <string name="game_launch_tip_2">Tip: You can view the game files by pressing \"%s\" in the game settings.</string>
+    <string name="game_launch_tip_3">Tip: You can go to the main settings menu and download custom drivers for your device to be used on Bionic.</string>
+    <string name="game_launch_tip_4">Tip: If you are getting a DirectX error, make sure you are using DXVK 1.10.3-async and leegao-wrapper on Bionic.</string>
+    <string name="game_launch_tip_5">Tip: Try the Direct3D test in the Start Menu after clicking \"%s\" to check if your device is working correctly.</string>
+    <string name="game_launch_tip_6">Tip: Use DXVK for DirectX 8/9/10/11 games, VKD3D for DirectX 12 games and VirGL + WineD3D for OpenGL games.</string>
+    <string name="game_launch_tip_7">Tip: Use Turnip on glibc or bionic to play DirectX 12 games. DirectX 12 support for devices that don\'t support Turnip is currently limited.</string>
+    <string name="game_launch_tip_8">Tip: Try the Adreno or Snapdragon 8 Elite drivers on glibc if you are on a compatible device.</string>
+    <string name="game_launch_tip_9">Tip: If you are getting a black screen when launching a game, try \"%s\" and launching the game from A: drive.</string>
+    <string name="game_launch_tip_10">Tip: You can add different locations for Custom Games in the settings.</string>
+    <string name="game_launch_tip_11">Tip: Use the quick menu performance HUD when you want FPS stats in-game.</string>
+    <string name="game_launch_tip_12">Tip: Install packages in A:\\_CommonRedist if your game doesn\'t launch.</string>
+    <string name="game_launch_tip_13">Tip: You can enable or disable the onscreen controller with your device\'s back key.</string>
+    <string name="game_launch_tip_14">Tip: You can bring up the keyboard with your device\'s back key.</string>
+    <string name="game_launch_tip_15">Tip: You can tap with two fingers inside the container to right click.</string>
+    <string name="game_launch_tip_16">Tip: If you are using the onscreen controller, you can disable the mouse to prevent accidental touches.</string>
+    <string name="game_launch_tip_17">Tip: Report issues on Discord so we can fix them.</string>
+    <string name="game_launch_tip_18">Tip: Use the Vortek driver in glibc or wrapper-leegao in Bionic if you are on a non-Adreno GPU.</string>
+    <string name="game_launch_tip_19">Tip: Lower resolution and use box64 in performance mode to boost FPS.</string>
+    <string name="game_launch_tip_20">Tip: If the game is crashing after loading, increase the video memory.</string>
+    <string name="game_launch_tip_21">Tip: If you are seeing visual glitches, disable DRI3.</string>
+    <string name="game_launch_tip_22">Tip: You can enable touchscreen mode.</string>
+    <string name="game_launch_tip_23">Tip: If you have a Mali GPU, please use System Drivers.</string>
+    <string name="game_launch_tip_24">Tip: Getting a blank screen? Try using the \"%s\" option in the menu to check if your drivers are working correctly.</string>
 </resources>
