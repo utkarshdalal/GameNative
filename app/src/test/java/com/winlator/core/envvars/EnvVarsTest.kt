@@ -2,6 +2,7 @@ package com.winlator.core.envvars
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EnvVarsTest {
@@ -66,7 +67,7 @@ class EnvVarsTest {
         val src = EnvVars().apply { put("EMPTY", "") }
         val parsed = EnvVars(src.toString())
         assertEquals("", parsed.get("EMPTY"))
-        assert(parsed.has("EMPTY"))
+        assertTrue(parsed.has("EMPTY"))
     }
 
     @Test
@@ -78,8 +79,8 @@ class EnvVarsTest {
 
     @Test
     fun emptyAndNullParseSafely() {
-        assert(EnvVars("").isEmpty)
-        assert(EnvVars(null).isEmpty)
+        assertTrue(EnvVars("").isEmpty)
+        assertTrue(EnvVars(null).isEmpty)
     }
 
     @Test
