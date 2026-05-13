@@ -7,6 +7,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
+import app.gamenative.utils.BionicFgManager
 import app.gamenative.utils.LsfgVkManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGConstants
@@ -325,6 +326,11 @@ object ContainerUtils {
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
             // LSFG Vulkan frame generation
             lsfgEnabled = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean(),
+            // Bionic-FG Vulkan frame generation
+            bionicFgEnabled = container.getExtra(BionicFgManager.EXTRA_ENABLED, "false").toBoolean(),
+            bionicFgMultiplier = container.getExtra(BionicFgManager.EXTRA_MULTIPLIER, "2").toIntOrNull() ?: 2,
+            bionicFgFlowScale = container.getExtra(BionicFgManager.EXTRA_FLOW_SCALE, "0.80").toFloatOrNull() ?: 0.80f,
+            bionicFgModel = container.getExtra(BionicFgManager.EXTRA_MODEL, "0"),
         )
     }
 
@@ -494,6 +500,11 @@ object ContainerUtils {
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
         // LSFG Vulkan frame generation
         container.putExtra(LsfgVkManager.EXTRA_ARMED, containerData.lsfgEnabled.toString())
+        // Bionic-FG Vulkan frame generation (alternative)
+        container.putExtra(BionicFgManager.EXTRA_ENABLED, containerData.bionicFgEnabled.toString())
+        container.putExtra(BionicFgManager.EXTRA_MULTIPLIER, containerData.bionicFgMultiplier.toString())
+        container.putExtra(BionicFgManager.EXTRA_FLOW_SCALE, containerData.bionicFgFlowScale.toString())
+        container.putExtra(BionicFgManager.EXTRA_MODEL, containerData.bionicFgModel)
         try {
             container.language = containerData.language
         } catch (e: Exception) {

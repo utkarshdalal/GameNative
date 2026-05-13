@@ -98,6 +98,11 @@ data class ContainerData(
     // LSFG Vulkan frame generation
     /** Whether LSFG frame generation is enabled for this container */
     val lsfgEnabled: Boolean = false,
+    // Bionic-FG Vulkan frame generation (alternative, no Steam entitlement required)
+    val bionicFgEnabled: Boolean = false,
+    val bionicFgMultiplier: Int = 2,
+    val bionicFgFlowScale: Float = 0.80f,
+    val bionicFgModel: String = "0",
 ) {
     companion object {
         val Saver = mapSaver(
@@ -163,6 +168,10 @@ data class ContainerData(
                     "sharpnessLevel" to state.sharpnessLevel,
                     "sharpnessDenoise" to state.sharpnessDenoise,
                     "lsfgEnabled" to state.lsfgEnabled,
+                    "bionicFgEnabled" to state.bionicFgEnabled,
+                    "bionicFgMultiplier" to state.bionicFgMultiplier,
+                    "bionicFgFlowScale" to state.bionicFgFlowScale,
+                    "bionicFgModel" to state.bionicFgModel,
                 )
             },
             restore = { savedMap ->
@@ -227,6 +236,10 @@ data class ContainerData(
                     sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                     lsfgEnabled = (savedMap["lsfgEnabled"] as? Boolean) ?: false,
+                    bionicFgEnabled = (savedMap["bionicFgEnabled"] as? Boolean) ?: false,
+                    bionicFgMultiplier = (savedMap["bionicFgMultiplier"] as? Int) ?: 2,
+                    bionicFgFlowScale = (savedMap["bionicFgFlowScale"] as? Float) ?: 0.80f,
+                    bionicFgModel = (savedMap["bionicFgModel"] as? String) ?: "0",
                 )
             },
         )

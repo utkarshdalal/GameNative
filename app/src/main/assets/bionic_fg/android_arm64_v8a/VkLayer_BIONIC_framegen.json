@@ -1,0 +1,14 @@
+{
+  "file_format_version": "1.0.0",
+  "layer": {
+    "name": "VK_LAYER_BIONIC_framegen",
+    "type": "GLOBAL",
+    "api_version": "1.4.313",
+    "library_path": "../../../lib/libbionic-fg-layer.so",
+    "implementation_version": "1",
+    "description": "Bionic frame generation layer",
+    "disable_environment": {
+      "DISABLE_BIONIC_FG": "1"
+    }
+  }
+}
