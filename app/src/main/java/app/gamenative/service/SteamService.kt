@@ -1767,6 +1767,15 @@ class SteamService : Service(), IChallengeUrlChanged {
                     Timber.i("Resumed download: initialized with $persistedBytes bytes")
                 }
 
+                // register BEFORE launching: a fast verify/update on up-to-date data can
+                // complete the launch body synchronously (DepotDownloader has no chunks to
+                // fetch). removeDownloadJob inside that body must find the entry to emit
+                // DownloadStatusChanged(false); otherwise the UI hangs at 0% and the next
+                // downloadApp call returns the stale DownloadInfo from the still-populated
+                // map (line ~1666 short-circuit).
+                downloadJobs[appId] = di
+                notifyDownloadStarted(appId)
+
                 val downloadJob = instance!!.scope.launch {
                     try {
                         // Get licenses from database
@@ -2034,16 +2043,18 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
                 downloadJob.invokeOnCompletion { throwable ->
+                    // safety net for paths the inline removeDownloadJob doesn't cover:
+                    // early `return@launch` on empty licenses, exceptions before the catch
+                    // handlers, and cancellations thrown out of suspension points.
+                    // second call is a no-op if the inline path already removed the entry.
+                    removeDownloadJob(appId)
                     if (throwable is kotlinx.coroutines.CancellationException) {
                         Timber.d(throwable, "Download canceled for app $appId")
-                        removeDownloadJob(appId)
                     }
                 }
                 di.setDownloadJob(downloadJob)
             }
 
-            downloadJobs[appId] = info
-            notifyDownloadStarted(appId)
             return info
         }
 
