@@ -20,7 +20,7 @@ object BionicFgManager {
     private const val LIB_FILENAME = "libbionic-fg-layer.so"
     private const val MANIFEST_FILENAME = "VkLayer_BIONIC_framegen.json"
     private const val VERSION_FILENAME = ".bionic_fg_runtime_version"
-    private const val RUNTIME_VERSION = "7"
+    private const val RUNTIME_VERSION = "8"
 
     // Install paths inside container
     private const val LIB_RELATIVE_DIR = ".local/lib"
