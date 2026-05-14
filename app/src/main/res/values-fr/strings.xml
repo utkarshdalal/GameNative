@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Connexion utilisateur</string>
     <string name="login_2fa">Authentification à deux facteurs</string>
@@ -302,6 +302,7 @@
     <string name="performance_hud_fps_limiter_target">FPS cible</string>
     <string name="performance_hud_fps_limiter_off">Illimité</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Limiteur ignoré tant que LSFG est actif. La fréquence source est contrôlée par le multiplicateur.</string>
     <string name="performance_hud_presets">Préréglages</string>
     <string name="performance_hud_presets_description">Basculer rapidement entre des dispositions HUD courantes.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1432,6 +1433,7 @@
     <string name="lsfg_enable">Activer la génération d\'images LSFG-VK</string>
     <string name="lsfg_multiplier">Multiplicateur d\'images</string>
     <string name="lsfg_flow_scale">Échelle de flux</string>
+    <string name="lsfg_flow_scale_desc">Plus bas = plus stable ; plus élevé = plus fluide mais peut créer des artefacts.</string>
     <string name="lsfg_performance_mode">Mode performance</string>
     <string name="lsfg_not_supported">La génération d\'images nécessite un conteneur Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling n\'est pas installé. Appuyez pour installer. Fonctionne uniquement sur Adreno 6xx et supérieur, à notre connaissance.</string>
@@ -1440,4 +1442,30 @@
     <string name="lsfg_install_message">Cela téléchargera Lossless Scaling depuis Steam pour activer la génération d\'images.</string>
     <string name="lsfg_installing">Téléchargement de Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Réduit la qualité pour un débit plus élevé</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">Le démarrage peut prendre quelques minutes lors du premier lancement</string>
+    <string name="game_launch_tip_2">Conseil : Vous pouvez visualiser les fichiers du jeu en appuyant sur \"%s\" dans les paramètres du jeu.</string>
+    <string name="game_launch_tip_3">Conseil : Vous pouvez accéder au menu des paramètres principaux pour télécharger des pilotes personnalisés pour votre appareil à utiliser sur Bionic.</string>
+    <string name="game_launch_tip_4">Conseil : Si vous obtenez une erreur DirectX, assurez-vous d\'utiliser DXVK 1.10.3-async et leegao-wrapper sur Bionic.</string>
+    <string name="game_launch_tip_5">Conseil : Essayez le test Direct3D dans le menu Démarrer après avoir cliqué sur \"%s\" pour vérifier si votre appareil fonctionne correctement.</string>
+    <string name="game_launch_tip_6">Conseil : Utilisez DXVK pour les jeux DirectX 8/9/10/11, VKD3D pour les jeux DirectX 12 et VirGL + WineD3D pour les jeux OpenGL.</string>
+    <string name="game_launch_tip_7">Conseil : Utilisez Turnip sur glibc ou bionic pour jouer aux jeux DirectX 12. La prise en charge de DirectX 12 pour les appareils qui ne supportent pas Turnip est actuellement limitée.</string>
+    <string name="game_launch_tip_8">Conseil : Essayez les pilotes Adreno ou Snapdragon 8 Elite sur glibc si vous disposez d\'un appareil compatible.</string>
+    <string name="game_launch_tip_9">Conseil : Si vous obtenez un écran noir au lancement d\'un jeu, essayez \"%s\" et de lancer le jeu depuis le lecteur A:.</string>
+    <string name="game_launch_tip_10">Conseil : Vous pouvez ajouter différents emplacements pour les jeux personnalisés dans les paramètres.</string>
+    <string name="game_launch_tip_11">Conseil : Utilisez le HUD de performances du menu rapide lorsque vous souhaitez des statistiques FPS en jeu.</string>
+    <string name="game_launch_tip_12">Conseil : Installez les paquets dans A:\\_CommonRedist si votre jeu ne se lance pas.</string>
+    <string name="game_launch_tip_13">Conseil : Vous pouvez activer ou désactiver la manette à l\'écran avec la touche retour de votre appareil.</string>
+    <string name="game_launch_tip_14">Conseil : Vous pouvez faire apparaître le clavier avec la touche retour de votre appareil.</string>
+    <string name="game_launch_tip_15">Conseil : Vous pouvez taper avec deux doigts à l\'intérieur du conteneur pour un clic droit.</string>
+    <string name="game_launch_tip_16">Conseil : Si vous utilisez la manette à l\'écran, vous pouvez désactiver la souris pour éviter les touches accidentelles.</string>
+    <string name="game_launch_tip_17">Conseil : Signalez les problèmes sur Discord pour que nous puissions les corriger.</string>
+    <string name="game_launch_tip_18">Conseil : Utilisez le pilote Vortek sur glibc ou wrapper-leegao sur Bionic si vous avez un GPU non-Adreno.</string>
+    <string name="game_launch_tip_19">Conseil : Abaissez la résolution et utilisez box64 en mode performance pour augmenter les FPS.</string>
+    <string name="game_launch_tip_20">Conseil : Si le jeu plante après le chargement, augmentez la mémoire vidéo.</string>
+    <string name="game_launch_tip_21">Conseil : Si vous voyez des artefacts visuels, désactivez DRI3.</string>
+    <string name="game_launch_tip_22">Conseil : Vous pouvez activer le mode écran tactile.</string>
+    <string name="game_launch_tip_23">Conseil : Si vous avez un GPU Mali, veuillez utiliser les pilotes système.</string>
+    <string name="game_launch_tip_24">Conseil : Écran noir ? Essayez l\'option \"%s\" dans le menu pour vérifier si vos pilotes fonctionnent correctement.</string>
+    <string name="launch_bionic_steam_description">Active le jeu en ligne et améliore la compatibilité\nNe fonctionne pas toujours\nSauvegardez vos parties avant d’essayer</string>
 </resources>

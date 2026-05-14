@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Вхід користувача</string>
     <string name="login_2fa">Двофакторна автентифікація</string>
@@ -301,6 +301,7 @@
     <string name="performance_hud_fps_limiter_target">Цільовий FPS</string>
     <string name="performance_hud_fps_limiter_off">Без обмежень</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Обмежувач вимкнено, поки активний LSFG. Частоту джерела задає множник.</string>
     <string name="performance_hud_presets">Набори</string>
     <string name="performance_hud_presets_description">Швидко перемикайтеся між типовими макетами HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1431,6 +1432,7 @@
     <string name="lsfg_enable">Увімкнути генерацію кадрів LSFG-VK</string>
     <string name="lsfg_multiplier">Множник кадрів</string>
     <string name="lsfg_flow_scale">Масштаб потоку</string>
+    <string name="lsfg_flow_scale_desc">Нижче — стабільніше; вище — плавніше, але можуть з’являтися артефакти.</string>
     <string name="lsfg_performance_mode">Режим продуктивності</string>
     <string name="lsfg_not_supported">Для генерації кадрів потрібен контейнер Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling не встановлено. Натисніть для встановлення. Відомо, що працює лише на Adreno 6xx і новіших.</string>
@@ -1439,4 +1441,30 @@
     <string name="lsfg_install_message">Це завантажить Lossless Scaling зі Steam для увімкнення генерації кадрів.</string>
     <string name="lsfg_installing">Завантаження Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Знижує якість для вищої пропускної здатності</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">Завантаження може зайняти кілька хвилин при першому запуску</string>
+    <string name="game_launch_tip_2">Порада: Ви можете переглянути файли гри, натиснувши \"%s\" у налаштуваннях гри.</string>
+    <string name="game_launch_tip_3">Порада: Ви можете перейти до головного меню налаштувань і завантажити власні драйвери для вашого пристрою для використання на Bionic.</string>
+    <string name="game_launch_tip_4">Порада: Якщо ви отримуєте помилку DirectX, переконайтеся, що ви використовуєте DXVK 1.10.3-async та leegao-wrapper на Bionic.</string>
+    <string name="game_launch_tip_5">Порада: Спробуйте тест Direct3D у меню «Пуск» після натискання \"%s\", щоб перевірити, чи ваш пристрій працює правильно.</string>
+    <string name="game_launch_tip_6">Порада: Використовуйте DXVK для ігор DirectX 8/9/10/11, VKD3D для ігор DirectX 12 та VirGL + WineD3D для ігор OpenGL.</string>
+    <string name="game_launch_tip_7">Порада: Використовуйте Turnip на glibc або bionic для ігор DirectX 12. Підтримка DirectX 12 для пристроїв, які не підтримують Turnip, наразі обмежена.</string>
+    <string name="game_launch_tip_8">Порада: Спробуйте драйвери Adreno або Snapdragon 8 Elite на glibc, якщо у вас сумісний пристрій.</string>
+    <string name="game_launch_tip_9">Порада: Якщо при запуску гри з\'являється чорний екран, спробуйте \"%s\" і запустити гру з диска A:.</string>
+    <string name="game_launch_tip_10">Порада: Ви можете додати різні розташування для користувацьких ігор у налаштуваннях.</string>
+    <string name="game_launch_tip_11">Порада: Використовуйте HUD продуктивності в швидкому меню, коли хочете бачити статистику FPS у грі.</string>
+    <string name="game_launch_tip_12">Порада: Встановіть пакети в A:\\_CommonRedist, якщо ваша гра не запускається.</string>
+    <string name="game_launch_tip_13">Порада: Ви можете ввімкнути або вимкнути екранний контролер за допомогою кнопки «Назад» на вашому пристрої.</string>
+    <string name="game_launch_tip_14">Порада: Ви можете викликати клавіатуру за допомогою кнопки «Назад» на вашому пристрої.</string>
+    <string name="game_launch_tip_15">Порада: Ви можете натиснути двома пальцями всередині контейнера для клацання правою кнопкою миші.</string>
+    <string name="game_launch_tip_16">Порада: Якщо ви використовуєте екранний контролер, ви можете вимкнути мишу, щоб запобігти випадковим дотикам.</string>
+    <string name="game_launch_tip_17">Порада: Повідомляйте про проблеми в Discord, щоб ми могли їх виправити.</string>
+    <string name="game_launch_tip_18">Порада: Використовуйте драйвер Vortek на glibc або wrapper-leegao на Bionic, якщо у вас не-Adreno GPU.</string>
+    <string name="game_launch_tip_19">Порада: Зменшіть роздільну здатність і використовуйте box64 у режимі продуктивності для підвищення FPS.</string>
+    <string name="game_launch_tip_20">Порада: Якщо гра вилітає після завантаження, збільште відеопам\'ять.</string>
+    <string name="game_launch_tip_21">Порада: Якщо ви бачите візуальні артефакти, вимкніть DRI3.</string>
+    <string name="game_launch_tip_22">Порада: Ви можете ввімкнути режим сенсорного екрана.</string>
+    <string name="game_launch_tip_23">Порада: Якщо у вас GPU Mali, будь ласка, використовуйте системні драйвери.</string>
+    <string name="game_launch_tip_24">Порада: Чорний екран? Спробуйте опцію \"%s\" у меню, щоб перевірити, чи ваші драйвери працюють правильно.</string>
+    <string name="launch_bionic_steam_description">Увімкнення онлайн-гри та покращення сумісності\nПрацює не завжди\nПеред спробою зробіть резервну копію збережень</string>
 </resources>

@@ -4,6 +4,12 @@
   "items": {
     "driver": [
       {
+        "id": "Turnip Gen8 V30",
+        "name": "Turnip_Gen8_V30",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_Gen8_V30.zip",
+        "variant": "bionic"
+      },
+      {
         "id": "A8XX MR v25.1",
         "name": "a8xx-gen8-V25.1",
         "url": "https://downloads.gamenative.app/drivers/a8xx-gen8-V25.1.zip",
@@ -717,6 +723,14 @@
         "id": "0.3.6-0",
         "name": "WOWBox64 0.3.6",
         "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/WOWBOX64/wowbox64-0.3.6.wcp",
+        "variant": "bionic"
+      }
+    ],
+    "vkd3d": [
+      {
+        "id": "3.0.1-0",
+        "name": "VKD3D 3.0.1-0",
+        "url": "https://downloads.gamenative.app/drivers/vkd3d-proton-3.0.1.wcp",
         "variant": "bionic"
       }
     ]

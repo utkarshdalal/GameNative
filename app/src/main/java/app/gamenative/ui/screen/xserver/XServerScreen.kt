@@ -75,6 +75,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.SteamBootstrap
 import app.gamenative.data.GameSource
 import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.data.LaunchInfo
@@ -529,9 +530,14 @@ fun XServerScreen(
             ?.setFrameRateLimit(limit)
     }
 
+    fun effectiveFpsLimit(): Int =
+        if (isLsfgAvailable && lsfgMultiplier >= 2) 0
+        else if (fpsLimiterEnabled) fpsLimiterTarget
+        else 0
+
     fun applyFpsLimiterEnabled(enabled: Boolean) {
         fpsLimiterEnabled = enabled
-        applyFpsLimiterToEngines(if (enabled) fpsLimiterTarget else 0)
+        applyFpsLimiterToEngines(effectiveFpsLimit())
         persistFpsLimiterState()
     }
 
@@ -539,7 +545,7 @@ fun XServerScreen(
         val sanitized = target.coerceAtLeast(5).coerceAtMost(detectedMaxRefreshRateHz)
         fpsLimiterTarget = sanitized
         if (fpsLimiterEnabled) {
-            applyFpsLimiterToEngines(sanitized)
+            applyFpsLimiterToEngines(effectiveFpsLimit())
         }
         persistFpsLimiterState()
     }
@@ -554,6 +560,7 @@ fun XServerScreen(
     fun applyLsfgMultiplier(mult: Int) {
         lsfgMultiplier = LsfgQuickMenuHelper.sanitizeMultiplier(mult)
         applyLsfgSettings()
+        applyFpsLimiterToEngines(effectiveFpsLimit())
     }
 
     fun applyLsfgFlowScale(scale: Float) {
@@ -573,8 +580,7 @@ fun XServerScreen(
         if (clampedTarget != fpsLimiterTarget) {
             fpsLimiterTarget = clampedTarget
         }
-        val appliedLimit = if (fpsLimiterEnabled) clampedTarget else 0
-        applyFpsLimiterToEngines(appliedLimit)
+        applyFpsLimiterToEngines(effectiveFpsLimit())
     }
 
     fun restorePerformanceHudPosition() {
@@ -648,7 +654,9 @@ fun XServerScreen(
         val hud = PerformanceHudView(
             context = context,
             fpsProvider = {
-                frameRating?.currentFPS ?: 0f
+                val raw = frameRating?.currentFPS ?: 0f
+                val mult = if (isLsfgAvailable && lsfgMultiplier >= 2) lsfgMultiplier else 1
+                raw * mult
             },
             initialConfig = performanceHudConfig,
             initialCompactMode = PrefManager.performanceHudCompactMode,
@@ -3055,6 +3063,13 @@ private fun setupXEnvironment(
         val wow64Mode = container.isWoW64Mode
         guestProgramLauncherComponent.setContainer(container);
         guestProgramLauncherComponent.setWineInfo(xServerState.value.wineInfo);
+        if (guestProgramLauncherComponent is BionicProgramLauncherComponent && container.isLaunchBionicSteam) {
+            // Bionic-Steam mode publishes SteamGameId/SteamAppId from this value.
+            val numericAppId = runCatching { ContainerUtils.extractGameIdFromContainerId(appId) }.getOrNull()
+            if (numericAppId != null && numericAppId > 0) {
+                guestProgramLauncherComponent.setSteamAppId(numericAppId.toString())
+            }
+        }
         gameExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
             getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent, gameSource) +
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
@@ -3072,6 +3087,8 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setSteamType(container.getSteamType())
 
         envVars.putAll(container.envVars)
+        envVars.remove("DXVK_FRAME_RATE")
+        envVars.remove("VKD3D_FRAME_RATE")
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
         val graphicsDriverConfig = KeyValueSet(container.getGraphicsDriverConfig())
         if (graphicsDriverConfig.get("version").lowercase(Locale.getDefault()).contains("gen8")) {
@@ -3134,7 +3151,7 @@ private fun setupXEnvironment(
     environment.addComponent(XServerComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)))
     environment.addComponent(NetworkInfoUpdateComponent())
 
-    if (!container.isLaunchRealSteam) {
+    if (!container.isLaunchRealSteam && !container.isLaunchBionicSteam) {
         environment.addComponent(SteamClientComponent())
     }
 
@@ -3262,7 +3279,7 @@ private fun setupXEnvironment(
     // Request encrypted app ticket for Steam games at launch time
     val isCustomGame = gameSource == GameSource.CUSTOM_GAME
     val gameIdForTicket = ContainerUtils.extractGameIdFromContainerId(appId)
-    if (!bootToContainer && !isCustomGame && gameIdForTicket != null && !container.isLaunchRealSteam) {
+    if (!bootToContainer && !isCustomGame && gameIdForTicket != null && !container.isLaunchRealSteam && !container.isLaunchBionicSteam) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val ticket = SteamService.instance?.getEncryptedAppTicket(gameIdForTicket)
@@ -3702,7 +3719,19 @@ private fun getWineStartCommand(
         Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
         "\"wfm.exe\""
     } else {
-        if (container.isLaunchRealSteam) {
+        if (container.isLaunchBionicSteam) {
+            // Bionic-Steam mode: launch steam.exe with the game's exe path as its
+            // argument, so the Wine-side steam.exe + lsteamclient.dll handshake
+            // can attach to the native libsteamclient.so we bootstrapped.
+            val appDirPath = SteamService.getAppDirPath(gameId)
+            val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
+            val exePath = container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) }
+            val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
+            val executableDir = appDirPath + "/" + exePath.substringBeforeLast("/", "")
+            guestProgramLauncherComponent.workingDir = File(executableDir)
+            Timber.i("Bionic-Steam working directory is $executableDir")
+            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" \"C:\\\\Program Files (x86)\\\\Steam\\\\steamapps\\\\common\\\\$gameFolderName\\\\$normalizedExe\""
+        } else if (container.isLaunchRealSteam) {
             // Launch Steam with the applaunch parameter to start the game
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
                     "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $gameId"
@@ -3809,6 +3838,18 @@ private fun exit(
         Timber.e(e, "winHandler.stop() failed during exit")
     }
     PluviaApp.shutdownEnvironment()
+
+    // Bionic-Steam mode brought up libsteamclient.so inside this Android process
+    // (see BionicProgramLauncherComponent.bootstrapNativeSteamClient). Tear it
+    // down so the next launch can stand up a fresh pipe / user instead of
+    // inheriting the previous session's half-dead state.
+    if (container.isLaunchBionicSteam) {
+        try {
+            SteamBootstrap.stop()
+        } catch (e: Exception) {
+            Timber.e(e, "SteamBootstrap.stop() failed during exit")
+        }
+    }
 
     // empty Wine/XDG trash in background after container stops
     CoroutineScope(Dispatchers.IO).launch {
@@ -4080,7 +4121,7 @@ private fun unpackExecutableFile(
                 }
             }
         } else {
-            Timber.i("Skipping Steamless (launchRealSteam=${container.isLaunchRealSteam}, useLegacyDRM=${container.isUseLegacyDRM}, unpackFiles=${container.isUnpackFiles})")
+            Timber.i("Skipping Steamless (launchRealSteam=${container.isLaunchRealSteam}, launchBionicSteam=${container.isLaunchBionicSteam}, useLegacyDRM=${container.isUseLegacyDRM}, unpackFiles=${container.isUnpackFiles})")
         }
 
         output = StringBuilder()
@@ -4237,8 +4278,16 @@ private fun setupWineSystemFiles(
         containerDataChanged = true
     }
 
-    if (container.isLaunchRealSteam){
+    if (container.isLaunchRealSteam || container.isLaunchBionicSteam) {
         extractSteamFiles(context, container, onExtractFileListener)
+    }
+
+    // If bionic mode is off, scrub any bionic-installed files from a previous
+    // enable. The Wine-side lsteamclient.dll comes from Proton's own tree in
+    // non-bionic launches, and the native libsteamclient.so should not be
+    // present at all unless bionic is on.
+    if (!container.isLaunchBionicSteam) {
+        cleanupBionicSteamAssets(imageFs)
     }
 
     val desktopTheme = container.desktopTheme
@@ -4901,7 +4950,83 @@ private fun extractSteamFiles(
     onExtractFileListener: OnExtractFileListener?,
 ) {
     val imageFs = ImageFs.find(context)
-    if (File(ImageFs.find(context).rootDir.absolutePath, ImageFs.WINEPREFIX + "/drive_c/Program Files (x86)/Steam/steam.exe").exists()) return
+    val steamExe = File(
+        imageFs.rootDir.absolutePath,
+        ImageFs.WINEPREFIX + "/drive_c/Program Files (x86)/Steam/steam.exe",
+    )
+
+    if (container.isLaunchBionicSteam) {
+        val steamDir = steamExe.parentFile ?: return
+        steamDir.mkdirs()
+        val staleSessionFiles = listOf(
+            File(steamDir, "config/config.vdf"),
+            File(steamDir, "config/loginusers.vdf"),
+            File(steamDir, "local.vdf"),
+            File(
+                imageFs.rootDir,
+                ImageFs.WINEPREFIX + "/drive_c/users/${ImageFs.USER}/AppData/Local/Steam/local.vdf",
+            ),
+            File(imageFs.rootDir, "/opt/apps/steam-token.exe"),
+        )
+        for (f in staleSessionFiles) {
+            try {
+                if (Files.deleteIfExists(f.toPath())) {
+                    Timber.i("Deleted stale session file ${f.absolutePath} (bionic mode)")
+                }
+            } catch (e: IOException) {
+                Timber.w(e, "Failed to delete ${f.absolutePath}")
+            }
+        }
+
+        val drmArchive = File(imageFs.getFilesDir(), "experimental-drm-20260116.tzst")
+        if (drmArchive.exists()) {
+            Timber.i("Extracting experimental-drm.tzst (bionic mode)")
+            TarCompressorUtils.extract(
+                TarCompressorUtils.Type.ZSTD,
+                drmArchive,
+                imageFs.getRootDir(),
+                onExtractFileListener,
+            )
+        } else {
+            Timber.e("experimental-drm-20260116.tzst missing at ${drmArchive.absolutePath}")
+        }
+
+        try {
+            val steamExeSource = File(imageFs.getFilesDir(), "steam.exe")
+            if (!steamExeSource.exists()) {
+                Timber.e("steam.exe cache missing at ${steamExeSource.absolutePath} (expected from BionicSteamAssetsDependency)")
+            } else {
+                steamExeSource.inputStream().use { input ->
+                    Files.copy(input, steamExe.toPath(), REPLACE_EXISTING)
+                }
+            }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to copy cached steam.exe")
+        }
+
+        try {
+            val accountId = SteamService.userSteamId?.accountID?.toInt() ?: 0
+            val userRegFile = File(container.rootDir, ".wine/user.reg")
+            val steamRoot = "C:\\Program Files (x86)\\Steam"
+            val activeProcessKey = "Software\\Valve\\Steam\\ActiveProcess"
+            WineRegistryEditor(userRegFile).use { editor ->
+                editor.setCreateKeyIfNotExist(true)
+                editor.setDwordValue(activeProcessKey, "ActiveUser", accountId)
+                editor.setStringValue(activeProcessKey, "SteamClientDll", "$steamRoot\\steamclient.dll")
+                editor.setStringValue(activeProcessKey, "SteamClientDll64", "$steamRoot\\steamclient64.dll")
+                editor.setStringValue(activeProcessKey, "Universe", "Public")
+            }
+            Timber.i("Set HKCU\\Software\\Valve\\Steam\\ActiveProcess registry values (bionic mode, ActiveUser=$accountId)")
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to write ActiveProcess registry values")
+        }
+        return
+    }
+
+    // Real-Steam mode: extract the full real-Steam tree once; subsequent boots
+    // reuse what's already on disk.
+    if (steamExe.exists()) return
+
     val downloaded = File(imageFs.getFilesDir(), "steam.tzst")
     Timber.i("Extracting steam.tzst")
     TarCompressorUtils.extract(
@@ -4909,7 +5034,20 @@ private fun extractSteamFiles(
         downloaded,
         imageFs.getRootDir(),
         onExtractFileListener,
-    );
+    )
+}
+
+private fun cleanupBionicSteamAssets(imageFs: ImageFs) {
+    val targets = listOf(
+        File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows/system32/lsteamclient.dll"),
+        File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows/syswow64/lsteamclient.dll"),
+        File(imageFs.libDir, "libsteamclient.so"),
+    )
+    for (target in targets) {
+        if (target.exists() && !target.delete()) {
+            Timber.w("Failed to delete bionic-Steam asset at ${target.absolutePath}")
+        }
+    }
 }
 
 private fun readZipManifestNameFromAssets(context: Context, assetName: String): String? {

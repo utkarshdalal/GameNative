@@ -300,6 +300,7 @@
     <string name="performance_hud_fps_limiter_target">目標 FPS</string>
     <string name="performance_hud_fps_limiter_off">無限制</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">LSFG 啟用時，限制器被覆蓋。來源幀率由倍數控制。</string>
     <string name="performance_hud_presets">預設</string>
     <string name="performance_hud_presets_description">快速切換常用 HUD 版面配置。</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1497,6 +1498,7 @@
     <string name="lsfg_enable">啟用 LSFG-VK 幀生成</string>
     <string name="lsfg_multiplier">幀倍率</string>
     <string name="lsfg_flow_scale">光流縮放</string>
+    <string name="lsfg_flow_scale_desc">數值越低越穩定；越高越流暢，但可能出現偽影。</string>
     <string name="lsfg_performance_mode">效能模式</string>
     <string name="lsfg_not_supported">幀生成需要 Bionic 容器</string>
     <string name="lsfg_install_prompt">Lossless Scaling 未安裝。點擊安裝。已知僅在 Adreno 6xx 及更高版本上可用。</string>
@@ -1505,4 +1507,30 @@
     <string name="lsfg_install_message">將從 Steam 下載 Lossless Scaling 以啟用幀生成。</string>
     <string name="lsfg_installing">正在下載 Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">降低畫質以提升吞吐量</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">首次啟動可能需要幾分鐘時間</string>
+    <string name="game_launch_tip_2">提示：你可以在遊戲設定中點擊「%s」來檢視遊戲檔案。</string>
+    <string name="game_launch_tip_3">提示：你可以前往主設定選單下載自訂驅動，用於 Bionic 容器。</string>
+    <string name="game_launch_tip_4">提示：如果遇到 DirectX 錯誤，請確保在 Bionic 上使用 DXVK 1.10.3-async 和 leegao-wrapper。</string>
+    <string name="game_launch_tip_5">提示：點擊「%s」後，可以在開始選單中嘗試 Direct3D 測試，檢查裝置是否正常運作。</string>
+    <string name="game_launch_tip_6">提示：DirectX 8/9/10/11 遊戲使用 DXVK，DirectX 12 遊戲使用 VKD3D，OpenGL 遊戲使用 VirGL + WineD3D。</string>
+    <string name="game_launch_tip_7">提示：在 glibc 或 bionic 上使用 Turnip 來執行 DirectX 12 遊戲。不支援 Turnip 的裝置對 DirectX 12 的支援目前有限。</string>
+    <string name="game_launch_tip_8">提示：如果裝置相容，可以在 glibc 上嘗試 Adreno 或 Snapdragon 8 Elite 驅動。</string>
+    <string name="game_launch_tip_9">提示：如果啟動遊戲時黑屏，請嘗試「%s」並從 A: 磁碟機啟動遊戲。</string>
+    <string name="game_launch_tip_10">提示：你可以在設定中新增不同的自訂遊戲路徑。</string>
+    <string name="game_launch_tip_11">提示：在遊戲中使用快速選單的效能 HUD 檢視 FPS 統計資訊。</string>
+    <string name="game_launch_tip_12">提示：如果遊戲無法啟動，請安裝 A:\\_CommonRedist 中的執行庫。</string>
+    <string name="game_launch_tip_13">提示：你可以透過裝置的返回鍵啟用或停用螢幕手把。</string>
+    <string name="game_launch_tip_14">提示：你可以透過裝置的返回鍵叫出鍵盤。</string>
+    <string name="game_launch_tip_15">提示：在容器中用雙指點擊可以模擬滑鼠右鍵。</string>
+    <string name="game_launch_tip_16">提示：使用螢幕手把時，可以停用滑鼠以防止誤觸。</string>
+    <string name="game_launch_tip_17">提示：在 Discord 上回報問題，以便我們修復。</string>
+    <string name="game_launch_tip_18">提示：如果你使用的是非 Adreno GPU，在 glibc 上使用 Vortek 驅動，在 Bionic 上使用 wrapper-leegao。</string>
+    <string name="game_launch_tip_19">提示：降低解析度並使用 box64 效能模式可以提升 FPS。</string>
+    <string name="game_launch_tip_20">提示：如果遊戲載入後當機，請增加視訊記憶體大小。</string>
+    <string name="game_launch_tip_21">提示：如果出現影像異常，請停用 DRI3。</string>
+    <string name="game_launch_tip_22">提示：你可以啟用觸控螢幕模式。</string>
+    <string name="game_launch_tip_23">提示：如果你使用的是 Mali GPU，請使用系統驅動。</string>
+    <string name="game_launch_tip_24">提示：出現黑畫面？嘗試使用選單中的「%s」選項檢查驅動是否正常運作。</string>
+    <string name="launch_bionic_steam_description">啟用線上遊玩並提升相容性\n不一定總能正常運作\n嘗試前請先備份存檔</string>
 </resources>

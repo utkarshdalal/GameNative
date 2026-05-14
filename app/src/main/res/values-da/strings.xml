@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Brugerlogin</string>
     <string name="login_2fa">Tofaktorgodkendelse</string>
@@ -233,6 +233,7 @@
     <string name="performance_hud_fps_limiter_target">Mål-FPS</string>
     <string name="performance_hud_fps_limiter_off">Ubegrænset</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Begrænser tilsidesat, mens LSFG er aktiv. Kildehastigheden styres af multiplikatoren.</string>
     <string name="performance_hud_presets">Forudindstillinger</string>
     <string name="performance_hud_presets_description">Skift hurtigt mellem almindelige HUD-layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1302,6 +1303,7 @@
     <string name="lsfg_enable">Aktivér LSFG-VK billedgenerering</string>
     <string name="lsfg_multiplier">Billedmultiplikator</string>
     <string name="lsfg_flow_scale">Flow-skala</string>
+    <string name="lsfg_flow_scale_desc">Lavere er mere stabilt; højere er mere flydende men kan give artefakter.</string>
     <string name="lsfg_performance_mode">Ydelsestilstand</string>
     <string name="lsfg_not_supported">Billedgenerering kræver en Bionic-container</string>
     <string name="lsfg_install_prompt">Lossless Scaling er ikke installeret. Tryk for at installere. Virkede kun på Adreno 6xx og nyere, så vidt vides.</string>
@@ -1310,4 +1312,30 @@
     <string name="lsfg_install_message">Dette downloader Lossless Scaling fra Steam for at aktivere billedgenerering.</string>
     <string name="lsfg_installing">Downloader Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Reducerer kvalitet for højere gennemstrømning</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">Opstart kan tage et par minutter ved første lancering</string>
+    <string name="game_launch_tip_2">Tip: Du kan se spilfilerne ved at trykke på \"%s\" i spilindstillingerne.</string>
+    <string name="game_launch_tip_3">Tip: Gå til hovedindstillingsmenuen for at downloade brugerdefinerede drivere til din enhed, der skal bruges på Bionic.</string>
+    <string name="game_launch_tip_4">Tip: Hvis du får en DirectX-fejl, skal du sørge for at bruge DXVK 1.10.3-async og leegao-wrapper på Bionic.</string>
+    <string name="game_launch_tip_5">Tip: Prøv Direct3D-testen i Startmenuen efter at have klikket på \"%s\" for at kontrollere, om din enhed fungerer korrekt.</string>
+    <string name="game_launch_tip_6">Tip: Brug DXVK til DirectX 8/9/10/11 spil, VKD3D til DirectX 12 spil og VirGL + WineD3D til OpenGL spil.</string>
+    <string name="game_launch_tip_7">Tip: Brug Turnip på glibc eller bionic til at spille DirectX 12 spil. DirectX 12-understøttelse til enheder, der ikke understøtter Turnip, er i øjeblikket begrænset.</string>
+    <string name="game_launch_tip_8">Tip: Prøv Adreno- eller Snapdragon 8 Elite-driverne på glibc, hvis du har en kompatibel enhed.</string>
+    <string name="game_launch_tip_9">Tip: Hvis du får en sort skærm, når du starter et spil, så prøv at \"%s\" og start spillet fra A:-drevet.</string>
+    <string name="game_launch_tip_10">Tip: Du kan tilføje forskellige placeringer til brugerdefinerede spil i indstillingerne.</string>
+    <string name="game_launch_tip_11">Tip: Brug performance HUD i hurtigmenuen, når du vil have FPS-statistik i spillet.</string>
+    <string name="game_launch_tip_12">Tip: Installer pakker i A:\\_CommonRedist, hvis dit spil ikke starter.</string>
+    <string name="game_launch_tip_13">Tip: Du kan aktivere eller deaktivere skærmcontrolleren med din enheds tilbage-knap.</string>
+    <string name="game_launch_tip_14">Tip: Du kan få tastaturet frem med din enheds tilbage-knap.</string>
+    <string name="game_launch_tip_15">Tip: Du kan trykke med to fingre inde i containeren for at højreklikke.</string>
+    <string name="game_launch_tip_16">Tip: Hvis du bruger skærmcontrolleren, kan du deaktivere musen for at forhindre utilsigtede berøringer.</string>
+    <string name="game_launch_tip_17">Tip: Rapporter problemer på Discord, så vi kan rette dem.</string>
+    <string name="game_launch_tip_18">Tip: Brug Vortek-driveren på glibc eller wrapper-leegao på Bionic, hvis du har et ikke-Adreno GPU.</string>
+    <string name="game_launch_tip_19">Tip: Sænk opløsningen og brug box64 i performance-tilstand for at øge FPS.</string>
+    <string name="game_launch_tip_20">Tip: Hvis spillet går ned efter indlæsning, skal du øge videohukommelsen.</string>
+    <string name="game_launch_tip_21">Tip: Hvis du ser visuelle fejl, skal du deaktivere DRI3.</string>
+    <string name="game_launch_tip_22">Tip: Du kan aktivere touchscreen-tilstand.</string>
+    <string name="game_launch_tip_23">Tip: Hvis du har et Mali GPU, skal du bruge systemdrivere.</string>
+    <string name="game_launch_tip_24">Tip: Får du en sort skærm? Prøv at bruge \"%s\"-indstillingen i menuen for at kontrollere, om dine drivere fungerer korrekt.</string>
+    <string name="launch_bionic_steam_description">Aktiverer online-spil og forbedrer kompatibilitet\nVirker ikke altid\nTag backup af dine gemte spil, før du prøver dette</string>
 </resources>

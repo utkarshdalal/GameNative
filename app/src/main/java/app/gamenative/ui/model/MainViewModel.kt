@@ -455,7 +455,7 @@ class MainViewModel @Inject constructor(
                 val container = ContainerUtils.getOrCreateContainer(context, appId)
                 val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
                 if (gameSource == GameSource.STEAM) {
-                    if (container.isLaunchRealSteam()) {
+                    if (container.isLaunchRealSteam() || container.isLaunchBionicSteam()) {
                         SteamUtils.restoreSteamApi(context, appId)
                     } else {
                         val offline = _offline.value
@@ -644,7 +644,7 @@ class MainViewModel @Inject constructor(
                         // When launchRealSteam is true, let the real Steam client handle the "game is running" notification
                         val shouldLaunchRealSteam = try {
                             val container = ContainerUtils.getContainer(context, appId)
-                            container.isLaunchRealSteam()
+                            container.isLaunchRealSteam() || container.isLaunchBionicSteam()
                         } catch (e: Exception) {
                             // Container might not exist, default to notifying Steam
                             false
