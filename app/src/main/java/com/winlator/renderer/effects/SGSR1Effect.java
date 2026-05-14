@@ -6,7 +6,6 @@ import com.winlator.renderer.material.ShaderMaterial;
 
 public class SGSR1Effect extends Effect implements RenderScaleEffect {
     private boolean preserveAspect = false;
-    private float sharpness = 0.5f;
 
     public boolean isPreserveAspect() {
         return preserveAspect;
@@ -14,14 +13,6 @@ public class SGSR1Effect extends Effect implements RenderScaleEffect {
 
     public void setPreserveAspect(boolean preserveAspect) {
         this.preserveAspect = preserveAspect;
-    }
-
-    public float getSharpness() {
-        return sharpness;
-    }
-
-    public void setSharpness(float sharpness) {
-        this.sharpness = Math.max(0.0f, Math.min(sharpness, 1.0f));
     }
 
     @Override
@@ -32,7 +23,6 @@ public class SGSR1Effect extends Effect implements RenderScaleEffect {
     @Override
     protected void onUse(ShaderMaterial material, GLRenderer renderer) {
         material.setUniformFloat("preserveAspect", preserveAspect ? 1.0f : 0.0f);
-        material.setUniformFloat("sharpness", sharpness);
     }
 
     @Override
@@ -50,7 +40,7 @@ public class SGSR1Effect extends Effect implements RenderScaleEffect {
     private static class SGSR1Material extends ScreenMaterial {
 
         public SGSR1Material() {
-            setUniformNames("screenTexture", "inputResolution", "outputResolution", "preserveAspect", "sharpness");
+            setUniformNames("screenTexture", "inputResolution", "outputResolution", "preserveAspect");
         }
 
         // Override to provide a GLES 3.0-compatible vertex shader so the
@@ -91,8 +81,6 @@ public class SGSR1Effect extends Effect implements RenderScaleEffect {
                 "uniform highp vec2 inputResolution;\n" +
                 "uniform highp vec2 outputResolution;\n" +
                 "uniform float preserveAspect;\n" +
-                "uniform float sharpness;\n" +
-                "\n" +
                 "in highp vec2 vUV;\n" +
                 "out vec4 fragColor;\n" +
                 "\n" +
@@ -189,9 +177,7 @@ public class SGSR1Effect extends Effect implements RenderScaleEffect {
                 "        float maxY   = max(max(left.y, left.z), max(right.x, right.w));\n" +
                 "        float minY   = min(min(left.y, left.z), min(right.x, right.w));\n" +
                 "\n" +
-                "        // EdgeSharpness: user sharpness [0,1] -> reference range [1.0, 2.0]\n" +
-                "        float edgeSharpness = mix(1.0, 2.0, clamp(sharpness, 0.0, 1.0));\n" +
-                "        float deltaY = clamp(edgeSharpness * finalY, minY, maxY) - color.w;\n" +
+                "        float deltaY = clamp(2.0 * finalY, minY, maxY) - color.w;\n" +
                 "        deltaY = clamp(deltaY, -23.0 / 255.0, 23.0 / 255.0);\n" +
                 "\n" +
                 "        color.x = clamp(color.x + deltaY, 0.0, 1.0);\n" +

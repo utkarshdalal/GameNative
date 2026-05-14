@@ -229,10 +229,7 @@
     <string name="screen_effects_fsr_quality_balanced">Balanceret</string>
     <string name="screen_effects_fsr_quality_performance">Ydelse</string>
     <string name="screen_effects_fsr_sharpness">FSR-skarphed</string>
-    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
-    <string name="screen_effects_sgsr_sharpness">SGSR-skarphed</string>
-    <string name="screen_effects_sgsr_sharpness_value">%1$d%%</string>
-    <string name="screen_effects_launch_sharpness">Opstartsskarphed</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>    <string name="screen_effects_launch_sharpness">Opstartsskarphed</string>
     <string name="screen_effects_launch_sharpness_note">CAS og DLS anvendes via vkBasalt og træder i kraft, næste gang du starter spillet.</string>
     <string name="screen_effects_color_adjustments">Farvejusteringer</string>
     <string name="screen_effects_shader_toggles">Shader-effekter</string>

@@ -300,10 +300,7 @@
     <string name="screen_effects_fsr_quality_balanced">Echilibrat</string>
     <string name="screen_effects_fsr_quality_performance">Performanță</string>
     <string name="screen_effects_fsr_sharpness">Claritate FSR</string>
-    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
-    <string name="screen_effects_sgsr_sharpness">Claritate SGSR</string>
-    <string name="screen_effects_sgsr_sharpness_value">%1$d%%</string>
-    <string name="screen_effects_launch_sharpness">Claritate la pornire</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>    <string name="screen_effects_launch_sharpness">Claritate la pornire</string>
     <string name="screen_effects_launch_sharpness_note">CAS și DLS sunt aplicate prin vkBasalt și intră în vigoare la următoarea pornire a jocului.</string>
     <string name="screen_effects_color_adjustments">Ajustări de culoare</string>
     <string name="screen_effects_shader_toggles">Efecte shader</string>

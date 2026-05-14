@@ -302,10 +302,7 @@
     <string name="screen_effects_fsr_quality_balanced">Bilanciato</string>
     <string name="screen_effects_fsr_quality_performance">Prestazioni</string>
     <string name="screen_effects_fsr_sharpness">Nitidezza FSR</string>
-    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
-    <string name="screen_effects_sgsr_sharpness">Nitidezza SGSR</string>
-    <string name="screen_effects_sgsr_sharpness_value">%1$d%%</string>
-    <string name="screen_effects_launch_sharpness">Nitidezza all’avvio</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>    <string name="screen_effects_launch_sharpness">Nitidezza all’avvio</string>
     <string name="screen_effects_launch_sharpness_note">CAS e DLS vengono applicati tramite vkBasalt ed entreranno in vigore al prossimo avvio del gioco.</string>
     <string name="screen_effects_color_adjustments">Regolazioni colore</string>
     <string name="screen_effects_shader_toggles">Effetti shader</string>

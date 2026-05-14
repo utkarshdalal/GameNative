@@ -74,9 +74,6 @@ fun ScreenEffectDialog(
     var fsrSharpnessLevel by remember(renderer, container) {
         mutableIntStateOf(initialConfig.fsrSharpnessLevel)
     }
-    var sgsrSharpnessPercent by remember(renderer, container) {
-        mutableIntStateOf(initialConfig.sgsrSharpnessPercent)
-    }
     var enableToon by remember(renderer, container) {
         mutableStateOf(initialConfig.enableToon)
     }
@@ -99,7 +96,6 @@ fun ScreenEffectDialog(
         gamma,
         scalingMode,
         fsrSharpnessLevel,
-        sgsrSharpnessPercent,
         enableToon,
         enableFXAA,
         enableVivid,
@@ -112,7 +108,6 @@ fun ScreenEffectDialog(
             gamma = gamma,
             scalingMode = scalingMode,
             fsrSharpnessLevel = fsrSharpnessLevel,
-            sgsrSharpnessPercent = sgsrSharpnessPercent,
             enableToon = enableToon,
             enableFXAA = enableFXAA,
             enableVivid = enableVivid,
@@ -131,7 +126,6 @@ fun ScreenEffectDialog(
         gamma = 1.0f
         scalingMode = ScreenEffectsConfig.SCALING_MODE_NONE
         fsrSharpnessLevel = ScreenEffectsConfig.FSR_DEFAULT_LEVEL
-        sgsrSharpnessPercent = ScreenEffectsConfig.SGSR_DEFAULT_PERCENT
         enableToon = false
         enableFXAA = false
         enableVivid = false

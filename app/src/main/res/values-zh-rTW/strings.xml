@@ -1488,10 +1488,7 @@
     <string name="screen_effects_fsr_quality_balanced">平衡</string>
     <string name="screen_effects_fsr_quality_performance">效能</string>
     <string name="screen_effects_fsr_sharpness">FSR 銳利度</string>
-    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
-    <string name="screen_effects_sgsr_sharpness">SGSR 銳利度</string>
-    <string name="screen_effects_sgsr_sharpness_value">%1$d%%</string>
-    <string name="screen_effects_launch_sharpness">啟動銳利度</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>    <string name="screen_effects_launch_sharpness">啟動銳利度</string>
     <string name="screen_effects_launch_sharpness_note">CAS 與 DLS 透過 vkBasalt 應用，將於下次啟動遊戲時生效。</string>
 
     <string name="settings_interface_icon_style">圖示樣式</string>

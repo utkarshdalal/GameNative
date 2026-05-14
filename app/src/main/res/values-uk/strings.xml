@@ -297,10 +297,7 @@
     <string name="screen_effects_fsr_quality_balanced">Баланс</string>
     <string name="screen_effects_fsr_quality_performance">Продуктивність</string>
     <string name="screen_effects_fsr_sharpness">Різкість FSR</string>
-    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
-    <string name="screen_effects_sgsr_sharpness">Різкість SGSR</string>
-    <string name="screen_effects_sgsr_sharpness_value">%1$d%%</string>
-    <string name="screen_effects_launch_sharpness">Різкість під час запуску</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>    <string name="screen_effects_launch_sharpness">Різкість під час запуску</string>
     <string name="screen_effects_launch_sharpness_note">CAS і DLS застосовуються через vkBasalt і набудуть чинності під час наступного запуску гри.</string>
     <string name="screen_effects_color_adjustments">Налаштування кольору</string>
     <string name="screen_effects_shader_toggles">Ефекти шейдерів</string>

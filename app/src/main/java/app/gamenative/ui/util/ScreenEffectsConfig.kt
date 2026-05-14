@@ -21,7 +21,6 @@ data class ScreenEffectsConfig(
     val gamma: Float = 1.0f,
     val scalingMode: Int = SCALING_MODE_NONE,
     val fsrSharpnessLevel: Int = FSR_DEFAULT_LEVEL,
-    val sgsrSharpnessPercent: Int = SGSR_DEFAULT_PERCENT,
     val enableToon: Boolean = false,
     val enableFXAA: Boolean = false,
     val enableVivid: Boolean = false,
@@ -53,7 +52,6 @@ data class ScreenEffectsConfig(
         const val KEY_GAMMA = "screenEffectsGamma"
         const val KEY_SCALING_MODE = "screenEffectsScalingMode"
         const val KEY_FSR_SHARPNESS = "screenEffectsFsrSharpness"
-        const val KEY_SGSR_SHARPNESS = "screenEffectsSgsrSharpness"
         const val KEY_ENABLE_TOON = "screenEffectsEnableToon"
         const val KEY_ENABLE_FXAA = "screenEffectsEnableFXAA"
         const val KEY_ENABLE_VIVID = "screenEffectsEnableVivid"
@@ -78,11 +76,6 @@ private fun normalizeFsrSharpnessLevel(value: Int): Int = value.coerceIn(
     ScreenEffectsConfig.FSR_MAX_LEVEL,
 )
 
-private fun normalizeSgsrSharpnessPercent(value: Int): Int = value.coerceIn(
-    ScreenEffectsConfig.SGSR_MIN_PERCENT,
-    ScreenEffectsConfig.SGSR_MAX_PERCENT,
-)
-
 fun loadScreenEffectsConfig(container: Container?): ScreenEffectsConfig {
     if (container == null) return ScreenEffectsConfig()
     return ScreenEffectsConfig(
@@ -96,10 +89,6 @@ fun loadScreenEffectsConfig(container: Container?): ScreenEffectsConfig {
         fsrSharpnessLevel = normalizeFsrSharpnessLevel(
             container.getExtra(ScreenEffectsConfig.KEY_FSR_SHARPNESS)?.toIntOrNull()
                 ?: ScreenEffectsConfig.FSR_DEFAULT_LEVEL,
-        ),
-        sgsrSharpnessPercent = normalizeSgsrSharpnessPercent(
-            container.getExtra(ScreenEffectsConfig.KEY_SGSR_SHARPNESS)?.toIntOrNull()
-                ?: ScreenEffectsConfig.SGSR_DEFAULT_PERCENT,
         ),
         enableToon = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_TOON)?.toBooleanStrictOrNull() ?: false,
         enableFXAA = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_FXAA)?.toBooleanStrictOrNull() ?: false,
@@ -116,7 +105,6 @@ fun persistScreenEffectsConfig(container: Container?, config: ScreenEffectsConfi
     container.putExtra(ScreenEffectsConfig.KEY_GAMMA, config.gamma)
     container.putExtra(ScreenEffectsConfig.KEY_SCALING_MODE, normalizeScalingMode(config.scalingMode))
     container.putExtra(ScreenEffectsConfig.KEY_FSR_SHARPNESS, normalizeFsrSharpnessLevel(config.fsrSharpnessLevel))
-    container.putExtra(ScreenEffectsConfig.KEY_SGSR_SHARPNESS, normalizeSgsrSharpnessPercent(config.sgsrSharpnessPercent))
     container.putExtra(ScreenEffectsConfig.KEY_ENABLE_TOON, config.enableToon)
     container.putExtra(ScreenEffectsConfig.KEY_ENABLE_FXAA, config.enableFXAA)
     container.putExtra(ScreenEffectsConfig.KEY_ENABLE_VIVID, config.enableVivid)
@@ -154,7 +142,6 @@ fun applyScreenEffectsConfig(renderer: GLRenderer, config: ScreenEffectsConfig) 
         ScreenEffectsConfig.isSgsrScalingMode(scalingMode) -> {
             val sgsrEffect = composer.getEffect(SGSR1Effect::class.java) ?: SGSR1Effect()
             sgsrEffect.setPreserveAspect(scalingMode == ScreenEffectsConfig.SCALING_MODE_SGSR_ASPECT)
-            sgsrEffect.setSharpness(normalizeSgsrSharpnessPercent(config.sgsrSharpnessPercent) / 100f)
             effects += sgsrEffect
         }
 

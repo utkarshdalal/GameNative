@@ -311,10 +311,7 @@
     <string name="screen_effects_fsr_quality_balanced">균형</string>
     <string name="screen_effects_fsr_quality_performance">성능</string>
     <string name="screen_effects_fsr_sharpness">FSR 선명도</string>
-    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
-    <string name="screen_effects_sgsr_sharpness">SGSR 선명도</string>
-    <string name="screen_effects_sgsr_sharpness_value">%1$d%%</string>
-    <string name="screen_effects_launch_sharpness">시작 선명도</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>    <string name="screen_effects_launch_sharpness">시작 선명도</string>
     <string name="screen_effects_launch_sharpness_note">CAS 및 DLS는 vkBasalt를 통해 적용되며 다음에 게임을 실행할 때 적용됩니다.</string>
     <string name="screen_effects_color_adjustments">색상 조정</string>
     <string name="screen_effects_shader_toggles">셰이더 효과</string>

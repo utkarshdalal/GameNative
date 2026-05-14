@@ -874,10 +874,7 @@ https://gamenative.app
     <string name="screen_effects_fsr_quality_balanced">Баланс</string>
     <string name="screen_effects_fsr_quality_performance">Производительность</string>
     <string name="screen_effects_fsr_sharpness">Резкость FSR</string>
-    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
-    <string name="screen_effects_sgsr_sharpness">Резкость SGSR</string>
-    <string name="screen_effects_sgsr_sharpness_value">%1$d%%</string>
-    <string name="screen_effects_launch_sharpness">Резкость при запуске</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>    <string name="screen_effects_launch_sharpness">Резкость при запуске</string>
     <string name="screen_effects_launch_sharpness_note">CAS и DLS применяются через vkBasalt и вступят в силу при следующем запуске игры.</string>
     <string name="screen_effects_color_adjustments">Настройка цвета</string>
     <string name="screen_effects_shader_toggles">Эффекты шейдеров</string>

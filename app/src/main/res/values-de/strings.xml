@@ -291,10 +291,7 @@
     <string name="screen_effects_fsr_quality_balanced">Ausgewogen</string>
     <string name="screen_effects_fsr_quality_performance">Leistung</string>
     <string name="screen_effects_fsr_sharpness">FSR-Schärfe</string>
-    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
-    <string name="screen_effects_sgsr_sharpness">SGSR-Schärfe</string>
-    <string name="screen_effects_sgsr_sharpness_value">%1$d%%</string>
-    <string name="screen_effects_launch_sharpness">Startschärfe</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>    <string name="screen_effects_launch_sharpness">Startschärfe</string>
     <string name="screen_effects_launch_sharpness_note">CAS und DLS werden über vkBasalt angewendet und wirken sich beim nächsten Start des Spiels aus.</string>
     <string name="screen_effects_color_adjustments">Farbkorrekturen</string>
     <string name="screen_effects_shader_toggles">Shader-Effekte</string>

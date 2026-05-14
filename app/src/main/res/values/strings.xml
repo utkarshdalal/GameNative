@@ -266,8 +266,6 @@
     <string name="screen_effects_fsr_quality_performance">Performance</string>
     <string name="screen_effects_fsr_sharpness">FSR sharpness</string>
     <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
-    <string name="screen_effects_sgsr_sharpness">SGSR sharpness</string>
-    <string name="screen_effects_sgsr_sharpness_value">%1$d%%</string>
     <string name="screen_effects_launch_sharpness">Launch sharpness</string>
     <string name="screen_effects_launch_sharpness_note">CAS and DLS are applied through vkBasalt and take effect the next time you launch the game.</string>
     <string name="screen_effects_brightness">Brightness</string>
