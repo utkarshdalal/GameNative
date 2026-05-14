@@ -3,10 +3,17 @@
   "layer": {
     "name": "VK_LAYER_BIONIC_framegen",
     "type": "GLOBAL",
-    "api_version": "1.4.313",
+    "api_version": "1.3.0",
     "library_path": "../../../lib/libbionic-fg-layer.so",
-    "implementation_version": "1",
-    "description": "Bionic frame generation layer",
+    "implementation_version": "2",
+    "description": "Bionic FG standalone frame generation",
+    "functions": {
+      "vkGetInstanceProcAddr": "BionicFG_GetInstanceProcAddr",
+      "vkGetDeviceProcAddr": "BionicFG_GetDeviceProcAddr"
+    },
+    "enable_environment": {
+      "BIONIC_FG_ENABLE": "1"
+    },
     "disable_environment": {
       "DISABLE_BIONIC_FG": "1"
     }

@@ -19,6 +19,8 @@ object BionicFgManager {
     private const val ASSET_DIR = "bionic_fg/android_arm64_v8a"
     private const val LIB_FILENAME = "libbionic-fg-layer.so"
     private const val MANIFEST_FILENAME = "VkLayer_BIONIC_framegen.json"
+    private const val VERSION_FILENAME = ".bionic_fg_runtime_version"
+    private const val RUNTIME_VERSION = "7"
 
     // Install paths inside container
     private const val LIB_RELATIVE_DIR = ".local/lib"
@@ -74,18 +76,22 @@ object BionicFgManager {
         val rootDir = container.rootDir
         val libFile = File(rootDir, "$LIB_RELATIVE_DIR/$LIB_FILENAME")
         val manifestFile = File(rootDir, "$LAYER_RELATIVE_DIR/$MANIFEST_FILENAME")
-
-        if (libFile.exists() && manifestFile.exists()) {
-            return true // Already installed
-        }
+        val versionFile = File(rootDir, "$LAYER_RELATIVE_DIR/$VERSION_FILENAME")
 
         return try {
             File(rootDir, LIB_RELATIVE_DIR).mkdirs()
             File(rootDir, LAYER_RELATIVE_DIR).mkdirs()
 
-            FileUtils.copy(context, "$ASSET_DIR/$LIB_FILENAME", libFile)
-            FileUtils.chmod(libFile, 0b111101101)
+            val installedVersion = versionFile.takeIf { it.exists() }?.readText()?.trim()
+            if (!libFile.exists() || installedVersion != RUNTIME_VERSION) {
+                FileUtils.copy(context, "$ASSET_DIR/$LIB_FILENAME", libFile)
+                FileUtils.chmod(libFile, 0b111101101)
+                versionFile.writeText(RUNTIME_VERSION)
+                FileUtils.chmod(versionFile, 0b110100100)
+            }
 
+            // Always refresh the manifest. It is tiny, and doing this ensures
+            // fixed layer entrypoint metadata replaces old bad manifests.
             FileUtils.copy(context, "$ASSET_DIR/$MANIFEST_FILENAME", manifestFile)
             FileUtils.chmod(manifestFile, 0b110100100)
 
