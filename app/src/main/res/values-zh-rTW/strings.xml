@@ -1532,4 +1532,5 @@
     <string name="game_launch_tip_22">提示：你可以啟用觸控螢幕模式。</string>
     <string name="game_launch_tip_23">提示：如果你使用的是 Mali GPU，請使用系統驅動。</string>
     <string name="game_launch_tip_24">提示：出現黑畫面？嘗試使用選單中的「%s」選項檢查驅動是否正常運作。</string>
+    <string name="launch_bionic_steam_description">啟用線上遊玩並提升相容性\n不一定總能正常運作\n嘗試前請先備份存檔</string>
 </resources>

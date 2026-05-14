@@ -468,6 +468,13 @@ object PrefManager {
             setPref(LAUNCH_REAL_STEAM, value)
         }
 
+    private val LAUNCH_BIONIC_STEAM = booleanPreferencesKey("launch_bionic_steam")
+    var launchBionicSteam: Boolean
+        get() = getPref(LAUNCH_BIONIC_STEAM, false)
+        set(value) {
+            setPref(LAUNCH_BIONIC_STEAM, value)
+        }
+
     private val FORCE_DLC = booleanPreferencesKey("force_dlc")
     var forceDlc: Boolean
         get() = getPref(FORCE_DLC, false)

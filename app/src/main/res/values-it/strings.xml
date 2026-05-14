@@ -1463,4 +1463,5 @@
     <string name="game_launch_tip_22">Suggerimento: puoi attivare la modalità touchscreen.</string>
     <string name="game_launch_tip_23">Suggerimento: se hai una GPU Mali, utilizza i driver di sistema.</string>
     <string name="game_launch_tip_24">Suggerimento: schermata nera? Prova l\'opzione \"%s\" nel menu per verificare se i tuoi driver funzionano correttamente.</string>
+    <string name="launch_bionic_steam_description">Abilita il gioco online e migliora la compatibilità\nNon sempre funziona\nEsegui un backup dei salvataggi prima di provarlo</string>
 </resources>

@@ -678,7 +678,7 @@ class PerformanceHudView(
             discoverPrioritizedCpuTempPaths(),
         )
         if (reading != null) {
-            Timber.d("[HUD] CPU temp: %d°C from %s", reading.celsius, reading.source)
+            Timber.v("[HUD] CPU temp: %d°C from %s", reading.celsius, reading.source)
         }
         return reading?.celsius
     }
@@ -690,7 +690,7 @@ class PerformanceHudView(
         ) + discoverPrioritizedGpuTempPaths()
         val reading = readTemperatureCWithSource(paths)
         if (reading != null) {
-            Timber.d("[HUD] GPU temp: %d°C from %s", reading.celsius, reading.source)
+            Timber.v("[HUD] GPU temp: %d°C from %s", reading.celsius, reading.source)
         }
         return reading?.celsius
     }
@@ -759,7 +759,7 @@ class PerformanceHudView(
 
         if (!thermalZoneDiscoveryLogged) {
             thermalZoneDiscoveryLogged = true
-            Timber.d(
+            Timber.v(
                 "[HUD] Discovered %d thermal zones: %s",
                 zones.size,
                 zones.joinToString(", ") { (type, path) ->

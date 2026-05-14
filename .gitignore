@@ -62,3 +62,8 @@ app/keystores/*
 *.pyc
 __pycache__/
 resign.keystore
+
+# Steam bootstrap shim source — withheld out of respect for Valve, since it
+# encodes internal details of Steam's proprietary client that Valve does not
+# publish. See THIRD_PARTY_NOTICES ("Steam Client Bootstrap Shim").
+app/src/main/cpp/steambootstrap/steam_bootstrap.c

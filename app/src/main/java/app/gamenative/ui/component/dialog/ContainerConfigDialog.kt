@@ -1198,6 +1198,7 @@ private fun Preview_ContainerConfigDialog() {
             installPath = "",
             showFPS = false,
             launchRealSteam = false,
+            launchBionicSteam = false,
             allowSteamUpdates = false,
             steamType = "normal",
             cpuList = "0,1,2,3",

@@ -1540,4 +1540,5 @@
     <string name="game_launch_tip_22">提示：你可以启用触屏模式。</string>
     <string name="game_launch_tip_23">提示：如果你使用的是 Mali GPU，请使用系统驱动。</string>
     <string name="game_launch_tip_24">提示：出现黑屏？尝试使用菜单中的\"%s\"选项检查驱动是否正常工作。</string>
+    <string name="launch_bionic_steam_description">启用在线游玩并提升兼容性\n不一定总能正常工作\n尝试前请先备份存档</string>
 </resources>

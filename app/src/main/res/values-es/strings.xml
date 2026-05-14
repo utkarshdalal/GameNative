@@ -1473,4 +1473,5 @@
     <string name="game_launch_tip_22">Consejo: Puedes activar el modo de pantalla táctil.</string>
     <string name="game_launch_tip_23">Consejo: Si tienes una GPU Mali, usa los controladores del sistema.</string>
     <string name="game_launch_tip_24">Consejo: ¿Pantalla negra? Prueba la opción \"%s\" en el menú para verificar si tus controladores funcionan correctamente.</string>
+    <string name="launch_bionic_steam_description">Habilita el juego en línea y mejora la compatibilidad\nNo siempre funciona\nHaz una copia de seguridad de tus partidas guardadas antes de probarlo</string>
 </resources>

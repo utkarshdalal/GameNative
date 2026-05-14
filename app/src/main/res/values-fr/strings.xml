@@ -1467,4 +1467,5 @@
     <string name="game_launch_tip_22">Conseil : Vous pouvez activer le mode écran tactile.</string>
     <string name="game_launch_tip_23">Conseil : Si vous avez un GPU Mali, veuillez utiliser les pilotes système.</string>
     <string name="game_launch_tip_24">Conseil : Écran noir ? Essayez l\'option \"%s\" dans le menu pour vérifier si vos pilotes fonctionnent correctement.</string>
+    <string name="launch_bionic_steam_description">Active le jeu en ligne et améliore la compatibilité\nNe fonctionne pas toujours\nSauvegardez vos parties avant d’essayer</string>
 </resources>

@@ -1337,4 +1337,5 @@
     <string name="game_launch_tip_22">Tip: Du kan aktivere touchscreen-tilstand.</string>
     <string name="game_launch_tip_23">Tip: Hvis du har et Mali GPU, skal du bruge systemdrivere.</string>
     <string name="game_launch_tip_24">Tip: Får du en sort skærm? Prøv at bruge \"%s\"-indstillingen i menuen for at kontrollere, om dine drivere fungerer korrekt.</string>
+    <string name="launch_bionic_steam_description">Aktiverer online-spil og forbedrer kompatibilitet\nVirker ikke altid\nTag backup af dine gemte spil, før du prøver dette</string>
 </resources>

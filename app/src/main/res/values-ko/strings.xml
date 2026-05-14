@@ -1471,4 +1471,5 @@
     <string name="game_launch_tip_22">팁: 터치스크린 모드를 활성화할 수 있습니다.</string>
     <string name="game_launch_tip_23">팁: Mali GPU를 사용하는 경우 시스템 드라이버를 사용하세요.</string>
     <string name="game_launch_tip_24">팁: 검은 화면이 나타나나요? 메뉴에서 \"%s\" 옵션을 사용하여 드라이버가 올바르게 작동하는지 확인하세요.</string>
+    <string name="launch_bionic_steam_description">온라인 플레이 활성화, 호환성 향상\n항상 작동하지 않을 수 있음\n시도하기 전에 저장 파일을 백업하세요</string>
 </resources>

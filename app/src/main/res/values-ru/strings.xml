@@ -1400,4 +1400,5 @@ https://gamenative.app
     <string name="game_launch_tip_22">Совет: Вы можете включить режим сенсорного экрана.</string>
     <string name="game_launch_tip_23">Совет: Если у вас GPU Mali, используйте системные драйверы.</string>
     <string name="game_launch_tip_24">Совет: Черный экран? Попробуйте использовать опцию \"%s\" в меню, чтобы проверить, правильно ли работают ваши драйверы.</string>
+    <string name="launch_bionic_steam_description">Включает онлайн-игру и улучшает совместимость\nРаботает не всегда\nСделайте резервную копию сохранений перед использованием</string>
 </resources>
