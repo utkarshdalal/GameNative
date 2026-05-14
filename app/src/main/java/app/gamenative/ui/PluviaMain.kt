@@ -1550,6 +1550,9 @@ fun preLaunchApp(
             ContainerUtils.getOrCreateContainer(context, appId)
         }
 
+        // must activate container before downloading save files
+        containerManager.activateContainer(container)
+
         // Clear session metadata on every launch to ensure fresh values
         container.clearSessionMetadata()
 
@@ -1755,9 +1758,6 @@ fun preLaunchApp(
 
         setLoadingMessage(context.getString(R.string.main_loading))
         setLoadingProgress(-1f)
-
-        // must activate container before downloading save files
-        containerManager.activateContainer(container)
 
         // If another game is running on this account elsewhere, prompt user first (cross-app session)
         val isSteamGame = gameSource == GameSource.STEAM
