@@ -6,6 +6,7 @@ import com.winlator.core.FileUtils
 import com.winlator.core.envvars.EnvVars
 import java.io.File
 import timber.log.Timber
+import kotlin.jvm.JvmStatic
 
 /**
  * Minimal Bionic-FG layer manager.
@@ -25,6 +26,7 @@ object BionicFgManager {
 
     // Environment variables consumed by Bionic-FG layer
     const val ENV_ENABLE = "BIONIC_FG_ENABLE"
+    const val ENV_DISABLE = "DISABLE_BIONIC_FG"
     const val ENV_MULTIPLIER = "BIONIC_FG_MULTIPLIER"
     const val ENV_FLOW_SCALE = "BIONIC_FG_FLOW_SCALE"
     const val ENV_MODEL = "BIONIC_FG_MODEL"
@@ -36,6 +38,7 @@ object BionicFgManager {
     const val EXTRA_MODEL = "bionicFgModel"              // "0" or "1"
 
     /** Only Bionic containers supported. */
+    @JvmStatic
     fun isSupported(container: Container): Boolean =
         container.containerVariant.equals(Container.BIONIC, ignoreCase = true)
 
@@ -64,6 +67,7 @@ object BionicFgManager {
     /**
      * Install layer files into container (if not already present).
      */
+    @JvmStatic
     fun ensureInstalled(context: Context, container: Container): Boolean {
         if (!isSupported(container)) return false
 
@@ -97,13 +101,18 @@ object BionicFgManager {
      * Apply Bionic-FG environment variables for launch.
      * Called by launcher component.
      */
+    @JvmStatic
     fun applyLaunchEnv(context: Context, container: Container, envVars: EnvVars): Boolean {
-        // Clear stale vars
-        listOf(ENV_ENABLE, ENV_MULTIPLIER, ENV_FLOW_SCALE, ENV_MODEL).forEach {
+        // Clear stale vars. The manifest is an implicit Vulkan layer, so a stale
+        // install in ~/.local/share/vulkan/implicit_layer.d can still be loaded
+        // by the Vulkan loader even when VK_LAYER_PATH is not amended.
+        listOf(ENV_ENABLE, ENV_DISABLE, ENV_MULTIPLIER, ENV_FLOW_SCALE, ENV_MODEL).forEach {
             envVars.remove(it)
         }
 
         if (!isEnabled(container)) {
+            disableLayerInContainer(container)
+            envVars.put(ENV_DISABLE, "1")
             Timber.tag(TAG).d("Bionic-FG disabled")
             return false
         }
@@ -118,6 +127,7 @@ object BionicFgManager {
         )
 
         envVars.put(ENV_ENABLE, "1")
+        envVars.remove(ENV_DISABLE)
         envVars.put(ENV_MULTIPLIER, multiplier(container).toString())
         envVars.put(ENV_FLOW_SCALE, String.format(java.util.Locale.US, "%.2f", flowScale(container)))
         envVars.put(ENV_MODEL, model(container))
@@ -125,5 +135,16 @@ object BionicFgManager {
         Timber.tag(TAG).i("Bionic-FG enabled: mult=%d, flow=%.2f, model=%s",
             multiplier(container), flowScale(container), model(container))
         return true
+    }
+
+    private fun disableLayerInContainer(container: Container) {
+        val manifestFile = File(container.rootDir, "$LAYER_RELATIVE_DIR/$MANIFEST_FILENAME")
+        if (manifestFile.exists()) {
+            if (manifestFile.delete()) {
+                Timber.tag(TAG).d("Removed Bionic-FG manifest to disable layer")
+            } else {
+                Timber.tag(TAG).w("Failed to remove Bionic-FG manifest at %s", manifestFile.absolutePath)
+            }
+        }
     }
 }

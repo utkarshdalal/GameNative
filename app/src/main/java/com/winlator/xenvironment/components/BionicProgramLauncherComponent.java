@@ -339,7 +339,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         // Bionic-FG (alternative frame generation, no Steam entitlement required)
         if (BionicFgManager.isSupported(container)) {
-            BionicFgManager.ensureInstalled(environment.getContext(), container);
             BionicFgManager.applyLaunchEnv(environment.getContext(), container, envVars);
         }
 
