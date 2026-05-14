@@ -7,7 +7,6 @@ import com.winlator.renderer.material.ShaderMaterial;
 public class SGSR1Effect extends Effect implements RenderScaleEffect {
     private boolean preserveAspect = false;
     private float sharpness = 0.5f;
-    private boolean useEdgeDirection = false;
 
     public boolean isPreserveAspect() {
         return preserveAspect;
@@ -25,20 +24,9 @@ public class SGSR1Effect extends Effect implements RenderScaleEffect {
         this.sharpness = Math.max(0.0f, Math.min(sharpness, 1.0f));
     }
 
-    public boolean isUseEdgeDirection() {
-        return useEdgeDirection;
-    }
-
-    public void setUseEdgeDirection(boolean useEdgeDirection) {
-        if (this.useEdgeDirection != useEdgeDirection) {
-            this.useEdgeDirection = useEdgeDirection;
-            destroy(); // force shader recompile on next use
-        }
-    }
-
     @Override
     protected ShaderMaterial createMaterial() {
-        return new SGSR1Material(useEdgeDirection);
+        return new SGSR1Material();
     }
 
     @Override
@@ -60,10 +48,8 @@ public class SGSR1Effect extends Effect implements RenderScaleEffect {
     // -------------------------------------------------------------------------
 
     private static class SGSR1Material extends ScreenMaterial {
-        private final boolean edgeDirection;
 
-        public SGSR1Material(boolean edgeDirection) {
-            this.edgeDirection = edgeDirection;
+        public SGSR1Material() {
             setUniformNames("screenTexture", "inputResolution", "outputResolution", "preserveAspect", "sharpness");
         }
 
@@ -83,7 +69,7 @@ public class SGSR1Effect extends Effect implements RenderScaleEffect {
 
         @Override
         protected String getFragmentShader() {
-            return edgeDirection ? buildEdgeDirectionShader() : buildBasicShader();
+            return buildEdgeDirectionShader();
         }
 
         // ------------------------------------------------------------------
