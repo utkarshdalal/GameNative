@@ -1476,8 +1476,12 @@
     <string name="screen_effects_scaling_mode_stretch">拉伸</string>
     <string name="screen_effects_scaling_mode_fsr">FSR</string>
     <string name="screen_effects_scaling_mode_fsr_aspect">FSR 適配</string>
+    <string name="screen_effects_scaling_mode_sgsr">SGSR</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect">SGSR 適配</string>
     <string name="screen_effects_fsr">FSR 1.0</string>
     <string name="screen_effects_fsr_description">官方 AMD FidelityFX Super Resolution 1.0，使用 EASU + RCAS，以較低的內部分辨率渲染並進行全分辨率放大。</string>
+    <string name="screen_effects_sgsr">SGSR 1</string>
+    <string name="screen_effects_sgsr_description">邊緣自適應放大，內建細節恢復，可將較低輸入解析度提升為清晰的全解析度畫面。</string>
     <string name="screen_effects_fsr_quality">FSR 品質</string>
     <string name="screen_effects_fsr_quality_ultra_quality">超高品質</string>
     <string name="screen_effects_fsr_quality_quality">品質</string>
@@ -1485,6 +1489,8 @@
     <string name="screen_effects_fsr_quality_performance">效能</string>
     <string name="screen_effects_fsr_sharpness">FSR 銳利度</string>
     <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_sgsr_sharpness">SGSR 銳利度</string>
+    <string name="screen_effects_sgsr_sharpness_value">%1$d%%</string>
     <string name="screen_effects_launch_sharpness">啟動銳利度</string>
     <string name="screen_effects_launch_sharpness_note">CAS 與 DLS 透過 vkBasalt 應用，將於下次啟動遊戲時生效。</string>
 
