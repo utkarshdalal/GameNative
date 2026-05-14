@@ -82,6 +82,20 @@ public class SGSR1Effect extends Effect implements RenderScaleEffect {
                 "vec4 sampleColor(vec2 uv) {\n" +
                 "    return texture2D(screenTexture, clamp(uv, vec2(0.0), vec2(1.0)));\n" +
                 "}\n" +
+                "vec4 gatherLuma(vec2 coord) {\n" +
+                "    vec2 texelCoord = coord * inputResolution;\n" +
+                "    vec2 base = floor(texelCoord - vec2(0.5));\n" +
+                "    float i0 = base.x;\n" +
+                "    float i1 = base.x + 1.0;\n" +
+                "    float j0 = base.y;\n" +
+                "    float j1 = base.y + 1.0;\n" +
+                "    return vec4(\n" +
+                "        sampleLuma(vec2(i0, j1)),\n" +
+                "        sampleLuma(vec2(i1, j1)),\n" +
+                "        sampleLuma(vec2(i1, j0)),\n" +
+                "        sampleLuma(vec2(i0, j0))\n" +
+                "    );\n" +
+                "}\n" +
                 "void main() {\n" +
                 "    vec2 renderSize = outputResolution;\n" +
                 "    vec2 renderOffset = vec2(0.0);\n" +
@@ -105,61 +119,47 @@ public class SGSR1Effect extends Effect implements RenderScaleEffect {
                 "    vec4 color = sampleColor(uv);\n" +
                 "    vec2 imgCoord = uv * inputResolution + vec2(-0.5, 0.5);\n" +
                 "    vec2 imgCoordPixel = floor(imgCoord);\n" +
+                "    vec2 coord = imgCoordPixel / inputResolution;\n" +
                 "    vec2 pl = imgCoord - imgCoordPixel;\n" +
-                "    float leftX = sampleLuma(imgCoordPixel + vec2(-1.0, 1.0));\n" +
-                "    float leftY = sampleLuma(imgCoordPixel + vec2(0.0, 1.0));\n" +
-                "    float leftZ = sampleLuma(imgCoordPixel + vec2(0.0, 0.0));\n" +
-                "    float leftW = sampleLuma(imgCoordPixel + vec2(-1.0, 0.0));\n" +
+                "    vec4 left = gatherLuma(coord);\n" +
                 "    float centerY = color.g;\n" +
-                "    float edgeVote = abs(leftZ - leftY) + abs(centerY - leftY) + abs(centerY - leftZ);\n" +
+                "    float edgeVote = abs(left.z - left.y) + abs(centerY - left.y) + abs(centerY - left.z);\n" +
                 "    if (edgeVote > EDGE_THRESHOLD) {\n" +
-                "        float rightX = sampleLuma(imgCoordPixel + vec2(1.0, 1.0));\n" +
-                "        float rightY = sampleLuma(imgCoordPixel + vec2(2.0, 1.0));\n" +
-                "        float rightZ = sampleLuma(imgCoordPixel + vec2(2.0, 0.0));\n" +
-                "        float rightW = sampleLuma(imgCoordPixel + vec2(1.0, 0.0));\n" +
-                "        float upDownX = sampleLuma(imgCoordPixel + vec2(0.0, -1.0));\n" +
-                "        float upDownY = sampleLuma(imgCoordPixel + vec2(1.0, -1.0));\n" +
-                "        float upDownZ = sampleLuma(imgCoordPixel + vec2(1.0, 2.0));\n" +
-                "        float upDownW = sampleLuma(imgCoordPixel + vec2(0.0, 2.0));\n" +
-                "        float mean = (leftY + leftZ + rightX + rightW) * 0.25;\n" +
-                "        leftX -= mean;\n" +
-                "        leftY -= mean;\n" +
-                "        leftZ -= mean;\n" +
-                "        leftW -= mean;\n" +
-                "        rightX -= mean;\n" +
-                "        rightY -= mean;\n" +
-                "        rightZ -= mean;\n" +
-                "        rightW -= mean;\n" +
-                "        upDownX -= mean;\n" +
-                "        upDownY -= mean;\n" +
-                "        upDownZ -= mean;\n" +
-                "        upDownW -= mean;\n" +
-                "        float centerDelta = centerY - mean;\n" +
-                "        float sum = abs(leftX) + abs(leftY) + abs(leftZ) + abs(leftW) +\n" +
-                "            abs(rightX) + abs(rightY) + abs(rightZ) + abs(rightW) +\n" +
-                "            abs(upDownX) + abs(upDownY) + abs(upDownZ) + abs(upDownW);\n" +
+                "        coord.x += 1.0 / inputResolution.x;\n" +
+                "        vec4 right = gatherLuma(coord + vec2(1.0 / inputResolution.x, 0.0));\n" +
+                "        vec4 upDown;\n" +
+                "        upDown.xy = gatherLuma(coord + vec2(0.0, -1.0 / inputResolution.y)).wz;\n" +
+                "        upDown.zw = gatherLuma(coord + vec2(0.0, 1.0 / inputResolution.y)).yx;\n" +
+                "        float mean = (left.y + left.z + right.x + right.w) * 0.25;\n" +
+                "        left -= vec4(mean);\n" +
+                "        right -= vec4(mean);\n" +
+                "        upDown -= vec4(mean);\n" +
+                "        color.w = centerY - mean;\n" +
+                "        float sum = abs(left.x) + abs(left.y) + abs(left.z) + abs(left.w) +\n" +
+                "            abs(right.x) + abs(right.y) + abs(right.z) + abs(right.w) +\n" +
+                "            abs(upDown.x) + abs(upDown.y) + abs(upDown.z) + abs(upDown.w);\n" +
                 "        float std = 2.181818 / max(sum, 1.0e-6);\n" +
-                "        vec2 aWY = weightY(pl.x, pl.y + 1.0, upDownX, std);\n" +
-                "        aWY += weightY(pl.x - 1.0, pl.y + 1.0, upDownY, std);\n" +
-                "        aWY += weightY(pl.x - 1.0, pl.y - 2.0, upDownZ, std);\n" +
-                "        aWY += weightY(pl.x, pl.y - 2.0, upDownW, std);\n" +
-                "        aWY += weightY(pl.x + 1.0, pl.y - 1.0, leftX, std);\n" +
-                "        aWY += weightY(pl.x, pl.y - 1.0, leftY, std);\n" +
-                "        aWY += weightY(pl.x, pl.y, leftZ, std);\n" +
-                "        aWY += weightY(pl.x + 1.0, pl.y, leftW, std);\n" +
-                "        aWY += weightY(pl.x - 1.0, pl.y - 1.0, rightX, std);\n" +
-                "        aWY += weightY(pl.x - 2.0, pl.y - 1.0, rightY, std);\n" +
-                "        aWY += weightY(pl.x - 2.0, pl.y, rightZ, std);\n" +
-                "        aWY += weightY(pl.x - 1.0, pl.y, rightW, std);\n" +
+                "        vec2 aWY = weightY(pl.x, pl.y + 1.0, upDown.x, std);\n" +
+                "        aWY += weightY(pl.x - 1.0, pl.y + 1.0, upDown.y, std);\n" +
+                "        aWY += weightY(pl.x - 1.0, pl.y - 2.0, upDown.z, std);\n" +
+                "        aWY += weightY(pl.x, pl.y - 2.0, upDown.w, std);\n" +
+                "        aWY += weightY(pl.x + 1.0, pl.y - 1.0, left.x, std);\n" +
+                "        aWY += weightY(pl.x, pl.y - 1.0, left.y, std);\n" +
+                "        aWY += weightY(pl.x, pl.y, left.z, std);\n" +
+                "        aWY += weightY(pl.x + 1.0, pl.y, left.w, std);\n" +
+                "        aWY += weightY(pl.x - 1.0, pl.y - 1.0, right.x, std);\n" +
+                "        aWY += weightY(pl.x - 2.0, pl.y - 1.0, right.y, std);\n" +
+                "        aWY += weightY(pl.x - 2.0, pl.y, right.z, std);\n" +
+                "        aWY += weightY(pl.x - 1.0, pl.y, right.w, std);\n" +
                 "        float finalY = aWY.y / max(aWY.x, 1.0e-6);\n" +
-                "        float maxY = max(max(leftY, leftZ), max(rightX, rightW));\n" +
-                "        float minY = min(min(leftY, leftZ), min(rightX, rightW));\n" +
+                "        float maxY = max(max(left.y, left.z), max(right.x, right.w));\n" +
+                "        float minY = min(min(left.y, left.z), min(right.x, right.w));\n" +
                 "        float edgeSharpness = mix(1.0, 2.0, clamp(sharpness, 0.0, 1.0));\n" +
                 "        finalY = clamp(edgeSharpness * finalY, minY, maxY);\n" +
-                "        float deltaY = clamp(finalY - centerDelta, -23.0 / 255.0, 23.0 / 255.0);\n" +
+                "        float deltaY = clamp(finalY - color.w, -23.0 / 255.0, 23.0 / 255.0);\n" +
                 "        color.rgb = clamp(color.rgb + vec3(deltaY), 0.0, 1.0);\n" +
                 "    }\n" +
-                "    gl_FragColor = vec4(color.rgb, color.a);\n" +
+                "    gl_FragColor = vec4(color.rgb, 1.0);\n" +
                 "}";
         }
     }
