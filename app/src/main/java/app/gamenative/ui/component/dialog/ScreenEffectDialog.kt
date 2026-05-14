@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -67,6 +68,15 @@ fun ScreenEffectDialog(
     var gamma by remember(renderer, container) {
         mutableFloatStateOf(initialConfig.gamma)
     }
+    var scalingMode by remember(renderer, container) {
+        mutableIntStateOf(initialConfig.scalingMode)
+    }
+    var fsrSharpnessLevel by remember(renderer, container) {
+        mutableIntStateOf(initialConfig.fsrSharpnessLevel)
+    }
+    var sgsrSharpnessPercent by remember(renderer, container) {
+        mutableIntStateOf(initialConfig.sgsrSharpnessPercent)
+    }
     var enableToon by remember(renderer, container) {
         mutableStateOf(initialConfig.enableToon)
     }
@@ -83,11 +93,26 @@ fun ScreenEffectDialog(
         mutableStateOf(initialConfig.enableNTSC)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableVivid, enableCRT, enableNTSC) {
+    LaunchedEffect(
+        brightness,
+        contrast,
+        gamma,
+        scalingMode,
+        fsrSharpnessLevel,
+        sgsrSharpnessPercent,
+        enableToon,
+        enableFXAA,
+        enableVivid,
+        enableCRT,
+        enableNTSC,
+    ) {
         val config = ScreenEffectsConfig(
             brightness = brightness,
             contrast = contrast,
             gamma = gamma,
+            scalingMode = scalingMode,
+            fsrSharpnessLevel = fsrSharpnessLevel,
+            sgsrSharpnessPercent = sgsrSharpnessPercent,
             enableToon = enableToon,
             enableFXAA = enableFXAA,
             enableVivid = enableVivid,
@@ -104,6 +129,9 @@ fun ScreenEffectDialog(
         brightness = 0f
         contrast = 0f
         gamma = 1.0f
+        scalingMode = ScreenEffectsConfig.SCALING_MODE_NONE
+        fsrSharpnessLevel = ScreenEffectsConfig.FSR_DEFAULT_LEVEL
+        sgsrSharpnessPercent = ScreenEffectsConfig.SGSR_DEFAULT_PERCENT
         enableToon = false
         enableFXAA = false
         enableVivid = false

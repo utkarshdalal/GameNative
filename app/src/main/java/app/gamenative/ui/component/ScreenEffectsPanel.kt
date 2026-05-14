@@ -87,6 +87,8 @@ private fun scalingModeLabelRes(mode: Int): Int = when (mode) {
     ScreenEffectsConfig.SCALING_MODE_STRETCH -> R.string.screen_effects_scaling_mode_stretch
     ScreenEffectsConfig.SCALING_MODE_FSR -> R.string.screen_effects_scaling_mode_fsr
     ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> R.string.screen_effects_scaling_mode_fsr_aspect
+    ScreenEffectsConfig.SCALING_MODE_SGSR -> R.string.screen_effects_scaling_mode_sgsr
+    ScreenEffectsConfig.SCALING_MODE_SGSR_ASPECT -> R.string.screen_effects_scaling_mode_sgsr_aspect
     else -> R.string.screen_effects_scaling_mode_none
 }
 
@@ -115,6 +117,9 @@ fun ScreenEffectsTabContent(
     var fsrSharpnessLevel by remember(renderer, container) {
         mutableIntStateOf(initialConfig.fsrSharpnessLevel)
     }
+    var sgsrSharpnessPercent by remember(renderer, container) {
+        mutableIntStateOf(initialConfig.sgsrSharpnessPercent)
+    }
     var enableToon by remember(renderer, container) {
         mutableStateOf(initialConfig.enableToon)
     }
@@ -137,6 +142,7 @@ fun ScreenEffectsTabContent(
         gamma,
         scalingMode,
         fsrSharpnessLevel,
+        sgsrSharpnessPercent,
         enableToon,
         enableFXAA,
         enableVivid,
@@ -149,6 +155,7 @@ fun ScreenEffectsTabContent(
             gamma = gamma,
             scalingMode = scalingMode,
             fsrSharpnessLevel = fsrSharpnessLevel,
+            sgsrSharpnessPercent = sgsrSharpnessPercent,
             enableToon = enableToon,
             enableFXAA = enableFXAA,
             enableVivid = enableVivid,
@@ -169,6 +176,7 @@ fun ScreenEffectsTabContent(
         gamma = 1.0f
         scalingMode = ScreenEffectsConfig.SCALING_MODE_NONE
         fsrSharpnessLevel = ScreenEffectsConfig.FSR_DEFAULT_LEVEL
+        sgsrSharpnessPercent = ScreenEffectsConfig.SGSR_DEFAULT_PERCENT
         enableToon = false
         enableFXAA = false
         enableVivid = false
@@ -190,32 +198,54 @@ fun ScreenEffectsTabContent(
             progress = normalizedProgress(
                 scalingMode.toFloat(),
                 ScreenEffectsConfig.SCALING_MODE_NONE.toFloat(),
-                ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT.toFloat(),
+                ScreenEffectsConfig.SCALING_MODE_MAX.toFloat(),
             ),
             onDecrease = {
                 scalingMode = (scalingMode - 1).coerceAtLeast(ScreenEffectsConfig.SCALING_MODE_NONE)
             },
             onIncrease = {
-                scalingMode = (scalingMode + 1).coerceAtMost(ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT)
+                scalingMode = (scalingMode + 1).coerceAtMost(ScreenEffectsConfig.SCALING_MODE_MAX)
             },
             focusRequester = firstItemFocusRequester,
         )
-        if (scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR || scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT) {
-            ScreenEffectAdjustmentRow(
-                title = stringResource(R.string.screen_effects_fsr_sharpness),
-                valueText = stringResource(R.string.screen_effects_fsr_sharpness_value, fsrSharpnessLevel),
-                progress = normalizedProgress(
-                    fsrSharpnessLevel.toFloat(),
-                    ScreenEffectsConfig.FSR_MIN_LEVEL.toFloat(),
-                    ScreenEffectsConfig.FSR_MAX_LEVEL.toFloat(),
-                ),
-                onDecrease = {
-                    fsrSharpnessLevel = (fsrSharpnessLevel - 1).coerceAtLeast(ScreenEffectsConfig.FSR_MIN_LEVEL)
-                },
-                onIncrease = {
-                    fsrSharpnessLevel = (fsrSharpnessLevel + 1).coerceAtMost(ScreenEffectsConfig.FSR_MAX_LEVEL)
-                },
-            )
+        when {
+            ScreenEffectsConfig.isFsrScalingMode(scalingMode) -> {
+                ScreenEffectAdjustmentRow(
+                    title = stringResource(R.string.screen_effects_fsr_sharpness),
+                    valueText = stringResource(R.string.screen_effects_fsr_sharpness_value, fsrSharpnessLevel),
+                    progress = normalizedProgress(
+                        fsrSharpnessLevel.toFloat(),
+                        ScreenEffectsConfig.FSR_MIN_LEVEL.toFloat(),
+                        ScreenEffectsConfig.FSR_MAX_LEVEL.toFloat(),
+                    ),
+                    onDecrease = {
+                        fsrSharpnessLevel = (fsrSharpnessLevel - 1).coerceAtLeast(ScreenEffectsConfig.FSR_MIN_LEVEL)
+                    },
+                    onIncrease = {
+                        fsrSharpnessLevel = (fsrSharpnessLevel + 1).coerceAtMost(ScreenEffectsConfig.FSR_MAX_LEVEL)
+                    },
+                )
+            }
+
+            ScreenEffectsConfig.isSgsrScalingMode(scalingMode) -> {
+                ScreenEffectAdjustmentRow(
+                    title = stringResource(R.string.screen_effects_sgsr_sharpness),
+                    valueText = stringResource(R.string.screen_effects_sgsr_sharpness_value, sgsrSharpnessPercent),
+                    progress = normalizedProgress(
+                        sgsrSharpnessPercent.toFloat(),
+                        ScreenEffectsConfig.SGSR_MIN_PERCENT.toFloat(),
+                        ScreenEffectsConfig.SGSR_MAX_PERCENT.toFloat(),
+                    ),
+                    onDecrease = {
+                        sgsrSharpnessPercent = (sgsrSharpnessPercent - 5)
+                            .coerceAtLeast(ScreenEffectsConfig.SGSR_MIN_PERCENT)
+                    },
+                    onIncrease = {
+                        sgsrSharpnessPercent = (sgsrSharpnessPercent + 5)
+                            .coerceAtMost(ScreenEffectsConfig.SGSR_MAX_PERCENT)
+                    },
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -324,6 +354,15 @@ fun ScreenEffectsPanel(
     var gamma by remember(renderer, container) {
         mutableFloatStateOf(initialConfig.gamma)
     }
+    var scalingMode by remember(renderer, container) {
+        mutableIntStateOf(initialConfig.scalingMode)
+    }
+    var fsrSharpnessLevel by remember(renderer, container) {
+        mutableIntStateOf(initialConfig.fsrSharpnessLevel)
+    }
+    var sgsrSharpnessPercent by remember(renderer, container) {
+        mutableIntStateOf(initialConfig.sgsrSharpnessPercent)
+    }
     var enableToon by remember(renderer, container) {
         mutableStateOf(initialConfig.enableToon)
     }
@@ -340,11 +379,26 @@ fun ScreenEffectsPanel(
         mutableStateOf(initialConfig.enableNTSC)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableVivid, enableCRT, enableNTSC) {
+    LaunchedEffect(
+        brightness,
+        contrast,
+        gamma,
+        scalingMode,
+        fsrSharpnessLevel,
+        sgsrSharpnessPercent,
+        enableToon,
+        enableFXAA,
+        enableVivid,
+        enableCRT,
+        enableNTSC,
+    ) {
         val config = ScreenEffectsConfig(
             brightness = brightness,
             contrast = contrast,
             gamma = gamma,
+            scalingMode = scalingMode,
+            fsrSharpnessLevel = fsrSharpnessLevel,
+            sgsrSharpnessPercent = sgsrSharpnessPercent,
             enableToon = enableToon,
             enableFXAA = enableFXAA,
             enableVivid = enableVivid,
@@ -361,6 +415,9 @@ fun ScreenEffectsPanel(
         brightness = 0f
         contrast = 0f
         gamma = 1.0f
+        scalingMode = ScreenEffectsConfig.SCALING_MODE_NONE
+        fsrSharpnessLevel = ScreenEffectsConfig.FSR_DEFAULT_LEVEL
+        sgsrSharpnessPercent = ScreenEffectsConfig.SGSR_DEFAULT_PERCENT
         enableToon = false
         enableFXAA = false
         enableVivid = false

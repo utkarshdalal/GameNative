@@ -253,8 +253,12 @@
     <string name="screen_effects_scaling_mode_stretch">Stretch</string>
     <string name="screen_effects_scaling_mode_fsr">FSR</string>
     <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
+    <string name="screen_effects_scaling_mode_sgsr">SGSR</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect">SGSR Fit</string>
     <string name="screen_effects_fsr">FSR 1.0</string>
     <string name="screen_effects_fsr_description">Official AMD FidelityFX Super Resolution 1.0 using EASU + RCAS with a lower internal render resolution and full-resolution upscale.</string>
+    <string name="screen_effects_sgsr">SGSR 1</string>
+    <string name="screen_effects_sgsr_description">Edge-adaptive upscale with built-in detail recovery for a crisp full-resolution image from a lower input resolution.</string>
     <string name="screen_effects_fsr_quality">FSR quality</string>
     <string name="screen_effects_fsr_quality_ultra_quality">Ultra Quality</string>
     <string name="screen_effects_fsr_quality_quality">Quality</string>
@@ -262,6 +266,8 @@
     <string name="screen_effects_fsr_quality_performance">Performance</string>
     <string name="screen_effects_fsr_sharpness">FSR sharpness</string>
     <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_sgsr_sharpness">SGSR sharpness</string>
+    <string name="screen_effects_sgsr_sharpness_value">%1$d%%</string>
     <string name="screen_effects_launch_sharpness">Launch sharpness</string>
     <string name="screen_effects_launch_sharpness_note">CAS and DLS are applied through vkBasalt and take effect the next time you launch the game.</string>
     <string name="screen_effects_brightness">Brightness</string>
