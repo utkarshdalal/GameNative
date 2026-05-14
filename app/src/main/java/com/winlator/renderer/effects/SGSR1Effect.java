@@ -191,41 +191,9 @@ public class SGSR1Effect extends Effect implements RenderScaleEffect {
         }
 
         // ------------------------------------------------------------------
-        // Basic variant  (sgsr1_shader_mobile.frag)
-        // ------------------------------------------------------------------
-
-        private static String buildBasicShader() {
-            return shaderPreamble() +
-
-                // weightY: radially-symmetric Lanczos kernel
-                "vec2 weightY(float dx, float dy, float c, float data) {\n" +
-                "    float std = data;\n" +
-                "    float x = (dx * dx + dy * dy) * 0.55 + clamp(abs(c) * std, 0.0, 1.0);\n" +
-                "    float w = fastLanczos2(x);\n" +
-                "    return vec2(w, w * c);\n" +
-                "}\n" +
-
-                "\nvoid main() {\n" +
-                "    highp vec2 renderSize = outputResolution;\n" +
-                "    highp vec2 uv = vUV;\n" +
-                preserveAspectBlock() +
-
-                "    vec4 color;\n" +
-                "    color.xyz = textureLod(screenTexture, uv, 0.0).xyz;\n" +
-                "\n" +
-                gatherBlock() +
-
-                // std: reference sgsr1_shader_mobile.frag formula
-                "        float std  = 2.181818 / max(sum, 1.0e-6);\n" +
-                "        float data = std;\n" +
-                "\n" +
-                weightTapsBlock() +
-                finaliseBlock();
-        }
-
-        // ------------------------------------------------------------------
         // Edge-direction variant  (sgsr1_shader_mobile_edge_direction.frag)
         // ------------------------------------------------------------------
+
 
         private static String buildEdgeDirectionShader() {
             return shaderPreamble() +
