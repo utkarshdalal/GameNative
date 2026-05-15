@@ -692,9 +692,7 @@ fun XServerScreen(
         val hud = PerformanceHudView(
             context = context,
             fpsProvider = {
-                val raw = frameRating?.currentFPS ?: 0f
-                val mult = activeFrameGenerationMultiplier().takeIf { it >= 2 } ?: 1
-                raw * mult
+                frameRating?.currentFPS ?: 0f
             },
             initialConfig = performanceHudConfig,
             initialCompactMode = PrefManager.performanceHudCompactMode,
