@@ -1132,6 +1132,7 @@
     <string name="game_options_game_management">Spielverwaltung</string>
     <string name="game_options_container">Container</string>
     <string name="game_options_cloud_saves">Cloud-Speicher</string>
+    <string name="cloud_saves_pending_operations">Remote-Vorgang ausstehend</string>
     <string name="game_options_help_info">Hilfe &amp; Info</string>
 
     <!-- System Menu -->

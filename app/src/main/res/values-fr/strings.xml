@@ -1190,6 +1190,7 @@
     <string name="game_options_game_management">Gestion du jeu</string>
     <string name="game_options_container">Conteneur</string>
     <string name="game_options_cloud_saves">Sauvegardes cloud</string>
+    <string name="cloud_saves_pending_operations">Opération distante en attente</string>
     <string name="game_options_help_info">Aide &amp; infos</string>
 
     <!-- System Menu -->

@@ -437,6 +437,7 @@
     <string name="back_press_exit_warning">Нажмите назад ещё раз для выхода</string>
     <string name="game_not_installed_title">Игра не установлена</string>
     <string name="game_options_cloud_saves">Облачные сохранения</string>
+    <string name="cloud_saves_pending_operations">Ожидается удалённая операция</string>
     <string name="game_options_container">Контейнер</string>
     <string name="game_options_game_management">Управление игрой</string>
     <string name="game_options_help_info">Справка и информация</string>

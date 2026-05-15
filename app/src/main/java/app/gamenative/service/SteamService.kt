@@ -50,6 +50,7 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
+import app.gamenative.ui.data.CloudSaveStatus
 import app.gamenative.utils.CaseInsensitiveFileSystem
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.FileUtils
@@ -385,6 +386,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         private val syncInProgressApps = ConcurrentHashMap<Int, AtomicBoolean>()
+        private val cloudSyncStatuses = ConcurrentHashMap<Int, CloudSaveStatus>()
 
         private fun getSyncFlag(appId: Int): AtomicBoolean {
             val existing = syncInProgressApps[appId]
@@ -398,7 +400,12 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         private fun tryAcquireSync(appId: Int): Boolean {
             val flag = getSyncFlag(appId)
-            return flag.compareAndSet(false, true)
+            val acquired = flag.compareAndSet(false, true)
+            if (acquired) {
+                cloudSyncStatuses[appId] = CloudSaveStatus.CHECKING
+                PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(appId, CloudSaveStatus.CHECKING))
+            }
+            return acquired
         }
 
         private fun releaseSync(appId: Int) {
@@ -407,6 +414,49 @@ class SteamService : Service(), IChallengeUrlChanged {
             if (flag != null && !flag.get()) {
                 syncInProgressApps.remove(appId, flag)
             }
+            cloudSyncStatuses.remove(appId)
+        }
+
+        fun isSyncInProgress(appId: Int): Boolean {
+            return syncInProgressApps[appId]?.get() == true
+        }
+
+        fun getActiveCloudSyncStatus(appId: Int): CloudSaveStatus? {
+            return cloudSyncStatuses[appId]
+        }
+
+        fun isReadyForCloudOperations(): Boolean {
+            val service = instance ?: return false
+            return isConnected &&
+                isLoggedIn &&
+                !isStopping &&
+                !isLoggingOut &&
+                !isLoginInProgress &&
+                service._steamCloud != null
+        }
+
+        data class CloudSaveStatusResolution(
+            val status: CloudSaveStatus,
+            val conflictTimestamps: Pair<Long, Long>?,
+            val conflictUfsVersion: Int?,
+        )
+
+        private fun markCloudSyncStarted(appId: Int, isUploading: Boolean) {
+            val status = if (isUploading) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING
+            cloudSyncStatuses[appId] = status
+            PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(appId, status))
+        }
+
+        private fun markCloudSyncFinished(appId: Int, result: SyncResult) {
+            val status = when (result) {
+                SyncResult.Success,
+                SyncResult.UpToDate,
+                -> CloudSaveStatus.UP_TO_DATE
+                SyncResult.Conflict -> CloudSaveStatus.CONFLICT
+                SyncResult.PendingOperations -> CloudSaveStatus.PENDING_OPERATIONS
+                else -> CloudSaveStatus.FAILED
+            }
+            PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(appId, status))
         }
 
         // Track whether a game is currently running to prevent premature service stop
@@ -2372,12 +2422,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return@async PostSyncInfo(SyncResult.InProgress)
             }
 
+            var syncResult = PostSyncInfo(SyncResult.UnknownFail)
             try {
                 val context = instance?.applicationContext ?: return@async PostSyncInfo(SyncResult.UnknownFail)
                 // Migrate GSE Saves to Steam userdata
                 SteamUtils.migrateGSESavesToSteamUserdata(context, appId)
-
-                var syncResult = PostSyncInfo(SyncResult.UnknownFail)
 
                 val maxAttempts = 3
                 for (attempt in 1..maxAttempts) {
@@ -2395,6 +2444,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                                             parentScope = parentScope,
                                             prefixToPath = prefixToPath,
                                             onProgress = onProgress,
+                                            onPhaseStarted = { isUploading ->
+                                                markCloudSyncStarted(appId, isUploading)
+                                            },
                                         ).await()
 
                                         postSyncInfo?.let { info ->
@@ -2446,10 +2498,78 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
 
-                return@async syncResult
             } finally {
+                markCloudSyncFinished(appId, syncResult.syncResult)
                 releaseSync(appId)
             }
+            return@async syncResult
+        }
+
+        suspend fun resolveCloudSaveStatus(
+            appId: Int,
+            prefixToPath: (String) -> String,
+        ): CloudSaveStatusResolution = withContext(Dispatchers.IO) {
+            if (!isReadyForCloudOperations()) {
+                return@withContext CloudSaveStatusResolution(CloudSaveStatus.OFFLINE, null, null)
+            }
+
+            val steamInstance = instance ?: return@withContext CloudSaveStatusResolution(CloudSaveStatus.OFFLINE, null, null)
+            val steamCloud = steamInstance._steamCloud ?: return@withContext CloudSaveStatusResolution(CloudSaveStatus.OFFLINE, null, null)
+            val appInfo = steamInstance.appDao.findApp(appId) ?: return@withContext CloudSaveStatusResolution(CloudSaveStatus.OFFLINE, null, null)
+
+            val snapshot = try {
+                SteamAutoCloud.fetchSyncSnapshot(appInfo, steamInstance, steamCloud, prefixToPath)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.tag("SteamCloudSaveStatus").w(e, "Failed to resolve cloud status for appId=$appId")
+                return@withContext CloudSaveStatusResolution(CloudSaveStatus.OFFLINE, null, null)
+            }
+
+            val status = when {
+                snapshot.cloudIsNewer && snapshot.hasLocalChanges -> CloudSaveStatus.CONFLICT
+                snapshot.cloudIsNewer -> CloudSaveStatus.PENDING_DOWNLOAD
+                snapshot.hasLocalChanges -> CloudSaveStatus.PENDING_UPLOAD
+                snapshot.localFilesMap.values.none { it.isNotEmpty() } && snapshot.cloudChangeNumber > 0L -> CloudSaveStatus.PENDING_DOWNLOAD
+                else -> CloudSaveStatus.UP_TO_DATE
+            }
+
+            val conflictTimestamps = if (status == CloudSaveStatus.CONFLICT) {
+                val localTs = snapshot.conflictLocalTimestamp.takeIf { it > 0L }
+                    ?: snapshot.localFilesMap.values.flatten().maxOfOrNull { it.timestamp }
+                    ?: 0L
+                val remoteTs = snapshot.conflictRemoteTimestamp.takeIf { it > 0L }
+                    ?: snapshot.changeList.files.maxOfOrNull { it.timestamp.time }
+                    ?: 0L
+                localTs to remoteTs
+            } else {
+                null
+            }
+
+            CloudSaveStatusResolution(
+                status = status,
+                conflictTimestamps = conflictTimestamps,
+                conflictUfsVersion = snapshot.conflictUfsVersion,
+            )
+        }
+
+        fun buildPrefixToPath(context: Context, appId: Int, accountId: Long): (String) -> String {
+            val container = ContainerUtils.getContainer(context, "STEAM_$appId")
+            return { prefix ->
+                PathType.from(prefix).toAbsPath(container, appId, accountId)
+            }
+        }
+
+        suspend fun launchForceSync(
+            context: Context,
+            appId: Int,
+            preferredSave: SaveLocation = SaveLocation.None,
+        ) {
+            val accountId = userSteamId?.accountID ?: return
+            val container = ContainerUtils.getOrCreateContainer(context, "STEAM_$appId")
+            ContainerManager(context).activateContainer(container)
+            val prefixToPath = buildPrefixToPath(context, appId, accountId)
+            forceSyncUserFiles(appId = appId, prefixToPath = prefixToPath, preferredSave = preferredSave).await()
         }
 
         suspend fun forceSyncUserFiles(
@@ -2464,12 +2584,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return@async PostSyncInfo(SyncResult.InProgress)
             }
 
+            var syncResult = PostSyncInfo(SyncResult.UnknownFail)
             try {
                 val context = instance?.applicationContext ?: return@async PostSyncInfo(SyncResult.UnknownFail)
                 // Migrate GSE Saves to Steam userdata
                 SteamUtils.migrateGSESavesToSteamUserdata(context, appId)
-
-                var syncResult = PostSyncInfo(SyncResult.UnknownFail)
 
                 val maxAttempts = 3
                 for (attempt in 1..maxAttempts) {
@@ -2487,6 +2606,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                                             parentScope = parentScope,
                                             prefixToPath = prefixToPath,
                                             overrideLocalChangeNumber = overrideLocalChangeNumber,
+                                            onPhaseStarted = { isUploading ->
+                                                markCloudSyncStarted(appId, isUploading)
+                                            },
                                         ).await()
 
                                         postSyncInfo?.let { info ->
@@ -2508,10 +2630,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
 
-                return@async syncResult
             } finally {
+                markCloudSyncFinished(appId, syncResult.syncResult)
                 releaseSync(appId)
             }
+            return@async syncResult
         }
 
         suspend fun closeApp(context: Context, appId: Int, isOffline: Boolean, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
@@ -2547,8 +2670,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                                                 steamCloud = steamCloud,
                                                 parentScope = this,
                                                 prefixToPath = prefixToPath,
+                                                onPhaseStarted = { isUploading ->
+                                                    markCloudSyncStarted(appId, isUploading)
+                                                },
                                             ).await()
 
+                                            postSyncInfo?.let { info ->
+                                                markCloudSyncFinished(appId, info.syncResult)
+                                            }
                                             steamCloud.signalAppExitSyncDone(
                                                 appId = appId,
                                                 clientId = clientId,

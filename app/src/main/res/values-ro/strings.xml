@@ -1194,6 +1194,7 @@
 	<string name="game_options_game_management">Gestionare jocuri</string>
 	<string name="game_options_container">Container</string>
 	<string name="game_options_cloud_saves">Salvări cloud</string>
+	<string name="cloud_saves_pending_operations">Operațiune la distanță în așteptare</string>
 	<string name="game_options_help_info">Ajutor &amp; Info</string>
 
 	<!-- System Menu -->

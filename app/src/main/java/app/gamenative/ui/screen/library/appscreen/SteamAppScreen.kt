@@ -42,10 +42,13 @@ import app.gamenative.PluviaApp
 
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
+import app.gamenative.enums.LoginResult
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
+import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
+import app.gamenative.events.SteamEvent
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirPath
@@ -53,7 +56,9 @@ import app.gamenative.ui.component.dialog.MessageDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.data.AppMenuOption
+import app.gamenative.ui.data.CloudSaveStatus
 import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.data.toDisplayString
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.utils.ContainerUtils
@@ -343,6 +348,93 @@ class SteamAppScreen : BaseAppScreen() {
             gameName = appInfo.name,
         )
 
+        val hasCloudSaves = appInfo.supportsCloudSaves && !ContainerUtils.isLocalSavesOnly(context, libraryItem.appId)
+        val cloudConnectivityVersion = remember(gameId) { mutableStateOf(0) }
+        val syncStateText = remember(gameId) { mutableStateOf<String?>(null) }
+        val cloudSaveStatus = remember(gameId) { mutableStateOf<CloudSaveStatus?>(null) }
+        val conflictLocalTimestamp = remember(gameId) { mutableStateOf<Long?>(null) }
+        val conflictRemoteTimestamp = remember(gameId) { mutableStateOf<Long?>(null) }
+        val conflictUfsVersion = remember(gameId) { mutableStateOf<Int?>(null) }
+
+        DisposableEffect(gameId) {
+            val setOffline = {
+                cloudSaveStatus.value = CloudSaveStatus.OFFLINE
+                syncStateText.value = CloudSaveStatus.OFFLINE.toDisplayString(context)
+            }
+            val onLogonEnded: (SteamEvent.LogonEnded) -> Unit = { event ->
+                if (event.loginResult == LoginResult.Success) {
+                    cloudConnectivityVersion.value++
+                } else {
+                    setOffline()
+                }
+            }
+            val onDisconnected: (SteamEvent.Disconnected) -> Unit = { setOffline() }
+            val onRemotelyDisconnected: (SteamEvent.RemotelyDisconnected) -> Unit = { setOffline() }
+            val onCloudStatusChanged: (AndroidEvent.CloudStatusChanged) -> Unit = { event ->
+                if (event.appId == gameId) {
+                    cloudSaveStatus.value = event.status
+                    syncStateText.value = event.status.toDisplayString(context)
+                    if (event.status == CloudSaveStatus.FAILED || event.status == CloudSaveStatus.CONFLICT) {
+                        cloudConnectivityVersion.value++
+                    }
+                }
+            }
+            PluviaApp.events.on<SteamEvent.LogonEnded, Unit>(onLogonEnded)
+            PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onDisconnected)
+            PluviaApp.events.on<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
+            PluviaApp.events.on<AndroidEvent.CloudStatusChanged, Unit>(onCloudStatusChanged)
+            onDispose {
+                PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogonEnded)
+                PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onDisconnected)
+                PluviaApp.events.off<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
+                PluviaApp.events.off<AndroidEvent.CloudStatusChanged, Unit>(onCloudStatusChanged)
+            }
+        }
+
+        LaunchedEffect(gameId, cloudConnectivityVersion.value, hasCloudSaves, isInstalled) {
+            if (!hasCloudSaves || !isInstalled) return@LaunchedEffect
+            if (!SteamService.isReadyForCloudOperations()) {
+                cloudSaveStatus.value = CloudSaveStatus.OFFLINE
+                syncStateText.value = CloudSaveStatus.OFFLINE.toDisplayString(context)
+                return@LaunchedEffect
+            }
+            SteamService.getActiveCloudSyncStatus(gameId)?.let { activeStatus ->
+                cloudSaveStatus.value = activeStatus
+                syncStateText.value = activeStatus.toDisplayString(context)
+                return@LaunchedEffect
+            }
+            if (cloudSaveStatus.value == null) {
+                cloudSaveStatus.value = CloudSaveStatus.CHECKING
+                syncStateText.value = CloudSaveStatus.CHECKING.toDisplayString(context)
+            }
+            val accountId = SteamService.userSteamId?.accountID ?: PrefManager.steamUserAccountId.toLong()
+            val prefixToPath = runCatching {
+                SteamService.buildPrefixToPath(context, gameId, accountId)
+            }.getOrElse {
+                cloudSaveStatus.value = CloudSaveStatus.OFFLINE
+                syncStateText.value = CloudSaveStatus.OFFLINE.toDisplayString(context)
+                return@LaunchedEffect
+            }
+            val cloudStatusResolution = SteamService.resolveCloudSaveStatus(gameId, prefixToPath)
+            if (SteamService.isSyncInProgress(gameId)) return@LaunchedEffect
+            conflictUfsVersion.value = cloudStatusResolution.conflictUfsVersion
+            if (cloudStatusResolution.status == CloudSaveStatus.CONFLICT) {
+                cloudStatusResolution.conflictTimestamps?.let { (local, remote) ->
+                    conflictLocalTimestamp.value = local
+                    conflictRemoteTimestamp.value = remote
+                } ?: run {
+                    conflictLocalTimestamp.value = null
+                    conflictRemoteTimestamp.value = null
+                }
+            } else {
+                conflictLocalTimestamp.value = null
+                conflictRemoteTimestamp.value = null
+                conflictUfsVersion.value = null
+            }
+            cloudSaveStatus.value = cloudStatusResolution.status
+            syncStateText.value = cloudStatusResolution.status.toDisplayString(context)
+        }
+
         return GameDisplayInfo(
             name = appInfo.name,
             developer = appInfo.developer,
@@ -358,6 +450,12 @@ class SteamAppScreen : BaseAppScreen() {
             playtimeText = playtimeText,
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
+            hasCloudSaves = hasCloudSaves,
+            lastSyncStateText = syncStateText.value,
+            cloudSaveStatus = cloudSaveStatus.value,
+            conflictLocalTimestamp = conflictLocalTimestamp.value,
+            conflictRemoteTimestamp = conflictRemoteTimestamp.value,
+            conflictUfsVersion = conflictUfsVersion.value,
         )
     }
 
@@ -844,6 +942,18 @@ class SteamAppScreen : BaseAppScreen() {
         )
 
         return options
+    }
+
+    override fun getForceCloudSync(context: Context, libraryItem: LibraryItem): ((SaveLocation) -> Unit) = { saveLocation ->
+        if (PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(
+                event = "cloud_sync_forced",
+                properties = mapOf("game_name" to libraryItem.name),
+            )
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            SteamService.launchForceSync(context, libraryItem.gameId, saveLocation)
+        }
     }
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {

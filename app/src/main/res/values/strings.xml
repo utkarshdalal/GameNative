@@ -1252,6 +1252,17 @@
     <string name="game_options_game_management">Game Management</string>
     <string name="game_options_container">Container</string>
     <string name="game_options_cloud_saves">Cloud Saves</string>
+    <string name="cloud_saves_up_to_date">Up to Date</string>
+    <string name="cloud_saves_pending_download">Pending Download</string>
+    <string name="cloud_saves_pending_upload">Pending Upload</string>
+    <string name="cloud_saves_pending_operations">Remote Operation Pending</string>
+    <string name="cloud_saves_checking">Checking…</string>
+    <string name="cloud_saves_downloading">Downloading…</string>
+    <string name="cloud_saves_uploading">Uploading…</string>
+    <string name="cloud_saves_conflict">Conflict</string>
+    <string name="cloud_saves_failed">Failed</string>
+    <string name="cloud_saves_offline">Offline</string>
+    <string name="cloud_saves_force_sync">Force Sync</string>
     <string name="game_options_help_info">Help &amp; Info</string>
 
     <!-- System Menu -->

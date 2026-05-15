@@ -1204,6 +1204,7 @@
     <string name="game_options_game_management">게임 관리</string>
     <string name="game_options_container">컨테이너</string>
     <string name="game_options_cloud_saves">클라우드 저장</string>
+    <string name="cloud_saves_pending_operations">대기 중인 원격 작업</string>
     <string name="game_options_help_info">도움말 및 정보</string>
 
     <!-- System Menu -->
