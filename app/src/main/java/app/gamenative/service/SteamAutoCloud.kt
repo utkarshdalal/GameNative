@@ -140,32 +140,21 @@ object SteamAutoCloud {
         )
     }
 
-    fun syncUserFiles(
-        appInfo: SteamApp,
-        clientId: Long,
-        steamInstance: SteamService,
-        steamCloud: SteamCloud,
-        preferredSave: SaveLocation = SaveLocation.None,
-        parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
-        prefixToPath: (String) -> String,
-        overrideLocalChangeNumber: Long? = null,
-        onProgress: ((message: String, progress: Float) -> Unit)? = null,
-    ): Deferred<PostSyncInfo?> = parentScope.async {
-        val postSyncInfo: PostSyncInfo?
-
-        Timber.i("Retrieving save files of ${appInfo.name}")
-
+    private class CloudPathResolver(
+        private val appInfo: SteamApp,
+        private val prefixToPath: (String) -> String,
+    ) {
         // When a rootoverride remaps a root (e.g. GameInstall → WinAppDataRoaming), the cloud
         // still stores files under the original root placeholder (uploadRoot). Map those
         // placeholders to the local root so downloads land in the right directory.
-        val uploadRootRemap: Map<String, String> = appInfo.ufs.saveFilePatterns
+        private val uploadRootRemap: Map<String, String> = appInfo.ufs.saveFilePatterns
             .filter { it.uploadRoot != it.root }
             .associate { "%${it.uploadRoot.name}%" to it.root.name }
 
         // Full-prefix remap for patterns where addPath shifts the local subfolder relative to
         // the cloud path. E.g. cloud "%GameInstall%saves" must land at "<WinAppDataRoaming>/MyGame/saves",
         // not "<WinAppDataRoaming>/saves" — root-only replacement can't express this.
-        val cloudPrefixToLocalPath: Map<String, String> = appInfo.ufs.saveFilePatterns
+        private val cloudPrefixToLocalPath: Map<String, String> = appInfo.ufs.saveFilePatterns
             .filter { it.uploadPath != it.path }
             .associate { p ->
                 val cloudKey = "%${p.uploadRoot.name}%${p.uploadPath}"
@@ -175,7 +164,7 @@ object SteamAutoCloud {
                 cloudKey to Paths.get(prefixToPath(p.root.name), p.substitutedPath).pathString
             }
 
-        val getPathTypePairs: (AppFileChangeList) -> List<Pair<String, String>> = { fileList ->
+        private fun getPathTypePairs(fileList: AppFileChangeList): List<Pair<String, String>> =
             fileList.pathPrefixes
                 .map {
                     var matchResults = findPlaceholderWithin(it).map { it.value }.toList()
@@ -195,12 +184,11 @@ object SteamAutoCloud {
                     val localRootName = uploadRootRemap[placeholder] ?: placeholder
                     placeholder to prefixToPath(localRootName)
                 }
-        }
 
-        val convertPrefixes: (AppFileChangeList) -> List<String> = { fileList ->
+        private fun convertPrefixes(fileList: AppFileChangeList): List<String> {
             val pathTypePairs = getPathTypePairs(fileList)
 
-            fileList.pathPrefixes.map { prefix ->
+            return fileList.pathPrefixes.map { prefix ->
                 // Full-prefix match first: handles addPath case where the cloud path omits a
                 // subfolder that the local path includes. Root-only replacement can't express this.
                 // Cloud prefixes sometimes include a trailing slash (e.g. "%WinAppDataLocalLow%76561198035529760/save1/")
@@ -230,23 +218,18 @@ object SteamAutoCloud {
             }
         }
 
-        val getFilePrefix: (AppFileInfo, AppFileChangeList) -> String = { file, fileList ->
-            if (file.pathPrefixIndex < fileList.pathPrefixes.size) {
+        fun getFilePrefix(file: AppFileInfo, fileList: AppFileChangeList): String {
+            return if (file.pathPrefixIndex < fileList.pathPrefixes.size) {
                 Paths.get(fileList.pathPrefixes[file.pathPrefixIndex]).pathString
             } else {
                 ""
             }
         }
 
-        val getFilePrefixPath: (AppFileInfo, AppFileChangeList) -> String = { file, fileList ->
+        fun getFilePrefixPath(file: AppFileInfo, fileList: AppFileChangeList): String =
             Paths.get(getFilePrefix(file, fileList), file.filename).pathString
-        }
 
-        val hashCacheHits = AtomicInteger(0)
-        val hashCacheMisses = AtomicInteger(0)
-        val hashCacheDao = steamInstance.db.steamFileHashCacheDao()
-
-        val getFullFilePath: (AppFileInfo, AppFileChangeList) -> Path = getFullFilePath@{ file, fileList ->
+        fun getFullFilePath(file: AppFileInfo, fileList: AppFileChangeList): Path {
             val gameInstallPrefix = "%${PathType.GameInstall.name}%"
             if (file.filename.startsWith(gameInstallPrefix)) {
                 // Steam API sometimes returns prefix="" and filename="%GameInstall%save0.dat" instead of splitting correctly.
@@ -256,7 +239,7 @@ object SteamAutoCloud {
                 // Danganronpa 2: WinMyDocuments/My Games/Danganronpa2/), download there instead
                 // of the raw game-install folder so the game can find its saves.
                 val remapped = cloudPrefixToLocalPath[gameInstallPrefix]
-                return@getFullFilePath if (remapped != null) {
+                return if (remapped != null) {
                     Paths.get(remapped, stripped)
                 } else {
                     Paths.get(prefixToPath(PathType.GameInstall.name), stripped)
@@ -265,13 +248,56 @@ object SteamAutoCloud {
 
             val convertedPrefixes = convertPrefixes(fileList)
 
-            if (file.pathPrefixIndex < fileList.pathPrefixes.size) {
+            return if (file.pathPrefixIndex < fileList.pathPrefixes.size) {
                 Paths.get(convertedPrefixes[file.pathPrefixIndex], file.filename)
             } else {
                 // if the file does not reference any prefix then we need to set it to the default path
                 Paths.get(prefixToPath(PathType.DEFAULT.name), file.filename)
             }
         }
+
+        fun fileChangeListToUserFiles(appFileListChange: AppFileChangeList): List<UserFileInfo> {
+            val pathTypePairs = getPathTypePairs(appFileListChange)
+
+            return appFileListChange.files.map {
+                UserFileInfo(
+                    root = if (it.pathPrefixIndex < pathTypePairs.size) {
+                        PathType.from(pathTypePairs[it.pathPrefixIndex].first)
+                    } else {
+                        PathType.GameInstall
+                    },
+                    path = if (it.pathPrefixIndex < pathTypePairs.size) {
+                        appFileListChange.pathPrefixes[it.pathPrefixIndex]
+                    } else {
+                        ""
+                    },
+                    filename = it.filename,
+                    timestamp = it.timestamp.time,
+                    sha = it.shaFile,
+                )
+            }
+        }
+    }
+
+    fun syncUserFiles(
+        appInfo: SteamApp,
+        clientId: Long,
+        steamInstance: SteamService,
+        steamCloud: SteamCloud,
+        preferredSave: SaveLocation = SaveLocation.None,
+        parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+        prefixToPath: (String) -> String,
+        overrideLocalChangeNumber: Long? = null,
+        onProgress: ((message: String, progress: Float) -> Unit)? = null,
+    ): Deferred<PostSyncInfo?> = parentScope.async {
+        val postSyncInfo: PostSyncInfo?
+
+        Timber.i("Retrieving save files of ${appInfo.name}")
+
+        val pathResolver = CloudPathResolver(appInfo, prefixToPath)
+        val hashCacheHits = AtomicInteger(0)
+        val hashCacheMisses = AtomicInteger(0)
+        val hashCacheDao = steamInstance.db.steamFileHashCacheDao()
 
         val getFilesDiff: (List<UserFileInfo>, List<UserFileInfo>) -> Pair<Boolean, FileChanges> = { currentFiles, oldFiles ->
             val overlappingFiles = currentFiles.filter { currentFile ->
@@ -305,15 +331,15 @@ object SteamAutoCloud {
         val hasHashConflicts: (Map<String, List<UserFileInfo>>, AppFileChangeList) -> Boolean =
             { localUserFiles, fileList ->
                 fileList.files.any { file ->
-                    Timber.i("Checking for " + "${getFilePrefix(file, fileList)} in ${localUserFiles.keys}")
+                    Timber.i("Checking for " + "${pathResolver.getFilePrefix(file, fileList)} in ${localUserFiles.keys}")
 
-                    localUserFiles[getFilePrefix(file, fileList)]?.let { localUserFile ->
+                    localUserFiles[pathResolver.getFilePrefix(file, fileList)]?.let { localUserFile ->
                         localUserFile.firstOrNull {
                             Timber.i("Comparing ${file.filename} and ${it.filename}")
 
                             it.filename == file.filename
                         }?.let {
-                            Timber.i("Comparing SHA of ${getFilePrefixPath(file, fileList)} and ${it.prefixPath}")
+                            Timber.i("Comparing SHA of ${pathResolver.getFilePrefixPath(file, fileList)} and ${it.prefixPath}")
                             Timber.i("[${file.shaFile.joinToString(", ")}]\n[${it.sha.joinToString(", ")}]")
 
                             !file.shaFile.contentEquals(it.sha)
@@ -439,28 +465,6 @@ object SteamAutoCloud {
             result
         }
 
-        val fileChangeListToUserFiles: (AppFileChangeList) -> List<UserFileInfo> = { appFileListChange ->
-            val pathTypePairs = getPathTypePairs(appFileListChange)
-
-            appFileListChange.files.map {
-                UserFileInfo(
-                    root = if (it.pathPrefixIndex < pathTypePairs.size) {
-                        PathType.from(pathTypePairs[it.pathPrefixIndex].first)
-                    } else {
-                        PathType.GameInstall
-                    },
-                    path = if (it.pathPrefixIndex < pathTypePairs.size) {
-                        appFileListChange.pathPrefixes[it.pathPrefixIndex]
-                    } else {
-                        ""
-                    },
-                    filename = it.filename,
-                    timestamp = it.timestamp.time,
-                    sha = it.shaFile,
-                )
-            }
-        }
-
         val buildUrl: (Boolean, String, String) -> String = { useHttps, urlHost, urlPath ->
             val scheme = if (useHttps) "https://" else "http://"
             "$scheme${urlHost}$urlPath"
@@ -501,8 +505,8 @@ object SteamAutoCloud {
                                         hashCacheDao = hashCacheDao,
                                         file = file,
                                         fileList = fileList,
-                                        getFilePrefixPath = getFilePrefixPath,
-                                        getFullFilePath = getFullFilePath,
+                                        getFilePrefixPath = pathResolver::getFilePrefixPath,
+                                        getFullFilePath = pathResolver::getFullFilePath,
                                         buildUrl = buildUrl,
                                         httpClient = downloadHttpClient,
                                         totalRawBytes = totalRawBytes,
@@ -809,7 +813,7 @@ object SteamAutoCloud {
                 parentScope.async {
                     Timber.i("Downloading cloud user files")
 
-                    val remoteUserFiles = fileChangeListToUserFiles(appFileListChange)
+                    val remoteUserFiles = pathResolver.fileChangeListToUserFiles(appFileListChange)
                     val filesDiff = getFilesDiff(remoteUserFiles, allLocalUserFiles).second
                     microsecDeleteFiles = measureTime {
                         var totalFilesDeleted = 0
@@ -934,7 +938,7 @@ object SteamAutoCloud {
                             it.getAbsPath(prefixToPath).toString().lowercase() to it.sha
                         }
                         val remoteByPath = appFileListChange.files.associate {
-                            getFullFilePath(it, appFileListChange).toString().lowercase() to it.shaFile
+                            pathResolver.getFullFilePath(it, appFileListChange).toString().lowercase() to it.shaFile
                         }
                         val localMatchesRemote = localByPath.keys == remoteByPath.keys &&
                             localByPath.all { (path, sha) ->
