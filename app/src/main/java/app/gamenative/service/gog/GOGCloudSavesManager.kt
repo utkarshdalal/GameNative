@@ -100,6 +100,23 @@ class GOGCloudSavesManager(
                 Timber.e(e, "Failed to calculate metadata for $absolutePath")
             }
         }
+
+        suspend fun calculateTimestamp() = withContext(Dispatchers.IO) {
+            try {
+                val file = File(absolutePath)
+                if (!file.exists() || !file.isFile) {
+                    Timber.w("File does not exist: $absolutePath")
+                    return@withContext
+                }
+
+                val timestamp = file.lastModified()
+                val instant = Instant.ofEpochMilli(timestamp)
+                updateTime = DateTimeFormatter.ISO_INSTANT.format(instant)
+                updateTimestamp = timestamp / 1000
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to read timestamp for $absolutePath")
+            }
+        }
     }
 
     /**
@@ -368,7 +385,7 @@ class GOGCloudSavesManager(
                 .getOrNull() ?: return@withContext null
 
             val syncDir = File(localPath)
-            val localFiles = if (syncDir.exists()) scanLocalFiles(syncDir) else emptyList()
+            val localFiles = if (syncDir.exists()) scanLocalFiles(syncDir, calculateHashes = false) else emptyList()
             val cloudFiles = getCloudFiles(credentials.userId, clientId, dirname, credentials.accessToken)
                 ?: return@withContext null
 
@@ -393,7 +410,10 @@ class GOGCloudSavesManager(
     /**
      * Scan local directory for save files
      */
-    private suspend fun scanLocalFiles(directory: File): List<SyncFile> = withContext(Dispatchers.IO) {
+    private suspend fun scanLocalFiles(
+        directory: File,
+        calculateHashes: Boolean = true,
+    ): List<SyncFile> = withContext(Dispatchers.IO) {
         val files = mutableListOf<SyncFile>()
 
         fun scanRecursive(dir: File, basePath: String) {
@@ -411,8 +431,13 @@ class GOGCloudSavesManager(
 
         scanRecursive(directory, directory.absolutePath)
 
-        // Calculate metadata for all files
-        files.forEach { it.calculateMetadata() }
+        files.forEach { file ->
+            if (calculateHashes) {
+                file.calculateMetadata()
+            } else {
+                file.calculateTimestamp()
+            }
+        }
 
         files
     }
