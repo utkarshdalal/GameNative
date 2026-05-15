@@ -28,6 +28,10 @@ object BionicFgManager {
     const val ENV_MULTIPLIER = "BIONIC_FG_MULTIPLIER"
     const val ENV_FLOW_SCALE = "BIONIC_FG_FLOW_SCALE"
     const val ENV_MODEL = "BIONIC_FG_MODEL"
+    const val ENV_DEBUG_TIMING = "BIONIC_FG_DEBUG_TIMING"
+    const val ENV_DEBUG_SUMMARY_EVERY = "BIONIC_FG_DEBUG_SUMMARY_EVERY"
+    const val ENV_PACE_PRESENT = "BIONIC_FG_PACE_PRESENT"
+    const val ENV_PACE_INTERVAL_MS = "BIONIC_FG_PACE_INTERVAL_MS"
 
     const val EXTRA_ENABLED = "bionicFgEnabled"
     const val EXTRA_MULTIPLIER = "bionicFgMultiplier"
@@ -137,7 +141,18 @@ object BionicFgManager {
 
     @JvmStatic
     fun applyLaunchEnv(context: Context, container: Container, envVars: EnvVars): Boolean {
-        listOf(ENV_ENABLE, ENV_DISABLE, ENV_CONFIG, ENV_MULTIPLIER, ENV_FLOW_SCALE, ENV_MODEL).forEach {
+        listOf(
+            ENV_ENABLE,
+            ENV_DISABLE,
+            ENV_CONFIG,
+            ENV_MULTIPLIER,
+            ENV_FLOW_SCALE,
+            ENV_MODEL,
+            ENV_DEBUG_TIMING,
+            ENV_DEBUG_SUMMARY_EVERY,
+            ENV_PACE_PRESENT,
+            ENV_PACE_INTERVAL_MS,
+        ).forEach {
             envVars.remove(it)
         }
 
@@ -165,12 +180,20 @@ object BionicFgManager {
         envVars.put(ENV_MULTIPLIER, multiplier(container).toString())
         envVars.put(ENV_FLOW_SCALE, String.format(Locale.US, "%.2f", flowScale(container)))
         envVars.put(ENV_MODEL, model(container))
+        envVars.put(ENV_DEBUG_TIMING, "1")
+        envVars.put(ENV_DEBUG_SUMMARY_EVERY, "60")
+        envVars.put(ENV_PACE_PRESENT, "1")
+        envVars.put(ENV_PACE_INTERVAL_MS, "8.333")
 
         Timber.tag(TAG).i(
-            "Bionic-FG enabled: mult=%d, flow=%.2f, model=%s",
+            "Bionic-FG enabled: mult=%d, flow=%.2f, model=%s, debugTiming=%s, summaryEvery=%d, pacePresent=%s, paceIntervalMs=%.3f",
             multiplier(container),
             flowScale(container),
             model(container),
+            true,
+            60,
+            true,
+            8.333f,
         )
         return true
     }
