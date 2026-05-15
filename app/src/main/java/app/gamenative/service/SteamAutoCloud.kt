@@ -490,6 +490,75 @@ object SteamAutoCloud {
         return RemoteChangeDecision(hasLocalChanges = hasLocalChanges, rehydrateCache = false)
     }
 
+    internal data class CloudSyncSnapshot(
+        val cloudIsNewer: Boolean,
+        val localFilesMap: Map<String, List<UserFileInfo>>,
+        val hasLocalChanges: Boolean,
+        val conflictUfsVersion: Int?,
+        val conflictLocalTimestamp: Long,
+        val conflictRemoteTimestamp: Long,
+        val cloudChangeNumber: Long,
+        val changeList: AppFileChangeList,
+    )
+
+    internal suspend fun fetchSyncSnapshot(
+        appInfo: SteamApp,
+        steamInstance: SteamService,
+        steamCloud: SteamCloud,
+        prefixToPath: (String) -> String,
+    ): CloudSyncSnapshot {
+        val localChangeNumber = steamInstance.changeNumbersDao.getByAppId(appInfo.id)?.changeNumber ?: -1
+        val cachedFileList = steamInstance.fileChangeListsDao.getByAppId(appInfo.id)
+        val cacheIsAbsentOrEmpty = cachedFileList == null || cachedFileList.userFileInfo.isEmpty()
+        val changeNumber = if (!cacheIsAbsentOrEmpty && localChangeNumber >= 0) localChangeNumber else 0L
+        val changeList = steamCloud.getAppFileListChange(appInfo.id, changeNumber).await()
+        val cloudChangeNumber = changeList.currentChangeNumber
+        val localFilesMap = getLocalUserFilesAsPrefixMap(
+            appInfo = appInfo,
+            hashCacheDao = steamInstance.db.steamFileHashCacheDao(),
+            hashCacheHits = AtomicInteger(0),
+            hashCacheMisses = AtomicInteger(0),
+            prefixToPath = prefixToPath,
+        )
+        val allLocalFiles = localFilesMap.values.flatten()
+        val effectiveLocalChangeNumber = if (cacheIsAbsentOrEmpty && allLocalFiles.isNotEmpty()) {
+            -1L
+        } else {
+            localChangeNumber
+        }
+
+        val pathResolver = CloudPathResolver(appInfo, prefixToPath)
+        val hasCachedLocalChanges = cachedFileList?.let {
+            getFilesDiff(allLocalFiles, it.userFileInfo).first
+        } == true
+        val remoteChangeDecision = if (effectiveLocalChangeNumber < cloudChangeNumber) {
+            getRemoteChangeDecision(
+                hasCachedLocalChanges = hasCachedLocalChanges,
+                cacheIsAbsentOrEmpty = cacheIsAbsentOrEmpty,
+                allLocalUserFiles = allLocalFiles,
+                appFileListChange = changeList,
+                prefixToPath = prefixToPath,
+                getFullFilePath = pathResolver::getFullFilePath,
+            )
+        } else {
+            RemoteChangeDecision(
+                hasLocalChanges = hasCachedLocalChanges,
+                rehydrateCache = false,
+            )
+        }
+
+        return CloudSyncSnapshot(
+            cloudIsNewer = effectiveLocalChangeNumber < cloudChangeNumber && !remoteChangeDecision.rehydrateCache,
+            localFilesMap = localFilesMap,
+            hasLocalChanges = remoteChangeDecision.hasLocalChanges,
+            conflictUfsVersion = remoteChangeDecision.conflictUfsVersion,
+            conflictLocalTimestamp = remoteChangeDecision.localTimestamp,
+            conflictRemoteTimestamp = remoteChangeDecision.remoteTimestamp,
+            cloudChangeNumber = cloudChangeNumber,
+            changeList = changeList,
+        )
+    }
+
     fun syncUserFiles(
         appInfo: SteamApp,
         clientId: Long,
@@ -500,6 +569,7 @@ object SteamAutoCloud {
         prefixToPath: (String) -> String,
         overrideLocalChangeNumber: Long? = null,
         onProgress: ((message: String, progress: Float) -> Unit)? = null,
+        onPhaseStarted: ((isUploading: Boolean) -> Unit)? = null,
     ): Deferred<PostSyncInfo?> = parentScope.async {
         val postSyncInfo: PostSyncInfo?
 
@@ -1028,6 +1098,7 @@ object SteamAutoCloud {
 
                         Timber.i("No local changes but new cloud user files")
 
+                        onPhaseStarted?.invoke(false)
                         downloadUserFiles(parentScope).await()?.let {
                             return@async it
                         }
@@ -1037,11 +1108,13 @@ object SteamAutoCloud {
                         when (preferredSave) {
                             SaveLocation.Local -> {
                                 // overwrite remote save with the local one
+                                onPhaseStarted?.invoke(true)
                                 uploadUserFiles(parentScope).await()
                             }
 
                             SaveLocation.Remote -> {
                                 // overwrite local save with the remote one
+                                onPhaseStarted?.invoke(false)
                                 downloadUserFiles(parentScope).await()?.let {
                                     return@async it
                                 }
@@ -1072,6 +1145,7 @@ object SteamAutoCloud {
                     if (hasLocalChanges) {
                         Timber.i("Found local changes and no new cloud user files")
 
+                        onPhaseStarted?.invoke(true)
                         uploadUserFiles(parentScope).await()
                     } else {
                         Timber.i("No local changes and no new cloud user files, doing nothing...")
