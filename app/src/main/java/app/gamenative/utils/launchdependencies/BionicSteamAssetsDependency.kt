@@ -62,11 +62,11 @@ object BionicSteamAssetsDependency : LaunchDependency {
         }
     }
 
-    private fun system32Dll(imageFs: ImageFs): File =
-        File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows/system32/" + LSTEAMCLIENT_DLL)
+    private fun system32Dll(container: Container): File =
+        File(container.rootDir, ".wine/drive_c/windows/system32/" + LSTEAMCLIENT_DLL)
 
-    private fun syswow64Dll(imageFs: ImageFs): File =
-        File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows/syswow64/" + LSTEAMCLIENT_DLL)
+    private fun syswow64Dll(container: Container): File =
+        File(container.rootDir, ".wine/drive_c/windows/syswow64/" + LSTEAMCLIENT_DLL)
 
     private fun libsteamclientSo(imageFs: ImageFs): File =
         File(imageFs.libDir, LIBSTEAMCLIENT_SO)
@@ -82,7 +82,7 @@ object BionicSteamAssetsDependency : LaunchDependency {
         if (!File(filesDir, EXPERIMENTAL_DRM_ARCHIVE).exists()) return false
         if (!libsteamclientSo(imageFs).exists()) return false
         if (lsteamclientArchiveFor(container) != null) {
-            if (!system32Dll(imageFs).exists() || !syswow64Dll(imageFs).exists()) return false
+            if (!system32Dll(container).exists() || !syswow64Dll(container).exists()) return false
         }
         return true
     }
@@ -143,8 +143,8 @@ object BionicSteamAssetsDependency : LaunchDependency {
         // 2/3. lsteamclient archive for the active Proton variant.
         val lsteamclientArchive = lsteamclientArchiveFor(container)
         if (lsteamclientArchive != null) {
-            val dllSystem32 = system32Dll(imageFs)
-            val dllSyswow64 = syswow64Dll(imageFs)
+            val dllSystem32 = system32Dll(container)
+            val dllSyswow64 = syswow64Dll(container)
             val dllsPresent = withContext(Dispatchers.IO) { dllSystem32.exists() && dllSyswow64.exists() }
             if (!dllsPresent) {
                 val archiveCache = File(filesDir, lsteamclientArchive)
