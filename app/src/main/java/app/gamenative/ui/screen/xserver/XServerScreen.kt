@@ -294,6 +294,7 @@ fun XServerScreen(
     appId: String,
     bootToContainer: Boolean,
     testGraphics: Boolean = false,
+    isOffline: Boolean = false,
     registerBackAction: ( ( ) -> Unit ) -> Unit,
     navigateBack: () -> Unit,
     onExit: (onComplete: (() -> Unit)?) -> Unit,
@@ -1379,9 +1380,13 @@ fun XServerScreen(
             exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
         }
         val onPlayingBlocked: (SteamEvent.PlayingBlocked) -> Unit = { event ->
-            Timber.i("onPlayingBlocked remoteAppName=${event.remoteAppName}")
-            playingBlockedRemoteName = event.remoteAppName
-            showPlayingBlockedDialog = true
+            if (isOffline || container.isSteamOfflineMode()) {
+                Timber.i("onPlayingBlocked suppressed (offline=$isOffline, containerOffline=${container.isSteamOfflineMode()})")
+            } else {
+                Timber.i("onPlayingBlocked remoteAppName=${event.remoteAppName}")
+                playingBlockedRemoteName = event.remoteAppName
+                showPlayingBlockedDialog = true
+            }
         }
         val debugCallback = Callback<String> { outputLine ->
             Timber.i(outputLine ?: "")

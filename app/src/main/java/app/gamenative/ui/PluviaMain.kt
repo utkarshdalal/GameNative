@@ -1438,10 +1438,12 @@ fun PluviaMain(
 
                 /** Game Screen **/
                 composable(route = PluviaScreen.XServer.route) {
+                    val xServerIsOffline by viewModel.isOffline.collectAsStateWithLifecycle()
                     XServerScreen(
                         appId = state.launchedAppId,
                         bootToContainer = state.bootToContainer,
                         testGraphics = state.testGraphics,
+                        isOffline = xServerIsOffline,
                         registerBackAction = { cb ->
                             Timber.d("registerBackAction called: $cb")
                             gameBackAction = cb
