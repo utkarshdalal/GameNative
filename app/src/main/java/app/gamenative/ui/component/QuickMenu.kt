@@ -1139,6 +1139,7 @@ private fun BionicFgQuickMenuTab(
 ) {
     val accentColor = PluviaTheme.colors.accentPurple
     val selectedModel = if (model == "1") "1" else "0"
+    val isEnabled = multiplier >= 2
 
     Column(
         modifier = modifier
@@ -1153,62 +1154,70 @@ private fun BionicFgQuickMenuTab(
             modifier = Modifier.padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            listOf(2, 3, 4).forEach { value ->
+            listOf(0, 2, 3, 4).forEach { value ->
                 QuickMenuChoiceChip(
-                    text = "${value}x",
-                    selected = multiplier == value,
+                    text = if (value == 0) "Off" else "${value}x",
+                    selected = multiplier == value || (value == 0 && multiplier < 2),
                     accentColor = accentColor,
                     onClick = { onMultiplierChanged(value) },
                     modifier = Modifier.width(56.dp),
-                    focusRequester = if (value == 2) focusRequester else null,
+                    focusRequester = if (value == 0) focusRequester else null,
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        QuickMenuAdjustmentRow(
-            title = stringResource(R.string.bionic_fg_flow_scale),
-            subtitle = stringResource(R.string.lsfg_flow_scale_desc),
-            valueText = String.format(java.util.Locale.US, "%.2f", flowScale),
-            progress = (flowScale - 0.25f) / 0.75f,
-            onDecrease = {
-                val next = (flowScale - 0.05f).coerceIn(0.25f, 1.0f)
-                onFlowScaleChanged(String.format(java.util.Locale.US, "%.2f", next).toFloat())
-            },
-            onIncrease = {
-                val next = (flowScale + 0.05f).coerceIn(0.25f, 1.0f)
-                onFlowScaleChanged(String.format(java.util.Locale.US, "%.2f", next).toFloat())
-            },
-            accentColor = accentColor,
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        QuickMenuSectionHeader(
-            title = stringResource(R.string.bionic_fg_model),
-            subtitle = if (selectedModel == "1") {
-                stringResource(R.string.bionic_fg_model_1)
-            } else {
-                stringResource(R.string.bionic_fg_model_0)
-            },
-        )
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        AnimatedVisibility(
+            visible = isEnabled,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
         ) {
-            QuickMenuChoiceChip(
-                text = "M0",
-                selected = selectedModel == "0",
-                accentColor = accentColor,
-                onClick = { onModelChanged("0") },
-            )
-            QuickMenuChoiceChip(
-                text = "M1",
-                selected = selectedModel == "1",
-                accentColor = accentColor,
-                onClick = { onModelChanged("1") },
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Spacer(modifier = Modifier.height(4.dp))
+
+                QuickMenuAdjustmentRow(
+                    title = stringResource(R.string.bionic_fg_flow_scale),
+                    subtitle = stringResource(R.string.lsfg_flow_scale_desc),
+                    valueText = String.format(java.util.Locale.US, "%.2f", flowScale),
+                    progress = (flowScale - 0.25f) / 0.75f,
+                    onDecrease = {
+                        val next = (flowScale - 0.05f).coerceIn(0.25f, 1.0f)
+                        onFlowScaleChanged(String.format(java.util.Locale.US, "%.2f", next).toFloat())
+                    },
+                    onIncrease = {
+                        val next = (flowScale + 0.05f).coerceIn(0.25f, 1.0f)
+                        onFlowScaleChanged(String.format(java.util.Locale.US, "%.2f", next).toFloat())
+                    },
+                    accentColor = accentColor,
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                QuickMenuSectionHeader(
+                    title = stringResource(R.string.bionic_fg_model),
+                    subtitle = if (selectedModel == "1") {
+                        stringResource(R.string.bionic_fg_model_1)
+                    } else {
+                        stringResource(R.string.bionic_fg_model_0)
+                    },
+                )
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    QuickMenuChoiceChip(
+                        text = "M0",
+                        selected = selectedModel == "0",
+                        accentColor = accentColor,
+                        onClick = { onModelChanged("0") },
+                    )
+                    QuickMenuChoiceChip(
+                        text = "M1",
+                        selected = selectedModel == "1",
+                        accentColor = accentColor,
+                        onClick = { onModelChanged("1") },
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))

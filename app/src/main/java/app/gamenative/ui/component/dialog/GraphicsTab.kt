@@ -360,7 +360,7 @@ private fun BionicFgSection(state: ContainerConfigState) {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Text(text = stringResource(R.string.bionic_fg_multiplier))
                 Slider(
-                    value = config.bionicFgMultiplier.toFloat(),
+                    value = config.bionicFgMultiplier.coerceIn(2, 4).toFloat(),
                     onValueChange = { newValue ->
                         val clamped = newValue.roundToInt().coerceIn(2, 4)
                         state.config.value = config.copy(bionicFgMultiplier = clamped)
@@ -368,7 +368,7 @@ private fun BionicFgSection(state: ContainerConfigState) {
                     valueRange = 2f..4f,
                     steps = 1,
                 )
-                Text(text = "${config.bionicFgMultiplier}x")
+                Text(text = if (config.bionicFgMultiplier < 2) "Off" else "${config.bionicFgMultiplier}x")
             }
 
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {

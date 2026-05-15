@@ -21,7 +21,7 @@ object BionicFgQuickMenuHelper {
     )
 
     fun sanitizeMultiplier(multiplier: Int): Int =
-        multiplier.coerceIn(2, 4)
+        if (multiplier < 2) 0 else multiplier.coerceIn(2, 4)
 
     fun sanitizeFlowScale(flowScale: Float): Float =
         flowScale.coerceIn(0.25f, 1.0f)

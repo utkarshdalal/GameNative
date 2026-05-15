@@ -43,7 +43,7 @@ object BionicFgManager {
 
     fun multiplier(container: Container): Int {
         val raw = container.getExtra(EXTRA_MULTIPLIER, "2").toIntOrNull() ?: 2
-        return raw.coerceIn(2, 4)
+        return sanitizeMultiplier(raw)
     }
 
     fun flowScale(container: Container): Float {
@@ -108,11 +108,14 @@ object BionicFgManager {
 
         return try {
             val configFile = configFile(container)
+            val sanitizedMultiplier = sanitizeMultiplier(multiplier)
+            val sanitizedFlowScale = flowScale.coerceIn(0.25f, 1.0f)
+            val sanitizedModel = sanitizeModel(model)
             val configText = buildConfigToml(
                 enabled = enabled,
-                multiplier = multiplier.coerceIn(2, 4),
-                flowScale = flowScale.coerceIn(0.25f, 1.0f),
-                model = sanitizeModel(model),
+                multiplier = sanitizedMultiplier,
+                flowScale = sanitizedFlowScale,
+                model = sanitizedModel,
             )
             val ok = FileUtils.writeString(configFile, configText)
             if (ok && configFile.exists()) {
@@ -120,9 +123,9 @@ object BionicFgManager {
                 Timber.tag(TAG).i(
                     "Updated Bionic-FG config: enabled=%s, mult=%d, flow=%.2f, model=%s",
                     enabled,
-                    multiplier.coerceIn(2, 4),
-                    flowScale.coerceIn(0.25f, 1.0f),
-                    sanitizeModel(model),
+                    sanitizedMultiplier,
+                    sanitizedFlowScale,
+                    sanitizedModel,
                 )
             }
             ok
@@ -175,6 +178,9 @@ object BionicFgManager {
     private fun configFile(container: Container): File =
         File(container.rootDir, CONFIG_RELATIVE_PATH)
 
+    private fun sanitizeMultiplier(multiplier: Int): Int =
+        if (multiplier < 2) 0 else multiplier.coerceIn(2, 4)
+
     private fun sanitizeModel(model: String): String =
         if (model == "1") "1" else "0"
 
@@ -188,7 +194,7 @@ object BionicFgManager {
         appendLine()
         appendLine("[global]")
         appendLine("enabled = ${if (enabled) "true" else "false"}")
-        appendLine("multiplier = ${multiplier.coerceIn(2, 4)}")
+        appendLine("multiplier = ${sanitizeMultiplier(multiplier)}")
         appendLine("flow_scale = ${String.format(Locale.US, "%.2f", flowScale.coerceIn(0.25f, 1.0f))}")
         appendLine("model = ${sanitizeModel(model)}")
     }
