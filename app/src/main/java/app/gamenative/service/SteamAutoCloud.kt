@@ -308,6 +308,129 @@ object SteamAutoCloud {
         return changesExist to FileChanges(deletedFiles, modifiedFiles, newFiles)
     }
 
+    private suspend fun getLocalUserFilesAsPrefixMap(
+        appInfo: SteamApp,
+        hashCacheDao: SteamFileHashCacheDao,
+        hashCacheHits: AtomicInteger,
+        hashCacheMisses: AtomicInteger,
+        prefixToPath: (String) -> String,
+    ): Map<String, List<UserFileInfo>> {
+        val savePatterns = appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
+
+        val result = mutableMapOf<String, MutableList<UserFileInfo>>()
+
+        if (savePatterns.isNotEmpty()) {
+            savePatterns.forEach { userFile ->
+                if (userFile.root == PathType.SteamUserData) {
+                    // skip handling, use the logic below to scan SteamUserData
+                    return@forEach
+                }
+
+                val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
+
+                Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
+
+                val filePaths = FileUtils.findFilesRecursive(
+                    rootPath = basePath,
+                    pattern = userFile.pattern,
+                    maxDepth = 5,
+                ).collect(Collectors.toList())
+                val files = buildList {
+                    for (path in filePaths) {
+                        val hashLookup = getCachedShaOrHash(
+                            appId = appInfo.id,
+                            path = path,
+                            hashCacheDao = hashCacheDao,
+                        )
+                        if (hashLookup.wasCacheHit) {
+                            hashCacheHits.incrementAndGet()
+                        } else {
+                            hashCacheMisses.incrementAndGet()
+                        }
+                        val sha = hashLookup.sha
+
+                        Timber.i("Found ${path.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
+
+                        val relativePath = basePath.relativize(path).pathString
+
+                        add(UserFileInfo(
+                            root = userFile.root,
+                            path = userFile.substitutedPath,
+                            filename = relativePath,
+                            timestamp = Files.getLastModifiedTime(path).toMillis(),
+                            sha = sha,
+                            cloudRoot = userFile.uploadRoot,
+                            cloudPath = userFile.uploadPath
+                        ))
+                    }
+                }
+
+                Timber.i("Found ${files.size} file(s) in $basePath for pattern ${userFile.pattern}")
+
+                val prefixKey = Paths.get(userFile.prefix).pathString
+                result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
+            }
+        }
+
+        // Scan SteamUserData root recursively (depth 5)
+        val rootType = PathType.SteamUserData
+        val basePath = Paths.get(prefixToPath(rootType.toString()))
+
+        Timber.i("Scanning $basePath recursively (depth 5) under ${rootType.name}")
+
+        val steamUserDataPaths = FileUtils.findFilesRecursive(
+            rootPath = basePath,
+            pattern = "*",
+            maxDepth = 5,
+        ).collect(Collectors.toList())
+        val files = buildList {
+            for (path in steamUserDataPaths) {
+                val hashLookup = getCachedShaOrHash(
+                    appId = appInfo.id,
+                    path = path,
+                    hashCacheDao = hashCacheDao,
+                )
+                if (hashLookup.wasCacheHit) {
+                    hashCacheHits.incrementAndGet()
+                } else {
+                    hashCacheMisses.incrementAndGet()
+                }
+                val sha = hashLookup.sha
+
+                val relativePath = basePath.relativize(path).pathString
+
+                Timber.i("Found ${path.pathString}\n\tin %${rootType.name}%\n\twith sha [${sha.joinToString(", ")}]")
+
+                // Store relative path in filename; empty path component
+                add(UserFileInfo(
+                    root = rootType,
+                    path = "",
+                    filename = relativePath,
+                    timestamp = Files.getLastModifiedTime(path).toMillis(),
+                    sha = sha,
+                    cloudRoot = rootType,
+                    cloudPath = ""
+                ))
+            }
+        }
+
+        Timber.i("Found ${files.size} file(s) in $basePath")
+
+        mapOf(Paths.get("%${rootType.name}%").pathString to files)
+
+        if (files.isNotEmpty()) {
+            val prefixKey = "%${rootType.name}%"
+            result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
+        }
+
+        Timber.i(
+            "Local save hash cache stats for ${appInfo.id} (${appInfo.name}): " +
+                "hits=${hashCacheHits.get()}, misses=${hashCacheMisses.get()}, files=${hashCacheHits.get() + hashCacheMisses.get()}",
+        )
+
+        return result
+    }
+
     fun syncUserFiles(
         appInfo: SteamApp,
         clientId: Long,
@@ -347,123 +470,6 @@ object SteamAutoCloud {
                     } == true
                 }
             }
-
-        val getLocalUserFilesAsPrefixMap: suspend () -> Map<String, List<UserFileInfo>> = {
-            val savePatterns = appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
-
-            val result = mutableMapOf<String, MutableList<UserFileInfo>>()
-
-            if (savePatterns.isNotEmpty()) {
-                savePatterns.forEach { userFile ->
-                    if (userFile.root == PathType.SteamUserData) {
-                        // skip handling, use the logic below to scan SteamUserData
-                        return@forEach
-                    }
-
-                    val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
-
-                    Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
-
-                    val filePaths = FileUtils.findFilesRecursive(
-                        rootPath = basePath,
-                        pattern = userFile.pattern,
-                        maxDepth = 5,
-                    ).collect(Collectors.toList())
-                    val files = buildList {
-                        for (path in filePaths) {
-                            val hashLookup = getCachedShaOrHash(
-                                appId = appInfo.id,
-                                path = path,
-                                hashCacheDao = hashCacheDao,
-                            )
-                            if (hashLookup.wasCacheHit) {
-                                hashCacheHits.incrementAndGet()
-                            } else {
-                                hashCacheMisses.incrementAndGet()
-                            }
-                            val sha = hashLookup.sha
-
-                            Timber.i("Found ${path.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
-
-                            val relativePath = basePath.relativize(path).pathString
-
-                            add(UserFileInfo(
-                                root = userFile.root,
-                                path = userFile.substitutedPath,
-                                filename = relativePath,
-                                timestamp = Files.getLastModifiedTime(path).toMillis(),
-                                sha = sha,
-                                cloudRoot = userFile.uploadRoot,
-                                cloudPath = userFile.uploadPath
-                            ))
-                        }
-                    }
-
-                    Timber.i("Found ${files.size} file(s) in $basePath for pattern ${userFile.pattern}")
-
-                    val prefixKey = Paths.get(userFile.prefix).pathString
-                    result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
-                }
-            }
-
-            // Scan SteamUserData root recursively (depth 5)
-            val rootType = PathType.SteamUserData
-            val basePath = Paths.get(prefixToPath(rootType.toString()))
-
-            Timber.i("Scanning $basePath recursively (depth 5) under ${rootType.name}")
-
-            val steamUserDataPaths = FileUtils.findFilesRecursive(
-                rootPath = basePath,
-                pattern = "*",
-                maxDepth = 5,
-            ).collect(Collectors.toList())
-            val files = buildList {
-                for (path in steamUserDataPaths) {
-                    val hashLookup = getCachedShaOrHash(
-                        appId = appInfo.id,
-                        path = path,
-                        hashCacheDao = hashCacheDao,
-                    )
-                    if (hashLookup.wasCacheHit) {
-                        hashCacheHits.incrementAndGet()
-                    } else {
-                        hashCacheMisses.incrementAndGet()
-                    }
-                    val sha = hashLookup.sha
-
-                    val relativePath = basePath.relativize(path).pathString
-
-                    Timber.i("Found ${path.pathString}\n\tin %${rootType.name}%\n\twith sha [${sha.joinToString(", ")}]")
-
-                    // Store relative path in filename; empty path component
-                    add(UserFileInfo(
-                        root = rootType,
-                        path = "",
-                        filename = relativePath,
-                        timestamp = Files.getLastModifiedTime(path).toMillis(),
-                        sha = sha,
-                        cloudRoot = rootType,
-                        cloudPath = ""
-                    ))
-                }
-            }
-
-            Timber.i("Found ${files.size} file(s) in $basePath")
-
-            mapOf(Paths.get("%${rootType.name}%").pathString to files)
-
-            if (files.isNotEmpty()) {
-                val prefixKey = "%${rootType.name}%"
-                result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
-            }
-
-            Timber.i(
-                "Local save hash cache stats for ${appInfo.id} (${appInfo.name}): " +
-                    "hits=${hashCacheHits.get()}, misses=${hashCacheMisses.get()}, files=${hashCacheHits.get() + hashCacheMisses.get()}",
-            )
-
-            result
-        }
 
         val buildUrl: (Boolean, String, String) -> String = { useHttps, urlHost, urlPath ->
             val scheme = if (useHttps) "https://" else "http://"
@@ -798,7 +804,13 @@ object SteamAutoCloud {
             val allLocalUserFiles: List<UserFileInfo>
 
             microsecInitCaches = measureTime {
-                localUserFilesMap = getLocalUserFilesAsPrefixMap()
+                localUserFilesMap = getLocalUserFilesAsPrefixMap(
+                    appInfo = appInfo,
+                    hashCacheDao = hashCacheDao,
+                    hashCacheHits = hashCacheHits,
+                    hashCacheMisses = hashCacheMisses,
+                    prefixToPath = prefixToPath,
+                )
                 allLocalUserFiles = localUserFilesMap.map { it.value }.flatten()
             }.inWholeMicroseconds
 
@@ -835,7 +847,13 @@ object SteamAutoCloud {
                     val updatedLocalFiles: Map<String, List<UserFileInfo>>
                     val hasLocalChanges: Boolean
                     microsecValidateState = measureTime {
-                        updatedLocalFiles = getLocalUserFilesAsPrefixMap()
+                        updatedLocalFiles = getLocalUserFilesAsPrefixMap(
+                            appInfo = appInfo,
+                            hashCacheDao = hashCacheDao,
+                            hashCacheHits = hashCacheHits,
+                            hashCacheMisses = hashCacheMisses,
+                            prefixToPath = prefixToPath,
+                        )
                         hasLocalChanges = hasHashConflicts(updatedLocalFiles, appFileListChange)
                         filesManaged = updatedLocalFiles.size
                     }.inWholeMicroseconds
