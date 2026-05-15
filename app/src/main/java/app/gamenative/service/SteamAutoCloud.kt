@@ -279,6 +279,35 @@ object SteamAutoCloud {
         }
     }
 
+    private fun getFilesDiff(currentFiles: List<UserFileInfo>, oldFiles: List<UserFileInfo>): Pair<Boolean, FileChanges> {
+        val overlappingFiles = currentFiles.filter { currentFile ->
+            oldFiles.any { currentFile.prefixPath == it.prefixPath }
+        }
+
+        val newFiles = currentFiles.filter { currentFile ->
+            !oldFiles.any { currentFile.prefixPath == it.prefixPath }
+        }
+
+        val deletedFiles = oldFiles.filter { oldFile ->
+            !currentFiles.any { oldFile.prefixPath == it.prefixPath }
+        }
+
+        val modifiedFiles = overlappingFiles.filter { file ->
+            oldFiles.first {
+                it.prefixPath == file.prefixPath
+            }.let {
+                Timber.i("Comparing SHA of ${it.prefixPath} and ${file.prefixPath}")
+                Timber.i("[${it.sha.joinToString(", ")}]\n[${file.sha.joinToString(", ")}]")
+
+                !it.sha.contentEquals(file.sha)
+            }
+        }
+
+        val changesExist = newFiles.isNotEmpty() || deletedFiles.isNotEmpty() || modifiedFiles.isNotEmpty()
+
+        return changesExist to FileChanges(deletedFiles, modifiedFiles, newFiles)
+    }
+
     fun syncUserFiles(
         appInfo: SteamApp,
         clientId: Long,
@@ -298,35 +327,6 @@ object SteamAutoCloud {
         val hashCacheHits = AtomicInteger(0)
         val hashCacheMisses = AtomicInteger(0)
         val hashCacheDao = steamInstance.db.steamFileHashCacheDao()
-
-        val getFilesDiff: (List<UserFileInfo>, List<UserFileInfo>) -> Pair<Boolean, FileChanges> = { currentFiles, oldFiles ->
-            val overlappingFiles = currentFiles.filter { currentFile ->
-                oldFiles.any { currentFile.prefixPath == it.prefixPath }
-            }
-
-            val newFiles = currentFiles.filter { currentFile ->
-                !oldFiles.any { currentFile.prefixPath == it.prefixPath }
-            }
-
-            val deletedFiles = oldFiles.filter { oldFile ->
-                !currentFiles.any { oldFile.prefixPath == it.prefixPath }
-            }
-
-            val modifiedFiles = overlappingFiles.filter { file ->
-                oldFiles.first {
-                    it.prefixPath == file.prefixPath
-                }.let {
-                    Timber.i("Comparing SHA of ${it.prefixPath} and ${file.prefixPath}")
-                    Timber.i("[${it.sha.joinToString(", ")}]\n[${file.sha.joinToString(", ")}]")
-
-                    !it.sha.contentEquals(file.sha)
-                }
-            }
-
-            val changesExist = newFiles.isNotEmpty() || deletedFiles.isNotEmpty() || modifiedFiles.isNotEmpty()
-
-            changesExist to FileChanges(deletedFiles, modifiedFiles, newFiles)
-        }
 
         val hasHashConflicts: (Map<String, List<UserFileInfo>>, AppFileChangeList) -> Boolean =
             { localUserFiles, fileList ->
