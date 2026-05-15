@@ -1176,7 +1176,6 @@ private fun BionicFgQuickMenuTab(
 
                 QuickMenuAdjustmentRow(
                     title = stringResource(R.string.bionic_fg_flow_scale),
-                    subtitle = stringResource(R.string.lsfg_flow_scale_desc),
                     valueText = String.format(java.util.Locale.US, "%.2f", flowScale),
                     progress = (flowScale - 0.25f) / 0.75f,
                     onDecrease = {
