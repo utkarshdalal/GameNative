@@ -324,9 +324,7 @@ object ContainerUtils {
             sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
             sharpnessLevel = container.getExtra("sharpnessLevel", "100").toIntOrNull() ?: 100,
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
-            // LSFG Vulkan frame generation
             lsfgEnabled = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean(),
-            // Bionic-FG Vulkan frame generation
             bionicFgEnabled = container.getExtra(BionicFgManager.EXTRA_ENABLED, "false").toBoolean(),
             bionicFgMultiplier = container.getExtra(BionicFgManager.EXTRA_MULTIPLIER, "2").toIntOrNull() ?: 2,
             bionicFgFlowScale = container.getExtra(BionicFgManager.EXTRA_FLOW_SCALE, "0.80").toFloatOrNull() ?: 0.80f,
@@ -498,9 +496,7 @@ object ContainerUtils {
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
-        // LSFG Vulkan frame generation
         container.putExtra(LsfgVkManager.EXTRA_ARMED, containerData.lsfgEnabled.toString())
-        // Bionic-FG Vulkan frame generation (alternative)
         container.putExtra(BionicFgManager.EXTRA_ENABLED, containerData.bionicFgEnabled.toString())
         container.putExtra(BionicFgManager.EXTRA_MULTIPLIER, containerData.bionicFgMultiplier.toString())
         container.putExtra(BionicFgManager.EXTRA_FLOW_SCALE, containerData.bionicFgFlowScale.toString())
