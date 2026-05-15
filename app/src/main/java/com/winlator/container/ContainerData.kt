@@ -95,10 +95,7 @@ data class ContainerData(
     val sharpnessEffect: String = "None",
     val sharpnessLevel: Int = 100,
     val sharpnessDenoise: Int = 100,
-    // LSFG Vulkan frame generation
-    /** Whether LSFG frame generation is enabled for this container */
     val lsfgEnabled: Boolean = false,
-    // Bionic-FG Vulkan frame generation (alternative, no Steam entitlement required)
     val bionicFgEnabled: Boolean = false,
     val bionicFgMultiplier: Int = 2,
     val bionicFgFlowScale: Float = 0.80f,

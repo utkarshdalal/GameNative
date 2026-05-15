@@ -5,70 +5,57 @@ import com.winlator.container.Container
 import com.winlator.core.FileUtils
 import com.winlator.core.envvars.EnvVars
 import java.io.File
+import java.util.Locale
 import timber.log.Timber
 import kotlin.jvm.JvmStatic
 
-/**
- * Minimal Bionic-FG layer manager.
- * Prebuilt .so asset + env var activation. No hot-reload.
- */
 object BionicFgManager {
     private const val TAG = "BionicFgManager"
 
-    // Prebuilt asset paths (bundled in APK)
     private const val ASSET_DIR = "bionic_fg/android_arm64_v8a"
     private const val LIB_FILENAME = "libbionic-fg-layer.so"
     private const val MANIFEST_FILENAME = "VkLayer_BIONIC_framegen.json"
     private const val VERSION_FILENAME = ".bionic_fg_runtime_version"
-    private const val RUNTIME_VERSION = "9"
+    private const val RUNTIME_VERSION = "10"
 
-    // Install paths inside container
     private const val LIB_RELATIVE_DIR = ".local/lib"
     private const val LAYER_RELATIVE_DIR = ".local/share/vulkan/implicit_layer.d"
+    private const val CONFIG_RELATIVE_PATH = ".config/bionic-fg/conf.toml"
 
-    // Environment variables consumed by Bionic-FG layer
     const val ENV_ENABLE = "BIONIC_FG_ENABLE"
     const val ENV_DISABLE = "DISABLE_BIONIC_FG"
+    const val ENV_CONFIG = "BIONIC_FG_CONFIG"
     const val ENV_MULTIPLIER = "BIONIC_FG_MULTIPLIER"
     const val ENV_FLOW_SCALE = "BIONIC_FG_FLOW_SCALE"
     const val ENV_MODEL = "BIONIC_FG_MODEL"
 
-    // Container extra keys (persisted settings)
     const val EXTRA_ENABLED = "bionicFgEnabled"
-    const val EXTRA_MULTIPLIER = "bionicFgMultiplier"  // "2", "3", "4"
-    const val EXTRA_FLOW_SCALE = "bionicFgFlowScale"     // "0.80"
-    const val EXTRA_MODEL = "bionicFgModel"              // "0" or "1"
+    const val EXTRA_MULTIPLIER = "bionicFgMultiplier"
+    const val EXTRA_FLOW_SCALE = "bionicFgFlowScale"
+    const val EXTRA_MODEL = "bionicFgModel"
 
-    /** Only Bionic containers supported. */
     @JvmStatic
     fun isSupported(container: Container): Boolean =
         container.containerVariant.equals(Container.BIONIC, ignoreCase = true)
 
-    /** Is Bionic-FG enabled for this container? */
     fun isEnabled(container: Container): Boolean =
         isSupported(container) && container.getExtra(EXTRA_ENABLED, "false") == "true"
 
-    /** Get multiplier (2-4, default 2). */
     fun multiplier(container: Container): Int {
         val raw = container.getExtra(EXTRA_MULTIPLIER, "2").toIntOrNull() ?: 2
         return raw.coerceIn(2, 4)
     }
 
-    /** Get flow scale (0.25-1.0, default 0.80). */
     fun flowScale(container: Container): Float {
         val raw = container.getExtra(EXTRA_FLOW_SCALE, "0.80").toFloatOrNull() ?: 0.80f
         return raw.coerceIn(0.25f, 1.0f)
     }
 
-    /** Get model ("0" or "1", default "0"). */
     fun model(container: Container): String {
         val raw = container.getExtra(EXTRA_MODEL, "0")
         return if (raw == "1") "1" else "0"
     }
 
-    /**
-     * Install layer files into container (if not already present).
-     */
     @JvmStatic
     fun ensureInstalled(context: Context, container: Container): Boolean {
         if (!isSupported(container)) return false
@@ -82,20 +69,16 @@ object BionicFgManager {
             File(rootDir, LIB_RELATIVE_DIR).mkdirs()
             File(rootDir, LAYER_RELATIVE_DIR).mkdirs()
 
-            val installedVersion = versionFile.takeIf { it.exists() }?.readText()?.trim()
-            if (!libFile.exists() || installedVersion != RUNTIME_VERSION) {
-                FileUtils.copy(context, "$ASSET_DIR/$LIB_FILENAME", libFile)
-                FileUtils.chmod(libFile, 0b111101101)
-                versionFile.writeText(RUNTIME_VERSION)
-                FileUtils.chmod(versionFile, 0b110100100)
-            }
+            FileUtils.copy(context, "$ASSET_DIR/$LIB_FILENAME", libFile)
+            FileUtils.chmod(libFile, 0b111101101)
 
-            // Always refresh the manifest. It is tiny, and doing this ensures
-            // fixed layer entrypoint metadata replaces old bad manifests.
             FileUtils.copy(context, "$ASSET_DIR/$MANIFEST_FILENAME", manifestFile)
             FileUtils.chmod(manifestFile, 0b110100100)
 
-            Timber.tag(TAG).i("Installed Bionic-FG into %s", rootDir)
+            versionFile.writeText(RUNTIME_VERSION)
+            FileUtils.chmod(versionFile, 0b110100100)
+
+            Timber.tag(TAG).i("Refreshed Bionic-FG in %s", rootDir)
             true
         } catch (t: Throwable) {
             Timber.tag(TAG).e(t, "Failed to install Bionic-FG")
@@ -103,16 +86,55 @@ object BionicFgManager {
         }
     }
 
-    /**
-     * Apply Bionic-FG environment variables for launch.
-     * Called by launcher component.
-     */
+    @JvmStatic
+    fun writeConfig(container: Container): Boolean =
+        updateConfigAtRuntime(
+            container = container,
+            enabled = isEnabled(container),
+            multiplier = multiplier(container),
+            flowScale = flowScale(container),
+            model = model(container),
+        )
+
+    @JvmStatic
+    fun updateConfigAtRuntime(
+        container: Container,
+        enabled: Boolean,
+        multiplier: Int,
+        flowScale: Float,
+        model: String,
+    ): Boolean {
+        if (!isSupported(container)) return false
+
+        return try {
+            val configFile = configFile(container)
+            val configText = buildConfigToml(
+                enabled = enabled,
+                multiplier = multiplier.coerceIn(2, 4),
+                flowScale = flowScale.coerceIn(0.25f, 1.0f),
+                model = sanitizeModel(model),
+            )
+            val ok = FileUtils.writeString(configFile, configText)
+            if (ok && configFile.exists()) {
+                FileUtils.chmod(configFile, 0b110100100)
+                Timber.tag(TAG).i(
+                    "Updated Bionic-FG config: enabled=%s, mult=%d, flow=%.2f, model=%s",
+                    enabled,
+                    multiplier.coerceIn(2, 4),
+                    flowScale.coerceIn(0.25f, 1.0f),
+                    sanitizeModel(model),
+                )
+            }
+            ok
+        } catch (t: Throwable) {
+            Timber.tag(TAG).e(t, "Failed to update Bionic-FG conf.toml")
+            false
+        }
+    }
+
     @JvmStatic
     fun applyLaunchEnv(context: Context, container: Container, envVars: EnvVars): Boolean {
-        // Clear stale vars. The manifest is an implicit Vulkan layer, so a stale
-        // install in ~/.local/share/vulkan/implicit_layer.d can still be loaded
-        // by the Vulkan loader even when VK_LAYER_PATH is not amended.
-        listOf(ENV_ENABLE, ENV_DISABLE, ENV_MULTIPLIER, ENV_FLOW_SCALE, ENV_MODEL).forEach {
+        listOf(ENV_ENABLE, ENV_DISABLE, ENV_CONFIG, ENV_MULTIPLIER, ENV_FLOW_SCALE, ENV_MODEL).forEach {
             envVars.remove(it)
         }
 
@@ -124,23 +146,51 @@ object BionicFgManager {
         }
 
         ensureInstalled(context, container)
+        writeConfig(container)
 
         val layerDir = File(container.rootDir, LAYER_RELATIVE_DIR)
         val existingPath = envVars["VK_LAYER_PATH"] ?: ""
-        envVars.put("VK_LAYER_PATH",
+        envVars.put(
+            "VK_LAYER_PATH",
             if (existingPath.isNotEmpty()) "$existingPath:${layerDir.absolutePath}"
-            else layerDir.absolutePath
+            else layerDir.absolutePath,
         )
 
         envVars.put(ENV_ENABLE, "1")
         envVars.remove(ENV_DISABLE)
+        envVars.put(ENV_CONFIG, configFile(container).absolutePath)
         envVars.put(ENV_MULTIPLIER, multiplier(container).toString())
-        envVars.put(ENV_FLOW_SCALE, String.format(java.util.Locale.US, "%.2f", flowScale(container)))
+        envVars.put(ENV_FLOW_SCALE, String.format(Locale.US, "%.2f", flowScale(container)))
         envVars.put(ENV_MODEL, model(container))
 
-        Timber.tag(TAG).i("Bionic-FG enabled: mult=%d, flow=%.2f, model=%s",
-            multiplier(container), flowScale(container), model(container))
+        Timber.tag(TAG).i(
+            "Bionic-FG enabled: mult=%d, flow=%.2f, model=%s",
+            multiplier(container),
+            flowScale(container),
+            model(container),
+        )
         return true
+    }
+
+    private fun configFile(container: Container): File =
+        File(container.rootDir, CONFIG_RELATIVE_PATH)
+
+    private fun sanitizeModel(model: String): String =
+        if (model == "1") "1" else "0"
+
+    private fun buildConfigToml(
+        enabled: Boolean,
+        multiplier: Int,
+        flowScale: Float,
+        model: String,
+    ): String = buildString {
+        appendLine("version = 1")
+        appendLine()
+        appendLine("[global]")
+        appendLine("enabled = ${if (enabled) "true" else "false"}")
+        appendLine("multiplier = ${multiplier.coerceIn(2, 4)}")
+        appendLine("flow_scale = ${String.format(Locale.US, "%.2f", flowScale.coerceIn(0.25f, 1.0f))}")
+        appendLine("model = ${sanitizeModel(model)}")
     }
 
     private fun disableLayerInContainer(container: Container) {

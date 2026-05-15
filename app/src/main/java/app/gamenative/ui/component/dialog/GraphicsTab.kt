@@ -2,7 +2,6 @@ package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -326,8 +325,6 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
         // with a Vortek/Adreno graphics driver.
         if (!default) LsfgSection(state)
 
-        // Frame Generation (Bionic-FG) — alternative frame generation
-        // without Steam entitlement requirement.
         if (!default) BionicFgSection(state)
 
         SettingsSwitch(
@@ -360,7 +357,6 @@ private fun BionicFgSection(state: ContainerConfigState) {
         )
 
         if (config.bionicFgEnabled) {
-            // Frame Multiplier Slider (2-4)
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Text(text = stringResource(R.string.bionic_fg_multiplier))
                 Slider(
@@ -370,12 +366,11 @@ private fun BionicFgSection(state: ContainerConfigState) {
                         state.config.value = config.copy(bionicFgMultiplier = clamped)
                     },
                     valueRange = 2f..4f,
-                    steps = 1, // 2, 3, 4
+                    steps = 1,
                 )
                 Text(text = "${config.bionicFgMultiplier}x")
             }
 
-            // Flow Scale Slider (0.25-1.0)
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Text(text = stringResource(R.string.bionic_fg_flow_scale))
                 Slider(
@@ -389,7 +384,6 @@ private fun BionicFgSection(state: ContainerConfigState) {
                 Text(text = String.format(java.util.Locale.US, "%.2f", config.bionicFgFlowScale))
             }
 
-            // Model Selector (0 or 1)
             val modelOptions = listOf(
                 stringResource(R.string.bionic_fg_model_0),
                 stringResource(R.string.bionic_fg_model_1)
@@ -403,16 +397,6 @@ private fun BionicFgSection(state: ContainerConfigState) {
                     state.config.value = config.copy(bionicFgModel = if (idx == 1) "1" else "0")
                 },
             )
-
-            // Warning for Model 1
-            if (config.bionicFgModel == "1") {
-                Text(
-                    text = stringResource(R.string.bionic_fg_model_1_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
         }
     }
 }

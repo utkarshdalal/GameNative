@@ -115,6 +115,7 @@ private object QuickMenuTab {
     const val EFFECTS = 2
     const val CONTROLLER = 3
     const val TOOLS = 4
+    const val BIONIC_FG = 5
 }
 
 data class QuickMenuItem(
@@ -254,6 +255,15 @@ fun QuickMenu(
     isTouchscreenModeActive: Boolean = false,
     onTouchGestureSettingsClick: () -> Unit = {},
     activeToggleIds: Set<Int> = emptySet(),
+    frameGenerationMultiplier: Int = 0,
+    // Bionic-FG hot-reload state (tab only visible when isBionicFgAvailable)
+    isBionicFgAvailable: Boolean = false,
+    bionicFgMultiplier: Int = 2,
+    bionicFgFlowScale: Float = 0.80f,
+    bionicFgModel: String = "0",
+    onBionicFgMultiplierChanged: (Int) -> Unit = {},
+    onBionicFgFlowScaleChanged: (Float) -> Unit = {},
+    onBionicFgModelChanged: (String) -> Unit = {},
     // LSFG hot-reload state (tab only visible when isLsfgAvailable)
     isLsfgAvailable: Boolean = false,
     lsfgMultiplier: Int = 2,
@@ -326,13 +336,16 @@ fun QuickMenu(
 
     var selectedTab by rememberSaveable {
         mutableIntStateOf(
-            if (PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable)
-                QuickMenuTab.HUD
-            else PrefManager.quickMenuLastTab
+            when {
+                PrefManager.quickMenuLastTab == QuickMenuTab.BIONIC_FG && !isBionicFgAvailable -> QuickMenuTab.HUD
+                PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable -> QuickMenuTab.HUD
+                else -> PrefManager.quickMenuLastTab
+            }
         )
     }
     val selectedTabLabelResId = when (selectedTab) {
         QuickMenuTab.HUD -> R.string.performance_hud
+        QuickMenuTab.BIONIC_FG -> R.string.bionic_fg_tab_title
         QuickMenuTab.LSFG -> R.string.lsfg_tab_title
         QuickMenuTab.EFFECTS -> R.string.screen_effects
         QuickMenuTab.TOOLS -> R.string.task_manager
@@ -340,15 +353,18 @@ fun QuickMenu(
     }
 
     val hudScrollState = rememberScrollState()
+    val bionicFgScrollState = rememberScrollState()
     val effectsScrollState = rememberScrollState()
     val lsfgScrollState = rememberScrollState()
     val effectsTabFocusRequester = remember { FocusRequester() }
     val controllerScrollState = rememberScrollState()
+    val bionicFgTabFocusRequester = remember { FocusRequester() }
     val lsfgTabFocusRequester = remember { FocusRequester() }
     val hudTabFocusRequester = remember { FocusRequester() }
     val controllerTabFocusRequester = remember { FocusRequester() }
     val toolsTabFocusRequester = remember { FocusRequester() }
     val hudItemFocusRequester = remember { FocusRequester() }
+    val bionicFgItemFocusRequester = remember { FocusRequester() }
     val effectsItemFocusRequester = remember { FocusRequester() }
     val controllerItemFocusRequester = remember { FocusRequester() }
     val toolsItemFocusRequester = remember { FocusRequester() }
@@ -462,6 +478,20 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = hudTabFocusRequester,
                                 )
+                                if (isBionicFgAvailable) {
+                                    QuickMenuTabButton(
+                                        icon = Icons.Default.Speed,
+                                        contentDescriptionResId = R.string.bionic_fg_tab_title,
+                                        selected = selectedTab == QuickMenuTab.BIONIC_FG,
+                                        accentColor = PluviaTheme.colors.accentPurple,
+                                        onSelected = {
+                                            selectedTab = QuickMenuTab.BIONIC_FG
+                                            PrefManager.quickMenuLastTab = selectedTab
+                                        },
+                                        modifier = Modifier.width(56.dp),
+                                        focusRequester = bionicFgTabFocusRequester,
+                                    )
+                                }
                                 if (isLsfgAvailable) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.Speed,
@@ -565,7 +595,7 @@ fun QuickMenu(
                                             fpsLimiterEnabled = fpsLimiterEnabled,
                                             fpsLimiterTarget = fpsLimiterTarget,
                                             fpsLimiterMax = fpsLimiterMax,
-                                            lsfgMultiplier = if (isLsfgAvailable) lsfgMultiplier else 0,
+                                            frameGenerationMultiplier = frameGenerationMultiplier,
                                             onTogglePerformanceHud = {
                                                 onItemSelected(QuickMenuAction.PERFORMANCE_HUD)
                                             },
@@ -574,6 +604,20 @@ fun QuickMenu(
                                             onFpsLimiterChanged = onFpsLimiterChanged,
                                             scrollState = hudScrollState,
                                             focusRequester = hudItemFocusRequester,
+                                            modifier = Modifier.fillMaxSize(),
+                                        )
+                                    }
+
+                                    QuickMenuTab.BIONIC_FG -> {
+                                        BionicFgQuickMenuTab(
+                                            multiplier = bionicFgMultiplier,
+                                            flowScale = bionicFgFlowScale,
+                                            model = bionicFgModel,
+                                            onMultiplierChanged = onBionicFgMultiplierChanged,
+                                            onFlowScaleChanged = onBionicFgFlowScaleChanged,
+                                            onModelChanged = onBionicFgModelChanged,
+                                            scrollState = bionicFgScrollState,
+                                            focusRequester = bionicFgItemFocusRequester,
                                             modifier = Modifier.fillMaxSize(),
                                         )
                                     }
@@ -672,6 +716,7 @@ fun QuickMenu(
                 try {
                     when (selectedTab) {
                         QuickMenuTab.HUD -> hudItemFocusRequester.requestFocus()
+                        QuickMenuTab.BIONIC_FG -> bionicFgItemFocusRequester.requestFocus()
                         QuickMenuTab.LSFG -> lsfgItemFocusRequester.requestFocus()
                         QuickMenuTab.EFFECTS -> effectsItemFocusRequester.requestFocus()
                         QuickMenuTab.TOOLS -> toolsItemFocusRequester.requestFocus()
@@ -741,7 +786,7 @@ private fun PerformanceHudQuickMenuTab(
     fpsLimiterEnabled: Boolean,
     fpsLimiterTarget: Int,
     fpsLimiterMax: Int,
-    lsfgMultiplier: Int,
+    frameGenerationMultiplier: Int,
     onTogglePerformanceHud: () -> Unit,
     onPerformanceHudConfigChanged: (PerformanceHudConfig) -> Unit,
     onFpsLimiterEnabledChanged: (Boolean) -> Unit,
@@ -759,22 +804,22 @@ private fun PerformanceHudQuickMenuTab(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         // ── FPS Limiter (topmost) ────────────────────────────────────────
-        val limiterControlledByLsfg = lsfgMultiplier >= 2
+        val limiterControlledByFrameGeneration = frameGenerationMultiplier >= 2
         QuickMenuToggleRow(
             title = stringResource(R.string.performance_hud_fps_limiter),
-            subtitle = if (limiterControlledByLsfg) {
-                stringResource(R.string.performance_hud_fps_limiter_lsfg_override)
+            subtitle = if (limiterControlledByFrameGeneration) {
+                stringResource(R.string.performance_hud_fps_limiter_frame_generation_override)
             } else null,
-            enabled = fpsLimiterEnabled && !limiterControlledByLsfg,
+            enabled = fpsLimiterEnabled && !limiterControlledByFrameGeneration,
             onToggle = {
-                if (!limiterControlledByLsfg) onFpsLimiterEnabledChanged(!fpsLimiterEnabled)
+                if (!limiterControlledByFrameGeneration) onFpsLimiterEnabledChanged(!fpsLimiterEnabled)
             },
             accentColor = accentColor,
             focusRequester = focusRequester,
         )
 
         AnimatedVisibility(
-            visible = fpsLimiterEnabled && !limiterControlledByLsfg,
+            visible = fpsLimiterEnabled && !limiterControlledByFrameGeneration,
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut(),
         ) {
@@ -1075,6 +1120,96 @@ private fun PerformanceHudQuickMenuTab(
             },
             accentColor = accentColor,
         )
+
+        Spacer(modifier = Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun BionicFgQuickMenuTab(
+    multiplier: Int,
+    flowScale: Float,
+    model: String,
+    onMultiplierChanged: (Int) -> Unit,
+    onFlowScaleChanged: (Float) -> Unit,
+    onModelChanged: (String) -> Unit,
+    scrollState: ScrollState,
+    focusRequester: FocusRequester? = null,
+    modifier: Modifier = Modifier,
+) {
+    val accentColor = PluviaTheme.colors.accentPurple
+    val selectedModel = if (model == "1") "1" else "0"
+
+    Column(
+        modifier = modifier
+            .verticalScroll(scrollState)
+            .focusGroup(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        QuickMenuSectionHeader(
+            title = stringResource(R.string.bionic_fg_multiplier),
+        )
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            listOf(2, 3, 4).forEach { value ->
+                QuickMenuChoiceChip(
+                    text = "${value}x",
+                    selected = multiplier == value,
+                    accentColor = accentColor,
+                    onClick = { onMultiplierChanged(value) },
+                    modifier = Modifier.width(56.dp),
+                    focusRequester = if (value == 2) focusRequester else null,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        QuickMenuAdjustmentRow(
+            title = stringResource(R.string.bionic_fg_flow_scale),
+            subtitle = stringResource(R.string.lsfg_flow_scale_desc),
+            valueText = String.format(java.util.Locale.US, "%.2f", flowScale),
+            progress = (flowScale - 0.25f) / 0.75f,
+            onDecrease = {
+                val next = (flowScale - 0.05f).coerceIn(0.25f, 1.0f)
+                onFlowScaleChanged(String.format(java.util.Locale.US, "%.2f", next).toFloat())
+            },
+            onIncrease = {
+                val next = (flowScale + 0.05f).coerceIn(0.25f, 1.0f)
+                onFlowScaleChanged(String.format(java.util.Locale.US, "%.2f", next).toFloat())
+            },
+            accentColor = accentColor,
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        QuickMenuSectionHeader(
+            title = stringResource(R.string.bionic_fg_model),
+            subtitle = if (selectedModel == "1") {
+                stringResource(R.string.bionic_fg_model_1)
+            } else {
+                stringResource(R.string.bionic_fg_model_0)
+            },
+        )
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            QuickMenuChoiceChip(
+                text = "M0",
+                selected = selectedModel == "0",
+                accentColor = accentColor,
+                onClick = { onModelChanged("0") },
+            )
+            QuickMenuChoiceChip(
+                text = "M1",
+                selected = selectedModel == "1",
+                accentColor = accentColor,
+                onClick = { onModelChanged("1") },
+            )
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
     }

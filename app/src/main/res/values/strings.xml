@@ -291,6 +291,7 @@
     <string name="performance_hud_fps_limiter_off">Unlimited</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
     <string name="performance_hud_fps_limiter_lsfg_override">Limiter overridden while LSFG is active. Source rate is paced by the multiplier.</string>
+    <string name="performance_hud_fps_limiter_frame_generation_override">Limiter overridden while frame generation is active. Source rate is paced by the multiplier.</string>
     <string name="performance_hud_presets">Presets</string>
     <string name="performance_hud_presets_description">Quickly switch between common HUD layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1492,15 +1493,14 @@
     <string name="lsfg_install_message">This will download Lossless Scaling from Steam to enable frame generation.</string>
     <string name="lsfg_installing">Downloading Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Reduces quality for higher throughput</string>
-    <!-- Bionic-FG Frame Generation -->
+    <string name="bionic_fg_tab_title">Bionic-FG</string>
     <string name="bionic_fg_enable">Enable Bionic-FG frame generation</string>
     <string name="bionic_fg_description">Alternative Vulkan frame generation (no Steam entitlement required). Only known to work on Adreno 6xx and above.</string>
     <string name="bionic_fg_multiplier">Frame multiplier</string>
     <string name="bionic_fg_flow_scale">Flow scale</string>
     <string name="bionic_fg_model">Generation model</string>
-    <string name="bionic_fg_model_0">Model 0 (Stable)</string>
-    <string name="bionic_fg_model_1">Model 1 (Experimental)</string>
-    <string name="bionic_fg_model_1_desc">Model 1 uses hybrid flow estimation. May show artifacts.</string>
+    <string name="bionic_fg_model_0">Model 0 (Fast)</string>
+    <string name="bionic_fg_model_1">Model 1 (Accurate)</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Show curated indie game picks in your library. Keeping this on helps support indie developers and GameNative.</string>
     <!-- Game Launch Tips -->

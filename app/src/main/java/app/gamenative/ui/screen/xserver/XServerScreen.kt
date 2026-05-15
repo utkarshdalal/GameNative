@@ -100,6 +100,7 @@ import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.widget.PerformanceHudView
+import app.gamenative.utils.BionicFgQuickMenuHelper
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ExecutableSelectionUtils
@@ -443,6 +444,13 @@ fun XServerScreen(
     var fpsLimiterEnabled by rememberSaveable(container.id) { mutableStateOf(initialFpsLimiterEnabled(container)) }
     var fpsLimiterTarget by rememberSaveable(container.id) { mutableIntStateOf(initialFpsLimiterTarget(container)) }
 
+    // Bionic-FG tab in QuickMenu only visible when enabled in container settings
+    val isBionicFgAvailable = BionicFgQuickMenuHelper.isAvailable(container)
+    val initialBionicFgSettings = remember(container.id) { BionicFgQuickMenuHelper.readSettings(container) }
+    var bionicFgMultiplier by rememberSaveable(container.id) { mutableIntStateOf(initialBionicFgSettings.multiplier) }
+    var bionicFgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialBionicFgSettings.flowScale) }
+    var bionicFgModel by rememberSaveable(container.id) { mutableStateOf(initialBionicFgSettings.model) }
+
     // LSFG tab in QuickMenu only visible when enabled in container settings
     val isLsfgAvailable = LsfgQuickMenuHelper.isAvailable(container)
     val initialLsfgSettings = remember(container.id) { LsfgQuickMenuHelper.readSettings(container) }
@@ -530,8 +538,14 @@ fun XServerScreen(
             ?.setFrameRateLimit(limit)
     }
 
+    fun activeFrameGenerationMultiplier(): Int = when {
+        isBionicFgAvailable && bionicFgMultiplier >= 2 -> bionicFgMultiplier
+        isLsfgAvailable && lsfgMultiplier >= 2 -> lsfgMultiplier
+        else -> 0
+    }
+
     fun effectiveFpsLimit(): Int =
-        if (isLsfgAvailable && lsfgMultiplier >= 2) 0
+        if (activeFrameGenerationMultiplier() >= 2) 0
         else if (fpsLimiterEnabled) fpsLimiterTarget
         else 0
 
@@ -548,6 +562,30 @@ fun XServerScreen(
             applyFpsLimiterToEngines(effectiveFpsLimit())
         }
         persistFpsLimiterState()
+    }
+
+    fun applyBionicFgSettings() {
+        BionicFgQuickMenuHelper.applySettings(
+            container,
+            BionicFgQuickMenuHelper.Settings(bionicFgMultiplier, bionicFgFlowScale, bionicFgModel),
+        )
+    }
+
+    fun applyBionicFgMultiplier(mult: Int) {
+        bionicFgMultiplier = BionicFgQuickMenuHelper.sanitizeMultiplier(mult)
+        applyBionicFgSettings()
+        applyFpsLimiterToEngines(effectiveFpsLimit())
+    }
+
+    fun applyBionicFgFlowScale(scale: Float) {
+        bionicFgFlowScale = BionicFgQuickMenuHelper.sanitizeFlowScale(scale)
+        applyBionicFgSettings()
+    }
+
+    fun applyBionicFgModel(model: String) {
+        bionicFgModel = BionicFgQuickMenuHelper.sanitizeModel(model)
+        applyBionicFgSettings()
+        applyFpsLimiterToEngines(effectiveFpsLimit())
     }
 
     fun applyLsfgSettings() {
@@ -655,7 +693,7 @@ fun XServerScreen(
             context = context,
             fpsProvider = {
                 val raw = frameRating?.currentFPS ?: 0f
-                val mult = if (isLsfgAvailable && lsfgMultiplier >= 2) lsfgMultiplier else 1
+                val mult = activeFrameGenerationMultiplier().takeIf { it >= 2 } ?: 1
                 raw * mult
             },
             initialConfig = performanceHudConfig,
@@ -2395,6 +2433,15 @@ fun XServerScreen(
                 if (isTouchscreenModeActive) add(QuickMenuAction.TOUCHSCREEN_MODE)
                 if (isDisableMouseInput) add(QuickMenuAction.DISABLE_MOUSE)
             },
+            frameGenerationMultiplier = activeFrameGenerationMultiplier(),
+            // Bionic-FG hot-reload (tab only visible when enabled in container settings)
+            isBionicFgAvailable = isBionicFgAvailable,
+            bionicFgMultiplier = bionicFgMultiplier,
+            bionicFgFlowScale = bionicFgFlowScale,
+            bionicFgModel = bionicFgModel,
+            onBionicFgMultiplierChanged = ::applyBionicFgMultiplier,
+            onBionicFgFlowScaleChanged = ::applyBionicFgFlowScale,
+            onBionicFgModelChanged = ::applyBionicFgModel,
             // LSFG hot-reload (tab only visible when enabled in container settings)
             isLsfgAvailable = isLsfgAvailable,
             lsfgMultiplier = lsfgMultiplier,
