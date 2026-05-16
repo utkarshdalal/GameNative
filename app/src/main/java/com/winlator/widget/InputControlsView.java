@@ -687,27 +687,29 @@ public class InputControlsView extends View {
             if (element.handleTouchDown(pointerId, x, y)) {
                 performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                 handled = true;
-                // Also track this pointer for look-around so the user can
-                // press any button and still look/aim with the same finger.
-                ControlElement smElement = getShooterModeElement();
-                boolean useRightStick = (smElement != null && "gamepad_right_stick".equals(smElement.getShooterLookType()))
-                                     || (containerShooterModeRuntime && smElement == null);
-                if (useRightStick) {
-                    if (rightJoystickPointerId == -1) {
-                        rightJoystickPointerId = pointerId;
-                        rightJoystickCenterX = x;
-                        rightJoystickCenterY = y;
-                        rightJoystickCurrentX = x;
-                        rightJoystickCurrentY = y;
-                    }
-                } else {
-                    if (lookPointerId == -1) {
-                        lookPointerId = pointerId;
-                        lookLastX = x;
-                        lookLastY = y;
-                        lookAccumX = 0;
-                        lookAccumY = 0;
-                        lookFireElement = element;
+                if (element.getType() == ControlElement.Type.BUTTON) {
+                    // Also track this pointer for look-around so the user can
+                    // press any button and still look/aim with the same finger.
+                    ControlElement smElement = getShooterModeElement();
+                    boolean useRightStick = (smElement != null && "gamepad_right_stick".equals(smElement.getShooterLookType()))
+                                         || (containerShooterModeRuntime && smElement == null);
+                    if (useRightStick) {
+                        if (rightJoystickPointerId == -1) {
+                            rightJoystickPointerId = pointerId;
+                            rightJoystickCenterX = x;
+                            rightJoystickCenterY = y;
+                            rightJoystickCurrentX = x;
+                            rightJoystickCurrentY = y;
+                        }
+                    } else {
+                        if (lookPointerId == -1) {
+                            lookPointerId = pointerId;
+                            lookLastX = x;
+                            lookLastY = y;
+                            lookAccumX = 0;
+                            lookAccumY = 0;
+                            lookFireElement = element;
+                        }
                     }
                 }
                 break;
@@ -895,8 +897,9 @@ public class InputControlsView extends View {
                         }
 
                         handled = false;
+                        int pid = event.getPointerId(i);
                         for (ControlElement element : profile.getElements()) {
-                            if (element.handleTouchMove(i, x, y)) handled = true;
+                            if (element.handleTouchMove(pid, x, y)) handled = true;
                         }
                         if (!handled) touchpadView.onTouchEvent(event);
                     }
