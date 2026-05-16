@@ -455,6 +455,22 @@ class MainViewModel @Inject constructor(
                 val container = ContainerUtils.getOrCreateContainer(context, appId)
                 val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
                 if (gameSource == GameSource.STEAM) {
+                    // On real->emu transition, GC the ~200 MB extracted Steam client
+                    // we won't need until the next real-Steam launch. Re-extraction
+                    // on the next transition is fast.
+                    val previousMode = container.getExtra("lastSteamMode", "")
+                    val currentMode = when {
+                        container.isLaunchRealSteam() -> "real"
+                        container.isLaunchBionicSteam() -> "bionic"
+                        else -> "emu"
+                    }
+                    if (previousMode != currentMode) {
+                        container.putExtra("lastSteamMode", currentMode)
+                        container.saveData()
+                        if (previousMode == "real" && currentMode == "emu") {
+                            SteamUtils.cleanupExtractedSteamFiles(context, container)
+                        }
+                    }
                     if (container.isLaunchRealSteam() || container.isLaunchBionicSteam()) {
                         SteamUtils.restoreSteamApi(context, appId)
                     } else {
@@ -590,9 +606,15 @@ class MainViewModel @Inject constructor(
                 val container = withContext(Dispatchers.IO) {
                     ContainerUtils.getContainer(context, appId)
                 }
-                SteamService.closeApp(context, gameId, isOffline.value) { prefix ->
-                    PathType.from(prefix).toAbsPath(container, gameId, SteamService.userSteamId!!.accountID)
-                }.await()
+                SteamService.closeApp(
+                    context,
+                    gameId,
+                    isOffline.value,
+                    prefixToPath = { prefix ->
+                        PathType.from(prefix).toAbsPath(container, gameId, SteamService.userSteamId!!.accountID)
+                    },
+                    isLaunchRealSteam = container.isLaunchRealSteam,
+                ).await()
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {

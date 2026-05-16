@@ -14,6 +14,10 @@ import `in`.dragonbra.javasteam.types.KeyValue
 import timber.log.Timber
 import java.io.File
 import java.nio.file.Files
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.zip.CRC32
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.createDirectories
@@ -22,6 +26,10 @@ import kotlin.io.path.exists
 // This is the key to make config.vdf work
 const val NULL_CHAR = '\u0000'
 const val TOKEN_EXPIRE_TIME = 86400L // 1 day
+
+// Bound synchronous Wine invocations — steam-token.exe can wedge forever on cold
+// boot when the Wine prefix is mid-update, which otherwise black-screens the app.
+private const val WINE_EXEC_TIMEOUT_SECONDS = 30L
 
 class SteamTokenLogin(
     private val steamId: String,
@@ -43,8 +51,28 @@ class SteamTokenLogin(
     }
 
     private fun execCommand(command: String) : String {
-        return guestProgramLauncherComponent?.execShellCommand(command, false)
+        val launcher = guestProgramLauncherComponent
             ?: throw IllegalStateException("GuestProgramLauncherComponent is required for command execution")
+        val executor = Executors.newSingleThreadExecutor { r ->
+            Thread(r, "SteamTokenLogin-exec").apply { isDaemon = true }
+        }
+        return try {
+            val future = CompletableFuture.supplyAsync({
+                launcher.execShellCommand(command, false)
+            }, executor)
+            try {
+                future.get(WINE_EXEC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            } catch (e: TimeoutException) {
+                future.cancel(true)
+                // Don't log/throw the full command — `command` may contain a refresh JWT
+                // (steam-token.exe encrypt <user> <token>). Log just the executable name.
+                val redacted = command.substringBefore(' ').substringAfterLast('/').ifEmpty { "<command>" }
+                Timber.tag("SteamTokenLogin").e("wine exec timed out after %ds: %s [args redacted]", WINE_EXEC_TIMEOUT_SECONDS, redacted)
+                throw IllegalStateException("wine exec timed out: $redacted [args redacted]", e)
+            }
+        } finally {
+            executor.shutdownNow()
+        }
     }
 
     private fun killWineServer() {
@@ -178,16 +206,10 @@ class SteamTokenLogin(
                 if (mtbf != null && connectCacheValue != null) {
                     try {
                         val dToken = deobfuscateToken(connectCacheValue.trimEnd(NULL_CHAR), mtbf.toLong()).trimEnd(NULL_CHAR)
-                        if (JWT(dToken).isExpired(TOKEN_EXPIRE_TIME)) {
-                            Timber.tag("SteamTokenLogin").d("Saved JWT expired, overriding config.vdf")
-                            // If the saved JWT is expired, override it
-                            shouldWriteConfig = true
-                        } else {
-                            Timber.tag("SteamTokenLogin").d("Saved JWT is not expired, do not override config.vdf")
-                            shouldWriteConfig = false
-                        }
+                        // If the stored token diverges from the current refresh token
+                        // (different account, or corrupted value), force a rewrite.
+                        shouldWriteConfig = dToken != token || JWT(dToken).isExpired(TOKEN_EXPIRE_TIME)
                     } catch (_: Exception) {
-                        Timber.tag("SteamTokenLogin").d("Cannot parse saved JWT, overriding config.vdf")
                         shouldWriteConfig = true
                     }
                 } else {

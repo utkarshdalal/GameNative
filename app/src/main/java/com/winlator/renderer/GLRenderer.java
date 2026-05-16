@@ -358,6 +358,13 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private void collectRenderableWindows(Window window, int x, int y) {
         if (!window.attributes.isMapped()) return;
         if (window != xServer.windowManager.rootWindow) {
+            if (window.getClassName().isEmpty() && window.getProcessId() == 0) {
+                Window parent = window.getParent();
+                if (parent != null && parent != xServer.windowManager.rootWindow
+                        && parent.getClassName().isEmpty() && parent.getProcessId() == 0) {
+                    return;
+                }
+            }
             boolean viewable = true;
 
             if (unviewableWMClasses != null) {
@@ -396,7 +403,9 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
                     renderableWindows.add(new RenderableWindow(window.getContent(), x, y, forceFullscreen));
                 }
-                else renderableWindows.add(new RenderableWindow(window.getContent(), x, y));
+                else {
+                    renderableWindows.add(new RenderableWindow(window.getContent(), x, y));
+                }
             }
         }
 

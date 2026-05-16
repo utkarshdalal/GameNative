@@ -64,6 +64,13 @@ public class WinHandler {
     private boolean initReceived;
     private InetAddress localhost;
     private OnGetProcessInfoListener onGetProcessInfoListener;
+    // Additional listeners that subscribe via add/removeOnGetProcessInfoListener.
+    // The single-slot setter above is kept for backwards compatibility; the
+    // dispatch path forwards to the slot AND every listener in this list, so
+    // multiple concurrent watchers (e.g. awaitSteamShutdown polling at the
+    // same time as startExitWatchForUnmappedGameWindow) no longer clobber
+    // each other's listener installation.
+    private final CopyOnWriteArrayList<OnGetProcessInfoListener> extraProcessInfoListeners = new CopyOnWriteArrayList<>();
     private PreferredInputApi preferredInputApi;
     private final ByteBuffer receiveData;
     private final DatagramPacket receivePacket;
@@ -176,12 +183,33 @@ public class WinHandler {
         if (command2.isEmpty()) {
             return;
         }
-        String[] cmdList = command2.split(" ", 2);
-        final String filename = cmdList[0];
-        final String parameters = cmdList.length > 1 ? cmdList[1] : "";
+        final String filename;
+        final String parameters;
+        // A naive split(" ", 2) would shred Windows paths like
+        // "C:\Program Files (x86)\Steam\steam.exe" -shutdown.
+        if (command2.charAt(0) == '"') {
+            int closing = command2.indexOf('"', 1);
+            if (closing > 0) {
+                filename = command2.substring(1, closing);
+                parameters = command2.substring(closing + 1).trim();
+            } else {
+                filename = command2.substring(1);
+                parameters = "";
+            }
+        } else {
+            String[] cmdList = command2.split(" ", 2);
+            filename = cmdList[0];
+            parameters = cmdList.length > 1 ? cmdList[1] : "";
+        }
+        exec(filename, parameters);
+    }
+
+    public void exec(final String filename, final String parameters) {
+        if (filename == null || filename.isEmpty()) return;
+        final String params = parameters == null ? "" : parameters;
         addAction(() -> {
             byte[] filenameBytes = filename.getBytes();
-            byte[] parametersBytes = parameters.getBytes();
+            byte[] parametersBytes = params.getBytes();
             this.sendData.rewind();
             this.sendData.put(RequestCodes.EXEC);
             this.sendData.putInt(filenameBytes.length + parametersBytes.length + 8);
@@ -216,12 +244,25 @@ public class WinHandler {
 
     public void listProcesses() {
         addAction(() -> {
-            OnGetProcessInfoListener onGetProcessInfoListener;
             this.sendData.rewind();
             this.sendData.put(RequestCodes.LIST_PROCESSES);
             this.sendData.putInt(0);
-            if (!sendPacket(CLIENT_PORT) && (onGetProcessInfoListener = this.onGetProcessInfoListener) != null) {
-                onGetProcessInfoListener.onGetProcessInfo(0, 0, null);
+            if (!sendPacket(CLIENT_PORT)) {
+                OnGetProcessInfoListener slotListener = this.onGetProcessInfoListener;
+                if (slotListener != null) {
+                    try {
+                        slotListener.onGetProcessInfo(0, 0, null);
+                    } catch (Throwable t) {
+                        Log.w(TAG, "process info listener threw", t);
+                    }
+                }
+                for (OnGetProcessInfoListener l : extraProcessInfoListeners) {
+                    try {
+                        l.onGetProcessInfo(0, 0, null);
+                    } catch (Throwable t) {
+                        Log.w(TAG, "process info listener threw", t);
+                    }
+                }
             }
         });
     }
@@ -325,6 +366,43 @@ public class WinHandler {
         }
     }
 
+    /**
+     * Register an additional listener that will be notified for every process-info
+     * event. Unlike {@link #setOnGetProcessInfoListener}, multiple listeners can
+     * coexist; each caller manages its own registration via
+     * {@link #removeOnGetProcessInfoListener}. This is the preferred API when more
+     * than one component polls process info concurrently.
+     */
+    public void addOnGetProcessInfoListener(OnGetProcessInfoListener listener) {
+        if (listener == null) return;
+        extraProcessInfoListeners.addIfAbsent(listener);
+    }
+
+    public void removeOnGetProcessInfoListener(OnGetProcessInfoListener listener) {
+        if (listener == null) return;
+        extraProcessInfoListeners.remove(listener);
+    }
+
+    /**
+     * Coordinates listProcesses-driven snapshot collection so events from one
+     * snapshot don't bleed into another concurrent snapshot's listener. The
+     * wire protocol has no request id to disambiguate broadcast responses, so
+     * a serializing primitive is the cheapest fix that preserves the existing
+     * GET_PROCESS packet format.
+     *
+     * <p>Callers that wrap an {@code addOnGetProcessInfoListener} /
+     * {@code listProcesses} / await / {@code removeOnGetProcessInfoListener}
+     * sequence should hold this lock for the duration of the sequence.
+     * Long-running listeners that don't drive listProcesses themselves don't
+     * need to acquire it.
+     *
+     * <p>Exposed as a {@link kotlinx.coroutines.sync.Mutex} so Kotlin callers
+     * can suspend on it without binding to a thread, which a JVM monitor would
+     * forbid across coroutine suspension points.
+     */
+    public final kotlinx.coroutines.sync.Mutex processSnapshotMutex =
+            kotlinx.coroutines.sync.MutexKt.Mutex(false);
+
     private void startSendThread() {
         Executors.newSingleThreadExecutor().execute(() -> {
             while (this.running) {
@@ -364,7 +442,7 @@ public class WinHandler {
                 }
                 return;
             case RequestCodes.GET_PROCESS:
-                if (this.onGetProcessInfoListener == null) {
+                if (this.onGetProcessInfoListener == null && extraProcessInfoListeners.isEmpty()) {
                     return;
                 }
                 ByteBuffer byteBuffer = this.receiveData;
@@ -378,7 +456,23 @@ public class WinHandler {
                 byte[] bytes = new byte[32];
                 this.receiveData.get(bytes);
                 String name = StringUtils.fromANSIString(bytes);
-                this.onGetProcessInfoListener.onGetProcessInfo(index, numProcesses, new ProcessInfo(pid, name, memoryUsage, affinityMask, wow64Process));
+                ProcessInfo info = new ProcessInfo(pid, name, memoryUsage, affinityMask, wow64Process);
+                // Isolate each listener so a misbehaving consumer can't kill the
+                // receive thread and break future polling for everyone else.
+                if (this.onGetProcessInfoListener != null) {
+                    try {
+                        this.onGetProcessInfoListener.onGetProcessInfo(index, numProcesses, info);
+                    } catch (Throwable t) {
+                        Log.w(TAG, "process info listener threw", t);
+                    }
+                }
+                for (OnGetProcessInfoListener l : extraProcessInfoListeners) {
+                    try {
+                        l.onGetProcessInfo(index, numProcesses, info);
+                    } catch (Throwable t) {
+                        Log.w(TAG, "process info listener threw", t);
+                    }
+                }
                 return;
             case RequestCodes.GET_GAMEPAD:
                 boolean isXInput = this.receiveData.get() == 1;

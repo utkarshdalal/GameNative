@@ -215,7 +215,11 @@ public abstract class ImageFsInstaller {
             Log.w("ImageFsInstaller", "Failed to migrate legacy directories before installation.");
             return Executors.newSingleThreadExecutor().submit(() -> false);
         }
-        if (!imageFs.isValid() || imageFs.getVersion() < LATEST_VERSION || !imageFs.getVariant().equals(container.getContainerVariant())) {
+        boolean valid = imageFs.isValid();
+        int version = imageFs.getVersion();
+        String currentVariant = imageFs.getVariant();
+        String requestedVariant = container.getContainerVariant();
+        if (!valid || version < LATEST_VERSION || !currentVariant.equals(requestedVariant)) {
             Log.d("ImageFsInstaller", "Installing image from assets");
             return installFromAssetsFuture(
                     context,

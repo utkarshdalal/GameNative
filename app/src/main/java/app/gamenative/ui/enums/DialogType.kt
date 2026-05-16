@@ -35,6 +35,7 @@ enum class DialogType(val icon: ImageVector? = null) {
     APP_UPDATE,
     EXECUTABLE_NOT_FOUND,
     WORKSHOP_UPDATE_PROMPT,
+    SDK_CLOUD_BRIDGE_SUGGESTION,
 
     NONE,
 

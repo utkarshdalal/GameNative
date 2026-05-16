@@ -468,6 +468,13 @@ object PrefManager {
             setPref(LAUNCH_REAL_STEAM, value)
         }
 
+    private val DISABLE_STEAM_OVERLAY = booleanPreferencesKey("disable_steam_overlay")
+    var disableSteamOverlay: Boolean
+        get() = getPref(DISABLE_STEAM_OVERLAY, true)
+        set(value) {
+            setPref(DISABLE_STEAM_OVERLAY, value)
+        }
+
     private val LAUNCH_BIONIC_STEAM = booleanPreferencesKey("launch_bionic_steam")
     var launchBionicSteam: Boolean
         get() = getPref(LAUNCH_BIONIC_STEAM, false)

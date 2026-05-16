@@ -1,5 +1,6 @@
 package com.winlator.xserver;
 
+import android.util.Log;
 import android.util.SparseArray;
 
 import com.winlator.xconnector.XInputStream;
@@ -183,7 +184,74 @@ public class WindowManager extends XResourceManager {
         windows.put(id, window);
         parent.addChild(window);
         triggerOnCreateResourceListener(window);
+        reapLeakedClientWindows(window);
         return window;
+    }
+
+    private static final int LEAK_CLIENT_CAP = 8;
+
+    private void reapLeakedClientWindows(Window created) {
+        if (created == rootWindow || !created.isInputOutput()) return;
+        if (!created.getClassName().isEmpty()) return;
+        XClient createdClient = created.originClient;
+        if (createdClient == null) return;
+        int w = created.getWidth();
+        int h = created.getHeight();
+
+        // Build the ancestor chain of `created` so we never reap one of its parents.
+        // destroyWindow recursively destroys descendants, so destroying any ancestor of
+        // the just-created window would destroy `created` itself, and createWindow()
+        // would return a stale handle that is no longer in the window tree.
+        java.util.HashSet<Integer> ancestors = new java.util.HashSet<>();
+        for (Window p = created.getParent(); p != null && p != rootWindow; p = p.getParent()) {
+            ancestors.add(p.id);
+        }
+
+        ArrayList<Window> matches = new ArrayList<>();
+        for (int i = 0; i < windows.size(); i++) {
+            Window cand = windows.valueAt(i);
+            if (cand == null || cand == created || cand == rootWindow) continue;
+            if (cand.originClient != createdClient) continue;
+            if (!cand.isInputOutput()) continue;
+            if (!cand.getClassName().isEmpty()) continue;
+            if (cand.getWidth() != w || cand.getHeight() != h) continue;
+            // Don't reap currently-mapped windows; the leak chain we're cleaning up is
+            // composed of unmapped phantoms. A real surface that happens to share the
+            // other attributes (very rare) would still be safe.
+            if (cand.attributes.isMapped()) continue;
+            // Don't reap an ancestor of `created`; destroyWindow recurses into descendants
+            // so this would destroy `created` too.
+            if (ancestors.contains(cand.id)) continue;
+            // Tightened orphan-chain signature: mirror the compositor filter from
+            // dd3987be ("skip orphaned Wine GLX leak chain in compositor"). The proven
+            // leak marker is blank WM_CLASS + _NET_WM_PID==0 reparented under a 1x1
+            // blank-className/pid=0 orphanage. Without these extra predicates the
+            // reaper could destroy a legitimate unmapped popup from the same client
+            // that happens to share size and lack WM_CLASS at create time.
+            if (cand.getProcessId() != 0) continue;
+            if (!cand.getName().isEmpty()) continue;
+            if (!cand.getChildren().isEmpty()) continue;
+            Window candParent = cand.getParent();
+            if (candParent == null || candParent == rootWindow) continue;
+            // The compositor's orphan-chain marker pins the parent to a 1x1 orphanage
+            // (see dd3987be). Mirror that here so we never reap children of a blank
+            // pid=0 parent that isn't the actual orphanage stub.
+            if (candParent.getWidth() != 1 || candParent.getHeight() != 1) continue;
+            if (!candParent.getClassName().isEmpty()) continue;
+            if (candParent.getProcessId() != 0) continue;
+            matches.add(cand);
+        }
+        if (matches.size() < LEAK_CLIENT_CAP) return;
+
+        matches.sort((a, b) -> Integer.compareUnsigned(a.id, b.id));
+        int toReap = matches.size() - (LEAK_CLIENT_CAP - 1);
+        for (int i = 0; i < toReap && i < matches.size(); i++) {
+            Window victim = matches.get(i);
+            Log.w("WindowManager", "reapLeakedClientWindow: wid=" + victim.id
+                    + " parent=" + (victim.getParent() == null ? "null" : Integer.toString(victim.getParent().id))
+                    + " (cap=" + LEAK_CLIENT_CAP + " matches=" + matches.size() + ")");
+            destroyWindow(victim.id);
+        }
     }
 
     private void changeWindowGeometry(Window window, short x, short y, short width, short height) {

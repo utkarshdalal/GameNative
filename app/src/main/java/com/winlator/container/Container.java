@@ -85,6 +85,8 @@ public class Container {
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
     private boolean launchRealSteam;
+    private boolean disableSteamOverlay = true;
+    private String sdkCloudSaveSubdir = "";
     private boolean launchBionicSteam;
     private boolean allowSteamUpdates;
     private boolean wow64Mode = true;
@@ -324,6 +326,22 @@ public class Container {
 
     public void setLaunchRealSteam(boolean launchRealSteam) {
         this.launchRealSteam = launchRealSteam;
+    }
+
+    public boolean isDisableSteamOverlay() {
+        return disableSteamOverlay;
+    }
+
+    public void setDisableSteamOverlay(boolean disableSteamOverlay) {
+        this.disableSteamOverlay = disableSteamOverlay;
+    }
+
+    public String getSdkCloudSaveSubdir() {
+        return sdkCloudSaveSubdir == null ? "" : sdkCloudSaveSubdir;
+    }
+
+    public void setSdkCloudSaveSubdir(String sdkCloudSaveSubdir) {
+        this.sdkCloudSaveSubdir = sdkCloudSaveSubdir == null ? "" : sdkCloudSaveSubdir;
     }
 
     public boolean isLaunchBionicSteam() {
@@ -661,6 +679,8 @@ public class Container {
             data.put("drives", drives);
             data.put("showFPS", showFPS);
             data.put("launchRealSteam", launchRealSteam);
+            data.put("disableSteamOverlay", disableSteamOverlay);
+            data.put("sdkCloudSaveSubdir", sdkCloudSaveSubdir);
             data.put("launchBionicSteam", launchBionicSteam);
             data.put("allowSteamUpdates", allowSteamUpdates);
             data.put("inputType", inputType);
@@ -780,6 +800,12 @@ public class Container {
                     break;
                 case "launchRealSteam" :
                     setLaunchRealSteam(data.getBoolean(key));
+                    break;
+                case "disableSteamOverlay" :
+                    setDisableSteamOverlay(data.getBoolean(key));
+                    break;
+                case "sdkCloudSaveSubdir" :
+                    setSdkCloudSaveSubdir(data.optString(key, ""));
                     break;
                 case "launchBionicSteam" :
                     setLaunchBionicSteam(data.getBoolean(key));

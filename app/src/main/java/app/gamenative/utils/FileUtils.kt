@@ -133,24 +133,43 @@ object FileUtils {
         }
     }
 
-    fun findFiles(rootPath: Path, pattern: String, includeDirectories: Boolean = false): Stream<Path> {
+    fun matchesGlob(fileName: String, pattern: String): Boolean {
+        if (pattern.isEmpty() || pattern == "*") return true
+        // Pattern with no '*' is an exact (case-insensitive) match, not a substring search.
+        if (!pattern.contains('*')) return fileName.equals(pattern, ignoreCase = true)
+        val hasLeadingStar = pattern.startsWith('*')
+        val hasTrailingStar = pattern.endsWith('*')
         val patternParts = pattern.split("*").filter { it.isNotEmpty() }
-        Timber.i("$pattern -> $patternParts")
+        if (patternParts.isEmpty()) return true
+        // Anchor the first token at fileName start when the pattern has no leading '*'.
+        if (!hasLeadingStar && !fileName.startsWith(patternParts.first(), ignoreCase = true)) return false
+        // Anchor the last token at fileName end when the pattern has no trailing '*'.
+        if (!hasTrailingStar && !fileName.endsWith(patternParts.last(), ignoreCase = true)) return false
+        // Walk middle tokens in order, starting after any anchored prefix.
+        var startIndex = if (!hasLeadingStar) patternParts.first().length else 0
+        val afterFirst = if (!hasLeadingStar) patternParts.drop(1) else patternParts
+        val middle = if (!hasTrailingStar && afterFirst.isNotEmpty()) afterFirst.dropLast(1) else afterFirst
+        for (part in middle) {
+            val index = fileName.indexOf(part, startIndex, ignoreCase = true)
+            if (index < 0) return false
+            startIndex = index + part.length
+        }
+        // If the trailing anchor consumed a token that overlaps startIndex, ensure no overlap.
+        if (!hasTrailingStar && afterFirst.isNotEmpty()) {
+            val lastTokenStart = fileName.length - afterFirst.last().length
+            if (lastTokenStart < startIndex) return false
+        }
+        return true
+    }
+
+    fun findFiles(rootPath: Path, pattern: String, includeDirectories: Boolean = false): Stream<Path> {
+        Timber.i("findFiles pattern=$pattern")
         if (!Files.exists(rootPath)) return emptyList<Path>().stream()
         return Files.list(rootPath).filter { path ->
             if (path.isDirectory() && !includeDirectories) {
                 false
             } else {
-                val fileName = path.name
-                Timber.i("Checking $fileName for pattern $pattern")
-                var startIndex = 0
-                !patternParts.map {
-                    val index = fileName.indexOf(it, startIndex, ignoreCase = true)
-                    if (index >= 0) {
-                        startIndex = index + it.length
-                    }
-                    index
-                }.any { it < 0 }
+                matchesGlob(path.name, pattern)
             }
         }
     }
@@ -161,36 +180,19 @@ object FileUtils {
         maxDepth: Int = -1,
         includeDirectories: Boolean = false,
     ): Stream<Path> {
-        val patternParts = pattern.split("*").filter { it.isNotEmpty() }
-        Timber.i("$pattern -> $patternParts (recursive, depth=$maxDepth)")
+        Timber.i("findFilesRecursive pattern=$pattern depth=$maxDepth")
         if (!Files.exists(rootPath)) return emptyList<Path>().stream()
 
         val results = mutableListOf<Path>()
-
-        fun matches(fileName: String): Boolean {
-            var startIndex = 0
-            for (part in patternParts) {
-                val index = fileName.indexOf(part, startIndex, ignoreCase = true)
-                if (index < 0) return false
-                startIndex = index + part.length
-            }
-            return true
-        }
-
         walkThroughPath(rootPath, maxDepth) { path ->
             if (path.isDirectory()) {
-                if (includeDirectories && matches(path.name)) {
+                if (includeDirectories && matchesGlob(path.name, pattern)) {
                     results.add(path)
                 }
-            } else {
-                val fileName = path.name
-                Timber.i("Checking $fileName for pattern $pattern (recursive)")
-                if (matches(fileName)) {
-                    results.add(path)
-                }
+            } else if (matchesGlob(path.name, pattern)) {
+                results.add(path)
             }
         }
-
         return results.stream()
     }
 

@@ -5,10 +5,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -16,8 +19,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -31,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsListDropdown
+import app.gamenative.utils.SteamUtils
 import com.alorma.compose.settings.ui.SettingsSwitch
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
@@ -41,6 +49,7 @@ import com.winlator.core.DefaultVersion
 import com.winlator.core.KeyValueSet
 import com.winlator.core.StringUtils
 import com.winlator.contents.ContentProfile
+import androidx.compose.ui.platform.LocalContext
 import java.util.Locale
 
 @Composable
@@ -372,6 +381,15 @@ fun GeneralTabContent(
                 }
             },
         )
+        if (config.launchRealSteam) {
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.disable_steam_overlay)) },
+                subtitle = { Text(text = stringResource(R.string.disable_steam_overlay_description)) },
+                state = config.disableSteamOverlay,
+                onCheckedChange = { state.config.value = config.copy(disableSteamOverlay = it) },
+            )
+        }
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             SettingsSwitch(
                 colors = settingsTileColorsAlt(),
@@ -386,6 +404,9 @@ fun GeneralTabContent(
                     }
                 },
             )
+        }
+        if (config.launchRealSteam || config.launchBionicSteam) {
+            SdkCloudSaveSubdirField(state = state, config = config)
         }
         val steamTypeItems = listOf("Normal", "Light", "Ultra Light")
         val currentSteamTypeIndex = when (config.steamType.lowercase()) {
@@ -420,6 +441,172 @@ fun GeneralTabContent(
                     else -> Container.SUSPEND_POLICY_MANUAL
                 }
                 state.config.value = config.copy(suspendPolicy = policy)
+            },
+        )
+    }
+}
+
+/**
+ * Install-relative save subdir for Pattern B SDK-cloud games (game reads saves from
+ * its install dir while cloud state lives in SteamUserData/<appid>/remote/). Empty
+ * disables the mirror. "Use Recommended" pulls from the Ludusavi manifest.
+ */
+@Composable
+private fun SdkCloudSaveSubdirField(
+    state: ContainerConfigState,
+    config: ContainerData,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var showConfirmDialog by rememberSaveable { mutableStateOf(false) }
+    var pendingValue by rememberSaveable { mutableStateOf("") }
+    var detectMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    // `remember` not `rememberSaveable`: if we're disposed mid-fetch the coroutine
+    // cancels, and a persisted `true` would leave the button permanently disabled on
+    // recomposition. Transient state should reset on restart.
+    var recommendLoading by remember { mutableStateOf(false) }
+    val current = config.sdkCloudSaveSubdir
+    val currentIsValid = current.isEmpty() || SteamUtils.isValidSdkCloudSubdir(current)
+    val errorText = if (!currentIsValid) {
+        stringResource(R.string.sdk_cloud_save_subdir_invalid)
+    } else null
+
+    Text(
+        text = stringResource(R.string.sdk_cloud_save_subdir_section),
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 2.dp),
+    )
+    Text(
+        text = stringResource(R.string.sdk_cloud_save_subdir_section_description),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+    )
+
+    NoExtractOutlinedTextField(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        value = current,
+        // Manual typing is an intentional edit — commit each keystroke directly. The first-activation
+        // confirmation flow (pendingValue/showConfirmDialog) is reserved for auto-filled values from
+        // the Recommend / Detect buttons below, which the user didn't type and may want to reject.
+        // Earlier shapes of this handler tried to gate typing through the confirmation too, but any
+        // such gate either broke after the first keystroke (state was no longer "blank") or
+        // interrupted normal multi-character typing.
+        onValueChange = { raw ->
+            state.config.value = config.copy(sdkCloudSaveSubdir = raw.trim())
+        },
+        label = { Text(text = stringResource(R.string.sdk_cloud_save_subdir_label)) },
+        placeholder = { Text(text = stringResource(R.string.sdk_cloud_save_subdir_placeholder)) },
+        supportingText = {
+            Text(
+                text = errorText
+                    ?: detectMessage
+                    ?: stringResource(R.string.sdk_cloud_save_subdir_description),
+            )
+        },
+        isError = !currentIsValid,
+        singleLine = true,
+    )
+
+    val appId = state.appId
+    if (appId != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(
+                enabled = !recommendLoading,
+                onClick = {
+                    recommendLoading = true
+                    detectMessage = context.getString(R.string.sdk_cloud_save_subdir_recommended_loading)
+                    scope.launch {
+                        val rec = runCatching {
+                            SteamUtils.getRecommendedSdkCloudSaveSubdirAsync(context, appId)
+                        }.getOrNull()
+                        recommendLoading = false
+                        if (rec != null) {
+                            detectMessage = context.getString(
+                                R.string.sdk_cloud_save_subdir_recommended,
+                                rec.name.ifEmpty { appId.toString() },
+                                rec.subdir,
+                            )
+                            // Re-read after suspend: user may have typed in the field while
+                            // we were off-thread asking Ludusavi for a recommendation.
+                            if (state.config.value.sdkCloudSaveSubdir.isBlank()) {
+                                pendingValue = rec.subdir
+                                showConfirmDialog = true
+                            }
+                        } else {
+                            detectMessage = context.getString(R.string.sdk_cloud_save_subdir_recommended_none)
+                        }
+                    }
+                },
+            ) {
+                if (recommendLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text(text = stringResource(R.string.sdk_cloud_save_subdir_recommended_button))
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            TextButton(onClick = {
+                scope.launch {
+                    // File.listFiles / isDirectory on main thread can ANR on slow storage.
+                    val detected = withContext(Dispatchers.IO) {
+                        runCatching {
+                            SteamUtils.detectSdkCloudSaveSubdir(context, appId)
+                        }.getOrNull()
+                    }
+                    detectMessage = if (detected != null) {
+                        context.getString(R.string.sdk_cloud_save_subdir_detected, detected)
+                    } else {
+                        context.getString(R.string.sdk_cloud_save_subdir_detect_none)
+                    }
+                    // Re-read after the IO suspend; the user may have typed in the field meanwhile.
+                    if (detected != null && state.config.value.sdkCloudSaveSubdir.isBlank()) {
+                        pendingValue = detected
+                        showConfirmDialog = true
+                    }
+                }
+            }) {
+                Text(text = stringResource(R.string.sdk_cloud_save_subdir_detect))
+            }
+            if (current.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(onClick = {
+                    state.config.value = config.copy(sdkCloudSaveSubdir = "")
+                    detectMessage = null
+                }) {
+                    Text(text = stringResource(R.string.sdk_cloud_save_subdir_clear))
+                }
+            }
+        }
+    }
+
+    if (showConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            title = { Text(text = stringResource(R.string.sdk_cloud_save_subdir_confirm_title)) },
+            text = {
+                Text(text = stringResource(R.string.sdk_cloud_save_subdir_confirm_body, pendingValue))
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (SteamUtils.isValidSdkCloudSubdir(pendingValue)) {
+                        state.config.value = config.copy(sdkCloudSaveSubdir = pendingValue)
+                    }
+                    showConfirmDialog = false
+                }) {
+                    Text(text = stringResource(R.string.sdk_cloud_save_subdir_confirm_accept))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmDialog = false }) {
+                    Text(text = stringResource(R.string.sdk_cloud_save_subdir_confirm_cancel))
+                }
             },
         )
     }

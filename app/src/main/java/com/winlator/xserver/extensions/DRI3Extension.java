@@ -159,8 +159,13 @@ public class DRI3Extension implements Extension {
         try {
             GPUImage gpuImage = new GPUImage(fd);
             Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, gpuImage.getStride(), height, depth);
+            if (drawable == null) throw new BadIdChoice(pixmapId);
             drawable.setTexture(gpuImage);
-            client.xServer.pixmapManager.createPixmap(drawable);
+            if (client.xServer.pixmapManager.createPixmap(drawable) == null) {
+                // Drawable is already registered; unregister it before throwing or it leaks.
+                client.xServer.drawableManager.removeDrawable(drawable.id);
+                throw new BadIdChoice(pixmapId);
+            }
         }
         finally {
             XConnectorEpoll.closeFd(fd);
@@ -168,18 +173,38 @@ public class DRI3Extension implements Extension {
     }
 
     private void pixmapFromFd(XClient client, int pixmapId, short width, short height, int stride, int offset, byte depth, int fd, long size)  throws IOException, XRequestError {
+        ByteBuffer buffer = null;
+        boolean handedOffToDrawable = false;
         try {
-            ByteBuffer buffer = SysVSharedMemory.mapSHMSegment(fd, size, offset, true);
+            buffer = SysVSharedMemory.mapSHMSegment(fd, size, offset, true);
             if (buffer == null) throw new BadAlloc();
 
             short totalWidth = (short)(stride / 4);
             Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, totalWidth, height, depth);
+            if (drawable == null) throw new BadIdChoice(pixmapId);
             drawable.setData(buffer);
             drawable.setTexture(null);
+            // NB: don't register onDestroyDrawableListener until after pixmap creation succeeds.
+            // If we register early and createPixmap returns null, removeDrawable() would invoke
+            // the listener → unmapSHMSegment, and the finally block below would unmap again.
+            if (client.xServer.pixmapManager.createPixmap(drawable) == null) {
+                // Drawable is registered without a destroy listener; unregister and bail. The
+                // finally block will unmap the buffer (handedOffToDrawable is still false).
+                client.xServer.drawableManager.removeDrawable(drawable.id);
+                throw new BadIdChoice(pixmapId);
+            }
+            // Drawable + Pixmap created. Hand the buffer over: register the listener and flag
+            // handedOff so the finally block doesn't unmap (the listener will, on destruction).
             drawable.setOnDestroyListener(onDestroyDrawableListener);
-            client.xServer.pixmapManager.createPixmap(drawable);
+            handedOffToDrawable = true;
         }
         finally {
+            // If we mapped the buffer but never handed it to a Drawable (e.g. drawable creation
+            // failed, or createPixmap returned null and we removed the drawable above), the SHM
+            // segment is otherwise leaked.
+            if (buffer != null && !handedOffToDrawable) {
+                SysVSharedMemory.unmapSHMSegment(buffer, size);
+            }
             XConnectorEpoll.closeFd(fd);
         }
     }

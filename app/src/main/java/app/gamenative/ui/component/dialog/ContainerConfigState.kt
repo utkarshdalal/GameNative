@@ -136,4 +136,7 @@ class ContainerConfigState(
     val applyScreenSizeToConfig: () -> Unit,
     val vkd3dForcedVersion: () -> String,
     val currentDxvkContext: () -> ManifestComponentHelper.DxvkContext,
+    /** Steam appId for this container, or null if not a Steam container. Used by
+     *  per-game UI like the SDK-cloud save subdir detect button. */
+    val appId: Int? = null,
 )

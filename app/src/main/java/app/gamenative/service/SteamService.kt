@@ -89,6 +89,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamapps.License
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.PICSRequest
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.SteamApps
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.callback.LicenseListCallback
+import `in`.dragonbra.javasteam.steam.handlers.steamcloud.PendingRemoteOperation
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.SteamFriends
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.PersonaStateCallback
@@ -2332,23 +2333,161 @@ class SteamService : Service(), IChallengeUrlChanged {
             preferredSave: SaveLocation = SaveLocation.None,
             prefixToPath: (String) -> String,
             isOffline: Boolean = false,
+            isLaunchRealSteam: Boolean = false,
             onProgress: ((message: String, progress: Float) -> Unit)? = null,
         ): Deferred<PostSyncInfo> = parentScope.async {
-            if (isOffline || !isConnected) {
-                return@async PostSyncInfo(SyncResult.UpToDate)
-            }
+            // NB: don't early-return on isOffline/!isConnected here — local prep below
+            // (GSE→userdata migrate, future SDK-cloud mirror) is independent of cloud
+            // connectivity and needs to run before the game launches even when offline.
             if (!tryAcquireSync(appId)) {
                 Timber.w("Cannot launch app when sync already in progress for appId=$appId")
                 return@async PostSyncInfo(SyncResult.InProgress)
             }
 
+            // Only migrate GSE -> userdata when booting real Steam; reverse direction lives in ensureSteamSettings.
+            // Null-guard for context; the migrate itself is invoked inside the main try below so any
+            // exception goes through finally { releaseSync(appId) } and never leaks the sync flag.
+            val migrateCtx = instance?.applicationContext
+            if (migrateCtx == null) {
+                Timber.e("migrateGSESavesToSteamUserdata: applicationContext is null, releasing sync and bailing")
+                releaseSync(appId)
+                return@async PostSyncInfo(SyncResult.UnknownFail)
+            }
+
+            var syncResult = PostSyncInfo(SyncResult.UnknownFail)
+            var launchIntentRegistered = false
+
+            // Wine-hosted Steam establishes its own session via BYieldingAppLaunchIntent
+            // under machineName="localhost", so clearing server-side state here wipes
+            // orphan phantoms from prior aborted launches without disrupting anything we're
+            // about to do — we don't signal an intent in real-Steam mode anyway.
+            //
+            // Probe first: a bare signalAppLaunchIntent with ignorePendingOperations=false
+            // returns the list of pending ops without dismissing them. Only run the full
+            // dismissal cycle if the server actually reports a phantom, so we don't
+            // advance the cloud ChangeNumber on clean launches. A prior iteration always
+            // ran signalAppExitSyncDone(uploadsCompleted=true) proactively, which lied to
+            // the server that we completed uploads and reset cloud ChangeNumber to 0 —
+            // Wine-Steam then "forgot" steam_autocloud.vdf and games with Steamworks
+            // cloud integration (e.g. 868-HACK) exited with code 1.
+            //
+            // Cross-device pending ops surfaced by the real-Steam probe are also
+            // captured here. The main sync flow below skips signalAppLaunchIntent in
+            // real-Steam mode (so Wine-Steam's own localhost intent isn't fenced by
+            // ours), which makes the probe the ONLY chance to observe cross-device
+            // conflicts on this path; we propagate them into PostSyncInfo so the
+            // SYNC_CONFLICT dialog can fire.
+            var realSteamCrossDevicePending: List<PendingRemoteOperation> = emptyList()
+
+            if (isLaunchRealSteam) {
+                runCatching { instance?._steamUser?.kickPlayingSession() }
+                    .onFailure { Timber.w(it, "Proactive kickPlayingSession before real-Steam launch failed") }
+
+                val steamInstance = instance
+                val steamCloud = steamInstance?._steamCloud
+                val proactiveClientId = PrefManager.clientId
+                if (steamInstance != null && steamCloud != null && proactiveClientId != null) {
+                    val ourMachineName = SteamUtils.getMachineName(steamInstance)
+                    runCatching {
+                        val probed = steamCloud.signalAppLaunchIntent(
+                            appId = appId,
+                            clientId = proactiveClientId,
+                            machineName = ourMachineName,
+                            ignorePendingOperations = false,
+                            osType = EOSType.AndroidUnknown,
+                        ).await()
+
+                        if (probed.isNotEmpty()) {
+                            // Only auto-dismiss our OWN phantom entries. A pending op from a
+                            // different machineName is a legitimate cross-device cloud conflict —
+                            // those need to surface to the SYNC_CONFLICT dialog so the user can
+                            // resolve, not get silently wiped by ignorePendingOperations=true.
+                            val selfPhantoms = probed.filter {
+                                it.machineName.equals(ourMachineName, ignoreCase = true) ||
+                                    it.machineName.equals("localhost", ignoreCase = true)
+                            }
+                            val crossDevice = probed - selfPhantoms.toSet()
+                            Timber.i(
+                                "Proactive real-Steam probe found %d pending op(s) (%s); selfPhantoms=%d crossDevice=%d",
+                                probed.size,
+                                probed.joinToString { "${it.machineName}:${it.operation.name}" },
+                                selfPhantoms.size,
+                                crossDevice.size,
+                            )
+                            if (crossDevice.isNotEmpty()) {
+                                Timber.w(
+                                    "Skipping phantom auto-dismiss: %d cross-device pending op(s) present (%s) — leaving for the conflict dialog.",
+                                    crossDevice.size,
+                                    crossDevice.joinToString { "${it.machineName}:${it.operation.name}" },
+                                )
+                                // Capture for propagation; if the caller passed
+                                // ignorePendingOperations=true (user already chose Play
+                                // Anyway in a prior pass), don't re-surface the dialog.
+                                if (!ignorePendingOperations) {
+                                    realSteamCrossDevicePending = crossDevice
+                                }
+                            } else if (selfPhantoms.isNotEmpty()) {
+                                steamCloud.signalAppLaunchIntent(
+                                    appId = appId,
+                                    clientId = proactiveClientId,
+                                    machineName = ourMachineName,
+                                    ignorePendingOperations = true,
+                                    osType = EOSType.AndroidUnknown,
+                                ).await()
+                                steamCloud.signalAppExitSyncDone(
+                                    appId = appId,
+                                    clientId = proactiveClientId,
+                                    uploadsCompleted = false,
+                                    uploadsRequired = false,
+                                )
+                            }
+                        }
+                    }.onFailure {
+                        Timber.w(it, "Proactive phantom-clearing probe before real-Steam launch failed")
+                    }
+
+                    // Release the AppSessionActive the probe RPC registered under our
+                    // machineName so Wine-Steam's subsequent localhost intent doesn't see
+                    // a conflicting session from us.
+                    runCatching { steamInstance._steamUser?.kickPlayingSession() }
+                        .onFailure { Timber.w(it, "Probe-session kick after proactive launch intent failed") }
+                }
+            }
+
+            // If the real-Steam probe surfaced cross-device pending ops, short-circuit
+            // before any further cloud work and let the conflict UI run. The main sync
+            // flow below skips signalAppLaunchIntent in real-Steam mode, so without this
+            // bail the detected ops would never reach PostSyncInfo.pendingRemoteOperations.
+            if (realSteamCrossDevicePending.isNotEmpty()) {
+                releaseSync(appId)
+                return@async PostSyncInfo(
+                    syncResult = SyncResult.PendingOperations,
+                    pendingRemoteOperations = realSteamCrossDevicePending,
+                )
+            }
+
             try {
-                val context = instance?.applicationContext ?: return@async PostSyncInfo(SyncResult.UnknownFail)
-                // Migrate GSE Saves to Steam userdata
-                SteamUtils.migrateGSESavesToSteamUserdata(context, appId)
+                // Migrate GSE saves -> Steam userdata layout. Inside the try so any
+                // exception still flows through finally { releaseSync(appId) }.
+                SteamUtils.migrateGSESavesToSteamUserdata(migrateCtx, appId, isLaunchRealSteam)
 
-                var syncResult = PostSyncInfo(SyncResult.UnknownFail)
+                // Local prep done. If we're offline or disconnected, skip the cloud RPCs
+                // below but still report UpToDate — the migrate above ran and the game
+                // can launch from whatever's in userdata/<appid>/remote/ already.
+                if (isOffline || !isConnected) {
+                    return@async PostSyncInfo(SyncResult.UpToDate)
+                }
 
+                // GameNative is the sole cloud client in both modes: Wine-Steam has
+                // cloudenabled=0 written to localconfig.vdf AND sharedconfig.vdf and
+                // is launched with -no-browser so it performs no cloud I/O. Running
+                // GameNative's AutoCloud on launch is required in real-Steam mode so users
+                // get fresh saves from other devices before the Wine-hosted game loads
+                // them — skipping this on launch caused Dead Cells to boot into an
+                // empty save. The original "save conflict" dialog that motivated a
+                // skip was driven by a ChangeNumber race between Wine-Steam and GameNative
+                // both writing cloud state; with Wine-Steam's cloud fully suppressed
+                // there is no second writer to race with.
                 val maxAttempts = 3
                 for (attempt in 1..maxAttempts) {
                     try {
@@ -2371,20 +2510,93 @@ class SteamService : Service(), IChallengeUrlChanged {
                                             syncResult = info
 
                                             if (info.syncResult == SyncResult.Success || info.syncResult == SyncResult.UpToDate) {
+                                                // Bridge SDK-cloud games whose on-disk save dir differs
+                                                // from <userdata>/<appid>/remote/ (e.g. Dead Cells reads
+                                                // <install>/save/). Desktop Steam reconciles these via
+                                                // ISteamRemoteStorage internally; with cloudenabled=0 that
+                                                // path is dead, so mirror remote/ -> save/ ourselves.
+                                                steamInstance.applicationContext?.let { ctx ->
+                                                    SteamUtils.mirrorSdkCloudRemoteToSave(ctx, appId)
+                                                }
+
                                                 Timber.i(
-                                                    "Signaling app launch:\n\tappId: %d\n\tclientId: %s\n\tosType: %s",
+                                                    "Signaling app launch:\n\tappId: %d\n\tclientId: %s\n\tosType: %s\n\tisLaunchRealSteam: %s",
                                                     appId,
                                                     PrefManager.clientId,
                                                     EOSType.AndroidUnknown,
+                                                    isLaunchRealSteam,
                                                 )
 
-                                                val pendingRemoteOperations = steamCloud.signalAppLaunchIntent(
-                                                    appId = appId,
-                                                    clientId = clientId,
-                                                    machineName = SteamUtils.getMachineName(steamInstance),
-                                                    ignorePendingOperations = ignorePendingOperations,
-                                                    osType = EOSType.AndroidUnknown,
-                                                ).await()
+                                                // In real-Steam mode, the Wine-hosted Steam client (running as
+                                                // machineName="localhost") performs its own BYieldingAppLaunchIntent
+                                                // once it starts. If we also signal launch intent from our SteamKit
+                                                // client here, the server records a pending operation from machine
+                                                // "localhost" that the Wine-hosted client then observes as a
+                                                // conflicting session and refuses to launch the game. Skip the RPC
+                                                // entirely on the real-Steam path so the server never sees a
+                                                // localhost launch intent from us.
+                                                val rawPending = if (isLaunchRealSteam) {
+                                                    emptyList()
+                                                } else {
+                                                    steamCloud.signalAppLaunchIntent(
+                                                        appId = appId,
+                                                        clientId = clientId,
+                                                        machineName = SteamUtils.getMachineName(steamInstance),
+                                                        ignorePendingOperations = ignorePendingOperations,
+                                                        osType = EOSType.AndroidUnknown,
+                                                    ).await().also { launchIntentRegistered = true }
+                                                }
+
+                                                // Defence in depth: even when the RPC above fires in emulation
+                                                // mode, a stale localhost entry from a prior real-Steam session
+                                                // could still surface here. Strip those so we never surface
+                                                // spurious dialogs or kick our own launch — genuine entries
+                                                // from other devices still flow through. (In real-Steam mode the
+                                                // RPC was skipped, so rawPending is empty and the filter is a no-op
+                                                // — the work that matters happens in the emulation branch.)
+                                                var pendingRemoteOperations = if (isLaunchRealSteam) {
+                                                    rawPending
+                                                } else {
+                                                    rawPending.filterNot { it.machineName.equals("localhost", ignoreCase = true) }
+                                                }
+
+                                                // Self-phantom auto-clear: when every pending op is from our own
+                                                // machine name (device was killed mid-session / mid-upload and the
+                                                // server-side markers never got released), kick any stale
+                                                // AppSessionActive and re-signal with ignorePendingOperations=true.
+                                                // This is what the user's emulation-mode workaround does manually;
+                                                // automating it avoids the spurious "Pending Upload" dialog that
+                                                // blocks the next launch. Cross-device conflicts (different machine
+                                                // name) still surface the dialog for genuine review.
+                                                val ourMachineName = SteamUtils.getMachineName(steamInstance)
+                                                val allSelfPhantoms = pendingRemoteOperations.isNotEmpty() &&
+                                                    pendingRemoteOperations.all {
+                                                        it.machineName.equals(ourMachineName, ignoreCase = true)
+                                                    }
+                                                if (allSelfPhantoms && !ignorePendingOperations) {
+                                                    Timber.i(
+                                                        "All ${pendingRemoteOperations.size} pending op(s) are self-phantoms from \"$ourMachineName\" (${pendingRemoteOperations.joinToString { it.operation.name }}); kicking and retrying silently",
+                                                    )
+                                                    if (pendingRemoteOperations.any {
+                                                            it.operation == ECloudPendingRemoteOperation.k_ECloudPendingRemoteOperationAppSessionActive
+                                                        }
+                                                    ) {
+                                                        runCatching { steamInstance._steamUser?.kickPlayingSession() }
+                                                            .onFailure { Timber.w(it, "Self-phantom AppSessionActive kick failed") }
+                                                    }
+                                                    pendingRemoteOperations = runCatching {
+                                                        steamCloud.signalAppLaunchIntent(
+                                                            appId = appId,
+                                                            clientId = clientId,
+                                                            machineName = ourMachineName,
+                                                            ignorePendingOperations = true,
+                                                            osType = EOSType.AndroidUnknown,
+                                                        ).await().also { launchIntentRegistered = true }
+                                                    }.getOrElse {
+                                                        Timber.w(it, "Self-phantom retry signalAppLaunchIntent failed; falling back to original list")
+                                                        pendingRemoteOperations
+                                                    }
+                                                }
 
                                                 if (pendingRemoteOperations.isNotEmpty() && !ignorePendingOperations) {
                                                     syncResult = PostSyncInfo(
@@ -2418,6 +2630,18 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 return@async syncResult
             } finally {
+                // Emulation-mode cleanup: if we registered a launch intent but didn't end
+                // in a clean sync-ready state (pending ops returned, exception partway
+                // through, caller dismissed the dialog), the server-side pending op would
+                // otherwise linger and block future launches in either mode. Kick to clean
+                // up; the existing closeApp path handles the successful-launch-then-exit case.
+                if (launchIntentRegistered &&
+                    syncResult.syncResult != SyncResult.Success &&
+                    syncResult.syncResult != SyncResult.UpToDate
+                ) {
+                    runCatching { instance?._steamUser?.kickPlayingSession() }
+                        .onFailure { Timber.w(it, "kickPlayingSession cleanup after aborted launch failed") }
+                }
                 releaseSync(appId)
             }
         }
@@ -2428,16 +2652,26 @@ class SteamService : Service(), IChallengeUrlChanged {
             preferredSave: SaveLocation = SaveLocation.None,
             parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
             overrideLocalChangeNumber: Long? = null,
+            isLaunchRealSteam: Boolean = false,
         ): Deferred<PostSyncInfo> = parentScope.async {
             if (!tryAcquireSync(appId)) {
                 Timber.w("Cannot force sync when sync already in progress for appId=$appId")
                 return@async PostSyncInfo(SyncResult.InProgress)
             }
 
+            // Null-guard for context; the migrate itself runs inside the try below so any
+            // exception flows through finally { releaseSync(appId) } and never leaks the lock.
+            val migrateCtx = instance?.applicationContext
+            if (migrateCtx == null) {
+                Timber.e("forceSyncUserFiles: applicationContext is null, releasing sync and bailing")
+                releaseSync(appId)
+                return@async PostSyncInfo(SyncResult.UnknownFail)
+            }
+
             try {
-                val context = instance?.applicationContext ?: return@async PostSyncInfo(SyncResult.UnknownFail)
-                // Migrate GSE Saves to Steam userdata
-                SteamUtils.migrateGSESavesToSteamUserdata(context, appId)
+                // Single mode-aware migrate: drop the duplicate two-arg call that ignored
+                // the isLaunchRealSteam flag and ran every time regardless of mode.
+                SteamUtils.migrateGSESavesToSteamUserdata(migrateCtx, appId, isLaunchRealSteam)
 
                 var syncResult = PostSyncInfo(SyncResult.UnknownFail)
 
@@ -2484,7 +2718,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        suspend fun closeApp(context: Context, appId: Int, isOffline: Boolean, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
+        suspend fun closeApp(context: Context, appId: Int, isOffline: Boolean, prefixToPath: (String) -> String, isLaunchRealSteam: Boolean = false) = withContext(Dispatchers.IO) {
             async {
                 if (isOffline || !isConnected) {
                     return@async
@@ -2496,10 +2730,24 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
 
                 try {
+                    // Real-Steam mode writes achievements via the Wine-hosted client,
+                    // so skip Goldberg sync to avoid clobbering them.
+                    if (!isLaunchRealSteam) {
+                        try {
+                            syncAchievementsFromGoldberg(context, appId)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Achievement sync failed for appId=$appId, continuing with cloud save sync")
+                        }
+                    }
+
+                    // Reverse of the pre-launch mirror: copy the game's on-disk save
+                    // files (e.g. Dead Cells's <install>/save/) back into
+                    // <userdata>/<appid>/remote/ so the subsequent SteamAutoCloud
+                    // upload sees the player's progress.
                     try {
-                        syncAchievementsFromGoldberg(context, appId)
+                        SteamUtils.mirrorSdkCloudSaveToRemote(context, appId)
                     } catch (e: Exception) {
-                        Timber.e(e, "Achievement sync failed for appId=$appId, continuing with cloud save sync")
+                        Timber.w(e, "SDK cloud save->remote mirror failed for appId=$appId")
                     }
 
                     val maxAttempts = 3
@@ -2522,8 +2770,21 @@ class SteamService : Service(), IChallengeUrlChanged {
                                                 appId = appId,
                                                 clientId = clientId,
                                                 uploadsCompleted = postSyncInfo?.uploadsCompleted == true,
-                                                uploadsRequired = postSyncInfo?.uploadsRequired == false,
+                                                uploadsRequired = postSyncInfo?.uploadsRequired == true,
                                             )
+
+                                            // In real-Steam mode the Wine-hosted Steam client registered its
+                                            // own AppSessionActive under machineName="localhost". With
+                                            // cloud_enabled=0 it never signals upload state, so Steam's
+                                            // server parks that session in UploadPending forever and
+                                            // desktop Steam shows a "Cloud Out of Date" / "played on
+                                            // localhost, upload not started" dialog on next launch. Game
+                                            // is already exited here, so kick any lingering session to
+                                            // clear the server-side state.
+                                            if (isLaunchRealSteam) {
+                                                runCatching { steamInstance._steamUser?.kickPlayingSession() }
+                                                    .onFailure { Timber.w(it, "kickPlayingSession after real-Steam exit failed") }
+                                            }
                                         }
                                     }
                                 }

@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -177,6 +178,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONException
@@ -240,6 +242,30 @@ private fun detectMaxRefreshRateHz(context: Context, attachedView: View?): Int {
         ?: DEFAULT_FPS_LIMITER_MAX_HZ
 }
 
+// Red-exit grace window: we first ask the game (and Steam, if real-Steam mode)
+// to shut down cleanly via WM_CLOSE, then tear down Wine. Games that flush saves
+// on clean exit need this to avoid data loss. Second tap on the exit button
+// bypasses the grace and force-quits.
+private const val GRACEFUL_EXIT_GRACE_MS = 5_000L
+
+// Real-Steam mode: after issuing `steam.exe -shutdown`, wait this long for
+// Steam to exit cleanly before escalating to a user prompt. Steam flushes
+// config/install markers during shutdown and sends its own graceful quit IPC
+// to the running game, so a hard kill before this completes causes next-launch
+// redist-reinstall and lost config/cloud state.
+private const val STEAM_SHUTDOWN_WAIT_MS = 20_000L
+
+// Flags passed to steam.exe in real-Steam launch mode.
+// -vgui: classic UI renderer (more compatible under Wine);
+// -tcp: avoid named-pipe handshake wait; -nobigpicture/-nofriendsui/-nochatui/-nointro: suppress optional UIs.
+// -no-browser: skip starting steamwebhelper.exe. Under Wine the webhelper is a
+// documented cause of indefinite `steam.exe -shutdown` hangs (WineHQ #29066,
+// ValveSoftware/steam-for-linux #9575) because it ignores WM_CLOSE and keeps the
+// client alive. We don't need the overlay or store UI for real-Steam launches.
+// -silent was dropped intentionally: it suppressed Steam's cloud-conflict resolution dialog,
+// causing silent launch hangs on save-sync conflicts. The Steam main window shows briefly at launch.
+private const val STEAM_LAUNCH_FLAGS = "-vgui -tcp -no-browser -nobigpicture -nofriendsui -nochatui -nointro"
+
 private data class XServerViewReleaseBinding(
     val xServerView: XServerView,
     val windowModificationListener: WindowManager.OnWindowModificationListener,
@@ -285,6 +311,96 @@ private fun buildEssentialProcessAllowlist(): Set<String> {
         .map { normalizeProcessName(it) }
     return (essentialServices + CORE_WINE_PROCESSES).toSet()
 }
+
+private class ProcessSnapshotException(msg: String) : Exception(msg)
+
+private suspend fun requestWineProcessSnapshot(winHandler: WinHandler): List<ProcessInfo>? {
+    val lock = Any()
+    var currentList = mutableListOf<ProcessInfo>()
+    var expectedCount = 0
+    val deferred = CompletableDeferred<List<ProcessInfo>?>()
+
+    val listener = OnGetProcessInfoListener { index, count, processInfo ->
+        synchronized(lock) {
+            // (0, 0, null) is only emitted by WinHandler.listProcesses() when
+            // the underlying UDP send fails; wine itself never broadcasts an
+            // empty list. Treating it as a successful empty snapshot would let
+            // awaitSteamShutdown conclude Steam exited on a transient send
+            // failure, so surface it as an exception instead.
+            if (count == 0 && processInfo == null) {
+                if (!deferred.isCompleted) {
+                    deferred.completeExceptionally(
+                        ProcessSnapshotException("request/send failure"),
+                    )
+                }
+                return@synchronized
+            }
+            if (index == 0) {
+                currentList = mutableListOf()
+                expectedCount = count
+                if (count == 0 && !deferred.isCompleted) {
+                    deferred.complete(emptyList())
+                    return@synchronized
+                }
+            }
+            if (processInfo != null) {
+                currentList.add(processInfo)
+            }
+            if (currentList.size >= expectedCount && !deferred.isCompleted) {
+                deferred.complete(currentList.toList())
+            }
+        }
+    }
+
+    // Serialize the add/list/await/remove sequence against any other concurrent
+    // snapshot caller; the wire protocol broadcasts GET_PROCESS responses to
+    // every registered listener with no request id to disambiguate.
+    return winHandler.processSnapshotMutex.withLock {
+        winHandler.addOnGetProcessInfoListener(listener)
+        try {
+            winHandler.listProcesses()
+            withTimeoutOrNull(EXIT_PROCESS_RESPONSE_TIMEOUT_MS) {
+                try {
+                    deferred.await()
+                } catch (e: ProcessSnapshotException) {
+                    null
+                }
+            }
+        } finally {
+            winHandler.removeOnGetProcessInfoListener(listener)
+        }
+    }
+}
+
+private fun isSteamExeAlive(snapshot: List<ProcessInfo>?): Boolean {
+    if (snapshot == null) return true // snapshot failed — assume alive so we keep waiting
+    return snapshot.any { normalizeProcessName(it.name) == "steam" }
+}
+
+private suspend fun awaitSteamShutdown(
+    winHandler: WinHandler,
+    showEscalationDialog: () -> CompletableDeferred<Boolean>,
+    onEscalationResolved: () -> Unit,
+) {
+    while (true) {
+        val deadline = System.currentTimeMillis() + STEAM_SHUTDOWN_WAIT_MS
+        while (System.currentTimeMillis() < deadline) {
+            delay(EXIT_PROCESS_POLL_INTERVAL_MS)
+            if (!isSteamExeAlive(requestWineProcessSnapshot(winHandler))) return
+        }
+        val resolver = showEscalationDialog()
+        val keepWaiting = try {
+            resolver.await()
+        } finally {
+            onEscalationResolved()
+        }
+        if (!keepWaiting) {
+            winHandler.killProcess("steam.exe")
+            return
+        }
+    }
+}
+
 
 // TODO logs in composables are 'unstable' which can cause recomposition (performance issues)
 
@@ -397,6 +513,8 @@ fun XServerScreen(
     var win32AppWorkarounds: Win32AppWorkarounds? by remember { mutableStateOf(null) }
     var physicalControllerHandler: PhysicalControllerHandler? by remember { mutableStateOf(null) }
     var exitWatchJob: Job? by remember { mutableStateOf(null) }
+    var gracefulExitJob: Job? by remember { mutableStateOf(null) }
+    var steamShutdownDialogResolver by remember { mutableStateOf<CompletableDeferred<Boolean>?>(null) }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -404,6 +522,10 @@ fun XServerScreen(
             physicalControllerHandler = null
             exitWatchJob?.cancel()
             exitWatchJob = null
+            gracefulExitJob?.cancel()
+            gracefulExitJob = null
+            steamShutdownDialogResolver?.let { if (!it.isCompleted) it.cancel() }
+            steamShutdownDialogResolver = null
         }
     }
     var isKeyboardVisible = false
@@ -730,14 +852,15 @@ fun XServerScreen(
 
         exitWatchJob = CoroutineScope(Dispatchers.IO).launch {
             val allowlist = buildEssentialProcessAllowlist()
-            val previousListener = winHandler.getOnGetProcessInfoListener()
             val lock = Any()
             var pendingSnapshot: CompletableDeferred<List<ProcessInfo>?>? = null
             var currentList = mutableListOf<ProcessInfo>()
             var expectedCount = 0
 
+            // Register via add/removeOnGetProcessInfoListener so that a concurrent
+            // awaitSteamShutdown (or other process-info consumer) can coexist
+            // without each install/remove cycle clobbering the other.
             val listener = OnGetProcessInfoListener { index, count, processInfo ->
-                previousListener?.onGetProcessInfo(index, count, processInfo)
                 synchronized(lock) {
                     val deferred = pendingSnapshot ?: return@synchronized
                     if (count == 0 && processInfo == null) {
@@ -757,17 +880,22 @@ fun XServerScreen(
                 }
             }
 
-            winHandler.setOnGetProcessInfoListener(listener)
+            winHandler.addOnGetProcessInfoListener(listener)
             try {
                 val startTime = System.currentTimeMillis()
                 while (System.currentTimeMillis() - startTime < EXIT_PROCESS_TIMEOUT_MS) {
                     val deferred = CompletableDeferred<List<ProcessInfo>?>()
-                    synchronized(lock) {
-                        pendingSnapshot = deferred
-                    }
-                    winHandler.listProcesses()
-                    val snapshot = withTimeoutOrNull(EXIT_PROCESS_RESPONSE_TIMEOUT_MS) {
-                        deferred.await()
+                    // Serialize against any other listProcesses-driven caller so a
+                    // concurrent awaitSteamShutdown poll doesn't deliver its
+                    // GET_PROCESS responses into this watcher's pending snapshot.
+                    val snapshot = winHandler.processSnapshotMutex.withLock {
+                        synchronized(lock) {
+                            pendingSnapshot = deferred
+                        }
+                        winHandler.listProcesses()
+                        withTimeoutOrNull(EXIT_PROCESS_RESPONSE_TIMEOUT_MS) {
+                            deferred.await()
+                        }
                     }
                     if (snapshot != null) {
                         val hasNonEssential = snapshot.any {
@@ -791,7 +919,7 @@ fun XServerScreen(
                     delay(EXIT_PROCESS_POLL_INTERVAL_MS)
                 }
             } finally {
-                winHandler.setOnGetProcessInfoListener(previousListener)
+                winHandler.removeOnGetProcessInfoListener(listener)
                 synchronized(lock) {
                     pendingSnapshot = null
                 }
@@ -1167,17 +1295,83 @@ fun XServerScreen(
             }
 
             QuickMenuAction.EXIT_GAME -> {
-                PostHog.capture(
-                    event = "game_closed",
-                    properties = mapOf(
-                        "game_name" to ContainerUtils.resolveGameName(appId),
-                        "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
-                    ),
-                )
-                imeInputReceiver?.hideKeyboard()
-                // Resume processes before exiting so they can receive SIGTERM cleanly.
-                forceResumeIfSuspended()
-                exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+                val winHandler = xServerView!!.getxServer().winHandler
+                val activeJob = gracefulExitJob
+                if (activeJob?.isActive == true) {
+                    Timber.i("EXIT_GAME: second tap during grace window — force quitting")
+                    activeJob.cancel()
+                    gracefulExitJob = null
+                    exit(winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+                } else {
+                    PostHog.capture(
+                        event = "game_closed",
+                        properties = mapOf(
+                            "game_name" to ContainerUtils.resolveGameName(appId),
+                            "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
+                        ),
+                    )
+                    imeInputReceiver?.hideKeyboard()
+                    // Resume processes before exiting so they can receive SIGTERM cleanly.
+                    forceResumeIfSuspended()
+                    val gameExe = extractExecutableBasename(container.executablePath)
+                    // Bionic Steam runs the same steam.exe in Wine (just with
+                    // libsteamclient.so loaded in-process), so `steam.exe -shutdown`
+                    // works there too — it delivers the Steam quit callback to the
+                    // game via the standard SteamAPI path, the game saves and exits,
+                    // and Steam itself flushes. Without this, bionic mode fell
+                    // through to the else branch's hard-kill-after-delay.
+                    val shutdownSteam = container.isLaunchRealSteam || container.isLaunchBionicSteam
+                    SnackbarManager.show(
+                        context.getString(
+                            if (shutdownSteam) R.string.exit_steam_shutdown_toast
+                            else R.string.exit_graceful_toast,
+                        ),
+                    )
+                    gracefulExitJob = CoroutineScope(Dispatchers.Main).launch {
+                        try {
+                            if (shutdownSteam) {
+                                // Let Steam shut the game down via its own IPC (gives
+                                // the game's Steam API a clean quit signal, then Steam
+                                // flushes config/install markers).
+                                winHandler.exec(
+                                    "C:\\Program Files (x86)\\Steam\\steam.exe",
+                                    "-shutdown",
+                                )
+                                awaitSteamShutdown(
+                                    winHandler,
+                                    showEscalationDialog = {
+                                        val resolver = CompletableDeferred<Boolean>()
+                                        steamShutdownDialogResolver = resolver
+                                        resolver
+                                    },
+                                    onEscalationResolved = { steamShutdownDialogResolver = null },
+                                )
+                            } else {
+                                // Non-Steam exit path: no Steam IPC to ask the game to
+                                // quit politely. WinHandler currently has no WM_CLOSE
+                                // primitive (would require a new RequestCode + a
+                                // winhandler.exe change), so we can't actively signal
+                                // the game. We still wait the grace window first to
+                                // let any in-flight game-side exit (autosave, an
+                                // in-game quit dialog the user also clicked) complete
+                                // before we hard-kill. killProcess runs as the
+                                // escalation after the timeout.
+                                delay(GRACEFUL_EXIT_GRACE_MS)
+                                if (gameExe.isNotEmpty()) winHandler.killProcess(gameExe)
+                            }
+                            exit(winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+                        } catch (ce: kotlinx.coroutines.CancellationException) {
+                            // Force-quit path already called exit().
+                            throw ce
+                        } catch (t: Throwable) {
+                            Timber.w(t, "graceful Steam exit failed, falling through to exit()")
+                            exit(winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+                        } finally {
+                            steamShutdownDialogResolver?.let { if (!it.isCompleted) it.cancel() }
+                            steamShutdownDialogResolver = null
+                        }
+                    }
+                }
                 true
             }
 
@@ -2437,6 +2631,28 @@ fun XServerScreen(
         }
     }
 
+    steamShutdownDialogResolver?.let { resolver ->
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.exit_steam_still_running_title)) },
+            text = { Text(stringResource(R.string.exit_steam_still_running_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (!resolver.isCompleted) resolver.complete(true)
+                }) {
+                    Text(stringResource(R.string.exit_keep_waiting))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    if (!resolver.isCompleted) resolver.complete(false)
+                }) {
+                    Text(stringResource(R.string.exit_force_quit))
+                }
+            },
+        )
+    }
+
     // Element Editor Dialog
     if (showElementEditor && elementToEdit != null && PluviaApp.inputControlsView != null) {
         app.gamenative.ui.component.dialog.ElementEditorDialog(
@@ -3087,9 +3303,51 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setSteamType(container.getSteamType())
 
         envVars.putAll(container.envVars)
+        // putAll above can overwrite the per-container WINEPREFIX we set earlier
+        // (line ~3135) if container.envVars carries a stale value. Re-pin it to
+        // the resolved imageFs.wineprefix so the launch always uses the prefix
+        // we actually prepared for this container.
+        if (!imageFs.wineprefix.isNullOrEmpty()) {
+            envVars.put("WINEPREFIX", imageFs.wineprefix)
+        }
         envVars.remove("DXVK_FRAME_RATE")
         envVars.remove("VKD3D_FRAME_RATE")
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
+
+        // Disable the Steam overlay end-to-end when the user opts out:
+        //
+        //   1. DISABLE_VK_LAYER_VALVE_steam_overlay_1 — Khronos-canonical
+        //      disable hook for the Steam Vulkan implicit layer. The Vulkan
+        //      loader sees the env var and never initializes the layer.
+        //      (No Wine WINEDLLOVERRIDES needed for the Vulkan layer — it's
+        //      consumed by the Vulkan loader, not Wine's PE loader.)
+        //   2. SteamNoOverlayUIDrawing — read by gameoverlayrenderer*.dll
+        //      itself; tells the in-process DLL to skip drawing once it's
+        //      already been loaded.
+        //   3. WINEDLLOVERRIDES with empty load order on the two
+        //      gameoverlayrenderer PE DLLs — makes Wine's loader refuse
+        //      to map the DLLs into the game process at all. Real-Steam
+        //      only: in emu mode Goldberg replaces SteamAPI and the overlay
+        //      DLL is never loaded, so the override is dead code there;
+        //      gating it on isLaunchRealSteam also avoids any chance of
+        //      regressing emu-mode boots.
+        //
+        //   Each entry is its own `;`-separated key — comma-grouping the
+        //   names with a single trailing `=` (the prior shape) was the form
+        //   that hung Steam launches; individual entries parse unambiguously.
+        if (container.isDisableSteamOverlay) {
+            envVars.put("DISABLE_VK_LAYER_VALVE_steam_overlay_1", "1")
+            envVars.put("SteamNoOverlayUIDrawing", "1")
+            if (container.isLaunchRealSteam) {
+                val overlayOverride = "gameoverlayrenderer=;gameoverlayrenderer64="
+                val existing = envVars.get("WINEDLLOVERRIDES")
+                envVars.put(
+                    "WINEDLLOVERRIDES",
+                    if (existing.isEmpty()) overlayOverride else "$existing;$overlayOverride",
+                )
+            }
+        }
+
         val graphicsDriverConfig = KeyValueSet(container.getGraphicsDriverConfig())
         if (graphicsDriverConfig.get("version").lowercase(Locale.getDefault()).contains("gen8")) {
             var tuDebug = envVars.get("TU_DEBUG")
@@ -3276,20 +3534,16 @@ private fun setupXEnvironment(
         Timber.i("---------------------------")
     }
 
-    // Request encrypted app ticket for Steam games at launch time
+    // In real-Steam mode steam.exe fetches its own session ticket via libsteam_api,
+    // so pre-warming the GSE-facing ticket cache is unnecessary.
     val isCustomGame = gameSource == GameSource.CUSTOM_GAME
     val gameIdForTicket = ContainerUtils.extractGameIdFromContainerId(appId)
     if (!bootToContainer && !isCustomGame && gameIdForTicket != null && !container.isLaunchRealSteam && !container.isLaunchBionicSteam) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val ticket = SteamService.instance?.getEncryptedAppTicket(gameIdForTicket)
-                if (ticket != null) {
-                    Timber.i("Successfully retrieved encrypted app ticket for app $gameIdForTicket")
-                } else {
-                    Timber.w("Failed to retrieve encrypted app ticket for app $gameIdForTicket")
-                }
+                SteamService.instance?.getEncryptedAppTicket(gameIdForTicket)
             } catch (e: Exception) {
-                Timber.e(e, "Error requesting encrypted app ticket for app $gameIdForTicket")
+                Timber.e(e, "Encrypted app ticket request failed for app $gameIdForTicket")
             }
         }
     }
@@ -3732,9 +3986,7 @@ private fun getWineStartCommand(
             Timber.i("Bionic-Steam working directory is $executableDir")
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" \"C:\\\\Program Files (x86)\\\\Steam\\\\steamapps\\\\common\\\\$gameFolderName\\\\$normalizedExe\""
         } else if (container.isLaunchRealSteam) {
-            // Launch Steam with the applaunch parameter to start the game
-            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
-                    "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $gameId"
+            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" $STEAM_LAUNCH_FLAGS -applaunch $gameId"
         } else {
             var executablePath = ""
             if (container.executablePath.isNotEmpty()) {
@@ -4279,7 +4531,26 @@ private fun setupWineSystemFiles(
     }
 
     if (container.isLaunchRealSteam || container.isLaunchBionicSteam) {
+        // A stale steam.exe compiled against an older Wine ABI silently black-screens
+        // on launch, so invalidate the extraction when Wine version or variant changes.
+        // Applies to both real-Steam and bionic-Steam modes since both write steam.exe
+        // via extractSteamFiles below.
+        val steamExtractedKey = "${container.wineVersion}|${container.containerVariant}"
+        val steamExtractedPrev = container.getExtra("steamExtractedForWine")
+        val steamExeFile = File(container.rootDir, ".wine/drive_c/Program Files (x86)/Steam/steam.exe")
+        if (steamExtractedPrev != steamExtractedKey && steamExeFile.exists()) {
+            // Symlink-safe delete: steamapps/common/<installdir> symlinks point at
+            // GameNative's own Steam dir, and a following recursive delete would wipe
+            // every installed game's files.
+            val steamDir = File(container.rootDir, ".wine/drive_c/Program Files (x86)/Steam")
+            SteamUtils.deleteTreeNoFollowSymlinks(steamDir)
+        }
         extractSteamFiles(context, container, onExtractFileListener)
+        SteamUtils.ensureSteamCfg(ImageFs.find(context), container)
+        SteamUtils.purgePhantomAppUserdata(ImageFs.find(context), "241100", container)
+        SteamUtils.logSteamBinaryFingerprint(ImageFs.find(context), "prepareContainer:realSteam", container)
+        container.putExtra("steamExtractedForWine", steamExtractedKey)
+        containerDataChanged = true
     }
 
     // If bionic mode is off, scrub any bionic-installed files from a previous

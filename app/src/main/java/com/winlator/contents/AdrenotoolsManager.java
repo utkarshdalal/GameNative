@@ -131,15 +131,17 @@ public class AdrenotoolsManager {
         boolean hasExtracted;
 
         File dst = new File(adrenotoolsContentDir, adrenotoolsDriverId);
+        // Recursive: File.delete() silently no-ops on non-empty dirs, leaving partial files from
+        // an interrupted prior extract that subsequent extracts can't cleanly overwrite.
         if (dst.exists())
-            dst.delete();
+            FileUtils.delete(dst);
 
         dst.mkdirs();
         Log.d("AdrenotoolsManager", "Extracting " + src + " to " + dst.getAbsolutePath());
         hasExtracted = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, mContext, src, dst);
 
         if (!hasExtracted)
-            dst.delete();
+            FileUtils.delete(dst);
 
         return hasExtracted;
     }

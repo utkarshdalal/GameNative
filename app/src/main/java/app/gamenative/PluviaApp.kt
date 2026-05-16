@@ -13,6 +13,7 @@ import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.IntentLaunchManager
+import app.gamenative.utils.LudusaviRegistry
 import app.gamenative.utils.PlayIntegrity
 import java.io.File
 import javax.inject.Inject
@@ -87,6 +88,15 @@ class PluviaApp : SplitCompatApplication() {
                 onProgressUpdate = null,
                 onComplete = null
             )
+        }
+
+        // Prime the Ludusavi save-path registry in the background. The loader itself
+        // checks cache freshness (7-day TTL) and only hits the network when stale — so
+        // the SDK Cloud Save Bridge "Use Recommended" button and the launch-time prompt
+        // are both instant for users once the cache is populated.
+        appScope.launch {
+            runCatching { LudusaviRegistry.primeCache(applicationContext) }
+                .onFailure { Timber.w(it, "Background Ludusavi registry refresh failed") }
         }
 
         // Clear any stale temporary config overrides from previous app sessions
