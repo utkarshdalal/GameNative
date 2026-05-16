@@ -847,6 +847,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
         // Detect drag start
         if (!isDragging && gestureConfig.getDragEnabled()) {
+            String dragAction = gestureConfig.getDragAction();
             isDragging = true;
             dragButtonPressed = true;
             singleFingerLastRawX = event.getX(pointerIndex);
@@ -856,22 +857,30 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             // pair.  A zero-delta performPanAction just presses the button
             // (or is a no-op for the key-pan variants, which press per
             // direction on their next move frame).
-            performPanAction(0f, 0f, gestureConfig.getDragAction());
+            if (isClickDragAction(dragAction)) {
+                performClickDragAt(event.getX(pointerIndex), event.getY(pointerIndex), dragAction);
+            } else {
+                performPanAction(0f, 0f, dragAction);
+            }
             notifyGesture("Drag", true);
-            // Don't move cursor further this frame — the drag should start
-            // exactly where the finger first touched.  Subsequent MOVE
-            // frames will drive performPanAction with real deltas.
+            // Non-click pan actions continue with real deltas on the next frame.
             return;
         }
 
         if (isDragging) {
+            String dragAction = gestureConfig.getDragAction();
+            if (isClickDragAction(dragAction)) {
+                moveCursorTo(x, y);
+                return;
+            }
+
             float rawX = event.getX(pointerIndex);
             float rawY = event.getY(pointerIndex);
             float dx = rawX - singleFingerLastRawX;
             float dy = rawY - singleFingerLastRawY;
             singleFingerLastRawX = rawX;
             singleFingerLastRawY = rawY;
-            performPanAction(dx, dy, gestureConfig.getDragAction());
+            performPanAction(dx, dy, dragAction);
             return;
         }
 
@@ -994,9 +1003,13 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
         // ── Two-finger drag / pan (only in pan mode) ────────────────
         if (twoFingerGestureMode == TWO_FINGER_GESTURE_PAN) {
-            if (Math.abs(dx) > 3f || Math.abs(dy) > 3f) {
+            String twoFingerDragAction = gestureConfig.getTwoFingerDragAction();
+            if (isClickDragAction(twoFingerDragAction)) {
                 twoFingerDragging = true;
-                performPanAction(dx, dy, gestureConfig.getTwoFingerDragAction());
+                performClickDragAt(midX, midY, twoFingerDragAction);
+            } else if (Math.abs(dx) > 3f || Math.abs(dy) > 3f) {
+                twoFingerDragging = true;
+                performPanAction(dx, dy, twoFingerDragAction);
             }
         }
 
@@ -1272,9 +1285,13 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
         if (threeFingerGestureMode == THREE_FINGER_GESTURE_PAN) {
             // #3: Minimum drag distance — require 3px of per-frame movement to emit pan events
-            if (Math.abs(dx) > 3f || Math.abs(dy) > 3f) {
+            String threeFingerDragAction = gestureConfig.getThreeFingerDragAction();
+            if (isClickDragAction(threeFingerDragAction)) {
                 threeFingerDragging = true;
-                performPanAction(dx, dy, gestureConfig.getThreeFingerDragAction());
+                performClickDragAt(midX, midY, threeFingerDragAction);
+            } else if (Math.abs(dx) > 3f || Math.abs(dy) > 3f) {
+                threeFingerDragging = true;
+                performPanAction(dx, dy, threeFingerDragAction);
             }
         }
 
@@ -1486,6 +1503,19 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         }
     }
 
+    private boolean isClickDragAction(String action) {
+        return TouchGestureConfig.PAN_LEFT_CLICK_DRAG.equals(action)
+                || TouchGestureConfig.PAN_RIGHT_CLICK_DRAG.equals(action);
+    }
+
+    private void performClickDragAt(float rawX, float rawY, String action) {
+        Pointer.Button button = TouchGestureConfig.PAN_RIGHT_CLICK_DRAG.equals(action)
+                ? Pointer.Button.BUTTON_RIGHT : Pointer.Button.BUTTON_LEFT;
+        pressClickDragButton(button);
+        float[] pt = XForm.transformPoint(xform, rawX, rawY);
+        moveCursorTo((int) pt[0], (int) pt[1]);
+    }
+
     private void performMiddleMousePan(float dx, float dy) {
         if (!twoFingerMiddleButtonDown) {
             xServer.injectPointerButtonPress(Pointer.Button.BUTTON_MIDDLE);
@@ -1495,6 +1525,11 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private void performClickDrag(float dx, float dy, Pointer.Button button) {
+        pressClickDragButton(button);
+        moveCursorByDelta(dx, dy);
+    }
+
+    private void pressClickDragButton(Pointer.Button button) {
         if (button == Pointer.Button.BUTTON_LEFT && !leftClickDragButtonDown) {
             xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
             leftClickDragButtonDown = true;
@@ -1502,7 +1537,6 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             xServer.injectPointerButtonPress(Pointer.Button.BUTTON_RIGHT);
             rightClickDragButtonDown = true;
         }
-        moveCursorByDelta(dx, dy);
     }
 
     private void moveCursorByDelta(float dx, float dy) {
