@@ -103,7 +103,7 @@ object SteamBootstrap {
             return 0
         }
 
-        installSqliteCompatLink(libsteamclientPath)
+        installSqliteCompatLinkIfNeeded(libsteamclientPath)
 
         val flat = ArrayList<String>(extraEnv.size * 2)
         for ((k, v) in extraEnv) {
@@ -161,14 +161,96 @@ object SteamBootstrap {
     }
 
     /**
-     * Install `<libsteamclient.so's dir>/libsqlite.so -> libsqlite3.so.0` for the duration of
-     * this bionic-Steam session.
+     * Conditionally install `<libsteamclient.so's dir>/libsqlite.so -> libsqlite3.so.0` only if
+     * needed on this device.
+     *
+     * Strategy:
+     * 1. Check if system libsqlite.so exists - if not, no symlink needed
+     * 2. Use readelf to inspect system libsqlite.so for problematic OpenSSL 1.0.x symbols
+     * 3. If readelf unavailable, fall back to conservative approach (create symlink)
      *
      * Why: on devices whose `/system/lib64/libsqlite.so` references the OpenSSL 1.0.x symbol
      * `OpenSSL_add_all_algorithms` (deprecated, gone in OpenSSL 3 which we bundle), the bionic
      * linker chains into that system libsqlite when nothing earlier on `LD_LIBRARY_PATH` provides
      * a `libsqlite.so`, and dlopen of libsteamclient.so fails. Pointing the bare name at our
      * SQLite-3 file short-circuits that fall-through.
+     */
+    private fun installSqliteCompatLinkIfNeeded(libsteamclientPath: String) {
+        if (!needsSqliteCompatLink()) {
+            Log.i(TAG, "SQLite compat symlink not needed on this device")
+            return
+        }
+        Log.i(TAG, "SQLite compat symlink needed, installing...")
+        installSqliteCompatLink(libsteamclientPath)
+    }
+
+    /**
+     * Determine if the SQLite compatibility symlink is needed on this device.
+     * Uses symbol check to inspect system libsqlite.so for OpenSSL 1.0.x symbols (if readelf available).
+     * Falls back to conservative approach (create symlink) if check is unavailable.
+     */
+    private fun needsSqliteCompatLink(): Boolean {
+        val is64Bit = android.os.Build.SUPPORTED_64_BIT_ABIS.isNotEmpty()
+        val systemSqlitePath = if (is64Bit) "/system/lib64/libsqlite.so" else "/system/lib/libsqlite.so"
+
+        val systemSqlite = File(systemSqlitePath)
+        if (!systemSqlite.exists()) {
+            Log.i(TAG, "System libsqlite.so not found at $systemSqlitePath, symlink not needed")
+            return false
+        }
+
+        // Check for problematic OpenSSL symbols using readelf
+        val symbolCheckResult = checkSystemSqliteSymbols(systemSqlitePath)
+        if (symbolCheckResult != null) {
+            Log.i(TAG, "Symbol check completed: symlink ${if (symbolCheckResult) "needed" else "not needed"}")
+            return symbolCheckResult
+        }
+
+        // Conservative fallback: if we can't check, create the symlink to be safe
+        Log.i(TAG, "Symbol check unavailable, defaulting to creating symlink (conservative approach)")
+        return true
+    }
+
+    /**
+     * Check if system libsqlite.so contains problematic OpenSSL 1.0.x symbols using readelf.
+     * Returns null if readelf is not available or check fails.
+     */
+    private fun checkSystemSqliteSymbols(systemSqlitePath: String): Boolean? {
+        // First check if readelf exists
+        val readelfPaths = listOf("/system/bin/readelf", "/system/xbin/readelf")
+        val readelfPath = readelfPaths.firstOrNull { File(it).exists() }
+
+        if (readelfPath == null) {
+            Log.i(TAG, "readelf not found, skipping symbol check")
+            return null
+        }
+
+        return try {
+            val process = ProcessBuilder(readelfPath, "-s", systemSqlitePath)
+                .redirectErrorStream(true)
+                .start()
+
+            val output = process.inputStream.bufferedReader().use { it.readText() }
+            val exitCode = process.waitFor()
+
+            if (exitCode != 0) {
+                Log.w(TAG, "readelf exited with code $exitCode")
+                return null
+            }
+
+            // Check if the problematic OpenSSL 1.0.x symbol is referenced
+            val hasProblematicSymbol = output.contains("OpenSSL_add_all_algorithms")
+            Log.i(TAG, "System libsqlite.so ${if (hasProblematicSymbol) "contains" else "does not contain"} OpenSSL_add_all_algorithms")
+            hasProblematicSymbol
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to check system libsqlite symbols: $e")
+            null
+        }
+    }
+
+    /**
+     * Install `<libsteamclient.so's dir>/libsqlite.so -> libsqlite3.so.0` for the duration of
+     * this bionic-Steam session.
      *
      * The Wine subprocess we spawn later does its own dlopen of the same libsteamclient.so, so
      * the symlink must persist until [stop] runs; we tear it down there to keep it ephemeral
