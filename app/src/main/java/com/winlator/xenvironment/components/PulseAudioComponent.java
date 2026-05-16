@@ -24,6 +24,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private static final Object lock = new Object();
     private float volume = 1.0f;
     private byte performanceMode = 1;
+    private int sampleRate = 48000;
     private boolean isPaused = false;
 
     public PulseAudioComponent(UnixSocketConfig socketConfig) {
@@ -98,6 +99,10 @@ public class PulseAudioComponent extends EnvironmentComponent {
         this.performanceMode = (byte) performanceMode;
     }
 
+    public void setSampleRate(int sampleRate) {
+        this.sampleRate = sampleRate;
+    }
+
     private int execPulseAudio() {
         Context context = environment.getContext();
         String nativeLibraryDir = context.getApplicationInfo().nativeLibraryDir;
@@ -111,7 +116,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
         File configFile = new File(workingDir, "default.pa");
         FileUtils.writeString(configFile, String.join("\n",
                 "load-module module-native-protocol-unix auth-anonymous=1 auth-cookie-enabled=0 socket=\""+socketConfig.path+"\"",
-                "load-module module-aaudio-sink volume=" + this.volume + " performance_mode=" + ((int) this.performanceMode),
+                "load-module module-aaudio-sink volume=" + this.volume + " performance_mode=" + ((int) this.performanceMode) + " rate=" + this.sampleRate,
                 "set-default-sink AAudioSink"
         ));
 
