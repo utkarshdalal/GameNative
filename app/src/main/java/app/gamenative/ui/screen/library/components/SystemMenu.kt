@@ -283,10 +283,17 @@ fun SystemMenu(
             selectedStatus = event.persona.state
         }
 
+        val onLoggedOut: (SteamEvent.LoggedOut) -> Unit = {
+            persona = SteamFriend()
+            showStatusPicker = false
+        }
+
         PluviaApp.events.on<SteamEvent.PersonaStateReceived, Unit>(onPersonaStateReceived)
+        PluviaApp.events.on<SteamEvent.LoggedOut, Unit>(onLoggedOut)
 
         onDispose {
             PluviaApp.events.off<SteamEvent.PersonaStateReceived, Unit>(onPersonaStateReceived)
+            PluviaApp.events.off<SteamEvent.LoggedOut, Unit>(onLoggedOut)
         }
     }
 
@@ -430,7 +437,7 @@ fun SystemMenu(
                                     selected = isProfileFocused,
                                     interactionSource = profileInteractionSource,
                                     indication = null,
-                                    onClick = { if (!isOffline) showStatusPicker = !showStatusPicker },
+                                    onClick = { if (!isOffline && SteamService.isLoggedIn) showStatusPicker = !showStatusPicker },
                                 )
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -491,7 +498,7 @@ fun SystemMenu(
                             }
 
                             // Dropdown indicator (only when online)
-                            if (!isOffline) {
+                            if (!isOffline && SteamService.isLoggedIn) {
                                 Icon(
                                     imageVector = if (showStatusPicker) {
                                         Icons.Default.KeyboardArrowUp

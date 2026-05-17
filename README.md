@@ -10,7 +10,7 @@ GameNative allows you to play games you own on Steam, Epic and GOG directly on A
 ## How to Use
 
 (Note that GameNative is still in its early stages, and all games may not work, or may require tweaking to get working well)
-1. Download the latest release [here](https://downloads.gamenative.app/releases/0.9.1/gamenative-v0.9.1.apk)
+1. Download the latest release [here](https://downloads.gamenative.app/releases/0.9.2/gamenative-v0.9.2.apk)
 2. Install the APK on your Android device
 3. Login to your Steam account
 4. Install your game

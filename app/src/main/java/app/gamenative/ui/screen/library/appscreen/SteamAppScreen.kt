@@ -261,7 +261,11 @@ class SteamAppScreen : BaseAppScreen() {
 
         // Get icon URL
         val iconUrl = remember(appInfo.id) {
-            appInfo.iconUrl
+            if (appInfo.clientIconHash.isNotEmpty()) {
+                appInfo.clientIconUrl
+            } else{
+                appInfo.iconUrl
+            }
         }
 
         // Get install location
@@ -358,13 +362,12 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun isValidToDownload(context: Context, libraryItem: LibraryItem): Boolean {
         val appInfo = SteamService.getAppInfoOf(libraryItem.gameId) ?: return false
-        return appInfo.branches.isNotEmpty() && appInfo.depots.isNotEmpty()
+        return appInfo.depots.isNotEmpty()
     }
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
         val downloadInfo = SteamService.getAppDownloadInfo(libraryItem.gameId) ?: return false
-        val progress = downloadInfo.getProgress() ?: 0f
-        return downloadInfo.isPostInstallSyncing() || (downloadInfo.isActive() && progress < 1f)
+        return downloadInfo.isPostInstallSyncing() || downloadInfo.isActive()
     }
 
     override fun getDownloadProgress(context: Context, libraryItem: LibraryItem): Float {
@@ -499,8 +502,7 @@ class SteamAppScreen : BaseAppScreen() {
         onClickPlay: (Boolean) -> Unit,
     ) {
         val gameId = libraryItem.gameId
-        val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        val isDownloading = isDownloading(context, libraryItem)
         val isInstalled = SteamService.isAppInstalled(gameId)
 
         if (isDownloading) {
@@ -554,8 +556,7 @@ class SteamAppScreen : BaseAppScreen() {
     override fun onDeleteDownloadClick(context: Context, libraryItem: LibraryItem) {
         val gameId = libraryItem.gameId
         val isInstalled = SteamService.isAppInstalled(gameId)
-        val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        val isDownloading = isDownloading(context, libraryItem)
 
         if (isDownloading || SteamService.hasPartialDownload(gameId)) {
             // Show cancel download dialog when downloading

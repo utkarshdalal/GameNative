@@ -104,7 +104,8 @@ public class XClient implements XResourceManager.OnResourceLifecycleListener {
         }
 
         XInput2Extension xi2 = xServer.getExtension(XInput2Extension.MAJOR_OPCODE);
-        xi2.onClientDisconnected(this);
+        if (xi2 != null)
+            xi2.onClientDisconnected(this);
     }
 
     public void generateSequenceNumber() {

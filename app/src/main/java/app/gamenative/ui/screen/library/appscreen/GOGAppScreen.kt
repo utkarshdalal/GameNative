@@ -233,10 +233,9 @@ class GOGAppScreen : BaseAppScreen() {
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
         Timber.tag(TAG).d("isDownloading: checking appId=${libraryItem.appId}")
         val downloadInfo = GOGService.getDownloadInfo(libraryItem.gameId.toString()) ?: return false
-        val progress = downloadInfo.getProgress() ?: 0f
-        val downloading = downloadInfo.isPostInstallSyncing() || (downloadInfo.isActive() && progress < 1f)
+        val downloading = downloadInfo.isPostInstallSyncing() || downloadInfo.isActive()
         Timber.tag(TAG).d(
-            "isDownloading: appId=${libraryItem.appId}, postInstallSyncing=${downloadInfo.isPostInstallSyncing()}, active=${downloadInfo.isActive()}, progress=$progress, result=$downloading",
+            "isDownloading: appId=${libraryItem.appId}, postInstallSyncing=${downloadInfo.isPostInstallSyncing()}, active=${downloadInfo.isActive()}, result=$downloading",
         )
         return downloading
     }

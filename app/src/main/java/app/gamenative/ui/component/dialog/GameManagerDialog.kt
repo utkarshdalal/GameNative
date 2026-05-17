@@ -91,8 +91,11 @@ fun GameManagerDialog(
     val displayInfo = onGetDisplayInfo(context)
     val gameId = displayInfo.gameId
 
-    val installedApp = remember(gameId) {
-        SteamService.getInstalledApp(gameId)
+    val isBaseGameInstalled = remember(gameId) {
+        SteamService.isAppInstalled(gameId)
+    }
+    val installedApp = remember(gameId, isBaseGameInstalled) {
+        if (isBaseGameInstalled) SteamService.getInstalledApp(gameId) else null
     }
     val installedDlcIds = installedApp?.dlcDepots.orEmpty()
 
@@ -130,13 +133,13 @@ fun GameManagerDialog(
                 .toMap()
             .forEach { (_, depotInfo) ->
                 allDownloadableApps.add(Pair(depotInfo.dlcAppId, depotInfo))
-                val installed = SteamService.getInstalledApp(depotInfo.dlcAppId)
+                val installed = SteamService.isAppInstalled(depotInfo.dlcAppId)
                 selectedAppIds[depotInfo.dlcAppId] =
-                        installed != null || // For installed Base Game and Indirect DLC App
+                        installed || // For installed Base Game and Indirect DLC App
                         installedDlcIds.contains(depotInfo.dlcAppId) || // For installed DLC from Main Depot
                         ( !indirectDlcAppIds.contains(depotInfo.dlcAppId) && !optionalDlcIds.contains(depotInfo.dlcAppId) ) // Not in indirect DLC and not in optional DLC ids
 
-                enabledAppIds[depotInfo.dlcAppId] = !installedDlcIds.contains(depotInfo.dlcAppId) && installed == null
+                enabledAppIds[depotInfo.dlcAppId] = !installedDlcIds.contains(depotInfo.dlcAppId) && !installed
             }
 
         allDownloadableApps.sortBy { it.first }
@@ -200,7 +203,7 @@ fun GameManagerDialog(
     fun getInstallSizeInfo(): InstallSizeInfo {
         val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
 
-        val baseGameInstallBytes = if (installedApp == null) {
+        val baseGameInstallBytes = if (!isBaseGameInstalled) {
             downloadableDepots
                 .filter { (_, depot) ->
                     depot.dlcAppId == INVALID_APP_ID
@@ -209,7 +212,7 @@ fun GameManagerDialog(
             0L
         }
 
-        val baseGameDownloadBytes = if (installedApp == null) {
+        val baseGameDownloadBytes = if (!isBaseGameInstalled) {
             downloadableDepots
                 .filter { (_, depot) ->
                     depot.dlcAppId == INVALID_APP_ID
@@ -273,7 +276,7 @@ fun GameManagerDialog(
             return false
         }
 
-        if (installedApp != null) {
+        if (isBaseGameInstalled) {
             val installed = installedDlcIds.toSet() - mainAppDlcIdsWithoutProperDepotDlcIds.toSet()
             val realSelectedAppIds = selectedAppIds.filter { it.value }.keys - installed
             return (realSelectedAppIds.size - 1) > 0 // -1 for main app

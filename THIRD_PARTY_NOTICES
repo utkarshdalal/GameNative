@@ -102,6 +102,94 @@ in the sense of GPL-3.0 §0 ("based on").
 
 ---
 
+## Steam Client Bootstrap Shim (Source Withheld)
+
+**Component:** `libsteambootstrap.so`
+**Binary location:** `app/src/main/jniLibs/<abi>/libsteambootstrap.so`
+**Source location in repo:** intentionally absent
+  (`app/src/main/cpp/steambootstrap/steam_bootstrap.c` is listed in
+  `.gitignore` and is **not** committed to this repository)
+**Authorship:** Written from scratch by the GameNative maintainers. Not derived
+from Valve's Steam client, the Steamworks SDK, or any third-party project.
+**License of the binary as distributed in this APK:** Proprietary —
+all rights reserved by the GameNative maintainers.
+
+`libsteambootstrap.so` is a small JNI shim loaded by the GameNative Android
+application when launching a title in "real Steam" mode. It performs only
+two jobs:
+
+1. `dlopen()` the Android build of `libsteamclient.so` that ships inside the
+   user's Steam container, and
+2. resolve a handful of exported entry points from that library and invoke
+   them, in order, to bring the in-process Steam client to a logged-in state
+   using the refresh token the GameNative application already obtained
+   through the standard Steam authentication flow.
+
+The shim does **not** wrap, embed, link against, or redistribute any code from
+Valve's Steam client, the Steamworks SDK, or any other Valve-owned component.
+It interacts with `libsteamclient.so` exclusively at runtime, in the user's
+own Steam installation, through the same public dynamic-loader interface that
+Valve's own `steam.exe` uses on every other platform.
+
+### Why the source is not in this repository
+
+The shim's implementation encodes specific knowledge about which exported
+symbols and proxy-vtable slots inside `libsteamclient.so` correspond to which
+Steam client operations (pipe creation, global-user attachment, login
+information / token registration, logon kickoff, logoff, pipe and user
+release, and connection-state polling). That information was derived
+exclusively from local static analysis of a `libsteamclient.so` binary
+already present on the maintainer's own device as part of an installed Steam
+container; it is not reproduced from, copied from, or based on any leaked,
+proprietary, or non-public Valve source material.
+
+Those symbols and slot layouts are nevertheless internal details of Valve's
+proprietary Steam client. Valve does not document them, does not publish
+them, and does not treat them as a public interface. The GameNative project
+has decided to respect that: we use the information to make our own
+application work against a Steam client the user has already installed, but
+we do not publish a redistributable map of those internals as part of this
+repository.
+
+Practically, this means the shim's source lives only on maintainer
+workstations and the binary built from it (`libsteambootstrap.so`) ships in
+the APK. The source file itself is listed in `.gitignore` so it cannot be
+committed by accident.
+
+All of GameNative's own application logic — UI, store integration, container
+management, device configuration, the token-based login flow that produces
+the refresh token in the first place, and the JNI declaration that calls
+into this shim — remains fully open under GPL-3.0.
+
+### Relationship to the GPL-3.0 application
+
+GameNative's Kotlin/Java application is distributed under GPL-3.0 and remains
+so. `libsteambootstrap.so` is a separate native module. It exposes a small,
+well-defined JNI surface (currently `nativeInit` and `nativeShutdown`,
+declared in `app/src/main/java/app/gamenative/SteamBootstrap.kt`) and
+contains no code copied from the GPL-3.0 application. The application can
+be built and run without it; in that configuration "real Steam" launch mode
+is unavailable, but every other GameNative feature continues to work. Under
+the FSF's and SFLC's longstanding interpretation of the GPL's "mere
+aggregation" language (GPL-3.0 §5, GPL-2.0 §2), this makes
+`libsteambootstrap.so` a separate program aggregated with GameNative on the
+same distribution medium rather than a derivative work of the application.
+
+### Replacing the shim
+
+A fork or downstream packager who wishes to provide an alternative
+implementation may:
+
+1. Implement the JNI methods declared on `app.gamenative.SteamBootstrap`
+   (`nativeInit(...)`, `nativeShutdown()`) in their own native library, and
+2. Place the resulting `.so` at
+   `app/src/main/jniLibs/<abi>/libsteambootstrap.so` in place of the binary
+   shipped here.
+
+No part of the GPL-3.0 application needs to be modified to do this.
+
+---
+
 ## Kenney Input Prompts
 
 **Asset Pack:** Input Prompts
