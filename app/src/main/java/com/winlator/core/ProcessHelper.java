@@ -14,6 +14,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executors;
 
 public abstract class ProcessHelper {
@@ -104,6 +105,71 @@ public abstract class ProcessHelper {
 
     public static int exec(String command, String[] envp, File workingDir) {
         return exec(command, envp, workingDir, null);
+    }
+
+    // Execute the command and capture its output.
+    // Use ProcessBuilder to merge stderr into stdout
+    // Deadlock-safe strategy:
+    //   includeStderr=true  - redirectErrorStream(true): stderr merged into stdout at the OS
+    //                         level, single pipe, zero deadlock risk.
+    //   includeStderr=false - streams are kept separate; a daemon thread drains and discards
+    //                         stderr concurrently so the 64 KB pipe buffer never fills while
+    //                         the main thread reads stdout. This keeps stdout clean for callers
+    //                         such as SteamTokenLogin
+    public static String execWithOutput(String command, String[] envp, File workingDir, boolean includeStderr) {
+        StringBuilder output = new StringBuilder();
+        Thread stderrDrainer = null;
+        try {
+            ProcessBuilder pb = new ProcessBuilder(splitCommand(command));
+            Map<String, String> env = pb.environment();
+            env.clear();
+            if (envp != null) {
+                for (String kv : envp) {
+                    int eq = kv.indexOf('=');
+                    if (eq > 0) env.put(kv.substring(0, eq), kv.substring(eq + 1));
+                }
+            }
+            if (workingDir != null) pb.directory(workingDir);
+            pb.redirectErrorStream(includeStderr); // merge only when caller wants stderr
+
+            java.lang.Process process = pb.start();
+
+            // When not merging, drain stderr on a daemon thread to prevent pipe-buffer deadlock.
+            // SteamTokenLogin uses this when calling includeStderr=false
+            if (!includeStderr) {
+                final InputStream stderrStream = process.getErrorStream();
+                stderrDrainer = new Thread(() -> {
+                    try {
+                        byte[] buf = new byte[4096];
+                        while (stderrStream.read(buf) != -1) {
+                            if (Thread.currentThread().isInterrupted())
+                            break;
+                        }
+                    } catch (IOException ignored) {}
+                }, "stderr-drainer");
+                stderrDrainer.setDaemon(true); // won't block app shutdown if something goes wrong
+                stderrDrainer.start();
+            }
+
+            // Read stdout (or the merged stream) inline; EOF arrives after the process exits.
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String l;
+                while ((l = r.readLine()) != null) output.append(l).append("\n");
+            }
+
+            // Process has already exited (we drained its stdout to EOF).
+            // waitFor() reaps the OS process-table entry.
+            process.waitFor();
+
+            if (stderrDrainer != null) {
+                stderrDrainer.join(5_000); // bounded wait; daemon thread is reaped on JVM exit anyway
+            }
+        } catch (Exception e) {
+            output.append("Error: ").append(e.getMessage());
+        }
+
+        // Format output: trim trailing whitespace/newlines
+        return output.toString().trim();
     }
 
     public static class ProcessInfo {
