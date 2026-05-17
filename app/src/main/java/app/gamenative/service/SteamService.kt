@@ -3450,14 +3450,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // Tell steam we're online, this allows friends to update.
                 _steamFriends?.setPersonaState(PrefManager.personaState)
 
-                val activeGames = ActiveGameRegistry.all()
-                if (activeGames.isNotEmpty()) {
-                    Timber.i("Re-sending %d active game session(s) after Steam reconnect", activeGames.size)
+                val activeGame = ActiveGameRegistry.get()
+                if (activeGame != null) {
+                    Timber.i("Re-sending active game session for appId=%d after Steam reconnect", activeGame.appId)
                     scope.launch {
-                        notifyRunningProcesses(*activeGames.toTypedArray())
+                        notifyRunningProcesses(activeGame)
                     }
                 } else {
-                    Timber.d("No active game sessions to re-send after Steam reconnect")
+                    Timber.d("No active game session to re-send after Steam reconnect")
                 }
 
                 notificationHelper.notify("Connected")

@@ -1,29 +1,33 @@
 package app.gamenative.service
 
 import app.gamenative.data.GameProcessInfo
-import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Tracks Steam game process info for games currently running through GameNative.
+ * Tracks the single Steam game session currently managed by GameNative.
  *
- * This lets SteamService re-send notifyGamesPlayed() after the Steam connection
- * is re-established (for example after device sleep / resume) without needing to
- * re-discover game processes from scratch.
+ * GameNative only supports one active game at a time, so storing a single slot
+ * avoids stale entries being re-announced after reconnect.
  */
 object ActiveGameRegistry {
-    private val activeGames = ConcurrentHashMap<Int, GameProcessInfo>()
+    @Volatile
+    private var activeGame: GameProcessInfo? = null
 
-    fun put(gameProcessInfo: GameProcessInfo) {
-        activeGames[gameProcessInfo.appId] = gameProcessInfo
+    fun get(): GameProcessInfo? = activeGame
+
+    @Synchronized
+    fun set(gameProcessInfo: GameProcessInfo) {
+        activeGame = gameProcessInfo
     }
 
-    fun remove(appId: Int) {
-        activeGames.remove(appId)
+    @Synchronized
+    fun clearIfMatches(appId: Int) {
+        if (activeGame?.appId == appId) {
+            activeGame = null
+        }
     }
 
+    @Synchronized
     fun clear() {
-        activeGames.clear()
+        activeGame = null
     }
-
-    fun all(): List<GameProcessInfo> = activeGames.values.toList()
 }
