@@ -209,25 +209,6 @@ data class EnvVarInfo(
                     "memory", "gpuload", "version", "api", "cs", "compiler", "samplers",
                 ),
             ),
-            // Wine DLL overrides — user types freely or picks a common preset
-            "WINEDLLOVERRIDES" to EnvVarInfo(
-                identifier = "WINEDLLOVERRIDES",
-                selectionType = EnvVarSelectionType.SUGGESTIONS,
-                possibleValues = listOf(
-                    // Category header: Input
-                    "---Input",
-                    "dinput8=n,b;dinput=n,b",
-                    "xinput1_3=n,b;xinput1_4=n,b;xinput9_1_0=n,b",
-                    "xinput9_1_0=n,b;windows.gaming.input=n,b",
-                    "xinput1_1=n,b;xinput1_2=n,b",
-                    // Category header: Audio
-                    "---Audio",
-                    "openal32=native,builtin",
-                    "soft_oal=native",
-                    "openal32=native,builtin;soft_oal=native",
-                    "xaudio2_7=native,builtin",
-                ),
-            ),
             "MESA_EXTENSION_MAX_YEAR" to EnvVarInfo(
                 identifier = "MESA_EXTENSION_MAX_YEAR",
             ),
@@ -288,6 +269,28 @@ data class EnvVarInfo(
             ),
             "MESA_VK_PRESENT_MODE" to EnvVarInfo(
                 identifier = "MESA_VK_PRESENT_MODE",
+            ),
+            "DXVK_FILTER_DEVICE_NAME" to EnvVarInfo(
+                identifier = "DXVK_FILTER_DEVICE_NAME",
+                selectionType = EnvVarSelectionType.MULTI_SELECT,
+                possibleValues = listOf(
+                    "NVIDIA GeForce GTX 1080",
+                    "NVIDIA GeForce RTX 3060",
+                    "AMD Radeon RX 580",
+                    "Radeon HD 7900 Series",
+                ),
+            ),
+            // Wine DLL overrides — user types freely or picks a common preset
+            // More common DLL overrides can be added in future. Only audio related for now
+            "WINEDLLOVERRIDES" to EnvVarInfo(
+                identifier = "WINEDLLOVERRIDES",
+                selectionType = EnvVarSelectionType.SUGGESTIONS,
+                possibleValues = listOf(
+                    "openal32=native,builtin",
+                    "soft_oal=native",
+                    "openal32=native,builtin;soft_oal=native",
+                    "xaudio2_7=native,builtin",
+                ),
             ),
         )
     }
