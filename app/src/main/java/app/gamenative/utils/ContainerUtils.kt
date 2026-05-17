@@ -15,7 +15,6 @@ import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import com.winlator.core.DefaultVersion
-import com.winlator.core.envvars.EnvVars
 import com.winlator.core.FileUtils
 import com.winlator.core.GPUInformation
 import com.winlator.core.WineRegistryEditor
