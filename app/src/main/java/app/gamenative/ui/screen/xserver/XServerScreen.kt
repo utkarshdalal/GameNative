@@ -3395,9 +3395,9 @@ private fun getWineStartCommand(
     }
 
     val args = if (testGraphics) {
-        "\"Z:/opt/apps/TestD3D.exe\""
+        "Z:/opt/apps/TestD3D.exe"
     } else if (bootToContainer) {
-        "\"wfm.exe\""
+        "wfm.exe"
     } else if (isGOGGame) {
         // For GOG games, use GOGService to get the launch command
         Timber.tag("XServerScreen").i("Launching GOG game: $gameId")
@@ -3420,7 +3420,7 @@ private fun getWineStartCommand(
         )
 
         Timber.tag("XServerScreen").i("GOG launch command: $gogCommand")
-        return "winhandler.exe $gogCommand"
+        return gogCommand
     } else if (isEpicGame) {
         // For Epic games, get the launch command
         Timber.tag("XServerScreen").i("Launching Epic game: $gameId")
@@ -3430,7 +3430,7 @@ private fun getWineStartCommand(
 
         if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
             Timber.tag("XServerScreen").e("Cannot launch: Epic game not installed")
-            return "\"explorer.exe\""
+            return "explorer.exe"
         }
 
         // Use container's configured executable path if available, otherwise auto-detect and persist
@@ -3449,7 +3449,7 @@ private fun getWineStartCommand(
 
         if (exePath.isEmpty()) {
             Timber.tag("XServerScreen").e("Cannot launch: executable not found for Epic game")
-            return "\"explorer.exe\""
+            return "explorer.exe"
         }
 
         // Convert to relative path from install directory
@@ -3490,10 +3490,10 @@ private fun getWineStartCommand(
                     arg
                 }
             }
-            "winhandler.exe \"$epicCommand\" $args"
+            "$epicCommand $args"
         } else {
             Timber.tag("XServerScreen").w("No Epic launch parameters available, launching without authentication")
-            "winhandler.exe \"$epicCommand\""
+            "$epicCommand"
         }
 
         // Log command with sensitive auth tokens redacted
@@ -3518,7 +3518,7 @@ private fun getWineStartCommand(
 
         if (installPath.isNullOrEmpty()) {
             Timber.tag("XServerScreen").e("Cannot launch: Amazon game not installed")
-            return "\"explorer.exe\""
+            return "explorer.exe"
         }
 
         // ── Try fuel.json first (Amazon's launch manifest) ──────────────
@@ -3573,7 +3573,7 @@ private fun getWineStartCommand(
 
                 if (exeFile == null) {
                     Timber.tag("XServerScreen").e("Cannot find executable for Amazon game")
-                    return "\"explorer.exe\""
+                    return "explorer.exe"
                 }
                 Timber.tag("XServerScreen").d("Heuristic selected exe: ${exeFile.path}")
                 exeFile.relativeTo(File(installPath)).path
@@ -3661,10 +3661,10 @@ private fun getWineStartCommand(
                 if (arg.contains(" ")) "\"$arg\"" else arg
             }
             Timber.tag("XServerScreen").i("Amazon launch command: \"$amazonCommand\" $argsStr")
-            "winhandler.exe \"$amazonCommand\" $argsStr"
+            "$amazonCommand $argsStr"
         } else {
             Timber.tag("XServerScreen").i("Amazon launch command: \"$amazonCommand\"")
-            "winhandler.exe \"$amazonCommand\""
+            amazonCommand
         }
 
         return launchCommand
@@ -3687,7 +3687,7 @@ private fun getWineStartCommand(
             // Attempt auto-detection only when we have the physical folder path
             if (gameFolderPath == null) {
                 Timber.tag("XServerScreen").e("Could not find A: drive for Custom Game: $appId")
-                return "winhandler.exe \"wfm.exe\""
+                return "wfm.exe"
             }
             val auto = CustomGameScanner.findUniqueExeRelativeToFolder(gameFolderPath!!)
             if (auto != null) {
@@ -3697,13 +3697,13 @@ private fun getWineStartCommand(
                 container.saveData()
             } else {
                 Timber.tag("XServerScreen").w("No unique executable found for Custom Game: $appId")
-                return "winhandler.exe \"wfm.exe\""
+                return "wfm.exe"
             }
         }
 
         if (gameFolderPath == null) {
             Timber.tag("XServerScreen").e("Could not find A: drive for Custom Game: $appId")
-            return "winhandler.exe \"wfm.exe\""
+            return "wfm.exe"
         }
 
         // Set working directory to the game folder
@@ -3713,11 +3713,11 @@ private fun getWineStartCommand(
         // Normalize path separators (ensure Windows-style backslashes)
         val normalizedPath = executablePath.replace('/', '\\')
         envVars.put("WINEPATH", "A:\\")
-        "\"A:\\${normalizedPath}\""
+        "A:\\${normalizedPath}"
     } else if (container.executablePath.isEmpty()) {
         // For Steam games, we need appLaunchInfo
         Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
-        "\"wfm.exe\""
+        "wfm.exe"
     } else {
         if (container.isLaunchBionicSteam) {
             // Bionic-Steam mode: launch steam.exe with the game's exe path as its
@@ -3730,10 +3730,10 @@ private fun getWineStartCommand(
             val executableDir = appDirPath + "/" + exePath.substringBeforeLast("/", "")
             guestProgramLauncherComponent.workingDir = File(executableDir)
             Timber.i("Bionic-Steam working directory is $executableDir")
-            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" \"C:\\\\Program Files (x86)\\\\Steam\\\\steamapps\\\\common\\\\$gameFolderName\\\\$normalizedExe\""
+            "C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe C:\\\\Program Files (x86)\\\\Steam\\\\steamapps\\\\common\\\\$gameFolderName\\\\$normalizedExe"
         } else if (container.isLaunchRealSteam) {
             // Launch Steam with the applaunch parameter to start the game
-            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
+            "C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe -silent -vgui -tcp " +
                     "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $gameId"
         } else {
             var executablePath = ""
@@ -3763,14 +3763,14 @@ private fun getWineStartCommand(
                 if (appLaunchInfo != null){
                     envVars.put("WINEPATH", "$drive:/${appLaunchInfo.workingDir}")
                 }
-                "\"$drive:/${executablePath}\""
+                "$drive:/${executablePath}"
             } else {
-                "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamclient_loader_x64.exe\""
+                "C:\\\\Program Files (x86)\\\\Steam\\\\steamclient_loader_x64.exe"
             }
         }
     }
 
-    return "winhandler.exe $args"
+    return args
 }
 private fun getSteamlessTarget(
     appId: String,

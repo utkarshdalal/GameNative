@@ -102,7 +102,8 @@ object PreInstallSteps {
     }
 
     private fun wrapAsGuestExecutable(cmdChain: String, screenInfo: String): String {
-        val wrapped = "winhandler.exe cmd /c \"$cmdChain & taskkill /F /IM explorer.exe & wineserver -k\""
+        // not tested yet
+        val wrapped = "cmd /c \"$cmdChain & taskkill /F /IM explorer.exe & wineserver -k\""
         return "wine explorer /desktop=shell,$screenInfo $wrapped"
     }
 
