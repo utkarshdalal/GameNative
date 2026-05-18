@@ -1483,7 +1483,7 @@
     <string name="frontend_sync_source_amazon">Amazon Games</string>
     <string name="frontend_sync_source_custom">Jeux personnalisés</string>
     <string name="frontend_sync_not_set">Non défini</string>
-    <string name="frontend_sync_clear_confirm_title">Supprimer les anciens fichiers d\’export ?</string>
+    <string name="frontend_sync_clear_confirm_title">Supprimer les anciens fichiers d’export ?</string>
     <string name="frontend_sync_clear_confirm_message">Supprimer les fichiers .%1$s du répertoire précédent ?</string>
     <string name="frontend_sync_confirm_remove">Supprimer</string>
     <string name="frontend_sync_confirm_keep">Conserver</string>

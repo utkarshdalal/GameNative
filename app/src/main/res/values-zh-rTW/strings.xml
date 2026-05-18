@@ -1546,7 +1546,7 @@
     <string name="frontend_sync_source_epic">Epic Games</string>
     <string name="frontend_sync_source_gog">GOG</string>
     <string name="frontend_sync_source_amazon">Amazon Games</string>
-    <string name="frontend_sync_source_custom">自定義遊戲</string>
+    <string name="frontend_sync_source_custom">自訂遊戲</string>
     <string name="frontend_sync_not_set">未設定</string>
     <string name="frontend_sync_clear_confirm_title">刪除舊的匯出檔案？</string>
     <string name="frontend_sync_clear_confirm_message">從前一個目錄刪除 .%1$s 檔案？</string>

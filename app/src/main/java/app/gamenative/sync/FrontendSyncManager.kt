@@ -16,6 +16,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -106,7 +107,8 @@ object FrontendSyncManager {
         _isSyncing.value = true
         resyncJob = scope.launch {
             try {
-                configuredDirs.forEach { (source, dir) ->
+                val snapshot = synchronized(configuredDirs) { configuredDirs.toMap() }
+                snapshot.forEach { (source, dir) ->
                     ensureActive()
                     syncAllInstalledGames(source, dir)
                 }
@@ -118,17 +120,16 @@ object FrontendSyncManager {
     }
 
     fun changeDirectory(source: GameSource, newPath: String, deleteOldFiles: Boolean) {
-        // Update in-memory state synchronously so UI reflects the change immediately.
-        if (newPath.isNotEmpty()) {
-            configuredDirs[source] = newPath
-        } else {
-            configuredDirs.remove(source)
+        // Capture oldPath and update in-memory state synchronously so UI reflects the change immediately.
+        val oldPath = synchronized(configuredDirs) {
+            val prev = configuredDirs[source].orEmpty()
+            if (newPath.isNotEmpty()) configuredDirs[source] = newPath else configuredDirs.remove(source)
+            _anyConfigured.value = configuredDirs.isNotEmpty()
+            prev
         }
-        _anyConfigured.value = configuredDirs.isNotEmpty()
 
         scope.launch {
-            val oldPath = PrefManager.getFrontendSyncDir(source)
-            if (oldPath.isNotEmpty() && deleteOldFiles) {
+            if (oldPath.isNotEmpty() && oldPath != newPath && deleteOldFiles) {
                 deleteAllFilesWithExtension(oldPath, extensionFor(source))
             }
             PrefManager.setFrontendSyncDir(source, newPath)
@@ -145,7 +146,7 @@ object FrontendSyncManager {
         }
 
         val isInstalled = isGameInstalled(appId, source)
-        val file = File(dir, "$gameName${extensionFor(source)}")
+        val file = File(dir, "${sanitizeFileName(gameName)}${extensionFor(source)}")
 
         try {
             if (isInstalled) {
@@ -180,13 +181,18 @@ object FrontendSyncManager {
 
             val targetDir = File(dir).also { it.mkdirs() }
             val ext = extensionFor(source)
+            deleteAllFilesWithExtension(targetDir.absolutePath, ext)
             games.forEach { (appId, name) ->
                 try {
-                    File(targetDir, "$name$ext").writeText(appId.toString(), Charsets.UTF_8)
+                    File(targetDir, "${sanitizeFileName(name)}$ext").writeText(appId.toString(), Charsets.UTF_8)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Timber.e(e, "FrontendSyncManager: failed to write export file for appId=%d", appId)
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "FrontendSyncManager: failed full sync for source=%s dir=%s", source, dir)
         }
@@ -205,6 +211,11 @@ object FrontendSyncManager {
         GameSource.GOG -> gogGameDao.getById(appId.toString())?.isInstalled ?: false
         GameSource.AMAZON -> amazonGameDao.getByAppId(appId)?.isInstalled ?: false
     }
+
+    private val invalidFileChars = Regex("""[\\/:*?"<>|]""")
+
+    private fun sanitizeFileName(name: String): String =
+        name.replace(invalidFileChars, "_").trim().ifEmpty { "unknown" }
 
     internal fun deleteAllFilesWithExtension(dir: String, extension: String) {
         try {

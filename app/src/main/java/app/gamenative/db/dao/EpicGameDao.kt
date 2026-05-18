@@ -40,7 +40,7 @@ interface EpicGameDao {
     @Query("SELECT * FROM epic_games WHERE id = :appId")
     suspend fun getById(appId: Int): EpicGame?
 
-    @Query("SELECT * FROM epic_games WHERE is_installed = 1 ORDER BY title ASC")
+    @Query("SELECT * FROM epic_games WHERE is_installed = 1 AND is_dlc = 0 AND namespace != 'ue' AND namespace != '89efe5924d3d467c839449ab6ab52e7f' ORDER BY title ASC")
     suspend fun getInstalledGames(): List<EpicGame>
 
     @Query("SELECT * FROM epic_games WHERE id IN (:gameIds)")
