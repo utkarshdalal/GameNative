@@ -74,6 +74,7 @@ public class WinHandler {
     private final ArrayList<Integer> xinputProcesses;
     private final XServer xServer;
     private final XServerView xServerView;
+    private byte[] sdlButtons = new byte[15];
 
     private InputControlsView inputControlsView;
     private Thread rumblePollerThread;
@@ -811,7 +812,7 @@ public class WinHandler {
         buffer.putShort((short)lAxis);
         buffer.putShort((short)rAxis);
         // --- Buttons and D-Pad are perfect. No changes here. ---
-        byte[] sdlButtons = new byte[15];
+
         sdlButtons[0] = state.isPressed(0) ? (byte)1 : (byte)0;  // A
         sdlButtons[1] = state.isPressed(1) ? (byte)1 : (byte)0;  // B
         sdlButtons[2] = state.isPressed(2) ? (byte)1 : (byte)0;  // X
