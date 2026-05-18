@@ -547,8 +547,12 @@ public class WinHandler {
             } catch (UnknownHostException e2) {
             }
         }
-        this.running = true;
-        startSendThread();
+
+        if(!this.running) {
+            this.running = true;
+            startSendThread();
+        }
+
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
                 DatagramSocket datagramSocket = new DatagramSocket((SocketAddress) null);
@@ -568,8 +572,10 @@ public class WinHandler {
         });
 
         startRumblePoller();
-        running = true;
-        startSendThread();
+        if(!running) {
+            running = true;
+            startSendThread();
+        }
     }
 
     private void startRumblePoller() {
