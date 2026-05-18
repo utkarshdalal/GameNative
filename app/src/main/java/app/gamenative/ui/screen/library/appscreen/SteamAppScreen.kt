@@ -38,6 +38,7 @@ import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
 
 import app.gamenative.R
+import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
@@ -1078,7 +1079,7 @@ class SteamAppScreen : BaseAppScreen() {
                         CoroutineScope(Dispatchers.IO).launch {
                             SteamService.deleteApp(gameId)
                             DownloadService.invalidateCache()
-                            PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
+                            PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.STEAM))
                             withContext(Dispatchers.Main) {
                                 hideInstallDialog(gameId)
                             }
@@ -1209,7 +1210,7 @@ class SteamAppScreen : BaseAppScreen() {
                                 }
                                 withContext(Dispatchers.Main) {
                                     if (success) {
-                                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
+                                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.STEAM))
                                         SnackbarManager.show(
                                             context.getString(
                                                 R.string.steam_uninstall_success,

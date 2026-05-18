@@ -1471,4 +1471,21 @@
     <string name="game_launch_tip_23">Порада: Якщо у вас GPU Mali, будь ласка, використовуйте системні драйвери.</string>
     <string name="game_launch_tip_24">Порада: Чорний екран? Спробуйте опцію \"%s\" у меню, щоб перевірити, чи ваші драйвери працюють правильно.</string>
     <string name="launch_bionic_steam_description">Увімкнення онлайн-гри та покращення сумісності\nПрацює не завжди\nПеред спробою зробіть резервну копію збережень</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Синхронізація frontend</string>
+    <string name="settings_interface_frontend_sync_subtitle">Автоматично експортувати встановлені ігри для фронтендів бібліотеки</string>
+    <string name="frontend_sync_dialog_title">Синхронізація frontend</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Власні ігри</string>
+    <string name="frontend_sync_not_set">Не задано</string>
+    <string name="frontend_sync_clear_confirm_title">Видалити старі файли експорту?</string>
+    <string name="frontend_sync_clear_confirm_message">Видалити файли .%1$s з попереднього каталогу?</string>
+    <string name="frontend_sync_confirm_remove">Видалити</string>
+    <string name="frontend_sync_confirm_keep">Зберегти</string>
+    <string name="frontend_sync_resync_all">Повторна синхронізація всього</string>
+    <string name="frontend_sync_resync_complete">Синхронізація frontend завершена</string>
 </resources>

@@ -1342,4 +1342,21 @@
     <string name="game_launch_tip_23">Dica: Se você tiver uma GPU Mali, use os drivers do sistema.</string>
     <string name="game_launch_tip_24">Dica: Tela preta? Experimente a opção \"%s\" no menu para verificar se seus drivers estão funcionando corretamente.</string>
     <string name="launch_bionic_steam_description">Ativa o jogo online e melhora a compatibilidade\nNem sempre funciona\nFaça backup dos seus saves antes de testar</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Sincronização de frontend</string>
+    <string name="settings_interface_frontend_sync_subtitle">Exportar automaticamente os jogos instalados para frontends de biblioteca</string>
+    <string name="frontend_sync_dialog_title">Sincronização de frontend</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Jogos personalizados</string>
+    <string name="frontend_sync_not_set">Não definido</string>
+    <string name="frontend_sync_clear_confirm_title">Remover arquivos de exportação antigos?</string>
+    <string name="frontend_sync_clear_confirm_message">Remover arquivos .%1$s do diretório anterior?</string>
+    <string name="frontend_sync_confirm_remove">Remover</string>
+    <string name="frontend_sync_confirm_keep">Manter</string>
+    <string name="frontend_sync_resync_all">Ressincronizar tudo</string>
+    <string name="frontend_sync_resync_complete">Sincronização de frontend concluída</string>
 </resources>

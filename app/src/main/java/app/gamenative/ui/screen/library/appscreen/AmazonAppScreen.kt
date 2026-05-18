@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.AmazonGame
+import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.DownloadService
@@ -640,7 +641,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                                 BaseAppScreen.hideInstallDialog(appId)
                                 val gameId = libraryItem.gameId
                                 PluviaApp.events.emitJava(AndroidEvent.DownloadStatusChanged(gameId, false))
-                                PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(gameId))
+                                PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.AMAZON))
                             }
                         }
                     }

@@ -310,7 +310,7 @@ class EpicDownloadManager @Inject constructor(
 
             // Notify UI that installation status changed
             app.gamenative.PluviaApp.events.emitJava(
-                app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId),
+                app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId, app.gamenative.data.GameSource.EPIC),
             )
 
             Timber.tag("Epic").i("Download completed successfully for game $gameId")

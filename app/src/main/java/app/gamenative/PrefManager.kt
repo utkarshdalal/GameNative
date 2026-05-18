@@ -13,6 +13,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import app.gamenative.data.GameSource
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.HomeDestination
@@ -1131,6 +1132,50 @@ object PrefManager {
         set(value) {
             setPref(EXTERNAL_STORAGE_PATH, value)
         }
+
+    private val FRONTEND_SYNC_DIR_STEAM = stringPreferencesKey("frontend_sync_dir_steam")
+    private val FRONTEND_SYNC_DIR_EPIC = stringPreferencesKey("frontend_sync_dir_epic")
+    private val FRONTEND_SYNC_DIR_GOG = stringPreferencesKey("frontend_sync_dir_gog")
+    private val FRONTEND_SYNC_DIR_AMAZON = stringPreferencesKey("frontend_sync_dir_amazon")
+    private val FRONTEND_SYNC_DIR_CUSTOM = stringPreferencesKey("frontend_sync_dir_custom")
+
+    var frontendSyncDirSteam: String
+        get() = getPref(FRONTEND_SYNC_DIR_STEAM, "")
+        set(value) { setPref(FRONTEND_SYNC_DIR_STEAM, value) }
+
+    var frontendSyncDirEpic: String
+        get() = getPref(FRONTEND_SYNC_DIR_EPIC, "")
+        set(value) { setPref(FRONTEND_SYNC_DIR_EPIC, value) }
+
+    var frontendSyncDirGog: String
+        get() = getPref(FRONTEND_SYNC_DIR_GOG, "")
+        set(value) { setPref(FRONTEND_SYNC_DIR_GOG, value) }
+
+    var frontendSyncDirAmazon: String
+        get() = getPref(FRONTEND_SYNC_DIR_AMAZON, "")
+        set(value) { setPref(FRONTEND_SYNC_DIR_AMAZON, value) }
+
+    var frontendSyncDirCustom: String
+        get() = getPref(FRONTEND_SYNC_DIR_CUSTOM, "")
+        set(value) { setPref(FRONTEND_SYNC_DIR_CUSTOM, value) }
+
+    fun getFrontendSyncDir(source: GameSource): String = when (source) {
+        GameSource.STEAM -> frontendSyncDirSteam
+        GameSource.EPIC -> frontendSyncDirEpic
+        GameSource.GOG -> frontendSyncDirGog
+        GameSource.AMAZON -> frontendSyncDirAmazon
+        GameSource.CUSTOM_GAME -> frontendSyncDirCustom
+    }
+
+    fun setFrontendSyncDir(source: GameSource, path: String) {
+        when (source) {
+            GameSource.STEAM -> frontendSyncDirSteam = path
+            GameSource.EPIC -> frontendSyncDirEpic = path
+            GameSource.GOG -> frontendSyncDirGog = path
+            GameSource.AMAZON -> frontendSyncDirAmazon = path
+            GameSource.CUSTOM_GAME -> frontendSyncDirCustom = path
+        }
+    }
 
     // Custom Games root (additional paths). Default path is provided by the app at runtime and isn't stored here.
     private val CUSTOM_GAME_PATHS = stringPreferencesKey("custom_game_paths")

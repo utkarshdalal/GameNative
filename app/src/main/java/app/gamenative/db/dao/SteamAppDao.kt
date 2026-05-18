@@ -145,6 +145,12 @@ interface SteamAppDao {
     @Query("SELECT * FROM steam_app WHERE id = :appId")
     suspend fun findApp(appId: Int): SteamApp?
 
+    @Query("SELECT * FROM steam_app ORDER BY name ASC")
+    suspend fun getAllAsList(): List<SteamApp>
+
+    @Query("SELECT steam_app.* FROM steam_app INNER JOIN app_info ON steam_app.id = app_info.id WHERE app_info.is_downloaded = 1 ORDER BY steam_app.name ASC")
+    suspend fun getInstalledGames(): List<SteamApp>
+
     @Query("SELECT * FROM steam_app AS app WHERE dlc_for_app_id = :appId AND depots <> '{}' AND " +
             " EXISTS (" +
             "   SELECT * FROM steam_license AS license " +

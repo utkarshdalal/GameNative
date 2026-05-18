@@ -1498,6 +1498,22 @@
     <string name="lsfg_performance_mode_desc">Reduces quality for higher throughput</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Show curated indie game picks in your library. Keeping this on helps support indie developers and GameNative.</string>
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Frontend Sync</string>
+    <string name="settings_interface_frontend_sync_subtitle">Auto-export installed games for game library frontends</string>
+    <string name="frontend_sync_dialog_title">Frontend Sync</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Custom Games</string>
+    <string name="frontend_sync_not_set">Not set</string>
+    <string name="frontend_sync_clear_confirm_title">Remove old export files?</string>
+    <string name="frontend_sync_clear_confirm_message">Remove .%1$s files from the previous directory?</string>
+    <string name="frontend_sync_confirm_remove">Remove</string>
+    <string name="frontend_sync_confirm_keep">Keep</string>
+    <string name="frontend_sync_resync_all">Resync all</string>
+    <string name="frontend_sync_resync_complete">Frontend sync complete</string>
     <!-- Game Launch Tips -->
     <string name="game_launch_tip_1">Booting may take a few minutes on first launch</string>
     <string name="game_launch_tip_2">Tip: You can view the game files by pressing \"%s\" in the game settings.</string>

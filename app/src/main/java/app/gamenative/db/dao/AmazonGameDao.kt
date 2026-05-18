@@ -23,6 +23,9 @@ interface AmazonGameDao {
     @Query("SELECT * FROM amazon_games WHERE app_id = :appId")
     suspend fun getByAppId(appId: Int): AmazonGame?
 
+    @Query("SELECT * FROM amazon_games WHERE is_installed = 1 ORDER BY title ASC")
+    suspend fun getInstalledGames(): List<AmazonGame>
+
     @Query("SELECT * FROM amazon_games ORDER BY title ASC")
     fun getAll(): Flow<List<AmazonGame>>
 

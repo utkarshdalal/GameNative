@@ -2048,7 +2048,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         // Remove the job here — Play button becomes visible after this
                         removeDownloadJob(appId)
-                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId))
+                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId, GameSource.STEAM))
 
                         // Remove the downloading app info
                         instance?.downloadingAppInfoDao?.deleteApp(appId)

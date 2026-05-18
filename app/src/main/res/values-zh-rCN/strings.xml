@@ -1545,4 +1545,21 @@
     <string name="game_launch_tip_23">提示：如果你使用的是 Mali GPU，请使用系统驱动。</string>
     <string name="game_launch_tip_24">提示：出现黑屏？尝试使用菜单中的\"%s\"选项检查驱动是否正常工作。</string>
     <string name="launch_bionic_steam_description">启用在线游玩并提升兼容性\n不一定总能正常工作\n尝试前请先备份存档</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">前端同步</string>
+    <string name="settings_interface_frontend_sync_subtitle">自动将已安装的游戏导出到游戏库前端程序</string>
+    <string name="frontend_sync_dialog_title">前端同步</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">自定义游戏</string>
+    <string name="frontend_sync_not_set">未设置</string>
+    <string name="frontend_sync_clear_confirm_title">删除旧的导出文件？</string>
+    <string name="frontend_sync_clear_confirm_message">从上一个目录删除 .%1$s 文件？</string>
+    <string name="frontend_sync_confirm_remove">删除</string>
+    <string name="frontend_sync_confirm_keep">保留</string>
+    <string name="frontend_sync_resync_all">重新同步全部</string>
+    <string name="frontend_sync_resync_complete">前端同步完成</string>
 </resources>
