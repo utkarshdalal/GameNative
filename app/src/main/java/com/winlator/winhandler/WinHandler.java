@@ -852,21 +852,21 @@ public class WinHandler {
         gamepadBuffer.putShort((short)rAxis);
 
         // Buttons & D-Pad
-        byte[] sdlButtons = new byte[15];
-        sdlButtons[0] = state.isPressed(0) ? (byte)1 : (byte)0;  // A
-        sdlButtons[1] = state.isPressed(1) ? (byte)1 : (byte)0;  // B
-        sdlButtons[2] = state.isPressed(2) ? (byte)1 : (byte)0;  // X
-        sdlButtons[3] = state.isPressed(3) ? (byte)1 : (byte)0;  // Y
-        sdlButtons[9] = state.isPressed(4) ? (byte)1 : (byte)0;  // Left Bumper
-        sdlButtons[10] = state.isPressed(5) ? (byte)1 : (byte)0; // Right Bumper
-        sdlButtons[4] = state.isPressed(6) ? (byte)1 : (byte)0;  // Select/Back
-        sdlButtons[6] = state.isPressed(7) ? (byte)1 : (byte)0;  // Start
-        sdlButtons[7] = state.isPressed(8) ? (byte)1 : (byte)0;  // Left Stick
-        sdlButtons[8] = state.isPressed(9) ? (byte)1 : (byte)0;  // Right Stick
-        sdlButtons[11] = state.dpad[0] ? (byte)1 : (byte)0;      // DPAD_UP
-        sdlButtons[12] = state.dpad[2] ? (byte)1 : (byte)0;      // DPAD_DOWN
-        sdlButtons[13] = state.dpad[3] ? (byte)1 : (byte)0;      // DPAD_LEFT
-        sdlButtons[14] = state.dpad[1] ? (byte)1 : (byte)0;      // DPAD_RIGHT
+
+        this.sdlButtons[0] = state.isPressed(0) ? (byte)1 : (byte)0;  // A
+        this.sdlButtons[1] = state.isPressed(1) ? (byte)1 : (byte)0;  // B
+        this.sdlButtons[2] = state.isPressed(2) ? (byte)1 : (byte)0;  // X
+        this.sdlButtons[3] = state.isPressed(3) ? (byte)1 : (byte)0;  // Y
+        this.sdlButtons[9] = state.isPressed(4) ? (byte)1 : (byte)0;  // Left Bumper
+        this.sdlButtons[10] = state.isPressed(5) ? (byte)1 : (byte)0; // Right Bumper
+        this.sdlButtons[4] = state.isPressed(6) ? (byte)1 : (byte)0;  // Select/Back
+        this.sdlButtons[6] = state.isPressed(7) ? (byte)1 : (byte)0;  // Start
+        this.sdlButtons[7] = state.isPressed(8) ? (byte)1 : (byte)0;  // Left Stick
+        this.sdlButtons[8] = state.isPressed(9) ? (byte)1 : (byte)0;  // Right Stick
+        this.sdlButtons[11] = state.dpad[0] ? (byte)1 : (byte)0;      // DPAD_UP
+        this.sdlButtons[12] = state.dpad[2] ? (byte)1 : (byte)0;      // DPAD_DOWN
+        this.sdlButtons[13] = state.dpad[3] ? (byte)1 : (byte)0;      // DPAD_LEFT
+        this.sdlButtons[14] = state.dpad[1] ? (byte)1 : (byte)0;      // DPAD_RIGHT
         gamepadBuffer.put(sdlButtons);
         gamepadBuffer.put((byte)0); // Ignored HAT value
     }
