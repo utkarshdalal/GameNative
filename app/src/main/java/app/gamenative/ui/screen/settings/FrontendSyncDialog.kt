@@ -18,7 +18,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,7 +85,7 @@ private fun FrontendSyncSourceRow(
     label: String,
     onChangeQueued: (newPath: String, deleteOldFiles: Boolean) -> Unit,
 ) {
-    var displayPath by rememberSaveable(source) {
+    var displayPath by remember(source) {
         mutableStateOf(PrefManager.getFrontendSyncDir(source))
     }
     var showConfirm by remember { mutableStateOf(false) }
@@ -126,14 +125,20 @@ private fun FrontendSyncSourceRow(
             )
         }
         IconButton(onClick = { picker.launchPicker() }) {
-            Icon(Icons.Default.FolderOpen, contentDescription = null)
+            Icon(
+                Icons.Default.FolderOpen,
+                contentDescription = stringResource(R.string.frontend_sync_pick_directory_cd, label),
+            )
         }
         if (displayPath.isNotEmpty()) {
             IconButton(onClick = {
                 pendingPath = ""
                 showConfirm = true
             }) {
-                Icon(Icons.Default.Clear, contentDescription = null)
+                Icon(
+                    Icons.Default.Clear,
+                    contentDescription = stringResource(R.string.frontend_sync_clear_directory_cd, label),
+                )
             }
         }
     }

@@ -49,6 +49,8 @@ import kotlinx.serialization.json.Json
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import app.gamenative.ui.theme.PluviaTheme
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
@@ -99,7 +101,11 @@ import app.gamenative.ui.util.SnackbarManager
 @Composable
 private fun FrontendSyncResyncButton() {
     val isSyncing by FrontendSyncManager.isSyncing.collectAsState()
-    IconButton(onClick = { FrontendSyncManager.resyncAll() }) {
+    val resyncLabel = stringResource(R.string.frontend_sync_resync_all)
+    IconButton(
+        onClick = { FrontendSyncManager.resyncAll() },
+        modifier = Modifier.semantics { contentDescription = resyncLabel },
+    ) {
         if (isSyncing) {
             CircularProgressIndicator(
                 modifier = Modifier.size(24.dp),

@@ -1514,6 +1514,8 @@
     <string name="frontend_sync_confirm_keep">Keep</string>
     <string name="frontend_sync_resync_all">Resync all</string>
     <string name="frontend_sync_resync_complete">Frontend sync complete</string>
+    <string name="frontend_sync_pick_directory_cd">Pick directory for %1$s</string>
+    <string name="frontend_sync_clear_directory_cd">Clear directory for %1$s</string>
     <!-- Game Launch Tips -->
     <string name="game_launch_tip_1">Booting may take a few minutes on first launch</string>
     <string name="game_launch_tip_2">Tip: You can view the game files by pressing \"%s\" in the game settings.</string>
