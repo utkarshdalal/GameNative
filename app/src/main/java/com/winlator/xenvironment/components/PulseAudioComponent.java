@@ -36,9 +36,23 @@ public class PulseAudioComponent extends EnvironmentComponent {
 
     // Add this method to detect optimal sample rate
     private int getOptimalSampleRate() {
+        final int fallbackSampleRate = 44100;
         AudioManager audioManager = (AudioManager) environment.getContext().getSystemService(Context.AUDIO_SERVICE);
+        if (audioManager == null) {
+            return fallbackSampleRate;
+        }
+
         String rate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE);
-        return rate != null ? Integer.parseInt(rate) : 44100; // fallback to 44.1kHz
+        if (rate == null) {
+            return fallbackSampleRate;
+        }
+
+        try {
+            int parsed = Integer.parseInt(rate.trim());
+            return parsed > 0 ? parsed : fallbackSampleRate;
+        } catch (NumberFormatException ignored) {
+            return fallbackSampleRate;
+        }
     }
 
     @Override
