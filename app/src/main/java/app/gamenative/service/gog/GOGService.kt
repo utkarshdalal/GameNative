@@ -655,7 +655,11 @@ class GOGService : Service() {
 
         // Start as foreground service
         val notification = notificationHelper.createForegroundNotification("Connected")
-        startForeground(NotificationHelper.NOTIFICATION_ID_GOG, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            startForeground(NotificationHelper.NOTIFICATION_ID_GOG, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(NotificationHelper.NOTIFICATION_ID_GOG, notification)
+        }
 
         // Determine if we should sync based on the action
         val shouldSync = when (intent?.action) {

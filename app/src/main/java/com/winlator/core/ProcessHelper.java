@@ -3,6 +3,8 @@ package com.winlator.core;
 import android.os.Process;
 import android.util.Log;
 
+import app.gamenative.BuildConfig;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -128,7 +130,7 @@ public abstract class ProcessHelper {
         int pid = -1;
         java.lang.Process process = null;
         try {
-            command = "/system/bin/linker64 " + command;
+            if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
             Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
             process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
 

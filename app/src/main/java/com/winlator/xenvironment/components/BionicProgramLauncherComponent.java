@@ -15,6 +15,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import app.gamenative.BuildConfig;
 import com.winlator.PrefManager;
 
 import app.gamenative.utils.LsfgVkManager;
@@ -258,9 +259,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         envVars.put("PATH", winePath + ":" +
                 rootDir.getPath() + "/usr/bin");
-        envVars.put("REDIRECT_EXEC__PROC_SELF_EXE", winePath + "/wine");
+        if (BuildConfig.MODERN_ANDROID) envVars.put("REDIRECT_EXEC__PROC_SELF_EXE", winePath + "/wine");
 
-        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64" + ":" + imageFs.getWinePath() + "/lib");
+        String ldLibraryPath = rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64";
+        if (BuildConfig.MODERN_ANDROID) ldLibraryPath += ":" + imageFs.getWinePath() + "/lib";
+        envVars.put("LD_LIBRARY_PATH", ldLibraryPath);
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", rootDir.getPath() + "/usr/etc/fonts");
 
@@ -298,7 +301,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
         String evshimPath = imageFs.getLibDir() + "/libevshim.so";
-        String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
+        String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
@@ -682,9 +685,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         Log.d("BionicProgramLauncherComponent", "WinePath is " + winePath);
 
         envVars.put("PATH", winePath + ":" + rootDir.getPath() + "/usr/bin");
-        envVars.put("REDIRECT_EXEC__PROC_SELF_EXE", winePath + "/wine");
+        if (BuildConfig.MODERN_ANDROID) envVars.put("REDIRECT_EXEC__PROC_SELF_EXE", winePath + "/wine");
 
-        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64" + ":" + imageFs.getWinePath() + "/lib");
+        String ldLibraryPath = rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64";
+        if (BuildConfig.MODERN_ANDROID) ldLibraryPath += ":" + imageFs.getWinePath() + "/lib";
+        envVars.put("LD_LIBRARY_PATH", ldLibraryPath);
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("WINE_NO_DUPLICATE_EXPLORER", "1");
         envVars.put("PREFIX", rootDir.getPath() + "/usr");
@@ -693,7 +698,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
-        String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
+        String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
@@ -720,7 +725,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         // forever -- which then deadlocks our stdout read too. SteamTokenLogin
         // calls this with includeStderr=false, so this used to hang on boot.
         try {
-            finalCommand = "/system/bin/linker64 " + finalCommand;
+            if (BuildConfig.MODERN_ANDROID) finalCommand = "/system/bin/linker64 " + finalCommand;
             Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
             java.lang.Process process = Runtime.getRuntime().exec(finalCommand, envVars.toStringArray(), workingDir != null ? workingDir : imageFs.getRootDir());
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
