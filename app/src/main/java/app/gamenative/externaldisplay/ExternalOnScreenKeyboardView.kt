@@ -7,7 +7,6 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.view.Gravity
 import android.view.MotionEvent
-import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
@@ -43,11 +42,12 @@ class ExternalOnScreenKeyboardView(
     private val keyButtons = mutableListOf<KeyButton>()
     private val downKeys = mutableSetOf<XKeycode>()
     private var shiftState: ShiftState = ShiftState.OFF
+
     private val keyboardBackgroundColor: Int = ContextCompat.getColor(context, R.color.external_display_keyboard_background)
     private val keyBackgroundColor: Int = ContextCompat.getColor(context, R.color.external_display_key_background)
     private val keyHighlightColor: Int = ContextCompat.getColor(context, R.color.external_display_key_highlight_background)
-    private val keyHighlightStrongColor: Int =
-        ContextCompat.getColor(context, R.color.external_display_key_highlight_strong_background)
+    private val keyHighlightStrongColor: Int = ContextCompat.getColor(context, R.color.external_display_key_highlight_strong_background)
+    private val keyColor: Int = ContextCompat.getColor(context, R.color.external_display_key_color)
 
     init {
         orientation = VERTICAL
@@ -159,7 +159,7 @@ class ExternalOnScreenKeyboardView(
         keys.forEach { spec ->
             val button = Button(context).apply {
                 isAllCaps = false
-                setTextColor(Color.WHITE)
+                setTextColor(keyColor)
                 setTextSize(16f)
                 typeface = Typeface.DEFAULT_BOLD
                 text = spec.normalLabel

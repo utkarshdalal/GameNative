@@ -4,20 +4,39 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
+import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
 
 import app.gamenative.R
@@ -36,19 +55,18 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
-import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
-import app.gamenative.utils.GameCompatibilityCache
-import app.gamenative.utils.GameCompatibilityService
-import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.StorageUtils
+import app.gamenative.workshop.WorkshopManager
+import app.gamenative.NetworkMonitor
+import app.gamenative.service.SteamService.Companion.getInstalledApp
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.posthog.PostHog
+import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
-import com.winlator.core.GPUInformation
 import com.winlator.fexcore.FEXCoreManager
 import com.winlator.xenvironment.ImageFsInstaller
 import java.nio.file.Paths
@@ -59,10 +77,14 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import app.gamenative.ui.component.dialog.GameManagerDialog
+import app.gamenative.ui.component.dialog.WorkshopManagerDialog
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.ui.component.dialog.state.GameManagerDialogState
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.ui.util.SteamSaveTransfer
 import app.gamenative.utils.ContainerUtils.getContainer
+import app.gamenative.utils.CustomGameScanner
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.json.JSONObject
@@ -76,132 +98,6 @@ private data class InstallSizeInfo(
     val installBytes: Long,
     val availableBytes: Long,
 )
-
-data class KnownConfigInstallState(
-    val visible: Boolean,
-    val progress: Float,
-    val label: String,
-)
-
-private suspend fun installMissingComponentsForConfig(
-    context: Context,
-    gameId: Int,
-    configJson: kotlinx.serialization.json.JsonObject,
-    matchType: String,
-    uiScope: CoroutineScope,
-): Boolean {
-    val missingRequests = BestConfigService.resolveMissingManifestInstallRequests(
-        context,
-        configJson,
-        matchType,
-    )
-    if (missingRequests.isEmpty()) return true
-
-    uiScope.launch(Dispatchers.Main.immediate) {
-        SteamAppScreen.showKnownConfigInstallState(
-            gameId,
-            KnownConfigInstallState(
-                visible = true,
-                progress = -1f,
-                label = missingRequests.first().entry.name,
-            ),
-        )
-    }
-
-    for (request in missingRequests) {
-        val label = request.entry.id
-        uiScope.launch(Dispatchers.Main.immediate) {
-            SteamAppScreen.showKnownConfigInstallState(
-                gameId,
-                KnownConfigInstallState(
-                    visible = true,
-                    progress = -1f,
-                    label = label,
-                ),
-            )
-        }
-        val result = ManifestInstaller.installManifestEntry(
-            context = context,
-            entry = request.entry,
-            isDriver = request.isDriver,
-            contentType = request.contentType,
-            onProgress = { progress ->
-                val clamped = progress.coerceIn(0f, 1f)
-                uiScope.launch(Dispatchers.Main.immediate) {
-                    SteamAppScreen.showKnownConfigInstallState(
-                        gameId,
-                        KnownConfigInstallState(
-                            visible = true,
-                            progress = clamped,
-                            label = label,
-                        ),
-                    )
-                }
-            },
-        )
-        SnackbarManager.show(result.message)
-        if (!result.success) {
-            uiScope.launch(Dispatchers.Main.immediate) { SteamAppScreen.hideKnownConfigInstallState(gameId) }
-            return false
-        }
-    }
-
-    uiScope.launch(Dispatchers.Main.immediate) { SteamAppScreen.hideKnownConfigInstallState(gameId) }
-    return true
-}
-
-private suspend fun applyConfigForContainer(
-    context: Context,
-    gameId: Int,
-    appId: String,
-    configJson: kotlinx.serialization.json.JsonObject,
-    matchType: String,
-    uiScope: CoroutineScope,
-): Boolean {
-    return try {
-        val installsOk = installMissingComponentsForConfig(
-            context,
-            gameId,
-            configJson,
-            matchType,
-            uiScope,
-        )
-        if (!installsOk) return false
-
-        val container = ContainerUtils.getOrCreateContainer(context, appId)
-        val containerData = ContainerUtils.toContainerData(container)
-        val parsedConfig = BestConfigService.parseConfigToContainerData(
-            context,
-            configJson,
-            matchType,
-            true,
-        )
-        val missingContentDescription = BestConfigService.consumeLastMissingContentDescription()
-        if (parsedConfig != null && parsedConfig.isNotEmpty()) {
-            val updatedContainerData = ContainerUtils.applyBestConfigMapToContainerData(
-                containerData,
-                parsedConfig,
-            )
-            ContainerUtils.applyToContainer(context, container, updatedContainerData)
-            SnackbarManager.show(context.getString(R.string.best_config_applied_successfully))
-        } else {
-            val message = if (missingContentDescription != null) {
-                context.getString(R.string.best_config_missing_content, missingContentDescription)
-            } else {
-                context.getString(R.string.best_config_known_config_invalid)
-            }
-            SnackbarManager.show(message)
-        }
-        true
-    } catch (e: Exception) {
-        Timber.w(e, "Failed to apply config: ${e.message}")
-        withContext(Dispatchers.Main) {
-            SteamAppScreen.hideKnownConfigInstallState(gameId)
-        }
-        SnackbarManager.show(context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"))
-        false
-    }
-}
 
 private fun buildInstallPromptState(context: Context, info: InstallSizeInfo): MessageDialogState {
     val message = context.getString(
@@ -272,20 +168,6 @@ class SteamAppScreen : BaseAppScreen() {
             return installDialogStates[gameId]
         }
 
-        private val knownConfigInstallStates = mutableStateMapOf<Int, KnownConfigInstallState>()
-
-        fun showKnownConfigInstallState(gameId: Int, state: KnownConfigInstallState) {
-            knownConfigInstallStates[gameId] = state
-        }
-
-        fun hideKnownConfigInstallState(gameId: Int) {
-            knownConfigInstallStates.remove(gameId)
-        }
-
-        fun getKnownConfigInstallState(gameId: Int): KnownConfigInstallState? {
-            return knownConfigInstallStates[gameId]
-        }
-
         private val gameManagerDialogStates = mutableStateMapOf<Int, GameManagerDialogState>()
 
         fun showGameManagerDialog(gameId: Int, state: GameManagerDialogState) {
@@ -299,6 +181,32 @@ class SteamAppScreen : BaseAppScreen() {
         fun getGameManagerDialogState(gameId: Int): GameManagerDialogState? {
             return gameManagerDialogStates[gameId]
         }
+
+        private val workshopDialogVisible = mutableStateMapOf<Int, Boolean>()
+
+        fun showWorkshopDialog(gameId: Int) {
+            workshopDialogVisible[gameId] = true
+        }
+
+        fun hideWorkshopDialog(gameId: Int) {
+            workshopDialogVisible.remove(gameId)
+        }
+
+        fun isWorkshopDialogVisible(gameId: Int): Boolean {
+            return workshopDialogVisible[gameId] == true
+        }
+
+        private val branchDialogVisibleIds = mutableStateListOf<Int>()
+
+        fun showBranchDialog(gameId: Int) {
+            if (gameId !in branchDialogVisibleIds) branchDialogVisibleIds.add(gameId)
+        }
+
+        fun hideBranchDialog(gameId: Int) {
+            branchDialogVisibleIds.remove(gameId)
+        }
+
+        fun shouldShowBranchDialog(gameId: Int): Boolean = gameId in branchDialogVisibleIds
 
         // Shared state for update/verify operation - map of gameId to AppOptionMenuType
         private val pendingUpdateVerifyOperations = mutableStateMapOf<Int, AppOptionMenuType>()
@@ -357,7 +265,11 @@ class SteamAppScreen : BaseAppScreen() {
 
         // Get icon URL
         val iconUrl = remember(appInfo.id) {
-            appInfo.iconUrl
+            if (appInfo.clientIconHash.isNotEmpty()) {
+                appInfo.clientIconUrl
+            } else{
+                appInfo.iconUrl
+            }
         }
 
         // Get install location
@@ -413,7 +325,7 @@ class SteamAppScreen : BaseAppScreen() {
         // Get playtime text
         var playtimeText by remember { mutableStateOf("0 hrs") }
         LaunchedEffect(gameId) {
-            val steamID = SteamService.userSteamId?.accountID?.toLong()
+            val steamID = SteamService.userSteamId?.convertToUInt64()
             if (steamID != null) {
                 val games = SteamService.getOwnedGames(steamID)
                 val game = games.firstOrNull { it.appId == gameId }
@@ -425,26 +337,10 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
-        // Fetch compatibility info from cache
-        var compatibilityMessage by remember { mutableStateOf<String?>(null) }
-        var compatibilityColor by remember { mutableStateOf<ULong?>(null) }
-        LaunchedEffect(isInstalled, gameId, appInfo.name) {
-            try {
-                val cachedResponse = GameCompatibilityCache.getCached(appInfo.name)
-                if (cachedResponse != null) {
-                    val message = GameCompatibilityService.getCompatibilityMessageFromResponse(context, cachedResponse)
-                    compatibilityMessage = message.text
-                    compatibilityColor = message.color.value
-                } else {
-                    compatibilityMessage = null
-                    compatibilityColor = null
-                }
-            } catch (e: Exception) {
-                Timber.tag("SteamAppScreen").e(e, "Failed to get compatibility from cache")
-                compatibilityMessage = null
-                compatibilityColor = null
-            }
-        }
+        val (compatibilityMessage, compatibilityColor) = rememberCompatibilityInfo(
+            context = context,
+            gameName = appInfo.name,
+        )
 
         return GameDisplayInfo(
             name = appInfo.name,
@@ -470,12 +366,12 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun isValidToDownload(context: Context, libraryItem: LibraryItem): Boolean {
         val appInfo = SteamService.getAppInfoOf(libraryItem.gameId) ?: return false
-        return appInfo.branches.isNotEmpty() && appInfo.depots.isNotEmpty()
+        return appInfo.depots.isNotEmpty()
     }
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
-        // download job is removed on completion, so non-null means actively downloading
-        return SteamService.getAppDownloadInfo(libraryItem.gameId) != null
+        val downloadInfo = SteamService.getAppDownloadInfo(libraryItem.gameId) ?: return false
+        return downloadInfo.isPostInstallSyncing() || downloadInfo.isActive()
     }
 
     override fun getDownloadProgress(context: Context, libraryItem: LibraryItem): Float {
@@ -535,6 +431,14 @@ class SteamAppScreen : BaseAppScreen() {
         PluviaApp.events.on<AndroidEvent.DownloadPausedDueToConnectivity, Unit>(connectivityListener)
         disposables += { PluviaApp.events.off<AndroidEvent.DownloadPausedDueToConnectivity, Unit>(connectivityListener) }
 
+        val postInstallSyncListener: (AndroidEvent.PostInstallSyncStatusChanged) -> Unit = { event ->
+            if (event.appId == appId) {
+                onStateChanged()
+            }
+        }
+        PluviaApp.events.on<AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener)
+        disposables += { PluviaApp.events.off<AndroidEvent.PostInstallSyncStatusChanged, Unit>(postInstallSyncListener) }
+
         return {
             progressDisposer?.invoke()
             disposables.forEach { it() }
@@ -555,7 +459,8 @@ class SteamAppScreen : BaseAppScreen() {
     }
 
     override suspend fun isUpdatePendingSuspend(context: Context, libraryItem: LibraryItem): Boolean {
-        return SteamService.isUpdatePending(libraryItem.gameId)
+        val branch = SteamService.getInstalledApp(libraryItem.gameId)?.branch ?: "public"
+        return SteamService.isUpdatePending(libraryItem.gameId, branch)
     }
 
     override fun getInstallPath(context: Context, libraryItem: LibraryItem): String? {
@@ -573,11 +478,26 @@ class SteamAppScreen : BaseAppScreen() {
     ) {
         val gameId = libraryItem.gameId
         val appInfo = SteamService.getAppInfoOf(gameId)
-        PostHog.capture(
-            event = "container_opened",
-            properties = mapOf("game_name" to (appInfo?.name ?: "")),
-        )
+        if (PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(
+                event = "container_opened",
+                properties = mapOf("game_name" to (appInfo?.name ?: "")),
+            )
+        }
         super.onRunContainerClick(context, libraryItem, onClickPlay)
+    }
+
+    /** Resumes a paused workshop download for [gameId], if one exists. */
+    private fun resumeWorkshopDownload(gameId: Int, context: Context) {
+        val appDao = SteamService.instance?.appDao
+        CoroutineScope(Dispatchers.IO).launch {
+            val enabledIds = WorkshopManager.parseEnabledIds(
+                appDao?.getEnabledWorkshopItemIds(gameId),
+            )
+            if (enabledIds.isNotEmpty()) {
+                WorkshopManager.startWorkshopDownload(gameId, enabledIds, context)
+            }
+        }
     }
 
     override fun onDownloadInstallClick(
@@ -586,8 +506,7 @@ class SteamAppScreen : BaseAppScreen() {
         onClickPlay: (Boolean) -> Unit,
     ) {
         val gameId = libraryItem.gameId
-        val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        val isDownloading = isDownloading(context, libraryItem)
         val isInstalled = SteamService.isAppInstalled(gameId)
 
         if (isDownloading) {
@@ -603,6 +522,8 @@ class SteamAppScreen : BaseAppScreen() {
                     dismissBtnText = context.getString(R.string.no),
                 ),
             )
+        } else if (SteamService.workshopPausedApps.remove(gameId)) {
+            resumeWorkshopDownload(gameId, context)
         } else if (SteamService.hasPartialDownload(gameId)) {
             CoroutineScope(Dispatchers.IO).launch {
                 SteamService.downloadApp(gameId)
@@ -627,6 +548,8 @@ class SteamAppScreen : BaseAppScreen() {
 
         if (downloadInfo != null) {
             downloadInfo.cancel()
+        } else if (SteamService.workshopPausedApps.remove(gameId)) {
+            resumeWorkshopDownload(gameId, context)
         } else {
             CoroutineScope(Dispatchers.IO).launch {
                 SteamService.downloadApp(gameId)
@@ -637,8 +560,7 @@ class SteamAppScreen : BaseAppScreen() {
     override fun onDeleteDownloadClick(context: Context, libraryItem: LibraryItem) {
         val gameId = libraryItem.gameId
         val isInstalled = SteamService.isAppInstalled(gameId)
-        val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        val isDownloading = isDownloading(context, libraryItem)
 
         if (isDownloading || SteamService.hasPartialDownload(gameId)) {
             // Show cancel download dialog when downloading
@@ -743,6 +665,28 @@ class SteamAppScreen : BaseAppScreen() {
         )
     }
 
+    override fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean {
+        return libraryItem.gameSource == app.gamenative.data.GameSource.STEAM
+    }
+
+    override suspend fun exportSaves(
+        context: Context,
+        libraryItem: LibraryItem,
+        uri: Uri,
+    ): Boolean {
+        val container = withContext(Dispatchers.IO) { ContainerUtils.getOrCreateContainer(context, libraryItem.appId) }
+        return SteamSaveTransfer.exportSaves(context, container, libraryItem.gameId, uri)
+    }
+
+    override suspend fun importSaves(
+        context: Context,
+        libraryItem: LibraryItem,
+        uri: Uri,
+    ): Boolean {
+        val container = withContext(Dispatchers.IO) { ContainerUtils.getOrCreateContainer(context, libraryItem.appId) }
+        return SteamSaveTransfer.importSaves(context, container, libraryItem.gameId, uri)
+    }
+
     @Composable
     override fun getSourceSpecificMenuOptions(
         context: Context,
@@ -756,15 +700,27 @@ class SteamAppScreen : BaseAppScreen() {
         val appId = libraryItem.appId
         val appInfo = SteamService.getAppInfoOf(gameId) ?: return emptyList()
         val isDownloadInProgress = SteamService.getDownloadingAppInfoOf(gameId) != null
-
-        if (!isInstalled || isDownloadInProgress) {
-            return emptyList()
-        }
-
         val scope = rememberCoroutineScope()
 
-        // Steam-specific options (only when installed)
-        return listOf(
+        val options = mutableListOf<AppMenuOption>(
+            AppMenuOption(
+                AppOptionMenuType.BrowseOnlineSaves,
+                onClick = {
+                    val browserIntent = Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://store.steampowered.com/account/remotestorageapp/?appid=$gameId"),
+                    )
+                    context.startActivity(browserIntent)
+                },
+            ),
+        )
+
+        if (!isInstalled || isDownloadInProgress) {
+            return options
+        }
+
+        // Steam-specific options that only make sense once the game is installed.
+        options += listOf(
             AppMenuOption(
                 AppOptionMenuType.ResetDrm,
                 onClick = {
@@ -785,6 +741,12 @@ class SteamAppScreen : BaseAppScreen() {
                             visible = true,
                         )
                     )
+                }
+            ),
+            AppMenuOption(
+                AppOptionMenuType.ManageWorkshop,
+                onClick = {
+                    showWorkshopDialog(gameId)
                 }
             ),
             AppMenuOption(
@@ -823,28 +785,34 @@ class SteamAppScreen : BaseAppScreen() {
                     )
                 },
             ),
-            // Uninstall option removed from menu - now handled by delete button next to play button
-            // The button uses onDeleteDownloadClick which shows the uninstall dialog
+            AppMenuOption(
+                AppOptionMenuType.ChangeBranch,
+                onClick = {
+                    showBranchDialog(gameId)
+                }
+            ),
             AppMenuOption(
                 AppOptionMenuType.ForceCloudSync,
                 onClick = {
-                    PostHog.capture(
-                        event = "cloud_sync_forced",
-                        properties = mapOf("game_name" to appInfo.name),
-                    )
+                    if (PrefManager.usageAnalyticsEnabled) {
+                        PostHog.capture(
+                            event = "cloud_sync_forced",
+                            properties = mapOf("game_name" to appInfo.name),
+                        )
+                    }
                     CoroutineScope(Dispatchers.IO).launch {
+                        SnackbarManager.show(context.getString(R.string.library_cloud_sync_starting))
+
                         val steamId = SteamService.userSteamId
                         if (steamId == null) {
                             SnackbarManager.show(context.getString(R.string.steam_not_logged_in))
                             return@launch
                         }
 
-                        val containerManager = ContainerManager(context)
                         val container = ContainerUtils.getOrCreateContainer(context, appId)
-                        containerManager.activateContainer(container)
 
                         val prefixToPath: (String) -> String = { prefix ->
-                            PathType.from(prefix).toAbsPath(context, gameId, steamId.accountID)
+                            PathType.from(prefix).toAbsPath(container, gameId, steamId.accountID)
                         }
                         val syncResult = SteamService.forceSyncUserFiles(
                             appId = gameId,
@@ -853,17 +821,17 @@ class SteamAppScreen : BaseAppScreen() {
 
                         when (syncResult.syncResult) {
                             SyncResult.Success -> {
-                                SnackbarManager.show(context.getString(R.string.steam_cloud_sync_success))
+                                SnackbarManager.show(context.getString(R.string.library_cloud_sync_success))
                             }
 
                             SyncResult.UpToDate -> {
-                                SnackbarManager.show(context.getString(R.string.steam_cloud_sync_up_to_date))
+                                SnackbarManager.show(context.getString(R.string.library_cloud_sync_up_to_date))
                             }
 
                             else -> {
                                 SnackbarManager.show(
                                     context.getString(
-                                        R.string.steam_cloud_sync_failed,
+                                        R.string.library_cloud_sync_error,
                                         syncResult.syncResult,
                                     ),
                                 )
@@ -872,40 +840,9 @@ class SteamAppScreen : BaseAppScreen() {
                     }
                 },
             ),
-            AppMenuOption(
-                AppOptionMenuType.UseKnownConfig,
-                onClick = {
-                    scope.launch(Dispatchers.IO) {
-                        try {
-                            val gameName = appInfo.name
-                            val gpuName = GPUInformation.getRenderer(context)
-
-                            val bestConfig = BestConfigService.fetchBestConfig(gameName, gpuName)
-                            if (bestConfig == null) {
-                                SnackbarManager.show(context.getString(R.string.best_config_fetch_failed))
-                            } else if (bestConfig.matchType == "no_match") {
-                                SnackbarManager.show(context.getString(R.string.best_config_no_config_available))
-                            } else {
-                                applyConfigForContainer(
-                                    context,
-                                    gameId,
-                                    appId,
-                                    bestConfig.bestConfig,
-                                    bestConfig.matchType,
-                                    scope,
-                                )
-                            }
-                        } catch (e: Exception) {
-                            Timber.w(e, "Failed to apply known config: ${e.message}")
-                            withContext(Dispatchers.Main) {
-                                hideKnownConfigInstallState(gameId)
-                            }
-                            SnackbarManager.show(context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"))
-                        }
-                    }
-                }
-            ),
         )
+
+        return options
     }
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {
@@ -960,17 +897,6 @@ class SteamAppScreen : BaseAppScreen() {
             snapshotFlow { getInstallDialogState(gameId) }
                 .collect { state ->
                     installDialogState = state ?: MessageDialogState(false)
-                }
-        }
-
-        var knownConfigInstallState by remember(gameId) {
-            mutableStateOf(getKnownConfigInstallState(gameId) ?: KnownConfigInstallState(false, -1f, ""))
-        }
-
-        LaunchedEffect(gameId) {
-            snapshotFlow { getKnownConfigInstallState(gameId) }
-                .collect { state ->
-                    knownConfigInstallState = state ?: KnownConfigInstallState(false, -1f, "")
                 }
         }
 
@@ -1074,13 +1000,16 @@ class SteamAppScreen : BaseAppScreen() {
             }
             try {
                 val info = withContext(Dispatchers.IO) {
-                    val depots = SteamService.getDownloadableDepots(gameId)
+                    val container = ContainerManager(context).getContainerById("STEAM_$gameId")
+                    val language = container?.language ?: PrefManager.containerLanguage
+                    val depots = SteamService.getDownloadableDepots(gameId, language)
                     Timber.i("There are ${depots.size} depots belonging to ${libraryItem.appId}")
+                    val branch = SteamService.getInstalledApp(gameId)?.branch ?: "public"
                     val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
                     val downloadBytes = depots.values.sumOf {
-                        it.manifests["public"]?.download ?: 0
+                        SteamUtils.getDownloadBytes(it.manifests[branch])
                     }
-                    val installBytes = depots.values.sumOf { it.manifests["public"]?.size ?: 0 }
+                    val installBytes = depots.values.sumOf { it.manifests[branch]?.size ?: 0 }
                     InstallSizeInfo(
                         downloadSize = StorageUtils.formatBinarySize(downloadBytes),
                         installSize = StorageUtils.formatBinarySize(installBytes),
@@ -1144,16 +1073,6 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
-        LoadingDialog(
-            visible = knownConfigInstallState.visible,
-            progress = knownConfigInstallState.progress,
-            message = if (knownConfigInstallState.label.isNotEmpty()) {
-                context.getString(R.string.manifest_downloading_item, knownConfigInstallState.label)
-            } else {
-                context.getString(R.string.working)
-            },
-        )
-
         // Install dialog (INSTALL_APP, NOT_ENOUGH_SPACE, CANCEL_APP_DOWNLOAD)
         if (installDialogState.visible) {
             val onDismissRequest: (() -> Unit)? = {
@@ -1192,8 +1111,10 @@ class SteamAppScreen : BaseAppScreen() {
                         )
                         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
                         downloadInfo?.cancel()
+                        SteamService.workshopPausedApps.remove(gameId)
                         CoroutineScope(Dispatchers.IO).launch {
                             SteamService.deleteApp(gameId)
+                            DownloadService.invalidateCache()
                             PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
                             withContext(Dispatchers.Main) {
                                 hideInstallDialog(gameId)
@@ -1217,10 +1138,11 @@ class SteamAppScreen : BaseAppScreen() {
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
 
                                 if (operation == AppOptionMenuType.VerifyFiles) {
+                                    MarkerUtils.clearInstalledPrerequisiteMarkers(getAppDirPath(gameId))
                                     val steamId = SteamService.userSteamId
                                     if (steamId != null) {
                                         val prefixToPath: (String) -> String = { prefix ->
-                                            PathType.from(prefix).toAbsPath(context, gameId, steamId.accountID)
+                                            PathType.from(prefix).toAbsPath(container, gameId, steamId.accountID)
                                         }
                                         SteamService.forceSyncUserFiles(
                                             appId = gameId,
@@ -1315,7 +1237,10 @@ class SteamAppScreen : BaseAppScreen() {
                             hideUninstallDialog(libraryItem.appId)
 
                             CoroutineScope(Dispatchers.IO).launch {
+                                val installedAppInfo = getInstalledApp(libraryItem.gameId)
+
                                 val success = SteamService.deleteApp(gameId)
+                                DownloadService.invalidateCache()
                                 withContext(Dispatchers.Main) {
                                     ContainerUtils.deleteContainer(context, libraryItem.appId)
                                 }
@@ -1334,6 +1259,13 @@ class SteamAppScreen : BaseAppScreen() {
                                         )
                                     } else {
                                         SnackbarManager.show(context.getString(R.string.steam_uninstall_failed))
+                                    }
+                                }
+
+                                // Back to home screen as the game is imported
+                                if (success && installedAppInfo?.isImported == true) {
+                                    withContext(Dispatchers.Main) {
+                                        onBack()
                                     }
                                 }
                             }
@@ -1372,7 +1304,6 @@ class SteamAppScreen : BaseAppScreen() {
 
                     val installedApp = SteamService.getInstalledApp(gameId)
                     if (installedApp != null) {
-                        // Remove markers if the app is already installed
                         MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
                         MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
                         MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
@@ -1391,5 +1322,295 @@ class SteamAppScreen : BaseAppScreen() {
                 }
             )
         }
+
+        var workshopDialogShown by remember(gameId) {
+            mutableStateOf(isWorkshopDialogVisible(gameId))
+        }
+        LaunchedEffect(gameId) {
+            snapshotFlow { isWorkshopDialogVisible(gameId) }
+                .collect { workshopDialogShown = it }
+        }
+
+        if (workshopDialogShown) {
+            val appDao = remember { SteamService.instance?.appDao }
+            var currentEnabledIds by remember { mutableStateOf<Set<Long>?>(null) }
+
+            // Load container for mod path override
+            val containerId = "STEAM_$gameId"
+            var workshopModPath by remember(gameId) { mutableStateOf("") }
+            val wsGameRootDir = remember(gameId) {
+                if (SteamService.isAppInstalled(gameId)) File(SteamService.getAppDirPath(gameId)) else null
+            }
+            val wsWinePrefix = remember(gameId) {
+                runCatching {
+                    val container = ContainerUtils.getContainer(context, containerId)
+                    container.getRootDir()?.let { File(it, ".wine").absolutePath } ?: ""
+                }.getOrDefault("")
+            }
+
+            LaunchedEffect(gameId) {
+                val idsString = withContext(Dispatchers.IO) {
+                    appDao?.getEnabledWorkshopItemIds(gameId)
+                }
+                currentEnabledIds = WorkshopManager.parseEnabledIds(idsString)
+                // Load saved mod path override
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        val container = ContainerUtils.getContainer(context, containerId)
+                        workshopModPath = container.getExtra("workshopModPath", "")
+                    }
+                }
+            }
+
+            val loadedIds = currentEnabledIds
+            if (loadedIds != null) {
+                WorkshopManagerDialog(
+                    visible = true,
+                    currentEnabledIds = loadedIds,
+                    workshopModPath = workshopModPath,
+                    gameRootDir = wsGameRootDir,
+                    winePrefix = wsWinePrefix,
+                    onGetDisplayInfo = { context ->
+                        return@WorkshopManagerDialog getGameDisplayInfo(context, libraryItem)
+                    },
+                    onSave = { enabledIds ->
+                        hideWorkshopDialog(gameId)
+                        val idsString = enabledIds.joinToString(",")
+                        CoroutineScope(Dispatchers.IO).launch {
+                            appDao?.updateWorkshopState(gameId, enabledIds.isNotEmpty(), idsString)
+                            if (enabledIds.isNotEmpty()
+                                && SteamService.isAppInstalled(gameId)
+                                && NetworkMonitor.hasInternet.value
+                            ) {
+                                WorkshopManager.startWorkshopDownload(gameId, enabledIds, context)
+                            } else if (enabledIds.isEmpty() && SteamService.isAppInstalled(gameId)) {
+                                // User deselected all mods — remove downloaded files and symlinks
+                                val gameRootDir = File(SteamService.getAppDirPath(gameId))
+                                val gameName = SteamService.getAppInfoOf(gameId)?.name ?: ""
+                                WorkshopManager.deleteWorkshopMods(
+                                    context = context,
+                                    containerId = gameId.toString(),
+                                    gameRootDir = gameRootDir,
+                                    gameName = gameName,
+                                )
+                            }
+                        }
+                    },
+                    onModPathChanged = { newPath ->
+                        workshopModPath = newPath
+                        CoroutineScope(Dispatchers.IO).launch {
+                            runCatching {
+                                val container = ContainerUtils.getContainer(context, containerId)
+                                container.putExtra("workshopModPath", if (newPath.isEmpty()) null else newPath)
+                                container.saveData()
+                                Timber.tag("Workshop").i("Workshop mod path override set to: '$newPath' for gameId=$gameId")
+                            }
+                        }
+                    },
+                    onDismissRequest = {
+                        hideWorkshopDialog(gameId)
+                    }
+                )
+            }
+        }
+
+        // Branch change dialog
+        var showBranchDialogState by remember(gameId) {
+            mutableStateOf(shouldShowBranchDialog(gameId))
+        }
+        LaunchedEffect(gameId) {
+            snapshotFlow { shouldShowBranchDialog(gameId) }
+                .collect { showBranchDialogState = it }
+        }
+
+        if (showBranchDialogState) {
+            val publicBranches = remember(gameId) {
+                appInfo?.branches
+                    ?.filter { (_, info) -> !info.pwdRequired }
+                    ?.keys
+                    ?.sorted()
+                    .orEmpty()
+            }
+            var steamUnlockedBranchNames by remember(gameId) { mutableStateOf<List<String>>(emptyList()) }
+            LaunchedEffect(gameId) {
+                steamUnlockedBranchNames = SteamService.getSteamUnlockedBranches(gameId).map { it.branchName }
+            }
+            val availableBranches = remember(publicBranches, steamUnlockedBranchNames) {
+                (publicBranches + steamUnlockedBranchNames).distinct().sorted()
+            }
+            val currentBranch = remember(gameId) {
+                SteamService.getInstalledApp(gameId)?.branch ?: "public"
+            }
+            SteamChangeBranchDialog(
+                availableBranches = availableBranches,
+                currentBranch = currentBranch,
+                onCheckPassword = { password ->
+                    val result = SteamService.checkPrivateBranchPassword(gameId, password)
+                    if (result.isNotEmpty()) {
+                        val branches = SteamService.getSteamUnlockedBranches(gameId).map { it.branchName }
+                        steamUnlockedBranchNames = branches
+                        branches
+                    } else {
+                        emptyList()
+                    }
+                },
+                onConfirm = { selectedBranch ->
+                    hideBranchDialog(gameId)
+                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
+                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+                        val dlcAppIds = SteamService.getInstalledApp(gameId)
+                            ?.dlcDepots.orEmpty()
+                        SteamService.downloadApp(
+                            gameId,
+                            dlcAppIds,
+                            branch = selectedBranch,
+                            isUpdateOrVerify = true,
+                        )
+                        container.isNeedsUnpacking = true
+                        container.saveData()
+                    }
+                },
+                onDismissRequest = { hideBranchDialog(gameId) },
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SteamChangeBranchDialog(
+    availableBranches: List<String>,
+    currentBranch: String,
+    onCheckPassword: suspend (password: String) -> List<String>,
+    onConfirm: (selectedBranch: String) -> Unit,
+    onDismissRequest: () -> Unit,
+) {
+    var selectedBranch by remember { mutableStateOf(currentBranch) }
+    var privateBranchPassword by remember { mutableStateOf("") }
+    var privateBranchPasswordError by remember { mutableStateOf(false) }
+    var privateBranchPasswordSuccess by remember { mutableStateOf(false) }
+    var privateBranchPasswordChecking by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text(stringResource(R.string.change_branch)) },
+        text = {
+            var branchExpanded by remember { mutableStateOf(false) }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    text = stringResource(R.string.change_branch_message),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                ExposedDropdownMenuBox(
+                    expanded = branchExpanded,
+                    onExpandedChange = { branchExpanded = it },
+                ) {
+                    NoExtractOutlinedTextField(
+                        value = selectedBranch,
+                        onValueChange = {},
+                        readOnly = true,
+                        singleLine = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = branchExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = branchExpanded,
+                        onDismissRequest = { branchExpanded = false },
+                    ) {
+                        availableBranches.forEach { branch ->
+                            DropdownMenuItem(
+                                text = { Text(branch) },
+                                onClick = {
+                                    selectedBranch = branch
+                                    branchExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                NoExtractOutlinedTextField(
+                    value = privateBranchPassword,
+                    onValueChange = {
+                        privateBranchPassword = it
+                        privateBranchPasswordError = false
+                        privateBranchPasswordSuccess = false
+                    },
+                    label = { Text(stringResource(R.string.private_branch_password_hint)) },
+                    singleLine = true,
+                    isError = privateBranchPasswordError,
+                    supportingText = when {
+                        privateBranchPasswordError -> ({ Text(stringResource(R.string.private_branch_password_invalid)) })
+                        privateBranchPasswordSuccess -> ({ Text(stringResource(R.string.private_branch_password_success)) })
+                        else -> null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    enabled = privateBranchPassword.isNotBlank() && !privateBranchPasswordChecking,
+                    onClick = {
+                        privateBranchPasswordChecking = true
+                        privateBranchPasswordError = false
+                        privateBranchPasswordSuccess = false
+                        coroutineScope.launch {
+                            val result = onCheckPassword(privateBranchPassword)
+                            if (result.isNotEmpty()) {
+                                privateBranchPasswordSuccess = true
+                            } else {
+                                privateBranchPasswordError = true
+                            }
+                            privateBranchPasswordChecking = false
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.private_branch_password_check))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = selectedBranch != currentBranch,
+                onClick = { onConfirm(selectedBranch) },
+            ) {
+                Text(stringResource(R.string.install))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
+@Composable
+private fun Preview_SteamChangeBranchDialog() {
+    PluviaTheme {
+        SteamChangeBranchDialog(
+            availableBranches = listOf("beta", "experimental", "public"),
+            currentBranch = "public",
+            onCheckPassword = { emptyList() },
+            onConfirm = {},
+            onDismissRequest = {},
+        )
     }
 }

@@ -82,6 +82,30 @@ object PrefManager {
         }
     }
 
+    /**
+     * Clears only Steam account/session state while preserving app-wide settings.
+     *
+     * This is used during Steam logout so user-configured defaults (container
+     * settings, download preferences, tips, theme, etc.) are not wiped.
+     */
+    fun clearSteamSessionPreferences() {
+        scope.launch {
+            dataStore.edit { pref ->
+                pref.remove(USER_NAME)
+                pref.remove(ACCESS_TOKEN_ENC)
+                pref.remove(REFRESH_TOKEN_ENC)
+                pref.remove(CLIENT_ID)
+                pref.remove(PERSONA_STATE)
+                pref.remove(STEAM_USER_ACCOUNT_ID)
+                pref.remove(STEAM_USER_STEAM_ID_64)
+                pref.remove(STEAM_USER_AVATAR_HASH)
+                pref.remove(STEAM_USER_NAME)
+                pref.remove(LAST_PICS_CHANGE_NUMBER)
+                pref.remove(STEAM_GAMES_COUNT)
+            }
+        }
+    }
+
     fun getBoolean(key: String, defaultValue: Boolean): Boolean =
         getPref(booleanPreferencesKey(key), defaultValue)
 
@@ -276,11 +300,165 @@ object PrefManager {
             setPref(DRIVES, value)
         }
 
+    private val QUICK_MENU_LAST_TAB = intPreferencesKey("quick_menu_last_tab")
+    var quickMenuLastTab: Int
+        get() = getPref(QUICK_MENU_LAST_TAB, 0)
+        set(value) {
+            setPref(QUICK_MENU_LAST_TAB, value.coerceIn(0, 2))
+        }
+
     private val SHOW_FPS = booleanPreferencesKey("show_fps")
     var showFps: Boolean
         get() = getPref(SHOW_FPS, false)
         set(value) {
             setPref(SHOW_FPS, value)
+        }
+
+    private val PERFORMANCE_HUD_COMPACT_MODE = booleanPreferencesKey("performance_hud_compact_mode")
+    var performanceHudCompactMode: Boolean
+        get() = getPref(PERFORMANCE_HUD_COMPACT_MODE, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_COMPACT_MODE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_FRAME_RATE = booleanPreferencesKey("performance_hud_show_frame_rate")
+    var performanceHudShowFrameRate: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_FRAME_RATE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_FRAME_RATE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_CPU_USAGE = booleanPreferencesKey("performance_hud_show_cpu_usage")
+    var performanceHudShowCpuUsage: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_CPU_USAGE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_CPU_USAGE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_GPU_USAGE = booleanPreferencesKey("performance_hud_show_gpu_usage")
+    var performanceHudShowGpuUsage: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_GPU_USAGE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_GPU_USAGE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_RAM_USAGE = booleanPreferencesKey("performance_hud_show_ram_usage")
+    var performanceHudShowRamUsage: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_RAM_USAGE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_RAM_USAGE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_BATTERY_LEVEL = booleanPreferencesKey("performance_hud_show_battery_level")
+    var performanceHudShowBatteryLevel: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_BATTERY_LEVEL, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_BATTERY_LEVEL, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_POWER_DRAW = booleanPreferencesKey("performance_hud_show_power_draw")
+    var performanceHudShowPowerDraw: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_POWER_DRAW, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_POWER_DRAW, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_BATTERY_RUNTIME = booleanPreferencesKey("performance_hud_show_battery_runtime")
+    var performanceHudShowBatteryRuntime: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_BATTERY_RUNTIME, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_BATTERY_RUNTIME, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_BATTERY_TEMPERATURE = booleanPreferencesKey("performance_hud_show_battery_temperature")
+    var performanceHudShowBatteryTemperature: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_BATTERY_TEMPERATURE, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_BATTERY_TEMPERATURE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_CLOCK_TIME = booleanPreferencesKey("performance_hud_show_clock_time")
+    var performanceHudShowClockTime: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_CLOCK_TIME, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_CLOCK_TIME, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_CPU_TEMPERATURE = booleanPreferencesKey("performance_hud_show_cpu_temperature")
+    var performanceHudShowCpuTemperature: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_CPU_TEMPERATURE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_CPU_TEMPERATURE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE = booleanPreferencesKey("performance_hud_show_gpu_temperature")
+    var performanceHudShowGpuTemperature: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_FRAME_RATE_GRAPH = booleanPreferencesKey("performance_hud_show_frame_rate_graph")
+    var performanceHudShowFrameRateGraph: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_FRAME_RATE_GRAPH, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_FRAME_RATE_GRAPH, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_CPU_USAGE_GRAPH = booleanPreferencesKey("performance_hud_show_cpu_usage_graph")
+    var performanceHudShowCpuUsageGraph: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_CPU_USAGE_GRAPH, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_CPU_USAGE_GRAPH, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_GPU_USAGE_GRAPH = booleanPreferencesKey("performance_hud_show_gpu_usage_graph")
+    var performanceHudShowGpuUsageGraph: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_GPU_USAGE_GRAPH, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_GPU_USAGE_GRAPH, value)
+        }
+
+    private val PERFORMANCE_HUD_BACKGROUND_OPACITY = floatPreferencesKey("performance_hud_background_opacity")
+    var performanceHudBackgroundOpacity: Float
+        get() = getPref(PERFORMANCE_HUD_BACKGROUND_OPACITY, 0.72f)
+        set(value) {
+            setPref(PERFORMANCE_HUD_BACKGROUND_OPACITY, value.coerceIn(0f, 1f))
+        }
+
+    private val PERFORMANCE_HUD_COLOR_INTENSITY = floatPreferencesKey("performance_hud_color_intensity")
+    var performanceHudColorIntensity: Float
+        get() = getPref(PERFORMANCE_HUD_COLOR_INTENSITY, 1f)
+        set(value) {
+            setPref(PERFORMANCE_HUD_COLOR_INTENSITY, value.coerceIn(0f, 1f))
+        }
+
+    private val PERFORMANCE_HUD_SHOW_TEXT_OUTLINE = booleanPreferencesKey("performance_hud_show_text_outline")
+    var performanceHudShowTextOutline: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_TEXT_OUTLINE, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_TEXT_OUTLINE, value)
+        }
+
+    private val PERFORMANCE_HUD_SIZE = stringPreferencesKey("performance_hud_size")
+    var performanceHudSize: String
+        get() = getPref(PERFORMANCE_HUD_SIZE, "medium")
+        set(value) {
+            setPref(PERFORMANCE_HUD_SIZE, value)
+        }
+
+    private val PERFORMANCE_HUD_X_FRACTION = floatPreferencesKey("performance_hud_x_fraction")
+    var performanceHudXFraction: Float
+        get() = getPref(PERFORMANCE_HUD_X_FRACTION, -1f)
+        set(value) {
+            setPref(PERFORMANCE_HUD_X_FRACTION, value.coerceIn(-1f, 1f))
+        }
+
+    private val PERFORMANCE_HUD_Y_FRACTION = floatPreferencesKey("performance_hud_y_fraction")
+    var performanceHudYFraction: Float
+        get() = getPref(PERFORMANCE_HUD_Y_FRACTION, -1f)
+        set(value) {
+            setPref(PERFORMANCE_HUD_Y_FRACTION, value.coerceIn(-1f, 1f))
         }
 
     private val LAUNCH_REAL_STEAM = booleanPreferencesKey("launch_real_steam")
@@ -290,11 +468,25 @@ object PrefManager {
             setPref(LAUNCH_REAL_STEAM, value)
         }
 
+    private val LAUNCH_BIONIC_STEAM = booleanPreferencesKey("launch_bionic_steam")
+    var launchBionicSteam: Boolean
+        get() = getPref(LAUNCH_BIONIC_STEAM, false)
+        set(value) {
+            setPref(LAUNCH_BIONIC_STEAM, value)
+        }
+
     private val FORCE_DLC = booleanPreferencesKey("force_dlc")
     var forceDlc: Boolean
         get() = getPref(FORCE_DLC, false)
         set(value) {
             setPref(FORCE_DLC, value)
+        }
+
+    private val LOCAL_SAVES_ONLY = booleanPreferencesKey("local_saves_only")
+    var localSavesOnly: Boolean
+        get() = getPref(LOCAL_SAVES_ONLY, false)
+        set(value) {
+            setPref(LOCAL_SAVES_ONLY, value)
         }
 
     private val STEAM_OFFLINE_MODE = booleanPreferencesKey("steam_offline_mode")
@@ -757,9 +949,25 @@ object PrefManager {
     // Whether to hide the Android status bar when not in a game (in game list, settings, etc.)
     private val HIDE_STATUS_BAR_WHEN_NOT_IN_GAME = booleanPreferencesKey("hide_status_bar_when_not_in_game")
     var hideStatusBarWhenNotInGame: Boolean
-        get() = getPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, false)
+        get() = getPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, true)
         set(value) {
             setPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, value)
+        }
+
+    // Whether to swap A↔B and X↔Y button icons to match Xbox controller layout.
+    private val SWAP_FACE_BUTTONS = booleanPreferencesKey("swap_face_buttons")
+    var swapFaceButtons: Boolean
+        get() = getPref(SWAP_FACE_BUTTONS, false)
+        set(value) {
+            setPref(SWAP_FACE_BUTTONS, value)
+        }
+
+    // Whether to show the on-screen gamepad hints/action bar in the UI
+    private val SHOW_GAMEPAD_HINTS = booleanPreferencesKey("show_gamepad_hints")
+    var showGamepadHints: Boolean
+        get() = getPref(SHOW_GAMEPAD_HINTS, true)
+        set(value) {
+            setPref(SHOW_GAMEPAD_HINTS, value)
         }
 
     private val ITEMS_PER_PAGE = intPreferencesKey("items_per_page")
@@ -853,6 +1061,29 @@ object PrefManager {
         get() = getPref(AMAZON_INSTALLED_GAMES_COUNT, 0)
         set(value) {
             setPref(AMAZON_INSTALLED_GAMES_COUNT, value)
+        }
+
+    // Cached recommendation JSON (single game) and timestamp
+    private val RECOMMENDATION_CACHE_JSON = stringPreferencesKey("recommendation_cache_json")
+    var recommendationCacheJson: String
+        get() = getPref(RECOMMENDATION_CACHE_JSON, "")
+        set(value) {
+            setPref(RECOMMENDATION_CACHE_JSON, value)
+        }
+
+    private val RECOMMENDATION_CACHE_TIMESTAMP = longPreferencesKey("recommendation_cache_timestamp")
+    var recommendationCacheTimestamp: Long
+        get() = getPref(RECOMMENDATION_CACHE_TIMESTAMP, 0L)
+        set(value) {
+            setPref(RECOMMENDATION_CACHE_TIMESTAMP, value)
+        }
+
+    // Show game recommendations in library
+    private val SHOW_RECOMMENDATIONS = booleanPreferencesKey("show_recommendations")
+    var showRecommendations: Boolean
+        get() = getPref(SHOW_RECOMMENDATIONS, true)
+        set(value) {
+            setPref(SHOW_RECOMMENDATIONS, value)
         }
 
     // Show dialog when adding custom game folder
@@ -988,4 +1219,24 @@ object PrefManager {
     var gogAmazonPathMigrated: Boolean
         get() = getPref(GOG_AMAZON_PATH_MIGRATED, false)
         set(value) { setPref(GOG_AMAZON_PATH_MIGRATED, value) }
+
+    private val ACHIEVEMENT_SHOW_NOTIFICATION = booleanPreferencesKey("achievement_show_notification")
+    var achievementShowNotification: Boolean
+        get() = getPref(ACHIEVEMENT_SHOW_NOTIFICATION, true)
+        set(value) { setPref(ACHIEVEMENT_SHOW_NOTIFICATION, value) }
+
+    private val ACHIEVEMENT_NOTIFICATION_POSITION = stringPreferencesKey("achievement_notification_position")
+    var achievementNotificationPosition: String
+        get() = getPref(ACHIEVEMENT_NOTIFICATION_POSITION, "bottom_right")
+        set(value) { setPref(ACHIEVEMENT_NOTIFICATION_POSITION, value) }
+
+    private val WARN_BEFORE_EXIT = booleanPreferencesKey("warn_before_exit")
+    var warnBeforeExit: Boolean
+        get() = getPref(WARN_BEFORE_EXIT, false)
+        set(value) { setPref(WARN_BEFORE_EXIT, value) }
+
+    private val USAGE_ANALYTICS_ENABLED = booleanPreferencesKey("usage_analytics_enabled")
+    var usageAnalyticsEnabled: Boolean
+        get() = getPref(USAGE_ANALYTICS_ENABLED, true)
+        set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
 }

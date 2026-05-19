@@ -24,21 +24,39 @@ public class XConnectorEpoll implements Runnable {
     private int initialOutputBufferCapacity = 128;
     private final SparseArray<Client> connectedClients = new SparseArray<>();
 
-    private native boolean addFdToEpoll(int i, int i2);
+    private boolean addFdToEpoll(int epollFd, int fd) {
+        return XConnectorEpollNative.addFdToEpoll(epollFd, fd);
+    }
 
     public static native void closeFd(int i);
 
-    private native int createAFUnixSocket(String str);
+    private static void closeTrackedFd(int fd) {
+        XConnectorEpollNative.closeFd(fd);
+    }
 
-    private native int createEpollFd();
+    private int createAFUnixSocket(String path) {
+        return XConnectorEpollNative.createAFUnixSocket(path);
+    }
 
-    private native int createEventFd();
+    private int createEpollFd() {
+        return XConnectorEpollNative.createEpollFd();
+    }
 
-    private native boolean doEpollIndefinitely(int i, int i2, boolean z);
+    private int createEventFd() {
+        return XConnectorEpollNative.createEventFd();
+    }
 
-    private native void removeFdFromEpoll(int i, int i2);
+    private boolean doEpollIndefinitely(int epollFd, int serverFd, boolean addClientToEpoll) {
+        return XConnectorEpollNative.doEpollIndefinitely(this, epollFd, serverFd, addClientToEpoll);
+    }
 
-    private native boolean waitForSocketRead(int i, int i2);
+    private void removeFdFromEpoll(int epollFd, int fd) {
+        XConnectorEpollNative.removeFdFromEpoll(epollFd, fd);
+    }
+
+    private boolean waitForSocketRead(int clientFd, int shutdownFd) {
+        return XConnectorEpollNative.waitForSocketRead(this, clientFd, shutdownFd);
+    }
 
     static {
         System.loadLibrary("winlator");
@@ -56,20 +74,20 @@ public class XConnectorEpoll implements Runnable {
         int createEpollFd = createEpollFd();
         this.epollFd = createEpollFd;
         if (createEpollFd < 0) {
-            closeFd(createAFUnixSocket);
+            closeTrackedFd(createAFUnixSocket);
             throw new RuntimeException("Failed to create epoll fd.");
         }
         if (!addFdToEpoll(createEpollFd, createAFUnixSocket)) {
-            closeFd(createAFUnixSocket);
-            closeFd(createEpollFd);
+            closeTrackedFd(createAFUnixSocket);
+            closeTrackedFd(createEpollFd);
             throw new RuntimeException("Failed to add server fd to epoll.");
         }
         int createEventFd = createEventFd();
         this.shutdownFd = createEventFd;
         if (!addFdToEpoll(createEpollFd, createEventFd)) {
-            closeFd(createAFUnixSocket);
-            closeFd(createEventFd);
-            closeFd(createEpollFd);
+            closeTrackedFd(createAFUnixSocket);
+            closeTrackedFd(createEventFd);
+            closeTrackedFd(createEpollFd);
             throw new RuntimeException("Failed to add shutdown fd to epoll.");
         }
         this.epollThread = new Thread(this, "XConnectorEpoll:" + this.connectorLabel);
@@ -179,12 +197,12 @@ public class XConnectorEpoll implements Runnable {
                 this.connectionHandler.handleConnectionShutdown(client);
                 client.pollThread = null;
             }
-            closeFd(client.shutdownFd);
+            closeTrackedFd(client.shutdownFd);
         } else {
             this.connectionHandler.handleConnectionShutdown(client);
             removeFdFromEpoll(this.epollFd, client.clientSocket.fd);
         }
-        closeFd(client.clientSocket.fd);
+        closeTrackedFd(client.clientSocket.fd);
         this.connectedClients.remove(client.clientSocket.fd);
     }
 
@@ -195,9 +213,9 @@ public class XConnectorEpoll implements Runnable {
         }
         removeFdFromEpoll(this.epollFd, this.serverFd);
         removeFdFromEpoll(this.epollFd, this.shutdownFd);
-        closeFd(this.serverFd);
-        closeFd(this.shutdownFd);
-        closeFd(this.epollFd);
+        closeTrackedFd(this.serverFd);
+        closeTrackedFd(this.shutdownFd);
+        closeTrackedFd(this.epollFd);
     }
 
     public int getInitialInputBufferCapacity() {

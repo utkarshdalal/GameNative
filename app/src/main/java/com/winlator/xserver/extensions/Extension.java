@@ -16,5 +16,13 @@ public interface Extension {
 
     byte getFirstEventId();
 
+    default int getNumEvents() { return 0; }
+    default int getNumErrors() { return 0; }
+
+    default void setFirstEventId(byte firstEventId) {}
+    default void setFirstErrorId(byte firstErrorId) {}
+
     void handleRequest(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError;
+
+    default void close() {}
 }

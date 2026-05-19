@@ -1,11 +1,13 @@
 package app.gamenative.utils
 
 import android.content.Context
+import android.os.Build
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
+import app.gamenative.utils.LsfgVkManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
@@ -17,6 +19,7 @@ import com.winlator.container.ContainerManager
 import com.winlator.core.DefaultVersion
 import com.winlator.core.FileUtils
 import com.winlator.core.GPUInformation
+import com.winlator.core.envvars.EnvVars
 import com.winlator.core.WineRegistryEditor
 import com.winlator.core.WineThemeManager
 import com.winlator.fexcore.FEXCoreManager
@@ -100,6 +103,7 @@ object ContainerUtils {
             execArgs = PrefManager.execArgs,
             showFPS = false,
             launchRealSteam = PrefManager.launchRealSteam,
+            launchBionicSteam = PrefManager.launchBionicSteam,
             cpuList = PrefManager.cpuList,
             cpuListWoW64 = PrefManager.cpuListWoW64,
             wow64Mode = PrefManager.wow64Mode,
@@ -112,6 +116,7 @@ object ContainerUtils {
             language = PrefManager.containerLanguage,
             containerVariant = PrefManager.containerVariant,
             forceDlc = PrefManager.forceDlc,
+            localSavesOnly = PrefManager.localSavesOnly,
             steamOfflineMode = PrefManager.steamOfflineMode,
             useLegacyDRM = PrefManager.useLegacyDRM,
             unpackFiles = PrefManager.unpackFiles,
@@ -158,6 +163,7 @@ object ContainerUtils {
         PrefManager.drives = containerData.drives
         PrefManager.execArgs = containerData.execArgs
         PrefManager.launchRealSteam = containerData.launchRealSteam
+        PrefManager.launchBionicSteam = containerData.launchBionicSteam
         PrefManager.cpuList = containerData.cpuList
         PrefManager.cpuListWoW64 = containerData.cpuListWoW64
         PrefManager.wow64Mode = containerData.wow64Mode
@@ -194,6 +200,7 @@ object ContainerUtils {
 		PrefManager.dinputEnabled = containerData.enableDInput
 		PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
         PrefManager.forceDlc = containerData.forceDlc
+        PrefManager.localSavesOnly = containerData.localSavesOnly
         PrefManager.steamOfflineMode = containerData.steamOfflineMode
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
         PrefManager.unpackFiles = containerData.unpackFiles
@@ -270,6 +277,7 @@ object ContainerUtils {
             executablePath = container.executablePath,
             showFPS = false,
             launchRealSteam = container.isLaunchRealSteam,
+            launchBionicSteam = container.isLaunchBionicSteam,
             allowSteamUpdates = container.isAllowSteamUpdates,
             steamType = container.getSteamType(),
             cpuList = container.cpuList,
@@ -290,6 +298,7 @@ object ContainerUtils {
             sdlControllerAPI = container.isSdlControllerAPI,
             useSteamInput = useSteamInput,
             forceDlc = container.isForceDlc,
+            localSavesOnly = container.isLocalSavesOnly,
             steamOfflineMode = container.isSteamOfflineMode(),
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
@@ -314,6 +323,8 @@ object ContainerUtils {
             sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
             sharpnessLevel = container.getExtra("sharpnessLevel", "100").toIntOrNull() ?: 100,
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
+            // LSFG Vulkan frame generation
+            lsfgEnabled = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean(),
         )
     }
 
@@ -442,6 +453,7 @@ object ContainerUtils {
         container.executablePath = containerData.executablePath
         container.isShowFPS = false
         container.isLaunchRealSteam = containerData.launchRealSteam
+        container.isLaunchBionicSteam = containerData.launchBionicSteam
         container.isAllowSteamUpdates = containerData.allowSteamUpdates
         container.setSteamType(containerData.steamType)
         container.cpuList = containerData.cpuList
@@ -468,6 +480,7 @@ object ContainerUtils {
         container.setExternalDisplayMode(containerData.externalDisplayMode)
         container.setExternalDisplaySwap(containerData.externalDisplaySwap)
         container.setForceDlc(containerData.forceDlc)
+        container.setLocalSavesOnly(containerData.localSavesOnly)
         container.setSteamOfflineMode(containerData.steamOfflineMode)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
@@ -479,6 +492,8 @@ object ContainerUtils {
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
+        // LSFG Vulkan frame generation
+        container.putExtra(LsfgVkManager.EXTRA_ARMED, containerData.lsfgEnabled.toString())
         try {
             container.language = containerData.language
         } catch (e: Exception) {
@@ -745,21 +760,24 @@ object ContainerUtils {
             }
         }
 
-        // Check for cached best config (only for Steam games, only if no custom config provided)
+        // Check for cached best config (store-backed games only, only if no custom config provided)
         var bestConfigMap: Map<String, Any?>? = null
-        if (gameSource == GameSource.STEAM && customConfig == null && PrefManager.autoApplyKnownConfig) {
+
+        if (supportsKnownConfigAutoApply(gameSource) && customConfig == null && PrefManager.autoApplyKnownConfig) {
             try {
-                val gameId = extractGameIdFromContainerId(appId)
-                val appInfo = SteamService.getAppInfoOf(gameId)
-                if (appInfo != null) {
-                    val gameName = appInfo.name
+                val gameName = resolveGameName(appId)
+                if (gameName != "Unknown" && gameName.isNotBlank()) {
                     val gpuName = GPUInformation.getRenderer(context)
 
                     // Check cache first (synchronous, fast)
                     // If not cached, make request on background thread (not UI thread)
                     runBlocking(Dispatchers.IO) {
                         try {
-                            val bestConfig = BestConfigService.fetchBestConfig(gameName, gpuName)
+                            val bestConfig = BestConfigService.fetchBestConfig(
+                                gameName = gameName,
+                                gpuName = gpuName,
+                                gameStore = gameSource.name,
+                            )
                             if (bestConfig != null && bestConfig.matchType != "no_match") {
                                 Timber.i("Applying best config for $gameName (matchType: ${bestConfig.matchType})")
                                 val parsedConfig = BestConfigService.parseConfigToContainerData(
@@ -767,6 +785,7 @@ object ContainerUtils {
                                     bestConfig.bestConfig,
                                     bestConfig.matchType,
                                     true,
+                                    bestConfig.matchedStore.equals(gameSource.name, ignoreCase = true),
                                 )
                                 if (parsedConfig != null && parsedConfig.isNotEmpty()) {
                                     bestConfigMap = parsedConfig
@@ -808,6 +827,7 @@ object ContainerUtils {
                 execArgs = PrefManager.execArgs,
                 showFPS = false,
                 launchRealSteam = PrefManager.launchRealSteam,
+                launchBionicSteam = PrefManager.launchBionicSteam,
                 wow64Mode = PrefManager.wow64Mode,
                 startupSelection = PrefManager.startupSelection.toByte(),
                 box86Version = PrefManager.box86Version,
@@ -852,6 +872,14 @@ object ContainerUtils {
             applyBestConfigMapToContainerData(containerData, bestConfigMap)
         } else {
             containerData
+        }
+
+        if (Build.MANUFACTURER.equals("samsung", ignoreCase = true)) {
+            val ev = EnvVars(containerData.envVars)
+            if (!ev.has("FD_DEV_FEATURES")) {
+                ev.put("FD_DEV_FEATURES", "enable_tp_ubwc_flag_hint=1")
+                containerData = containerData.copy(envVars = ev.toString())
+            }
         }
 
         // If custom config is provided, just apply it and return
@@ -1104,6 +1132,23 @@ object ContainerUtils {
         }
     }
 
+    fun isLocalSavesOnly(context: Context, appId: String): Boolean {
+        if (!hasContainer(context, appId)) return false
+        val container = getContainer(context, appId)
+        return container.isLocalSavesOnly
+    }
+
+    fun supportsKnownConfigAutoApply(gameSource: GameSource): Boolean = when (gameSource) {
+        GameSource.STEAM,
+        GameSource.GOG,
+        GameSource.EPIC,
+        GameSource.AMAZON,
+        -> true
+
+        GameSource.CUSTOM_GAME,
+        -> false
+    }
+
     /**
      * Resolves the display name for a game from its container ID,
      * looking up the appropriate store service.
@@ -1159,12 +1204,14 @@ object ContainerUtils {
 
             Timber.d("Scanning for executables in A: drive: $aDrivePath")
 
-            // Recursively scan for .exe files using listFiles with depth limit
+            // Recursively scan for .exe files using listFiles with depth limit.
+            // Symlinked directories are skipped to avoid cycles (e.g. GOG ISI rootdir -> game root).
             fun scanRecursive(dir: File, baseDir: File, depth: Int = 0, maxDepth: Int = 10) {
                 if (depth > maxDepth) return
 
                 dir.listFiles()?.forEach { file ->
                     if (file.isDirectory) {
+                        if (FileUtils.isSymlink(file)) return@forEach
                         scanRecursive(file, baseDir, depth + 1, maxDepth)
                     } else if (file.isFile && file.name.lowercase().endsWith(".exe")) {
                         // Convert to relative Windows path format
@@ -1237,12 +1284,38 @@ object ContainerUtils {
      * Checks if an executable is likely a system/utility file
      */
     private fun isSystemExecutable(fileName: String): Boolean {
-        val systemKeywords = listOf(
-            "unins", "setup", "install", "config", "crash", "handler",
-            "viewer", "compiler", "tool", "redist", "vcredist", "directx",
-            "steam", "origin", "uplay", "epic", "battlenet",
+        val baseName = fileName.removeSuffix(".exe")
+        val strongPrefixes = listOf(
+            "unins",
+            "uninstall",
+            "setup",
+            "install",
+            "redist",
+            "vcredist",
+            "vc_redist",
+            "dxsetup",
+            "directx",
+            "crashhandler",
+            "crashreporter",
         )
 
-        return systemKeywords.any { fileName.contains(it) }
+        if (strongPrefixes.any { baseName.startsWith(it) }) {
+            return true
+        }
+
+        val denylistTokens = setOf(
+            "unins",
+            "uninstall",
+            "setup",
+            "installer",
+            "redist",
+            "vcredist",
+            "directx",
+            "dxsetup",
+            "crashhandler",
+            "crashreporter",
+        )
+        val tokens = baseName.split(Regex("[^a-z0-9]+")).filter { it.isNotBlank() }
+        return tokens.any { it in denylistTokens }
     }
 }

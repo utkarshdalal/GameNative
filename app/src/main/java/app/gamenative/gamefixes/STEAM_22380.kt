@@ -2,6 +2,9 @@ package app.gamenative.gamefixes
 
 import app.gamenative.data.GameSource
 
+/**
+ * Fallout: New Vegas (Steam)
+ */
 val STEAM_Fix_22380: KeyedGameFix = KeyedRegistryKeyFix(
     gameSource = GameSource.STEAM,
     gameId = "22380",

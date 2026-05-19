@@ -34,7 +34,7 @@ public class Container {
     public static final String EXTERNAL_DISPLAY_MODE_HYBRID = "hybrid";
     public static final String DEFAULT_EXTERNAL_DISPLAY_MODE = EXTERNAL_DISPLAY_MODE_OFF;
 
-    public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_FRAME_RATE=60 PULSE_LATENCY_MSEC=144";
+    public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact,deck_emu MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform,deck_emu VKD3D_SHADER_MODEL=6_0 PULSE_LATENCY_MSEC=144";
     public static final String DEFAULT_SCREEN_SIZE = "1280x720";
     public static final String DEFAULT_GRAPHICS_DRIVER = DefaultVersion.DEFAULT_GRAPHICS_DRIVER;
     public static final String DEFAULT_AUDIO_DRIVER = "pulseaudio";
@@ -85,6 +85,7 @@ public class Container {
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
     private boolean launchRealSteam;
+    private boolean launchBionicSteam;
     private boolean allowSteamUpdates;
     private boolean wow64Mode = true;
     private boolean needsUnpacking = true;
@@ -142,6 +143,8 @@ public class Container {
     private boolean gstreamerWorkaround = false;
 
     private boolean forceDlc = false;
+
+    private boolean localSavesOnly = false;
 
     private boolean steamOfflineMode = false;
 
@@ -321,6 +324,14 @@ public class Container {
 
     public void setLaunchRealSteam(boolean launchRealSteam) {
         this.launchRealSteam = launchRealSteam;
+    }
+
+    public boolean isLaunchBionicSteam() {
+        return launchBionicSteam;
+    }
+
+    public void setLaunchBionicSteam(boolean launchBionicSteam) {
+        this.launchBionicSteam = launchBionicSteam;
     }
 
     public boolean isAllowSteamUpdates() {
@@ -650,6 +661,7 @@ public class Container {
             data.put("drives", drives);
             data.put("showFPS", showFPS);
             data.put("launchRealSteam", launchRealSteam);
+            data.put("launchBionicSteam", launchBionicSteam);
             data.put("allowSteamUpdates", allowSteamUpdates);
             data.put("inputType", inputType);
             data.put("dinputMapperType", dinputMapperType);
@@ -694,6 +706,9 @@ public class Container {
 
             // Force DLC setting
             data.put("forceDlc", forceDlc);
+
+            // Local saves only setting
+            data.put("localSavesOnly", localSavesOnly);
 
             // Steam offline mode setting
             data.put("steamOfflineMode", steamOfflineMode);
@@ -765,6 +780,9 @@ public class Container {
                     break;
                 case "launchRealSteam" :
                     setLaunchRealSteam(data.getBoolean(key));
+                    break;
+                case "launchBionicSteam" :
+                    setLaunchBionicSteam(data.getBoolean(key));
                     break;
                 case "allowSteamUpdates" :
                     setAllowSteamUpdates(data.getBoolean(key));
@@ -888,6 +906,9 @@ public class Container {
                 case "forceDlc":
                     this.forceDlc = data.getBoolean(key);
                     break;
+                case "localSavesOnly":
+                    this.localSavesOnly = data.getBoolean(key);
+                    break;
                 case "steamOfflineMode":
                     this.steamOfflineMode = data.getBoolean(key);
                     break;
@@ -905,6 +926,7 @@ public class Container {
                     break;
             }
         }
+
     }
 
     public static void checkObsoleteOrMissingProperties(JSONObject data) {
@@ -964,6 +986,14 @@ public class Container {
 
     public void setForceDlc(boolean forceDlc) {
         this.forceDlc = forceDlc;
+    }
+
+    public boolean isLocalSavesOnly() {
+        return localSavesOnly;
+    }
+
+    public void setLocalSavesOnly(boolean localSavesOnly) {
+        this.localSavesOnly = localSavesOnly;
     }
 
     public boolean isSteamOfflineMode() {

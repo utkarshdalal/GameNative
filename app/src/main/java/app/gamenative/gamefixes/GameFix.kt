@@ -2,6 +2,7 @@ package app.gamenative.gamefixes
 
 import android.content.Context
 import app.gamenative.data.GameSource
+import com.winlator.container.Container
 
 interface GameFix {
     fun apply(
@@ -9,6 +10,7 @@ interface GameFix {
         gameId: String,
         installPath: String,
         installPathWindows: String,
+        container: Container,
     ): Boolean
 }
 

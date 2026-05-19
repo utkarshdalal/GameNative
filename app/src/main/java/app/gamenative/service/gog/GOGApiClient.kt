@@ -20,6 +20,7 @@ data class ParsedGogGame(
     val slug: String,
     val imageUrl: String,
     val iconUrl: String,
+    val backgroundUrl: String,
     val developer: String,
     val publisher: String,
     val genres: List<String>,
@@ -48,6 +49,7 @@ data class RawGogApiResponse(
     val downloads: Downloads?
 ) {
     data class Images(
+        val background: String?,
         val logo2x: String?,
         val logo: String?,
         val icon: String?
@@ -392,15 +394,18 @@ object GOGApiClient {
     private fun transformGameDetails(rawResponse: JSONObject, gameId: String): ParsedGogGame {
         // Extract image URLs and add https: protocol if missing
         val images = rawResponse.optJSONObject("images")
+        var background = images?.optString("background", "") ?: ""
         var logo2x = images?.optString("logo2x", "") ?: ""
         var logo = images?.optString("logo", "") ?: ""
         var icon = images?.optString("icon", "") ?: ""
 
+        if (background.startsWith("//")) background = "https:$background"
         if (logo2x.startsWith("//")) logo2x = "https:$logo2x"
         if (logo.startsWith("//")) logo = "https:$logo"
         if (icon.startsWith("//")) icon = "https:$icon"
 
         val imageUrl = logo2x.ifEmpty { logo }
+        val backgroundUrl = background.ifEmpty { imageUrl }
 
         // Extract developer (first from array)
         val developers = rawResponse.optJSONArray("developers")
@@ -474,6 +479,7 @@ object GOGApiClient {
             slug = rawResponse.optString("slug", ""),
             imageUrl = imageUrl,
             iconUrl = icon,
+            backgroundUrl = backgroundUrl,
             developer = developer,
             publisher = publisher,
             genres = genres,

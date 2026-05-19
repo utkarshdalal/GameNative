@@ -11,6 +11,23 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 
 object ManifestComponentHelper {
+    fun parseSemVerTriplet(value: String): Triple<Int, Int, Int>? {
+        val match = Regex("(\\d+)\\.(\\d+)(?:\\.(\\d+))?").find(value) ?: return null
+        val major = match.groupValues.getOrNull(1)?.toIntOrNull() ?: return null
+        val minor = match.groupValues.getOrNull(2)?.toIntOrNull() ?: return null
+        val patch = match.groupValues.getOrNull(3)?.toIntOrNull() ?: 0
+        return Triple(major, minor, patch)
+    }
+
+    fun isAtLeastVersion(value: String, minMajor: Int, minMinor: Int, minPatch: Int): Boolean {
+        val (major, minor, patch) = parseSemVerTriplet(value) ?: return false
+        return when {
+            major != minMajor -> major > minMajor
+            minor != minMinor -> minor > minMinor
+            else -> patch >= minPatch
+        }
+    }
+
     data class InstalledContentLists(
         val dxvk: List<String>,
         val vkd3d: List<String>,
@@ -202,11 +219,25 @@ object ManifestComponentHelper {
             else if (isBionicVariant) dxvkOptions.muted
             else emptyList()
 
-        return if (isVKD3D) {
-            DxvkContext(isVortekLike, emptyList(), emptyList(), emptyList())
+        val (finalLabels, finalIds, finalMuted) = if (isVKD3D) {
+            val allowedIndices = ids.mapIndexedNotNull { index, id ->
+                if (isAtLeastVersion(id, 2, 1, 0)) index else null
+            }
+            if (allowedIndices.isNotEmpty()) {
+                Triple(
+                    allowedIndices.map { labels[it] },
+                    allowedIndices.map { ids[it] },
+                    if (muted.isNotEmpty()) allowedIndices.map { muted[it] } else emptyList(),
+                )
+            } else {
+                Triple(labels, ids, muted)
+            }
         } else {
-            DxvkContext(isVortekLike, labels, ids, muted)
+            Triple(labels, ids, muted)
         }
+
+        // Always return DXVK options regardless of wrapper selection (allows DXVK config even when VKD3D is selected)
+        return DxvkContext(isVortekLike, finalLabels, finalIds, finalMuted)
     }
 
     fun versionExists(version: String, available: List<String>): Boolean {

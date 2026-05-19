@@ -128,6 +128,7 @@ class ContainerConfigState(
     val launchManifestInstall: (ManifestEntry, String, Boolean, ContentProfile.ContentType?, () -> Unit) -> Unit,
     val launchManifestContentInstall: (ManifestEntry, ContentProfile.ContentType, () -> Unit) -> Unit,
     val launchManifestDriverInstall: (ManifestEntry, () -> Unit) -> Unit,
+    val launchSteamAppDownload: (Int, String, () -> Unit) -> Unit,
     val getStartupSelectionOptions: () -> List<String>,
     val launchFolderPicker: () -> Unit,
     val getVersionsForDriver: () -> List<String>,

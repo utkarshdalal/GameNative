@@ -1,0 +1,906 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Epic Games Store API",
+    "description": "REST API specification for Epic Games Store platform integration including authentication, library management, game catalog, and cloud saves. Based on Legendary CLI implementation.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "GameNative",
+      "url": "https://github.com/GameNative"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://www.epicgames.com",
+      "description": "Epic Games Web"
+    },
+    {
+      "url": "https://account-public-service-prod03.ol.epicgames.com",
+      "description": "Epic Account Service"
+    },
+    {
+      "url": "https://library-service.live.use1a.on.epicgames.com",
+      "description": "Epic Library Service"
+    },
+    {
+      "url": "https://catalog-public-service-prod06.ol.epicgames.com",
+      "description": "Epic Catalog Service"
+    },
+    {
+      "url": "https://launcher-public-service-prod06.ol.epicgames.com",
+      "description": "Epic Launcher Service"
+    },
+    {
+      "url": "https://datastorage-public-service-liveegs.live.use1a.on.epicgames.com",
+      "description": "Epic Cloud Storage"
+    },
+    {
+      "url": "https://ecommerceintegration-public-service-ecomprod02.ol.epicgames.com",
+      "description": "Epic E-commerce Service"
+    },
+    {
+      "url": "https://fastly-download.epicgames.com",
+      "description": "Epic CDN (Fastly) — used for manifest and chunk downloads. Auth via queryParams from launcher manifest API."
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "OAuth2 authentication and token management"
+    },
+    {
+      "name": "Library",
+      "description": "User library and owned games"
+    },
+    {
+      "name": "Catalog",
+      "description": "Game catalog and metadata"
+    },
+    {
+      "name": "Cloud Saves",
+      "description": "Cloud save synchronization"
+    },
+    {
+      "name": "Launcher",
+      "description": "Game launcher and manifests"
+    },
+    {
+      "name": "Ownership",
+      "description": "DRM and ownership verification"
+    },
+    {
+      "name": "CDN",
+      "description": "Epic CDN for binary manifest and game chunk downloads. URLs and authentication tokens are obtained from the Launcher manifest API response. No Epic Bearer token is needed — CDN auth is handled via queryParams appended to each URL."
+    }
+  ],
+  "paths": {
+    "/id/login": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Initialize OAuth2 login flow",
+        "description": "Initiates the OAuth2 authorization flow. Returns HTML login page that redirects with authorization code.",
+        "operationId": "initLogin",
+        "servers": [{"url": "https://www.epicgames.com"}],
+        "parameters": [
+          {
+            "name": "redirectUrl",
+            "in": "query",
+            "required": true,
+            "schema": {"type": "string"},
+            "example": "https://www.epicgames.com/id/api/redirect?clientId=34a02cf8f4414e29b15921876da36f9a&responseType=code",
+            "description": "URL-encoded redirect URL with client ID and response type"
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "string"},
+            "description": "CSRF protection state parameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "HTML login page",
+            "content": {
+              "text/html": {
+                "schema": {"type": "string"}
+              }
+            }
+          },
+          "302": {
+            "description": "Redirect with authorization code"
+          }
+        }
+      }
+    },
+    "/account/api/oauth/token": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Exchange authorization code or refresh token",
+        "description": "Exchanges authorization code for tokens or refreshes access token using refresh token.",
+        "operationId": "exchangeToken",
+        "servers": [{"url": "https://account-public-service-prod03.ol.epicgames.com"}],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "schema": {"type": "string"},
+            "description": "Basic auth with client credentials",
+            "example": "Basic fakeTokenHerejweijsr"
+          },
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "schema": {"type": "string"},
+            "example": "UELauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "grant_type": {
+                    "type": "string",
+                    "enum": ["authorization_code", "refresh_token"]
+                  },
+                  "code": {
+                    "type": "string",
+                    "description": "Required when grant_type=authorization_code"
+                  },
+                  "refresh_token": {
+                    "type": "string",
+                    "description": "Required when grant_type=refresh_token"
+                  },
+                  "token_type": {
+                    "type": "string",
+                    "enum": ["eg1"],
+                    "default": "eg1"
+                  }
+                },
+                "required": ["grant_type", "token_type"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful token exchange",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/TokenResponse"}
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/EpicError"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/account/api/oauth/exchange": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Get game exchange token",
+        "description": "Retrieves a short-lived exchange code for game launch authentication (used as -AUTH_PASSWORD parameter).",
+        "operationId": "getExchangeToken",
+        "servers": [{"url": "https://account-public-service-prod03.ol.epicgames.com"}],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exchange code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "description": "Short-lived exchange code"
+                    },
+                    "expiresInSeconds": {
+                      "type": "integer",
+                      "example": 300
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/library/api/public/items": {
+      "get": {
+        "tags": ["Library"],
+        "summary": "Get user library items",
+        "description": "Retrieves paginated list of games owned by the authenticated user.",
+        "operationId": "getLibraryItems",
+        "servers": [{"url": "https://library-service.live.use1a.on.epicgames.com"}],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {
+            "name": "includeMetadata",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "boolean", "default": true}
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "string"},
+            "description": "Pagination cursor from previous response"
+          },
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Library items",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/LibraryResponse"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/api/shared/namespace/{namespace}/bulk/items": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "Get game catalog information",
+        "description": "Retrieves detailed metadata for games by catalog item IDs.",
+        "operationId": "getCatalogItems",
+        "servers": [{"url": "https://catalog-public-service-prod06.ol.epicgames.com"}],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"},
+            "example": "fn"
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {"type": "string"},
+            "description": "Catalog item ID (can be repeated for multiple items)"
+          },
+          {
+            "name": "includeDLCDetails",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "boolean", "default": true},
+            "description": "Include DLC item list in each result"
+          },
+          {
+            "name": "includeMainGameDetails",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "boolean"}
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "string", "default": "US"}
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "string", "default": "en-US"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catalog items keyed by catalogItemId",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Object keyed by catalogItemId, not an array",
+                  "additionalProperties": {"$ref": "#/components/schemas/CatalogItem"}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/launcher/api/public/assets/v2/platform/Windows/namespace/{namespace}/catalogItem/{catalogItemId}/app/{appName}/label/{label}": {
+      "get": {
+        "tags": ["Launcher"],
+        "summary": "Get game manifest metadata",
+        "description": "Retrieves manifest metadata for downloading and installing games. Returns CDN URLs and per-CDN authentication query parameters used to download the binary manifest and game chunks.",
+        "operationId": "getManifestMetadata",
+        "servers": [{"url": "https://launcher-public-service-prod06.ol.epicgames.com"}],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "catalogItemId",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "appName",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "label",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string", "default": "Live"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Manifest metadata with CDN locations",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ManifestMetadata"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/egstore/savesync/{accountId}/{appName}/": {
+      "get": {
+        "tags": ["Cloud Saves"],
+        "summary": "List cloud save files",
+        "description": "Retrieves all cloud save files for a game. Each file entry includes pre-signed readLink and writeLink URLs for direct CDN access. The response uses a manifest+chunk format: .manifest files describe the save state and reference chunk GUIDs, chunk files contain the actual compressed data.",
+        "operationId": "listCloudSaveFiles",
+        "servers": [{"url": "https://datastorage-public-service-liveegs.live.use1a.on.epicgames.com"}],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"},
+            "description": "Epic account ID"
+          },
+          {
+            "name": "appName",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"},
+            "description": "Game app name (Legendary identifier, not title)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Map of cloud save files",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CloudSaveFilesResponse"}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Cloud Saves"],
+        "summary": "Request write links for cloud save upload",
+        "description": "Requests pre-signed write links for uploading cloud save files. Returns writeLink URLs for each requested filename. Chunks should be uploaded before the manifest. Upload files via PUT to each writeLink URL (no Epic auth required — CDN handles it via the pre-signed URL).",
+        "operationId": "requestCloudSaveWriteLinks",
+        "servers": [{"url": "https://datastorage-public-service-liveegs.live.use1a.on.epicgames.com"}],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "appName",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of relative file paths (e.g. chunks and manifest) to request write links for",
+                    "example": ["saves/abc123.chunk", "saves/abc123.manifest"]
+                  }
+                },
+                "required": ["files"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Write links for each requested file",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CloudSaveFilesResponse"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Builds/{org}/{build}/default/{manifestFile}": {
+      "get": {
+        "tags": ["CDN"],
+        "summary": "Download binary manifest from CDN",
+        "description": "Downloads the binary manifest file from an Epic CDN. The full URL and authentication query parameters are obtained from the manifests[].uri and manifests[].queryParams fields in the Launcher manifest API response. No Epic Bearer auth is needed — CDN authentication is embedded in the URL query string.",
+        "operationId": "downloadManifestBinary",
+        "servers": [{"url": "https://fastly-download.epicgames.com"}],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"},
+            "description": "Epic org identifier from CDN URI"
+          },
+          {
+            "name": "build",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"},
+            "description": "Build identifier from CDN URI"
+          },
+          {
+            "name": "manifestFile",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"},
+            "description": "Manifest filename from CDN URI"
+          },
+          {
+            "name": "CDN auth params",
+            "in": "query",
+            "required": true,
+            "schema": {"type": "string"},
+            "description": "CDN authentication query parameters from manifests[].queryParams (e.g. ?X-EOS-...=...)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary manifest data in Epic's custom binary format (parsed by EpicManifest.readAll())",
+            "content": {
+              "application/octet-stream": {
+                "schema": {"type": "string", "format": "binary"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Builds/{org}/{build}/default/chunks/{chunkPath}": {
+      "get": {
+        "tags": ["CDN"],
+        "summary": "Download a game chunk from CDN",
+        "description": "Downloads a compressed game data chunk from an Epic CDN. Chunk paths and CDN base URLs are derived from the binary manifest (EpicManifest). Each chunk is identified by a GUID-based path. Append the same queryParams used for manifest downloads. Cloudflare CDN mirrors are skipped by the client in favour of Fastly.",
+        "operationId": "downloadChunk",
+        "servers": [{"url": "https://fastly-download.epicgames.com"}],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "build",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "chunkPath",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"},
+            "description": "Chunk path derived from ChunkInfo.getPath() (e.g. <group>/<guid>.chunk)"
+          },
+          {
+            "name": "CDN auth params",
+            "in": "query",
+            "required": true,
+            "schema": {"type": "string"},
+            "description": "CDN authentication query parameters from the manifest API response"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Compressed chunk binary data",
+            "content": {
+              "application/octet-stream": {
+                "schema": {"type": "string", "format": "binary"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ecommerceintegration/api/public/platforms/EPIC/identities/{accountId}/ownershipToken": {
+      "post": {
+        "tags": ["Ownership"],
+        "summary": "Get ownership verification token",
+        "description": "Retrieves ownership token for DRM-protected games (e.g., Denuvo). Required when game manifest has requires_ot=true.",
+        "operationId": "getOwnershipToken",
+        "servers": [{"url": "https://ecommerceintegration-public-service-ecomprod02.ol.epicgames.com"}],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nsCatalogItemId": {
+                    "type": "string",
+                    "description": "Format: namespace:catalogItemId",
+                    "example": "fn:4fe75bbc5a674f4f9b356b5c90567da5"
+                  }
+                },
+                "required": ["nsCatalogItemId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ownership token (binary)",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "Binary ownership token file"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Epic OAuth2 access token"
+      }
+    },
+    "schemas": {
+      "TokenResponse": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "description": "JWT access token"
+          },
+          "refresh_token": {
+            "type": "string",
+            "description": "JWT refresh token"
+          },
+          "account_id": {
+            "type": "string",
+            "description": "Epic account ID"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "User display name"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Token expiration timestamp (ISO 8601)"
+          },
+          "expires_in": {
+            "type": "integer",
+            "description": "Token expiration time in seconds"
+          },
+          "token_type": {
+            "type": "string",
+            "example": "bearer"
+          }
+        },
+        "required": ["access_token", "refresh_token", "account_id", "expires_in"]
+      },
+      "EpicError": {
+        "type": "object",
+        "properties": {
+          "errorCode": {
+            "type": "string",
+            "description": "Epic error code"
+          },
+          "errorMessage": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "messageVars": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "numericErrorCode": {
+            "type": "integer"
+          }
+        }
+      },
+      "LibraryResponse": {
+        "type": "object",
+        "properties": {
+          "responseMetadata": {
+            "type": "object",
+            "properties": {
+              "nextCursor": {
+                "type": "string",
+                "nullable": true
+              },
+              "stateToken": {
+                "type": "string"
+              }
+            }
+          },
+          "records": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/LibraryItem"}
+          }
+        }
+      },
+      "LibraryItem": {
+        "type": "object",
+        "properties": {
+          "namespace": {"type": "string"},
+          "catalogItemId": {"type": "string"},
+          "appName": {"type": "string"},
+          "productId": {"type": "string"},
+          "sandboxName": {"type": "string"},
+          "sandboxType": {"type": "string"},
+          "country": {"type": "string"},
+          "platform": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "recordType": {"type": "string"},
+          "acquisitionDate": {"type": "string", "format": "date-time"}
+        }
+      },
+      "CatalogItem": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "description": {"type": "string"},
+          "namespace": {"type": "string"},
+          "status": {"type": "string"},
+          "keyImages": {
+            "type": "array",
+            "description": "Known types: DieselGameBoxTall, DieselGameBox, DieselGameBoxLogo, DieselStoreFrontWide, Thumbnail",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {"type": "string"},
+                "url": {"type": "string", "format": "uri"},
+                "md5": {"type": "string"},
+                "width": {"type": "integer"},
+                "height": {"type": "integer"}
+              }
+            }
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {"type": "string"}
+              }
+            }
+          },
+          "customAttributes": {
+            "type": "object",
+            "description": "Each attribute is an object with 'type' and 'value' fields",
+            "properties": {
+              "CanRunOffline": {"$ref": "#/components/schemas/CatalogAttribute"},
+              "CloudSaveFolder": {"$ref": "#/components/schemas/CatalogAttribute"},
+              "CloudIncludeList": {"$ref": "#/components/schemas/CatalogAttribute"},
+              "FolderName": {"$ref": "#/components/schemas/CatalogAttribute"},
+              "MainWindowProcessName": {"$ref": "#/components/schemas/CatalogAttribute"},
+              "ThirdPartyManagedApp": {"$ref": "#/components/schemas/CatalogAttribute"},
+              "ThirdPartyManagedProvider": {"$ref": "#/components/schemas/CatalogAttribute"},
+              "partnerLinkType": {"$ref": "#/components/schemas/CatalogAttribute"}
+            },
+            "additionalProperties": {"$ref": "#/components/schemas/CatalogAttribute"}
+          },
+          "developer": {"type": "string"},
+          "developerId": {"type": "string"},
+          "releaseInfo": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "appId": {"type": "string"},
+                "platform": {
+                  "type": "array",
+                  "items": {"type": "string"}
+                },
+                "dateAdded": {"type": "string", "format": "date-time"}
+              }
+            }
+          },
+          "mainGameItem": {
+            "type": "object",
+            "nullable": true,
+            "description": "Present on DLC items. References the parent game.",
+            "properties": {
+              "id": {"type": "string"},
+              "namespace": {"type": "string"}
+            }
+          },
+          "dlcItemList": {
+            "type": "array",
+            "nullable": true,
+            "description": "Present when includeDLCDetails=true and the item is a base game. Lists associated DLC catalog item IDs.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "namespace": {"type": "string"}
+              }
+            }
+          }
+        }
+      },
+      "CatalogAttribute": {
+        "type": "object",
+        "description": "A single custom attribute from the Epic catalog API",
+        "properties": {
+          "type": {"type": "string", "example": "STRING"},
+          "value": {"type": "string"}
+        },
+        "required": ["type", "value"]
+      },
+      "ManifestMetadata": {
+        "type": "object",
+        "description": "Response from the launcher manifest API. Contains CDN locations for downloading the binary manifest and game chunks.",
+        "properties": {
+          "elements": {
+            "type": "array",
+            "description": "Always contains one element for the requested app/label",
+            "items": {
+              "type": "object",
+              "properties": {
+                "appName": {"type": "string"},
+                "labelName": {"type": "string"},
+                "buildVersion": {"type": "string"},
+                "catalogItemId": {"type": "string"},
+                "namespace": {"type": "string"},
+                "assetId": {"type": "string"},
+                "manifests": {
+                  "type": "array",
+                  "description": "One entry per CDN mirror (e.g. Fastly, Cloudflare). Each contains the CDN base URL and per-CDN auth tokens.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "uri": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "Full CDN URL to the binary manifest file. Append queryParams to authenticate."
+                      },
+                      "queryParams": {
+                        "type": "array",
+                        "description": "CDN authentication parameters. Append as query string to both the manifest URI and all chunk URLs on that CDN.",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "name": {"type": "string"},
+                            "value": {"type": "string"}
+                          },
+                          "required": ["name", "value"]
+                        }
+                      }
+                    },
+                    "required": ["uri"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "required": ["elements"]
+      },
+      "CloudSaveFilesResponse": {
+        "type": "object",
+        "description": "Response from the cloud save listing and write-link request endpoints. Files use a manifest+chunk format: .manifest files describe the save state, chunk files contain compressed save data.",
+        "properties": {
+          "files": {
+            "type": "object",
+            "description": "Map of relative file path to file metadata. Includes .manifest files and chunk files (by GUID path).",
+            "additionalProperties": {"$ref": "#/components/schemas/CloudFileInfo"}
+          }
+        },
+        "required": ["files"]
+      },
+      "CloudFileInfo": {
+        "type": "object",
+        "description": "Metadata for a single cloud save file. readLink and writeLink are pre-signed CDN URLs — no Epic auth header required for these requests.",
+        "properties": {
+          "hash": {
+            "type": "string",
+            "description": "SHA1 hash of the file content"
+          },
+          "lastModified": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of last modification"
+          },
+          "readLink": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "Pre-signed URL for downloading this file (GET, no Epic auth needed)"
+          },
+          "writeLink": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "Pre-signed URL for uploading this file (PUT with Content-Type: application/octet-stream, no Epic auth needed). Only present in write-link responses."
+          }
+        },
+        "required": ["hash", "lastModified"]
+      }
+    }
+  }
+}

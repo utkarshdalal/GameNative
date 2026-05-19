@@ -51,16 +51,26 @@ object AmazonConstants {
     // ── SDK / Launcher channel ──────────────────────────────────────────────
     const val LAUNCHER_CHANNEL_ID = "87d38116-4cbf-4af0-a371-a5b498975346"
 
+    fun internalAmazonGamesPath(context: Context): String {
+        val path = Paths.get(context.dataDir.path, "Amazon").toString()
+        File(path).mkdirs()
+        return path
+    }
+
+    fun externalAmazonGamesPath(): String {
+        val path = Paths.get(PrefManager.externalStoragePath, "Amazon", "games").toString()
+        File(path).mkdirs()
+        return path
+    }
+
     fun defaultAmazonGamesPath(context: Context): String {
         return if (PrefManager.useExternalStorage && File(PrefManager.externalStoragePath).exists()) {
-            val path = Paths.get(PrefManager.externalStoragePath, "Amazon", "games").toString()
+            val path = externalAmazonGamesPath()
             Timber.i("Amazon using external storage: $path")
-            File(path).mkdirs()
             path
         } else {
-            val path = Paths.get(context.dataDir.path, "Amazon").toString()
+            val path = internalAmazonGamesPath(context)
             Timber.i("Amazon using internal storage: $path")
-            File(path).mkdirs()
             path
         }
     }

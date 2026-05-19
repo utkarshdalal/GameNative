@@ -103,6 +103,8 @@ private val DarkPluviaColors = PluviaColors(
     compatibilityBadBackground = CompatibilityBadBg,
 )
 
+val BrandGradient = listOf(PluviaCyan, PluviaPurple, PluviaPink)
+
 // Light theme placeholder - customize when adding light theme support
 // private val LightPluviaColors = PluviaColors(...)
 

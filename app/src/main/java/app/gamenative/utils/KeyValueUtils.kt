@@ -20,10 +20,13 @@ import app.gamenative.enums.OS
 import app.gamenative.enums.OSArch
 import app.gamenative.enums.PathType
 import app.gamenative.enums.ReleaseState
+import app.gamenative.enums.SteamRealm
 import app.gamenative.service.SteamService.Companion.INVALID_APP_ID
 import `in`.dragonbra.javasteam.types.KeyValue
 import java.util.Date
 import timber.log.Timber
+
+const val CURRENT_UFS_PARSE_VERSION = 3
 
 /**
  * Extension functions relating to [KeyValue] as the receiver type.
@@ -55,8 +58,10 @@ fun KeyValue.generateSteamApp(): SteamApp {
                     manifests = manifests,
                     encryptedManifests = encryptedManifests,
                     language = currentDepot["config"]["language"].value.orEmpty(),
-                    realm = currentDepot["config"]["realm"].value.orEmpty(),
+                    realm = SteamRealm.from(currentDepot["config"]["realm"].value.orEmpty()),
+                    systemDefined = currentDepot["systemdefined"].asBoolean(),
                     optionalDlcId = currentDepot["config"]["optionaldlc"].asInteger(INVALID_APP_ID),
+                    steamDeck = currentDepot["config"]["steamdeck"].asBoolean(false),
                 )
             },
         branches = this["depots"]["branches"].children.associate {
@@ -147,18 +152,77 @@ fun KeyValue.generateSteamApp(): SteamApp {
             steamInputManifestPath = this["config"]["steaminputmanifestpath"].value.orEmpty(),
             steamControllerConfigDetails = parseSteamControllerConfigDetails(),
         ),
-        ufs = UFS(
-            quota = this["ufs"]["quota"].asInteger(),
-            maxNumFiles = this["ufs"]["maxnumfiles"].asInteger(),
-            saveFilePatterns = this["ufs"]["savefiles"].children.map {
-                SaveFilePattern(
-                    root = PathType.from(it["root"].value),
-                    path = it["path"].value.orEmpty(),
-                    pattern = it["pattern"].value.orEmpty(),
-                    recursive = it["recursive"].asInteger(0),
+        ufsParseVersion = CURRENT_UFS_PARSE_VERSION,
+        ufs = run {
+            // Parse rootoverrides: Steam allows per-OS root replacements. Since GameNative
+            // always runs Windows games via Wine, apply only the Windows overrides.
+            data class RootOverride(
+                val fromRoot: PathType,
+                val toRoot: PathType,
+                val addPath: String,
+                val pathTransforms: List<Pair<String, String>>,
+            )
+
+            val rootOverrides = this["ufs"]["rootoverrides"].children.mapNotNull { rootOverride ->
+                val os = rootOverride["os"].value.orEmpty()
+                val oslist = rootOverride["oslist"].value.orEmpty()
+                val isWindowsOverride = os.equals("Windows", ignoreCase = true) ||
+                    oslist.split(",").any { it.trim().equals("windows", ignoreCase = true) }
+                if (!isWindowsOverride) return@mapNotNull null
+                val pathTransforms = rootOverride["pathtransforms"].children.map { transform ->
+                    transform["find"].value.orEmpty() to transform["replace"].value.orEmpty()
+                }
+                RootOverride(
+                    fromRoot = PathType.from(rootOverride["root"].value),
+                    toRoot = PathType.from(rootOverride["useinstead"].value),
+                    addPath = rootOverride["addpath"].value.orEmpty(),
+                    pathTransforms = pathTransforms,
                 )
-            },
-        ),
+            }
+
+            UFS(
+                quota = this["ufs"]["quota"].asInteger(),
+                maxNumFiles = this["ufs"]["maxnumfiles"].asInteger(),
+                saveFilePatterns = this["ufs"]["savefiles"].children.mapNotNull { saveFile ->
+                    val platforms = saveFile["platforms"].children.map { it.value?.lowercase() }
+                    if (platforms.isNotEmpty() && "windows" !in platforms) return@mapNotNull null
+
+                    val originalRoot = PathType.from(saveFile["root"].value)
+                    // Treat "." and "/" as empty: both mean "root of this path type" with no
+                    // subdirectory. Keeping the literal value causes addpath joins to produce
+                    // "MyGame/." or "MyGame/" and stores uploadPath = "." or "/" which breaks
+                    // cloud key lookups in SteamAutoCloud (e.g. Danganronpa 2 uses path="/").
+                    val originalPath = saveFile["path"].value.orEmpty().let { if (it == "." || it == "/") "" else it }
+                    val rootRemap = rootOverrides.find { it.fromRoot == originalRoot }
+
+                    SaveFilePattern(
+                        root = rootRemap?.toRoot ?: originalRoot,
+                        path = rootRemap?.let { rootOverride ->
+                            var p = if (rootOverride.addPath.isNotEmpty()) {
+                                // Normalize backslashes: Steam's Windows addpath values use '\' as a
+                                // separator (e.g. "Godot\app_userdata\The Roottrees are Dead"), which
+                                // is valid on Windows but must be converted to '/' for Wine on Android.
+                                val normalizedAddPath = rootOverride.addPath.replace('\\', '/').trimEnd('/')
+                                // Only join with originalPath when it's non-empty; otherwise the plain
+                                // addpath is the full directory (e.g. The Roottrees are Dead has an
+                                // empty savefile path — appending "/" would produce a spurious trailing
+                                // slash that breaks file-system lookups).
+                                if (originalPath.isNotEmpty()) "$normalizedAddPath/${originalPath.trimStart('/')}"
+                                else normalizedAddPath
+                            } else {
+                                originalPath
+                            }
+                            rootOverride.pathTransforms.forEach { (find, replace) -> p = p.replace(find, replace) }
+                            p
+                        } ?: originalPath,
+                        pattern = saveFile["pattern"].value.orEmpty(),
+                        recursive = saveFile["recursive"].asInteger(0),
+                        uploadRoot = originalRoot,
+                        uploadPath = originalPath,
+                    )
+                },
+            )
+        },
     )
 }
 

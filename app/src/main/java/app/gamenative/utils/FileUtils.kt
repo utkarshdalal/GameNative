@@ -145,7 +145,7 @@ object FileUtils {
                 Timber.i("Checking $fileName for pattern $pattern")
                 var startIndex = 0
                 !patternParts.map {
-                    val index = fileName.indexOf(it, startIndex)
+                    val index = fileName.indexOf(it, startIndex, ignoreCase = true)
                     if (index >= 0) {
                         startIndex = index + it.length
                     }
@@ -170,7 +170,7 @@ object FileUtils {
         fun matches(fileName: String): Boolean {
             var startIndex = 0
             for (part in patternParts) {
-                val index = fileName.indexOf(part, startIndex)
+                val index = fileName.indexOf(part, startIndex, ignoreCase = true)
                 if (index < 0) return false
                 startIndex = index + part.length
             }
@@ -210,12 +210,32 @@ object FileUtils {
      * Info file may list e.g. "checkapplication.exe" while the actual file is "CheckApplication.exe" (Linux/Android are case-sensitive).
      */
     fun findFileCaseInsensitive(baseDir: File, relativePath: String): File? {
+        // fast path: exact casing matches (common case, single stat vs N listFiles)
+        val direct = File(baseDir, relativePath)
+        if (direct.exists()) return direct
+        return resolveCaseInsensitive(baseDir, relativePath).takeIf { it.exists() }
+    }
+
+    /**
+     * Resolves a relative path against [baseDir] using case-insensitive matching
+     * for each segment. Existing segments are matched against on-disk casing;
+     * remaining (non-existent) segments are appended with their original casing.
+     * Never returns null — safe for new files whose parent dirs may already exist
+     * with different casing.
+     */
+    fun resolveCaseInsensitive(baseDir: File, relativePath: String): File {
         val segments = relativePath.replace('\\', '/').split('/').filter { it.isNotEmpty() }
         var current = baseDir
-        for (segment in segments) {
-            val match = current.listFiles()?.firstOrNull { it.name.equals(segment, ignoreCase = true) } ?: return null
-            current = match
+        for ((i, segment) in segments.withIndex()) {
+            val match = current.listFiles()?.firstOrNull { it.name.equals(segment, ignoreCase = true) }
+            if (match != null) {
+                current = match
+            } else {
+                // append remaining segments verbatim
+                for (j in i until segments.size) current = File(current, segments[j])
+                return current
+            }
         }
-        return current.takeIf { it.exists() }
+        return current
     }
 }

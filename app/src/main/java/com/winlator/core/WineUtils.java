@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.winlator.container.Container;
+import com.winlator.fexcore.FEXCoreManager;
 import com.winlator.xenvironment.ImageFs;
 
 import org.json.JSONArray;
@@ -11,22 +12,28 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
+import app.gamenative.PrefManager;
 import timber.log.Timber;
 
 public abstract class WineUtils {
-    public static void createDosdevicesSymlinks(Container container) {
+    public static void createDosdevicesSymlinks(Context context, Container container) throws IOException {
         String dosdevicesPath = (new File(container.getRootDir(), ".wine/dosdevices")).getPath();
         File[] files = (new File(dosdevicesPath)).listFiles();
         if (files != null) for (File file : files) if (file.getName().matches("[a-z]:")) file.delete();
 
         FileUtils.symlink("../drive_c", dosdevicesPath+"/c:");
-        FileUtils.symlink(container.getRootDir().getPath() + "/../..", dosdevicesPath+"/z:");
+        // Z: must point at the resolved imagefs root so the guest sees only opt, home, usr, etc.,
+        // not the parent directory (files) which would expose imagefs_shared, etc.
+        File imagefsRoot = ImageFs.find(context).getRootDir();
+        String zTarget = imagefsRoot.getAbsoluteFile().getCanonicalPath();
+        FileUtils.symlink(zTarget, dosdevicesPath + "/z:");
 
 
         // Auto-fix containers missing D: and E: drives
@@ -57,8 +64,12 @@ public abstract class WineUtils {
             FileUtils.symlink(path, dosdevicesPath+"/"+drive[0].toLowerCase(Locale.ENGLISH)+":");
 
             // Check if this is the A: drive (game directory)
-            if (drive[0].equals("A") && path.contains("/Steam/steamapps/common/")) {
-                gameDirectoryPath = path;
+            if (drive[0].equals("A")) {
+                if (path.contains("/Steam/steamapps/common/")) {
+                    gameDirectoryPath = path;
+                } else if (PrefManager.INSTANCE.getCustomGameManualFolders().contains(path)) {
+                    gameDirectoryPath = path;
+                }
             }
         }
 
@@ -165,6 +176,11 @@ public abstract class WineUtils {
             for (String name : xinputLibs) registryEditor.setStringValue(dllOverridesKey, name, "builtin,native");
             if (wineInfo.isArm64EC()) for (String name : opengLibs) registryEditor.setStringValue(dllOverridesKey, name, "native,builtin");
 
+            // Force Rockstar Social Club helper onto Wine's builtin D3D stack
+            final String socialClubDllOverridesKey = "Software\\Wine\\AppDefaults\\SocialClubHelper.exe\\DllOverrides";
+            final String[] socialClubBuiltinLibs = {"dxgi", "d3d9", "d3d10", "d3d10_1", "d3d10core", "d3d11"};
+            for (String name : socialClubBuiltinLibs) registryEditor.setStringValue(socialClubDllOverridesKey, name, "builtin");
+
             registryEditor.removeKey("Software\\Winlator\\WFM\\ContextMenu\\7-Zip");
             registryEditor.setStringValue("Software\\Winlator\\WFM\\ContextMenu\\7-Zip", "Open Archive", "Z:\\opt\\apps\\7-Zip\\7zFM.exe \"%FILE%\"");
             registryEditor.setStringValue("Software\\Winlator\\WFM\\ContextMenu\\7-Zip", "Extract Here", "Z:\\opt\\apps\\7-Zip\\7zG.exe x \"%FILE%\" -r -o\"%DIR%\" -y");
@@ -183,6 +199,11 @@ public abstract class WineUtils {
         for (String dlname : dlnames) {
             FileUtils.copy(new File(wineSysWoW64Dir, dlname), new File(win64 ? containerSysWoW64Dir : containerSystem32Dir, dlname));
             if (win64) FileUtils.copy(new File(wineSystem32Dir, dlname), new File(containerSystem32Dir, dlname));
+        }
+
+        // FEX AppConfig presets only apply when running Arm64X (arm64ec) Wine under FEX
+        if (wineInfo.isArm64EC()) {
+            FEXCoreManager.ensureAppConfigOverrides(context);
         }
     }
 

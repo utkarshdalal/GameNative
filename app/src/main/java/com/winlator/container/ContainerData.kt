@@ -25,6 +25,7 @@ data class ContainerData(
     val installPath: String = "",
     val showFPS: Boolean = false,
     val launchRealSteam: Boolean = false,
+    val launchBionicSteam: Boolean = false,
     val allowSteamUpdates: Boolean = false,
     val steamType: String = "normal",
     val cpuList: String = Container.getFallbackCPUList(),
@@ -85,6 +86,7 @@ data class ContainerData(
     /** Preferred game language (Goldberg) **/
     val language: String = "english",
     val forceDlc: Boolean = false,
+    val localSavesOnly: Boolean = false,
     val steamOfflineMode: Boolean = false,
     val useLegacyDRM: Boolean = false,
     val unpackFiles: Boolean = false,
@@ -93,6 +95,9 @@ data class ContainerData(
     val sharpnessEffect: String = "None",
     val sharpnessLevel: Int = 100,
     val sharpnessDenoise: Int = 100,
+    // LSFG Vulkan frame generation
+    /** Whether LSFG frame generation is enabled for this container */
+    val lsfgEnabled: Boolean = false,
 ) {
     companion object {
         val Saver = mapSaver(
@@ -114,6 +119,7 @@ data class ContainerData(
                     "installPath" to state.installPath,
                     "showFPS" to state.showFPS,
                     "launchRealSteam" to state.launchRealSteam,
+                    "launchBionicSteam" to state.launchBionicSteam,
                     "allowSteamUpdates" to state.allowSteamUpdates,
                     "steamType" to state.steamType,
                     "cpuList" to state.cpuList,
@@ -147,6 +153,7 @@ data class ContainerData(
                     "useDRI3" to state.useDRI3,
                     "language" to state.language,
                     "forceDlc" to state.forceDlc,
+                    "localSavesOnly" to state.localSavesOnly,
                     "steamOfflineMode" to state.steamOfflineMode,
                     "useLegacyDRM" to state.useLegacyDRM,
                     "unpackFiles" to state.unpackFiles,
@@ -155,6 +162,7 @@ data class ContainerData(
                     "sharpnessEffect" to state.sharpnessEffect,
                     "sharpnessLevel" to state.sharpnessLevel,
                     "sharpnessDenoise" to state.sharpnessDenoise,
+                    "lsfgEnabled" to state.lsfgEnabled,
                 )
             },
             restore = { savedMap ->
@@ -175,6 +183,7 @@ data class ContainerData(
                     installPath = savedMap["installPath"] as String,
                     showFPS = savedMap["showFPS"] as Boolean,
                     launchRealSteam = savedMap["launchRealSteam"] as Boolean,
+                    launchBionicSteam = (savedMap["launchBionicSteam"] as? Boolean) ?: false,
                     allowSteamUpdates = savedMap["allowSteamUpdates"] as Boolean,
                     steamType = (savedMap["steamType"] as? String) ?: "normal",
                     cpuList = savedMap["cpuList"] as String,
@@ -208,6 +217,7 @@ data class ContainerData(
                     useDRI3 = (savedMap["useDRI3"] as? Boolean) ?: true,
                     language = (savedMap["language"] as? String) ?: "english",
                     forceDlc = (savedMap["forceDlc"] as? Boolean) ?: false,
+                    localSavesOnly = (savedMap["localSavesOnly"] as? Boolean) ?: false,
                     steamOfflineMode = (savedMap["steamOfflineMode"] as? Boolean) ?: false,
                     useLegacyDRM = (savedMap["useLegacyDRM"] as? Boolean) ?: false,
                     unpackFiles = (savedMap["unpackFiles"] as? Boolean) ?: false,
@@ -216,6 +226,7 @@ data class ContainerData(
                     sharpnessEffect = (savedMap["sharpnessEffect"] as? String) ?: "None",
                     sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
+                    lsfgEnabled = (savedMap["lsfgEnabled"] as? Boolean) ?: false,
                 )
             },
         )

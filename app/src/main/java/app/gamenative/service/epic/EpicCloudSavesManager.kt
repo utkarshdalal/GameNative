@@ -3,6 +3,7 @@ package app.gamenative.service.epic
 import android.content.Context
 import app.gamenative.data.EpicGame
 import app.gamenative.service.epic.manifest.EpicManifest
+import app.gamenative.utils.FileUtils
 import app.gamenative.utils.Net
 import java.io.File
 import java.time.Instant
@@ -474,6 +475,10 @@ object EpicCloudSavesManager {
                     if (toDownload.contains(fileManifest.filename)) {
                         try {
                             val outputFile = File(saveDir, fileManifest.filename)
+                            if (!outputFile.canonicalPath.startsWith(saveDir.canonicalPath)) {
+                                Timber.tag("Epic").w("[Cloud Saves] Skipping path traversal: ${fileManifest.filename}")
+                                return@forEach
+                            }
                             outputFile.parentFile?.mkdirs()
 
                             Timber.tag("Epic").d("[Cloud Saves] Reconstructing file: ${fileManifest.filename}")
@@ -640,6 +645,10 @@ object EpicCloudSavesManager {
             manifest.fileManifestList?.elements?.forEach { fileManifest ->
                 try {
                     val outputFile = File(saveDir, fileManifest.filename)
+                    if (!outputFile.canonicalPath.startsWith(saveDir.canonicalPath)) {
+                        Timber.tag("Epic").w("[Cloud Saves] Skipping path traversal: ${fileManifest.filename}")
+                        return@forEach
+                    }
                     outputFile.parentFile?.mkdirs()
 
                     Timber.tag("Epic").d("[Cloud Saves] Reconstructing file: ${fileManifest.filename}")
@@ -1187,9 +1196,10 @@ object EpicCloudSavesManager {
         Timber.tag("Epic").d("[Cloud Saves] Using Wine prefix: $winePrefix")
 
         // Resolve path variables used by Epic Games (case-insensitive)
+        val installDir = game.installPath.ifEmpty { EpicConstants.getGameInstallPath(context, game.appName) }
         val pathVars = mutableMapOf<String, String>(
             "{epicid}" to accountId,
-            "{installdir}" to (game.installPath.ifEmpty { EpicConstants.getGameInstallPath(context, game.appName) }),
+            "{installdir}" to installDir,
             "{appname}" to game.appName,
         )
 
@@ -1252,7 +1262,20 @@ object EpicCloudSavesManager {
             }
         }
 
-        val finalPath = File(normalizedParts.joinToString("/"))
+        // resolve against on-disk casing to avoid creating duplicate dirs (e.g. locallow vs LocalLow)
+        // supersedes PR #701
+        val joinedPath = normalizedParts.joinToString("/")
+        val resolved = FileUtils.resolveCaseInsensitive(File("/"), joinedPath)
+        // guard against path traversal escaping the wine prefix
+        val absPath = resolved.absolutePath
+        val withinPrefix = absPath.startsWith("$winePrefix/") || absPath == winePrefix ||
+            (installDir.isNotEmpty() && (absPath.startsWith("$installDir/") || absPath == installDir))
+        val finalPath = if (withinPrefix) {
+            resolved
+        } else {
+            Timber.tag("Epic").w("[Cloud Saves] Resolved path outside prefix, ignoring: ${resolved.absolutePath}")
+            return null
+        }
 
         // Check subdirectories for save files
         // Some games store saves in user-specific subdirectories (e.g., "0/", "1/", etc.)

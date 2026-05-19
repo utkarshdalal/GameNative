@@ -25,18 +25,14 @@ import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
-
 // import androidx.appcompat.app.AppCompatActivity;
 
 // import com.google.android.material.tabs.TabLayout;
 // import com.winlator.R;
 
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
 public abstract class AppUtils {
-    private static WeakReference<Toast> globalToastReference = null;
 
     public static void keepScreenOn(Activity activity) {
         activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);

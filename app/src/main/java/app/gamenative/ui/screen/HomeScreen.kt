@@ -12,6 +12,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.ui.enums.HomeDestination
 import app.gamenative.ui.model.HomeViewModel
+import app.gamenative.ui.screen.downloads.HomeDownloadsScreen
 import app.gamenative.ui.screen.library.HomeLibraryScreen
 import app.gamenative.ui.theme.PluviaTheme
 
@@ -31,18 +32,29 @@ fun HomeScreen(
 
     // Pressing back while logged in, confirm we want to close the app.
     BackHandler {
-        onClickExit()
+        if (homeState.currentDestination != HomeDestination.Library) {
+            viewModel.onDestination(HomeDestination.Library)
+        } else {
+            onClickExit()
+        }
     }
 
-    // Always show the Library screen
-    HomeLibraryScreen(
-        onClickPlay = onClickPlay,
-        onTestGraphics = onTestGraphics,
-        onNavigateRoute = onNavigateRoute,
-        onLogout = onLogout,
-        onGoOnline = onGoOnline,
-        isOffline = isOffline,
-    )
+    when (homeState.currentDestination) {
+        HomeDestination.Library -> HomeLibraryScreen(
+            onClickPlay = onClickPlay,
+            onTestGraphics = onTestGraphics,
+            onNavigateRoute = onNavigateRoute,
+            onLogout = onLogout,
+            onGoOnline = onGoOnline,
+            onDownloadsClick = { viewModel.onDestination(HomeDestination.Downloads) },
+            isOffline = isOffline,
+        )
+        HomeDestination.Downloads -> HomeDownloadsScreen(
+            onBack = { viewModel.onDestination(HomeDestination.Library) },
+            onClickPlay = onClickPlay,
+            onTestGraphics = onTestGraphics,
+        )
+    }
 }
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)

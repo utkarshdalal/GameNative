@@ -1,0 +1,329 @@
+1313140: Cult of the Lamb
+	appinfo
+		appid: 1313140
+		common
+			name: Cult of the Lamb
+			type: Game
+			clienttga: 33aa301a9947067d7da7aac7c78de9e65c6293cd
+			clienticon: 629aef46877c0c0560b6c5b2960bcb070568297e
+			icon: 337223c1a97705aee1714ad9534c7d6cfabd92b0
+			logo: d9f55109686665f9c04181fabbdb648586c5c181
+			logo_small: d9f55109686665f9c04181fabbdb648586c5c181_thumb
+			ReleaseState: released
+			languages
+				english: 1
+				german: 1
+				french: 1
+				koreana: 1
+				spanish: 1
+				schinese: 1
+				tchinese: 1
+				russian: 1
+				japanese: 1
+				dutch: 1
+				turkish: 1
+				arabic: 1
+				brazilian: 1
+			oslist: windows,macos
+			osarch: 64
+			osextended: macos64
+			name_localized
+				schinese: 咩咩启示录
+				tchinese: 進擊羔羊傳說
+			content_descriptors
+				0: 5
+			steam_deck_compatibility
+				category: 3
+				steamos_compatibility: 2
+				test_timestamp: 1674691200
+				tested_build_id: 10158085
+				tests
+					0
+						display: 4
+						token: #SteamDeckVerified_TestResult_DefaultControllerConfigFullyFunctional
+					1
+						display: 4
+						token: #SteamDeckVerified_TestResult_ControllerGlyphsMatchDeckDevice
+					2
+						display: 4
+						token: #SteamDeckVerified_TestResult_InterfaceTextIsLegible
+					3
+						display: 4
+						token: #SteamDeckVerified_TestResult_DefaultConfigurationIsPerformant
+					4
+						display: 1
+						token: #SteamDeckVerified_TestResult_ExternalControllersNotSupportedPrimaryPlayer
+				steamos_tests
+					0
+						display: 3
+						token: #SteamOS_TestResult_GameStartupFunctional
+					1
+						display: 1
+						token: #SteamOS_TestResult_ExternalControllersNotSupportedPrimaryPlayer
+				configuration
+					supported_input: gamepad
+					requires_manual_keyboard_invoke: 0
+					requires_non_controller_launcher_nav: 0
+					primary_player_is_controller_slot_0: 1
+					non_deck_display_glyphs: 0
+					small_text: 0
+					requires_internet_for_setup: 0
+					requires_internet_for_singleplayer: 0
+					recommended_runtime: proton-7.0-6
+					requires_h264: 1
+					requires_voice_files: 0
+					gamescope_frame_limiter_not_supported: 0
+					hdr_support: 0
+			metacritic_name: Cult of the Lamb
+			controllertagwizard: 1
+			controller_support: full
+			small_capsule
+				english: 1ac7c83bd1ce239a12d8e67b8ebc45765bb60319/capsule_231x87.jpg
+				schinese: ae3c95685945c3bb02f9b6a577edb4cc98f79edf/capsule_231x87_schinese.jpg
+			header_image
+				english: 19f32bb477a6e9d058e05193b4e282149bd70644/header.jpg
+				schinese: f66c4b6b597a7aa70635c7ffb5ddb4b52b98d453/header_schinese.jpg
+			library_assets
+				library_capsule: en,zh-cn
+				library_hero: en
+				library_hero_blur: en
+				library_logo: en,zh-cn
+				library_header: en,zh-cn
+				logo_position
+					pinned_position: CenterCenter
+					width_pct: 35.27906990829223
+					height_pct: 57.3628053002384
+			library_assets_full
+				library_capsule
+					image
+						english: e2e2cf16f2bffc9f4cb22d952442d328f48e908d/library_capsule.jpg
+						schinese: 92f8f31e53cb20c66e4ce6728e3b6d5ec08c984e/library_capsule_schinese.jpg
+					image2x
+						english: e2e2cf16f2bffc9f4cb22d952442d328f48e908d/library_capsule_2x.jpg
+						schinese: 92f8f31e53cb20c66e4ce6728e3b6d5ec08c984e/library_capsule_schinese_2x.jpg
+				library_hero
+					image
+						english: fdf3e24cd2ceebc37b1a32a4fe00701e5e3c50f8/library_hero.jpg
+					image2x
+						english: fdf3e24cd2ceebc37b1a32a4fe00701e5e3c50f8/library_hero_2x.jpg
+				library_hero_blur
+					image
+						english: fdf3e24cd2ceebc37b1a32a4fe00701e5e3c50f8/library_hero_blur.jpg
+				library_logo
+					logo_position
+						pinned_position: CenterCenter
+						width_pct: 35.27906990829223
+						height_pct: 57.3628053002384
+					image
+						english: 7f7c59683690a24cabcd23fbea6809ae82bf3156/logo.png
+						schinese: a4327ddce5ffd9825dcee941565f46df40c797f6/logo_schinese.png
+					image2x
+						english: 7f7c59683690a24cabcd23fbea6809ae82bf3156/logo_2x.png
+						schinese: a4327ddce5ffd9825dcee941565f46df40c797f6/logo_schinese_2x.png
+				library_header
+					image
+						english: 459d929117b3cda8e57c7e13ef29e81b60a40619/library_header.jpg
+						schinese: fc0fbbddc2bea74c94bf771a6c004e0bb1d27fe3/library_header_schinese.jpg
+					image2x
+						english: 459d929117b3cda8e57c7e13ef29e81b60a40619/library_header_2x.jpg
+						schinese: fc0fbbddc2bea74c94bf771a6c004e0bb1d27fe3/library_header_schinese_2x.jpg
+			store_asset_mtime: 1769088536
+			associations
+				0
+					type: developer
+					name: Massive Monster
+				1
+					type: publisher
+					name: Devolver Digital
+				2
+					type: franchise
+					name: Cult of the Lamb
+				3
+					type: franchise
+					name: Devolver Digital
+				4
+					type: franchise
+					name: Massive Monster
+			primary_genre: 25
+			genres
+				0: 1
+				1: 25
+				2: 23
+				3: 2
+			category
+				category_2: 1
+				category_28: 1
+				category_22: 1
+				category_23: 1
+				category_45: 1
+				category_46: 1
+				category_29: 1
+				category_55: 1
+				category_56: 1
+				category_60: 1
+				category_9: 1
+				category_39: 1
+				category_24: 1
+				category_44: 1
+				category_1: 1
+				category_64: 1
+				category_67: 1
+				category_68: 1
+				category_78: 1
+				category_69: 1
+				category_75: 1
+				category_79: 1
+				category_62: 1
+			supported_languages
+				english
+					supported: true
+					subtitles: true
+				french
+					supported: true
+					subtitles: true
+				german
+					supported: true
+					subtitles: true
+				spanish
+					supported: true
+					subtitles: true
+				japanese
+					supported: true
+					subtitles: true
+				koreana
+					supported: true
+					subtitles: true
+				brazilian
+					supported: true
+					subtitles: true
+				russian
+					supported: true
+					subtitles: true
+				schinese
+					supported: true
+					subtitles: true
+				tchinese
+					supported: true
+					subtitles: true
+				italian
+					supported: true
+					subtitles: true
+				arabic
+					supported: true
+					subtitles: true
+				dutch
+					supported: true
+					subtitles: true
+				turkish
+					supported: true
+					subtitles: true
+			steam_release_date: 1660233480
+			metacritic_score: 82
+			metacritic_fullurl: https://www.metacritic.com/game/pc/cult-of-the-lamb?ftag=MCD-06-10aaa1f
+			community_visible_stats: 1
+			community_hub_visible: 1
+			gameid: 1313140
+			content_descriptors_including_dlc
+				0: 5
+			store_tags
+				0: 7332
+				1: 42804
+				2: 4726
+				3: 4182
+				4: 1720
+				5: 3959
+				6: 4747
+				7: 220585
+				8: 5923
+				9: 1643
+				10: 3871
+				11: 21
+				12: 19
+				13: 180368
+				14: 1684
+				15: 4136
+				16: 7481
+				17: 4305
+				18: 9
+				19: 1697
+			review_score: 9
+			review_percentage: 95
+		extended
+			absolutemousecoordinates: 0
+			remoteplaytogethertestingbranches: default,internal-testing
+			developer: Massive Monster
+			publisher: Devolver Digital
+			homepage: http://cultofthelamb.com
+			listofdlc: 1944680,2013550,2015880,2071370,2090900,2090901,2202620,2202621,2202622,2202623,2202624,2202625,2202626,2331540,2646130,2647140,2647150,2647160,2890190,2945120,2945130,2945140,3017350,3840050,4153010,4153020,4153030,4153040,4153050
+			DLCAvailableOnStore: 1
+		config
+			installdir: Cult of the Lamb
+			launch
+				0
+					executable: Cult Of The Lamb.exe
+					type: default
+					config
+						oslist: windows
+				1
+					executable: Cult Of The Lamb.app
+					type: default
+					config
+						oslist: macos
+		depots
+			1313141
+				config
+					oslist: windows
+					language: 
+				manifests
+					public
+						gid: 4880266491363726302
+						size: 3696346343
+						download: 2925094000
+			1313142
+				config
+					oslist: macos
+					language: 
+				manifests
+					public
+						gid: 7005782565190828289
+						size: 3709187668
+						download: 2933404096
+			branches
+				public
+					buildid: 22221801
+					timeupdated: 1773123286
+					timebuildupdated: 1772756532
+			privatebranches: 1
+		ufs
+			quota: 1048576000
+			maxnumfiles: 10000
+			savefiles
+				0
+					root: gameinstall
+					path: saves
+					pattern: *.json
+					recursive: 1
+				1
+					root: gameinstall
+					path: saves
+					pattern: *.mp
+					recursive: 1
+			rootoverrides
+				0
+					root: gameinstall
+					os: Windows
+					oscompare: =
+					useinstead: WinAppDataLocalLow
+					pathtransforms
+						0
+							find: saves
+							replace: Massive Monster/Cult Of The Lamb/saves
+				1
+					root: gameinstall
+					os: MacOS
+					oscompare: =
+					useinstead: MacAppSupport
+					pathtransforms
+						0
+							find: saves
+							replace: Massive Monster/Cult Of The Lamb/saves

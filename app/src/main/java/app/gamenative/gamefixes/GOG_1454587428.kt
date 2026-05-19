@@ -2,6 +2,9 @@ package app.gamenative.gamefixes
 
 import app.gamenative.data.GameSource
 
+/**
+ * Fallout: New Vegas (GOG)
+ */
 val GOG_Fix_1454587428: KeyedGameFix = KeyedRegistryKeyFix(
     gameSource = GameSource.GOG,
     gameId = "1454587428",

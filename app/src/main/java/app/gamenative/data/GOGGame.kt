@@ -39,6 +39,9 @@ data class GOGGame(
     @ColumnInfo("icon_url")
     val iconUrl: String = "",
 
+    @ColumnInfo(name = "background_url", defaultValue = "''")
+    val backgroundUrl: String = "",
+
     @ColumnInfo("description")
     val description: String = "",
 

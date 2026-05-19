@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Вхід користувача</string>
     <string name="login_2fa">Двофакторна автентифікація</string>
@@ -27,11 +27,9 @@
     <string name="base_app_reset_container_confirm">Скинути</string>
     <string name="steam_verify_files_title">Перевірити файли</string>
     <string name="steam_verify_files_message">Будь ласка, переконайтеся, що ваші збереження завантажено у хмару або створено їхню резервну копію перед перевіркою, оскільки інакше вони можуть бути перезаписані.</string>
+    <string name="steam_cloud_sync_downloading_save_files">Завантаження файлів збережень %1$d/%2$d</string>
     <string name="steam_update_title">Оновити</string>
     <string name="steam_update_message">Будь ласка, переконайтеся, що ваші збереження завантажено у хмару або створено їхню резервну копію перед оновленням, оскільки інакше вони можуть бути перезаписані.</string>
-    <string name="steam_cloud_sync_success">Успішна синхронізація з хмарою</string>
-    <string name="steam_cloud_sync_up_to_date">Файли збереження вже актуальні</string>
-    <string name="steam_cloud_sync_failed">Помилка синхронізації з хмарою: %s</string>
     <string name="steam_not_logged_in">Ви повинні увійти в Steam, щоб використовувати цю функцію</string>
     <string name="steam_storage_permission_required">Необхідний дозвіл на доступ до сховища</string>
     <string name="steam_container_reset_success">Контейнер скинуто до стандартних налаштувань</string>
@@ -60,6 +58,13 @@
     <string name="install_app">Інсталювати</string>
     <string name="delete_app">Видалити</string>
     <string name="uninstall">Деінсталювати</string>
+    <string name="branch">Гілка</string>
+    <string name="change_branch">Змінити гілку</string>
+    <string name="change_branch_message">Завантажуйте альтернативні версії гри зі Steam за допомогою гілок, наданих розробниками. Введіть коди доступу, щоб розблокувати приватні гілки.</string>
+    <string name="private_branch_password_hint">Введіть код доступу</string>
+    <string name="private_branch_password_check">Перевірити код</string>
+    <string name="private_branch_password_success">Гілку розблоковано!</string>
+    <string name="private_branch_password_invalid">Невірний код доступу</string>
     <string name="run_app">Грати</string>
     <string name="gog_uninstall_game_title">Деінсталювати гру</string>
     <string name="gog_uninstall_confirmation_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
@@ -78,10 +83,64 @@
     <string name="untitled">Без назви</string>
     <string name="confirm_delete">Підтвердити видалення</string>
     <string name="destination_library">Бібліотека</string>
-    <string name="destination_downloads">Завантаження</string>
-    <string name="destination_friends">Друзі</string>
+    <string name="destination_downloads">Завантаження й сховище</string>
+    <string name="downloads_section_title">Завантаження</string>
 
     <!-- Library Tabs -->
+    <string name="downloads_empty">Немає активних завантажень</string>
+    <string name="downloads_overview_subtitle">Стежте за активними, призупиненими та доступними для відновлення завантаженнями</string>
+    <string name="downloads_cancel_confirm">Скасувати завантаження й видалити файли для %1$s?</string>
+    <string name="downloads_cancel_all">Скасувати все</string>
+    <string name="downloads_clear_finished">Очистити завершені</string>
+    <string name="downloads_pause_all">Призупинити все</string>
+    <string name="downloads_resume_all">Відновити все</string>
+    <string name="downloads_resume_available">Відновлення доступне</string>
+    <string name="downloads_status_cancelled">Скасовано</string>
+    <string name="downloads_status_complete">Завершено</string>
+    <string name="downloads_status_failed">Помилка</string>
+    <string name="downloads_status_paused">Призупинено</string>
+    <string name="downloads_summary">Керуйте активними завантаженнями та сховищем в одному місці</string>
+    <string name="storage_internal">Внутрішня</string>
+    <string name="storage_external">Зовнішня</string>
+    <string name="storage_free_of_total">%1$s: %2$s вільно з %3$s</string>
+    <string name="storage_calculating">%1$s: Обчислення…</string>
+    <string name="container_storage_title">Менеджер сховища</string>
+    <string name="container_storage_subtitle">Переміщуйте встановлення між внутрішнім і зовнішнім сховищем</string>
+    <string name="container_storage_summary">%1$d елементів • %2$s</string>
+    <string name="container_storage_loading">Завантаження інвентарю сховища...</string>
+    <string name="container_storage_empty">Не знайдено встановлених ігор, які можна перемістити</string>
+    <string name="container_storage_source_and_status">%1$s • %2$s</string>
+    <string name="container_storage_source_unknown">Невідоме джерело</string>
+    <string name="container_storage_location_internal">Внутрішнє</string>
+    <string name="container_storage_location_external">Зовнішнє</string>
+    <string name="container_storage_location_unknown">Невідомо</string>
+    <string name="container_storage_status_ready">Готово</string>
+    <string name="container_storage_status_orphaned">Бракує метаданих гри</string>
+    <string name="container_storage_status_no_container">Контейнер відсутній</string>
+    <string name="container_storage_status_game_files_missing">Файли гри відсутні</string>
+    <string name="container_storage_status_unreadable">Нечитабельно</string>
+    <string name="container_storage_move_to_external_button">Перемістити на зовнішнє</string>
+    <string name="container_storage_move_to_internal_button">Перемістити на внутрішнє</string>
+    <string name="container_storage_move_external_disabled">Перш ніж переміщувати ігри, у Налаштуваннях задайте шлях до зовнішнього сховища.</string>
+    <string name="container_storage_move_success">Переміщено %1$s до %2$s</string>
+    <string name="container_storage_move_failed">Не вдалося перемістити гру: %1$s</string>
+    <string name="container_storage_remove_button">Видалити контейнер</string>
+    <string name="container_storage_remove_title">Видалити контейнер</string>
+    <string name="container_storage_remove_message">Видалити контейнер для %1$s? Файли гри залишаться на диску.</string>
+    <string name="container_storage_remove_success">Контейнер для %1$s видалено</string>
+    <string name="container_storage_remove_failed">Не вдалося видалити контейнер</string>
+    <string name="container_storage_uninstall_button">Видалити гру</string>
+    <string name="container_storage_uninstall_title">Видалити гру</string>
+    <string name="container_storage_uninstall_message">Видалити %1$s і його контейнер? Файли гри та пов’язані дані контейнера буде видалено.</string>
+    <string name="container_storage_uninstall_game_only_title">Видалити лише гру</string>
+    <string name="container_storage_uninstall_game_only_message">%1$s не має контейнера. Видалити лише файли гри?</string>
+    <string name="container_storage_uninstall_success">%1$s видалено</string>
+    <string name="container_storage_uninstall_failed">Не вдалося видалити гру: %1$s</string>
+    <string name="container_storage_unknown_container">Невідомий контейнер</string>
+    <string name="container_storage_unknown_error">Невідома помилка</string>
+    <string name="settings_storage_title">Сховище</string>
+    <string name="settings_storage_manage_title">Керування сховищем</string>
+    <string name="settings_storage_manage_subtitle">Переглядайте встановлення, переміщуйте їх між місцями зберігання та очищайте контейнери</string>
     <string name="tab_all">Усі</string>
     <string name="tab_steam">Steam</string>
     <string name="tab_gog">GOG</string>
@@ -161,6 +220,12 @@
     <string name="content_info">Інформація про вміст</string>
     <string name="game_not_installed_title">Гра не інстальована</string>
     <string name="game_not_installed_message">Гра %s не інстальована. Будь ласка, інсталюйте гру перед запуском.</string>
+    <string name="intent_launch_failed">Не вдалося запустити гру: недійсний ярлик запуску</string>
+    <string name="intent_launch_steam_pending">Гра запуститься після підключення до Steam</string>
+    <string name="intent_launch_service_pending">Гра запуститься після запуску сервісу</string>
+    <string name="intent_launch_steam_login_failed">Помилка входу в Steam — запуск гри скасовано</string>
+    <string name="intent_launch_service_timeout">Не вдалося запустити ігровий сервіс — запуск гри скасовано</string>
+    <string name="back_press_exit_warning">Натисніть назад ще раз для виходу</string>
     <string name="game_executable_not_found_title">Неможливо запустити</string>
     <string name="game_executable_not_found">Виконуваний файл не вдалося вибрати автоматично. Вкажіть шлях до виконуваного файлу в налаштуваннях контейнера.</string>
     <string name="save_container_settings_title">Зберегти налаштування контейнера?</string>
@@ -183,6 +248,7 @@
     <string name="toggle_fullscreen">Перемкнути повноекранний режим</string>
     <string name="toggle_orientation">Перемкнути орієнтацію екрана</string>
     <string name="task_manager">Диспетчер завдань</string>
+    <string name="tools_wine_processes_running_hint">%1$d запущено, торкніться/клацніть процес, щоб закрити його</string>
     <string name="magnifier">Лупа</string>
     <string name="logs">Журнали</string>
     <string name="exit_game">Вийти з гри</string>
@@ -211,9 +277,66 @@
     <string name="open_navigation_menu">Відкрити меню навігації</string>
     <string name="quick_menu_title">Швидке меню</string>
     <string name="quick_menu_back">Назад</string>
+    <string name="screen_effects">Ефекти екрана</string>
+    <string name="screen_effects_live_preview">Зміни миттєво застосовуються до поточної гри.</string>
+    <string name="screen_effects_color_adjustments">Налаштування кольору</string>
+    <string name="screen_effects_shader_toggles">Ефекти шейдерів</string>
+    <string name="screen_effects_brightness">Яскравість</string>
+    <string name="screen_effects_contrast">Контрастність</string>
+    <string name="screen_effects_gamma">Гама</string>
+    <string name="screen_effects_toon">Контур toon</string>
+    <string name="screen_effects_toon_description">Додає темні контури для вигляду cel-shading.</string>
+    <string name="screen_effects_fxaa">FXAA</string>
+    <string name="screen_effects_fxaa_description">Згладжує зубчасті краї за допомогою легкого постпроцесного згладжування.</string>
+    <string name="screen_effects_vivid">Насичений</string>
+    <string name="screen_effects_vivid_description">Додає bloom і підсилює контраст для виразнішого зображення.</string>
+    <string name="screen_effects_crt">CRT</string>
+    <string name="screen_effects_crt_description">Додає рядки розгортки та легку хроматичну аберацію.</string>
+    <string name="screen_effects_ntsc">NTSC</string>
+    <string name="screen_effects_ntsc_description">Додає ретро-спотворення композитного ТВ, розтікання кольорів і рядки розгортки.</string>
+    <string name="screen_effects_reset">Скинути</string>
+    <string name="screen_effects_close">Закрити</string>
     <string name="quick_menu_tab_general">Загальні</string>
     <string name="quick_menu_tab_controller">Контролер</string>
     <string name="performance_hud">HUD продуктивності</string>
+    <string name="performance_hud_description">Показувати або приховувати ігрове накладання.</string>
+    <string name="performance_hud_fps_limiter">Обмежувач FPS</string>
+    <string name="performance_hud_fps_limiter_description">Обмежує частоту кадрів у грі. Макс.: %1$d Гц.</string>
+    <string name="performance_hud_fps_limiter_target">Цільовий FPS</string>
+    <string name="performance_hud_fps_limiter_off">Без обмежень</string>
+    <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Обмежувач вимкнено, поки активний LSFG. Частоту джерела задає множник.</string>
+    <string name="performance_hud_presets">Набори</string>
+    <string name="performance_hud_presets_description">Швидко перемикайтеся між типовими макетами HUD.</string>
+    <string name="performance_hud_preset_fps_only">1</string>
+    <string name="performance_hud_preset_essential">2</string>
+    <string name="performance_hud_preset_battery">3</string>
+    <string name="performance_hud_preset_full">4</string>
+    <string name="performance_hud_appearance">Зовнішній вигляд</string>
+    <string name="performance_hud_appearance_description">Налаштуйте розмір HUD і прозорість тла.</string>
+    <string name="performance_hud_size">Розмір</string>
+    <string name="performance_hud_size_small">S</string>
+    <string name="performance_hud_size_medium">M</string>
+    <string name="performance_hud_size_large">L</string>
+    <string name="performance_hud_background_opacity">Прозорість тла</string>
+    <string name="performance_hud_color_intensity">Інтенсивність кольору</string>
+    <string name="performance_hud_text_outline">Контур тексту</string>
+    <string name="performance_hud_percentage_value">%1$d%%</string>
+    <string name="performance_hud_metrics">Показані показники</string>
+    <string name="performance_hud_metrics_description">Виберіть, які показники з’являтимуться в накладанні.</string>
+    <string name="performance_hud_frame_rate">Частота кадрів</string>
+    <string name="performance_hud_frame_rate_graph">Графік FPS</string>
+    <string name="performance_hud_cpu_usage">Використання CPU</string>
+    <string name="performance_hud_cpu_usage_graph">Графік CPU</string>
+    <string name="performance_hud_gpu_usage">Використання GPU</string>
+    <string name="performance_hud_gpu_usage_graph">Графік GPU</string>
+    <string name="performance_hud_ram_usage">Використання ОЗП</string>
+    <string name="performance_hud_battery_level">Рівень батареї</string>
+    <string name="performance_hud_power_draw">Споживання енергії</string>
+    <string name="performance_hud_runtime_left">Залишок часу</string>
+    <string name="performance_hud_clock_time">Час</string>
+    <string name="performance_hud_cpu_temperature">Температура CPU</string>
+    <string name="performance_hud_gpu_temperature">Температура GPU</string>
     <string name="touchpad_help">Довідка сенсорної панелі</string>
     <string name="hide_controls_with_controller">Приховувати екранні елементи з контролером</string>
     <string name="hide_controls_with_controller_description">Автоматично приховувати екранні елементи керування, коли під\'єднано фізичний контролер</string>
@@ -329,6 +452,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Зберігає знімок logcat лише для PID цього застосунку</string>
     <string name="settings_save_logcat_title">Зберегти logcat</string>
+    <string name="settings_achievement_show_notification">Показувати сповіщення про досягнення</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Обробка прапорців для опкодів CALL/RET<br /><br />
@@ -401,7 +525,7 @@
     <string name="fexcore_env_var_help__multiblock">Вмикає компіляцію мультиблоків (multiblock). Може збільшити час JIT-компіляції та спричинити ривки.</string>
     <string name="fexcore_env_var_help__hostfeatures">Керує примусовим увімкненням функцій CPU.</string>
     <string name="fexcore_env_var_help__smalltscscale">Масштабує TSC на системах з низькою частотою.</string>
-    <string name="fexcore_env_var_help__smc_checks">Перевірки коду, що модифікує сам себе (SMC).</string>
+    <string name="fexcore_env_var_help__smcchecks">Перевірки коду, що модифікує сам себе (SMC).</string>
     <string name="fexcore_env_var_help__volatilemetadata">Використовує volatile метадані з PE-файлів для TSO, коли це можливо.</string>
     <string name="fexcore_env_var_help__monohacks">Спеціальні хаки SMC + JIT блоків для виявлення Mono.</string>
     <string name="fexcore_env_var_help__hidehypervisorbit">Приховує біт гіпервізора в CPUID (корисно для програм, що вилітають через нього).</string>
@@ -531,6 +655,11 @@
     <string name="steam_offline_mode">Режим Офлайн Steam</string>
     <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
     <string name="achievement_unlocked">Досягнення розблоковано</string>
+    <string name="settings_achievement_notification_position">Позиція сповіщення про досягнення</string>
+    <string name="achievement_position_top_left">Лівий верхній</string>
+    <string name="achievement_position_top_right">Правий верхній</string>
+    <string name="achievement_position_bottom_left">Лівий нижній</string>
+    <string name="achievement_position_bottom_right">Правий нижній</string>
     <string name="launch_steam_client_description">Зменшує продуктивність та сповільнює запуск.\nДозволяє онлайн гру, а також вирішує проблему DRM та контролеру.\nПрацює не з усіма іграми</string>
     <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
     <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>
@@ -615,6 +744,31 @@
     <string name="gesture_zoom_page_up_down">PgUp/PgDn</string>
     <string name="gesture_action_label">Дія</string>
     <string name="gesture_delay_label">Затримка</string>
+    <string name="gesture_section_single_finger">Один палець</string>
+    <string name="gesture_section_two_finger">Два пальці</string>
+    <string name="gesture_section_three_finger">Три пальці</string>
+    <string name="gesture_section_other">Інше</string>
+    <string name="gesture_pan_left_click_drag">Перетягування лівою кнопкою миші</string>
+    <string name="gesture_pan_right_click_drag">Перетягування правою кнопкою миші</string>
+    <string name="gesture_action_show_keyboard">Показати клавіатуру</string>
+    <string name="gesture_header_special">Спеціальні</string>
+    <string name="gesture_header_mouse">Миша</string>
+    <string name="gesture_header_common_game">Поширені ігрові клавіші</string>
+    <string name="gesture_header_letters">Літери A-Z</string>
+    <string name="gesture_header_numbers">Числа 0-9</string>
+    <string name="gesture_header_function_keys">Функціональні клавіші</string>
+    <string name="gesture_two_finger_hold">Утримання двома пальцями</string>
+    <string name="gesture_two_finger_hold_delay">Затримка утримання двома пальцями (мс)</string>
+    <string name="gesture_three_finger_tap">Торкання трьома пальцями</string>
+    <string name="gesture_three_finger_drag">Перетягування трьома пальцями</string>
+    <string name="gesture_three_finger_hold">Утримання трьома пальцями</string>
+    <string name="gesture_three_finger_hold_delay">Затримка утримання трьома пальцями (мс)</string>
+    <string name="gesture_threshold">Поріг жесту (px)</string>
+    <string name="gesture_threshold_subtitle">Рух, потрібний для фіксації типу жесту (нижче = вища чутливість)</string>
+    <string name="gesture_show_click_highlight">Показувати підсвічування кліку</string>
+    <string name="gesture_show_click_highlight_subtitle">Показувати коло в місці торкання</string>
+    <string name="gesture_show_debug_overlay">Показувати оверлей налагодження жестів</string>
+    <string name="gesture_show_debug_overlay_subtitle">Показувати тимчасові підписи жестів угорі по центру</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Налаштування динамічних джойстиків</string>
@@ -773,6 +927,8 @@
     <string name="settings_info_libraries_subtitle">Дізнайтеся, завдяки яким технологіям працює GameNative</string>
     <string name="settings_info_privacy_title">Політика конфіденційності</string>
     <string name="settings_info_privacy_subtitle">Відкриває посилання на Політику конфіденційності GameNative</string>
+    <string name="settings_info_usage_analytics_title">Аналітика використання</string>
+    <string name="settings_info_usage_analytics_subtitle">Ми ніколи не відстежуємо особисту інформацію. Вимкнення зупиняє несуттєву аналітику, однак основні дані про продуктивність ігор все одно збираються як законний інтерес для покращення сумісності.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Інтерфейс</string>
@@ -780,8 +936,12 @@
     <string name="settings_interface_external_links_subtitle">Посилання відкриваються у вашому основному браузері</string>
     <string name="settings_interface_hide_statusbar_title">Приховувати рядок стану, коли гра не запущена</string>
     <string name="settings_interface_hide_statusbar_subtitle">Приховує рядок стану Android у списку ігор, налаштуваннях тощо. Застосунок перезапуститься після зміни.</string>
+    <string name="settings_interface_warn_before_exit_title">Попереджати перед виходом</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Для виходу потрібне подвійне натискання назад — перше показує попередження</string>
+    <string name="settings_interface_show_gamepad_hints_title">Показувати підказки геймпада</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Показує панель підказок кнопок геймпада внизу екрана</string>
     <string name="settings_interface_icon_style">Стиль значку</string>
-    <string name="settings_interface_wifi_only_title">Завантаження тільки через Wi-Fi</string>
+    <string name="settings_interface_wifi_only_title">Завантаження тільки через Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Запобігає завантаженню через мобільні дані</string>
     <string name="settings_interface_external_storage_title">Записувати на зовнішнє сховище</string>
     <string name="settings_interface_no_external_storage">Не виявлено зовнішнього сховища</string>
@@ -848,9 +1008,11 @@
     <string name="library_export_cancelled">Вивантаження скасовано</string>
     <string name="library_shortcut_created">Створено ярлик</string>
     <string name="library_failed_to_create_shortcut">Помилка створення ярлика: %s</string>
+    <string name="library_cloud_sync_starting">Запуск синхронізації з хмарою…</string>
     <string name="library_cloud_sync_success">Успішна синхронізація з хмарою</string>
     <string name="library_cloud_sync_up_to_date">Файли збереження вже актуальні</string>
-    <string name="library_cloud_sync_failed">Помилка синхронізації з хмарою: %s</string>
+    <string name="library_cloud_sync_failed">Помилка синхронізації з хмарою</string>
+    <string name="library_cloud_sync_error">Помилка синхронізації з хмарою: %1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Потрібне інтернет-з\'єднання для інсталяції</string>
@@ -890,10 +1052,13 @@
     <string name="main_app_running_message">Ви авторизовані на іншому пристрої, де граєте у %s. Ви все одно можете грати в цю гру, але це завершить інший сеанс у Steam.</string>
     <string name="main_app_running_other_device">Ви авторизовані на іншому пристрої (%1$s), де граєте у %2$s (%3$s), і прогрес цієї гри ще не синхронізовано з хмарою. \nВи все одно можете грати в цю гру, але це завершить інший сеанс у Steam і може створити конфлікт збережень, коли прогрес того сеансу синхронізуватиметься</string>
     <string name="main_play_anyway">Все одно грати</string>
+    <string name="main_app_running_unknown_game">гру</string>
 
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Конфлікт збережень</string>
     <string name="main_save_conflict_message">Знайдено нове віддалене та нове локальне збереження. Яке з них залишити?\n\nЛокальне збереження:\n\t%1$s\nВіддалене збереження:\n\t%2$s</string>
+    <string name="main_save_conflict_upgrade_v1_title">Виберіть версію збереження</string>
+    <string name="main_save_conflict_upgrade_v1_message">Ми виправили обробку шляхів хмарних збережень для цієї гри та виявили відмінності між локальним і хмарним збереженням. Виберіть, яку версію залишити.\n\nЛокальне збереження:\n\t%1$s\nХмарне збереження:\n\t%2$s</string>
     <string name="main_keep_local">Залишити локальне</string>
     <string name="main_keep_remote">Залишити віддалене</string>
 
@@ -974,11 +1139,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">Конфігурацію успішно застосовано</string>
+    <string name="best_config_missing_components_title">Конфігурацію не застосовано</string>
+    <string name="best_config_missing_components_message">Наступні необхідні компоненти недоступні на цьому пристрої:\n\n%1$s\n\nВстановіть відсутні компоненти та спробуйте знову.</string>
     <string name="best_config_known_config_invalid">Відома конфігурація недійсна</string>
     <string name="best_config_no_config_available">Немає доступної найкращої конфігурації для цієї гри</string>
     <string name="best_config_fetch_failed">Не вдалося отримати конфігурацію. Перевірте підключення до мережі.</string>
+    <string name="best_config_apply_anyway">Застосувати все одно</string>
+    <string name="best_config_applied_with_defaults">Конфігурацію застосовано, відсутні компоненти замінено значеннями за замовчуванням</string>
     <string name="best_config_apply_failed">Не вдалося застосувати конфігурацію: %s</string>
-    <string name="best_config_missing_content">%s відсутній</string>
     <string name="import_config">Імпортувати конфігурацію</string>
     <string name="export_config">Експортувати конфігурацію</string>
     <string name="library_app_type">Тип застосунку</string>
@@ -1216,9 +1384,91 @@
     <string name="manifest_content_untrusted">Вміст не є надійним, тому його не інстальовано.</string>
     <string name="manifest_type_mismatch">Завантажений вміст не відповідає очікуваному типу.</string>
     <string name="manifest_glibc_not_supported">Збірки GLIBC не підтримуються.</string>
+    <!-- Library: source not logged in splash -->
+    <string name="library_source_not_logged_in_steam">Увійдіть, щоб отримати доступ до бібліотеки Steam.</string>
+    <string name="library_source_not_logged_in_gog">Увійдіть, щоб отримати доступ до бібліотеки GOG.</string>
+    <string name="library_source_not_logged_in_epic">Увійдіть, щоб отримати доступ до бібліотеки Epic.</string>
+    <string name="library_source_not_logged_in_amazon">Увійдіть, щоб отримати доступ до бібліотеки Amazon.</string>
+    <string name="library_source_no_custom_games">Ви не додали жодної власної гри.</string>
     <string name="download_failed_title">Помилка завантаження</string>
     <string name="download_failed_message">Не вдалося завантажити необхідний файл. Перевірте підключення до мережі та спробуйте ще раз.</string>
     <string name="install_failed_title">Помилка інсталяції</string>
     <string name="install_failed_message">Не вдалося інсталювати системні файли. Спробуйте ще раз. Якщо проблема не зникає, спробуйте іншу мережу або скористайтеся VPN.</string>
-</resources>
+    <string name="settings_interface_swap_face_buttons_title">Поміняти місцями кнопки дій</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Поміняти місцями значки кнопок A↔B і X↔Y</string>
 
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">Перевірка модів Майстерні…</string>
+    <string name="workshop_update_title">Оновлення модів Майстерні</string>
+    <string name="workshop_update_prompt">%1$s МБ оновлень модів доступно. Завантажити зараз чи пропустити?</string>
+    <string name="workshop_download_btn">Завантажити</string>
+    <string name="workshop_skip_btn">Пропустити</string>
+    <string name="workshop_downloading">Завантаження модів Майстерні (%1$d/%2$d)</string>
+    <string name="workshop_processing">Обробка модів…</string>
+    <string name="workshop_failed_count">Не вдалося оновити %1$d мод(ів) Майстерні</string>
+    <string name="workshop_download_failed">Помилка завантаження</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Рекомендовано</string>
+    <string name="recommended_buy_button">Переглянути гру</string>
+    <string name="recommended_support_message">Покупка за цим посиланням допомагає підтримувати розробку GameNative.</string>
+    <string name="recommended_about_heading">Про цю гру</string>
+    <string name="recommended_review_count">На основі %1$s відгуків</string>
+    <string name="review_overwhelmingly_positive">Надзвичайно позитивні</string>
+    <string name="review_very_positive">Дуже позитивні</string>
+    <string name="review_mostly_positive">Переважно позитивні</string>
+    <string name="review_mixed">Змішані</string>
+    <string name="review_mostly_negative">Переважно негативні</string>
+    <string name="review_overwhelmingly_negative">Надзвичайно негативні</string>
+    <string name="settings_interface_show_recommendations_title">Показувати рекомендації ігор</string>
+    <string name="settings_interface_show_recommendations_subtitle">Показує підібрані інді-ігри у вашій бібліотеці. Залишаючи це увімкненим, ви підтримуєте інді-розробників та GameNative.</string>
+     <string name="steam_save_export_success">Збереження експортовано</string>
+     <string name="steam_save_export_no_saves_found">Збереження не знайдено</string>
+     <string name="steam_save_export_failed">Не вдалося експортувати збереження: %s</string>
+     <string name="steam_save_import_success">Збереження імпортовано</string>
+     <string name="steam_save_import_failed">Не вдалося імпортувати збереження: %s</string>
+    <string name="option_import_saves">Імпортувати збереження</string>
+    <string name="option_export_saves">Експортувати збереження</string>
+
+    <!-- LSFG-VK frame generation -->
+    <string name="lsfg_tab_title">LSFG-VK</string>
+    <string name="lsfg_description">Генерація проміжних кадрів за допомогою шару Vulkan Lossless Scaling. Відомо, що працює лише на Adreno 6xx і новіших.</string>
+    <string name="lsfg_enable">Увімкнути генерацію кадрів LSFG-VK</string>
+    <string name="lsfg_multiplier">Множник кадрів</string>
+    <string name="lsfg_flow_scale">Масштаб потоку</string>
+    <string name="lsfg_flow_scale_desc">Нижче — стабільніше; вище — плавніше, але можуть з’являтися артефакти.</string>
+    <string name="lsfg_performance_mode">Режим продуктивності</string>
+    <string name="lsfg_not_supported">Для генерації кадрів потрібен контейнер Bionic</string>
+    <string name="lsfg_install_prompt">Lossless Scaling не встановлено. Натисніть для встановлення. Відомо, що працює лише на Adreno 6xx і новіших.</string>
+    <string name="lsfg_not_in_library">Lossless Scaling немає у вашій бібліотеці Steam</string>
+    <string name="lsfg_install_title">Встановити Lossless Scaling?</string>
+    <string name="lsfg_install_message">Це завантажить Lossless Scaling зі Steam для увімкнення генерації кадрів.</string>
+    <string name="lsfg_installing">Завантаження Lossless Scaling…</string>
+    <string name="lsfg_performance_mode_desc">Знижує якість для вищої пропускної здатності</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">Завантаження може зайняти кілька хвилин при першому запуску</string>
+    <string name="game_launch_tip_2">Порада: Ви можете переглянути файли гри, натиснувши \"%s\" у налаштуваннях гри.</string>
+    <string name="game_launch_tip_3">Порада: Ви можете перейти до головного меню налаштувань і завантажити власні драйвери для вашого пристрою для використання на Bionic.</string>
+    <string name="game_launch_tip_4">Порада: Якщо ви отримуєте помилку DirectX, переконайтеся, що ви використовуєте DXVK 1.10.3-async та leegao-wrapper на Bionic.</string>
+    <string name="game_launch_tip_5">Порада: Спробуйте тест Direct3D у меню «Пуск» після натискання \"%s\", щоб перевірити, чи ваш пристрій працює правильно.</string>
+    <string name="game_launch_tip_6">Порада: Використовуйте DXVK для ігор DirectX 8/9/10/11, VKD3D для ігор DirectX 12 та VirGL + WineD3D для ігор OpenGL.</string>
+    <string name="game_launch_tip_7">Порада: Використовуйте Turnip на glibc або bionic для ігор DirectX 12. Підтримка DirectX 12 для пристроїв, які не підтримують Turnip, наразі обмежена.</string>
+    <string name="game_launch_tip_8">Порада: Спробуйте драйвери Adreno або Snapdragon 8 Elite на glibc, якщо у вас сумісний пристрій.</string>
+    <string name="game_launch_tip_9">Порада: Якщо при запуску гри з\'являється чорний екран, спробуйте \"%s\" і запустити гру з диска A:.</string>
+    <string name="game_launch_tip_10">Порада: Ви можете додати різні розташування для користувацьких ігор у налаштуваннях.</string>
+    <string name="game_launch_tip_11">Порада: Використовуйте HUD продуктивності в швидкому меню, коли хочете бачити статистику FPS у грі.</string>
+    <string name="game_launch_tip_12">Порада: Встановіть пакети в A:\\_CommonRedist, якщо ваша гра не запускається.</string>
+    <string name="game_launch_tip_13">Порада: Ви можете ввімкнути або вимкнути екранний контролер за допомогою кнопки «Назад» на вашому пристрої.</string>
+    <string name="game_launch_tip_14">Порада: Ви можете викликати клавіатуру за допомогою кнопки «Назад» на вашому пристрої.</string>
+    <string name="game_launch_tip_15">Порада: Ви можете натиснути двома пальцями всередині контейнера для клацання правою кнопкою миші.</string>
+    <string name="game_launch_tip_16">Порада: Якщо ви використовуєте екранний контролер, ви можете вимкнути мишу, щоб запобігти випадковим дотикам.</string>
+    <string name="game_launch_tip_17">Порада: Повідомляйте про проблеми в Discord, щоб ми могли їх виправити.</string>
+    <string name="game_launch_tip_18">Порада: Використовуйте драйвер Vortek на glibc або wrapper-leegao на Bionic, якщо у вас не-Adreno GPU.</string>
+    <string name="game_launch_tip_19">Порада: Зменшіть роздільну здатність і використовуйте box64 у режимі продуктивності для підвищення FPS.</string>
+    <string name="game_launch_tip_20">Порада: Якщо гра вилітає після завантаження, збільште відеопам\'ять.</string>
+    <string name="game_launch_tip_21">Порада: Якщо ви бачите візуальні артефакти, вимкніть DRI3.</string>
+    <string name="game_launch_tip_22">Порада: Ви можете ввімкнути режим сенсорного екрана.</string>
+    <string name="game_launch_tip_23">Порада: Якщо у вас GPU Mali, будь ласка, використовуйте системні драйвери.</string>
+    <string name="game_launch_tip_24">Порада: Чорний екран? Спробуйте опцію \"%s\" у меню, щоб перевірити, чи ваші драйвери працюють правильно.</string>
+    <string name="launch_bionic_steam_description">Увімкнення онлайн-гри та покращення сумісності\nПрацює не завжди\nПеред спробою зробіть резервну копію збережень</string>
+</resources>

@@ -25,6 +25,8 @@ data class SteamApp(
     val receivedPICS: Boolean = false,
     @ColumnInfo("last_change_number")
     val lastChangeNumber: Int = 0,
+    @ColumnInfo("ufs_parse_version", defaultValue = "0")
+    val ufsParseVersion: Int = 0,
 
     @ColumnInfo("depots")
     val depots: Map<Int, DepotInfo> = emptyMap(),
@@ -141,6 +143,15 @@ data class SteamApp(
 
     @ColumnInfo("ufs")
     val ufs: UFS = UFS(),
+
+    @ColumnInfo(name = "workshop_mods", defaultValue = "0")
+    val workshopMods: Boolean = false,
+
+    @ColumnInfo(name = "enabled_workshop_item_ids", defaultValue = "")
+    val enabledWorkshopItemIds: String = "",
+
+    @ColumnInfo(name = "workshop_download_pending", defaultValue = "0")
+    val workshopDownloadPending: Boolean = false,
 ) {
     val logoUrl: String
         get() = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$id/$logoHash.jpg"

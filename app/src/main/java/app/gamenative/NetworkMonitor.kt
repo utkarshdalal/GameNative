@@ -20,8 +20,8 @@ object NetworkMonitor {
     private val _hasInternet = MutableStateFlow(false)
     val hasInternet: StateFlow<Boolean> = _hasInternet.asStateFlow()
 
-    private val _isWifiConnected = MutableStateFlow(false)
-    val isWifiConnected: StateFlow<Boolean> = _isWifiConnected.asStateFlow()
+    private val _hasWifiOrEthernet = MutableStateFlow(false)
+    val hasWifiOrEthernet: StateFlow<Boolean> = _hasWifiOrEthernet.asStateFlow()
 
     private val initialized = AtomicBoolean(false)
 
@@ -32,17 +32,29 @@ object NetworkMonitor {
         val networkCaps = ConcurrentHashMap<Network, NetworkCapabilities>()
 
         fun skip(caps: NetworkCapabilities) =
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) ||
-                caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI_AWARE) ||
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI_AWARE) ||
                 caps.hasTransport(NetworkCapabilities.TRANSPORT_LOWPAN)
+
+        // VPN networks can report stale transports (e.g. WIFI+VPN after wifi drops)
+        fun hasVpn(caps: NetworkCapabilities) =
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
 
         fun update() {
             val validatedCaps = networkCaps.values.filter {
                 it.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
             }
-            _hasInternet.value = validatedCaps.isNotEmpty()
-            // only count WiFi/Ethernet that is also validated (excludes captive portals)
-            _isWifiConnected.value = validatedCaps.any {
+            val nonVpnCaps = validatedCaps.filter { !hasVpn(it) }
+            val nonVpnExists = networkCaps.values.any { !hasVpn(it) }
+            // trust VPN for internet only if a non-VPN network physically exists
+            // (guards against stale VPN after underlying WiFi drops;
+            //  allows VPN in censorship scenarios where WiFi exists but isn't validated)
+            val vpnValidated = validatedCaps.any { hasVpn(it) }
+            _hasInternet.value = nonVpnCaps.isNotEmpty() || (vpnValidated && nonVpnExists)
+            // WiFi/Ethernet transport: only trust non-VPN networks (VPN reports stale transports).
+            // known edge case: censored WiFi + VPN → WiFi not validated → hasWifiOrEthernet=false,
+            // so "WiFi only" blocks downloads. user must disable "WiFi only" to download via VPN.
+            // fixing this would risk treating always-on VPN without real WiFi as valid.
+            _hasWifiOrEthernet.value = nonVpnCaps.any {
                 it.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
                     it.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
             }

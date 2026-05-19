@@ -15,12 +15,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.AlertDialog
@@ -79,10 +86,13 @@ import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.enums.SortOption
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.model.LibraryViewModel
+import app.gamenative.service.SteamService
+import app.gamenative.ui.screen.library.components.LibraryCarouselPane
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import app.gamenative.ui.screen.library.components.LibraryListPane
 import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
 import app.gamenative.ui.screen.library.components.LibrarySearchBar
+import app.gamenative.ui.screen.library.components.LibrarySourceNotLoggedInSplash
 import app.gamenative.ui.screen.library.components.LibraryTabBar
 import app.gamenative.ui.screen.auth.AmazonOAuthActivity
 import app.gamenative.ui.screen.auth.EpicOAuthActivity
@@ -91,8 +101,12 @@ import app.gamenative.ui.screen.library.components.SystemMenu
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.PlatformAuthUiHelpers
 import app.gamenative.ui.util.PlatformLogoutCallbacks
+import app.gamenative.service.amazon.AmazonService
+import app.gamenative.service.epic.EpicService
+import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.PlatformOAuthHandlers
+import app.gamenative.utils.SteamUtils
 import kotlinx.coroutines.launch
 import android.os.SystemClock
 
@@ -105,6 +119,7 @@ fun HomeLibraryScreen(
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
+    onDownloadsClick: () -> Unit = {},
     isOffline: Boolean = false,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -125,6 +140,7 @@ fun HomeLibraryScreen(
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
         onGoOnline = onGoOnline,
+        onDownloadsClick = onDownloadsClick,
         onSourceToggle = viewModel::onSourceToggle,
         onAddCustomGameFolder = viewModel::addCustomGameFolder,
         onSortOptionChanged = viewModel::onSortOptionChanged,
@@ -153,6 +169,7 @@ private fun LibraryScreenContent(
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
+    onDownloadsClick: () -> Unit = {},
     onSourceToggle: (GameSource) -> Unit,
     onAddCustomGameFolder: (String) -> Unit,
     onSortOptionChanged: (SortOption) -> Unit,
@@ -271,6 +288,7 @@ private fun LibraryScreenContent(
     }
 
     var selectedAppId by remember { mutableStateOf<String?>(null) }
+    val carouselListState = rememberLazyListState()
     val isViewWide = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var currentPaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
 
@@ -284,8 +302,11 @@ private fun LibraryScreenContent(
 
     val rootFocusRequester = remember { FocusRequester() }
     val gridFirstItemFocusRequester = remember { FocusRequester() }
+    val carouselFocusRequester = remember { FocusRequester() }
     var gridFocusTargetListIndex by remember { mutableIntStateOf(0) }
+    var carouselFocusTargetListIndex by remember { mutableIntStateOf(0) }
     var pendingGridFocusRequest by remember { mutableStateOf(false) }
+    var pendingCarouselFocusRequest by remember { mutableStateOf(false) }
 
     var isSystemMenuOpen by remember { mutableStateOf(false) }
     // Track previous overlay states to detect when they close
@@ -293,7 +314,15 @@ private fun LibraryScreenContent(
     var wasOptionsPanelOpen by remember { mutableStateOf(false) }
     // Keep a stable reference to the selected item so detail view doesn't disappear during list refresh/pagination.
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
-    val filterFabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
+    val filterFabExpanded by remember(currentPaneType, listState, carouselListState) {
+        derivedStateOf {
+            if (currentPaneType == PaneType.CAROUSEL) {
+                carouselListState.firstVisibleItemIndex == 0
+            } else {
+                listState.firstVisibleItemIndex == 0
+            }
+        }
+    }
 
     // Dialog state for add custom game prompt
     var showAddCustomGameDialog by remember { mutableStateOf(false) }
@@ -303,6 +332,27 @@ private fun LibraryScreenContent(
     var rootHasFocus by remember { mutableStateOf(false) }
     var lastBootstrapAtMs by remember { mutableLongStateOf(0L) }
 
+    fun firstVisibleContentIndex(): Int {
+        val lastIndex = state.appInfoList.lastIndex
+        if (lastIndex < 0) return 0
+
+        return if (currentPaneType == PaneType.CAROUSEL) {
+            carouselListState.firstVisibleItemIndex.coerceIn(0, lastIndex)
+        } else {
+            listState.firstVisibleItemIndex.coerceIn(0, lastIndex)
+        }
+    }
+
+    fun currentCarouselFocusTargetIndex(): Int {
+        val lastIndex = state.appInfoList.lastIndex
+        if (lastIndex < 0) return 0
+
+        return carouselFocusTargetListIndex.coerceIn(0, lastIndex)
+    }
+
+    fun preferredContentFocusIndex(): Int =
+        if (currentPaneType == PaneType.CAROUSEL) currentCarouselFocusTargetIndex() else firstVisibleContentIndex()
+
     fun requestGridFocusOrDefer() {
         if (state.appInfoList.isEmpty()) return
         try {
@@ -311,6 +361,28 @@ private fun LibraryScreenContent(
             lastBootstrapAtMs = SystemClock.uptimeMillis()
         } catch (_: IllegalStateException) {
             pendingGridFocusRequest = true
+        }
+    }
+
+    fun requestCarouselFocusOrDefer(targetListIndex: Int = currentCarouselFocusTargetIndex()) {
+        if (state.appInfoList.isEmpty()) return
+        carouselFocusTargetListIndex = targetListIndex.coerceIn(0, state.appInfoList.lastIndex)
+        try {
+            carouselFocusRequester.requestFocus()
+            pendingCarouselFocusRequest = false
+            lastBootstrapAtMs = SystemClock.uptimeMillis()
+        } catch (_: IllegalStateException) {
+            pendingCarouselFocusRequest = true
+        }
+    }
+
+    fun requestContentFocusOrDefer(targetListIndex: Int = preferredContentFocusIndex()) {
+        if (state.appInfoList.isEmpty()) return
+        if (currentPaneType == PaneType.CAROUSEL) {
+            requestCarouselFocusOrDefer(targetListIndex)
+        } else {
+            gridFocusTargetListIndex = targetListIndex
+            requestGridFocusOrDefer()
         }
     }
 
@@ -385,7 +457,7 @@ private fun LibraryScreenContent(
             kotlinx.coroutines.delay(100)
             // Restore focus to content area
             if (state.appInfoList.isNotEmpty()) {
-                requestGridFocusOrDefer()
+                requestContentFocusOrDefer()
             } else {
                 requestRootFocusSafe()
             }
@@ -393,17 +465,25 @@ private fun LibraryScreenContent(
     }
 
 
-    // Apply top padding differently for list vs game detail pages.
-    // On the game page we want to hide the top padding when the status bar is hidden.
-    val safePaddingModifier = if (selectedLibraryItem != null) {
-        // Detail (game) page: use actual status bar height when status bar is visible,
-        // or 0.dp when status bar is hidden
-        val topPadding = if (PrefManager.hideStatusBarWhenNotInGame) {
-            0.dp
-        } else {
-            WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-        }
-        Modifier.padding(top = topPadding)
+    // Padding for the library *list* view (tab bar, grid, search bar) so content
+    // never draws behind the display cutout. The window now opts in to
+    // LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES via Theme.Pluvia, so:
+    //   * Status bar visible (portrait):   statusBars insets already cover the top notch.
+    //   * Status bar hidden (portrait):    statusBars insets are 0; displayCutout supplies
+    //                                       the notch height so content isn't behind the notch.
+    //   * Landscape (cutout on a side):    statusBars is top-only; displayCutout supplies
+    //                                       the side inset so the tab bar isn't clipped.
+    // Bottom is intentionally excluded so scroll content can reach the bottom edge.
+    //
+    // The detail (game) page deliberately does NOT use this — the hero image is meant
+    // to bleed through the cutout, so AppScreenContent insets only the elements that
+    // need to stay tappable (e.g. the back button) instead.
+    val safePaddingModifier = if (selectedLibraryItem == null) {
+        Modifier.windowInsetsPadding(
+            WindowInsets.statusBars
+                .union(WindowInsets.displayCutout)
+                .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+        )
     } else {
         Modifier
     }
@@ -417,9 +497,8 @@ private fun LibraryScreenContent(
             // Empty tab - focus root so bumpers still work
             requestRootFocusSafe()
         } else {
-            // Tab has content - focus the first grid item
-            gridFocusTargetListIndex = 0
-            requestGridFocusOrDefer()
+            // Tab has content - focus the first content item/container
+            requestContentFocusOrDefer(targetListIndex = 0)
         }
     }
 
@@ -449,6 +528,35 @@ private fun LibraryScreenContent(
         }
     }
 
+    LaunchedEffect(
+        pendingCarouselFocusRequest,
+        carouselFocusTargetListIndex,
+        state.appInfoList.size,
+        selectedAppId,
+        isSystemMenuOpen,
+        state.isOptionsPanelOpen,
+        state.isSearching,
+    ) {
+        if (pendingCarouselFocusRequest && state.appInfoList.isNotEmpty()) {
+            if (selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
+                val targetIndex = currentCarouselFocusTargetIndex()
+                if (carouselListState.layoutInfo.visibleItemsInfo.none { it.index == targetIndex }) {
+                    carouselListState.scrollToItem(targetIndex)
+                }
+                var retries = 0
+                while (pendingCarouselFocusRequest && retries < 8) {
+                    try {
+                        carouselFocusRequester.requestFocus()
+                        pendingCarouselFocusRequest = false
+                    } catch (_: IllegalStateException) {
+                        retries++
+                        kotlinx.coroutines.delay(32)
+                    }
+                }
+            }
+        }
+    }
+
     // If the app list starts empty and populates later, bootstrap controller focus once content is ready.
     LaunchedEffect(
         state.appInfoList.size,
@@ -462,8 +570,7 @@ private fun LibraryScreenContent(
         val listBecameEmpty = previousAppCount > 0 && currentCount == 0
 
         if (listBecameNonEmpty && selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
-            gridFocusTargetListIndex = listState.firstVisibleItemIndex.coerceIn(0, state.appInfoList.lastIndex)
-            requestGridFocusOrDefer()
+            requestContentFocusOrDefer()
         }
         if (listBecameEmpty && selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
             // Empty tabs can drop focused children; re-anchor focus at the root so bumper nav keeps working.
@@ -481,16 +588,12 @@ private fun LibraryScreenContent(
         if ((systemMenuJustClosed || optionsPanelJustClosed) && !state.isSearching) {
             // Give a brief moment for the overlay to animate out
             kotlinx.coroutines.delay(50)
-            // Restore focus to grid
+            // Restore focus to the active content layout
             if (state.appInfoList.isNotEmpty()) {
-                try {
-                    gridFirstItemFocusRequester.requestFocus()
-                } catch (_: IllegalStateException) {}
+                requestContentFocusOrDefer()
             } else {
                 // Empty list - focus root so bumpers still work
-                try {
-                    rootFocusRequester.requestFocus()
-                } catch (_: IllegalStateException) {}
+                requestRootFocusSafe()
             }
         }
 
@@ -509,7 +612,7 @@ private fun LibraryScreenContent(
         state.appInfoList.size,
         state.currentTab,
     ) {
-        val canBootstrapGridFocus: () -> Boolean = {
+        val canBootstrapContentFocus: () -> Boolean = {
             val now = SystemClock.uptimeMillis()
             selectedAppId == null &&
                 !isSystemMenuOpen &&
@@ -563,10 +666,8 @@ private fun LibraryScreenContent(
                     KeyEvent.KEYCODE_BUTTON_THUMBL,
                     KeyEvent.KEYCODE_BUTTON_THUMBR,
                     -> {
-                        if (canBootstrapGridFocus()) {
-                            gridFocusTargetListIndex = listState.firstVisibleItemIndex
-                                .coerceIn(0, state.appInfoList.lastIndex)
-                            requestGridFocusOrDefer()
+                        if (canBootstrapContentFocus()) {
+                            requestContentFocusOrDefer()
                             // Do not consume: let normal key routing continue after bootstrap.
                             false
                         } else {
@@ -581,7 +682,7 @@ private fun LibraryScreenContent(
 
         val onGlobalMotionEvent: (AndroidEvent.MotionEvent) -> Boolean = { androidEvent ->
             val event = androidEvent.event
-            if (event == null || !canBootstrapGridFocus()) {
+            if (event == null || !canBootstrapContentFocus()) {
                 false
             } else {
                 val isMoveLike = event.actionMasked == MotionEvent.ACTION_MOVE
@@ -595,9 +696,7 @@ private fun LibraryScreenContent(
                     kotlin.math.abs(leftY) >= 0.6f
 
                 if (isMoveLike && hasDirectionalAxis) {
-                    gridFocusTargetListIndex = listState.firstVisibleItemIndex
-                        .coerceIn(0, state.appInfoList.lastIndex)
-                    requestGridFocusOrDefer()
+                    requestContentFocusOrDefer()
                     // Do not consume: allow normal movement handling after bootstrap.
                     false
                 } else {
@@ -636,7 +735,7 @@ private fun LibraryScreenContent(
                 // Handle gamepad buttons
                 if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
                     val keyCode = keyEvent.nativeKeyEvent.keyCode
-                    val canBootstrapGridFocus = selectedAppId == null &&
+                    val canBootstrapContentFocus = selectedAppId == null &&
                         !state.isOptionsPanelOpen &&
                         !isSystemMenuOpen &&
                         !state.isSearching &&
@@ -654,10 +753,8 @@ private fun LibraryScreenContent(
                         KeyEvent.KEYCODE_BUTTON_THUMBL,
                         KeyEvent.KEYCODE_BUTTON_THUMBR,
                         -> {
-                            if (canBootstrapGridFocus) {
-                                gridFocusTargetListIndex = listState.firstVisibleItemIndex
-                                    .coerceIn(0, state.appInfoList.lastIndex)
-                                requestGridFocusOrDefer()
+                            if (canBootstrapContentFocus) {
+                                requestContentFocusOrDefer()
                                 false
                             } else {
                                 false
@@ -667,10 +764,8 @@ private fun LibraryScreenContent(
                         // L1 button - previous tab
                         KeyEvent.KEYCODE_BUTTON_L1 -> {
                             if (selectedAppId == null && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
-                                if (canBootstrapGridFocus) {
-                                    gridFocusTargetListIndex = listState.firstVisibleItemIndex
-                                        .coerceIn(0, state.appInfoList.lastIndex)
-                                    requestGridFocusOrDefer()
+                                if (canBootstrapContentFocus) {
+                                    requestContentFocusOrDefer()
                                 }
                                 onPreviousTab()
                                 true
@@ -682,10 +777,8 @@ private fun LibraryScreenContent(
                         // R1 button - next tab
                         KeyEvent.KEYCODE_BUTTON_R1 -> {
                             if (selectedAppId == null && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
-                                if (canBootstrapGridFocus) {
-                                    gridFocusTargetListIndex = listState.firstVisibleItemIndex
-                                        .coerceIn(0, state.appInfoList.lastIndex)
-                                    requestGridFocusOrDefer()
+                                if (canBootstrapContentFocus) {
+                                    requestContentFocusOrDefer()
                                 }
                                 onNextTab()
                                 true
@@ -768,21 +861,84 @@ private fun LibraryScreenContent(
         if (selectedAppId == null) {
             // Use Box to allow content to scroll behind the tab bar
             Box(modifier = Modifier.fillMaxSize()) {
-                // Library list (content scrolls behind tab bar)
-                LibraryListPane(
-                    state = state,
-                    listState = listState,
-                    currentLayout = currentPaneType,
-                    firstGridItemFocusRequester = gridFirstItemFocusRequester,
-                    focusTargetListIndex = gridFocusTargetListIndex,
-                    onPageChange = onPageChange,
-                    onNavigate = { appId ->
-                        selectedAppId = appId
-                        selectedLibraryItem = state.appInfoList.find { it.appId == appId }
-                    },
-                    onRefresh = onRefresh,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                // When on Steam/GOG/Epic/Amazon tab and not logged in, or LOCAL tab with no custom games, show splash
+                val showEmptyStateSplash = when (state.currentTab) {
+                    LibraryTab.STEAM -> !SteamUtils.hasStoredCredentials() && !state.isLoading
+                    LibraryTab.GOG -> !GOGService.hasStoredCredentials(context)
+                    LibraryTab.EPIC -> !EpicService.hasStoredCredentials(context)
+                    LibraryTab.AMAZON -> !AmazonService.hasStoredCredentials(context)
+                    LibraryTab.LOCAL -> PrefManager.customGamesCount == 0
+                    else -> false
+                }
+                if (showEmptyStateSplash) {
+                    val (messageResId, buttonResId, onAction) = when (state.currentTab) {
+                        LibraryTab.STEAM -> Triple(
+                            R.string.library_source_not_logged_in_steam,
+                            R.string.steam_sign_in,
+                            onGoOnline,
+                        )
+                        LibraryTab.GOG -> Triple(
+                            R.string.library_source_not_logged_in_gog,
+                            R.string.gog_settings_login_title,
+                            { gogOAuthLauncher.launch(Intent(context, GOGOAuthActivity::class.java)) },
+                        )
+                        LibraryTab.EPIC -> Triple(
+                            R.string.library_source_not_logged_in_epic,
+                            R.string.epic_settings_login_title,
+                            { epicOAuthLauncher.launch(Intent(context, EpicOAuthActivity::class.java)) },
+                        )
+                        LibraryTab.AMAZON -> Triple(
+                            R.string.library_source_not_logged_in_amazon,
+                            R.string.amazon_settings_login_title,
+                            { amazonOAuthLauncher.launch(Intent(context, AmazonOAuthActivity::class.java)) },
+                        )
+                        LibraryTab.LOCAL -> Triple(
+                            R.string.library_source_no_custom_games,
+                            R.string.add_custom_game_dialog_title,
+                            onAddCustomGameClick,
+                        )
+                        else -> throw IllegalStateException("showEmptyStateSplash is true only for Steam/GOG/Epic/Amazon/LOCAL")
+                    }
+                    LibrarySourceNotLoggedInSplash(
+                        messageResId = messageResId,
+                        signInButtonLabelResId = buttonResId,
+                        onSignInClick = onAction,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    // Library list (content scrolls behind tab bar)
+                    if (currentPaneType == PaneType.CAROUSEL) {
+                        LibraryCarouselPane(
+                            state = state,
+                            listState = carouselListState,
+                            onPageChange = onPageChange,
+                            onNavigate = { appId ->
+                                selectedAppId = appId
+                                selectedLibraryItem = state.appInfoList.find { it.appId == appId }
+                            },
+                            onRefresh = onRefresh,
+                            modifier = Modifier.fillMaxSize(),
+                            firstCarouselItemFocusRequester = carouselFocusRequester,
+                            focusTargetListIndex = currentCarouselFocusTargetIndex(),
+                            onFocusedIndexChanged = { carouselFocusTargetListIndex = it },
+                        )
+                    } else {
+                        LibraryListPane(
+                            state = state,
+                            listState = listState,
+                            currentLayout = currentPaneType,
+                            firstGridItemFocusRequester = gridFirstItemFocusRequester,
+                            focusTargetListIndex = gridFocusTargetListIndex,
+                            onPageChange = onPageChange,
+                            onNavigate = { appId ->
+                                selectedAppId = appId
+                                selectedLibraryItem = state.appInfoList.find { it.appId == appId }
+                            },
+                            onRefresh = onRefresh,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
 
                 // Top overlay: Tab bar OR Search bar
                 if (state.isSearching) {
@@ -792,7 +948,14 @@ private fun LibraryScreenContent(
                         isVisible = true,
                         searchQuery = state.searchQuery,
                         resultCount = state.totalAppsInFilter,
-                        listState = listState,
+                        onScrollToTop = {
+                            if (currentPaneType == PaneType.CAROUSEL) {
+                                carouselFocusTargetListIndex = 0
+                                carouselListState.scrollToItem(0)
+                            } else {
+                                listState.scrollToItem(0)
+                            }
+                        },
                         onSearchQuery = onSearchQuery,
                         onDismiss = { onIsSearching(false) },
                         modifier = Modifier
@@ -818,9 +981,7 @@ private fun LibraryScreenContent(
                         onMenuClick = { isSystemMenuOpen = true },
                         onNavigateDownToGrid = {
                             if (state.appInfoList.isNotEmpty()) {
-                                gridFocusTargetListIndex = listState.firstVisibleItemIndex
-                                    .coerceIn(0, state.appInfoList.lastIndex)
-                                pendingGridFocusRequest = true
+                                requestContentFocusOrDefer()
                             }
                         },
                         onPreviousTab = onPreviousTab,
@@ -929,6 +1090,7 @@ private fun LibraryScreenContent(
                 isOpen = isSystemMenuOpen,
                 onDismiss = { isSystemMenuOpen = false },
                 onNavigateRoute = onNavigateRoute,
+                onDownloadsClick = onDownloadsClick,
                 onLogout = onLogout,
                 onGoOnline = onGoOnline,
                 isOffline = isOffline,

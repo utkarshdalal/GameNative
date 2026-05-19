@@ -168,7 +168,7 @@ class GOGService : Service() {
         // ==========================================================================
 
         fun hasActiveOperations(): Boolean {
-            return syncInProgress || backgroundSyncJob?.isActive == true
+            return syncInProgress || backgroundSyncJob?.isActive == true || hasActiveDownload()
         }
 
         private fun setSyncInProgress(inProgress: Boolean) {
@@ -193,6 +193,52 @@ class GOGService : Service() {
 
         fun getDownloadInfo(gameId: String): DownloadInfo? {
             return getInstance()?.activeDownloads?.get(gameId)
+        }
+
+        fun getActiveDownloads(): Map<String, DownloadInfo> =
+            getInstance()?.activeDownloads?.let { HashMap(it) } ?: emptyMap()
+
+        private fun hasPartialDownload(game: GOGGame): Boolean {
+            if (game.isInstalled) return false
+            val title = game.title.ifBlank { return false }
+            val installPath = GOGConstants.getGameInstallPath(title)
+            return app.gamenative.utils.MarkerUtils.hasPartialInstall(installPath)
+        }
+
+        fun hasPartialDownload(gameId: String, fallbackTitle: String? = null): Boolean {
+            getGOGGameOf(gameId)?.let { return hasPartialDownload(it) }
+            val title = fallbackTitle?.ifBlank { null } ?: return false
+            val installPath = GOGConstants.getGameInstallPath(title)
+            return app.gamenative.utils.MarkerUtils.hasPartialInstall(installPath)
+        }
+
+        private fun getPartialInstallPaths(): Set<String> {
+            val roots = buildList {
+                add(GOGConstants.internalGOGGamesPath)
+                if (app.gamenative.PrefManager.externalStoragePath.isNotBlank()) {
+                    add(GOGConstants.externalGOGGamesPath)
+                }
+            }.distinct()
+
+            return roots.asSequence()
+                .flatMap { root -> app.gamenative.utils.MarkerUtils.findResumablePartialInstalls(root).asSequence() }
+                .toSet()
+        }
+
+        suspend fun getPartialDownloads(): List<String> {
+            val instance = getInstance() ?: return emptyList()
+            val partialInstallPaths = getPartialInstallPaths()
+            if (partialInstallPaths.isEmpty()) return emptyList()
+
+            return instance.gogManager.getNonInstalledGames()
+                .asSequence()
+                .filter { game -> !instance.activeDownloads.containsKey(game.id) }
+                .filter { game ->
+                    val title = game.title.ifBlank { return@filter false }
+                    partialInstallPaths.contains(GOGConstants.getGameInstallPath(title))
+                }
+                .map { it.id }
+                .toList()
         }
 
         fun cleanupDownload(gameId: String) {
@@ -295,6 +341,12 @@ class GOGService : Service() {
 
             // Create DownloadInfo for progress tracking
             val downloadInfo = DownloadInfo(jobCount = 1, gameId = 0, downloadingAppIds = CopyOnWriteArrayList<Int>())
+            downloadInfo.setPersistencePath(installPath)
+
+            val persistedBytes = downloadInfo.loadPersistedBytesDownloaded(installPath)
+            if (persistedBytes > 0L) {
+                downloadInfo.initializeBytesDownloaded(persistedBytes)
+            }
 
             // Track in activeDownloads first
             instance.activeDownloads[gameId] = downloadInfo
@@ -320,13 +372,50 @@ class GOGService : Service() {
                         SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     } else {
                         Timber.i("[Download] Completed successfully for game $gameId")
-                        downloadInfo.setProgress(1.0f)
-                        downloadInfo.setActive(false)
+
+                        // Download cloud saves so they're ready before first launch.
+                        // Status message keeps isDownloading() true so Play stays hidden during sync.
+                        val appId = "GOG_$gameId"
+                        val numericGameId = gameId.toIntOrNull()
+                        try {
+                            val gogGame = instance.gogManager.getGameFromDbById(gameId)
+                            val locations = if (gogGame != null) instance.gogManager.getSaveDirectoryPath(context, appId, gogGame.title) else null
+                            if (numericGameId != null && !locations.isNullOrEmpty() && !ContainerUtils.isLocalSavesOnly(context, appId)) {
+                                try {
+                                    downloadInfo.setPostInstallSyncing(true)
+                                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(numericGameId, true))
+                                    downloadInfo.updateStatusMessage("Syncing saves...")
+                                    syncCloudSaves(context, appId, preferredAction = "download")
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    Timber.e(e, "[PostInstallSync] Cloud save sync failed for game $gameId")
+                                } finally {
+                                    downloadInfo.setPostInstallSyncing(false)
+                                    downloadInfo.updateStatusMessage(null)
+                                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(numericGameId, false))
+                                }
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.e(e, "[PostInstallSync] Cloud save sync failed for game $gameId")
+                        }
 
                         SnackbarManager.show("Download completed successfully!")
+                        downloadInfo.setProgress(1.0f)
+                        downloadInfo.setActive(false)
                     }
+                } catch (e: CancellationException) {
+                    downloadInfo.setPostInstallSyncing(false)
+                    downloadInfo.updateStatusMessage(null)
+                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId.toIntOrNull() ?: -1, false))
+                    throw e
                 } catch (e: Exception) {
                     Timber.e(e, "[Download] Exception for game $gameId")
+                    downloadInfo.setPostInstallSyncing(false)
+                    downloadInfo.updateStatusMessage(null)
+                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId.toIntOrNull() ?: -1, false))
                     downloadInfo.setProgress(-1.0f)
                     downloadInfo.setActive(false)
 
@@ -506,6 +595,8 @@ class GOGService : Service() {
                                 Timber.tag("GOG").e("[Cloud Saves] Failed to sync save location '${location.name}' for game $gameId (timestamp: $newTimestamp)")
                                 allSucceeded = false
                             }
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             Timber.tag("GOG").e(e, "[Cloud Saves] Exception syncing save location '${location.name}' for game $gameId")
                             allSucceeded = false
@@ -524,6 +615,8 @@ class GOGService : Service() {
                     getInstance()?.gogManager?.endSync(appId)
                     Timber.tag("GOG").d("[Cloud Saves] Sync completed and lock released for $appId")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "[Cloud Saves] Failed to sync cloud saves for App ID: $appId")
                 return@withContext false
@@ -554,6 +647,7 @@ class GOGService : Service() {
         // Initialize notification helper for foreground service
         notificationHelper = NotificationHelper(applicationContext)
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
+        PluviaApp.events.emit(AndroidEvent.ServiceReady)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -647,6 +741,16 @@ class GOGService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_GOG)
         instance = null
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (!hasActiveOperations()) {
+            Timber.tag("GOG").i("Task removed and no active work — stopping service")
+            stopSelf()
+        } else {
+            Timber.tag("GOG").i("Task removed but active work exists — keeping service alive")
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

@@ -188,14 +188,14 @@ public class ExternalController {
             float axisX = getCenteredAxis(event, MotionEvent.AXIS_HAT_X, historyPos);
             float axisY = getCenteredAxis(event, MotionEvent.AXIS_HAT_Y, historyPos);
             GamepadState gamepadState = this.state;
-            gamepadState.dpad[0] = axisY == -1.0f && Math.abs(gamepadState.thumbLY) < STICK_DEAD_ZONE;
+            gamepadState.dpad[0] = axisY == -1.0f;
             GamepadState gamepadState2 = this.state;
-            gamepadState2.dpad[1] = axisX == 1.0f && Math.abs(gamepadState2.thumbLX) < STICK_DEAD_ZONE;
+            gamepadState2.dpad[1] = axisX == 1.0f;
             GamepadState gamepadState3 = this.state;
-            gamepadState3.dpad[2] = axisY == 1.0f && Math.abs(gamepadState3.thumbLY) < STICK_DEAD_ZONE;
+            gamepadState3.dpad[2] = axisY == 1.0f;
             GamepadState gamepadState4 = this.state;
             boolean[] zArr = gamepadState4.dpad;
-            if (axisX == -1.0f && Math.abs(gamepadState4.thumbLX) < STICK_DEAD_ZONE) {
+            if (axisX == -1.0f) {
                 z = true;
             }
             zArr[3] = z;
@@ -286,12 +286,12 @@ public class ExternalController {
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_UP:
                 GamepadState gamepadState = this.state;
-                gamepadState.dpad[0] = pressed && Math.abs(gamepadState.thumbLY) < STICK_DEAD_ZONE;
+                gamepadState.dpad[0] = pressed;
                 return true;
             case KeyEvent.KEYCODE_DPAD_DOWN:
                 GamepadState gamepadState2 = this.state;
                 boolean[] zArr = gamepadState2.dpad;
-                if (pressed && Math.abs(gamepadState2.thumbLY) < STICK_DEAD_ZONE) {
+                if (pressed) {
                     z = true;
                 }
                 zArr[2] = z;
@@ -299,7 +299,7 @@ public class ExternalController {
             case KeyEvent.KEYCODE_DPAD_LEFT:
                 GamepadState gamepadState3 = this.state;
                 boolean[] zArr2 = gamepadState3.dpad;
-                if (pressed && Math.abs(gamepadState3.thumbLX) < STICK_DEAD_ZONE) {
+                if (pressed) {
                     z = true;
                 }
                 zArr2[3] = z;
@@ -307,7 +307,7 @@ public class ExternalController {
             case KeyEvent.KEYCODE_DPAD_RIGHT:
                 GamepadState gamepadState4 = this.state;
                 boolean[] zArr3 = gamepadState4.dpad;
-                if (pressed && Math.abs(gamepadState4.thumbLX) < STICK_DEAD_ZONE) {
+                if (pressed) {
                     z = true;
                 }
                 zArr3[1] = z;
@@ -361,14 +361,33 @@ public class ExternalController {
     }
 
     public static boolean isGameController(InputDevice device) {
-        if (device == null) {
-            return false;
+        if (device == null) return false;
+        if (device.isVirtual()) return false;
+
+        boolean isGamepad = device.supportsSource(InputDevice.SOURCE_GAMEPAD);
+        boolean isJoystick = device.supportsSource(InputDevice.SOURCE_JOYSTICK);
+
+        boolean hasAxes =
+                device.getMotionRange(android.view.MotionEvent.AXIS_X) != null ||
+                        device.getMotionRange(android.view.MotionEvent.AXIS_Y) != null;
+
+        boolean[] hasGamepadKeysArray = device.hasKeys(
+                KeyEvent.KEYCODE_BUTTON_A,
+                KeyEvent.KEYCODE_BUTTON_B,
+                KeyEvent.KEYCODE_BUTTON_X,
+                KeyEvent.KEYCODE_BUTTON_Y
+        );
+
+        boolean hasGamepadKeys = false;
+        for (boolean hasKey : hasGamepadKeysArray) {
+            if (hasKey) {
+                hasGamepadKeys = true;
+                break;
+            }
         }
-        int sources = device.getSources();
-        if (device.isVirtual()) {
-            return false;
-    }
-        return (sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD || (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
+
+        return (isGamepad && hasGamepadKeys) ||
+                (isJoystick && hasAxes);
     }
 
     public static float getCenteredAxis(MotionEvent event, int axis, int historyPos) {

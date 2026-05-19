@@ -281,9 +281,10 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
                 boolean hasGamepadBinding = true;
                 JSONArray bindingsJSONArray = elementJSONObject.getJSONArray("bindings");
+                element.setBindingCount(Math.max(bindingsJSONArray.length(), 4));
                 for (int j = 0; j < bindingsJSONArray.length(); j++) {
                     Binding binding = Binding.fromString(bindingsJSONArray.getString(j));
-                    element.setBindingAt(j, Binding.fromString(bindingsJSONArray.getString(j)));
+                    element.setBindingAt(j, binding);
                     if (!binding.isGamepad()) hasGamepadBinding = false;
                 }
 

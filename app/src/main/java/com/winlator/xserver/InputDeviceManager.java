@@ -1,5 +1,10 @@
 package com.winlator.xserver;
 
+import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.ViewConfiguration;
+
 import com.winlator.winhandler.MouseEventFlags;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xserver.events.ButtonPress;
@@ -17,6 +22,21 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
     private static final byte MOUSE_WHEEL_DELTA = 120;
     private Window pointWindow;
     private final XServer xServer;
+    private final Handler autoRepeatHandler = new Handler(Looper.getMainLooper());
+    private byte currentRepeatingKeycode;
+    private int currentRepeatingKeysym;
+    private int repeatDelayMs = 500;
+    private int repeatRateMs = 50;
+
+    private final Runnable autoRepeatRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (xServer.keyboard.getPressedKeys().contains(currentRepeatingKeycode)) {
+                onKeyPress(currentRepeatingKeycode, currentRepeatingKeysym);
+                autoRepeatHandler.postDelayed(this, repeatRateMs);
+            }
+        }
+    };
 
     public InputDeviceManager(XServer xServer) {
         this.xServer = xServer;
@@ -25,6 +45,9 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
         xServer.windowManager.addOnResourceLifecycleListener(this);
         xServer.pointer.addOnPointerMotionListener(this);
         xServer.keyboard.addOnKeyboardListener(this);
+
+        repeatDelayMs = ViewConfiguration.getKeyRepeatTimeout();
+        repeatRateMs = ViewConfiguration.getKeyRepeatDelay();
     }
 
     @Override
@@ -227,10 +250,19 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
         }
 
         eventWindow.sendEvent(Event.KEY_PRESS, new KeyPress(keycode, xServer.windowManager.rootWindow, eventWindow, child, x, y, localPoint[0], localPoint[1], keyButMask));
+
+        autoRepeatHandler.removeCallbacks(autoRepeatRunnable);
+        currentRepeatingKeycode = keycode;
+        currentRepeatingKeysym = keysym;
+        autoRepeatHandler.postDelayed(autoRepeatRunnable, repeatDelayMs);
     }
 
     @Override
     public void onKeyRelease(byte keycode) {
+        if (keycode == currentRepeatingKeycode) {
+            autoRepeatHandler.removeCallbacks(autoRepeatRunnable);
+        }
+
         Window focusedWindow = xServer.windowManager.getFocusedWindow();
         if (focusedWindow == null) return;
         updatePointWindow();

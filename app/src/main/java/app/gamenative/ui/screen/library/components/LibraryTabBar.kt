@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
@@ -197,9 +198,9 @@ private fun CompactLibraryTabBar(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .horizontalScroll(scrollState)
                     .clip(RoundedCornerShape(20.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .horizontalScroll(scrollState)
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,

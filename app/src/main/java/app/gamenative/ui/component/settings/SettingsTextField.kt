@@ -3,7 +3,6 @@ package app.gamenative.ui.component.settings
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -11,6 +10,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
@@ -39,13 +39,14 @@ fun SettingsTextField(
         subtitle = subtitle,
         action = {
             Row {
-                OutlinedTextField(
+                NoExtractOutlinedTextField(
                     modifier = Modifier
                         .focusRequester(focusRequester)
                         .width(76.dp),
                     enabled = enabled,
                     value = value,
                     onValueChange = onValueChange,
+                    singleLine = true,
                 )
                 action?.invoke()
             }

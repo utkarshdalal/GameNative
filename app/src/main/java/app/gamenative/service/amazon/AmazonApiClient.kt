@@ -155,7 +155,7 @@ object AmazonApiClient {
         val downloadSize = details?.optLong("fileSize", 0L) ?: 0L
 
         val artUrl = resolveArtUrl(productDetail, details)
-        val heroUrl = resolveHeroUrl(details)
+        val heroUrl = AmazonArtwork.resolveAppHeroUrl(details)
         val productSku = product.optString("sku", "")
 
         return AmazonGame(
@@ -184,17 +184,6 @@ object AmazonApiClient {
         // Fallback: transparent logo PNG inside details
         val logoUrl = details?.optString("logoUrl", "") ?: ""
         if (logoUrl.isNotEmpty()) return logoUrl
-
-        return ""
-    }
-
-    /** Resolve hero/background artwork URL. */
-    private fun resolveHeroUrl(details: JSONObject?): String {
-        val bg1 = details?.optString("backgroundUrl1", "") ?: ""
-        if (bg1.isNotEmpty()) return bg1
-
-        val bg2 = details?.optString("backgroundUrl2", "") ?: ""
-        if (bg2.isNotEmpty()) return bg2
 
         return ""
     }

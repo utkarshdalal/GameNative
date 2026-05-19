@@ -55,15 +55,23 @@ public abstract class CursorRequests {
 
     public static void getPointerMapping(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError, IOException {
         try (XStreamLock lock = outputStream.lock()) {
-            byte[] buttonsMap = {1, 2, 3};
-            byte length = (byte) buttonsMap.length;
+            // Fix scroll when using XInput2 extension
+            byte[] buttonsMap = { 1, 2, 3, 4, 5, 6, 7 };
+            int nElts = buttonsMap.length;
+
+            int lengthUnits = (nElts + 3) / 4;
+
             outputStream.writeByte(RESPONSE_CODE_SUCCESS);
-            outputStream.writeByte(length);
+            outputStream.writeByte((byte) nElts);
             outputStream.writeShort(client.getSequenceNumber());
-            outputStream.writeInt((length + 3) / 4);
+            outputStream.writeInt(lengthUnits);
             outputStream.writePad(24);
             outputStream.write(buttonsMap);
-            outputStream.writePad(3 & (-length));
+
+            int pad = (-nElts) & 3;
+            if (pad > 0) {
+                outputStream.writePad(pad);
+            }
         }
     }
 }

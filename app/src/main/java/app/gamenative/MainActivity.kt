@@ -30,6 +30,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.intercept.Interceptor
 import coil.request.CachePolicy
+import app.gamenative.PrefManager
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.gog.GOGService
@@ -42,6 +43,7 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.LocaleHelper
+import app.gamenative.ui.util.SnackbarManager
 import com.posthog.PostHog
 import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
@@ -87,7 +89,13 @@ class MainActivity : ComponentActivity() {
         fun hasPendingLaunchRequest(): Boolean {
             return pendingLaunchRequest != null
         }
-        
+
+        fun peekPendingLaunchRequest(): IntentLaunchManager.LaunchRequest? {
+            synchronized(this) {
+                return pendingLaunchRequest
+            }
+        }
+
         @Volatile
         var wasLaunchedViaExternalIntent: Boolean = false
     }
@@ -136,6 +144,12 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+
+        // stale keepAlive from a prior crash/swipe — no container is actually running
+        if (SteamService.keepAlive && PluviaApp.xEnvironment == null) {
+            Timber.w("onCreate: clearing stale keepAlive — no container running")
+            PluviaApp.shutdownEnvironment()
+        }
 
         // Apply immersive mode based on user preference
         applyImmersiveMode()
@@ -215,43 +229,42 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleLaunchIntent(intent)
+        handleLaunchIntent(intent, isNewIntent = true)
     }
-    private fun handleLaunchIntent(intent: Intent) {
-        Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}")
+
+    private fun handleLaunchIntent(intent: Intent, isNewIntent: Boolean = false) {
+        // recents re-delivers the same intent with this flag — don't re-launch
+        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) {
+            Timber.d("[IntentLaunch]: Ignoring intent re-delivered from recents")
+            return
+        }
+        Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}, isNewIntent=$isNewIntent")
         try {
             val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
             if (launchRequest != null) {
                 Timber.d("[IntentLaunch]: Received external launch intent for app ${launchRequest.appId}")
-                wasLaunchedViaExternalIntent = true
 
-                val gameSource = ContainerUtils.extractGameSourceFromContainerId(launchRequest.appId)
-                val runsWithoutSteam = gameSource == GameSource.STEAM &&
-                    ContainerUtils.hasContainer(this, launchRequest.appId) &&
-                    ContainerUtils.getContainer(this, launchRequest.appId).isSteamOfflineMode()
-
-                // only defer to pending for Steam games that need login;
-                // non-Steam games and Steam-offline-mode games can launch without Steam
-                if (gameSource == GameSource.STEAM && !SteamService.isLoggedIn && !runsWithoutSteam) {
-                    setPendingLaunchRequest(launchRequest)
-                    Timber.d("[IntentLaunch]: Steam game but not logged in, stored pending launch request for app ${launchRequest.appId}")
-                } else {
-                    // clear any stale pending request so it doesn't fire on later login
+                if (isNewIntent) {
+                    // supersedes any stale pending request
                     consumePendingLaunchRequest()
-
+                    // UI is already up — emit directly, ViewModel listener exists
                     Timber.d("[IntentLaunch]: Emitting ExternalGameLaunch event for app ${launchRequest.appId}")
-                    lifecycleScope.launch {
-                        PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId))
-                    }
-
-                    // Apply config override if present
                     launchRequest.containerConfig?.let { config ->
                         IntentLaunchManager.applyTemporaryConfigOverride(this, launchRequest.appId, config)
                     }
+                    lifecycleScope.launch {
+                        PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId))
+                    }
+                } else {
+                    // cold start — store as pending, PluviaMain consumes when UI is ready
+                    setPendingLaunchRequest(launchRequest)
+                    Timber.d("[IntentLaunch]: Stored pending launch request for app ${launchRequest.appId}")
                 }
-            } else {
+            } else if (intent.action == "${BuildConfig.APPLICATION_ID}.LAUNCH_GAME") {
+                // intent matched our action but failed to parse — tell the user
                 wasLaunchedViaExternalIntent = false
-                Timber.d("[IntentLaunch]: parseLaunchIntent returned null")
+                Timber.w("[IntentLaunch]: parseLaunchIntent returned null for LAUNCH_GAME intent")
+                SnackbarManager.show(getString(R.string.intent_launch_failed))
             }
         } catch (e: Exception) {
             Timber.e(e, "[IntentLaunch]: Failed to handle launch intent")
@@ -259,9 +272,20 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        // emit before super so Compose DisposableEffects (which unregister
+        // listeners during super.onDestroy's lifecycle transition) still fire
+        if (!isChangingConfigurations) {
+            PluviaApp.events.emit(AndroidEvent.ActivityDestroyed)
 
-        PluviaApp.events.emit(AndroidEvent.ActivityDestroyed)
+            // if exit() didn't run (listener already unregistered, race, etc.)
+            // force-clear so the app isn't stuck on next launch
+            if (SteamService.keepAlive) {
+                Timber.w("onDestroy: keepAlive still set after ActivityDestroyed — forcing cleanup")
+                PluviaApp.shutdownEnvironment()
+            }
+        }
+
+        super.onDestroy()
 
         PluviaApp.events.off<AndroidEvent.SetSystemUIVisibility, Unit>(onSetSystemUi)
         PluviaApp.events.off<AndroidEvent.StartOrientator, Unit>(onStartOrientator)
@@ -348,7 +372,9 @@ class MainActivity : ComponentActivity() {
             EpicService.start(this)
         }
 
-        PostHog.capture(event = "app_foregrounded")
+        if (PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(event = "app_foregrounded")
+        }
     }
 
     override fun onPause() {
@@ -369,7 +395,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        PostHog.capture(event = "app_backgrounded")
+        if (PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(event = "app_backgrounded")
+        }
         super.onPause()
     }
 

@@ -78,5 +78,17 @@ fun SettingsGroupInfo() {
                 uriHandler.openUri(Constants.Misc.PRIVACY_LINK)
             },
         )
+
+        var usageAnalytics by rememberSaveable { mutableStateOf(PrefManager.usageAnalyticsEnabled) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            state = usageAnalytics,
+            title = { Text(stringResource(R.string.settings_info_usage_analytics_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_info_usage_analytics_subtitle)) },
+            onCheckedChange = {
+                usageAnalytics = it
+                PrefManager.usageAnalyticsEnabled = it
+            },
+        )
     }
 }

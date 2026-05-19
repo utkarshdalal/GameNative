@@ -81,4 +81,19 @@ public class ShaderMaterial {
         GLES20.glDeleteProgram(programId);
         programId = 0;
     }
+
+    public void setUniformVec2(String name, float x, float y) {
+        int location = getUniformLocation(name);
+        if (location != -1) GLES20.glUniform2f(location, x, y);
+    }
+
+    public void setUniformInt(String name, int value) {
+        int location = getUniformLocation(name);
+        if (location != -1) GLES20.glUniform1i(location, value);
+    }
+
+    public void setUniformFloat(String name, float value) {
+        int location = getUniformLocation(name);
+        if (location != -1) GLES20.glUniform1f(location, value);
+    }
 }

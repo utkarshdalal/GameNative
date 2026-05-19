@@ -18,16 +18,19 @@ object LocaleHelper {
     val SUPPORTED_LANGUAGES = linkedMapOf(
         "" to "System Default",
         "da" to "Dansk (Danish)",
+        "de" to "Deutsch",
         "en" to "English",
         "es" to "Español",
-        "it" to "Italiano",
-        "pt-BR" to "Português Brasileiro (Brazilian Portuguese)",
-        "uk" to "Українська",
-        "zh-TW" to "正體中文",
-        "zh-CN" to "简体中文",
         "fr" to "Français",
-        "de" to "Deutsch",
-        "pl" to "Polski"
+        "it" to "Italiano",
+        "ko" to "한국어 (Korean)",
+        "pl" to "Polski",
+        "pt-BR" to "Português Brasileiro (Brazilian Portuguese)",
+        "ro" to "Română (Romanian)",
+        "ru" to "Русский",
+        "uk" to "Українська",
+        "zh-CN" to "简体中文",
+        "zh-TW" to "正體中文"
     )
 
     /**

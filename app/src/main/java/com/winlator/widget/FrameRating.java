@@ -87,6 +87,19 @@ public class FrameRating extends FrameLayout implements Runnable {
         frameCount++;
     }
 
+    public void reset() {
+        lastTime = 0;
+        frameCount = 0;
+        lastFPS = 0;
+        readingCount = 0;
+        sessionStartTime = 0;
+        maxFPS = 0;
+        minFPS = Integer.MAX_VALUE;
+        lastReadingTime = 0;
+        fpsSum = 0;
+        post(() -> textView.setText(String.format(Locale.ENGLISH, "%.1f", 0f)));
+    }
+
     /** Returns the most recent measured FPS value for the active session. */
     public float getCurrentFPS() {
         return lastFPS;

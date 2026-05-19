@@ -24,7 +24,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.theme.settingsTileColors
 import com.winlator.core.StringUtils
@@ -112,7 +112,7 @@ fun FEXCorePresetsDialog(
                         .fillMaxSize()
                         .padding(paddingValues),
                 ) {
-                    OutlinedTextField(
+                    NoExtractOutlinedTextField(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
@@ -123,6 +123,7 @@ fun FEXCorePresetsDialog(
                             FEXCorePresetManager.editPreset(context, presetId, presetName, EnvVars(envVars))
                         },
                         label = { Text(stringResource(R.string.preset_name)) },
+                        singleLine = true,
                         trailingIcon = {
                             IconButton(
                                 colors = IconButtonDefaults.iconButtonColors()

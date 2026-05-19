@@ -5,6 +5,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamcloud.PendingRemoteOperation
 
 data class PostSyncInfo(
     val syncResult: SyncResult,
+    val conflictUfsVersion: Int? = null,
     val remoteTimestamp: Long = 0,
     val localTimestamp: Long = 0,
     val uploadsRequired: Boolean = false,
@@ -13,6 +14,8 @@ data class PostSyncInfo(
     val filesDownloaded: Int = 0,
     val filesDeleted: Int = 0,
     val filesManaged: Int = 0,
+    val hashCacheHits: Int = 0,
+    val hashCacheMisses: Int = 0,
     val bytesUploaded: Long = 0L,
     val bytesDownloaded: Long = 0L,
     val microsecTotal: Long = 0L,

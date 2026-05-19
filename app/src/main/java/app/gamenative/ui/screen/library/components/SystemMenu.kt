@@ -43,6 +43,7 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.StarHalf
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Person
@@ -243,6 +244,7 @@ fun SystemMenu(
     isOpen: Boolean,
     onDismiss: () -> Unit,
     onNavigateRoute: (String) -> Unit,
+    onDownloadsClick: () -> Unit = {},
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
     isOffline: Boolean = false,
@@ -281,10 +283,17 @@ fun SystemMenu(
             selectedStatus = event.persona.state
         }
 
+        val onLoggedOut: (SteamEvent.LoggedOut) -> Unit = {
+            persona = SteamFriend()
+            showStatusPicker = false
+        }
+
         PluviaApp.events.on<SteamEvent.PersonaStateReceived, Unit>(onPersonaStateReceived)
+        PluviaApp.events.on<SteamEvent.LoggedOut, Unit>(onLoggedOut)
 
         onDispose {
             PluviaApp.events.off<SteamEvent.PersonaStateReceived, Unit>(onPersonaStateReceived)
+            PluviaApp.events.off<SteamEvent.LoggedOut, Unit>(onLoggedOut)
         }
     }
 
@@ -428,7 +437,7 @@ fun SystemMenu(
                                     selected = isProfileFocused,
                                     interactionSource = profileInteractionSource,
                                     indication = null,
-                                    onClick = { if (!isOffline) showStatusPicker = !showStatusPicker },
+                                    onClick = { if (!isOffline && SteamService.isLoggedIn) showStatusPicker = !showStatusPicker },
                                 )
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -489,7 +498,7 @@ fun SystemMenu(
                             }
 
                             // Dropdown indicator (only when online)
-                            if (!isOffline) {
+                            if (!isOffline && SteamService.isLoggedIn) {
                                 Icon(
                                     imageVector = if (showStatusPicker) {
                                         Icons.Default.KeyboardArrowUp
@@ -571,6 +580,16 @@ fun SystemMenu(
                         )
 
                         SystemMenuItem(
+                            text = stringResource(R.string.app_downloads),
+                            icon = Icons.Default.Download,
+                            onClick = {
+                                onDownloadsClick()
+                                onDismiss()
+                            },
+                            focusRequester = firstItemFocusRequester,
+                        )
+
+                        SystemMenuItem(
                             text = stringResource(R.string.help_and_support),
                             icon = Icons.AutoMirrored.Filled.Help,
                             onClick = {
@@ -592,7 +611,7 @@ fun SystemMenu(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        if (isOffline) {
+                        if (isOffline || !SteamService.isLoggedIn) {
                             val goOnlineLabelRes = if (!SteamService.isLoggedIn) {
                                 R.string.steam_sign_in
                             } else {
