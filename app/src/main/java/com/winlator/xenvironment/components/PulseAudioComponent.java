@@ -15,13 +15,16 @@ import com.winlator.xenvironment.EnvironmentComponent;
 import com.winlator.xenvironment.XEnvironment;
 
 import java.io.File;
+import java.lang.reflect.Field;
+import java.util.concurrent.TimeUnit;
 
 import app.gamenative.BuildConfig;
 
 public class PulseAudioComponent extends EnvironmentComponent {
     private final UnixSocketConfig socketConfig;
-    private static int pid = -1;
-    private static final Object lock = new Object();
+
+    private java.lang.Process pulseProcess;
+    private final Object lock = new Object();
     private float volume = 1.0f;
     private byte performanceMode = 1;
     private int sampleRate = 48000;
@@ -35,9 +38,10 @@ public class PulseAudioComponent extends EnvironmentComponent {
     public void start() {
         Log.d("PulseAudioComponent", "Starting...");
         synchronized (lock) {
-            stop();
-            pid = execPulseAudio();
-            isPaused = false;
+            if (pulseProcess == null) {
+                pulseProcess = execPulseAudio();
+                isPaused = false;
+            }
         }
     }
 
@@ -45,9 +49,17 @@ public class PulseAudioComponent extends EnvironmentComponent {
     public void stop() {
         Log.d("PulseAudioComponent", "Stopping...");
         synchronized (lock) {
-            if (pid != -1) {
-                Process.killProcess(pid);
-                pid = -1;
+            if (isServerRunning()) {
+                pulseProcess.destroy(); // Sends SIGTERM
+                try {
+                    // Wait for it to exit cleanly to guarantee the sink is closed
+                    boolean exited = pulseProcess.waitFor(800, TimeUnit.MILLISECONDS);
+                    if (!exited) {
+                        pulseProcess.destroyForcibly(); // fallback to SIGKILL if stuck
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
             }
             isPaused = false;
         }
@@ -56,18 +68,20 @@ public class PulseAudioComponent extends EnvironmentComponent {
     public void pause() {
         Log.d("PulseAudioComponent", "Pausing...");
         synchronized (lock) {
-            if (!isPaused && pid != -1) {
-                executePactl(true);
-                isPaused = true;
-                final int capturedPid = pid;
-                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    synchronized (lock) {
-                        if (isPaused && capturedPid == pid) {
-                            ProcessHelper.suspendProcess(capturedPid);
-                            Log.d("PulseAudioComponent", "Audio paused");
+            if (!isPaused) {
+                if (isServerRunning()) {
+                    executePactl(true);
+                    isPaused = true;
+                    final int capturedPid = getPid();
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        synchronized (lock) {
+                            if (isPaused && capturedPid == getPid()) {
+                                ProcessHelper.suspendProcess(capturedPid);
+                                Log.d("PulseAudioComponent", "Audio paused");
+                            }
                         }
-                    }
-                }, 200);
+                    }, 200);
+                }
             }
         }
     }
@@ -75,19 +89,42 @@ public class PulseAudioComponent extends EnvironmentComponent {
     public void resume() {
         Log.d("PulseAudioComponent", "Resuming...");
         synchronized (lock) {
-            if (isPaused && pid != -1) {
-                final int capturedPid = pid;
-                ProcessHelper.resumeProcess(capturedPid);
-                isPaused = false;
-                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    synchronized (lock) {
-                        if (!isPaused && capturedPid == pid) {
-                            executePactl(false);
-                            Log.d("PulseAudioComponent", "Audio resumed");
+            if (isPaused) {
+                if (isServerRunning()) {
+                    final int capturedPid = getPid();
+                    ProcessHelper.resumeProcess(capturedPid);
+                    isPaused = false;
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        synchronized (lock) {
+                            if (!isPaused && capturedPid == getPid()) {
+                                executePactl(false);
+                                Log.d("PulseAudioComponent", "Audio resumed");
+                            }
                         }
-                    }
-                }, 200);
+                    }, 200);
+                } else {
+                    pulseProcess = null;
+                    start();
+                }
             }
+        }
+    }
+
+    public boolean isServerRunning() {
+        return pulseProcess != null && pulseProcess.isAlive();
+    }
+
+    public int getPid() {
+        if (isServerRunning()) {
+            try {
+                Field pidField = pulseProcess.getClass().getDeclaredField("pid");
+                pidField.setAccessible(true);
+                return pidField.getInt(pulseProcess);
+            } catch (Exception e) {
+                return -1;
+            }
+        } else {
+            return -1;
         }
     }
 
@@ -103,7 +140,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
         this.sampleRate = sampleRate;
     }
 
-    private int execPulseAudio() {
+    private java.lang.Process execPulseAudio() {
         Context context = environment.getContext();
         String nativeLibraryDir = context.getApplicationInfo().nativeLibraryDir;
         // nativeLibraryDir = nativeLibraryDir.replace("arm64", "arm64-v8a");
@@ -138,7 +175,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
         command += " --use-pid-file=false";
         command += " --exit-idle-time=-1";
 
-        return ProcessHelper.exec(command, envVars.toStringArray(), workingDir);
+        return ProcessHelper.startProcess(command, envVars.toStringArray(), workingDir);
     }
 
     private void executePactl(boolean suspend) {

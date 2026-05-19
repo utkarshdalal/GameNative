@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public abstract class ProcessHelper {
     public static final boolean PRINT_DEBUG = true; // FIXME change to false
@@ -152,6 +153,21 @@ public abstract class ProcessHelper {
             if (terminationCallback != null) terminationCallback.call(-1);
         }
         return pid;
+    }
+
+    public static java.lang.Process startProcess(String command, String[] envp, File workingDir) {
+        try {
+            Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            java.lang.Process process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
+            if (!debugCallbacks.isEmpty()) {
+                createDebugThread(process.getInputStream());
+                createDebugThread(process.getErrorStream());
+            }
+
+            return process;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public static List<ProcessInfo> listSubProcesses() {
