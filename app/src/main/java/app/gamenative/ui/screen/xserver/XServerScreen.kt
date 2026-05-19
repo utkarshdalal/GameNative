@@ -20,6 +20,7 @@ import android.hardware.display.DisplayManager
 import android.hardware.input.InputManager
 import android.view.InputDevice
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -1260,6 +1261,12 @@ fun XServerScreen(
             inputManager.unregisterInputDeviceListener(deviceListener)
         }
     }
+
+    // API 33+ routes gesture-back through OnBackInvokedDispatcher, which no longer
+    // delivers KEYCODE_BACK to MainActivity.dispatchKeyEvent. BackHandler registers
+    // with OnBackPressedDispatcher so we receive both legacy KeyEvent and gesture
+    // back paths uniformly.
+    BackHandler(enabled = true) { gameBack() }
 
     DisposableEffect(container) {
         registerBackAction(gameBack)

@@ -654,12 +654,13 @@ class GOGService : Service() {
         Timber.d("[GOGService] onStartCommand() - action: ${intent?.action}")
 
         // Start as foreground service
-        val notification = notificationHelper.createForegroundNotification("Connected")
+        val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_GOG, "Connected")
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
             startForeground(NotificationHelper.NOTIFICATION_ID_GOG, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
             startForeground(NotificationHelper.NOTIFICATION_ID_GOG, notification)
         }
+        notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_GOG)
 
         // Determine if we should sync based on the action
         val shouldSync = when (intent?.action) {

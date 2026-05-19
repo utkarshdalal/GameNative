@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.util.Log;
 
+import app.gamenative.BuildConfig;
 import app.gamenative.R;
 import app.gamenative.enums.Marker;
 import app.gamenative.service.SteamService;
@@ -188,6 +189,15 @@ public abstract class ImageFsInstaller {
         // ➌  Make sure the new libs are world-readable / executable
         chmod(new File(imagefs, "usr/lib/libredirect.so"));
         chmod(new File(imagefs, "usr/lib/libredirect-bionic.so"));
+
+        // Modern flavor ships an additional bionic preload shipped as a flat asset
+        // (src/modern/assets/) until it's folded into redirect.tzst. Copy it next to
+        // the tarball-extracted variant so BionicProgramLauncherComponent can find it.
+        if (BuildConfig.MODERN_ANDROID) {
+            File wxDest = new File(imagefs, "usr/lib/libredirect-bionic-wx.so");
+            FileUtils.copy(ctx, "libredirect-bionic-wx.so", wxDest);
+            chmod(wxDest);
+        }
 
         final String EXTRAS_TAR = "extras.tzst";          // ➊  add this to assets/
         // ➋  Unpack straight into imagefs, preserving relative paths.
