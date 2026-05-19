@@ -166,6 +166,7 @@ public abstract class ProcessHelper {
 
             return process;
         } catch (Exception e) {
+            Log.e("ProcessHelper", "Failed to execute command: " + e);
             return null;
         }
     }

@@ -60,6 +60,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
+                pulseProcess = null;
             }
             isPaused = false;
         }
