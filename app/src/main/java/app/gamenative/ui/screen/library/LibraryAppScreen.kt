@@ -505,13 +505,16 @@ private fun formatBytes(bytes: Long): String {
 }
 
 @Composable
-private fun CloudSaveStatusRow(
+private fun CloudSaveStatusIconButton(
     displayInfo: GameDisplayInfo,
     onForceCloudSync: ((SaveLocation) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val showConflictDialog = remember { mutableStateOf(false) }
+    var showStatusDialog by remember { mutableStateOf(false) }
+    var showConflictDialog by remember { mutableStateOf(false) }
     val (cloudIcon, cloudColor) = when (displayInfo.cloudSaveStatus) {
+        CloudSaveStatus.CHECKING ->
+            Icons.Default.Cloud to Color(0xFFFFA726)
         CloudSaveStatus.UP_TO_DATE ->
             Icons.Default.CloudDone to PluviaTheme.colors.statusInstalled
         CloudSaveStatus.DOWNLOADING, CloudSaveStatus.PENDING_DOWNLOAD ->
@@ -527,80 +530,126 @@ private fun CloudSaveStatusRow(
         else ->
             Icons.Default.Cloud to Color.White.copy(alpha = 0.7f)
     }
+    val statusText = displayInfo.lastSyncStateText ?: stringResource(R.string.game_options_cloud_saves)
+    val isChecking = displayInfo.cloudSaveStatus == CloudSaveStatus.CHECKING
+    val isTransferring = displayInfo.cloudSaveStatus == CloudSaveStatus.DOWNLOADING ||
+        displayInfo.cloudSaveStatus == CloudSaveStatus.UPLOADING
+    val cloudAnimation = rememberInfiniteTransition(label = "cloudStatus")
+    val transferOffset by cloudAnimation.animateFloat(
+        initialValue = if (displayInfo.cloudSaveStatus == CloudSaveStatus.UPLOADING) 5f else -5f,
+        targetValue = if (displayInfo.cloudSaveStatus == CloudSaveStatus.UPLOADING) -5f else 5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 450, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "cloudTransferOffset",
+    )
+    val checkingScale by cloudAnimation.animateFloat(
+        initialValue = 0.92f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 700, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "cloudCheckingScale",
+    )
+    val checkingAlpha by cloudAnimation.animateFloat(
+        initialValue = 0.55f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 700, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "cloudCheckingAlpha",
+    )
 
-    Row(
-        modifier = modifier.padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    val cloudIconModifier = Modifier
+        .size(22.dp)
+        .graphicsLayer {
+            if (isTransferring) {
+                translationY = transferOffset
+            }
+            if (isChecking) {
+                scaleX = checkingScale
+                scaleY = checkingScale
+                alpha = checkingAlpha
+            }
+        }
+
+    FilledTonalIconButton(
+        onClick = {
+            if (displayInfo.cloudSaveStatus == CloudSaveStatus.CONFLICT) {
+                showConflictDialog = true
+            } else {
+                showStatusDialog = true
+            }
+        },
+        modifier = modifier.size(40.dp),
+        colors = IconButtonDefaults.filledTonalIconButtonColors(
+            containerColor = Color.Black.copy(alpha = 0.35f),
+            contentColor = cloudColor,
+        ),
     ) {
         Icon(
             imageVector = cloudIcon,
-            contentDescription = null,
-            tint = cloudColor,
-            modifier = Modifier.size(20.dp),
+            contentDescription = statusText,
+            modifier = cloudIconModifier,
         )
-        Text(
-            text = displayInfo.lastSyncStateText ?: stringResource(R.string.game_options_cloud_saves),
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.White.copy(alpha = 0.9f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f, fill = false),
-        )
-        CloudSaveActionButton(
-            status = displayInfo.cloudSaveStatus,
-            onForceCloudSync = onForceCloudSync,
-            onShowConflictDialog = { showConflictDialog.value = true },
+    }
+
+    val forceSyncAction = if (onForceCloudSync != null) {
+        when (displayInfo.cloudSaveStatus) {
+            CloudSaveStatus.PENDING_DOWNLOAD ->
+                stringResource(R.string.option_force_download_remote) to SaveLocation.Remote
+            CloudSaveStatus.PENDING_UPLOAD ->
+                stringResource(R.string.option_force_upload_local) to SaveLocation.Local
+            CloudSaveStatus.PENDING_OPERATIONS ->
+                stringResource(R.string.option_force_cloud_sync) to SaveLocation.None
+            CloudSaveStatus.FAILED ->
+                stringResource(R.string.connection_retry) to SaveLocation.None
+            else -> null
+        }
+    } else {
+        null
+    }
+    if (showStatusDialog) {
+        AlertDialog(
+            onDismissRequest = { showStatusDialog = false },
+            title = { Text(text = statusText) },
+            confirmButton = {
+                if (forceSyncAction != null) {
+                    Button(
+                        onClick = {
+                            showStatusDialog = false
+                            onForceCloudSync?.invoke(forceSyncAction.second)
+                        },
+                    ) {
+                        Text(text = forceSyncAction.first)
+                    }
+                } else {
+                    Button(onClick = { showStatusDialog = false }) {
+                        Text(text = stringResource(R.string.close))
+                    }
+                }
+            },
+            dismissButton = if (forceSyncAction != null) {
+                {
+                    Button(onClick = { showStatusDialog = false }) {
+                        Text(text = stringResource(R.string.close))
+                    }
+                }
+            } else {
+                null
+            }
         )
     }
 
     CloudSaveConflictDialog(
-        visible = showConflictDialog.value,
+        visible = showConflictDialog,
         displayInfo = displayInfo,
         onForceCloudSync = onForceCloudSync,
-        onDismiss = { showConflictDialog.value = false },
+        onDismiss = { showConflictDialog = false },
     )
-}
-
-@Composable
-private fun CloudSaveActionButton(
-    status: CloudSaveStatus?,
-    onForceCloudSync: ((SaveLocation) -> Unit)?,
-    onShowConflictDialog: () -> Unit,
-) {
-    if (onForceCloudSync == null) return
-
-    val syncButtonState = when (status) {
-        CloudSaveStatus.PENDING_DOWNLOAD,
-        CloudSaveStatus.PENDING_UPLOAD,
-        CloudSaveStatus.PENDING_OPERATIONS,
-        -> Triple(Icons.Default.Sync, Color(0xFF3E2800), Color(0xFFFFA726))
-        CloudSaveStatus.CONFLICT ->
-            Triple(Icons.Default.SyncProblem, MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.onError)
-        else -> null
-    } ?: return
-
-    val (syncIcon, containerColor, contentColor) = syncButtonState
-    FilledTonalIconButton(
-        onClick = {
-            if (status == CloudSaveStatus.CONFLICT) {
-                onShowConflictDialog()
-            } else {
-                onForceCloudSync(SaveLocation.None)
-            }
-        },
-        modifier = Modifier.size(32.dp),
-        colors = IconButtonDefaults.filledTonalIconButtonColors(
-            containerColor = containerColor.copy(alpha = 0.25f),
-            contentColor = contentColor,
-        ),
-    ) {
-        Icon(
-            imageVector = syncIcon,
-            contentDescription = stringResource(R.string.cloud_saves_force_sync),
-            modifier = Modifier.size(18.dp),
-        )
-    }
 }
 
 @Composable
@@ -931,6 +980,21 @@ internal fun AppScreenContent(
                         .padding(16.dp),
                 )
 
+                if (isInstalled && displayInfo.hasCloudSaves == true) {
+                    CloudSaveStatusIconButton(
+                        displayInfo = displayInfo,
+                        onForceCloudSync = onForceCloudSync,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .windowInsetsPadding(
+                                WindowInsets.statusBars
+                                    .union(WindowInsets.displayCutout)
+                                    .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                            )
+                            .padding(16.dp),
+                    )
+                }
+
                 // Bottom overlay with title and action bar
                 Column(
                     modifier = Modifier
@@ -1045,16 +1109,7 @@ internal fun AppScreenContent(
                                 }
                             }
                         } else {
-                            if (isInstalled && displayInfo.hasCloudSaves == true) {
-                                CloudSaveStatusRow(
-                                    displayInfo = displayInfo,
-                                    onForceCloudSync = onForceCloudSync,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                )
-                            } else {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
+                            Spacer(modifier = Modifier.weight(1f))
                         }
 
                         // Secondary action icons (right-aligned)
