@@ -1,6 +1,7 @@
 package com.winlator.xenvironment.components;
 
 import android.content.Context;
+import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
@@ -27,11 +28,17 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private final Object lock = new Object();
     private float volume = 1.0f;
     private byte performanceMode = 1;
-    private int sampleRate = 48000;
     private boolean isPaused = false;
 
     public PulseAudioComponent(UnixSocketConfig socketConfig) {
         this.socketConfig = socketConfig;
+    }
+
+    // Add this method to detect optimal sample rate
+    private int getOptimalSampleRate() {
+        AudioManager audioManager = (AudioManager) environment.getContext().getSystemService(Context.AUDIO_SERVICE);
+        String rate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE);
+        return rate != null ? Integer.parseInt(rate) : 44100; // fallback to 44.1kHz
     }
 
     @Override
@@ -137,11 +144,9 @@ public class PulseAudioComponent extends EnvironmentComponent {
         this.performanceMode = (byte) performanceMode;
     }
 
-    public void setSampleRate(int sampleRate) {
-        this.sampleRate = sampleRate;
-    }
-
     private java.lang.Process execPulseAudio() {
+        final int bitRate = getOptimalSampleRate();
+
         Context context = environment.getContext();
         String nativeLibraryDir = context.getApplicationInfo().nativeLibraryDir;
         // nativeLibraryDir = nativeLibraryDir.replace("arm64", "arm64-v8a");
@@ -154,7 +159,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
         File configFile = new File(workingDir, "default.pa");
         FileUtils.writeString(configFile, String.join("\n",
                 "load-module module-native-protocol-unix auth-anonymous=1 auth-cookie-enabled=0 socket=\""+socketConfig.path+"\"",
-                "load-module module-aaudio-sink volume=" + this.volume + " performance_mode=" + ((int) this.performanceMode) + " rate=" + this.sampleRate,
+                "load-module module-aaudio-sink volume=" + this.volume + " performance_mode=" + ((int) this.performanceMode) + " rate=" + bitRate,
                 "set-default-sink AAudioSink"
         ));
 
@@ -175,6 +180,9 @@ public class PulseAudioComponent extends EnvironmentComponent {
         command += " --daemonize=false";
         command += " --use-pid-file=false";
         command += " --exit-idle-time=-1";
+
+        // Uncomment to enable verbose log in pulseaudio
+        //command += " -vvv";
 
         return ProcessHelper.startProcess(command, envVars.toStringArray(), workingDir);
     }
