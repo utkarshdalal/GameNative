@@ -98,6 +98,7 @@ import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.ui.util.PlatformAuthUiHelpers
 import app.gamenative.ui.util.SnackbarManager
 
+/** Icon button that triggers [FrontendSyncManager.resyncAll] and shows a spinner while syncing. */
 @Composable
 private fun FrontendSyncResyncButton() {
     val isSyncing by FrontendSyncManager.isSyncing.collectAsState()
@@ -120,6 +121,7 @@ private fun FrontendSyncResyncButton() {
     }
 }
 
+/** Settings group covering interface preferences: theme, downloads, frontend sync, language, and icons. */
 @Composable
 fun SettingsGroupInterface(
     appTheme: AppTheme,

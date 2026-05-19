@@ -31,6 +31,13 @@ import java.io.File
 import java.util.Collections
 import java.util.EnumMap
 
+/**
+ * Manages per-source export files that frontend launchers (e.g. ES-DE) use to
+ * discover installed games. Each installed game is represented by a small file
+ * named `<sanitized-title>.<ext>` placed in the user-configured directory for
+ * its source. Files are created on install and removed on uninstall via
+ * [AndroidEvent.LibraryInstallStatusChanged].
+ */
 object FrontendSyncManager {
 
     @EntryPoint
@@ -50,9 +57,11 @@ object FrontendSyncManager {
     private lateinit var gogGameDao: GOGGameDao
     private lateinit var amazonGameDao: AmazonGameDao
 
+    /** True while a [resyncAll] job is in progress. */
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
+    /** True when at least one source has a configured export directory. */
     private val _anyConfigured = MutableStateFlow(false)
     val anyConfigured: StateFlow<Boolean> = _anyConfigured.asStateFlow()
 
@@ -68,6 +77,11 @@ object FrontendSyncManager {
         }
     }
 
+    /**
+     * Initialises the manager, loads stored export directories from preferences,
+     * and runs an initial sync for every configured source.
+     * Must be called once from [app.gamenative.PluviaApp.onCreate].
+     */
     fun init(context: Context) {
         appContext = context.applicationContext
         val ep = EntryPointAccessors.fromApplication(context, FrontendSyncEntryPoint::class.java)
@@ -90,6 +104,7 @@ object FrontendSyncManager {
         }
     }
 
+    /** Returns the export file extension for [source] (e.g. `.steam`, `.epic`). */
     fun extensionFor(source: GameSource): String = when (source) {
         GameSource.STEAM -> ".steam"
         GameSource.EPIC -> ".epic"
@@ -98,6 +113,11 @@ object FrontendSyncManager {
         GameSource.CUSTOM_GAME -> ".pcgame"
     }
 
+    /**
+     * Triggers a full resync of all configured sources, rewriting export files
+     * to match the current installed-game state. Calling this while a resync is
+     * already running cancels the in-progress job instead.
+     */
     fun resyncAll() {
         if (resyncJob?.isActive == true) {
             resyncJob?.cancel()
@@ -119,6 +139,13 @@ object FrontendSyncManager {
         }
     }
 
+    /**
+     * Updates the export directory for [source].
+     *
+     * @param newPath New directory path, or an empty string to remove the configuration.
+     * @param deleteOldFiles When `true`, existing export files in the previous directory
+     *   are deleted before the new path is activated.
+     */
     fun changeDirectory(source: GameSource, newPath: String, deleteOldFiles: Boolean) {
         // Capture oldPath and update in-memory state synchronously so UI reflects the change immediately.
         val oldPath = synchronized(configuredDirs) {
@@ -217,6 +244,7 @@ object FrontendSyncManager {
     private fun sanitizeFileName(name: String): String =
         name.replace(invalidFileChars, "_").trim().ifEmpty { "unknown" }
 
+    /** Deletes all files with [extension] directly inside [dir] (non-recursive, depth = 1). */
     internal fun deleteAllFilesWithExtension(dir: String, extension: String) {
         try {
             val directory = File(dir)

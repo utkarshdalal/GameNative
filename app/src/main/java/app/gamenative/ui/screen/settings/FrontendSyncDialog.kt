@@ -30,6 +30,10 @@ import app.gamenative.data.GameSource
 import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.ui.components.rememberCustomGameFolderPicker
 
+/**
+ * Dialog for configuring per-source export directories used by frontend launchers such as ES-DE.
+ * Changes are buffered until the user confirms with OK.
+ */
 @Composable
 fun FrontendSyncDialog(onDismiss: () -> Unit) {
     val sources = listOf(
@@ -79,6 +83,10 @@ fun FrontendSyncDialog(onDismiss: () -> Unit) {
     )
 }
 
+/**
+ * Row showing the configured export directory for [source] with folder-picker and clear actions.
+ * Reports changes via [onChangeQueued] rather than applying them immediately.
+ */
 @Composable
 private fun FrontendSyncSourceRow(
     source: GameSource,

@@ -1159,6 +1159,7 @@ object PrefManager {
         get() = getPref(FRONTEND_SYNC_DIR_CUSTOM, "")
         set(value) { setPref(FRONTEND_SYNC_DIR_CUSTOM, value) }
 
+    /** Returns the configured export directory for [source], or an empty string if not set. */
     fun getFrontendSyncDir(source: GameSource): String = when (source) {
         GameSource.STEAM -> frontendSyncDirSteam
         GameSource.EPIC -> frontendSyncDirEpic
@@ -1167,6 +1168,7 @@ object PrefManager {
         GameSource.CUSTOM_GAME -> frontendSyncDirCustom
     }
 
+    /** Persists [path] as the export directory for [source]. Pass an empty string to clear. */
     fun setFrontendSyncDir(source: GameSource, path: String) {
         when (source) {
             GameSource.STEAM -> frontendSyncDirSteam = path
