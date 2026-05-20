@@ -2463,6 +2463,31 @@ class SteamAutoCloudTest {
         )
     }
 
+    @Test
+    fun ufsRefreshPreservesSnapshot_emptyCloudDoesNotDeleteLocalFiles() = runBlocking {
+        cacheCurrentLocalFiles(0)
+        val localSave = File(saveFilesDir, "SaveData_0.sav")
+        assertTrue("Precondition: local save file exists", localSave.exists())
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(makeCloudFileChangeList(cloudChangeNumber = 0))
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.UpToDate, result!!.syncResult)
+        assertEquals("No local files should be deleted", 0, result.filesDeleted)
+        assertTrue("Local save should be preserved when cloud is empty", localSave.exists())
+    }
+
     // ── Scenario 11: Brand new game, never played anywhere — nothing to sync ──
     @Test
     fun neverSynced_noLocalFiles_noCloud_succeeds() = runBlocking {

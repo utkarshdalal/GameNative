@@ -4188,10 +4188,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                                     licenseFlags = packageFromDb?.licenseFlags ?: EnumSet.noneOf(ELicenseFlags::class.java),
                                 )
                                 if (ufsParseVersionOutdated && newApp.ufs.saveFilePatterns.any { it.uploadRoot != it.root || it.uploadPath != it.path }) {
-                                    // UFS path logic changed and this app has rootoverrides — clear
-                                    // the file cache so the next sync detects the mismatch and
-                                    // prompts the user to choose between local and cloud saves.
-                                    fileChangeListsDao.deleteByAppId(app.id)
+                                    // UFS path logic changed and this app has rootoverrides: store 0 to force one
+                                    // full cloud query while preserving the local sync snapshot.
+                                    changeNumbersDao.insert(app.id, 0L)
                                 }
                                 newApp
                             } else {
