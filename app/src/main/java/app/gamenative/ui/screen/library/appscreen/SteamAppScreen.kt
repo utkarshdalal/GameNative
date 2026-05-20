@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
 
@@ -921,19 +922,23 @@ class SteamAppScreen : BaseAppScreen() {
         val oldGamesDirectory = remember {
             Paths.get(SteamService.defaultAppInstallPath).pathString
         }
+        // Modern flavor uses an app-scoped external install path that needs no permission.
+        // Legacy keeps its existing MANAGE_EXTERNAL_STORAGE / runtime perm flow.
         val initialStoragePermissionGranted = remember {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                Environment.isExternalStorageManager()
-            } else {
-                val writePermissionGranted = ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                ) == PackageManager.PERMISSION_GRANTED
-                val readPermissionGranted = ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                ) == PackageManager.PERMISSION_GRANTED
-                writePermissionGranted && readPermissionGranted
+            when {
+                BuildConfig.MODERN_ANDROID -> true
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> Environment.isExternalStorageManager()
+                else -> {
+                    val writePermissionGranted = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    ) == PackageManager.PERMISSION_GRANTED
+                    val readPermissionGranted = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                    ) == PackageManager.PERMISSION_GRANTED
+                    writePermissionGranted && readPermissionGranted
+                }
             }
         }
         var hasStoragePermission by remember { mutableStateOf(initialStoragePermissionGranted) }

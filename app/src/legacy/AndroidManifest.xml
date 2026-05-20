@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Legacy flavor keeps the existing MANAGE_EXTERNAL_STORAGE permission flow.
+         Modern flavor installs to an app-scoped path and does not request this. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+
+</manifest>

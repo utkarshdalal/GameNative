@@ -441,8 +441,22 @@ class SteamService : Service(), IChallengeUrlChanged {
         val internalAppInstallPath: String
             get() = Paths.get(DownloadService.baseDataDirPath, "Steam", "steamapps", "common").pathString
 
+        /**
+         * Root used when "use external storage" is enabled. On legacy this is whatever the
+         * user picked in settings (SD card / USB). On modern we force the primary external
+         * app-scoped dir (/storage/emulated/0/Android/data/<pkg>/files) so no permission
+         * is needed. Falls back to the configured path if for some reason the primary
+         * external app dir isn't available yet (e.g. before populateDownloadService runs).
+         */
+        private val externalAppInstallRoot: String
+            get() = if (BuildConfig.MODERN_ANDROID && DownloadService.baseExternalAppDirPath.isNotBlank()) {
+                DownloadService.baseExternalAppDirPath + "/files"
+            } else {
+                PrefManager.externalStoragePath
+            }
+
         val externalAppInstallPath: String
-            get() = Paths.get(PrefManager.externalStoragePath, "Steam", "steamapps", "common").pathString
+            get() = Paths.get(externalAppInstallRoot, "Steam", "steamapps", "common").pathString
 
         // all install paths: internal + configured external + all mounted volumes
         val allInstallPaths: List<String>
@@ -466,15 +480,22 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         private val externalAppStagingPath: String
             get() {
-                return Paths.get(PrefManager.externalStoragePath, "Steam", "steamapps", "staging").pathString
+                return Paths.get(externalAppInstallRoot, "Steam", "steamapps", "staging").pathString
+            }
+
+        // True when "use external storage" is on AND the resolved external root is usable.
+        // Modern flavor always has a usable primary-external app-scoped root, so this is
+        // effectively just useExternalStorage on modern.
+        private val externalStorageReady: Boolean
+            get() = PrefManager.useExternalStorage && File(externalAppInstallRoot).let {
+                it.path.isNotBlank() && it.exists()
             }
 
         val defaultStoragePath: String
             get() {
-                return if (PrefManager.useExternalStorage && File(PrefManager.externalStoragePath).exists()) {
-                    // We still have an SD card file structure as expected
-                    Timber.i("External storage path is " + PrefManager.externalStoragePath)
-                    PrefManager.externalStoragePath
+                return if (externalStorageReady) {
+                    Timber.i("External storage path is $externalAppInstallRoot")
+                    externalAppInstallRoot
                 } else {
                     if (instance != null) {
                         return DownloadService.baseDataDirPath
@@ -485,8 +506,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         val defaultAppInstallPath: String
             get() {
-                return if (PrefManager.useExternalStorage && File(PrefManager.externalStoragePath).exists()) {
-                    // We still have an SD card file structure as expected
+                return if (externalStorageReady) {
                     Timber.i("Using external storage")
                     Timber.i("install path for external storage is " + externalAppInstallPath)
                     externalAppInstallPath

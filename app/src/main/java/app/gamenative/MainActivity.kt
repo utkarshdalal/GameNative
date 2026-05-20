@@ -470,11 +470,15 @@ class MainActivity : ComponentActivity() {
         //  Idealy, compose handles back presses automaticially in which we can override it in certain composables.
         //  Since LibraryScreen uses its own navigation system, this will need to be re-worked accordingly.
         if (!eventDispatched) {
-            if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-                if (SteamService.keepAlive){
+            if (event.keyCode == KeyEvent.KEYCODE_BACK && SteamService.keepAlive) {
+                // Emit on DOWN only, but swallow UP as well so super.dispatchKeyEvent
+                // doesn't forward BACK to OnBackPressedDispatcher (which would
+                // double-fire XServerScreen's BackHandler and immediately dismiss the
+                // quick menu we just opened).
+                if (event.action == KeyEvent.ACTION_DOWN) {
                     PluviaApp.events.emit(AndroidEvent.BackPressed)
-                    eventDispatched = true
                 }
+                eventDispatched = true
             }
         }
 
