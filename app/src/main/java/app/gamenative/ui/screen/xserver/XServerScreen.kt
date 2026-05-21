@@ -21,6 +21,7 @@ import android.hardware.input.InputManager
 import android.view.InputDevice
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import app.gamenative.BuildConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -1262,11 +1263,12 @@ fun XServerScreen(
         }
     }
 
-    // API 33+ routes gesture-back through OnBackInvokedDispatcher, which no longer
-    // delivers KEYCODE_BACK to MainActivity.dispatchKeyEvent. BackHandler registers
-    // with OnBackPressedDispatcher so we receive both legacy KeyEvent and gesture
-    // back paths uniformly.
-    BackHandler(enabled = true) { gameBack() }
+    // Modern only: API 33+ routes gesture-back through OnBackInvokedDispatcher,
+    // which no longer delivers KEYCODE_BACK to MainActivity.dispatchKeyEvent.
+    // BackHandler registers with OnBackPressedDispatcher to catch that path.
+    // Legacy flavor (targetSdk 28) still receives BACK as a KeyEvent, so it keeps
+    // master's event-bus route via registerBackAction(gameBack) below.
+    BackHandler(enabled = BuildConfig.MODERN_ANDROID) { gameBack() }
 
     DisposableEffect(container) {
         registerBackAction(gameBack)
