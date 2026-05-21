@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import android.content.res.Resources
 import androidx.test.core.app.ApplicationProvider
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
@@ -12,6 +13,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.*
+import org.junit.Assume.assumeFalse
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -319,6 +321,8 @@ class BestConfigServiceTest {
 
     @Test
     fun testGlibcBox64VersionValidation() {
+        // Modern flavor rejects glibc containers wholesale — this test only applies to legacy.
+        assumeFalse("glibc not supported on modern", BuildConfig.MODERN_ANDROID)
         // Test glibc container with Box64 version
         val glibcConfigJson = """
             {
@@ -372,6 +376,8 @@ class BestConfigServiceTest {
 
     @Test
     fun testGlibcGraphicsDriverVersionValidation() {
+        // Modern flavor rejects glibc containers wholesale — this test only applies to legacy.
+        assumeFalse("glibc not supported on modern", BuildConfig.MODERN_ANDROID)
         // Test glibc container with turnip graphics driver
         val glibcConfigJson = """
             {
@@ -399,6 +405,8 @@ class BestConfigServiceTest {
 
     @Test
     fun testPrefManagerDefaults_usedWhenFieldsMissing() {
+        // Modern flavor rejects glibc containers wholesale — this test only applies to legacy.
+        assumeFalse("glibc not supported on modern", BuildConfig.MODERN_ANDROID)
         // Create a minimal config with only a few fields
         val minimalConfigJson = """
             {
@@ -714,7 +722,12 @@ class BestConfigServiceTest {
         assertTrue("Dota2 Adreno835 family result should not be empty", dota2Adreno835Result?.isNotEmpty() == true)
         assertNotNull("Dota2 XClipse fallback result should not be null", dota2XClipseResult)
         assertTrue("Dota2 XClipse fallback result should not be empty", dota2XClipseResult?.isNotEmpty() == true)
-        assertTrue("Hades2 Adreno835 family result should be empty", hades2Adreno835Result?.isNotEmpty() == true) // Missing wineVersion
+        // Modern flavor rejects glibc — the hades2-Adreno835 fixture is glibc, so it returns empty there.
+        if (BuildConfig.MODERN_ANDROID) {
+            assertTrue("Hades2 Adreno835 family glibc result should be empty on modern", hades2Adreno835Result.isNullOrEmpty())
+        } else {
+            assertTrue("Hades2 Adreno835 family result should not be empty", hades2Adreno835Result?.isNotEmpty() == true) // wineVersion filled in for glibc
+        }
         assertNotNull("Hades2 Adreno735 exact result should not be null", hades2Adreno735Result)
         assertTrue("Hades2 Adreno735 exact result should not be empty", hades2Adreno735Result?.isNotEmpty() == true)
         assertNotNull("Hades2 MaliGc824 fallback result should not be null", hades2MaliGc824Result)
