@@ -168,14 +168,18 @@ class PerformanceHudView(
     }
 
     fun pause() {
-        isPaused = true
-        stopUpdates()
+        if (!isPaused) {
+            isPaused = true
+            stopUpdates()
+        }
     }
 
     fun resume() {
-        isPaused = false
-        if (isAttachedToWindow) {
-            startUpdates()
+        if (isPaused) {
+            isPaused = false
+            if (isAttachedToWindow) {
+                startUpdates()
+            }
         }
     }
 
