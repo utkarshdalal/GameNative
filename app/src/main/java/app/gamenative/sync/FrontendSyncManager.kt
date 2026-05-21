@@ -197,8 +197,7 @@ object FrontendSyncManager {
                     epicGameDao.getInstalledGames().map { it.id to it.title }
                 }
                 GameSource.GOG -> {
-                    gogGameDao.getAllAsList()
-                        .filter { it.isInstalled }
+                    gogGameDao.getInstalledGames()
                         .map { (it.id.toIntOrNull() ?: 0) to it.title }
                 }
                 GameSource.AMAZON -> {
