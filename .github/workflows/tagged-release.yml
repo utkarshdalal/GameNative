@@ -159,6 +159,11 @@ jobs:
           name: ${{ github.ref_name }}
           prerelease: true
           generate_release_notes: true
+          append_body: true
+          body: |
+            ## Downloads
+            - **`gamenative-${{ github.ref_name }}.apk`** — Legacy build (Android 8–14). Recommended for most users.
+            - **`gamenative-${{ github.ref_name }}-modern.apk`** — Modern build (Android 11+). **Not backwards compatible** — glibc not supported, external storage location changed.
           files: |
             gamenative-${{ github.ref_name }}.apk
             gamenative-${{ github.ref_name }}-modern.apk
