@@ -141,6 +141,17 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!--
+            Handles the Exit action on foreground-service notifications.
+            See app.gamenative.service.NotificationActionReceiver for the rationale —
+            routing through a broadcast avoids the FGS contract that would otherwise
+            crash the app when Exit is tapped on a notification whose owning service
+            isn't currently running.
+        -->
+        <receiver
+            android:name=".service.NotificationActionReceiver"
+            android:exported="false" />
+
         <!-- FileProvider for secure file sharing (for APK installation) -->
         <provider
             android:name="androidx.core.content.FileProvider"
