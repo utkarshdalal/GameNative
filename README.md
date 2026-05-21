@@ -23,6 +23,10 @@ Do not create issues on GitHub as they will be automatically closed!
 
 You can support GameNative on Ko-fi at https://ko-fi.com/gamenative
 
+## Development
+Message me to join the #development channel on our Discord. You can also open a thread there to discuss.
+You can see current issues we need help with on [Trello](https://trello.com/b/vGRkFoAM/open-source-board)
+
 ## Building
 ### IF YOU JUST WANT TO USE THE APP, PLEASE SEE THE HOW TO USE SECTION ABOVE. THIS IS ONLY NEEDED IF YOU WANT TO CONTRIBUTE FOR DEVELOPMENT.
 1. I use a normal build in Android studio. Hit me up if you can't figure out how to build.
