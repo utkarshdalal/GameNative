@@ -30,7 +30,7 @@ room {
 
 android {
     namespace = "app.gamenative"
-    compileSdk = 35
+    compileSdk = 36
 
     // https://developer.android.com/ndk/downloads
     ndkVersion = "22.1.7171670"
@@ -50,7 +50,6 @@ android {
         applicationId = "app.gamenative"
 
         minSdk = 26
-        targetSdk = 28
 
         versionCode = 14
         versionName = "0.9.2"
@@ -105,6 +104,23 @@ android {
             getDefaultProguardFile("proguard-android.txt"),
             "proguard-rules.pro",
         )
+    }
+
+    flavorDimensions += "androidApi"
+    productFlavors {
+        create("legacy") {
+            dimension = "androidApi"
+            targetSdk = 28
+            buildConfigField("boolean", "MODERN_ANDROID", "false")
+            buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic.so\"")
+        }
+        create("modern") {
+            dimension = "androidApi"
+            minSdk = 29
+            targetSdk = 36
+            buildConfigField("boolean", "MODERN_ANDROID", "true")
+            buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic-wx.so\"")
+        }
     }
 
     buildTypes {

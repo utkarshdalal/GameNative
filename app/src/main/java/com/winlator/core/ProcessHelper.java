@@ -3,6 +3,8 @@ package com.winlator.core;
 import android.os.Process;
 import android.util.Log;
 
+import app.gamenative.BuildConfig;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public abstract class ProcessHelper {
     public static final boolean PRINT_DEBUG = true; // FIXME change to false
@@ -128,6 +131,7 @@ public abstract class ProcessHelper {
         int pid = -1;
         java.lang.Process process = null;
         try {
+            if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
             Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
             process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
 
@@ -152,6 +156,22 @@ public abstract class ProcessHelper {
             if (terminationCallback != null) terminationCallback.call(-1);
         }
         return pid;
+    }
+
+    public static java.lang.Process startProcess(String command, String[] envp, File workingDir) {
+        try {
+            Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            java.lang.Process process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
+            if (!debugCallbacks.isEmpty()) {
+                createDebugThread(process.getInputStream());
+                createDebugThread(process.getErrorStream());
+            }
+
+            return process;
+        } catch (Exception e) {
+            Log.e("ProcessHelper", "Failed to execute command: " + e);
+            return null;
+        }
     }
 
     public static List<ProcessInfo> listSubProcesses() {

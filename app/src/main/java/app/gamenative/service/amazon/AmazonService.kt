@@ -3,6 +3,7 @@ package app.gamenative.service.amazon
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import app.gamenative.PluviaApp
 import app.gamenative.R
@@ -786,8 +787,13 @@ class AmazonService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = notificationHelper.createForegroundNotification("Connected")
-        startForeground(1, notification)
+        val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_AMAZON, "Connected")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            startForeground(NotificationHelper.NOTIFICATION_ID_AMAZON, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(NotificationHelper.NOTIFICATION_ID_AMAZON, notification)
+        }
+        notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_AMAZON)
 
         val shouldSync = when (intent?.action) {
             ACTION_MANUAL_SYNC -> {
@@ -826,13 +832,19 @@ class AmazonService : Service() {
         return START_STICKY
     }
 
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        super.onTimeout(startId, fgsType)
+        Timber.w("[Amazon] Foreground service timeout reached, restarting...")
+        stopSelf()
+    }
+
     override fun onDestroy() {
         PluviaApp.events.off<AndroidEvent.EndProcess, Unit>(onEndProcess)
         backgroundSyncJob?.cancel()
         setSyncInProgress(false)
         serviceScope.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
-        notificationHelper.cancel()
+        notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_AMAZON)
         instance = null
         super.onDestroy()
         Timber.i("[Amazon] Service destroyed")

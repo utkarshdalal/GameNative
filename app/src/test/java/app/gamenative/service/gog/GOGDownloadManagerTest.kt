@@ -39,7 +39,7 @@ import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28], manifest = Config.NONE, application = android.app.Application::class)
+@Config(manifest = Config.NONE, application = android.app.Application::class)
 class GOGDownloadManagerTest {
     private lateinit var apiClient: GOGApiClient
     private lateinit var parser: GOGManifestParser

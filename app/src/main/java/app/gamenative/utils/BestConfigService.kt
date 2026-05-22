@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import android.content.Context
 import androidx.compose.ui.graphics.Color
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.R
 import com.winlator.box86_64.Box86_64PresetManager
@@ -91,6 +92,9 @@ object BestConfigService {
                 put("gameName", gameName)
                 put("gpuName", gpuName)
                 put("game_store", gameStore)
+                // Modern build can't run glibc containers — server should pick a config that
+                // doesn't require glibc when this is true.
+                put("modernBuild", BuildConfig.MODERN_ANDROID)
             }
 
             val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")
@@ -711,6 +715,13 @@ object BestConfigService {
                 }
 
                 val containerVariant = originalJson.optString("containerVariant", "")
+
+                // glibc is not supported on the modern flavor — reject the entire config so neither
+                // server best-config responses nor JSON imports can switch a container to glibc.
+                if (BuildConfig.MODERN_ANDROID && containerVariant.equals(Container.GLIBC, ignoreCase = true)) {
+                    Timber.tag("BestConfigService").w("Rejecting glibc containerVariant on modern flavor")
+                    return mapOf()
+                }
 
                 if (!originalJson.has("wineVersion") || originalJson.isNull("wineVersion")) {
                     if (containerVariant.equals(Container.GLIBC, ignoreCase = true)) {

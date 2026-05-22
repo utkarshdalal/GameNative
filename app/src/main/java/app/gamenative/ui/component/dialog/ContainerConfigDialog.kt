@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
+import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.dialog.state.MessageDialogState
@@ -207,7 +208,15 @@ fun ContainerConfigDialog(
         val vortekVersions = stringArrayResource(R.array.vortek_version_entries).toList()
         val adrenoVersions = stringArrayResource(R.array.adreno_version_entries).toList()
         val sd8EliteVersions = stringArrayResource(R.array.sd8elite_version_entries).toList()
+        // glibc is not supported on the modern flavor — hide it from the dropdown.
         val containerVariants = stringArrayResource(R.array.container_variant_entries).toList()
+            .let { variants ->
+                if (BuildConfig.MODERN_ANDROID) {
+                    variants.filterNot { it.equals(Container.GLIBC, ignoreCase = true) }
+                } else {
+                    variants
+                }
+            }
         val bionicWineEntriesBase = stringArrayResource(R.array.bionic_wine_entries).toList()
         val glibcWineEntriesBase = stringArrayResource(R.array.glibc_wine_entries).toList()
         val bionicWineEntriesRef = remember { mutableStateOf(bionicWineEntriesBase) }
@@ -1161,7 +1170,7 @@ fun ContainerConfigDialog(
                                 .weight(1f),
                         ) {
                             if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError, aspectResolutionError)
-                            if (selectedTab == 1) GraphicsTabContent(state)
+                            if (selectedTab == 1) GraphicsTabContent(state, default)
                             if (selectedTab == 2) EmulationTabContent(state)
                             if (selectedTab == 3) ControllerTabContent(state, default)
                             if (selectedTab == 4) WineTabContent(state)
@@ -1198,6 +1207,7 @@ private fun Preview_ContainerConfigDialog() {
             installPath = "",
             showFPS = false,
             launchRealSteam = false,
+            launchBionicSteam = false,
             allowSteamUpdates = false,
             steamType = "normal",
             cpuList = "0,1,2,3",

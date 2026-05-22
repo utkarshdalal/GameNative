@@ -29,7 +29,7 @@ import com.winlator.core.envvars.EnvVars
 import kotlin.math.roundToInt
 
 @Composable
-fun GraphicsTabContent(state: ContainerConfigState) {
+fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
     val config = state.config.value
     SettingsGroup() {
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
@@ -323,7 +323,7 @@ fun GraphicsTabContent(state: ContainerConfigState) {
         // Frame Generation (LSFG) — hooks the Vulkan swapchain for
         // transparent frame generation. Only effective on Bionic containers
         // with a Vortek/Adreno graphics driver.
-        LsfgSection(state)
+        if (!default) LsfgSection(state)
 
         SettingsSwitch(
             colors = settingsTileColorsAlt(),

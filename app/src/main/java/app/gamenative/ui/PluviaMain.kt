@@ -1438,10 +1438,12 @@ fun PluviaMain(
 
                 /** Game Screen **/
                 composable(route = PluviaScreen.XServer.route) {
+                    val xServerIsOffline by viewModel.isOffline.collectAsStateWithLifecycle()
                     XServerScreen(
                         appId = state.launchedAppId,
                         bootToContainer = state.bootToContainer,
                         testGraphics = state.testGraphics,
+                        isOffline = xServerIsOffline,
                         registerBackAction = { cb ->
                             Timber.d("registerBackAction called: $cb")
                             gameBackAction = cb
@@ -1695,7 +1697,7 @@ fun preLaunchApp(
                     "experimental-drm-20260116.tzst",
                 ).await()
             }
-            if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {
+            if ((container.isLaunchRealSteam || container.isLaunchBionicSteam) && !SteamService.isFileInstallable(context, "steam.tzst")) {
                 setLoadingMessage(context.getString(R.string.main_downloading_steam))
                 SteamService.downloadSteam(
                     onDownloadProgress = { setLoadingProgress(it / 1.0f) },
@@ -1703,7 +1705,7 @@ fun preLaunchApp(
                     context = context,
                 ).await()
             }
-            if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam-token.tzst")) {
+            if ((container.isLaunchRealSteam || container.isLaunchBionicSteam) && !SteamService.isFileInstallable(context, "steam-token.tzst")) {
                 setLoadingMessage("Downloading steam-token")
                 SteamService.downloadFile(
                     onDownloadProgress = { setLoadingProgress(it / 1.0f) },
@@ -1759,25 +1761,29 @@ fun preLaunchApp(
         // must activate container before downloading save files
         containerManager.activateContainer(container)
 
-        // If another game is running on this account elsewhere, prompt user first (cross-app session)
+        // If another Steam game is running on this account elsewhere, prompt the user.
+        // Skip the prompt for apps we don't recognise — non-Steam shortcuts on the remote
+        // device report synthetic IDs that aren't kickable.
         val isSteamGame = gameSource == GameSource.STEAM
-        if(isSteamGame) {
+        if (isSteamGame) {
             try {
                 val currentPlaying = SteamService.getSelfCurrentlyPlayingAppId()
                 if (!isOffline && currentPlaying != null && currentPlaying != gameId) {
-                    val otherGameName = SteamService.getAppInfoOf(currentPlaying)?.name ?: "another game"
-                    setLoadingDialogVisible(false)
-                    setMessageDialogState(
-                        MessageDialogState(
-                            visible = true,
-                            type = DialogType.ACCOUNT_SESSION_ACTIVE,
-                            title = context.getString(R.string.main_app_running_title),
-                            message = context.getString(R.string.main_app_running_message, otherGameName),
-                            confirmBtnText = context.getString(R.string.main_play_anyway),
-                            dismissBtnText = context.getString(R.string.cancel),
-                        ),
-                    )
-                    return@launch
+                    val otherApp = SteamService.getAppInfoOf(currentPlaying)
+                    if (otherApp != null) {
+                        setLoadingDialogVisible(false)
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.ACCOUNT_SESSION_ACTIVE,
+                                title = context.getString(R.string.main_app_running_title),
+                                message = context.getString(R.string.main_app_running_message, otherApp.name),
+                                confirmBtnText = context.getString(R.string.main_play_anyway),
+                                dismissBtnText = context.getString(R.string.cancel),
+                            ),
+                        )
+                        return@launch
+                    }
                 }
             } catch (_: Exception) { /* ignore persona read errors */ }
         }
