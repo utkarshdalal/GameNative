@@ -945,7 +945,6 @@ internal fun AppScreenContent(
                         )
                     }
                 }
-            }
 
             // Content section below hero with solid background
             Column(
