@@ -935,15 +935,13 @@ internal fun AppScreenContent(
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Red.copy(alpha = 0.8f),
                     )
-                } else if {
-                    if (displayInfo.compatibilityMessage != null && displayInfo.compatibilityColor != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = displayInfo.compatibilityMessage,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(displayInfo.compatibilityColor),
-                        )
-                    }
+                } else if (displayInfo.compatibilityMessage != null && displayInfo.compatibilityColor != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = displayInfo.compatibilityMessage,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(displayInfo.compatibilityColor),
+                    )
                 }
 
             // Content section below hero with solid background
