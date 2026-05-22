@@ -926,24 +926,22 @@ internal fun AppScreenContent(
                             }
                         }
                     }
-                    }
-
-                    // Compatibility status (if applicable)
+                }
+                // DisabledWarning or compatibility notice for game.
+                if(displayInfo.disabledWarning != null && buttonEnabled == false){ 
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = displayInfo.disabledWarning,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Red.copy(alpha = 0.8f),
+                    )
+                } else if {
                     if (displayInfo.compatibilityMessage != null && displayInfo.compatibilityColor != null) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = displayInfo.compatibilityMessage,
                             style = MaterialTheme.typography.labelSmall,
                             color = Color(displayInfo.compatibilityColor),
-                        )
-                    }
-                    // Compatibility status (if applicable)
-                    if (displayInfo.disabledWarning != null && buttonEnabled == false) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = displayInfo.disabledWarning,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.Red.copy(alpha = 0.8f),
                         )
                     }
                 }
