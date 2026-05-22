@@ -273,8 +273,7 @@ private fun PrimaryActionButton(
                     )
                 }
             }
-        }
-        else {
+        } else {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -943,6 +942,8 @@ internal fun AppScreenContent(
                         color = Color(displayInfo.compatibilityColor),
                     )
                 }
+            }
+            }
 
             // Content section below hero with solid background
             Column(
