@@ -496,6 +496,14 @@ object PrefManager {
             setPref(STEAM_OFFLINE_MODE, value)
         }
 
+    private val EPIC_OFFLINE_MODE = booleanPreferencesKey("epic_offline_mode")
+    var epicOfflineMode: Boolean
+        get() = getPref(EPIC_OFFLINE_MODE, false)
+        set(value) {
+            setPref(EPIC_OFFLINE_MODE, value)
+        }
+    
+
     private val USE_LEGACY_DRM = booleanPreferencesKey("use_legacy_drm")
     var useLegacyDRM: Boolean
         get() = getPref(USE_LEGACY_DRM, false)

@@ -148,6 +148,8 @@ public class Container {
 
     private boolean steamOfflineMode = false;
 
+    private boolean epicOfflineMode = false;
+
     private boolean useLegacyDRM = false;
 
     private boolean unpackFiles = false;
@@ -713,6 +715,9 @@ public class Container {
             // Steam offline mode setting
             data.put("steamOfflineMode", steamOfflineMode);
 
+            // Steam offline mode setting
+            data.put("epicOfflineMode", epicOfflineMode);
+
             // Use Legacy DRM setting
             data.put("useLegacyDRM", useLegacyDRM);
 
@@ -912,6 +917,9 @@ public class Container {
                 case "steamOfflineMode":
                     this.steamOfflineMode = data.getBoolean(key);
                     break;
+                case "epicOfflineMode":
+                    this.epicOfflineMode = data.getBoolean(key);
+                    break;
                 case "useLegacyDRM":
                     this.useLegacyDRM = data.getBoolean(key);
                     break;
@@ -1000,8 +1008,16 @@ public class Container {
         return steamOfflineMode;
     }
 
+    public boolean isEpicOfflineMode() {
+        return epicOfflineMode;
+    }
+
     public void setSteamOfflineMode(boolean steamOfflineMode) {
         this.steamOfflineMode = steamOfflineMode;
+    }
+
+    public void setEpicOfflineMode(boolean epicOfflineMode) {
+        this.epicOfflineMode = epicOfflineMode;
     }
 
     public boolean isUseLegacyDRM() {

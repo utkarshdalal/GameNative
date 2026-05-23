@@ -688,6 +688,10 @@
     <string name="allow_steam_updates_description">Updates Steam to the latest version. Significantly reduces performance.</string>
     <string name="steam_type">Steam Type</string>
 
+    <!-- Container Configuration: Epic -->
+    <string name="epic_offline_mode">Epic Offline Mode</string>
+    <string name="epic_offline_mode_description">Launch Epic games in offline mode</string>
+
     <!-- Container Configuration: Graphics -->
     <string name="graphics_driver">Graphics Driver</string>
     <string name="graphics_driver_version">Graphics Driver Version</string>

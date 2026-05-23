@@ -1977,7 +1977,7 @@ fun XServerScreen(
                                 xServerView!!.getxServer(),
                                 containerVariantChanged,
                                 onGameLaunchError,
-                                navigateBack,
+                                isOffline
                             )
                             if (!PluviaApp.isActivityInForeground && !neverSuspend) {
                                 PluviaApp.xEnvironment?.onPause()
@@ -2992,16 +2992,13 @@ private fun setupXEnvironment(
     bootToContainer: Boolean,
     testGraphics: Boolean,
     xServerState: MutableState<XServerState>,
-    // xServerViewModel: XServerViewModel,
     envVars: EnvVars,
-    // generateWinePrefix: Boolean,
     container: Container?,
     appLaunchInfo: LaunchInfo?,
-    // shortcut: Shortcut?,
     xServer: XServer,
     containerVariantChanged: Boolean,
     onGameLaunchError: ((String) -> Unit)? = null,
-    navigateBack: () -> Unit,
+    offline: Boolean = false
 ): XEnvironment {
     ProcessHelper.hardKillStaleWineProcesses()
 
@@ -3121,7 +3118,7 @@ private fun setupXEnvironment(
             }
         }
         gameExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
-            getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent, gameSource) +
+            getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent, gameSource, offline) +
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
         preInstallCommands = PreInstallSteps.getPreInstallCommands(
             container,
@@ -3414,6 +3411,7 @@ private fun getWineStartCommand(
     envVars: EnvVars,
     guestProgramLauncherComponent: GuestProgramLauncherComponent,
     gameSource: GameSource,
+    offline: Boolean
 ): String {
     val tempDir = File(container.getRootDir(), ".wine/drive_c/windows/temp")
     FileUtils.clear(tempDir)
@@ -3512,7 +3510,8 @@ private fun getWineStartCommand(
         // Get Epic launch parameters
         Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
         val runArguments: List<String> = runBlocking {
-            val result = EpicService.buildLaunchParameters(context, container, game, false)
+            val offlineLaunch = offline || container.isEpicOfflineMode;
+            val result = EpicService.buildLaunchParameters(context, container, game, offlineLaunch)
             if (result.isFailure) {
                 Timber.tag("XServerScreen").e(result.exceptionOrNull(), "Failed to build Epic launch parameters")
             }
