@@ -420,7 +420,7 @@ object ContainerUtils {
         }
         val previousForceDlc: Boolean = container.isForceDlc
         val previousSteamOfflineMode: Boolean = container.isSteamOfflineMode()
-        val previousEpicOfflineMode: Boolean = container.isEpicOfflineMode()
+
         val previousUnpackFiles: Boolean = container.isUnpackFiles
         val userRegFile = File(container.rootDir, ".wine/user.reg")
         WineRegistryEditor(userRegFile).use { registryEditor ->
