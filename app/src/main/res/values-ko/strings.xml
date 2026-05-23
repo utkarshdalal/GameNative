@@ -669,6 +669,8 @@
     <string name="launch_steam_client_beta">Steam 클라이언트 실행(베타)</string>
     <string name="steam_offline_mode">Steam 오프라인 모드</string>
     <string name="steam_offline_mode_description">Steam 게임을 오프라인 모드로 실행</string>
+    <string name="epic_offline_mode">Epic 오프라인 모드</string>
+    <string name="epic_offline_mode_description">Epic 게임을 오프라인 모드로 실행</string>
     <string name="achievement_unlocked">업적 달성</string>
     <string name="settings_achievement_notification_position">업적 알림 위치</string>
     <string name="achievement_position_top_left">좌측 상단</string>

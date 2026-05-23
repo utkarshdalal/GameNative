@@ -632,6 +632,8 @@
     <string name="launch_steam_client_beta">Steam-Client starten (Beta)</string>
     <string name="steam_offline_mode">Steam Offline-Modus</string>
     <string name="steam_offline_mode_description">Steam-Spiele im Offlinemodus starten</string>
+    <string name="epic_offline_mode">Epic Offline-Modus</string>
+    <string name="epic_offline_mode_description">Epic-Spiele im Offlinemodus starten</string>
     <string name="achievement_unlocked">Erfolg freigeschaltet</string>
     <string name="settings_achievement_notification_position">Position der Erfolgsbenachrichtigung</string>
     <string name="achievement_position_top_left">Oben links</string>

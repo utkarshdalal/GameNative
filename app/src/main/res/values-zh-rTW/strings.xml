@@ -652,6 +652,8 @@
     <string name="launch_steam_client_beta">啟動 Steam 用戶端 (Beta)</string>
     <string name="steam_offline_mode">Steam 離線模式</string>
     <string name="steam_offline_mode_description">以離線模式啟動 Steam 遊戲</string>
+    <string name="epic_offline_mode">Epic 離線模式</string>
+    <string name="epic_offline_mode_description">以離線模式啟動 Epic 遊戲</string>
     <string name="achievement_unlocked">成就已解鎖</string>
     <string name="settings_achievement_notification_position">成就通知位置</string>
     <string name="achievement_position_top_left">左上</string>

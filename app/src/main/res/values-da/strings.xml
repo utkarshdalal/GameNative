@@ -494,6 +494,8 @@
     <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
     <string name="steam_offline_mode">Steam Offline-tilstand</string>
     <string name="steam_offline_mode_description">Start Steam-spil i offline-tilstand</string>
+    <string name="epic_offline_mode">Epic Offline-tilstand</string>
+    <string name="epic_offline_mode_description">Start Epic-spil i offline-tilstand</string>
     <string name="achievement_unlocked">Præstation låst op</string>
     <string name="settings_achievement_notification_position">Placering af præstationsnotifikation</string>
     <string name="achievement_position_top_left">Øverst til venstre</string>

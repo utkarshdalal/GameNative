@@ -654,6 +654,8 @@
     <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
     <string name="steam_offline_mode">Режим Офлайн Steam</string>
     <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
+    <string name="epic_offline_mode">Режим Офлайн Epic</string>
+    <string name="epic_offline_mode_description">Запускати ігри Epic в офлайн режимі</string>
     <string name="achievement_unlocked">Досягнення розблоковано</string>
     <string name="settings_achievement_notification_position">Позиція сповіщення про досягнення</string>
     <string name="achievement_position_top_left">Лівий верхній</string>
