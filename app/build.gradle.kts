@@ -33,7 +33,7 @@ android {
     compileSdk = 36
 
     // https://developer.android.com/ndk/downloads
-    ndkVersion = "22.1.7171670"
+    ndkVersion = "27.3.13750724"
 
     signingConfigs {
         create("pluvia") {
@@ -193,6 +193,12 @@ android {
 
     kotlinter {
         ignoreFormatFailures  = false
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/evshim/CMakeLists.txt")
+        }
     }
 
     // xconnectorpatch is shipped as a prebuilt jniLib because our APK packaging flow

@@ -20,6 +20,7 @@ import com.winlator.inputcontrols.TouchMouse;
 import com.winlator.math.XForm;
 import com.winlator.widget.InputControlsView;
 import com.winlator.widget.XServerRendererView;
+import com.winlator.xenvironment.ImageFs;
 import com.winlator.xserver.Pointer;
 import com.winlator.xserver.XKeycode;
 import com.winlator.xserver.XServer;
@@ -83,6 +84,19 @@ public class WinHandler {
     private boolean isShowingAssignDialog = false;
     private Context activity;
     private final java.util.Set<Integer> ignoredDeviceIds = new java.util.HashSet<>();
+    private RandomAccessFile gamepadRaf; // field, not local
+    private RandomAccessFile[] extraGamepadRafs; // field, not local
+
+    private static final int OFF_LX = 4;
+    private static final int OFF_LY = 6;
+    private static final int OFF_RX = 8;
+    private static final int OFF_RY = 10;
+    private static final int OFF_LT = 12;
+    private static final int OFF_RT = 14;
+    private static final int OFF_BTN = 16;
+    private static final int OFF_HAT = 31;
+    private static final int OFF_RUMBLE_LOW = 32;
+    private static final int OFF_RUMBLE_HIGH = 34;
 
     // Add method to set InputControlsView
     public void setInputControlsView(InputControlsView view) {
@@ -95,6 +109,12 @@ public class WinHandler {
         XINPUT,
         BOTH
     }
+
+    static {
+        System.loadLibrary("evshim");
+    }
+
+    private static native void notifyStateChanged(int playerIndex);
 
     public WinHandler(XServer xServer, XServerRendererView xServerView) {
         ByteBuffer allocate = ByteBuffer.allocate(64);
@@ -519,25 +539,33 @@ public class WinHandler {
     public void start() {
         try {
             this.localhost = InetAddress.getLocalHost();
-            // Player 1 (currentController) gets the original non-numbered file
-            String p1_mem_path = "/data/data/app.gamenative/files/imagefs/tmp/gamepad.mem";
-            File p1_memFile = new File(p1_mem_path);
-            p1_memFile.getParentFile().mkdirs();
-            try (RandomAccessFile raf = new RandomAccessFile(p1_memFile, "rw")) {
-                raf.setLength(64);
-                gamepadBuffer = raf.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, 64);
+            Context context = activity.getApplicationContext();
+            File gamepadShmDir = new File(
+                    context.getFilesDir(),
+                    "imagefs/gamepad_shm"
+            );
+
+            if (!gamepadShmDir.exists() && !gamepadShmDir.mkdirs()) {
+                throw new IOException("Failed to create directory: " + gamepadShmDir.getAbsolutePath());
+            }
+
+            File p1_memFile = new File(gamepadShmDir, "gamepad.mem");
+            if (gamepadBuffer == null) { // only map once
+                gamepadRaf = new RandomAccessFile(p1_memFile, "rw");
+                gamepadRaf.setLength(64);
+                gamepadBuffer = gamepadRaf.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, 64);
                 gamepadBuffer.order(ByteOrder.LITTLE_ENDIAN);
                 Log.i(TAG, "Successfully created and mapped gamepad file for Player 1");
             }
+
             for (int i = 0; i < extraGamepadBuffers.length; i++) {
-                String extra_mem_path = "/data/data/app.gamenative/files/imagefs/tmp/gamepad" + (i + 1) + ".mem";
-                File extra_memFile = new File(extra_mem_path);
-                try (RandomAccessFile raf = new RandomAccessFile(extra_memFile, "rw")) {
-                    raf.setLength(64);
-                    extraGamepadBuffers[i] = raf.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, 64);
-                    extraGamepadBuffers[i].order(ByteOrder.LITTLE_ENDIAN);
-                    Log.i(TAG, "Successfully created and mapped gamepad file for Player " + (i + 2));
-                }
+                String extra_mem_path = "/data/data/app.gamenative/files/imagefs/gamepad_shm/gamepad" + (i + 1) + ".mem";
+                if (extraGamepadBuffers[i] != null) continue; // same guard for extras
+                // hold RAF open just like P1
+                extraGamepadRafs[i] = new RandomAccessFile(extra_mem_path, "rw");
+                extraGamepadRafs[i].setLength(64);
+                extraGamepadBuffers[i] = extraGamepadRafs[i].getChannel().map(FileChannel.MapMode.READ_WRITE, 0, 64);
+                extraGamepadBuffers[i].order(ByteOrder.LITTLE_ENDIAN);
             }
         } catch (IOException e) {
             Log.e("EVSHIM_HOST", "FATAL: Failed to create memory-mapped file(s).", e);
@@ -548,27 +576,7 @@ public class WinHandler {
         }
         this.running = true;
         startSendThread();
-        Executors.newSingleThreadExecutor().execute(() -> {
-            try {
-                DatagramSocket datagramSocket = new DatagramSocket((SocketAddress) null);
-                this.socket = datagramSocket;
-                datagramSocket.setReuseAddress(true);
-                this.socket.bind(new InetSocketAddress((InetAddress) null, 7947));
-                while (this.running) {
-                    this.socket.receive(this.receivePacket);
-                    synchronized (this.actions) {
-                        this.receiveData.rewind();
-                        byte requestCode = this.receiveData.get();
-                        handleRequest(requestCode, this.receivePacket.getPort());
-                    }
-                }
-            } catch (IOException e) {
-            }
-        });
-
         startRumblePoller();
-        running = true;
-        startSendThread();
     }
 
     private void startRumblePoller() {
@@ -836,61 +844,50 @@ public class WinHandler {
         }
         gamepadBuffer.clear();
 
-        gamepadBuffer.putShort((short)(state.thumbLX * 32767));
-        gamepadBuffer.putShort((short)(state.thumbLY * 32767));
-        gamepadBuffer.putShort((short)(state.thumbRX * 32767));
-        gamepadBuffer.putShort((short)(state.thumbRY * 32767));
+        // Axes: write by fixed offsets, not sequential position
+        gamepadBuffer.putShort(OFF_LX, (short) (state.thumbLX * 32767));
+        gamepadBuffer.putShort(OFF_LY, (short) (state.thumbLY * 32767));
+        gamepadBuffer.putShort(OFF_RX, (short) (state.thumbRX * 32767));
+        gamepadBuffer.putShort(OFF_RY, (short) (state.thumbRY * 32767));
 
+        // Triggers: curve and map to signed short range like your current code
         float rawL = Math.max(0f, Math.min(1f, state.triggerL));
         float rawR = Math.max(0f, Math.min(1f, state.triggerR));
-        float lCurve = (float)Math.sqrt(rawL);
-        float rCurve = (float)Math.sqrt(rawR);
-        int lAxis = Math.round(lCurve * 65_534f) - 32_767;
-        int rAxis = Math.round(rCurve * 65_534f) - 32_767;
-        gamepadBuffer.putShort((short)lAxis);
-        gamepadBuffer.putShort((short)rAxis);
 
-        // Buttons & D-Pad
+        float lCurve = (float) Math.sqrt(rawL);
+        float rCurve = (float) Math.sqrt(rawR);
+
+        int lAxis = Math.round(lCurve * 65534f) - 32767;
+        int rAxis = Math.round(rCurve * 65534f) - 32767;
+
+        gamepadBuffer.putShort(OFF_LT, (short) lAxis);
+        gamepadBuffer.putShort(OFF_RT, (short) rAxis);
+
+        // Buttons: 15 bytes starting at offset 16
         byte[] sdlButtons = new byte[15];
-        sdlButtons[0] = state.isPressed(0) ? (byte)1 : (byte)0;  // A
-        sdlButtons[1] = state.isPressed(1) ? (byte)1 : (byte)0;  // B
-        sdlButtons[2] = state.isPressed(2) ? (byte)1 : (byte)0;  // X
-        sdlButtons[3] = state.isPressed(3) ? (byte)1 : (byte)0;  // Y
-        sdlButtons[9] = state.isPressed(4) ? (byte)1 : (byte)0;  // Left Bumper
-        sdlButtons[10] = state.isPressed(5) ? (byte)1 : (byte)0; // Right Bumper
-        sdlButtons[4] = state.isPressed(6) ? (byte)1 : (byte)0;  // Select/Back
-        sdlButtons[6] = state.isPressed(7) ? (byte)1 : (byte)0;  // Start
-        sdlButtons[7] = state.isPressed(8) ? (byte)1 : (byte)0;  // Left Stick
-        sdlButtons[8] = state.isPressed(9) ? (byte)1 : (byte)0;  // Right Stick
-        sdlButtons[11] = state.dpad[0] ? (byte)1 : (byte)0;      // DPAD_UP
-        sdlButtons[12] = state.dpad[2] ? (byte)1 : (byte)0;      // DPAD_DOWN
-        sdlButtons[13] = state.dpad[3] ? (byte)1 : (byte)0;      // DPAD_LEFT
-        sdlButtons[14] = state.dpad[1] ? (byte)1 : (byte)0;      // DPAD_RIGHT
-        gamepadBuffer.put(sdlButtons);
-        gamepadBuffer.put((byte)0); // Ignored HAT value
-    }
+        sdlButtons[0]  = state.isPressed(0) ? (byte) 1 : 0;   // A
+        sdlButtons[1]  = state.isPressed(1) ? (byte) 1 : 0;   // B
+        sdlButtons[2]  = state.isPressed(2) ? (byte) 1 : 0;   // X
+        sdlButtons[3]  = state.isPressed(3) ? (byte) 1 : 0;   // Y
+        sdlButtons[9]  = state.isPressed(4) ? (byte) 1 : 0;   // LB
+        sdlButtons[10] = state.isPressed(5) ? (byte) 1 : 0;   // RB
+        sdlButtons[4]  = state.isPressed(6) ? (byte) 1 : 0;   // Back / Select
+        sdlButtons[6]  = state.isPressed(7) ? (byte) 1 : 0;   // Start
+        sdlButtons[7]  = state.isPressed(8) ? (byte) 1 : 0;   // L3
+        sdlButtons[8]  = state.isPressed(9) ? (byte) 1 : 0;   // R3
+        sdlButtons[11] = state.dpad[0] ? (byte) 1 : 0;        // Up
+        sdlButtons[12] = state.dpad[2] ? (byte) 1 : 0;        // Down
+        sdlButtons[13] = state.dpad[3] ? (byte) 1 : 0;        // Left
+        sdlButtons[14] = state.dpad[1] ? (byte) 1 : 0;        // Right
 
-    private void initializeAssignedControllers() {
-        Log.d(TAG, "Initializing controller assignments from saved settings...");
-        for (int i = 0; i < MAX_PLAYERS; i++) {
-            InputDevice device = controllerManager.getAssignedDeviceForSlot(i);
-            if (device != null) {
-                ExternalController controller = ExternalController.getController(device.getId());
-                if (i == 0) {
-                    currentController = controller;
-                    Log.d(TAG, "Assigned '" + device.getName() + "' to Player 1 at startup.");
-                } else {
-                    // Remember that extraControllers is 0-indexed for players 2-4
-                    // So Player 2 (slot index 1) goes into extraControllers[0]
-                    extraControllers[i - 1] = controller;
-                    Log.d(TAG, "Assigned '" + device.getName() + "' to Player " + (i + 1) + " at startup.");
-                }
-            }
+        for (int i = 0; i < 15; i++) {
+            gamepadBuffer.put(OFF_BTN + i, sdlButtons[i]);
         }
-        // This ensures P1-specific settings (like trigger type) are applied from preferences.
-        refreshControllerMappings();
-    }
-    public void clearIgnoredDevices() {
-        ignoredDeviceIds.clear();
+
+        // Hat at offset 31
+        gamepadBuffer.put(OFF_HAT, (byte) 0);
+
+        // Notify native side that state changed
+        notifyStateChanged(0);
     }
 }
