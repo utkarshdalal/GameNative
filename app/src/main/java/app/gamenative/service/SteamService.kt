@@ -3062,6 +3062,24 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        /**
+         * Fetches achievements for a Steam app for display in the UI.
+         * Returns a list of [AchievementBlocks] containing name, display name, description,
+         * icon, unlock status, and unlock timestamp for each achievement.
+         * Returns null if not connected to Steam or if the fetch fails.
+         */
+        suspend fun fetchAchievementsForDisplay(appId: Int): List<AchievementBlocks>? {
+            if (!isConnected) return null
+            return try {
+                val steamUser = instance?._steamUser ?: return null
+                val userStats = instance?._steamUserStats?.getUserStats(appId, steamUser.steamID!!)?.await() ?: return null
+                userStats.getExpandedAchievements()
+            } catch (e: Exception) {
+                Timber.e(e, "fetchAchievementsForDisplay failed for appId=$appId")
+                null
+            }
+        }
+
         suspend fun generateAchievements(appId: Int, configDirectory: String) {
             val steamUser = instance!!._steamUser!!
             val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()

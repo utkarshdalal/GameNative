@@ -31,6 +31,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.data.DownloadState
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
@@ -42,6 +43,7 @@ import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
 import kotlinx.coroutines.CancellationException
+import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.AchievementBlocks
 import com.winlator.container.ContainerData
 import com.winlator.core.GPUInformation
 import java.io.File
@@ -920,6 +922,18 @@ abstract class BaseAppScreen {
             mutableStateOf(hasPartialDownload(context, libraryItem))
         }
 
+        var achievementsState by remember(libraryItem.gameId) {
+            mutableStateOf<List<AchievementBlocks>?>(null)
+        }
+
+        LaunchedEffect(libraryItem.gameId) {
+            if (libraryItem.gameSource == app.gamenative.data.GameSource.STEAM) {
+                achievementsState = withContext(Dispatchers.IO) {
+                    app.gamenative.service.SteamService.fetchAchievementsForDisplay(libraryItem.gameId)
+                }
+            }
+        }
+
         val uiScope = rememberCoroutineScope()
 
         suspend fun performStateRefresh(includeUpdatePending: Boolean) {
@@ -1182,15 +1196,18 @@ abstract class BaseAppScreen {
             }
         }
 
-        // Render the common UI
-        app.gamenative.ui.screen.library.AppScreenContent(
-            displayInfo = displayInfo,
+        val downloadState = DownloadState(
             isInstalled = isInstalledState,
             isValidToDownload = isValidToDownloadState,
             isDownloading = isDownloadingState,
             downloadProgress = downloadProgressState,
             hasPartialDownload = hasPartialDownloadState,
-            isUpdatePending = isUpdatePendingState,
+            isUpdatePending = isUpdatePendingState
+        )
+        // Render the common UI
+        app.gamenative.ui.screen.library.AppScreenContent(
+            displayInfo = displayInfo,
+            downloadState = downloadState,
             downloadInfo = downloadInfo,
             onDownloadInstallClick = {
                 onDownloadInstallClick(context, libraryItem, onClickPlay)
@@ -1213,6 +1230,8 @@ abstract class BaseAppScreen {
                 }
             },
             onBack = onBack,
+            achievements = achievementsState,
+            achievementsAppId = libraryItem.gameId.takeIf { achievementsState != null },
             optionsMenu = optionsMenu.toTypedArray(),
         )
 
