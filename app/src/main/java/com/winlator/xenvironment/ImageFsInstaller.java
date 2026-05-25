@@ -92,11 +92,11 @@ public abstract class ImageFsInstaller {
     // Modern flavor ships an additional bionic preload shipped as a flat asset
     // (src/modern/assets/) until it's folded into redirect.tzst. Copy it next to
     // the tarball-extracted variant so BionicProgramLauncherComponent can find it
-    private void ensureBionicLib(Context context){ 
+    private static void ensureBionicLib(Context context, File imagefs) {
         if (BuildConfig.MODERN_ANDROID) {
             File wxDest = new File(imagefs, "usr/lib/libredirect-bionic-wx.so");
-            if(!wxDest.exists()){ 
-                FileUtils.copy(ctx, "libredirect-bionic-wx.so", wxDest);
+            if (!wxDest.exists()) {
+                FileUtils.copy(context, "libredirect-bionic-wx.so", wxDest);
                 chmod(wxDest);
             }
         }
@@ -205,7 +205,7 @@ public abstract class ImageFsInstaller {
         chmod(new File(imagefs, "usr/lib/libredirect.so"));
         chmod(new File(imagefs, "usr/lib/libredirect-bionic.so"));
 
-        ensureBionicLib(context);
+        ensureBionicLib(ctx, imagefs);
 
         final String EXTRAS_TAR = "extras.tzst";          // ➊  add this to assets/
         // ➋  Unpack straight into imagefs, preserving relative paths.
