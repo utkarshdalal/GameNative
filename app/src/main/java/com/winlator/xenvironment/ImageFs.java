@@ -43,6 +43,18 @@ public class ImageFs {
         return sharedProtonDir;
     }
 
+    /**
+     * Root directory for a given variant's imagefs. Both variants can be installed in parallel:
+     * files/glibc/imagefs and files/bionic/imagefs.
+     */
+    public static File getVariantRootDir(Context context, String variant) {
+        File variantRootDir = new File(context.getFilesDir(), variant + "/imagefs");
+        if (!variantRootDir.exists()) {
+            variantRootDir.mkdirs();
+        }
+        return variantRootDir;
+    }
+
     public static ImageFs find(Context context) {
         ImageFs local = INSTANCE;
         if (local != null) return local;

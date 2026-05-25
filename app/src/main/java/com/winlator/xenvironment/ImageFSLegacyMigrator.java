@@ -11,17 +11,19 @@ public final class ImageFSLegacyMigrator {
     private ImageFSLegacyMigrator() {}
 
     /**
-     * Migrate legacy directories if needed. After that, ensure the shared home and proton are symlinked.
+     * Migrate legacy directories if needed.
      */
-    public static boolean migrateLegacyDirsIfNeeded(Context context, File legacyImageFsRoot, String wineVersion) {
+    public static boolean migrateLegacyDirsIfNeeded(Context context, File legacyImageFsRoot) {
         if (!migrateLegacyHomeToShared(context, legacyImageFsRoot)) {
             return false;
         }
         if (!migrateLegacyProtonToShared(context, legacyImageFsRoot)) {
             return false;
         }
-        ImageFsInstaller.ensureSharedHomeRoot(context, legacyImageFsRoot);
-        ImageFsInstaller.ensureProtonVersionSymlink(context, legacyImageFsRoot, wineVersion);
+        if (!removeLegacyImageFsRootIfNeeded(legacyImageFsRoot)) {
+            return false;
+        }
+
         return true;
     }
 
@@ -107,5 +109,31 @@ public final class ImageFSLegacyMigrator {
         }
 
         return true;
+    }
+
+    /**
+     * After migration, remove legacy imagefs root directory when it is a real directory.
+     */
+    private static boolean removeLegacyImageFsRootIfNeeded(File legacyImageFsRoot) {
+        if (!legacyImageFsRoot.exists()) {
+            return true;
+        }
+        if (!legacyImageFsRoot.isDirectory() || FileUtils.isSymlink(legacyImageFsRoot)) {
+            return true;
+        }
+        File[] optEntries = new File(legacyImageFsRoot, "opt").listFiles();
+        if (optEntries != null) {
+            for (File entry : optEntries) {
+                if (entry.isDirectory() && !FileUtils.isSymlink(entry) && entry.getName().startsWith("proton-")) {
+                    Log.w("ImageFSLegacyMigrator", "Keeping legacy imagefs root because unmigrated Proton dir remains: " + entry.getName());
+                    return false;
+                }
+            }
+        }
+        if (FileUtils.delete(legacyImageFsRoot)) {
+            return true;
+        }
+        Log.w("ImageFSLegacyMigrator", "Failed to delete legacy imagefs root: " + legacyImageFsRoot.getAbsolutePath());
+        return false;
     }
 }
