@@ -202,8 +202,8 @@ class StatsAchievementsGenerator {
                 outputAch["progress"] = ach.progress
             }
 
-            ach.unlocked?.let { outputAch["earned"] = it }
-            ach.unlockTimestamp?.let { outputAch["earn_time"] = it }
+            outputAch["earned"] = ach.unlocked ?: false
+            outputAch["earn_time"] = ach.unlockTimestamp ?: 0
             ach.formattedUnlockTime?.let { outputAch["formattedUnlockTime"] = it }
 
             outputAchievements.add(outputAch)
