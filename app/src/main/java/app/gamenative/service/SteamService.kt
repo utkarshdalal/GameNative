@@ -3087,21 +3087,35 @@ class SteamService : Service(), IChallengeUrlChanged {
             seedGseSaveAchievements(gseDirs, result.achievements)
         }
 
-        // Seed the GSE achievements file to ensure that we don't get early unlock triggers (Games such as Brotato do re-triggers on launch)
+        // Seed the GSE achievements file to ensure that we don't get early unlock triggers (Games such as Brotato do re-triggers on launch).
+        // merges results with ones from Steam Servers so we don't overwrite offline achievements.
         private fun seedGseSaveAchievements(dirs: List<File>, achievements: List<app.gamenative.statsgen.Achievement>) {
             if (achievements.isEmpty()) return
-            val json = JSONObject()
-            for (ach in achievements) {
-                val entry = JSONObject()
-                entry.put("earned", ach.unlocked ?: false)
-                entry.put("earned_time", ach.unlockTimestamp ?: 0)
-                json.put(ach.name, entry)
-            }
-            val content = json.toString(2)
             for (dir in dirs) {
                 try {
                     dir.mkdirs()
-                    File(dir, "achievements.json").writeText(content, Charsets.UTF_8)
+                    val file = File(dir, "achievements.json")
+                    // grab existing file or create new if nothing exists.
+                    val merged = if (file.exists()) {
+                        try {
+                            JSONObject(file.readText(Charsets.UTF_8))
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to parse existing GSE achievements.json in ${dir.absolutePath}, starting fresh")
+                            JSONObject()
+                        }
+                    } else {
+                        JSONObject()
+                    }
+
+                    // Apply achievements earned & timestamp to file where matched
+                    for (ach in achievements) {
+                        val existing = if (merged.has(ach.name)) merged.getJSONObject(ach.name) else JSONObject()
+                        existing.put("earned", ach.unlocked ?: false)
+                        existing.put("earned_time", ach.unlockTimestamp ?: 0)
+                        merged.put(ach.name, existing)
+                    }
+
+                    file.writeText(merged.toString(2), Charsets.UTF_8)
                     Timber.d("Seeded GSE Saves achievements.json in ${dir.absolutePath}")
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to seed GSE Saves achievements.json in ${dir.absolutePath}")
