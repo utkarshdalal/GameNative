@@ -3107,11 +3107,17 @@ class SteamService : Service(), IChallengeUrlChanged {
                         JSONObject()
                     }
 
-                    // Apply achievements earned & timestamp to file where matched
+                    // Apply achievements earned & timestamp to file where matched & persists local if local is earned & timestamped.
                     for (ach in achievements) {
                         val existing = if (merged.has(ach.name)) merged.getJSONObject(ach.name) else JSONObject()
-                        existing.put("earned", ach.unlocked ?: false)
-                        existing.put("earned_time", ach.unlockTimestamp ?: 0)
+                        val localEarned = existing.optBoolean("earned", false)
+                        val steamEarned = ach.unlocked ?: false
+                        val earned = localEarned || steamEarned
+                        val localTime = existing.optLong("earned_time", 0L)
+                        val steamTime = (ach.unlockTimestamp ?: 0).toLong()
+                        val earnedTime = maxOf(localTime, steamTime)
+                        existing.put("earned", earned)
+                        existing.put("earned_time", earnedTime)
                         merged.put(ach.name, existing)
                     }
 
