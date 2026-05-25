@@ -245,6 +245,7 @@ public abstract class ImageFsInstaller {
         } else {
             Log.d("ImageFsInstaller", "Image FS already valid and at latest version");
             return Executors.newSingleThreadExecutor().submit(() -> {
+                ensureBionicLib(context, imageFs.getRootDir());
                 return true;
             });
         }
