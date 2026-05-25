@@ -60,6 +60,7 @@ public class WinHandler {
     private static final short CLIENT_PORT = 7946;
     private final ArrayDeque<Runnable> actions;
     private ExternalController currentController;
+    private int currentControllerId;
     private byte dinputMapperType;
     private final List<Integer> gamepadClients;
     private boolean initReceived;
@@ -84,8 +85,8 @@ public class WinHandler {
     private boolean isShowingAssignDialog = false;
     private Context activity;
     private final java.util.Set<Integer> ignoredDeviceIds = new java.util.HashSet<>();
-    private RandomAccessFile gamepadRaf; // field, not local
-    private RandomAccessFile[] extraGamepadRafs; // field, not local
+    private RandomAccessFile gamepadRaf;
+    private RandomAccessFile[] extraGamepadRafs;
 
     private static final int OFF_LX = 4;
     private static final int OFF_LY = 6;
@@ -115,6 +116,8 @@ public class WinHandler {
     }
 
     private static native void notifyStateChanged(int playerIndex);
+    public static native int waitForRumble(int idx, int lastSeq);
+    public static native int rumbleTeardown(int idx);
 
     public WinHandler(XServer xServer, XServerRendererView xServerView) {
         ByteBuffer allocate = ByteBuffer.allocate(64);
@@ -136,6 +139,7 @@ public class WinHandler {
         this.xServerView = xServerView;
         this.controllerManager = ControllerManager.getInstance();
         this.activity = xServerView.getContext();
+        this.currentControllerId = -1;
     }
 
     public void refreshControllerMappings() {
@@ -363,6 +367,11 @@ public class WinHandler {
 
     public void stop() {
         this.running = false;
+        rumbleTeardown(0);
+        try {
+            this.rumblePollerThread.join();
+        } catch (InterruptedException ignored) {
+        }
         DatagramSocket datagramSocket = this.socket;
         if (datagramSocket != null) {
             datagramSocket.close();
@@ -536,6 +545,11 @@ public class WinHandler {
         }
     }
 
+    public void setCurrentController(int deviceId) {
+        if (currentControllerId != deviceId)
+            this.currentControllerId = deviceId;
+    }
+
     public void start() {
         try {
             this.localhost = InetAddress.getLocalHost();
@@ -550,7 +564,7 @@ public class WinHandler {
             }
 
             File p1_memFile = new File(gamepadShmDir, "gamepad.mem");
-            if (gamepadBuffer == null) { // only map once
+            if (gamepadBuffer == null) {
                 gamepadRaf = new RandomAccessFile(p1_memFile, "rw");
                 gamepadRaf.setLength(64);
                 gamepadBuffer = gamepadRaf.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, 64);
@@ -560,8 +574,7 @@ public class WinHandler {
 
             for (int i = 0; i < extraGamepadBuffers.length; i++) {
                 String extra_mem_path = "/data/data/app.gamenative/files/imagefs/gamepad_shm/gamepad" + (i + 1) + ".mem";
-                if (extraGamepadBuffers[i] != null) continue; // same guard for extras
-                // hold RAF open just like P1
+                if (extraGamepadBuffers[i] != null) continue;
                 extraGamepadRafs[i] = new RandomAccessFile(extra_mem_path, "rw");
                 extraGamepadRafs[i].setLength(64);
                 extraGamepadBuffers[i] = extraGamepadRafs[i].getChannel().map(FileChannel.MapMode.READ_WRITE, 0, 64);
@@ -575,40 +588,37 @@ public class WinHandler {
             }
         }
         this.running = true;
-        startSendThread();
         startRumblePoller();
     }
 
     private void startRumblePoller() {
         rumblePollerThread = new Thread(() -> {
+            int curSeq = 0;
+            int lastSeq = 0;
             while (running) {
-                // --- MODIFIED: Get the current profile state on EVERY loop iteration ---
                 try {
-                    // Always poll for rumble if gamepad buffer exists, regardless of controller state
-                    // This ensures vibration works with built-in controllers (like Ayn Odin 2)
-                    // even when virtual gamepad mode is disabled
-                    if (gamepadBuffer != null) {
-                        // Read the rumble values from the shared memory file.
-                        short lowFreq = gamepadBuffer.getShort(32);
-                        short highFreq = gamepadBuffer.getShort(34);
-                        // Check if the rumble state has changed
-                        if (lowFreq != lastLowFreq || highFreq != lastHighFreq) {
-                            lastLowFreq = lowFreq;
-                            lastHighFreq = highFreq;
-                            if (lowFreq == 0 && highFreq == 0) {
-                                stopVibration();
-                            } else {
-                                startVibration(lowFreq, highFreq);
-                            }
+                    curSeq = WinHandler.waitForRumble(0, lastSeq);
+                    if (curSeq == lastSeq) {
+                        continue;
+                    }
+
+                    lastSeq = curSeq;
+
+                    // Read the rumble values from the shared memory file after change was signaled or timeout happened
+                    short lowFreq = gamepadBuffer.getShort(OFF_RUMBLE_LOW);
+                    short highFreq = gamepadBuffer.getShort(OFF_RUMBLE_HIGH);
+
+                    // Check if the rumble state has changed
+                    if (lowFreq != lastLowFreq || highFreq != lastHighFreq) {
+                        lastLowFreq = lowFreq;
+                        lastHighFreq = highFreq;
+                        if (lowFreq == 0 && highFreq == 0) {
+                            stopVibration();
+                        } else {
+                            startVibration(lowFreq, highFreq);
                         }
                     }
-                } catch (Exception e) {
-                    continue;
-                }
-                try {
-                    Thread.sleep(20); // Poll for new commands 50 times per second
-                } catch (InterruptedException e) {
-                    break;
+                } catch (Exception ignored) {
                 }
             }
         });
@@ -629,43 +639,42 @@ public class WinHandler {
             return;
         }
         isRumbling = true; // We know we are going to try to rumble.
+        boolean controllerVibrated = false;
         // --- Step 2: Attempt to vibrate the physical controller first ---
-        if (currentController != null) {
-            InputDevice device = InputDevice.getDevice(currentController.getDeviceId());
-            if (device != null) {
-                Vibrator controllerVibrator = device.getVibrator();
-                if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
-                    // Vibrate the physical controller and then we are done.
-                    controllerVibrator.vibrate(VibrationEffect.createOneShot(50, amplitude));
-                    return;
-                }
+        InputDevice device = InputDevice.getDevice(currentControllerId);
+        if (device != null) {
+            Vibrator controllerVibrator = device.getVibrator();
+            if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
+                controllerVibrator.vibrate(VibrationEffect.createOneShot(1000, amplitude));
+                controllerVibrated = true;
             }
         }
+
         // --- Step 3: Fallback to phone vibration if physical controller fails or doesn't exist ---
-        Log.w("WinHandler", "No physical controller vibrator found, falling back to device vibration.");
-        Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
-        if (phoneVibrator != null && phoneVibrator.hasVibrator()) {
-            // --- HAPTIC CURVE LOGIC to make phone vibration feel better ---
-            float normalizedAmplitude = (float) amplitude / 255.0f;
-            float curvedAmplitude = (float) Math.pow(normalizedAmplitude, 0.6f);
-            int finalPhoneAmplitude = (int) (curvedAmplitude * 255);
-            if (finalPhoneAmplitude > 255) finalPhoneAmplitude = 255;
-            if (finalPhoneAmplitude <= 1) finalPhoneAmplitude = 0;
-            if (finalPhoneAmplitude > 0) {
-                phoneVibrator.vibrate(VibrationEffect.createOneShot(50, finalPhoneAmplitude));
+        if (!controllerVibrated) {
+            Log.w("WinHandler", "No physical controller vibrator found, falling back to device vibration.");
+            Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+            if (phoneVibrator != null && phoneVibrator.hasVibrator()) {
+                // --- HAPTIC CURVE LOGIC to make phone vibration feel better ---
+                float normalizedAmplitude = (float) amplitude / 255.0f;
+                float curvedAmplitude = (float) Math.pow(normalizedAmplitude, 0.6f);
+                int finalPhoneAmplitude = (int) (curvedAmplitude * 255);
+                if (finalPhoneAmplitude > 255) finalPhoneAmplitude = 255;
+                if (finalPhoneAmplitude <= 1) finalPhoneAmplitude = 0;
+                if (finalPhoneAmplitude > 0) {
+                    phoneVibrator.vibrate(VibrationEffect.createOneShot(1000, finalPhoneAmplitude));
+                }
             }
         }
     }
     private void stopVibration() {
         if (!isRumbling) return; // Simplified check
         // Attempt to stop the physical controller's vibration if it exists
-        if (currentController != null) {
-            InputDevice device = InputDevice.getDevice(currentController.getDeviceId());
-            if (device != null) {
-                Vibrator vibrator = device.getVibrator();
-                if (vibrator != null && vibrator.hasVibrator()) {
-                    vibrator.cancel();
-                }
+        InputDevice device = InputDevice.getDevice(currentControllerId);
+        if (device != null) {
+            Vibrator vibrator = device.getVibrator();
+            if (vibrator != null && vibrator.hasVibrator()) {
+                vibrator.cancel();
             }
         }
         // Always attempt to stop the phone's vibration

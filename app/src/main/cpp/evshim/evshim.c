@@ -43,7 +43,8 @@ static int g_debug_enabled = 0;
  *      31     1  hat
  *      32     2  low_freq_rumble
  *      34     2  high_freq_rumble
- *                                   total: 36 bytes
+ *      36     4  rumble_seq       — futex word (rumble: Wine -> Java)
+ *                                   total: 40 bytes
  */
 
 #define SHM_DATA_SIZE  64
@@ -60,6 +61,7 @@ struct gamepad_state {
 struct gamepad_io {
     atomic_uint       seq;
     struct gamepad_state state;
+    atomic_uint       rumble_seq;
 };
 
 _Static_assert(sizeof(struct gamepad_io) <= SHM_DATA_SIZE, "gamepad_io exceeds SHM_DATA_SIZE");
@@ -166,7 +168,6 @@ static int          (*p_SDL_JoystickAttachVirtualEx) (const SDL_VirtualJoystickD
 static int          (*p_SDL_JoystickSetVirtualAxis)  (SDL_Joystick *, int, int16_t);
 static int          (*p_SDL_JoystickSetVirtualButton)(SDL_Joystick *, int, uint8_t);
 static int          (*p_SDL_JoystickSetVirtualHat)   (SDL_Joystick *, int, uint8_t);
-static void         (*p_SDL_PumpEvents)             (void);
 static void         (*p_SDL_GetVersion)              (SDL_version *);
 
 #define GETFUNCPTR(name) \
@@ -182,6 +183,11 @@ static int OnRumble(void *userdata, uint16_t low, uint16_t high)
 
     shm[idx]->state.low_freq_rumble  = low;
     shm[idx]->state.high_freq_rumble = high;
+
+    // Wake up the Java thread waiting for rumble updates
+    atomic_thread_fence(memory_order_seq_cst);
+    atomic_fetch_add_explicit(&shm[idx]->rumble_seq, 1u, memory_order_release);
+    syscall(SYS_futex, &shm[idx]->rumble_seq, FUTEX_WAKE, 1, NULL, NULL, 0);
 
     LOGD("evshim: rumble P%d low=%u high=%u\n", idx, low, high);
     return 0;
@@ -239,7 +245,6 @@ static void *vjoy_updater(void *arg)
                 p_SDL_JoystickSetVirtualButton(js, i, snap.state.btn[i]);
             }
             p_SDL_JoystickSetVirtualHat(js, 0, snap.state.hat);
-            // p_SDL_PumpEvents();
             continue;
         }
 
@@ -258,7 +263,6 @@ static void initialize_wine(int players)
     GETFUNCPTR(SDL_JoystickOpen);  GETFUNCPTR(SDL_JoystickAttachVirtualEx);
     GETFUNCPTR(SDL_JoystickSetVirtualAxis);  GETFUNCPTR(SDL_JoystickSetVirtualButton);
     GETFUNCPTR(SDL_JoystickSetVirtualHat);
-    GETFUNCPTR(SDL_PumpEvents);
     GETFUNCPTR(SDL_GetVersion);
 
     p_SDL_Init(SDL_INIT_JOYSTICK);
@@ -275,9 +279,13 @@ static void initialize_wine(int players)
         d.type    = SDL_JOYSTICK_TYPE_GAMECONTROLLER;
         d.naxes   = 6; d.nbuttons = 15; d.nhats = 1;
         d.Rumble  = &OnRumble;  d.userdata = (void*)(intptr_t)i;
+        d.vendor_id = 0x045E;  // Microsoft
+        d.product_id = 0x028E; // Xbox 360 Controller
+        d.button_mask = 0xFFFF;
+        d.axis_mask = 0x3F;
 
         char name[64];
-        snprintf(name, sizeof name, (i < 2) ? "B (Player %d)" : "A (Player %d)", i + 1);
+        snprintf(name, sizeof name, "Xbox 360 Controller");
         d.name = strdup(name);
 
         vjoy_ids[i] = p_SDL_JoystickAttachVirtualEx(&d);
@@ -327,4 +335,28 @@ Java_com_winlator_winhandler_WinHandler_notifyStateChanged(JNIEnv *env, jclass c
     atomic_thread_fence(memory_order_seq_cst); // not sure if necessary
     atomic_fetch_add_explicit(&shm[idx]->seq, 1u, memory_order_release);
     syscall(SYS_futex, &shm[idx]->seq, FUTEX_WAKE, INT_MAX, NULL, NULL, 0);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_winlator_winhandler_WinHandler_waitForRumble(JNIEnv *env, jclass cls, jint idx, jint last_seq)
+{
+    if (idx < 0 || idx >= MAX_GAMEPADS || !shm[idx]) return last_seq;
+
+    uint32_t current_seq = atomic_load_explicit(&shm[idx]->rumble_seq, memory_order_acquire);
+
+    if (current_seq != (uint32_t)last_seq) {
+        return current_seq;
+    }
+
+    // sleep until Wine triggers OnRumble or teardown signaled
+    struct timespec ts = { .tv_sec = 5, .tv_nsec = 0 };
+    syscall(SYS_futex, &shm[idx]->rumble_seq, FUTEX_WAIT, current_seq, NULL, NULL, 0);
+
+    return atomic_load_explicit(&shm[idx]->rumble_seq, memory_order_acquire);
+}
+
+JNIEXPORT void JNICALL
+Java_com_winlator_winhandler_WinHandler_rumbleTeardown(JNIEnv *env, jclass cls, jint idx)
+{
+    syscall(SYS_futex, &shm[idx]->rumble_seq, FUTEX_WAKE, 1, NULL, NULL, 0);
 }

@@ -913,6 +913,7 @@ fun XServerScreen(
         }
         val isGamepad = ExternalController.isGameController(device)
         if (isGamepad) {
+            xServerView!!.getxServer().winHandler.setCurrentController(device.id);
             if (!showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
                 !container.isTouchscreenMode &&
                 !hasUpdatedScreenGamepad) {
@@ -1333,6 +1334,7 @@ fun XServerScreen(
             } else {
                 var handled = false
                 if (isGamepad) {
+                    xServerView!!.getxServer().winHandler.setCurrentController(it.event.device.id);
                     handled = physicalControllerHandler?.onKeyEvent(it.event) == true
                     if (!handled) handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
                     // Final fallback to WinHandler passthrough
@@ -1367,6 +1369,7 @@ fun XServerScreen(
             } else {
                 var handled = false
                 if (isGamepad && it.event != null) {
+                    xServerView!!.getxServer().winHandler.setCurrentController(it.event.device.id);
                     handled = physicalControllerHandler?.onGenericMotionEvent(it.event!!) == true
                     if (!handled) handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
                     // Final fallback to WinHandler passthrough

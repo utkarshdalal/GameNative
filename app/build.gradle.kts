@@ -195,11 +195,11 @@ android {
         ignoreFormatFailures  = false
     }
 
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/evshim/CMakeLists.txt")
-        }
-    }
+    // externalNativeBuild {
+    //    cmake {
+    //        path = file("src/main/cpp/evshim/CMakeLists.txt")
+    //    }
+    // }
 
     // xconnectorpatch is shipped as a prebuilt jniLib because our APK packaging flow
     // does not rebuild native libraries during release creation.
