@@ -3080,6 +3080,33 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
                 File(configDir, "achievement_name_to_block.json").writeText(mappingJson.toString(), Charsets.UTF_8)
             }
+
+            // Seed the GSE Saves file with the real earned state from Steam to avoid re-trigger notifications
+            val context = instance!!.applicationContext
+            val gseDirs = getGseSaveDirs(context, appId)
+            seedGseSaveAchievements(gseDirs, result.achievements)
+        }
+
+        // Seed the GSE achievements file to ensure that we don't get early unlock triggers (Games such as Brotato do re-triggers on launch)
+        private fun seedGseSaveAchievements(dirs: List<File>, achievements: List<app.gamenative.statsgen.Achievement>) {
+            if (achievements.isEmpty()) return
+            val json = JSONObject()
+            for (ach in achievements) {
+                val entry = JSONObject()
+                entry.put("earned", ach.unlocked ?: false)
+                entry.put("earned_time", ach.unlockTimestamp ?: 0)
+                json.put(ach.name, entry)
+            }
+            val content = json.toString(2)
+            for (dir in dirs) {
+                try {
+                    dir.mkdirs()
+                    File(dir, "achievements.json").writeText(content, Charsets.UTF_8)
+                    Timber.d("Seeded GSE Saves achievements.json in ${dir.absolutePath}")
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to seed GSE Saves achievements.json in ${dir.absolutePath}")
+                }
+            }
         }
 
         fun getGseSaveDirs(context: Context, appId: Int): List<File> {

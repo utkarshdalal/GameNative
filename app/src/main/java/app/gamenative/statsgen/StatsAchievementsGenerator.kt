@@ -202,9 +202,9 @@ class StatsAchievementsGenerator {
                 outputAch["progress"] = ach.progress
             }
 
-            outputAch["earned"] = ach.unlocked ?: false
-            outputAch["earn_time"] = ach.unlockTimestamp ?: 0
-            ach.formattedUnlockTime?.let { outputAch["formattedUnlockTime"] = it }
+            // Seed the earned & earn_time to defaults. We set this correctly in the GSE file.
+            outputAch["earned"] = false
+            outputAch["earn_time"] = 0
 
             outputAchievements.add(outputAch)
         }
@@ -355,7 +355,7 @@ class StatsAchievementsGenerator {
         }
 
         return ProcessingResult(
-            achievements = achievementsOut,
+            achievements = achievementsWithTimestamps,
             stats = statsOut,
             copyDefaultUnlockedImg = copyDefaultUnlockedImg,
             copyDefaultLockedImg = copyDefaultLockedImg,
