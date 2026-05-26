@@ -35,22 +35,28 @@ object AssetUtils {
 
             if (assetChecksum != storedChecksum || !targetDir.exists()) {
                 log().i("Extracting $assetFile to ${targetDir.absolutePath} (checksum mismatch or directory missing)")
-                if (targetDir.exists()) {
-                    targetDir.deleteRecursively()
-                }
-                targetDir.mkdirs()
+                val tempDir = File(targetDir.parentFile, "${targetDir.name}.tmp")
+                if (tempDir.exists()) tempDir.deleteRecursively()
+                tempDir.mkdirs()
 
                 val success = TarCompressorUtils.extract(
                     extractType,
                     assetManager,
                     assetFile,
-                    targetDir
+                    tempDir
                 )
 
                 if (success) {
+                    if (targetDir.exists()) targetDir.deleteRecursively()
+                    if (!tempDir.renameTo(targetDir)) {
+                        log().e("Failed to promote extracted dir for $assetFile")
+                        tempDir.deleteRecursively()
+                        continue
+                    }
                     versionFile.writeText(assetChecksum)
                     log().i("Successfully extracted $assetFile")
                 } else {
+                    tempDir.deleteRecursively()
                     log().e("Failed to extract $assetFile")
                 }
             } else {
