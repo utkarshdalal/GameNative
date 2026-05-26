@@ -154,8 +154,11 @@ object BionicSteamAssetsDependency : LaunchDependency {
         if (lsteamclientArchive != null) {
             val dllSystem32 = system32Dll(container)
             val dllSyswow64 = syswow64Dll(container)
-            val dllsPresent = withContext(Dispatchers.IO) { dllSystem32.exists() && dllSyswow64.exists() }
-            if (!dllsPresent) {
+            val unixSo = lsteamclientUnixSo(context, container)
+            val allFilesPresent = withContext(Dispatchers.IO) {
+                dllSystem32.exists() && dllSyswow64.exists() && unixSo.exists()
+            }
+            if (!allFilesPresent) {
                 val archiveCache = File(filesDir, lsteamclientArchive)
                 if (!withContext(Dispatchers.IO) { archiveCache.exists() }) {
                     callbacks.setLoadingMessage("Downloading $lsteamclientArchive")
