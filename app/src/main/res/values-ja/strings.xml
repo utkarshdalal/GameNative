@@ -474,63 +474,53 @@
     <string name="settings_save_logcat_subtitle">この app\'s PID のみの logcat のスナップショットを保存します</string>
     <string name="settings_save_logcat_title">ログキャットを保存する</string>
     <string name="settings_achievement_show_notification">達成通知を表示する</string>
-    <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
-        Handling of flags on CALL/RET opcodes<br /><br />
-        <b>0</b> : Treats CALL/RET as if it never needed flags (faster, unstable)<br />
-        <b>1</b> : Most RET will need flags, most CALLS will not<br />
-        <b>2</b> : All CALL/RET will need flags (slower)
-    ]]>    </string>
-    <string name="box86_64_env_var_help__dynarec_fastnan">x86 のような -NAN の生成</string>
-    <string name="box86_64_env_var_help__dynarec_fastround">正確な x86 丸めの生成</string>
-    <string name="box86_64_env_var_help__dynarec_x87double">x87 エミュレーションでの Float/Double の使用</string>
-    <string name="box86_64_env_var_help__dynarec_bigblock"><![CDATA[
-        Dynarec building BigBlock<br /><br />
-        <b>0</b> : Don\'t try to build block as big as possible<br />
-        <b>1</b> : Build Dynarec block as big as possible<br />
-        <b>2</b> : Build Dynarec block bigger (continue when block overlaps, but only for blocks in elf memory)<br />
-        <b>3</b> : Build Dynarec block bigger (continue when block overlaps, for all types of memory)
-    ]]>    </string>
-    <string name="box86_64_env_var_help__dynarec_strongmem"><![CDATA[
-        Simulation of Strong Memory model<br /><br />
-        <b>0</b> : Don\'t try anything special<br />
-        <b>1</b> : Enable some Memory Barrier when writing to memory (on some MOV opcode)<br />
-        <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
-        <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
-    ]]>    </string>
-    <string name="box86_64_env_var_help__dynarec_weakbarrier"><![CDATA[
-        Tweak memory barriers to reduce performance impact of strong memory emulation<br /><br />
-        <b>0</b> : Use regular safe barriers<br />
-        <b>1</b> : Use weak barriers for mild performance boost<br />
-        <b>2</b> : Use weak barriers, additionally disable last write barriers]]></string>
-    <string name="box86_64_env_var_help__dynarec_aligned_atomics"><![CDATA[
-        Generate aligned atomics only (only available on Arm64 for now).<br /><br />
-        <b>0</b> : Generate unaligned atomics handling code.<br />
-        <b>1</b> : Generate aligned atomics only, which is faster and smaller code size, but will cause SIGBUS for LOCK prefixed opcodes operating on aligned data addresses.]]></string>
-    <string name="box86_64_env_var_help__dynarec_df"><![CDATA[
-        Enable or disable the use of deferred flags.<br /><br />
-        <b>0</b> : Disable the use of deferred flags.<br />
-        <b>1</b> : Enable the use of deferred flags.]]></string>
-    <string name="box86_64_env_var_help__dynarec_dirty"><![CDATA[
-        Allow continue running a block that is unprotected and potentially dirty.<br /><br />
-        <b>0</b> : Do not allow continue running a block that is unprotected and potentially dirty.<br />
-        <b>1</b> : Allow continue to run a dynablock that write data in the same page as code. It can gets faster in loading time of some game but can also get unexpected crashes.<br />
-        <b>2</b> : Will also, when it detect an HotPage, flag that page as NEVERCLEAN, and so it will not be write protected but Block build from that page will always be tested. It can be faster that way (but some SMC case might not be trapped).]]></string>
-    <string name="box86_64_env_var_help__dynarec_nativeflags"><![CDATA[
-        Enable or disable the use of native flags.<br /><br />
-        <b>0</b> : Do not use native flags.<br />
-        <b>1</b> : Use native flags when possible.]]></string>
-    <string name="box86_64_env_var_help__dynarec_pause"><![CDATA[
-        Enable x86 PAUSE emulation, may help the performance of spinlocks.<br /><br />
-        <b>0</b> : Ignore x86 PAUSE instruction.<br />
-        <b>1</b> : Use YIELD to emulate x86 PAUSE instruction.<br />
-        <b>2</b> : Use WFI to emulate x86 PAUSE instruction.<br />
-        <b>3</b> : Use SEVL+WFE to emulate x86 PAUSE instruction.
-    ]]></string>
+    <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[CALL/RET オペコードのフラグの処理<br /><br />
+        <b>0</b> : CALL/RET をフラグを必要としなかったかのように扱います (高速、不安定)<br />
+        <b>1</b> : ほとんどの RET にはフラグが必要ですが、ほとんどの CALLS には必要ありません<br />
+        <b>2</b> : すべての CALL/RET にはフラグが必要になります (低速)
+    ]]> </string>
+    <string name="box86_64_env_var_help__dynarec_fastnan">x86のような -NANの生成</string>
+    <string name="box86_64_env_var_help__dynarec_fastround"> 正確な x86 丸めの生成</string>
+    <string name="box86_64_env_var_help__dynarec_x87double">x87エミュレーションでのFloat/Doubleの使用</string>
+    <string name="box86_64_env_var_help__dynarec_bigblock"><![CDATA[ダイナレックビル BigBlock<br /><br />
+        <b>0</b> : 最も大きなブロックを構築しようとしないでください<br />
+        <b>1</b> : 最も大きな Dynarec ブロックを構築します<br />
+        <b>2</b> : Dynarec ブロックをより大きくビルドします (ブロックが重複しても継続しますが、elf メモリ内のブロックのみ)<br />
+        <b>3</b> : Dynarec ブロックをより大きくビルドします (すべてのタイプのメモリに対して、ブロックが重複しても続行します)
+    ]]> </string>
+    <string name="box86_64_env_var_help__dynarec_strongmem"><![CDATA[強力なメモリモデル<br /><br />のシミュレーション
+        <b>0</b> : 特別なことは何も試さないでください<br />
+        <b>1</b> : メモリへの書き込みメモリバリアを有効にする (一部の MOV オペコード上)<br />
+        <b>2</b> : MOV<br /> を使用したメモリへの書き込みごとにオール 1 とメモリバリア
+        <b>3</b> : メモリからの読み取り時および一部の SSE/SSE2 オペコードでのすべて 2 とメモリバリア
+    ]]> </string>
+    <string name="box86_64_env_var_help__dynarec_weakbarrier"><![CDATA[メモリバリアを調整して、強力なメモリエミュレーションによるパフォーマンスへの影響を軽減<br /><br />
+        <b>0</b> : 通常の安全バリアを使用します<br />
+        <b>1</b> : 穏やかなパフォーマンス向上のために弱いバリアを使います<br />
+        <b>2</b> : 弱いバリアを使います、さらに最後の投稿バリアを有効にします]]></string>
+    <string name="box86_64_env_var_help__dynarec_aligned_atomics"><![CDATA[整列されたアトミックのみを生成します (現時点では Arm64 でのみ利用可能)。<br /><br />
+        <b>0</b> : アライメントされていないアトミック処理コードを生成します。<br />
+        <b>1</b> : アライメントされたアトミックのみを生成します。これは高速でコード サイズが小さくなりますが、アライメントされたデータ アドレスで動作する LOCK プレフィックス付きオペコードに対して SIGBUS が発生します。]]></string>
+    <string name="box86_64_env_var_help__dynarec_df"><![CDATA[遅延フラグの使用を有効または無効にします。<br /><br />
+        <b>0</b> : 遅延フラグの使用を無効にします。<br />
+        <b>1</b> : 遅延フラグの使用を有効にします。]]></string>
+    <string name="box86_64_env_var_help__dynarec_dirty"><![CDATA[保護されておらず、ダーティな可能性があるブロックの実行を継続できるようにします。<br /><br />
+        <b>0</b> : 保護されておらず、ダーティな可能性があるブロックの継続実行を許可しません。<br />
+        <b>1</b> : コードと同じページにデータを書き込む dynablock の実行を継続できるようにします。一部のゲームのロード時間は速くなりますが、予期しないクラッシュが発生する可能性もあります。<br />
+        <b>2</b> : また、HotPage を検出すると、そのページに NEVERCLEAN のフラグが立てられるため、書き込み保護はされませんが、そのページからのブロック ビルドは常にテストされます。その方が処理を高速化できます (ただし、一部の SMC ケースはトラップされない可能性があります)。]]></string>
+    <string name="box86_64_env_var_help__dynarec_nativeflags"><![CDATA[ネイティブ フラグの使用を有効または無効にします。<br /><br />
+        <b>0</b> : ネイティブ フラグを使用しません。<br />
+        <b>1</b> : 可能な場合はネイティブ フラグを使用します。]]></string>
+    <string name="box86_64_env_var_help__dynarec_pause"><![CDATA[x86 PAUSE エミュレーションを有効にすると、スピンロックのパフォーマンスが向上する可能性があります。<br /><br />
+        <b>0</b> : x86 PAUSE 命令を無視します。<br />
+        <b>1</b> : YIELD を使用して x86 PAUSE 命令をエミュレートします。<br />
+        <b>2</b> : WFI を使用して x86 PAUSE 命令をエミュレートします。<br />
+        <b>3</b> : SEVL+WFE を使用して x86 PAUSE 命令をエミュレートします。]]></string>
     <string name="box86_64_env_var_help__avx"><![CDATA[
-        AVX and AVX2 implemented, along with BMI1, BMI2, ADX, FMA, F16C and RDANDR extension!<br /><br />
-        <b>0</b> : Disable AVX extension<br />
-        <b>1</b> : enable AVX, BMI1, F16C and VAES extension.<br />
-        <b>2</b> : All 1 plus enable AVX2, BMI2, FMA, ADX,VPCLMULQDQ and RDRAND.<br />\
+        AVX と AVX2 は実装済みで、BMI1、BMI2、ADX、FMA、F16C、RDRAND 拡張にも対応しています!<br /><br />
+        <b>0</b> : AVX 拡張を無効化<br />
+        <b>1</b> : AVX、BMI1、F16C、VAES 拡張を有効化。<br />
+        <b>2</b> : 1 に加えて AVX2、BMI2、FMA、ADX、VPCLMULQDQ、RDRAND を有効化。<br />
     ]]></string>
     <string name="box86_64_env_var_help__maxcpu">box64 によってプログラムに提供される CPU の最大数</string>
     <string name="box86_64_env_var_help__unityplayer">UnityPlayer.dll を検出し、strongmem 設定を適用する</string>
