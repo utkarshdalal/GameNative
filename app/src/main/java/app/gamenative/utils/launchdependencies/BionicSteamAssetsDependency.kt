@@ -45,6 +45,14 @@ object BionicSteamAssetsDependency : LaunchDependency {
     private fun system32SrcArchDir(container: Container): String =
         if (container.wineVersion.contains("arm64ec")) "aarch64-windows" else "x86_64-windows"
 
+    private fun unixArchDir(container: Container): String =
+        if (container.wineVersion.contains("arm64ec")) "aarch64-unix" else "x86_64-unix"
+
+    private fun lsteamclientUnixSo(context: Context, container: Container): File {
+        val wineDir = wineInstallDir(context, container)
+        return File(wineDir, "lib/wine/${unixArchDir(container)}/lsteamclient.so")
+    }
+
     /**
      * Resolves the actual Wine/Proton install directory for the container.
      * imageFs.winePath is not initialized yet at dependency-install time
@@ -83,6 +91,7 @@ object BionicSteamAssetsDependency : LaunchDependency {
         if (!libsteamclientSo(imageFs).exists()) return false
         if (lsteamclientArchiveFor(container) != null) {
             if (!system32Dll(container).exists() || !syswow64Dll(container).exists()) return false
+            if (!lsteamclientUnixSo(context, container).exists()) return false
         }
         return true
     }
