@@ -23,6 +23,7 @@ object LocaleHelper {
         "es" to "Español",
         "fr" to "Français",
         "it" to "Italiano",
+        "ja" to "日本語 (Japanese)",
         "ko" to "한국어 (Korean)",
         "pl" to "Polski",
         "pt-BR" to "Português Brasileiro (Brazilian Portuguese)",
