@@ -155,6 +155,12 @@ static void setup_shm(int players)
         if (shm[i] == MAP_FAILED) {
             LOGE("evshim: P%d mmap failed: %s\n", i, strerror(errno));
             shm[i] = NULL;
+            continue;
+        }
+
+        if (!g_is_wine) {
+            ALOGI("evshim: resetting controller state");
+            memset(shm[i], 0, sizeof(struct gamepad_io));
         }
     }
 }
@@ -264,6 +270,15 @@ static void initialize_wine(int players)
     GETFUNCPTR(SDL_JoystickSetVirtualAxis);  GETFUNCPTR(SDL_JoystickSetVirtualButton);
     GETFUNCPTR(SDL_JoystickSetVirtualHat);
     GETFUNCPTR(SDL_GetVersion);
+    if (!p_SDL_Init || !p_SDL_GetError || !p_SDL_JoystickOpen ||
+                !p_SDL_JoystickAttachVirtualEx || !p_SDL_JoystickSetVirtualAxis ||
+                !p_SDL_JoystickSetVirtualButton || !p_SDL_JoystickSetVirtualHat ||
+                !p_SDL_GetVersion) {
+        LOGE("evshim: SDL symbol resolution incomplete; aborting init\n");
+        dlclose(sdl_handle);
+        sdl_handle = NULL;
+        return;
+    }
 
     p_SDL_Init(SDL_INIT_JOYSTICK);
 
@@ -349,7 +364,6 @@ Java_com_winlator_winhandler_WinHandler_waitForRumble(JNIEnv *env, jclass cls, j
     }
 
     // sleep until Wine triggers OnRumble or teardown signaled
-    struct timespec ts = { .tv_sec = 5, .tv_nsec = 0 };
     syscall(SYS_futex, &shm[idx]->rumble_seq, FUTEX_WAIT, current_seq, NULL, NULL, 0);
 
     return atomic_load_explicit(&shm[idx]->rumble_seq, memory_order_acquire);
@@ -358,5 +372,6 @@ Java_com_winlator_winhandler_WinHandler_waitForRumble(JNIEnv *env, jclass cls, j
 JNIEXPORT void JNICALL
 Java_com_winlator_winhandler_WinHandler_rumbleTeardown(JNIEnv *env, jclass cls, jint idx)
 {
+    if (idx < 0 || idx >= MAX_GAMEPADS || !shm[idx]) return;
     syscall(SYS_futex, &shm[idx]->rumble_seq, FUTEX_WAKE, 1, NULL, NULL, 0);
 }

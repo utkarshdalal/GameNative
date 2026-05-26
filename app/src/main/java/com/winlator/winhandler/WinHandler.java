@@ -60,7 +60,7 @@ public class WinHandler {
     private static final short CLIENT_PORT = 7946;
     private final ArrayDeque<Runnable> actions;
     private ExternalController currentController;
-    private int currentControllerId;
+    private volatile int currentControllerId;
     private byte dinputMapperType;
     private final List<Integer> gamepadClients;
     private boolean initReceived;
@@ -369,7 +369,8 @@ public class WinHandler {
         this.running = false;
         rumbleTeardown(0);
         try {
-            this.rumblePollerThread.join();
+            if (rumblePollerThread != null)
+                this.rumblePollerThread.join();
         } catch (InterruptedException ignored) {
         }
         DatagramSocket datagramSocket = this.socket;
@@ -851,7 +852,6 @@ public class WinHandler {
         if (gamepadBuffer == null || state == null) {
             return;
         }
-        gamepadBuffer.clear();
 
         // Axes: write by fixed offsets, not sequential position
         gamepadBuffer.putShort(OFF_LX, (short) (state.thumbLX * 32767));
