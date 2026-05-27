@@ -114,6 +114,7 @@ import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.data.AppMenuOption
+import app.gamenative.data.GameSource
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.data.DownloadDisplayDetails
 import app.gamenative.ui.enums.AppOptionMenuType
@@ -136,6 +137,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import app.gamenative.utils.SteamUtils
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -471,11 +473,11 @@ fun AppScreen(
     // Get the appropriate screen model based on game source
     val screenModel = remember(libraryItem.gameSource) {
         when (libraryItem.gameSource) {
-            app.gamenative.data.GameSource.STEAM -> SteamAppScreen()
-            app.gamenative.data.GameSource.CUSTOM_GAME -> CustomGameAppScreen()
-            app.gamenative.data.GameSource.GOG -> GOGAppScreen()
-            app.gamenative.data.GameSource.EPIC -> EpicAppScreen()
-            app.gamenative.data.GameSource.AMAZON -> AmazonAppScreen()
+            GameSource.STEAM -> SteamAppScreen()
+            GameSource.CUSTOM_GAME -> CustomGameAppScreen()
+            GameSource.GOG -> GOGAppScreen()
+            GameSource.EPIC -> EpicAppScreen()
+            GameSource.AMAZON -> AmazonAppScreen()
         }
     }
 
@@ -1115,7 +1117,7 @@ internal fun AppScreenContent(
                 }
 
                 // Achievements row (Steam only, shown when data is available)
-                if (achievements != null && achievementsAppId != null && achievements.isNotEmpty()) {
+                if (libraryItem.gameSource == GameSource.STEAM && achievements != null && achievementsAppId != null && achievements.isNotEmpty()) {
                     AchievementsRow(achievements = achievements, appId = achievementsAppId)
                 }
             }
@@ -1241,11 +1243,12 @@ private fun AchievementsRow(
     achievements: List<AchievementBlocks>,
     appId: Int,
 ) {
+    // Temporarily this is Steam. We can expand later for other storefronts as they become available.
     val unlockedCount = achievements.count { it.isUnlocked }
     val totalCount = achievements.size
     var showDialog by remember { mutableStateOf(false) }
     val grayMatrix = remember { ColorMatrix().apply { setToSaturation(0f) } }
-    val baseIconUrl = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$appId/"
+    val baseIconUrl = SteamUtils.getBaseAchievementIconUrl(appId)
 
     val sortedAchievements = achievements.sortedWith(
         compareByDescending<AchievementBlocks> { it.isUnlocked }
@@ -1255,7 +1258,7 @@ private fun AchievementsRow(
     Spacer(modifier = Modifier.height(10.dp))
 
     Text(
-        text = "Achievements",
+        text = stringResource(R.string.achievements),
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onBackground,
@@ -1320,12 +1323,12 @@ private fun AchievementsRow(
                     }
                 }
                 Text(
-                    text = "Achievements",
+                    text = stringResource(R.string.achievements),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 TextButton(onClick = { showDialog = true }) {
-                    Text("View all")
+                    Text(stringResource(R.string.achievements_view_all))
                 }
             }
         }
@@ -1347,7 +1350,7 @@ private fun AchievementsDialog(
     onDismiss: () -> Unit,
 ) {
     val grayMatrix = remember { ColorMatrix().apply { setToSaturation(0f) } }
-    val baseIconUrl = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$appId/"
+    val baseIconUrl = SteamUtils.getBaseAchievementIconUrl(appId)
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -1359,7 +1362,7 @@ private fun AchievementsDialog(
         ) {
             Column {
                 Text(
-                    text = "All Achievements",
+                    text = stringResource(R.string.achievements_all_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
@@ -1406,7 +1409,7 @@ private fun AchievementsDialog(
                                 val unlockTime = ach.getFormattedUnlockTime()
                                 if (ach.isUnlocked && unlockTime != null) {
                                     Text(
-                                        text = "Unlocked: $unlockTime",
+                                        text = stringResource(R.string.achievements_unlocked_at, unlockTime),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = PluviaTheme.colors.statusInstalled,
                                     )
@@ -1423,7 +1426,7 @@ private fun AchievementsDialog(
                         .align(Alignment.End)
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
-                    Text("Close")
+                    Text(stringResource(R.string.close))
                 }
             }
         }

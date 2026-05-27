@@ -706,6 +706,10 @@
     <string name="steam_offline_mode">Modo sin conexión de Steam</string>
     <string name="steam_offline_mode_description">Inicia juegos de Steam en modo sin conexión.</string>
     <string name="achievement_unlocked">Logro desbloqueado</string>
+    <string name="achievements">Logros</string>
+    <string name="achievements_view_all">Ver todos</string>
+    <string name="achievements_all_title">Todos los logros</string>
+    <string name="achievements_unlocked_at">Desbloqueado: %s</string>
     <string name="settings_achievement_notification_position">Posición de notificación de logro</string>
     <string name="achievement_position_top_left">Arriba izquierda</string>
     <string name="achievement_position_top_right">Arriba derecha</string>

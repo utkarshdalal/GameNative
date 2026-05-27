@@ -655,6 +655,10 @@
     <string name="steam_offline_mode">Режим Офлайн Steam</string>
     <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
     <string name="achievement_unlocked">Досягнення розблоковано</string>
+    <string name="achievements">Досягнення</string>
+    <string name="achievements_view_all">Переглянути всі</string>
+    <string name="achievements_all_title">Всі досягнення</string>
+    <string name="achievements_unlocked_at">Розблоковано: %s</string>
     <string name="settings_achievement_notification_position">Позиція сповіщення про досягнення</string>
     <string name="achievement_position_top_left">Лівий верхній</string>
     <string name="achievement_position_top_right">Правий верхній</string>

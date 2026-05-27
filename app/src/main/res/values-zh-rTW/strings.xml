@@ -653,6 +653,10 @@
     <string name="steam_offline_mode">Steam 離線模式</string>
     <string name="steam_offline_mode_description">以離線模式啟動 Steam 遊戲</string>
     <string name="achievement_unlocked">成就已解鎖</string>
+    <string name="achievements">成就</string>
+    <string name="achievements_view_all">查看全部</string>
+    <string name="achievements_all_title">所有成就</string>
+    <string name="achievements_unlocked_at">解鎖時間：%s</string>
     <string name="settings_achievement_notification_position">成就通知位置</string>
     <string name="achievement_position_top_left">左上</string>
     <string name="achievement_position_top_right">右上</string>

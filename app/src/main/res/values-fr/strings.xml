@@ -656,6 +656,10 @@
     <string name="steam_offline_mode">Mode Hors Ligne Steam</string>
     <string name="steam_offline_mode_description">Lancer les jeux Steam en mode hors ligne</string>
     <string name="achievement_unlocked">Succès débloqué</string>
+    <string name="achievements">Succès</string>
+    <string name="achievements_view_all">Voir tout</string>
+    <string name="achievements_all_title">Tous les succès</string>
+    <string name="achievements_unlocked_at">Débloqué : %s</string>
     <string name="settings_achievement_notification_position">Position de la notification de succès</string>
     <string name="achievement_position_top_left">En haut à gauche</string>
     <string name="achievement_position_top_right">En haut à droite</string>

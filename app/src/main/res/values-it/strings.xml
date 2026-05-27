@@ -660,6 +660,10 @@
     <string name="steam_offline_mode">Modalità Offline Steam</string>
     <string name="steam_offline_mode_description">Avvia i giochi Steam in modalità offline</string>
     <string name="achievement_unlocked">Obiettivo sbloccato</string>
+    <string name="achievements">Obiettivi</string>
+    <string name="achievements_view_all">Vedi tutti</string>
+    <string name="achievements_all_title">Tutti gli obiettivi</string>
+    <string name="achievements_unlocked_at">Sbloccato: %s</string>
     <string name="settings_achievement_notification_position">Posizione notifica obiettivo</string>
     <string name="achievement_position_top_left">In alto a sinistra</string>
     <string name="achievement_position_top_right">In alto a destra</string>

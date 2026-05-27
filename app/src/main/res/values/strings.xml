@@ -681,6 +681,10 @@
     <string name="steam_offline_mode">Steam Offline Mode</string>
     <string name="steam_offline_mode_description">Launch Steam games in offline mode</string>
     <string name="achievement_unlocked">Achievement Unlocked</string>
+    <string name="achievements">Achievements</string>
+    <string name="achievements_view_all">View all</string>
+    <string name="achievements_all_title">All Achievements</string>
+    <string name="achievements_unlocked_at">Unlocked: %s</string>
     <string name="settings_achievement_notification_position">Achievement Notification Position</string>
     <string name="achievement_position_top_left">Top Left</string>
     <string name="achievement_position_top_right">Top Right</string>

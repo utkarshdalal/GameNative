@@ -49,6 +49,8 @@ import kotlin.io.path.setLastModifiedTime
 
 object SteamUtils {
 
+    fun getBaseAchievementIconUrl(appId: Int): String = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$appId/"
+
     /**
      * True when a stored Steam session exists (offline-launch gate).
      * Matches GOG/Epic/Amazon AuthManager.hasStoredCredentials convention.

@@ -633,6 +633,10 @@
     <string name="steam_offline_mode">Steam Offline-Modus</string>
     <string name="steam_offline_mode_description">Steam-Spiele im Offlinemodus starten</string>
     <string name="achievement_unlocked">Erfolg freigeschaltet</string>
+    <string name="achievements">Erfolge</string>
+    <string name="achievements_view_all">Alle anzeigen</string>
+    <string name="achievements_all_title">Alle Erfolge</string>
+    <string name="achievements_unlocked_at">Freigeschaltet: %s</string>
     <string name="settings_achievement_notification_position">Position der Erfolgsbenachrichtigung</string>
     <string name="achievement_position_top_left">Oben links</string>
     <string name="achievement_position_top_right">Oben rechts</string>

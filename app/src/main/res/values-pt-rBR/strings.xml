@@ -495,6 +495,10 @@
     <string name="steam_offline_mode">Modo Offline do Steam</string>
     <string name="steam_offline_mode_description">Iniciar jogos Steam no modo offline</string>
     <string name="achievement_unlocked">Conquista desbloqueada</string>
+    <string name="achievements">Conquistas</string>
+    <string name="achievements_view_all">Ver todas</string>
+    <string name="achievements_all_title">Todas as conquistas</string>
+    <string name="achievements_unlocked_at">Desbloqueado em: %s</string>
     <string name="settings_achievement_notification_position">Posição da notificação de conquista</string>
     <string name="achievement_position_top_left">Superior esquerdo</string>
     <string name="achievement_position_top_right">Superior direito</string>

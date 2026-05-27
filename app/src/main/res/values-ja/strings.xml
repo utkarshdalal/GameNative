@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">ユーザーログイン</string>
     <string name="login_2fa">ツーファクター</string>
@@ -671,6 +671,10 @@
     <string name="steam_offline_mode">Steam オフラインモード</string>
     <string name="steam_offline_mode_description">Steam ゲームをオフライン モードで起動する</string>
     <string name="achievement_unlocked">実績のロックが解除されました</string>
+    <string name="achievements">実績</string>
+    <string name="achievements_view_all">すべて表示</string>
+    <string name="achievements_all_title">すべての実績</string>
+    <string name="achievements_unlocked_at">アンロック日時: %s</string>
     <string name="settings_achievement_notification_position">達成通知位置</string>
     <string name="achievement_position_top_left">左上</string>
     <string name="achievement_position_top_right">右上</string>
