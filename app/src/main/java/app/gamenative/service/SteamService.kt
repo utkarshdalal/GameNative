@@ -104,6 +104,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.LoggedOffCallb
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.LoggedOnCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.PlayingSessionStateCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.Stats
+import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.AchievementBlocks
 import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.SteamUserStats
 import `in`.dragonbra.javasteam.steam.handlers.steamworkshop.SteamWorkshop
 import `in`.dragonbra.javasteam.steam.steamclient.AsyncJobFailedException
@@ -3057,6 +3058,19 @@ class SteamService : Service(), IChallengeUrlChanged {
             } catch (e: Exception) {
                 Timber.e(e, "Failed to check DLC ownership via PICS batch for ${dlcAppIds.size} appIds")
                 return emptySet()
+            }
+        }
+
+         // Fetches achievements for a Steam app for display in the game details page.
+        suspend fun fetchAchievementsForDisplay(appId: Int): List<AchievementBlocks>? {
+            if (!isConnected) return null
+            return try {
+                val steamUser = instance?._steamUser ?: return null
+                val userStats = instance?._steamUserStats?.getUserStats(appId, steamUser.steamID!!)?.await() ?: return null
+                userStats.getExpandedAchievements()
+            } catch (e: Exception) {
+                Timber.e(e, "fetchAchievementsForDisplay failed for appId=$appId")
+                null
             }
         }
 
