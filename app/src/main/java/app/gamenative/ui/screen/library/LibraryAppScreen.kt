@@ -114,7 +114,7 @@ import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
-import app.gamenative.ui.data.DownloadState
+import app.gamenative.ui.data.DownloadDisplayDetails
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.screen.library.appscreen.AmazonAppScreen
@@ -510,7 +510,7 @@ private fun formatBytes(bytes: Long): String {
 internal fun AppScreenContent(
     modifier: Modifier = Modifier,
     displayInfo: GameDisplayInfo,
-    downloadState: DownloadState,
+    DownloadDisplayDetails: DownloadDisplayDetails,
     downloadInfo: app.gamenative.data.DownloadInfo? = null,
     onDownloadInstallClick: () -> Unit,
     onPauseResumeClick: () -> Unit,
@@ -522,12 +522,12 @@ internal fun AppScreenContent(
     vararg optionsMenu: AppMenuOption,
 ) {
 
-    val isInstalled = downloadState.isInstalled
-    val isValidToDownload =downloadState.isValidToDownload
-    val isDownloading = downloadState.isDownloading
-    val hasPartialDownload = downloadState.hasPartialDownload
-    val downloadProgress = downloadState.downloadProgress
-    val isUpdatePending = downloadState.isUpdatePending
+    val isInstalled = DownloadDisplayDetails.isInstalled
+    val isValidToDownload =DownloadDisplayDetails.isValidToDownload
+    val isDownloading = DownloadDisplayDetails.isDownloading
+    val hasPartialDownload = DownloadDisplayDetails.hasPartialDownload
+    val downloadProgress = DownloadDisplayDetails.downloadProgress
+    val isUpdatePending = DownloadDisplayDetails.isUpdatePending
 
     val context = LocalContext.current
     // reactive — recomposes when network state changes
@@ -1447,20 +1447,20 @@ private fun Preview_AppScreen() {
         playtimeText = null,
     )
 
-    val downloadState = DownloadState(
-                    isInstalled = false,
-                    isValidToDownload = true,
-                    isDownloading = isDownloading,
-                    downloadProgress = .50f,
-                    hasPartialDownload = false,
-                    isUpdatePending = false,
-                )
+    val downloadDisplayDetails = DownloadDisplayDetails(
+        isInstalled = false,
+        isValidToDownload = true,
+        isDownloading = isDownloading,
+        downloadProgress = .50f,
+        hasPartialDownload = false,
+        isUpdatePending = false,
+    )
 
     PluviaTheme {
         Surface {
             AppScreenContent(
                 displayInfo = displayInfo,
-                downloadState = downloadState,
+                downloadDisplayDetails = downloadDisplayDetails,
                 downloadInfo = null,
                 onDownloadInstallClick = { isDownloading = !isDownloading },
                 onPauseResumeClick = { },

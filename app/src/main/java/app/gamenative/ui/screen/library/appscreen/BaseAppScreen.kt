@@ -31,7 +31,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
-import app.gamenative.ui.data.DownloadState
+import app.gamenative.ui.data.DownloadDisplayDetails
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
@@ -1196,7 +1196,7 @@ abstract class BaseAppScreen {
             }
         }
 
-        val downloadState = DownloadState(
+        val downloadDisplayDetails = DownloadDisplayDetails(
             isInstalled = isInstalledState,
             isValidToDownload = isValidToDownloadState,
             isDownloading = isDownloadingState,
@@ -1207,7 +1207,7 @@ abstract class BaseAppScreen {
         // Render the common UI
         app.gamenative.ui.screen.library.AppScreenContent(
             displayInfo = displayInfo,
-            downloadState = downloadState,
+            downloadDisplayDetails = downloadDisplayDetails,
             downloadInfo = downloadInfo,
             onDownloadInstallClick = {
                 onDownloadInstallClick(context, libraryItem, onClickPlay)
