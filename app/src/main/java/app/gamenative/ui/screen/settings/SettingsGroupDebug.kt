@@ -87,6 +87,9 @@ fun SettingsGroupDebug() {
     var enableBox86Logs by rememberSaveable { mutableStateOf(
         if (isPreview) false else WinlatorPrefManager.getBoolean("enable_box86_64_logs", false)
     ) }
+    var useLegacyGLRenderer by rememberSaveable {
+        mutableStateOf(if (isPreview) false else PrefManager.useLegacyGLRenderer)
+    }
     var latestCrashFile: File? by rememberSaveable { mutableStateOf(null) }
     LaunchedEffect(Unit) {
         val crashDir = File(context.getExternalFilesDir(null), "crash_logs")
@@ -178,6 +181,18 @@ fun SettingsGroupDebug() {
     }
 
     SettingsGroup() {
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            state = useLegacyGLRenderer,
+            title = { Text(text = stringResource(R.string.settings_debug_use_legacy_gl_renderer_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_debug_use_legacy_gl_renderer_subtitle)) },
+            onCheckedChange = {
+                useLegacyGLRenderer = it
+                if (!isPreview) {
+                    PrefManager.useLegacyGLRenderer = it
+                }
+            },
+        )
         SettingsMenuLink(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.settings_save_logcat_title)) },

@@ -1647,7 +1647,11 @@ fun XServerScreen(
                     ?.getComponent<XServerComponent>(XServerComponent::class.java)
                     ?.xServer
             val xServerToUse = existingXServer ?: XServer(ScreenInfo(xServerState.value.screenSize), usrGlibc)
-            val useGLRenderer = container.graphicsDriver == "virgl"
+            // VirGL containers always need GL (shared EGL context for the
+            // VirGL passthrough). Anything else goes Vulkan by default, but
+            // the app-wide debug toggle (Settings → Debug) can force GL on
+            // every container for A/B-testing the Vulkan compositor.
+            val useGLRenderer = container.graphicsDriver == "virgl" || PrefManager.useLegacyGLRenderer
             val xServerViewInstance: XServerRendererView = if (useGLRenderer) {
                 XServerViewGL(context, xServerToUse)
             } else {

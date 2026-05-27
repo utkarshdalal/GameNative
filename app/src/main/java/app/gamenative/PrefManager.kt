@@ -202,6 +202,18 @@ object PrefManager {
             setPref(RENDERER_PRESENT_MODE, value)
         }
 
+    // Debug / A-B toggle: force every container onto the legacy GL renderer
+    // (XServerViewGL + GLRenderer) instead of the default Vulkan compositor.
+    // Used to isolate Vulkan-compositor-specific regressions from other
+    // changes. VirGL containers already force GL regardless of this flag.
+    // Requires restarting the container session to take effect.
+    private val USE_LEGACY_GL_RENDERER = booleanPreferencesKey("use_legacy_gl_renderer")
+    var useLegacyGLRenderer: Boolean
+        get() = getPref(USE_LEGACY_GL_RENDERER, false)
+        set(value) {
+            setPref(USE_LEGACY_GL_RENDERER, value)
+        }
+
     private val SHARPNESS_EFFECT = stringPreferencesKey("sharpness_effect")
     var sharpnessEffect: String
         get() = getPref(SHARPNESS_EFFECT, "None")
