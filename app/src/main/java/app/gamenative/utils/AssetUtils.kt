@@ -28,9 +28,14 @@ object AssetUtils {
             val versionFile = File(targetDir, ".version")
 
             val assetVersion = extractVersionFromFilename(assetFile)
-            val storedVersion = if (versionFile.exists()) {
-                versionFile.readText().trim()
-            } else {
+            val storedVersion = runCatching {
+                if (versionFile.exists()) {
+                    versionFile.readText().trim()
+                } else {
+                    ""
+                }
+            }.getOrElse { err ->
+                log().e(err, "Failed to read version file for $assetFile")
                 ""
             }
 
@@ -54,7 +59,11 @@ object AssetUtils {
                         tempDir.deleteRecursively()
                         continue
                     }
-                    versionFile.writeText(assetVersion)
+                    runCatching {
+                        versionFile.writeText(assetVersion)
+                    }.onFailure { err ->
+                        log().e(err, "Failed to persist version for $assetFile")
+                    }
                     log().i("Successfully extracted $assetFile (version: $assetVersion)")
                 } else {
                     tempDir.deleteRecursively()
