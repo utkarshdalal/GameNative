@@ -192,6 +192,20 @@ android {
     }
     dynamicFeatures += setOf(":ubuntufs")
 
+    // Configure Assets to be used in different variants
+    sourceSets {
+        getByName("legacy") {
+            assets {
+                srcDirs("src/legacy/assets", "src/main/assets")
+            }
+        }
+        getByName("modern") {
+            assets {
+                srcDirs("src/modern/assets", "src/main/assets")
+            }
+        }
+    }
+
     kotlinter {
         ignoreFormatFailures  = false
     }
