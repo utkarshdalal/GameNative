@@ -6,6 +6,8 @@ import android.util.SparseArray;
 
 import com.winlator.renderer.GPUImage;
 import com.winlator.renderer.Texture;
+import com.winlator.renderer.VulkanRenderer;
+import com.winlator.renderer.XServerRenderer;
 import com.winlator.xconnector.XInputStream;
 import com.winlator.xconnector.XOutputStream;
 import com.winlator.xconnector.XStreamLock;
@@ -181,9 +183,19 @@ public class PresentExtension implements Extension {
         Drawable content = window.getContent();
         if (content.visual.depth != pixmap.drawable.visual.depth) throw new BadMatch();
 
-        // Copy pixels immediately so the game's buffer is up-to-date on the XServer side.
+        final XServerRenderer xr = client.xServer.getRenderer();
+        final VulkanRenderer vr = (xr instanceof VulkanRenderer) ? (VulkanRenderer) xr : null;
         synchronized (content.renderLock) {
-            content.copyArea((short)0, (short)0, xOff, yOff, pixmap.drawable.width, pixmap.drawable.height, pixmap.drawable);
+            if (vr != null && vr.isNativeMode() && pixmap.drawable.isDirectScanout()) {
+                content.setTexture(pixmap.drawable.getTexture());
+                if (window.attributes.isMapped()) {
+                    vr.onUpdateWindowContent(window);
+                }
+            } else if (vr != null && window.attributes.isMapped()) {
+                vr.onUpdateWindowContentDirect(window, pixmap.drawable, xOff, yOff);
+            } else {
+                content.copyArea((short)0, (short)0, xOff, yOff, pixmap.drawable.width, pixmap.drawable.height, pixmap.drawable);
+            }
         }
 
         // PresentIdleNotify / PresentCompleteNotify are what actually pace the game's
