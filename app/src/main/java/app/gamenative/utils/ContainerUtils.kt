@@ -96,6 +96,7 @@ object ContainerUtils {
             graphicsDriverVersion = PrefManager.graphicsDriverVersion,
             graphicsDriverConfig = PrefManager.graphicsDriverConfig,
             rendererPresentMode = PrefManager.rendererPresentMode,
+            useLegacyRenderer = PrefManager.useLegacyRenderer,
             dxwrapper = PrefManager.dxWrapper,
             dxwrapperConfig = PrefManager.dxWrapperConfig,
             audioDriver = PrefManager.audioDriver,
@@ -158,6 +159,7 @@ object ContainerUtils {
         PrefManager.graphicsDriverVersion = containerData.graphicsDriverVersion
         PrefManager.graphicsDriverConfig = containerData.graphicsDriverConfig
         PrefManager.rendererPresentMode = containerData.rendererPresentMode
+        PrefManager.useLegacyRenderer = containerData.useLegacyRenderer
         PrefManager.dxWrapper = containerData.dxwrapper
         PrefManager.dxWrapperConfig = containerData.dxwrapperConfig
         PrefManager.audioDriver = containerData.audioDriver
@@ -271,6 +273,7 @@ object ContainerUtils {
             graphicsDriverVersion = container.graphicsDriverVersion,
             graphicsDriverConfig = container.graphicsDriverConfig,
             rendererPresentMode = container.rendererPresentMode,
+            useLegacyRenderer = container.isUseLegacyRenderer,
             dxwrapper = container.dxWrapper,
             dxwrapperConfig = container.dxWrapperConfig,
             audioDriver = container.audioDriver,
@@ -445,6 +448,7 @@ object ContainerUtils {
         // Save driver config through to container
         container.graphicsDriverConfig = containerData.graphicsDriverConfig
         container.rendererPresentMode = containerData.rendererPresentMode
+        container.setUseLegacyRenderer(containerData.useLegacyRenderer)
         container.dxWrapper = containerData.dxwrapper
         container.dxWrapperConfig = containerData.dxwrapperConfig
         container.audioDriver = containerData.audioDriver
@@ -824,6 +828,7 @@ object ContainerUtils {
                 graphicsDriverVersion = PrefManager.graphicsDriverVersion,
                 graphicsDriverConfig = PrefManager.graphicsDriverConfig,
                 rendererPresentMode = PrefManager.rendererPresentMode,
+                useLegacyRenderer = PrefManager.useLegacyRenderer,
                 dxwrapper = initialDxWrapper,
                 dxwrapperConfig = PrefManager.dxWrapperConfig,
                 audioDriver = PrefManager.audioDriver,

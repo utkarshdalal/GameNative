@@ -473,8 +473,6 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Saves a snapshot of the logcat only for this app\'s PID</string>
     <string name="settings_save_logcat_title">Save logcat</string>
-    <string name="settings_debug_use_legacy_gl_renderer_title">Use Legacy GL Renderer</string>
-    <string name="settings_debug_use_legacy_gl_renderer_subtitle">Force every container onto the old OpenGL renderer instead of the new Vulkan compositor. For A/B perf testing. Restart the game after toggling. VirGL containers ignore this (always GL).</string>
     <string name="settings_achievement_show_notification">Show Achievement Notifications</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Handling of flags on CALL/RET opcodes<br /><br />
@@ -705,6 +703,8 @@
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">Use DRI3</string>
     <string name="use_dri3_description">Disabling may fix graphical glitches on some devices</string>
+    <string name="use_legacy_renderer">Use legacy renderer</string>
+    <string name="use_legacy_renderer_description">Use legacy GLRenderer instead of VulkanRenderer. VulkanRenderer usually increases performance, but can reduce it on some devices</string>
     <string name="sync_frame">Sync Every Frame</string>
     <string name="disable_present_wait">Disable KHR_present_wait</string>
     <string name="present_modes">Present Modes</string>

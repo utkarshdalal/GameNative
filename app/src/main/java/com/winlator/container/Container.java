@@ -80,6 +80,7 @@ public class Container {
     private String dxwrapperConfig = DEFAULT_DXWRAPPERCONFIG;
     private String graphicsDriverConfig = DEFAULT_GRAPHICSDRIVERCONFIG;
     private String rendererPresentMode = "fifo";
+    private boolean useLegacyRenderer = true;
     private String wincomponents = DEFAULT_WINCOMPONENTS;
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
     private String drives = DEFAULT_DRIVES;
@@ -258,6 +259,10 @@ public class Container {
     public String getRendererPresentMode() { return rendererPresentMode; }
 
     public void setRendererPresentMode(String v) { this.rendererPresentMode = v != null ? v : "fifo"; }
+
+    public boolean isUseLegacyRenderer() { return useLegacyRenderer; }
+
+    public void setUseLegacyRenderer(boolean v) { this.useLegacyRenderer = v; }
 
     public String getDXWrapperConfig() {
         return dxwrapperConfig;
@@ -660,6 +665,7 @@ public class Container {
             data.put("graphicsDriverVersion", graphicsDriverVersion); // Ensure this is added
             if (!graphicsDriverConfig.isEmpty()) data.put("graphicsDriverConfig", graphicsDriverConfig);
             data.put("rendererPresentMode", rendererPresentMode);
+            data.put("useLegacyRenderer", useLegacyRenderer);
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
             data.put("audioDriver", audioDriver);
@@ -771,6 +777,9 @@ public class Container {
                     break;
                 case "rendererPresentMode" :
                     setRendererPresentMode(data.getString(key));
+                    break;
+                case "useLegacyRenderer" :
+                    setUseLegacyRenderer(data.getBoolean(key));
                     break;
                 case "wincomponents" :
                     setWinComponents(data.getString(key));

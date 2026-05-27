@@ -684,6 +684,8 @@
 	<string name="vkd3d_feature_level">Nivel funcțional VKD3D</string>
 	<string name="use_dri3">Folosește DRI3</string>
 	<string name="use_dri3_description">Dezactivarea poate rezolva artefacte grafice pe unele dispozitive</string>
+	<string name="use_legacy_renderer">Folosește redarea veche</string>
+	<string name="use_legacy_renderer_description">Folosește vechiul GLRenderer în loc de VulkanRenderer. VulkanRenderer crește de obicei performanța, dar pe unele dispozitive o poate reduce</string>
 	<string name="sync_frame">Sincronizează fiecare cadru</string>
 	<string name="disable_present_wait">Dezactivează KHR_present_wait</string>
 	<string name="present_modes">Moduri de prezentare</string>

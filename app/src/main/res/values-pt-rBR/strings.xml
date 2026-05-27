@@ -518,6 +518,8 @@
     <string name="vkd3d_feature_level">Nível de recurso do VKD3D</string>
     <string name="use_dri3">Usar DRI3</string>
     <string name="use_dri3_description">Desabilitar pode corrigir glitches gráficos em alguns dispositivos</string>
+    <string name="use_legacy_renderer">Usar renderizador legado</string>
+    <string name="use_legacy_renderer_description">Usar o GLRenderer legado em vez do VulkanRenderer. O VulkanRenderer geralmente aumenta o desempenho, mas pode reduzi-lo em alguns dispositivos</string>
 
     <!-- Container Configuration: Emulation -->
     <string name="fexcore_version">Versão do FEXCore</string>

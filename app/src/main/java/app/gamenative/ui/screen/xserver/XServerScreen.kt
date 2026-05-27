@@ -1651,7 +1651,7 @@ fun XServerScreen(
             // VirGL passthrough). Anything else goes Vulkan by default, but
             // the app-wide debug toggle (Settings → Debug) can force GL on
             // every container for A/B-testing the Vulkan compositor.
-            val useGLRenderer = container.graphicsDriver == "virgl" || PrefManager.useLegacyGLRenderer
+            val useGLRenderer = container.graphicsDriver == "virgl" || container.isUseLegacyRenderer
             val xServerViewInstance: XServerRendererView = if (useGLRenderer) {
                 XServerViewGL(context, xServerToUse)
             } else {

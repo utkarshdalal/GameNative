@@ -350,6 +350,15 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
 @Composable
 private fun DxWrapperSection(state: ContainerConfigState) {
     val config = state.config.value
+    SettingsSwitch(
+        colors = settingsTileColorsAlt(),
+        title = { Text(text = stringResource(R.string.use_legacy_renderer)) },
+        subtitle = { Text(text = stringResource(R.string.use_legacy_renderer_description)) },
+        state = config.useLegacyRenderer,
+        onCheckedChange = {
+            state.config.value = config.copy(useLegacyRenderer = it)
+        },
+    )
     SettingsListDropdown(
         colors = settingsTileColors(),
         title = { Text(text = stringResource(R.string.dx_wrapper)) },
