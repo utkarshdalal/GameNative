@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -510,7 +511,7 @@ private fun formatBytes(bytes: Long): String {
 internal fun AppScreenContent(
     modifier: Modifier = Modifier,
     displayInfo: GameDisplayInfo,
-    DownloadDisplayDetails: DownloadDisplayDetails,
+    downloadDisplayDetails: DownloadDisplayDetails,
     downloadInfo: app.gamenative.data.DownloadInfo? = null,
     onDownloadInstallClick: () -> Unit,
     onPauseResumeClick: () -> Unit,
@@ -522,12 +523,12 @@ internal fun AppScreenContent(
     vararg optionsMenu: AppMenuOption,
 ) {
 
-    val isInstalled = DownloadDisplayDetails.isInstalled
-    val isValidToDownload =DownloadDisplayDetails.isValidToDownload
-    val isDownloading = DownloadDisplayDetails.isDownloading
-    val hasPartialDownload = DownloadDisplayDetails.hasPartialDownload
-    val downloadProgress = DownloadDisplayDetails.downloadProgress
-    val isUpdatePending = DownloadDisplayDetails.isUpdatePending
+    val isInstalled = downloadDisplayDetails.isInstalled
+    val isValidToDownload = downloadDisplayDetails.isValidToDownload
+    val isDownloading = downloadDisplayDetails.isDownloading
+    val hasPartialDownload = downloadDisplayDetails.hasPartialDownload
+    val downloadProgress = downloadDisplayDetails.downloadProgress
+    val isUpdatePending = downloadDisplayDetails.isUpdatePending
 
     val context = LocalContext.current
     // reactive — recomposes when network state changes
@@ -1298,12 +1299,26 @@ private fun AchievementsRow(
             }
 
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "$unlockedCount / $totalCount",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = "$unlockedCount / $totalCount",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    // Give them a star for getting 100% completion
+                    if(totalCount >= 1 && unlockedCount == totalCount) {
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = "Star",
+                            tint = Color(0xFFFFD700),
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
                 Text(
                     text = "Achievements",
                     style = MaterialTheme.typography.bodySmall,
