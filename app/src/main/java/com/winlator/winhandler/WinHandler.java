@@ -589,6 +589,24 @@ public class WinHandler {
             }
         }
         this.running = true;
+        startSendThread();
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                DatagramSocket datagramSocket = new DatagramSocket((SocketAddress) null);
+                this.socket = datagramSocket;
+                datagramSocket.setReuseAddress(true);
+                this.socket.bind(new InetSocketAddress((InetAddress) null, SERVER_PORT));
+                while (this.running) {
+                    this.socket.receive(this.receivePacket);
+                    synchronized (this.actions) {
+                        this.receiveData.rewind();
+                        byte requestCode = this.receiveData.get();
+                        handleRequest(requestCode, this.receivePacket.getPort());
+                    }
+                }
+            } catch (IOException ignored) {
+            }
+        });
         startRumblePoller();
     }
 
