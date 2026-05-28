@@ -116,7 +116,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
         Log.d("PulseAudioComponent", "Resuming...");
         synchronized (lock) {
             if (isPaused.get()) {
-                // Can module unload timer if it is pending to run
+                // Cancel module unload timer if it is pending to run
                 stopUnloadTimer();
 
                 if (isServerRunning()) {
