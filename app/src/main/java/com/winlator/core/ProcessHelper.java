@@ -245,6 +245,9 @@ public abstract class ProcessHelper {
                     }
                 }
             }
+            catch (java.io.InterruptedIOException e) {
+                // Expected when process.destroy() is called - silently ignore
+            }
             catch (IOException e) {
                 Log.e("ProcessHelper", "Error on debug thread: " + e);
             }

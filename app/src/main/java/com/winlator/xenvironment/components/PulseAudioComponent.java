@@ -2,9 +2,6 @@ package com.winlator.xenvironment.components;
 
 import android.content.Context;
 import android.media.AudioManager;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Process;
 import android.util.Log;
 
 import com.winlator.core.AppUtils;
@@ -90,20 +87,11 @@ public class PulseAudioComponent extends EnvironmentComponent {
     public void pause() {
         Log.d("PulseAudioComponent", "Pausing...");
         synchronized (lock) {
-            if (!isPaused) {
-                if (isServerRunning()) {
-                    executePactl(true);
-                    isPaused = true;
-                    final int capturedPid = getPid();
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        synchronized (lock) {
-                            if (isPaused && capturedPid == getPid()) {
-                                ProcessHelper.suspendProcess(capturedPid);
-                                Log.d("PulseAudioComponent", "Audio paused");
-                            }
-                        }
-                    }, 200);
-                }
+            if (!isPaused && isServerRunning()) {
+                executePactl(true);
+                ProcessHelper.suspendProcess(getPid());
+                isPaused = true;
+                Log.d("PulseAudioComponent", "Audio paused");
             }
         }
     }
@@ -113,17 +101,10 @@ public class PulseAudioComponent extends EnvironmentComponent {
         synchronized (lock) {
             if (isPaused) {
                 if (isServerRunning()) {
-                    final int capturedPid = getPid();
-                    ProcessHelper.resumeProcess(capturedPid);
+                    ProcessHelper.resumeProcess(getPid());
                     isPaused = false;
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        synchronized (lock) {
-                            if (!isPaused && capturedPid == getPid()) {
-                                executePactl(false);
-                                Log.d("PulseAudioComponent", "Audio resumed");
-                            }
-                        }
-                    }, 200);
+                    executePactl(false);
+                    Log.d("PulseAudioComponent", "Audio resumed");
                 } else {
                     pulseProcess = null;
                     start();
