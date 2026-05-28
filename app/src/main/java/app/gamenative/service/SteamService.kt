@@ -3364,7 +3364,16 @@ class SteamService : Service(), IChallengeUrlChanged {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Notification intents
+        
+        // Start up the notification early to to avoid ForegroundServiceDidNotStartInTimeException
+        val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_STEAM, "Running...")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification)
+        }
+        notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_STEAM)
+
         when (intent?.action) {
             NotificationHelper.ACTION_EXIT -> {
                 Timber.d("Exiting app via notification intent")
@@ -3450,14 +3459,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             connectToSteam()
         }
-
-        val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_STEAM, "Running...")
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification)
-        }
-        notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_STEAM)
 
         return START_STICKY
     }
