@@ -729,7 +729,7 @@
     <string name="use_dri3">Usar DRI3</string>
     <string name="use_dri3_description">Desactivarlo puede corregir fallos gráficos en algunos dispositivos.</string>
     <string name="use_legacy_renderer">Usar renderizador heredado</string>
-    <string name="use_legacy_renderer_description">Usa el GLRenderer heredado en lugar del VulkanRenderer. VulkanRenderer normalmente mejora el rendimiento, pero puede reducirlo en algunos dispositivos</string>
+    <string name="use_legacy_renderer_description">Usa el GLRenderer heredado en lugar del VulkanRenderer. VulkanRenderer mejora el rendimiento, pero está en beta y puede causar problemas.</string>
     <string name="sync_frame">Sincronizar cada fotograma</string>
     <string name="disable_present_wait">Desactivar KHR_present_wait</string>
     <string name="present_modes">Modos de presentación</string>

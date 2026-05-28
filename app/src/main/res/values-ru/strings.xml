@@ -1253,7 +1253,7 @@ https://gamenative.app
     <string name="use_dri3">Использовать DRI3</string>
     <string name="use_dri3_description">Отключение может исправить графические глюки на некоторых устройствах</string>
     <string name="use_legacy_renderer">Использовать устаревший рендерер</string>
-    <string name="use_legacy_renderer_description">Использовать устаревший GLRenderer вместо VulkanRenderer. VulkanRenderer обычно повышает производительность, но на некоторых устройствах может её снижать</string>
+    <string name="use_legacy_renderer_description">Использовать устаревший GLRenderer вместо VulkanRenderer. VulkanRenderer повышает производительность, но находится в бета-версии и может вызывать проблемы.</string>
     <string name="use_legacy_drm">Использовать Legacy DRM</string>
     <string name="use_sdl_api">Использовать SDL API</string>
     <string name="use_steam_input">Использовать Steam Input</string>

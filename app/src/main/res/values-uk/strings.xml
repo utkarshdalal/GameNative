@@ -679,7 +679,7 @@
     <string name="use_dri3">Використовувати DRI3</string>
     <string name="use_dri3_description">Вимкнення параметра може виправити графічні проблеми на деяких пристроях</string>
     <string name="use_legacy_renderer">Використовувати старий рендерер</string>
-    <string name="use_legacy_renderer_description">Використовувати старий GLRenderer замість VulkanRenderer. VulkanRenderer зазвичай підвищує продуктивність, але на деяких пристроях може її знижувати</string>
+    <string name="use_legacy_renderer_description">Використовувати старий GLRenderer замість VulkanRenderer. VulkanRenderer покращує продуктивність, але перебуває в стадії бета-тестування і може спричиняти проблеми.</string>
     <string name="sync_frame">Синхронізувати кожен кадр</string>
     <string name="disable_present_wait">Вимкнути KHR_present_wait</string>
     <string name="present_modes">Режими відображення</string>

@@ -182,13 +182,18 @@ Java_com_winlator_renderer_GPUImage_lockHardwareBuffer(JNIEnv *env, jclass obj, 
     return buffer;
 }
 
-// JNI method to unlock a hardware buffer
-JNIEXPORT void JNICALL
+// JNI method to unlock a hardware buffer; returns release fence FD (-1 if none)
+JNIEXPORT jint JNICALL
 Java_com_winlator_renderer_GPUImage_unlockHardwareBuffer(JNIEnv *env, jclass obj, jlong hardwareBufferPtr) {
     AHardwareBuffer* hardwareBuffer = (AHardwareBuffer*)hardwareBufferPtr;
     if (hardwareBuffer) {
-        AHardwareBuffer_unlock(hardwareBuffer, NULL);
+        int32_t fenceFd = -1;
+        if (AHardwareBuffer_unlock(hardwareBuffer, &fenceFd) != 0) {
+            return -1;
+        }
+        return (jint)fenceFd;
     }
+    return -1;
 }
 
 // JNI method to destroy an EGL image

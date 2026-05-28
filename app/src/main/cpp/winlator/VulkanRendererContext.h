@@ -96,6 +96,7 @@ struct VkTable {
 #define WLOG_TAG "Winlator_Renderer"
 #define RLOG(...) if(verboseLog) __android_log_print(ANDROID_LOG_DEBUG,WLOG_TAG,__VA_ARGS__)
 #define RLOG_E(...) __android_log_print(ANDROID_LOG_ERROR,WLOG_TAG,__VA_ARGS__)
+#define SCANOUT_LOG(...) __android_log_print(ANDROID_LOG_DEBUG,"Winlator_Scanout",__VA_ARGS__)
 
 #include <vulkan/vulkan_android.h>
 #include <android/hardware_buffer.h>
@@ -112,6 +113,7 @@ static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 struct WindowPushConstants {
     float ndcX0, ndcY0, ndcX1, ndcY1;
+    int   useTexAlpha;
     int   effectId;
     float sharpness;
     float resW;
@@ -140,7 +142,7 @@ public:
     void applyScanoutBuffer();
     void initScanoutFromWindows(ANativeWindow* gameWin, ANativeWindow* cursorWin);
     void scanoutSetDst(int x, int y, int w, int h);
-    void scanoutSetBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h);
+    void scanoutSetBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h, int fenceFd = -1);
     void scanoutSetCursorImage(void* pixels, short w, short h, short stride);
     void scanoutSetCursorPos(short x, short y, short hotX, short hotY);
     std::atomic<bool> scanoutActive{false};
@@ -169,6 +171,7 @@ public:
     void setSwapRB(bool enabled);
     void setEffect(int effectId, float sharpness);
     void setPresentMode(VkPresentModeKHR mode);
+    std::vector<int> getSupportedPresentModes() const;
 
 private:
     struct WinTex {
@@ -180,24 +183,14 @@ private:
         VkDeviceMemory       stgMem         = VK_NULL_HANDLE;
         void*                mapped         = nullptr;
         VkDeviceSize         cap            = 0;
-        VkSubresourceLayout  imgLayout      = {};
         int                  w              = 0;
         int                  h              = 0;
         bool                 dirty          = false;
         bool                 isAHB          = false;
         bool                 needsTransition = false;
-        bool                 useLinear      = false;
-        bool                 stgCached      = false;
         AHardwareBuffer*     ahb            = nullptr;
     };
-    struct AHBCached {
-        VkImage         img  = VK_NULL_HANDLE;
-        VkDeviceMemory  mem  = VK_NULL_HANDLE;
-        VkImageView     view = VK_NULL_HANDLE;
-        VkDescriptorSet ds   = VK_NULL_HANDLE;
-        int             w    = 0;
-        int             h    = 0;
-    };
+
     struct RenderEntry { int64_t id; int x, y; };
     struct DrawEntry {
         VkImage         img            = VK_NULL_HANDLE;
@@ -206,9 +199,6 @@ private:
         int             x=0, y=0, w=0, h=0;
         bool            needsTransition = false;
         bool            isAHB          = false;
-        bool            dirtyAHB       = false;
-        bool            useLinear      = false;
-        bool            dirtyLinear    = false;
     };
 
     ANativeWindow* window;
@@ -220,32 +210,37 @@ private:
     float activeSharpness = 1.0f;
     float maxAnisotropy           = 1.0f;
     bool  cubicSupported          = false;
+    VkPhysicalDeviceMemoryProperties memProperties{};
     VkPresentModeKHR requestedPresentMode = VK_PRESENT_MODE_FIFO_KHR;
     uint32_t graphicsQueueFamilyIndex = 0;
     std::vector<VkPresentModeKHR> availablePresentModes;
 
     std::unordered_map<int64_t, WinTex>         texMap;
-    std::unordered_map<AHardwareBuffer*, AHBCached> ahbTexCache;
-    std::list<AHardwareBuffer*>                  ahbCacheLRU;
-    static constexpr size_t AHB_CACHE_MAX_NORMAL  =  6;
-    static constexpr size_t AHB_CACHE_MAX_SCANOUT =  2;
+
+    std::unordered_map<AHardwareBuffer*, WinTex>              ahbImportCache;
+    std::unordered_map<int64_t, std::vector<AHardwareBuffer*>> windowAhbs;
+
     std::vector<WinTex>    deleteQueue;
     std::vector<RenderEntry> renderList;
+
+    std::vector<DrawEntry>             frameDraws;
+    std::vector<VkImageMemoryBarrier>  frameAhbTransitions;
+    std::vector<VkImageMemoryBarrier>  framePreUpload;
+    std::vector<VkImageMemoryBarrier>  framePostUpload;
 
     void*  scanoutGameSC      = nullptr;
     void*  scanoutCursorSC    = nullptr;
     void*  scanoutCursorBuf   = nullptr;
     int32_t scanoutCursorBufW = 0;
     int32_t scanoutCursorBufH = 0;
-    AHardwareBuffer*  scanoutLocalAhb     = nullptr;
-    VkImage           scanoutLocalImg     = VK_NULL_HANDLE;
-    VkDeviceMemory    scanoutLocalMem     = VK_NULL_HANDLE;
-    int               scanoutLocalW       = 0;
-    int               scanoutLocalH       = 0;
-    bool              scanoutNeedsGpuBlit = false;
+
+    void*  scanoutTx          = nullptr;
+    void*  scanoutGameTx      = nullptr;
+
+    ARect  scanoutLastSrc{}, scanoutLastDst{};
+    bool   scanoutGeoDirty    = true;
+    bool   scanoutVisShown    = false;
     bool   scanoutApiLoaded   = false;
-    bool   scanoutEnvGpuBlit  = false;
-    bool   scanoutAlwaysGpuBlit = false;
     void*  fnSCCreateFromWin  = nullptr;
     void*  fnSCRelease        = nullptr;
     void*  fnSTCreate         = nullptr;
@@ -263,10 +258,14 @@ private:
     int32_t lastDstX=0, lastDstY=0, lastDstW=0, lastDstH=0;
     bool    gameScVisible      = false;
 
-    struct ScanoutPending { AHardwareBuffer* ahb=nullptr; int x=0,y=0,w=0,h=0; };
+    struct ScanoutPending { AHardwareBuffer* ahb=nullptr; int x=0,y=0,w=0,h=0; int fenceFd=-1; };
     std::mutex        scanoutMutex;
     ScanoutPending    scanoutPending{};
     std::atomic<bool> scanoutPendingDirty{false};
+
+    short  pendingCursorX=0, pendingCursorY=0, pendingCursorHotX=0, pendingCursorHotY=0;
+    bool   cursorPosDirty=false;
+    bool   cursorImageDirty=false;
 
     std::atomic<int>  pointerX{0}, pointerY{0};
     float sceneOffsetX=0.f, sceneOffsetY=0.f, sceneScaleX=1.f, sceneScaleY=1.f;
@@ -280,13 +279,12 @@ private:
     VkImage         cursorImg   = VK_NULL_HANDLE;
     VkDeviceMemory  cursorMem   = VK_NULL_HANDLE;
     VkImageView     cursorView  = VK_NULL_HANDLE;
-    VkDescriptorPool cursorPool = VK_NULL_HANDLE;
     VkDescriptorSet  cursorDS   = VK_NULL_HANDLE;
-    VkPipeline       cursorPipe = VK_NULL_HANDLE;
     VkBuffer         cursorStg  = VK_NULL_HANDLE;
     VkDeviceMemory   cursorStgM = VK_NULL_HANDLE;
     void*            cursorStgP = nullptr;
     VkDeviceSize     cursorStgC = 0;
+    VkDeviceSize     cursorUploadSize = 0;
 
     VkInstance       instance;
     VkSurfaceKHR     surface;
@@ -309,9 +307,6 @@ private:
 
     VkCommandPool                cmdPool = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> cmdBufs;
-    VkFence                      oneTimeFence = VK_NULL_HANDLE;
-    VkCommandBuffer              scanoutBlitCb = VK_NULL_HANDLE;
-    VkFence                      scanoutBlitFence = VK_NULL_HANDLE;
 
     std::vector<VkSemaphore> imgAvailSems;
     std::vector<VkSemaphore> renderDoneSems;
@@ -351,7 +346,6 @@ private:
 
     bool  createWinTexResources(WinTex& wt, int w, int h);
     bool  importAHBToWinTex(WinTex& wt, AHardwareBuffer* ahb);
-    bool  ensureScanoutLocalAhb(int w, int h, uint32_t ahbFormat);
     void  cleanupAllAHBCache();
     void  flushDeleteQueue();
     void  destroyWinTex(WinTex& wt);
@@ -361,6 +355,9 @@ private:
 
     void recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
         const std::vector<DrawEntry>& draws,
+        std::vector<VkImageMemoryBarrier>& ahbTransitions,
+        std::vector<VkImageMemoryBarrier>& preUpload,
+        std::vector<VkImageMemoryBarrier>& postUpload,
         VkBuffer cursorUpload, bool hasCursorUpload,
         float ox, float oy, float sx, float sy, float cw, float ch,
         short ptrX, short ptrY, short curHotX, short curHotY,

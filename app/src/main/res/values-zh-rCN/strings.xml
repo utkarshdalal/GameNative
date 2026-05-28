@@ -675,7 +675,7 @@
     <string name="use_dri3">使用 DRI3</string>
     <string name="use_dri3_description">在某些设备上禁用此功能或许能修复图形故障</string>
     <string name="use_legacy_renderer">使用旧版渲染器</string>
-    <string name="use_legacy_renderer_description">使用旧版 GLRenderer 而非 VulkanRenderer。VulkanRenderer 通常会提升性能，但在某些设备上可能会降低性能</string>
+    <string name="use_legacy_renderer_description">使用旧版 GLRenderer 而非 VulkanRenderer。VulkanRenderer 可提升性能，但目前为 Beta 版，可能会造成问题。</string>
     <string name="sync_frame">同步每帧图像</string>
     <string name="disable_present_wait">禁用 KHR_present_wait</string>
     <string name="present_modes">呈现模式</string>

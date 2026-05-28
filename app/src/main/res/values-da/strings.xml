@@ -519,7 +519,7 @@
     <string name="use_dri3">Brug DRI3</string>
     <string name="use_dri3_description">Deaktivering kan løse grafiske fejl på nogle enheder</string>
     <string name="use_legacy_renderer">Brug ældre renderer</string>
-    <string name="use_legacy_renderer_description">Brug den ældre GLRenderer i stedet for VulkanRenderer. VulkanRenderer øger normalt ydeevnen, men kan reducere den på nogle enheder</string>
+    <string name="use_legacy_renderer_description">Brug den ældre GLRenderer i stedet for VulkanRenderer. VulkanRenderer forbedrer ydeevnen, men er i beta og kan forårsage problemer.</string>
 
     <!-- Container Configuration: Emulation -->
     <string name="fexcore_version">FEXCore-version</string>

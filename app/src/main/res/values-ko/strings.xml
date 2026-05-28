@@ -694,7 +694,7 @@
     <string name="use_dri3">DRI3 사용</string>
     <string name="use_dri3_description">비활성화하면 일부 장치에서 그래픽 결함이 수정될 수 있습니다</string>
     <string name="use_legacy_renderer">레거시 렌더러 사용</string>
-    <string name="use_legacy_renderer_description">VulkanRenderer 대신 레거시 GLRenderer를 사용합니다. VulkanRenderer는 보통 성능을 향상시키지만, 일부 장치에서는 성능이 저하될 수 있습니다</string>
+    <string name="use_legacy_renderer_description">VulkanRenderer 대신 레거시 GLRenderer를 사용합니다. VulkanRenderer는 성능을 향상시키지만, 베타 버전이므로 문제가 발생할 수 있습니다.</string>
     <string name="sync_frame">모든 프레임 동기화</string>
     <string name="disable_present_wait">KHR_present_wait 비활성화</string>
     <string name="present_modes">프레젠트 모드</string>

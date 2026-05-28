@@ -129,21 +129,19 @@ Java_com_winlator_renderer_VulkanRenderer_nativeSetRenderList(
 {
     auto* r=reinterpret_cast<VulkanRendererContext*>(handle);
     if (!r||count<=0) return;
-    jlong* ids=env->GetLongArrayElements(jids,nullptr);
-    jint*  xs =env->GetIntArrayElements(jxs,nullptr);
-    jint*  ys =env->GetIntArrayElements(jys,nullptr);
+
+    jlong* ids=(jlong*)env->GetPrimitiveArrayCritical(jids,nullptr);
+    jint*  xs =(jint*) env->GetPrimitiveArrayCritical(jxs, nullptr);
+    jint*  ys =(jint*) env->GetPrimitiveArrayCritical(jys, nullptr);
     r->setRenderList(reinterpret_cast<const int64_t*>(ids),xs,ys,count);
-    env->ReleaseLongArrayElements(jids,ids,JNI_ABORT);
-    env->ReleaseIntArrayElements(jxs,xs,JNI_ABORT);
-    env->ReleaseIntArrayElements(jys,ys,JNI_ABORT);
+    env->ReleasePrimitiveArrayCritical(jys, ys,  JNI_ABORT);
+    env->ReleasePrimitiveArrayCritical(jxs, xs,  JNI_ABORT);
+    env->ReleasePrimitiveArrayCritical(jids,ids, JNI_ABORT);
 }
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_VulkanRenderer_nativeRemoveWindow(JNIEnv*, jobject, jlong handle, jlong id) {
     auto* r=reinterpret_cast<VulkanRendererContext*>(handle); if (r) r->removeWindow(id);
 }
-
-
-
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_VulkanRenderer_nativeInitScanout(JNIEnv*, jobject, jlong handle) {
@@ -159,10 +157,10 @@ Java_com_winlator_renderer_VulkanRenderer_nativeDestroyScanout(JNIEnv*, jobject,
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_VulkanRenderer_nativeScanoutSetBuffer(
-    JNIEnv*, jobject, jlong handle, jlong ahbPtr, jint x, jint y, jint w, jint h)
+    JNIEnv*, jobject, jlong handle, jlong ahbPtr, jint x, jint y, jint w, jint h, jint fenceFd)
 {
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
-    if (r && ahbPtr) r->scanoutSetBuffer(reinterpret_cast<AHardwareBuffer*>(ahbPtr), x, y, w, h);
+    if (r && ahbPtr) r->scanoutSetBuffer(reinterpret_cast<AHardwareBuffer*>(ahbPtr), x, y, w, h, (int)fenceFd);
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -255,6 +253,16 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_VulkanRenderer_nativeSetEffect(JNIEnv*, jobject, jlong handle, jint effectId, jfloat sharpness) {
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
     if (r) r->setEffect((int)effectId, (float)sharpness);
+}
+
+extern "C" JNIEXPORT jintArray JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeGetSupportedPresentModes(JNIEnv* env, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (!r) return env->NewIntArray(0);
+    auto modes = r->getSupportedPresentModes();
+    jintArray arr = env->NewIntArray((jsize)modes.size());
+    if (!modes.empty()) env->SetIntArrayRegion(arr,0,(jsize)modes.size(),modes.data());
+    return arr;
 }
 
 extern "C" JNIEXPORT void JNICALL

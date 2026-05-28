@@ -703,8 +703,8 @@
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">Use DRI3</string>
     <string name="use_dri3_description">Disabling may fix graphical glitches on some devices</string>
-    <string name="use_legacy_renderer">Use legacy renderer</string>
-    <string name="use_legacy_renderer_description">Use legacy GLRenderer instead of VulkanRenderer. VulkanRenderer usually increases performance, but can reduce it on some devices</string>
+    <string name="use_legacy_renderer">Use Legacy Renderer</string>
+    <string name="use_legacy_renderer_description">Use legacy GLRenderer instead of VulkanRenderer. VulkanRenderer improves performance, but is in beta and may cause issues.</string>
     <string name="sync_frame">Sync Every Frame</string>
     <string name="disable_present_wait">Disable KHR_present_wait</string>
     <string name="present_modes">Present Modes</string>

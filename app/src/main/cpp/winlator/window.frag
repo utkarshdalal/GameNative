@@ -1,9 +1,13 @@
 #version 450
 layout(binding = 0) uniform sampler2D texSampler;
 layout(push_constant) uniform PC {
-    float ndcX0, ndcY0, ndcX1, ndcY1;
-    int   effectId;   
-    float sharpness;   
+    float ndcX0;
+    float ndcY0;
+    float ndcX1;
+    float ndcY1;
+    int   useTexAlpha;
+    int   effectId;
+    float sharpness;
     float resW;
     float resH;
 } pc;
@@ -91,14 +95,16 @@ vec3 applyNatural(vec2 uv) {
 
 void main() {
     vec2 uv = fragTexCoord;
-    vec4 c;
-    
-    if      (pc.effectId == 1) c = vec4(applyFSR    (uv, pc.sharpness), 1.0);
-    else if (pc.effectId == 2) c = vec4(applyDLS    (uv, pc.sharpness), 1.0);
-    else if (pc.effectId == 3) c = vec4(applyCRT    (uv), 1.0);
-    else if (pc.effectId == 4) c = vec4(applyHDR    (uv), 1.0);
-    else if (pc.effectId == 5) c = vec4(applyNatural(uv), 1.0);
-    else                       c = texture(texSampler, uv);
-    
-    outColor = c;
+    vec4 src = texture(texSampler, uv);
+    vec3 rgb;
+
+    if (pc.useTexAlpha != 0 || pc.effectId == 0) rgb = src.rgb;
+    else if (pc.effectId == 1) rgb = applyFSR    (uv, pc.sharpness);
+    else if (pc.effectId == 2) rgb = applyDLS    (uv, pc.sharpness);
+    else if (pc.effectId == 3) rgb = applyCRT    (uv);
+    else if (pc.effectId == 4) rgb = applyHDR    (uv);
+    else if (pc.effectId == 5) rgb = applyNatural(uv);
+    else                       rgb = src.rgb;
+
+    outColor = vec4(rgb, pc.useTexAlpha != 0 ? src.a : 1.0);
 }

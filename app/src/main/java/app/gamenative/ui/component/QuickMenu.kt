@@ -93,6 +93,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.utils.MathUtils.normalizedProgress
 import com.winlator.container.Container
+import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.VulkanRenderer
 import com.winlator.winhandler.ProcessInfo
 import kotlinx.coroutines.delay
@@ -237,6 +238,7 @@ fun QuickMenu(
     onDismiss: () -> Unit,
     onItemSelected: (Int) -> Boolean,
     renderer: VulkanRenderer? = null,
+    glRenderer: GLRenderer? = null,
     container: Container? = null,
     wineProcesses: List<ProcessInfo> = emptyList(),
     isWineProcessesLoading: Boolean = false,
@@ -476,7 +478,7 @@ fun QuickMenu(
                                         focusRequester = lsfgTabFocusRequester,
                                     )
                                 }
-                                if (renderer != null) {
+                                if (renderer != null || glRenderer != null) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.AutoFixHigh,
                                         contentDescriptionResId = R.string.screen_effects,
@@ -598,6 +600,14 @@ fun QuickMenu(
                                         if (renderer != null) {
                                             ScreenEffectsTabContent(
                                                 renderer = renderer,
+                                                container = container,
+                                                modifier = Modifier.fillMaxSize(),
+                                                firstItemFocusRequester = effectsItemFocusRequester,
+                                                scrollState = effectsScrollState,
+                                            )
+                                        } else if (glRenderer != null) {
+                                            GLScreenEffectsTabContent(
+                                                renderer = glRenderer,
                                                 container = container,
                                                 modifier = Modifier.fillMaxSize(),
                                                 firstItemFocusRequester = effectsItemFocusRequester,

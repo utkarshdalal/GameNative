@@ -693,7 +693,7 @@
     <string name="use_dri3">Użyj DRI3</string>
     <string name="use_dri3_description">Wyłączenie może naprawić błędy graficzne na niektórych urządzeniach</string>
     <string name="use_legacy_renderer">Użyj starszego renderera</string>
-    <string name="use_legacy_renderer_description">Użyj starszego GLRenderer zamiast VulkanRenderer. VulkanRenderer zazwyczaj zwiększa wydajność, ale na niektórych urządzeniach może ją obniżać</string>
+    <string name="use_legacy_renderer_description">Użyj starszego GLRenderer zamiast VulkanRenderer. VulkanRenderer poprawia wydajność, ale jest w wersji beta i może powodować problemy.</string>
     <string name="sync_frame">Synchronizuj każdą klatkę</string>
     <string name="disable_present_wait">Wyłącz KHR_present_wait</string>
     <string name="present_modes">Tryby prezentacji</string>

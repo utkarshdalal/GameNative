@@ -14,6 +14,7 @@ public class Drawable extends XResource {
     private ByteBuffer data;
     public final short height;
     private boolean offscreenStorage;
+    private boolean directScanout = false;
     private Callback<Drawable> onDestroyListener;
     private Runnable onDrawListener;
     public final Object renderLock;
@@ -85,11 +86,12 @@ public class Drawable extends XResource {
         return data;
     }
 
-    // Direct-scanout flag used by VulkanRenderer's native-mode (SurfaceControl
-    // scanout) path. Pluvia does not currently flag any drawables for scanout,
-    // so this always returns false and the scanout path stays dormant.
+    public void setDirectScanout(boolean value) {
+        this.directScanout = value;
+    }
+
     public boolean isDirectScanout() {
-        return false;
+        return directScanout;
     }
 
     public void setData(ByteBuffer data) {

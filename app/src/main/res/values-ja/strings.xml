@@ -694,7 +694,7 @@
     <string name="use_dri3">DRI3 を使用する</string>
     <string name="use_dri3_description">無効にすると、一部のデバイスでのグラフィックの不具合が修正される場合があります</string>
     <string name="use_legacy_renderer">レガシーレンダラーを使用する</string>
-    <string name="use_legacy_renderer_description">VulkanRenderer の代わりにレガシーの GLRenderer を使用します。VulkanRenderer は通常パフォーマンスを向上させますが、一部のデバイスでは低下させる場合があります</string>
+    <string name="use_legacy_renderer_description">VulkanRenderer の代わりにレガシーの GLRenderer を使用します。VulkanRenderer はパフォーマンスを向上させますが、ベータ版のため問題が発生する可能性があります。</string>
     <string name="sync_frame">フレームごとに同期</string>
     <string name="disable_present_wait">KHR_present_wait を無効にする</string>
     <string name="present_modes">現在のモード</string>

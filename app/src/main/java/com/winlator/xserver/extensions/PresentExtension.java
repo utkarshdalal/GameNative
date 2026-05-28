@@ -301,6 +301,7 @@ public class PresentExtension implements Extension {
 
             if (isNative && pixmap.drawable.isDirectScanout()) {
                 content.setTexture(pixmap.drawable.getTexture());
+                content.setDirectScanout(true);
                 sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.FLIP, ust, msc);
                 flushClientOutput(client);
                 if (window.attributes.isMapped()) {

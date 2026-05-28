@@ -1,6 +1,7 @@
 package app.gamenative.ui.util
 
 import com.winlator.container.Container
+import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.VulkanRenderer
 import com.winlator.renderer.effects.ColorEffect
 import com.winlator.renderer.effects.CRTEffect
@@ -98,6 +99,58 @@ fun fsrQuickMenuLevelToStops(level: Int): Float {
         4 -> 0.5f
         else -> 0.0f
     }
+}
+
+fun applyScreenEffectsConfig(renderer: GLRenderer, config: ScreenEffectsConfig) {
+    val composer = renderer.effectComposer
+    val effects = mutableListOf<Effect>()
+
+    when (config.scalingMode) {
+        ScreenEffectsConfig.SCALING_MODE_FSR -> {
+            effects += composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
+            val rcasEffect = composer.getEffect(FSR1RcasEffect::class.java) ?: FSR1RcasEffect()
+            rcasEffect.sharpnessStops = fsrQuickMenuLevelToStops(config.fsrSharpnessLevel)
+            effects += rcasEffect
+        }
+        ScreenEffectsConfig.SCALING_MODE_NONE -> Unit
+        else -> {
+            val scalingEffect = composer.getEffect(ScalingModeEffect::class.java) ?: ScalingModeEffect()
+            scalingEffect.mode = when (config.scalingMode) {
+                ScreenEffectsConfig.SCALING_MODE_NEAREST -> ScalingModeEffect.Mode.NEAREST
+                ScreenEffectsConfig.SCALING_MODE_FILL -> ScalingModeEffect.Mode.FILL
+                ScreenEffectsConfig.SCALING_MODE_STRETCH -> ScalingModeEffect.Mode.STRETCH
+                else -> ScalingModeEffect.Mode.LINEAR
+            }
+            effects += scalingEffect
+        }
+    }
+
+    if (abs(config.brightness) > 0.001f || abs(config.contrast) > 0.001f || abs(config.gamma - 1.0f) > 0.001f) {
+        val colorEffect = ColorEffect().apply {
+            brightness = config.brightness / 100f
+            contrast = config.contrast / 100f
+            gamma = config.gamma
+        }
+        effects += colorEffect
+    }
+
+    if (config.enableToon) {
+        effects += composer.getEffect(ToonEffect::class.java) ?: ToonEffect()
+    }
+    if (config.enableFXAA) {
+        effects += composer.getEffect(FXAAEffect::class.java) ?: FXAAEffect()
+    }
+    if (config.enableVivid) {
+        effects += composer.getEffect(VividEffect::class.java) ?: VividEffect()
+    }
+    if (config.enableCRT) {
+        effects += composer.getEffect(CRTEffect::class.java) ?: CRTEffect()
+    }
+    if (config.enableNTSC) {
+        effects += composer.getEffect(NTSCCombinedEffect::class.java) ?: NTSCCombinedEffect()
+    }
+
+    composer.setEffects(effects)
 }
 
 fun applyScreenEffectsConfig(renderer: VulkanRenderer, config: ScreenEffectsConfig) {

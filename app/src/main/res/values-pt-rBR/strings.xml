@@ -519,7 +519,7 @@
     <string name="use_dri3">Usar DRI3</string>
     <string name="use_dri3_description">Desabilitar pode corrigir glitches gráficos em alguns dispositivos</string>
     <string name="use_legacy_renderer">Usar renderizador legado</string>
-    <string name="use_legacy_renderer_description">Usar o GLRenderer legado em vez do VulkanRenderer. O VulkanRenderer geralmente aumenta o desempenho, mas pode reduzi-lo em alguns dispositivos</string>
+    <string name="use_legacy_renderer_description">Usar o GLRenderer legado em vez do VulkanRenderer. O VulkanRenderer melhora o desempenho, mas está em beta e pode causar problemas.</string>
 
     <!-- Container Configuration: Emulation -->
     <string name="fexcore_version">Versão do FEXCore</string>

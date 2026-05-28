@@ -2441,6 +2441,7 @@ fun XServerScreen(
             onDismiss = dismissOverlayMenu,
             onItemSelected = onQuickMenuItemSelected,
             renderer = xServerView?.renderer as? VulkanRenderer,
+            glRenderer = xServerView?.renderer as? GLRenderer,
             container = container,
             wineProcesses = quickMenuWineProcesses,
             isWineProcessesLoading = quickMenuWineProcessesLoading,

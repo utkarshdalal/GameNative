@@ -107,7 +107,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeDetachSurface(long handle);
     private native boolean nativeReattachSurface(long handle, android.view.Surface surface);
     private native void nativeDestroyScanout(long handle);
-    private native void nativeScanoutSetBuffer(long handle, long ahbPtr, int x, int y, int w, int h);
+    private native void nativeScanoutSetBuffer(long handle, long ahbPtr, int x, int y, int w, int h, int fenceFd);
     private native void nativeScanoutSetCursorImage(long handle, java.nio.ByteBuffer pixels, short w, short h, short stride);
     private native void nativeScanoutSetCursorPos(long handle, short x, short y, short hotX, short hotY);
     private native boolean nativeIsScanoutActive(long handle);
@@ -418,9 +418,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                 long ahbPtr = g.getHardwareBufferPtr();
                 if (ahbPtr != 0) {
                     if (nativeMode && pixmap.isDirectScanout() && nativeIsScanoutActive(nativeHandle)) {
-                        g.unlock();
+                        int fenceFd = g.unlock();
                         nativeScanoutSetBuffer(nativeHandle, ahbPtr,
-                            rx, ry, pixmap.width, pixmap.height);
+                            rx, ry, pixmap.width, pixmap.height, fenceFd);
                         g.lock();
                     } else {
                         nativeUpdateWindowContentAHB(nativeHandle, targetId, ahbPtr,
@@ -469,9 +469,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     boolean scanoutNow = nativeMode && nativeIsScanoutActive(handle);
                     if (nativeMode && drawable.isDirectScanout() && scanoutNow) {
                         boolean wasDelivered = nativeIsGameFrameDelivered(handle);
-                        g.unlock();
+                        int fenceFd = g.unlock();
                         nativeScanoutSetBuffer(handle, ahbPtr,
-                            rx, ry, drawable.width, drawable.height);
+                            rx, ry, drawable.width, drawable.height, fenceFd);
                         g.lock();
                         boolean delivered = nativeIsGameFrameDelivered(handle);
                         if (!xRenderingPausedForScanout && !wasDelivered && delivered) {
