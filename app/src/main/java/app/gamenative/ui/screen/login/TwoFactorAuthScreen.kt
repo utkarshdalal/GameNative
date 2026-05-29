@@ -13,7 +13,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.ElevatedButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -33,7 +34,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -42,6 +42,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.enums.LoginResult
+import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.data.UserLoginState
 import app.gamenative.ui.theme.PluviaTheme
 
@@ -85,12 +86,19 @@ fun TwoFactorAuthScreenContent(
                 onTwoFactorTextChange = onSetTwoFactor,
             )
             Spacer(modifier = Modifier.height(24.dp))
-            ElevatedButton(
+            Button(
                 enabled = userLoginState.twoFactorCode.length == 5,
-                onClick = onLogin,
+                onClick = {
+                    onLogin()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                ),
                 content = {
                     Text(
                         text = stringResource(R.string.two_factor_login),
@@ -98,6 +106,8 @@ fun TwoFactorAuthScreenContent(
                     )
                 },
             )
+        } else {
+            LoadingScreen()
         }
     }
 }

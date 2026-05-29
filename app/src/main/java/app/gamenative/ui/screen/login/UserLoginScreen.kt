@@ -263,15 +263,19 @@ fun UserLoginScreen(
     }
 
     LaunchedEffect(userLoginState.loginScreen, userLoginState.isLoggingIn, connectionState, userLoginState.isQrFailed) {
-        if (
-            connectionState == ConnectionState.CONNECTED &&
-            userLoginState.loginScreen != LoginScreen.TWO_FACTOR &&
-            userLoginState.isLoggingIn.not()
-        ) {
-            if (userLoginState.loginScreen != LoginScreen.QR) {
-                viewModel.onShowLoginScreen(LoginScreen.QR)
-            } else if (userLoginState.isQrFailed) {
-                viewModel.onQrRetry()
+        if (connectionState == ConnectionState.CONNECTED && userLoginState.isLoggingIn.not()) {
+            if (userLoginState.loginScreen != LoginScreen.TWO_FACTOR) {
+                if (userLoginState.loginScreen != LoginScreen.QR) {
+                    viewModel.onShowLoginScreen(LoginScreen.QR)
+                } else if (userLoginState.isQrFailed) {
+                    viewModel.onQrRetry()
+                }
+            } else if (userLoginState.loginResult == LoginResult.Failed) {
+                if (userLoginState.lastTwoFactorMethod == "steam_guard") {
+                    viewModel.onCredentialLogin()
+                } else {
+                    viewModel.useGuardTotp()
+                }
             }
         }
     }
