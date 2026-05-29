@@ -82,7 +82,6 @@ import `in`.dragonbra.javasteam.steam.authentication.AuthenticationException
 import `in`.dragonbra.javasteam.steam.authentication.IAuthenticator
 import `in`.dragonbra.javasteam.steam.authentication.IChallengeUrlChanged
 import `in`.dragonbra.javasteam.steam.authentication.QrAuthSession
-import `in`.dragonbra.javasteam.depotdownloader.Steam3Session
 import `in`.dragonbra.javasteam.steam.discovery.FileServerListProvider
 import `in`.dragonbra.javasteam.steam.discovery.ServerQuality
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.GamePlayedInfo
@@ -115,7 +114,6 @@ import `in`.dragonbra.javasteam.steam.steamclient.configuration.SteamConfigurati
 import `in`.dragonbra.javasteam.types.DepotManifest
 import `in`.dragonbra.javasteam.types.FileData
 import `in`.dragonbra.javasteam.types.KeyValue
-import `in`.dragonbra.javasteam.types.PublishedFileID
 import `in`.dragonbra.javasteam.types.SteamID
 import `in`.dragonbra.javasteam.util.log.LogListener
 import `in`.dragonbra.javasteam.util.log.LogManager
@@ -173,7 +171,6 @@ import okhttp3.FormBody
 import org.json.JSONArray
 import org.json.JSONObject
 import com.winlator.container.ContainerManager
-import app.gamenative.statsgen.Achievement
 import app.gamenative.statsgen.StatType
 import app.gamenative.statsgen.StatsAchievementsGenerator
 import app.gamenative.statsgen.VdfParser
@@ -2727,10 +2724,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                     PluviaApp.events.emit(event)
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Login failed")
+                Timber.e(if (e is CancellationException) "Login cancelled or timed out" else "Login failed")
 
                 val message = when (e) {
-                    is CancellationException -> "Unknown cancellation"
+                    is CancellationException -> null
                     is AuthenticationException -> e.result?.name ?: e.message
                     else -> e.message ?: e.javaClass.name
                 }
