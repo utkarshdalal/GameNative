@@ -34,7 +34,6 @@ class UserLoginViewModel : ViewModel() {
     private var useGuardTotp: Boolean = false
 
     private val authenticator = object : IAuthenticator {
-
         override fun acceptDeviceConfirmation(): CompletableFuture<Boolean> {
             Timber.tag("UserLoginViewModel").i("Two-Factor, device confirmation")
 
@@ -101,7 +100,6 @@ class UserLoginViewModel : ViewModel() {
             }
         }
     }
-
 
     private val onSteamConnected: (SteamEvent.Connected) -> Unit = {
         Timber.i("Received is connected")
