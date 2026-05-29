@@ -48,6 +48,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
@@ -287,7 +288,7 @@ private fun LibraryScreenContent(
         }
     }
 
-    var selectedAppId by remember { mutableStateOf<String?>(null) }
+    var selectedAppId by rememberSaveable { mutableStateOf<String?>(null) }
     val carouselListState = rememberLazyListState()
     val isViewWide = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var currentPaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
@@ -314,6 +315,9 @@ private fun LibraryScreenContent(
     var wasOptionsPanelOpen by remember { mutableStateOf(false) }
     // Keep a stable reference to the selected item so detail view doesn't disappear during list refresh/pagination.
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
+    val currentSelectedLibraryItem = selectedLibraryItem ?: selectedAppId?.let { appId ->
+        state.appInfoList.find { it.appId == appId }
+    }
     val filterFabExpanded by remember(currentPaneType, listState, carouselListState) {
         derivedStateOf {
             if (currentPaneType == PaneType.CAROUSEL) {
@@ -442,9 +446,19 @@ private fun LibraryScreenContent(
         onSearchQuery("")
     }
 
-    BackHandler(selectedLibraryItem != null) {
+    BackHandler(selectedAppId != null) {
         selectedAppId = null
         selectedLibraryItem = null
+    }
+
+    LaunchedEffect(selectedAppId, state.appInfoList) {
+        if (selectedAppId == null) {
+            selectedLibraryItem = null
+        } else {
+            state.appInfoList.find { it.appId == selectedAppId }?.let { resolvedItem ->
+                selectedLibraryItem = resolvedItem
+            }
+        }
     }
 
     // Restore focus when returning from game detail (without reloading list)
@@ -478,7 +492,7 @@ private fun LibraryScreenContent(
     // The detail (game) page deliberately does NOT use this — the hero image is meant
     // to bleed through the cutout, so AppScreenContent insets only the elements that
     // need to stay tappable (e.g. the back button) instead.
-    val safePaddingModifier = if (selectedLibraryItem == null) {
+    val safePaddingModifier = if (currentSelectedLibraryItem == null) {
         Modifier.windowInsetsPadding(
             WindowInsets.statusBars
                 .union(WindowInsets.displayCutout)
@@ -994,18 +1008,18 @@ private fun LibraryScreenContent(
             }
         } else {
             LibraryDetailPane(
-                libraryItem = selectedLibraryItem,
+                libraryItem = currentSelectedLibraryItem,
                 onBack = {
                     selectedAppId = null
                     selectedLibraryItem = null
                 },
                 onClickPlay = {
-                    selectedLibraryItem?.let { libraryItem ->
+                    currentSelectedLibraryItem?.let { libraryItem ->
                         onClickPlay(libraryItem.appId, it)
                     }
                 },
                 onTestGraphics = {
-                    selectedLibraryItem?.let { libraryItem ->
+                    currentSelectedLibraryItem?.let { libraryItem ->
                         onTestGraphics(libraryItem.appId)
                     }
                 },

@@ -165,6 +165,8 @@ data class SteamApp(
         get() = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$id/$clientTgaHash.tga"
     val headerUrl: String
         get() = "https://shared.steamstatic.com/store_item_assets/steam/apps/$id/header.jpg"
+    val supportsCloudSaves: Boolean
+        get() = ufs.quota > 0 || ufs.maxNumFiles > 0 || ufs.saveFilePatterns.isNotEmpty()
 
     // source: https://github.com/Nemirtingas/games-infos/blob/3915100198bac34553b3c862f9e295d277f5520a/steam_retriever/Program.cs#L589C43-L589C89
     fun getSmallCapsuleUrl(language: Language = Language.english): String? {

@@ -27,6 +27,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.enums.SaveLocation
 import app.gamenative.events.AndroidEvent
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.data.AppMenuOption
@@ -547,6 +548,8 @@ abstract class BaseAppScreen {
         libraryItem: LibraryItem,
         uri: android.net.Uri,
     ): Boolean = false
+
+    protected open fun getForceCloudSync(context: Context, libraryItem: LibraryItem): ((SaveLocation) -> Unit)? = null
 
     /**
      * Get config-related menu options (e.g. Export config, Import config).
@@ -1213,6 +1216,7 @@ abstract class BaseAppScreen {
                 }
             },
             onBack = onBack,
+            onForceCloudSync = getForceCloudSync(context, libraryItem),
             optionsMenu = optionsMenu.toTypedArray(),
         )
 

@@ -1197,6 +1197,7 @@
     <string name="game_options_game_management">Керування грою</string>
     <string name="game_options_container">Контейнер</string>
     <string name="game_options_cloud_saves">Хмарні збереження</string>
+    <string name="cloud_saves_pending_operations">Очікується віддалена операція</string>
     <string name="game_options_help_info">Довідка та інформація</string>
 
     <!-- System Menu -->

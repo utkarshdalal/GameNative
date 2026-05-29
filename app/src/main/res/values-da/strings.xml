@@ -1025,6 +1025,7 @@
     <string name="game_options_game_management">Spilstyring</string>
     <string name="game_options_container">Container</string>
     <string name="game_options_cloud_saves">Cloud-gemmer</string>
+    <string name="cloud_saves_pending_operations">Afventende fjernhandling</string>
     <string name="game_options_help_info">Hjælp &amp; info</string>
 
     <!-- System Menu -->

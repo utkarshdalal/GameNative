@@ -1195,6 +1195,7 @@
     <string name="game_options_game_management">遊戲管理</string>
     <string name="game_options_container">容器</string>
     <string name="game_options_cloud_saves">雲端存檔</string>
+    <string name="cloud_saves_pending_operations">遠端操作待處理</string>
     <string name="game_options_help_info">幫助與資訊</string>
 
     <!-- System Menu -->

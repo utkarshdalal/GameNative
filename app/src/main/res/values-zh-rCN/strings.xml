@@ -1192,6 +1192,7 @@
     <string name="game_options_game_management">游戏管理</string>
     <string name="game_options_container">容器</string>
     <string name="game_options_cloud_saves">云存档</string>
+    <string name="cloud_saves_pending_operations">远程操作待处理</string>
     <string name="game_options_help_info">帮助与信息</string>
 
     <!-- System Menu -->
