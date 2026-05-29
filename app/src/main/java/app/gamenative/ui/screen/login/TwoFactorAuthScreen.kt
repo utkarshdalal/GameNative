@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -32,8 +33,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -54,6 +58,8 @@ fun TwoFactorAuthScreenContent(
     onUseGuardTotp: () -> Unit,
     onLogin: () -> Unit,
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -84,11 +90,13 @@ fun TwoFactorAuthScreenContent(
             TwoFactorTextField(
                 twoFactorText = userLoginState.twoFactorCode,
                 onTwoFactorTextChange = onSetTwoFactor,
+                onLogin = onLogin,
             )
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 enabled = userLoginState.twoFactorCode.length == 5,
                 onClick = {
+                    keyboardController?.hide()
                     onLogin()
                 },
                 modifier = Modifier
@@ -117,8 +125,10 @@ fun TwoFactorAuthScreenContent(
 private fun TwoFactorTextField(
     twoFactorText: String,
     onTwoFactorTextChange: (String) -> Unit,
+    onLogin: () -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(true) {
         focusRequester.requestFocus()
@@ -136,6 +146,10 @@ private fun TwoFactorTextField(
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester)
+                .dpadFocusEscape(
+                    focusManager = LocalFocusManager.current,
+                    keyboardController = LocalSoftwareKeyboardController.current,
+                )
                 .border(
                     width = 1.dp,
                     color = MaterialTheme.colorScheme.outline,
@@ -155,6 +169,13 @@ private fun TwoFactorTextField(
             },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Done,
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    keyboardController?.hide()
+                    if (twoFactorText.length >= 5) onLogin()
+                },
             ),
             shape = RoundedCornerShape(8.dp),
             colors = OutlinedTextFieldDefaults.colors(

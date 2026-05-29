@@ -113,7 +113,7 @@ import app.gamenative.ui.theme.PluviaTheme
  * Modifier that allows D-pad up/down and B-button to escape focus from a text field,
  * which otherwise consumes these events for cursor movement.
  */
-private fun Modifier.dpadFocusEscape(
+fun Modifier.dpadFocusEscape(
     focusManager: FocusManager,
     keyboardController: androidx.compose.ui.platform.SoftwareKeyboardController?,
     onUp: (() -> Unit)? = { focusManager.moveFocus(FocusDirection.Up) },
