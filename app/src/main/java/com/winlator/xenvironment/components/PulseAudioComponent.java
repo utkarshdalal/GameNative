@@ -176,12 +176,16 @@ public class PulseAudioComponent extends EnvironmentComponent {
                     } else {
                         // Start a timer here to avoid UI locking
                         startResumeTimer(200, () -> {
-                            // Check if module was unloaded during pause, reload if needed
-                            if (!isSinkAlive()) {
-                                Log.d("PulseAudioComponent", "Sink not alive, reloading module");
-                                loadModule();
-                            } else {
-                                updateSink(false);
+                            synchronized (lock) {
+                                if (!isPaused.get() && isServerRunning()) {
+                                    // Check if module was unloaded during pause, reload if needed
+                                    if (!isSinkAlive()) {
+                                        Log.d("PulseAudioComponent", "Sink not alive, reloading module");
+                                        loadModule();
+                                    } else {
+                                        updateSink(false);
+                                    }
+                                }
                             }
                         });
                     }
