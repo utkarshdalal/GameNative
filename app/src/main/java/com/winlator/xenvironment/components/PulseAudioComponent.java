@@ -52,6 +52,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private float volume = 1.0f;
     private byte performanceMode = 1;
     private final AtomicBoolean isPaused = new AtomicBoolean(false);
+    private final AtomicBoolean isModuleLoaded = new AtomicBoolean(true);
     private Timer suspendTimer;
     private Timer resumeTimer;
     private String suspendBehavior = SUSPEND_BEHAVIOR_THREAD;
@@ -174,20 +175,24 @@ public class PulseAudioComponent extends EnvironmentComponent {
                             }
                         });
                     } else {
-                        // Start a timer here to avoid UI locking
-                        startResumeTimer(200, () -> {
-                            synchronized (lock) {
-                                if (!isPaused.get() && isServerRunning()) {
-                                    // Check if module was unloaded during pause, reload if needed
-                                    if (!isSinkAlive()) {
-                                        Log.d("PulseAudioComponent", "Sink not alive, reloading module");
-                                        loadModule();
-                                    } else {
+                        if (!isModuleLoaded.get()) {
+                            if (!isSinkAlive()) {
+                                Log.d("PulseAudioComponent", "Sink not alive, reloading module");
+                                loadModule();
+                            } else {
+                                updateSink(false);
+                            }
+                        } else {
+                            // Start a timer here to avoid UI locking
+                            startResumeTimer(200, () -> {
+                                synchronized (lock) {
+                                    if (!isPaused.get() && isServerRunning()) {
+                                        // Check if module was unloaded during pause, reload if needed
                                         updateSink(false);
                                     }
                                 }
-                            }
-                        });
+                            });
+                        }
                     }
                     Log.d("PulseAudioComponent", "Audio resumed");
                 } else {
@@ -320,6 +325,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
 
     private void unloadModule() {
         execPactlCommand("unload-module module-aaudio-sink");
+        isModuleLoaded.set(false);
     }
 
     private void loadModule() {
@@ -328,6 +334,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
             sinkParams += " low_latency=true";
         }
         execPactlCommand("load-module module-aaudio-sink " + sinkParams);
+        isModuleLoaded.set(true);
     }
 
     private boolean isSinkAlive() {
