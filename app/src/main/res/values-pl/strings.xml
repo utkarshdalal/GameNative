@@ -654,6 +654,10 @@
     <string name="width">Szerokość</string>
     <string name="height">Wysokość</string>
     <string name="audio_driver">Sterownik audio</string>
+    <string name="pulseaudio_suspend_behavior">Zachowanie zawieszenia PulseAudio</string>
+    <string name="pulseaudio_suspend_behavior_thread">Zawieszenie przez wątek (Domyślne)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Zawieszenie przez Pactl (Oszczędzanie energii)</string>
+    <string name="pulseaudio_low_latency">Tryb niskiego opóźnienia PulseAudio</string>
     <string name="show_fps">Pokaż FPS</string>
     <string name="portrait_mode">Tryb pionowy</string>
     <string name="portrait_mode_description">Dla kontrolerów typu 8BitDo FlipPad/GameSir Pocket Taco</string>
@@ -872,7 +876,7 @@
     <string name="driver_manager">Menedżer sterowników</string>
     <string name="select_a_driver">Wybierz sterownik</string>
     <string name="import_zip_from_device">Importuj ZIP z urządzenia</string>
-    
+
     <!-- Contents Manager -->
     <string name="contents_manager">Menedżer zawartości</string>
     <string name="import_wcp_from_device">Importuj .wcp z urządzenia</string>

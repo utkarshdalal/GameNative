@@ -690,6 +690,10 @@
     <string name="width">Ancho</string>
     <string name="height">Alto</string>
     <string name="audio_driver">Controlador de audio</string>
+    <string name="pulseaudio_suspend_behavior">Comportamiento de suspensión de PulseAudio</string>
+    <string name="pulseaudio_suspend_behavior_thread">Suspender vía Thread (Predeterminado)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Suspender vía Pactl (Ahorro de energía)</string>
+    <string name="pulseaudio_low_latency">Modo de baja latencia PulseAudio</string>
     <string name="show_fps">Mostrar FPS</string>
     <string name="portrait_mode">Modo vertical</string>
     <string name="portrait_mode_description">Para controles tipo 8BitDo FlipPad/GameSir Pocket Taco</string>

@@ -651,6 +651,10 @@
     <string name="width">幅</string>
     <string name="height">身長</string>
     <string name="audio_driver">オーディオドライバー</string>
+    <string name="pulseaudio_suspend_behavior">PulseAudio サスペンド動作</string>
+    <string name="pulseaudio_suspend_behavior_thread">スレッド経由でサスペンド（デフォルト）</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Pactl 経由でサスペンド（省電力）</string>
+    <string name="pulseaudio_low_latency">PulseAudio 低レイテンシーモード</string>
     <string name="show_fps">FPS を表示</string>
     <string name="portrait_mode">ポートレートモード</string>
     <string name="portrait_mode_description">8BitDo FlipPad/GameSir Pocket Taco タイプ コントローラー用</string>

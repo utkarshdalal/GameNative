@@ -277,6 +277,8 @@ object ContainerUtils {
             dxwrapper = container.dxWrapper,
             dxwrapperConfig = container.dxWrapperConfig,
             audioDriver = container.audioDriver,
+            pulseaudioSuspendBehavior = container.getPulseaudioSuspendBehavior(),
+            pulseaudioLowLatency = container.getPulseaudioLowLatency(),
             wincomponents = container.winComponents,
             drives = container.drives,
             execArgs = container.execArgs,
@@ -452,6 +454,8 @@ object ContainerUtils {
         container.dxWrapper = containerData.dxwrapper
         container.dxWrapperConfig = containerData.dxwrapperConfig
         container.audioDriver = containerData.audioDriver
+        container.setPulseaudioSuspendBehavior(containerData.pulseaudioSuspendBehavior)
+        container.setPulseaudioLowLatency(containerData.pulseaudioLowLatency)
         container.winComponents = containerData.wincomponents
         container.drives = containerData.drives
         container.execArgs = containerData.execArgs

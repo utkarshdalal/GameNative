@@ -44,6 +44,19 @@ public abstract class ProcessHelper {
         Process.sendSignal(pid, SIGKILL);
     }
 
+    public static int getPid(java.lang.Process process) {
+        try {
+            Field pidField = process.getClass().getDeclaredField("pid");
+            pidField.setAccessible(true);
+            int pid = pidField.getInt(process);
+            pidField.setAccessible(false);
+            return pid;
+        } catch (Exception e) {
+            Log.e("ProcessHelper", "Failed to get PID from process: " + e);
+            return -1;
+        }
+    }
+
     public static void terminateAllWineProcesses() {
         for (String process : listRunningWineProcesses()) {
             terminateProcess(Integer.parseInt(process));
@@ -161,6 +174,7 @@ public abstract class ProcessHelper {
     public static java.lang.Process startProcess(String command, String[] envp, File workingDir) {
         try {
             Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
             java.lang.Process process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
             if (!debugCallbacks.isEmpty()) {
                 createDebugThread(process.getInputStream());
@@ -178,7 +192,8 @@ public abstract class ProcessHelper {
         StringBuilder output = new StringBuilder();
         java.lang.Process process = null;
         try {
-            Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)));
+            Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
             process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
 
             // Drain stderr in background to prevent blocking

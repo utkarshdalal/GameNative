@@ -89,6 +89,10 @@
     <string name="appbar_scrolling_view_behavior">com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior</string>
     <string name="appearance">Внешний вид</string>
     <string name="audio_driver">Аудиодрайвер</string>
+    <string name="pulseaudio_suspend_behavior">Поведение приостановки PulseAudio</string>
+    <string name="pulseaudio_suspend_behavior_thread">Приостановка через поток (По умолчанию)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Приостановка через Pactl (Энергосбережение)</string>
+    <string name="pulseaudio_low_latency">Режим низкой задержки PulseAudio</string>
     <string name="auth_webview_title">Авторизация</string>
     <string name="autofill">Автозаполнение</string>
     <string name="back">Назад</string>
@@ -675,9 +679,9 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="m3c_dropdown_menu_toggle">Переключить выпадающее меню</string>
     <string name="m3c_snackbar_dismiss">Закрыть</string>
     <string name="magnifier">Лупа</string>
-    <string name="main_app_running_message">Вы уже вошли на другом устройстве и играете в %s. 
+    <string name="main_app_running_message">Вы уже вошли на другом устройстве и играете в %s.
 Вы всё ещё можете играть в эту игру, но это отключит другой сеанс от Steam.</string>
-    <string name="main_app_running_other_device">Вы уже вошли на другом устройстве (%1$s) и играете в %2$s (%3$s), и это сохранение ещё не в облаке. 
+    <string name="main_app_running_other_device">Вы уже вошли на другом устройстве (%1$s) и играете в %2$s (%3$s), и это сохранение ещё не в облаке.
 Вы всё ещё можете играть в эту игру, но это отключит другой сеанс от Steam и может создать конфликт сохранений, когда прогресс того сеанса синхронизируется</string>
     <string name="main_app_running_title">Приложение запущено</string>
     <string name="main_app_session_suspended">Сеанс приложения приостановлен. Пожалуйста, перезапустите приложение.</string>

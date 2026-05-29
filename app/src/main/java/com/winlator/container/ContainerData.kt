@@ -6,6 +6,7 @@ import com.winlator.core.DefaultVersion
 import com.winlator.core.WineInfo
 import com.winlator.core.WineThemeManager
 import com.winlator.fexcore.FEXCorePreset
+import com.winlator.xenvironment.components.PulseAudioComponent
 import kotlin.String
 
 data class ContainerData(
@@ -20,6 +21,8 @@ data class ContainerData(
     var dxwrapper: String = Container.DEFAULT_DXWRAPPER,
     val dxwrapperConfig: String = "",
     val audioDriver: String = Container.DEFAULT_AUDIO_DRIVER,
+    val pulseaudioSuspendBehavior: String = PulseAudioComponent.SUSPEND_BEHAVIOR_THREAD,
+    val pulseaudioLowLatency: Boolean = false,
     val wincomponents: String = Container.DEFAULT_WINCOMPONENTS,
     val drives: String = Container.DEFAULT_DRIVES,
     val execArgs: String = "",
@@ -116,6 +119,8 @@ data class ContainerData(
                     "dxwrapper" to state.dxwrapper,
                     "dxwrapperConfig" to state.dxwrapperConfig,
                     "audioDriver" to state.audioDriver,
+                    "pulseaudioSuspendBehavior" to state.pulseaudioSuspendBehavior,
+                    "pulseaudioLowLatency" to state.pulseaudioLowLatency,
                     "wincomponents" to state.wincomponents,
                     "drives" to state.drives,
                     "execArgs" to state.execArgs,
@@ -182,6 +187,8 @@ data class ContainerData(
                     dxwrapper = savedMap["dxwrapper"] as String,
                     dxwrapperConfig = savedMap["dxwrapperConfig"] as String,
                     audioDriver = savedMap["audioDriver"] as String,
+                    pulseaudioSuspendBehavior = (savedMap["pulseaudioSuspendBehavior"] as? String) ?: PulseAudioComponent.SUSPEND_BEHAVIOR_THREAD,
+                    pulseaudioLowLatency = (savedMap["pulseaudioLowLatency"] as? Boolean) ?: false,
                     wincomponents = savedMap["wincomponents"] as String,
                     drives = savedMap["drives"] as String,
                     execArgs = savedMap["execArgs"] as String,

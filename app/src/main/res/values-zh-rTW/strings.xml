@@ -638,6 +638,10 @@
     <string name="width">寬度</string>
     <string name="height">高度</string>
     <string name="audio_driver">音訊驅動程式</string>
+    <string name="pulseaudio_suspend_behavior">PulseAudio 暫停行為</string>
+    <string name="pulseaudio_suspend_behavior_thread">透過執行緒暫停（預設）</string>
+    <string name="pulseaudio_suspend_behavior_pactl">透過 Pactl 暫停（省電）</string>
+    <string name="pulseaudio_low_latency">PulseAudio 低延遲模式</string>
     <string name="show_fps">顯示幀率</string>
     <string name="portrait_mode">直向模式</string>
     <string name="portrait_mode_description">適用於 8BitDo FlipPad/GameSir Pocket Taco 類型控制器</string>

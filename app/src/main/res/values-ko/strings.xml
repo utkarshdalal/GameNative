@@ -655,6 +655,10 @@
     <string name="width">너비</string>
     <string name="height">높이</string>
     <string name="audio_driver">오디오 드라이버</string>
+    <string name="pulseaudio_suspend_behavior">PulseAudio 일시 중단 동작</string>
+    <string name="pulseaudio_suspend_behavior_thread">스레드를 통한 일시 중단 (기본값)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Pactl을 통한 일시 중단 (절전)</string>
+    <string name="pulseaudio_low_latency">PulseAudio 저지연 모드</string>
     <string name="show_fps">FPS 표시</string>
     <string name="portrait_mode">세로 모드</string>
     <string name="portrait_mode_description">8BitDo FlipPad/GameSir Pocket Taco 유형 컨트롤러용</string>

@@ -646,6 +646,10 @@
 	<string name="width">Lățime</string>
 	<string name="height">Înălțime</string>
 	<string name="audio_driver">Driver audio</string>
+	<string name="pulseaudio_suspend_behavior">Comportament suspendare PulseAudio</string>
+	<string name="pulseaudio_suspend_behavior_thread">Suspendare prin Thread (Implicit)</string>
+	<string name="pulseaudio_suspend_behavior_pactl">Suspendare prin Pactl (Economisire energie)</string>
+	<string name="pulseaudio_low_latency">Mod latență redusă PulseAudio</string>
 	<string name="show_fps">Afișează FPS</string>
 	<string name="portrait_mode">Mod portret</string>
 	<string name="portrait_mode_description">Pentru controlere de tip 8BitDo FlipPad/GameSir Pocket Taco</string>
