@@ -3,6 +3,8 @@ package com.winlator.core;
 import android.os.Process;
 import android.util.Log;
 
+import app.gamenative.BuildConfig;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public abstract class ProcessHelper {
     public static final boolean PRINT_DEBUG = true; // FIXME change to false
@@ -128,6 +131,7 @@ public abstract class ProcessHelper {
         int pid = -1;
         java.lang.Process process = null;
         try {
+            if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
             Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
             process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
 
@@ -152,6 +156,59 @@ public abstract class ProcessHelper {
             if (terminationCallback != null) terminationCallback.call(-1);
         }
         return pid;
+    }
+
+    public static java.lang.Process startProcess(String command, String[] envp, File workingDir) {
+        try {
+            Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            java.lang.Process process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
+            if (!debugCallbacks.isEmpty()) {
+                createDebugThread(process.getInputStream());
+                createDebugThread(process.getErrorStream());
+            }
+
+            return process;
+        } catch (Exception e) {
+            Log.e("ProcessHelper", "Failed to execute command: " + e);
+            return null;
+        }
+    }
+
+    public static String execWithOutput(String command, String[] envp, File workingDir) {
+        StringBuilder output = new StringBuilder();
+        java.lang.Process process = null;
+        try {
+            Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)));
+            process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
+
+            // Drain stderr in background to prevent blocking
+            java.lang.Process finalProcess = process;
+            Executors.newSingleThreadExecutor().execute(() -> {
+                try (BufferedReader errReader = new BufferedReader(new InputStreamReader(finalProcess.getErrorStream()))) {
+                    while (errReader.readLine() != null) { /* discard */ }
+                } catch (IOException ignored) {}
+            });
+
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
+            }
+
+            if (!process.waitFor(5, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+            }
+
+            return output.toString();
+        } catch (Exception e) {
+            Log.e("ProcessHelper", "Failed to execute command with output: " + e);
+            if (process != null) {
+                process.destroyForcibly();
+            }
+            return "";
+        }
     }
 
     public static List<ProcessInfo> listSubProcesses() {
@@ -224,6 +281,9 @@ public abstract class ProcessHelper {
                         }
                     }
                 }
+            }
+            catch (java.io.InterruptedIOException e) {
+                // Expected when process.destroy() is called - silently ignore
             }
             catch (IOException e) {
                 Log.e("ProcessHelper", "Error on debug thread: " + e);

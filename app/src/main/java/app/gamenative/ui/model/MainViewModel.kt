@@ -17,6 +17,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.ui.enums.Orientation
 import java.util.EnumSet
+import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.ui.data.MainState
@@ -489,6 +490,7 @@ class MainViewModel @Inject constructor(
 
                 val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
                 Timber.tag("Exit").i("Got game id: $gameId")
+                ActiveGameRegistry.clearIfMatches(gameId)
                 SteamService.notifyRunningProcesses()
                 handleExitCloudSync(context, appId, gameId)
 
@@ -651,8 +653,10 @@ class MainViewModel @Inject constructor(
                         }
 
                         if (!shouldLaunchRealSteam) {
+                            ActiveGameRegistry.set(it)
                             SteamService.notifyRunningProcesses(it)
                         } else {
+                            ActiveGameRegistry.clear()
                             Timber.tag("MainViewModel").i("Skipping Steam process notification - real Steam will handle this")
                         }
                     }

@@ -113,6 +113,10 @@
     <string name="downloads_status_failed">실패</string>
     <string name="downloads_status_paused">일시중지됨</string>
     <string name="downloads_summary">한곳에서 진행 중인 다운로드와 저장소를 관리합니다</string>
+    <string name="storage_internal">내부</string>
+    <string name="storage_external">외부</string>
+    <string name="storage_free_of_total">%1$s: %3$s 중 %2$s 사용 가능</string>
+    <string name="storage_calculating">%1$s: 계산 중…</string>
     <string name="container_storage_title">저장소 관리자</string>
     <string name="container_storage_subtitle">내부 저장소와 외부 저장소 사이에서 설치 항목을 이동합니다</string>
     <string name="container_storage_summary">%1$d개 항목 • %2$s</string>
@@ -690,6 +694,8 @@
     <string name="vkd3d_feature_level">VKD3D 기능 수준</string>
     <string name="use_dri3">DRI3 사용</string>
     <string name="use_dri3_description">비활성화하면 일부 장치에서 그래픽 결함이 수정될 수 있습니다</string>
+    <string name="use_legacy_renderer">레거시 렌더러 사용</string>
+    <string name="use_legacy_renderer_description">VulkanRenderer 대신 레거시 GLRenderer를 사용합니다. VulkanRenderer는 성능을 향상시키지만, 베타 버전이므로 문제가 발생할 수 있습니다.</string>
     <string name="sync_frame">모든 프레임 동기화</string>
     <string name="disable_present_wait">KHR_present_wait 비활성화</string>
     <string name="present_modes">프레젠트 모드</string>

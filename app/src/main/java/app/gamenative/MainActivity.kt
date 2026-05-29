@@ -30,6 +30,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.intercept.Interceptor
 import coil.request.CachePolicy
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
@@ -470,9 +471,17 @@ class MainActivity : ComponentActivity() {
         //  Idealy, compose handles back presses automaticially in which we can override it in certain composables.
         //  Since LibraryScreen uses its own navigation system, this will need to be re-worked accordingly.
         if (!eventDispatched) {
-            if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-                if (SteamService.keepAlive){
+            if (event.keyCode == KeyEvent.KEYCODE_BACK && SteamService.keepAlive) {
+                if (event.action == KeyEvent.ACTION_DOWN) {
                     PluviaApp.events.emit(AndroidEvent.BackPressed)
+                    eventDispatched = true
+                } else if (BuildConfig.MODERN_ANDROID && event.action == KeyEvent.ACTION_UP) {
+                    // Modern only: swallow BACK UP so super.dispatchKeyEvent doesn't
+                    // forward it to OnBackPressedDispatcher, which would double-fire
+                    // XServerScreen's BackHandler and immediately dismiss the quick
+                    // menu the DOWN event just opened.
+                    // Legacy must NOT swallow UP — master relies on UP falling through
+                    // so any KeyEvent consumers (controller code, etc.) see it.
                     eventDispatched = true
                 }
             }

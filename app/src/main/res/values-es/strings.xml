@@ -113,6 +113,10 @@
     <string name="downloads_status_failed">Fallido</string>
     <string name="downloads_status_paused">Pausado</string>
     <string name="downloads_summary">Gestiona descargas activas y almacenamiento en un solo lugar</string>
+    <string name="storage_internal">Interno</string>
+    <string name="storage_external">Externo</string>
+    <string name="storage_free_of_total">%1$s: %2$s libres de %3$s</string>
+    <string name="storage_calculating">%1$s: Calculando…</string>
     <string name="container_storage_title">Administrador de almacenamiento</string>
     <string name="container_storage_subtitle">Mueve instalaciones entre almacenamiento interno y externo</string>
     <string name="container_storage_summary">%1$d elementos • %2$s</string>
@@ -725,6 +729,8 @@
     <string name="vkd3d_feature_level">Feature Level de VKD3D</string>
     <string name="use_dri3">Usar DRI3</string>
     <string name="use_dri3_description">Desactivarlo puede corregir fallos gráficos en algunos dispositivos.</string>
+    <string name="use_legacy_renderer">Usar renderizador heredado</string>
+    <string name="use_legacy_renderer_description">Usa el GLRenderer heredado en lugar del VulkanRenderer. VulkanRenderer mejora el rendimiento, pero está en beta y puede causar problemas.</string>
     <string name="sync_frame">Sincronizar cada fotograma</string>
     <string name="disable_present_wait">Desactivar KHR_present_wait</string>
     <string name="present_modes">Modos de presentación</string>

@@ -8,6 +8,7 @@ import app.gamenative.data.FileChangeLists
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
+import app.gamenative.data.SteamFileHashCache
 import app.gamenative.data.UFS
 import app.gamenative.db.PluviaDatabase
 import app.gamenative.enums.AppType
@@ -34,6 +35,7 @@ import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody
 import java.util.Date
+import java.nio.file.Files
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -54,6 +56,7 @@ import org.robolectric.RobolectricTestRunner
 import java.io.File
 import java.io.IOException
 import java.lang.reflect.Field
+import java.nio.file.Path
 import java.util.EnumSet
 import java.util.concurrent.CompletableFuture
 
@@ -330,6 +333,80 @@ class SteamAutoCloudTest {
         assertEquals("Should have 5 files managed", 5, result.filesManaged)
     }
 
+    @Test
+    fun getCachedShaOrHash_reusesCachedShaWhenMetadataMatches() = runBlocking {
+        val hashFile = File(saveFilesDir, "cached_hash_test.sav")
+        hashFile.writeBytes("cache me".toByteArray())
+        val path = hashFile.toPath()
+        val sizeBytes = Files.size(path)
+        val mtimeMillis = Files.getLastModifiedTime(path).toMillis()
+        val cachedSha = ByteArray(20) { 7 }
+
+        db.steamFileHashCacheDao().insert(
+            SteamFileHashCache(
+                appId = steamAppId,
+                absPath = path.toString(),
+                sizeBytes = sizeBytes,
+                mtimeMillis = mtimeMillis,
+                sha = cachedSha,
+            ),
+        )
+
+        val sha = SteamAutoCloud.getCachedShaOrHash(
+            appId = steamAppId,
+            path = path,
+            hashCacheDao = db.steamFileHashCacheDao(),
+        )
+
+        assertTrue("Should report cache hit", sha.wasCacheHit)
+        assertArrayEquals("Should reuse cached SHA when size and mtime match", cachedSha, sha.sha)
+    }
+
+    @Test
+    fun getCachedShaOrHash_rehashesWhenMetadataChanges() = runBlocking {
+        val hashFile = File(saveFilesDir, "rehash_test.sav")
+        hashFile.writeBytes("old-data".toByteArray())
+        val path = hashFile.toPath()
+        val originalSizeBytes = Files.size(path)
+        val originalMtimeMillis = Files.getLastModifiedTime(path).toMillis()
+        val cachedSha = ByteArray(20) { 3 }
+
+        db.steamFileHashCacheDao().insert(
+            SteamFileHashCache(
+                appId = steamAppId,
+                absPath = path.toString(),
+                sizeBytes = originalSizeBytes,
+                mtimeMillis = originalMtimeMillis,
+                sha = cachedSha,
+            ),
+        )
+
+        hashFile.writeBytes("new-data-with-different-size".toByteArray())
+
+        val sha = SteamAutoCloud.getCachedShaOrHash(
+            appId = steamAppId,
+            path = path,
+            hashCacheDao = db.steamFileHashCacheDao(),
+        )
+
+        assertFalse("Should report cache miss when metadata changes", sha.wasCacheHit)
+        assertFalse("Should not reuse cached SHA when metadata changes", cachedSha.contentEquals(sha.sha))
+        val cachedEntry = db.steamFileHashCacheDao().getByAppIdAndPath(steamAppId, path.toString())
+        assertNotNull("Cache entry should be updated", cachedEntry)
+        assertArrayEquals("Updated cache should store new SHA", sha.sha, cachedEntry!!.sha)
+    }
+
+    @Test(expected = java.nio.file.NoSuchFileException::class)
+    fun getCachedShaOrHash_throwsWhenFileDoesNotExist() = runBlocking {
+        val nonExistent = File(saveFilesDir, "does_not_exist.sav").toPath()
+        SteamAutoCloud.getCachedShaOrHash(
+            appId = steamAppId,
+            path = nonExistent,
+            hashCacheDao = db.steamFileHashCacheDao(),
+        )
+        Unit
+    }
+
 //    @Test
     fun testDownloadCloudSavesOnFirstBoot() = runBlocking {
         // Clear existing files and database state
@@ -525,6 +602,17 @@ class SteamAutoCloudTest {
         assertEquals("File 1 content should match", cloudFile1Content.contentToString(), expectedFile1.readBytes().contentToString())
         assertEquals("File 2 content should match", cloudFile2Content.contentToString(), expectedFile2.readBytes().contentToString())
         assertEquals("File 3 content should match", cloudFile3Content.contentToString(), expectedFile3.readBytes().contentToString())
+
+        val cacheEntry1 = db.steamFileHashCacheDao().getByAppIdAndPath(steamAppId, expectedFile1.toPath().toString())
+        val cacheEntry2 = db.steamFileHashCacheDao().getByAppIdAndPath(steamAppId, expectedFile2.toPath().toString())
+        val cacheEntry3 = db.steamFileHashCacheDao().getByAppIdAndPath(steamAppId, expectedFile3.toPath().toString())
+
+        assertNotNull("File 1 cache entry should exist", cacheEntry1)
+        assertNotNull("File 2 cache entry should exist", cacheEntry2)
+        assertNotNull("File 3 cache entry should exist", cacheEntry3)
+        assertArrayEquals("File 1 cache SHA should match cloud SHA", cloudFile1Sha, cacheEntry1!!.sha)
+        assertArrayEquals("File 2 cache SHA should match cloud SHA", cloudFile2Sha, cacheEntry2!!.sha)
+        assertArrayEquals("File 3 cache SHA should match cloud SHA", cloudFile3Sha, cacheEntry3!!.sha)
 
         // Verify database change number was updated
         val changeNumber = db.appChangeNumbersDao().getByAppId(steamAppId)
@@ -1861,6 +1949,17 @@ class SteamAutoCloudTest {
         assertEquals("File 2 content", file2Content.contentToString(), expected2.readBytes().contentToString())
         assertEquals("File 3 content", file3Content.contentToString(), expected3.readBytes().contentToString())
 
+        // verify downloads seeded the hash cache with the correct SHA
+        val cache1 = db.steamFileHashCacheDao().getByAppIdAndPath(steamAppId, expected1.toPath().toString())
+        val cache2 = db.steamFileHashCacheDao().getByAppIdAndPath(steamAppId, expected2.toPath().toString())
+        val cache3 = db.steamFileHashCacheDao().getByAppIdAndPath(steamAppId, expected3.toPath().toString())
+        assertNotNull("Cache entry for file 1 should exist", cache1)
+        assertNotNull("Cache entry for file 2 should exist", cache2)
+        assertNotNull("Cache entry for file 3 should exist", cache3)
+        assertArrayEquals("File 1 cache SHA should match file content", sha1(file1Content), cache1!!.sha)
+        assertArrayEquals("File 2 cache SHA should match file content", sha1(file2Content), cache2!!.sha)
+        assertArrayEquals("File 3 cache SHA should match file content", sha1(file3Content), cache3!!.sha)
+
         // verify DB change number updated
         val cn = db.appChangeNumbersDao().getByAppId(steamAppId)
         assertNotNull("Change number should exist", cn)
@@ -2314,7 +2413,6 @@ class SteamAutoCloudTest {
         assertEquals(SyncResult.Success, result!!.syncResult)
         assertTrue("Should have downloaded files", result.filesDownloaded > 0)
     }
-
     @Test
     fun synced_cloudAdvanced_metadataFailure_doesNotCancelSiblingDownloads() = runBlocking {
         val localCn = 5L

@@ -61,6 +61,10 @@
     <string name="downloads_status_failed">Mislykket</string>
     <string name="downloads_status_paused">Sat på pause</string>
     <string name="downloads_summary">Administrer aktive downloads og lager ét sted</string>
+    <string name="storage_internal">Intern</string>
+    <string name="storage_external">Ekstern</string>
+    <string name="storage_free_of_total">%1$s: %2$s ledig af %3$s</string>
+    <string name="storage_calculating">%1$s: Beregner…</string>
     <string name="container_storage_title">Lagerstyring</string>
     <string name="container_storage_subtitle">Flyt installationer mellem intern og ekstern lagerplads</string>
     <string name="container_storage_summary">%1$d elementer • %2$s</string>
@@ -514,6 +518,8 @@
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">Brug DRI3</string>
     <string name="use_dri3_description">Deaktivering kan løse grafiske fejl på nogle enheder</string>
+    <string name="use_legacy_renderer">Brug ældre renderer</string>
+    <string name="use_legacy_renderer_description">Brug den ældre GLRenderer i stedet for VulkanRenderer. VulkanRenderer forbedrer ydeevnen, men er i beta og kan forårsage problemer.</string>
 
     <!-- Container Configuration: Emulation -->
     <string name="fexcore_version">FEXCore-version</string>

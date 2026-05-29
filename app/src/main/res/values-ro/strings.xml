@@ -104,6 +104,10 @@
     <string name="downloads_status_failed">Eșuat</string>
     <string name="downloads_status_paused">În pauză</string>
     <string name="downloads_summary">Gestionează descărcările active și stocarea într-un singur loc</string>
+    <string name="storage_internal">Intern</string>
+    <string name="storage_external">Extern</string>
+    <string name="storage_free_of_total">%1$s: %2$s liber din %3$s</string>
+    <string name="storage_calculating">%1$s: Se calculează…</string>
     <string name="container_storage_title">Manager stocare</string>
     <string name="container_storage_subtitle">Mută instalările între stocarea internă și externă</string>
     <string name="container_storage_summary">%1$d elemente • %2$s</string>
@@ -681,6 +685,8 @@
 	<string name="vkd3d_feature_level">Nivel funcțional VKD3D</string>
 	<string name="use_dri3">Folosește DRI3</string>
 	<string name="use_dri3_description">Dezactivarea poate rezolva artefacte grafice pe unele dispozitive</string>
+	<string name="use_legacy_renderer">Folosește redarea veche</string>
+	<string name="use_legacy_renderer_description">Folosește vechiul GLRenderer în loc de VulkanRenderer. VulkanRenderer îmbunătățește performanța, dar este în beta și poate cauza probleme.</string>
 	<string name="sync_frame">Sincronizează fiecare cadru</string>
 	<string name="disable_present_wait">Dezactivează KHR_present_wait</string>
 	<string name="present_modes">Moduri de prezentare</string>

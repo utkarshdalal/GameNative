@@ -1163,6 +1163,10 @@ https://gamenative.app
     <string name="downloads_status_failed">Ошибка</string>
     <string name="downloads_status_paused">Приостановлено</string>
     <string name="downloads_summary">Управляйте активными загрузками и хранилищем в одном месте</string>
+    <string name="storage_internal">Внутренняя</string>
+    <string name="storage_external">Внешняя</string>
+    <string name="storage_free_of_total">%1$s: %2$s свободно из %3$s</string>
+    <string name="storage_calculating">%1$s: Вычисление…</string>
     <string name="container_storage_title">Менеджер хранилища</string>
     <string name="container_storage_subtitle">Перемещайте установки между внутренним и внешним хранилищем</string>
     <string name="container_storage_summary">%1$d элементов • %2$s</string>
@@ -1249,6 +1253,8 @@ https://gamenative.app
     <string name="use_adrenotools_turnip">Использовать Adrenotools Turnip</string>
     <string name="use_dri3">Использовать DRI3</string>
     <string name="use_dri3_description">Отключение может исправить графические глюки на некоторых устройствах</string>
+    <string name="use_legacy_renderer">Использовать устаревший рендерер</string>
+    <string name="use_legacy_renderer_description">Использовать устаревший GLRenderer вместо VulkanRenderer. VulkanRenderer повышает производительность, но находится в бета-версии и может вызывать проблемы.</string>
     <string name="use_legacy_drm">Использовать Legacy DRM</string>
     <string name="use_sdl_api">Использовать SDL API</string>
     <string name="use_steam_input">Использовать Steam Input</string>

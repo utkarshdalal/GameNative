@@ -101,6 +101,10 @@
     <string name="downloads_status_failed">Помилка</string>
     <string name="downloads_status_paused">Призупинено</string>
     <string name="downloads_summary">Керуйте активними завантаженнями та сховищем в одному місці</string>
+    <string name="storage_internal">Внутрішня</string>
+    <string name="storage_external">Зовнішня</string>
+    <string name="storage_free_of_total">%1$s: %2$s вільно з %3$s</string>
+    <string name="storage_calculating">%1$s: Обчислення…</string>
     <string name="container_storage_title">Менеджер сховища</string>
     <string name="container_storage_subtitle">Переміщуйте встановлення між внутрішнім і зовнішнім сховищем</string>
     <string name="container_storage_summary">%1$d елементів • %2$s</string>
@@ -675,6 +679,8 @@
     <string name="vkd3d_feature_level">Рівень функцій VKD3D</string>
     <string name="use_dri3">Використовувати DRI3</string>
     <string name="use_dri3_description">Вимкнення параметра може виправити графічні проблеми на деяких пристроях</string>
+    <string name="use_legacy_renderer">Використовувати старий рендерер</string>
+    <string name="use_legacy_renderer_description">Використовувати старий GLRenderer замість VulkanRenderer. VulkanRenderer покращує продуктивність, але перебуває в стадії бета-тестування і може спричиняти проблеми.</string>
     <string name="sync_frame">Синхронізувати кожен кадр</string>
     <string name="disable_present_wait">Вимкнути KHR_present_wait</string>
     <string name="present_modes">Режими відображення</string>

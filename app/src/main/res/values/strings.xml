@@ -254,6 +254,8 @@
     <string name="screen_effects_scaling_mode_stretch">Stretch</string>
     <string name="screen_effects_scaling_mode_fsr">FSR</string>
     <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_natural">Natural</string>
     <string name="screen_effects_fsr">FSR 1.0</string>
     <string name="screen_effects_fsr_description">Official AMD FidelityFX Super Resolution 1.0 using EASU + RCAS with a lower internal render resolution and full-resolution upscale.</string>
     <string name="screen_effects_fsr_quality">FSR quality</string>
@@ -702,9 +704,12 @@
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">Use DRI3</string>
     <string name="use_dri3_description">Disabling may fix graphical glitches on some devices</string>
+    <string name="use_legacy_renderer">Use Legacy Renderer</string>
+    <string name="use_legacy_renderer_description">Use legacy GLRenderer instead of VulkanRenderer. VulkanRenderer improves performance, but is in beta and may cause issues.</string>
     <string name="sync_frame">Sync Every Frame</string>
     <string name="disable_present_wait">Disable KHR_present_wait</string>
     <string name="present_modes">Present Modes</string>
+    <string name="renderer_present_modes">Renderer Present Mode</string>
     <string name="resource_type">Memory Resource Type</string>
     <string name="bcn_emulation">BCn Emulation</string>
     <string name="bcn_emulation_type">BCn Emulation Type</string>
@@ -955,6 +960,10 @@
     <string name="settings_storage_title">Storage</string>
     <string name="settings_storage_manage_title">Storage Manager</string>
     <string name="settings_storage_manage_subtitle">Review game and container storage in one place</string>
+    <string name="storage_internal">Internal</string>
+    <string name="storage_external">External</string>
+    <string name="storage_free_of_total">%1$s: %2$s free of %3$s</string>
+    <string name="storage_calculating">%1$s: Calculating…</string>
     <string name="container_storage_title">Container &amp; Storage Manager</string>
     <string name="container_storage_subtitle">Review game and container storage, including installed games without containers</string>
     <string name="container_storage_summary">%1$d items • %2$s</string>

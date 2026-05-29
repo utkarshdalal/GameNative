@@ -58,21 +58,23 @@ public class VirGLRendererComponent extends EnvironmentComponent implements Conn
     private long getSharedEGLContext() {
         Log.d("VirGLRendererComponent", "Calling getSharedEGLContext");
         if (sharedEGLContextPtr != 0) return sharedEGLContextPtr;
+        if (!(xServer.getRenderer() instanceof GLRenderer)) {
+            Log.w("VirGLRendererComponent", "getSharedEGLContext: not on the GL renderer path; returning 0");
+            return 0;
+        }
+        GLRenderer renderer = (GLRenderer) xServer.getRenderer();
         final Thread thread = Thread.currentThread();
         try {
-            GLRenderer renderer = xServer.getRenderer();
             renderer.xServerView.queueEvent(() -> {
                 sharedEGLContextPtr = getCurrentEGLContextPtr();
-
-                synchronized(thread) {
+                synchronized (thread) {
                     thread.notify();
                 }
             });
             synchronized (thread) {
                 thread.wait();
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return 0;
         }
         Log.d("VirGLRendererComponent", "Finished getSharedEGLContext");

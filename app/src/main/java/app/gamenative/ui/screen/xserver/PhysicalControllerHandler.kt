@@ -92,6 +92,11 @@ class PhysicalControllerHandler(
                         (controllerBinding.binding == Binding.GAMEPAD_BUTTON_L2 || controllerBinding.binding == Binding.GAMEPAD_BUTTON_R2)
                     ) 1f else 0f
                     handleInputEvent(controllerBinding.binding, event.action == KeyEvent.ACTION_DOWN, offset)
+
+                    val winHandler = xServer?.winHandler
+                    val state = profile?.gamepadState
+                    if (winHandler != null)
+                        winHandler.sendVirtualGamepadState(state)
                     return true
                 }
             }
@@ -145,6 +150,11 @@ class PhysicalControllerHandler(
 
                 // Process analog stick input
                 processJoystickInput(controller)
+
+                val winHandler = xServer?.winHandler
+                val state = profile?.gamepadState
+                if (winHandler != null)
+                    winHandler.sendVirtualGamepadState(state)
                 return true
             }
         }
@@ -307,8 +317,6 @@ class PhysicalControllerHandler(
                     if (controller != null) {
                         controller.state.copy(state)
                     }
-                    winHandler.sendGamepadState()
-                    winHandler.sendVirtualGamepadState(state)
                 }
             }
         } else {

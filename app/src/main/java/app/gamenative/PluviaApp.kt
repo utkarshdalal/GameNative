@@ -9,6 +9,7 @@ import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.EventDispatcher
+import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.utils.ContainerMigrator
@@ -27,7 +28,7 @@ import com.winlator.container.Container
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
-import com.winlator.widget.XServerView
+import com.winlator.widget.XServerRendererView
 import com.winlator.xenvironment.XEnvironment
 import timber.log.Timber
 import dagger.hilt.android.HiltAndroidApp
@@ -192,7 +193,7 @@ class PluviaApp : SplitCompatApplication() {
 
         // TODO: find a way to make this saveable, this is terrible (leak that memory baby)
         internal var xEnvironment: XEnvironment? = null
-        internal var xServerView: XServerView? = null
+        internal var xServerView: XServerRendererView? = null
         var inputControlsView: InputControlsView? = null
         var inputControlsManager: InputControlsManager? = null
         var touchpadView: TouchpadView? = null
@@ -235,6 +236,7 @@ class PluviaApp : SplitCompatApplication() {
             inputControlsManager = null
             touchpadView = null
             achievementWatcher = null
+            ActiveGameRegistry.clear()
             SteamService.keepAlive = false
             SteamService.clearPlayingConflict()
             clearActiveSuspendState()
