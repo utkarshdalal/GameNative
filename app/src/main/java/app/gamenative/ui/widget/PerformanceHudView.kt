@@ -61,6 +61,7 @@ class PerformanceHudView(
     private var attachedMetricSignature: List<MetricSignature> = emptyList()
     private var appearance = appearanceFor(initialConfig.size)
     private var smoothedBatteryRuntimeHours: Double? = null
+    private var isPaused = false
 
     private val backgroundDrawable = GradientDrawable().apply {
         shape = GradientDrawable.RECTANGLE
@@ -166,9 +167,27 @@ class PerformanceHudView(
         refreshVisibleMetrics()
     }
 
+    fun pause() {
+        if (!isPaused) {
+            isPaused = true
+            stopUpdates()
+        }
+    }
+
+    fun resume() {
+        if (isPaused) {
+            isPaused = false
+            if (isAttachedToWindow) {
+                startUpdates()
+            }
+        }
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        startUpdates()
+        if (!isPaused) {
+            startUpdates()
+        }
     }
 
     override fun onDetachedFromWindow() {
@@ -678,7 +697,7 @@ class PerformanceHudView(
             discoverPrioritizedCpuTempPaths(),
         )
         if (reading != null) {
-            Timber.v("[HUD] CPU temp: %d°C from %s", reading.celsius, reading.source)
+            Timber.d("[HUD] CPU temp: %d°C from %s", reading.celsius, reading.source)
         }
         return reading?.celsius
     }
@@ -690,7 +709,7 @@ class PerformanceHudView(
         ) + discoverPrioritizedGpuTempPaths()
         val reading = readTemperatureCWithSource(paths)
         if (reading != null) {
-            Timber.v("[HUD] GPU temp: %d°C from %s", reading.celsius, reading.source)
+            Timber.d("[HUD] GPU temp: %d°C from %s", reading.celsius, reading.source)
         }
         return reading?.celsius
     }

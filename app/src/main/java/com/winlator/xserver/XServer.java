@@ -5,7 +5,7 @@ import android.util.Log;
 import android.util.SparseArray;
 
 import com.winlator.math.Mathf;
-import com.winlator.renderer.GLRenderer;
+import com.winlator.renderer.XServerRenderer;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xserver.extensions.BigReqExtension;
 import com.winlator.xserver.extensions.DRI3Extension;
@@ -40,7 +40,7 @@ public class XServer {
     private boolean isGrabbed = false;
     private XClient grabbingClient = null;
     private SHMSegmentManager shmSegmentManager;
-    private GLRenderer renderer;
+    private XServerRenderer renderer;
     private WinHandler winHandler;
     private final EnumMap<Lockable, ReentrantLock> locks = new EnumMap<>(Lockable.class);
     private boolean relativeMouseMovement = false;
@@ -79,12 +79,16 @@ public class XServer {
         this.simulateTouchScreen = simulateTouchScreen;
     }
 
-    public GLRenderer getRenderer() {
+    public XServerRenderer getRenderer() {
         return renderer;
     }
 
-    public void setRenderer(GLRenderer renderer) {
+    public void setRenderer(XServerRenderer renderer) {
         this.renderer = renderer;
+    }
+
+    public void setRenderingEnabled(boolean enabled) {
+        // intentionally empty
     }
 
     public WinHandler getWinHandler() {

@@ -4,7 +4,6 @@ import android.util.SparseArray;
 
 import com.winlator.core.Callback;
 import com.winlator.renderer.Texture;
-import com.winlator.widget.XServerView;
 import com.winlator.xenvironment.components.VortekRendererComponent;
 
 import java.util.Objects;
@@ -43,7 +42,7 @@ public class DrawableManager extends XResourceManager implements XResourceManage
 //            Objects.requireNonNull(texture);
 //            xServerView.queueEvent(() -> VortekRendererComponent.destroyTexture(texture));
 //        }
-        if (texture != null) xServer.getRenderer().xServerView.queueEvent(texture::destroy);
+        if (texture != null) xServer.getRenderer().getRendererView().queueEvent(texture::destroy);
 
         Callback<Drawable> onDestroyListener = drawable.getOnDestroyListener();
         if (onDestroyListener != null) onDestroyListener.call(drawable);

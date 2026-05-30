@@ -483,6 +483,10 @@
     <string name="width">Bredde</string>
     <string name="height">Højde</string>
     <string name="audio_driver">Lyd-driver</string>
+    <string name="pulseaudio_suspend_behavior">PulseAudio suspendering</string>
+    <string name="pulseaudio_suspend_behavior_thread">Suspender via tråd (Standard)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Suspender via Pactl (Strømbesparelse)</string>
+    <string name="pulseaudio_low_latency">PulseAudio lav latenstilstand</string>
     <string name="show_fps">Vis FPS</string>
     <string name="portrait_mode">Portrættilstand</string>
     <string name="portrait_mode_description">Til 8BitDo FlipPad/GameSir Pocket Taco-type controllere</string>
@@ -494,6 +498,8 @@
     <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
     <string name="steam_offline_mode">Steam Offline-tilstand</string>
     <string name="steam_offline_mode_description">Start Steam-spil i offline-tilstand</string>
+    <string name="epic_offline_mode">Epic Offline-tilstand</string>
+    <string name="epic_offline_mode_description">Start Epic-spil i offline-tilstand</string>
     <string name="achievement_unlocked">Præstation låst op</string>
     <string name="settings_achievement_notification_position">Placering af præstationsnotifikation</string>
     <string name="achievement_position_top_left">Øverst til venstre</string>
@@ -518,6 +524,8 @@
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">Brug DRI3</string>
     <string name="use_dri3_description">Deaktivering kan løse grafiske fejl på nogle enheder</string>
+    <string name="use_legacy_renderer">Brug ældre renderer</string>
+    <string name="use_legacy_renderer_description">Brug den ældre GLRenderer i stedet for VulkanRenderer. VulkanRenderer forbedrer ydeevnen, men er i beta og kan forårsage problemer.</string>
 
     <!-- Container Configuration: Emulation -->
     <string name="fexcore_version">FEXCore-version</string>
@@ -1110,6 +1118,7 @@
 
     <!-- TODO: Manual review - New strings from latest pull -->
     <!-- Steam-specific dialogs -->
+    <string name="steam_2fa_use_guard_totp">Eller brug 2-faktor-godkendelseskoden</string>
     <string name="steam_install_space_prompt">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tStørrelse på disk: %2$s\n\tTilgængelig plads: %3$s</string>
     <string name="steam_install_space">Download-størrelse: %1$s\nStørrelse på disk: %2$s\nTilgængelig plads: %3$s</string>
     <string name="steam_install_not_enough_space">Appen der installeres har brug for %1$s plads, men der er kun %2$s tilbage på denne enhed</string>

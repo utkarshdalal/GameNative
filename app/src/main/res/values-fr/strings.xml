@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Utilisez l\'application mobile Steam pour confirmer votre connexion…</string>
     <string name="steam_2fa_device">Veuillez entrer votre code d\'authentification à deux facteurs depuis votre application d\'authentification.</string>
     <string name="steam_2fa_email">Veuillez entrer le code d\'authentification envoyé à l\'adresse %s</string>
+    <string name="steam_2fa_use_guard_totp">Ou utilisez le code d\'authentification à deux facteurs</string>
     <string name="steam_install_space_prompt">L\'application en cours d\'installation nécessite l\'espace suivant. Voulez-vous continuer ?\n\n\tTaille du téléchargement : %1$s\n\tTaille sur le disque : %2$s\n\tEspace disponible : %3$s</string>
     <string name="steam_install_space">Taille du téléchargement : %1$s\nTaille sur le disque : %2$s\nEspace disponible : %3$s</string>
     <string name="steam_install_not_enough_space">L\'application en cours d\'installation nécessite %1$s d\'espace mais il ne reste que %2$s sur cet appareil</string>
@@ -641,6 +642,10 @@
     <string name="width">Largeur</string>
     <string name="height">Hauteur</string>
     <string name="audio_driver">Pilote audio</string>
+    <string name="pulseaudio_suspend_behavior">Comportement de suspension PulseAudio</string>
+    <string name="pulseaudio_suspend_behavior_thread">Suspension via Thread (Par défaut)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Suspension via Pactl (Économie d\'énergie)</string>
+    <string name="pulseaudio_low_latency">Mode faible latence PulseAudio</string>
     <string name="show_fps">Afficher les FPS</string>
     <string name="portrait_mode">Mode portrait</string>
     <string name="portrait_mode_description">Pour les manettes de type 8BitDo FlipPad/GameSir Pocket Taco</string>
@@ -655,6 +660,8 @@
     <string name="launch_steam_client_beta">Lancer le client Steam (Bêta)</string>
     <string name="steam_offline_mode">Mode Hors Ligne Steam</string>
     <string name="steam_offline_mode_description">Lancer les jeux Steam en mode hors ligne</string>
+    <string name="epic_offline_mode">Mode Hors Ligne Epic</string>
+    <string name="epic_offline_mode_description">Lancer les jeux Epic en mode hors ligne</string>
     <string name="achievement_unlocked">Succès débloqué</string>
     <string name="settings_achievement_notification_position">Position de la notification de succès</string>
     <string name="achievement_position_top_left">En haut à gauche</string>
@@ -679,6 +686,8 @@
     <string name="vkd3d_feature_level">Niveau de fonctionnalité VKD3D</string>
     <string name="use_dri3">Utiliser DRI3</string>
     <string name="use_dri3_description">Désactiver peut corriger les problèmes graphiques sur certains appareils</string>
+    <string name="use_legacy_renderer">Utiliser l\'ancien moteur de rendu</string>
+    <string name="use_legacy_renderer_description">Utilise l\'ancien GLRenderer au lieu de VulkanRenderer. VulkanRenderer améliore les performances, mais est en bêta et peut causer des problèmes.</string>
     <string name="sync_frame">Synchroniser chaque image</string>
     <string name="disable_present_wait">Désactiver KHR_present_wait</string>
     <string name="present_modes">Modes de présentation</string>

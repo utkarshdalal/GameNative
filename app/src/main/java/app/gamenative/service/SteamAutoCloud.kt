@@ -167,13 +167,27 @@ object SteamAutoCloud {
         // not "<WinAppDataRoaming>/saves" — root-only replacement can't express this.
         val cloudPrefixToLocalPath: Map<String, String> = appInfo.ufs.saveFilePatterns
             .filter { it.uploadPath != it.path }
-            .associate { p ->
-                val cloudKey = "%${p.uploadRoot.name}%${p.uploadPath}"
+            .flatMap { p ->
+                val localPath = Paths.get(prefixToPath(p.root.name), p.substitutedPath).pathString
+                val cloudPath = p.uploadPath
+                    .replace("\\", "/")
                     .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
                     .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
-                    .trimEnd('/')  // keep consistent with the trimEnd done at lookup time
-                cloudKey to Paths.get(prefixToPath(p.root.name), p.substitutedPath).pathString
+                    .trim('/')
+                val cloudRoot = "%${p.uploadRoot.name}%"
+                val cloudPrefixes = if (cloudPath.isBlank()) {
+                    listOf(cloudRoot)
+                } else {
+                    listOf(
+                        "$cloudRoot$cloudPath",
+                        "$cloudRoot/$cloudPath",
+                    )
+                }
+                cloudPrefixes.map { cloudKey ->
+                    cloudKey to localPath
+                }
             }
+            .toMap()
 
         val getPathTypePairs: (AppFileChangeList) -> List<Pair<String, String>> = { fileList ->
             fileList.pathPrefixes
@@ -205,7 +219,13 @@ object SteamAutoCloud {
                 // subfolder that the local path includes. Root-only replacement can't express this.
                 // Cloud prefixes sometimes include a trailing slash (e.g. "%WinAppDataLocalLow%76561198035529760/save1/")
                 // but the map keys are built without one — trim before lookup so they match.
-                cloudPrefixToLocalPath[prefix.trimEnd('/')]
+                val cloudPrefix = prefix.trimEnd('/')
+                cloudPrefixToLocalPath.entries
+                    .filter { (cloudKey, _) -> cloudPrefix == cloudKey || cloudPrefix.startsWith("$cloudKey/") }
+                    .maxByOrNull { (cloudKey, _) -> cloudKey.length }
+                    ?.let { (cloudKey, localPath) ->
+                        Paths.get(localPath, cloudPrefix.removePrefix(cloudKey).trimStart('/')).pathString
+                    }
                     ?: run {
                         var modified = prefix
 

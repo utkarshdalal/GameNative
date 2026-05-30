@@ -11,14 +11,12 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
 /**
  * Comprehensive tests for GOGManifestParser
  * Uses real data classes and JSON parsing
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28])
 class GOGManifestParserTest {
     private lateinit var parser: GOGManifestParser
 

@@ -89,7 +89,10 @@ object SteamUtils {
 
     fun getDownloadBytes(manifest: ManifestInfo?): Long {
         if (manifest == null) return 0L
-        return if (manifest.download > 0L) manifest.download else manifest.size
+        // Cap DownloadSize to installSize due to incorrectly gigantic sizes
+        // DL size should always be smaller than installSize.
+        val hasSaneDownload = manifest.download > 0L && manifest.download <= manifest.size
+        return if (hasSaneDownload) manifest.download else manifest.size
     }
 
     internal val http = Net.http.newBuilder()

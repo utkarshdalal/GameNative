@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Użyj aplikacji mobilnej Steam, aby potwierdzić logowanie…</string>
     <string name="steam_2fa_device">Podaj kod uwierzytelniania dwuskładnikowego z aplikacji uwierzytelniającej.</string>
     <string name="steam_2fa_email">Podaj kod uwierzytelniający wysłany na e-mail %s</string>
+    <string name="steam_2fa_use_guard_totp">Lub użyj kodu do uwierzytelniania dwuskładnikowego</string>
     <string name="steam_install_space_prompt">Instalowana aplikacja ma następujące wymagania dotyczące miejsca. Czy chcesz kontynuować?\n\n\tRozmiar pobierania: %1$s\n\tRozmiar na dysku: %2$s\n\tDostępne miejsce: %3$s</string>
     <string name="steam_install_space">Rozmiar pobierania: %1$s\nRozmiar na dysku: %2$s\nDostępne miejsce: %3$s</string>
     <string name="steam_install_not_enough_space">Instalowana aplikacja wymaga %1$s miejsca, ale na tym urządzeniu pozostało tylko %2$s</string>
@@ -654,6 +655,10 @@
     <string name="width">Szerokość</string>
     <string name="height">Wysokość</string>
     <string name="audio_driver">Sterownik audio</string>
+    <string name="pulseaudio_suspend_behavior">Zachowanie zawieszenia PulseAudio</string>
+    <string name="pulseaudio_suspend_behavior_thread">Zawieszenie przez wątek (Domyślne)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Zawieszenie przez Pactl (Oszczędzanie energii)</string>
+    <string name="pulseaudio_low_latency">Tryb niskiego opóźnienia PulseAudio</string>
     <string name="show_fps">Pokaż FPS</string>
     <string name="portrait_mode">Tryb pionowy</string>
     <string name="portrait_mode_description">Dla kontrolerów typu 8BitDo FlipPad/GameSir Pocket Taco</string>
@@ -668,6 +673,8 @@
     <string name="launch_steam_client_beta">Uruchom Klienta Steam (Beta)</string>
     <string name="steam_offline_mode">Tryb Offline Steam</string>
     <string name="steam_offline_mode_description">Uruchamiaj gry Steam w trybie offline</string>
+    <string name="epic_offline_mode">Tryb Offline Epic</string>
+    <string name="epic_offline_mode_description">Uruchamiaj gry Epic w trybie offline</string>
     <string name="achievement_unlocked">Osiągnięcie odblokowane</string>
     <string name="settings_achievement_notification_position">Pozycja powiadomienia o osiągnięciu</string>
     <string name="achievement_position_top_left">Lewy górny</string>
@@ -692,6 +699,8 @@
     <string name="vkd3d_feature_level">Poziom funkcji VKD3D</string>
     <string name="use_dri3">Użyj DRI3</string>
     <string name="use_dri3_description">Wyłączenie może naprawić błędy graficzne na niektórych urządzeniach</string>
+    <string name="use_legacy_renderer">Użyj starszego renderera</string>
+    <string name="use_legacy_renderer_description">Użyj starszego GLRenderer zamiast VulkanRenderer. VulkanRenderer poprawia wydajność, ale jest w wersji beta i może powodować problemy.</string>
     <string name="sync_frame">Synchronizuj każdą klatkę</string>
     <string name="disable_present_wait">Wyłącz KHR_present_wait</string>
     <string name="present_modes">Tryby prezentacji</string>
@@ -870,7 +879,7 @@
     <string name="driver_manager">Menedżer sterowników</string>
     <string name="select_a_driver">Wybierz sterownik</string>
     <string name="import_zip_from_device">Importuj ZIP z urządzenia</string>
-    
+
     <!-- Contents Manager -->
     <string name="contents_manager">Menedżer zawartości</string>
     <string name="import_wcp_from_device">Importuj .wcp z urządzenia</string>

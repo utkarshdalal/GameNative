@@ -94,6 +94,7 @@ import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.utils.MathUtils.normalizedProgress
 import com.winlator.container.Container
 import com.winlator.renderer.GLRenderer
+import com.winlator.renderer.VulkanRenderer
 import com.winlator.winhandler.ProcessInfo
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -236,7 +237,8 @@ fun QuickMenu(
     isVisible: Boolean,
     onDismiss: () -> Unit,
     onItemSelected: (Int) -> Boolean,
-    renderer: GLRenderer? = null,
+    renderer: VulkanRenderer? = null,
+    glRenderer: GLRenderer? = null,
     container: Container? = null,
     wineProcesses: List<ProcessInfo> = emptyList(),
     isWineProcessesLoading: Boolean = false,
@@ -476,18 +478,20 @@ fun QuickMenu(
                                         focusRequester = lsfgTabFocusRequester,
                                     )
                                 }
-                                QuickMenuTabButton(
-                                    icon = Icons.Default.AutoFixHigh,
-                                    contentDescriptionResId = R.string.screen_effects,
-                                    selected = selectedTab == QuickMenuTab.EFFECTS,
-                                    accentColor = PluviaTheme.colors.accentPurple,
-                                    onSelected = {
-                                        selectedTab = QuickMenuTab.EFFECTS
-                                        PrefManager.quickMenuLastTab = selectedTab
-                                    },
-                                    modifier = Modifier.width(56.dp),
-                                    focusRequester = effectsTabFocusRequester,
-                                )
+                                if (renderer != null || glRenderer != null) {
+                                    QuickMenuTabButton(
+                                        icon = Icons.Default.AutoFixHigh,
+                                        contentDescriptionResId = R.string.screen_effects,
+                                        selected = selectedTab == QuickMenuTab.EFFECTS,
+                                        accentColor = PluviaTheme.colors.accentPurple,
+                                        onSelected = {
+                                            selectedTab = QuickMenuTab.EFFECTS
+                                            PrefManager.quickMenuLastTab = selectedTab
+                                        },
+                                        modifier = Modifier.width(56.dp),
+                                        focusRequester = effectsTabFocusRequester,
+                                    )
+                                }
                                 QuickMenuTabButton(
                                     icon = Icons.Default.Gamepad,
                                     contentDescriptionResId = R.string.quick_menu_tab_controller,
@@ -596,6 +600,14 @@ fun QuickMenu(
                                         if (renderer != null) {
                                             ScreenEffectsTabContent(
                                                 renderer = renderer,
+                                                container = container,
+                                                modifier = Modifier.fillMaxSize(),
+                                                firstItemFocusRequester = effectsItemFocusRequester,
+                                                scrollState = effectsScrollState,
+                                            )
+                                        } else if (glRenderer != null) {
+                                            GLScreenEffectsTabContent(
+                                                renderer = glRenderer,
                                                 container = container,
                                                 modifier = Modifier.fillMaxSize(),
                                                 firstItemFocusRequester = effectsItemFocusRequester,
