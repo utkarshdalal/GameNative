@@ -24,6 +24,7 @@ import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileChangeList
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileInfo
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
+import `in`.dragonbra.javasteam.types.KeyValue
 import java.io.BufferedInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
@@ -794,6 +795,7 @@ object SteamAutoCloud {
         var microsecDeleteFiles = 0L
         var microsecDownloadFiles = 0L
         var microsecUploadFiles = 0L
+        var lastCloudAppChangeNumber = -1L
 
         microsecTotal = measureTime {
             val localAppChangeNumber = overrideLocalChangeNumber ?: steamInstance.changeNumbersDao.getByAppId(appInfo.id)?.changeNumber ?: -1
@@ -804,6 +806,7 @@ object SteamAutoCloud {
             val appFileListChange = steamCloud.getAppFileListChange(appInfo.id, changeNumber).await()
 
             val cloudAppChangeNumber = appFileListChange.currentChangeNumber
+            lastCloudAppChangeNumber = cloudAppChangeNumber
 
             Timber.i("AppChangeNumber: $localAppChangeNumber -> $cloudAppChangeNumber")
 
@@ -909,6 +912,7 @@ object SteamAutoCloud {
                     filesManaged = allLocalUserFiles.size
 
                     if (uploadResult.uploadBatchSuccess) {
+                        lastCloudAppChangeNumber = uploadResult.appChangeNumber
                         with(steamInstance) {
                             db.withTransaction {
                                 fileChangeListsDao.insert(appInfo.id, allLocalUserFiles)
@@ -1077,6 +1081,40 @@ object SteamAutoCloud {
             microsecDownloadFiles = microsecDownloadFiles,
             microsecUploadFiles = microsecUploadFiles,
         )
+
+        // Write remotecache.vdf after successful sync
+        if (syncResult == SyncResult.Success || syncResult == SyncResult.UpToDate) {
+            try {
+                // Calculate total size and SHA of all synced files
+                val allFiles = getLocalUserFilesAsPrefixMap().values.flatten()
+                val totalSize = allFiles.sumOf {
+                    try {
+                        Files.size(it.getAbsPath(prefixToPath))
+                    } catch (e: Exception) {
+                        0L
+                    }
+                }
+
+                // Use the first file's SHA as representative, or empty if no files
+                val firstFileSha = allFiles.firstOrNull()?.sha?.joinToString("") { "%02x".format(it) } ?: ""
+
+                // Get the latest timestamp from all files (in milliseconds)
+                val latestTimestamp = allFiles.maxOfOrNull { it.timestamp } ?: System.currentTimeMillis()
+
+                writeRemoteCacheVdf(
+                    appId = appInfo.id,
+                    userdataPath = Paths.get(prefixToPath(PathType.SteamUserData.name)).parent,
+                    changeNumber = lastCloudAppChangeNumber,
+                    saveDataSize = totalSize,
+                    saveDataSha = firstFileSha,
+                    localTime = latestTimestamp / 1000,
+                    remoteTime = latestTimestamp / 1000,
+                    syncState = 1, // 1 = syncing (matches Windows behavior)
+                )
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to write remotecache.vdf for app ${appInfo.id}")
+            }
+        }
 
         postSyncInfo
     }
@@ -1299,6 +1337,61 @@ object SteamAutoCloud {
                             "\n\t\tmachineNameIndex: ${it.machineNameIndex}"
                     },
             )
+        }
+    }
+
+    /**
+     * Writes a remotecache.vdf file for the given app in the Steam userdata directory.
+     * This file tracks Steam Cloud sync metadata for save files.
+     *
+     * @param appId The Steam app ID
+     * @param userdataPath Path to the app-specific userdata directory (e.g., "userdata/steamid/appid/")
+     * @param changeNumber Cloud change number (0 if not synced)
+     * @param saveDataSize Total size of save data in bytes
+     * @param saveDataSha SHA1 hash of the save data as a hex string
+     * @param localTime Unix timestamp of the local save (seconds)
+     * @param remoteTime Unix timestamp of the remote save (seconds, 0 if not synced)
+     * @param syncState Sync state: 0=unknown, 1=syncing, 2=pending, 3=synced
+     */
+    fun writeRemoteCacheVdf(
+        appId: Int,
+        userdataPath: Path,
+        changeNumber: Long = 0,
+        saveDataSize: Long = 0,
+        saveDataSha: String = "",
+        localTime: Long = System.currentTimeMillis() / 1000,
+        remoteTime: Long = 0,
+        syncState: Int = 1,
+    ) {
+        try {
+            Files.createDirectories(userdataPath)
+
+            val remoteCacheFile = userdataPath.resolve("remotecache.vdf")
+
+            // Build VDF structure using KeyValue
+            val root = KeyValue(appId.toString())
+            root.children.add(KeyValue("ChangeNumber", changeNumber.toString()))
+            root.children.add(KeyValue("OSType", "-500")) // -500 = Windows
+
+            val saveData = KeyValue("SaveData")
+            saveData.children.add(KeyValue("root", "0"))
+            saveData.children.add(KeyValue("size", saveDataSize.toString()))
+            saveData.children.add(KeyValue("localtime", localTime.toString()))
+            saveData.children.add(KeyValue("time", localTime.toString()))
+            saveData.children.add(KeyValue("remotetime", remoteTime.toString()))
+            saveData.children.add(KeyValue("sha", saveDataSha))
+            saveData.children.add(KeyValue("syncstate", syncState.toString()))
+            saveData.children.add(KeyValue("persiststate", "0"))
+            saveData.children.add(KeyValue("platformstosync2", "-1"))
+
+            root.children.add(saveData)
+
+            // Write to file
+            root.saveToFile(remoteCacheFile.toFile(), false)
+
+            Timber.i("Wrote remotecache.vdf for app $appId to ${remoteCacheFile.toAbsolutePath()}")
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to write remotecache.vdf for app $appId")
         }
     }
 }

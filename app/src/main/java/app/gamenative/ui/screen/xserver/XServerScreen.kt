@@ -3805,17 +3805,17 @@ private fun getWineStartCommand(
         "\"wfm.exe\""
     } else {
         if (container.isLaunchBionicSteam) {
-            // Bionic-Steam mode: launch steam.exe with the game's exe path as its
-            // argument, so the Wine-side steam.exe + lsteamclient.dll handshake
-            // can attach to the native libsteamclient.so we bootstrapped.
+            // Bionic-Steam mode: launch the game executable directly.
+            // The native libsteamclient.so is already running in the Android process
+            // and will monitor the game via nativeWaitAppExit.
             val appDirPath = SteamService.getAppDirPath(gameId)
-            val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
             val exePath = container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) }
             val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
             val executableDir = appDirPath + "/" + exePath.substringBeforeLast("/", "")
             guestProgramLauncherComponent.workingDir = File(executableDir)
             Timber.i("Bionic-Steam working directory is $executableDir")
-            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" \"C:\\\\Program Files (x86)\\\\Steam\\\\steamapps\\\\common\\\\$gameFolderName\\\\$normalizedExe\""
+            val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
+            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamapps\\\\common\\\\$gameFolderName\\\\$normalizedExe\""
         } else if (container.isLaunchRealSteam) {
             // Launch Steam with the applaunch parameter to start the game
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
