@@ -1085,30 +1085,14 @@ object SteamAutoCloud {
         // Write remotecache.vdf after successful sync
         if (syncResult == SyncResult.Success || syncResult == SyncResult.UpToDate) {
             try {
-                // Calculate total size and SHA of all synced files
                 val allFiles = getLocalUserFilesAsPrefixMap().values.flatten()
-                val totalSize = allFiles.sumOf {
-                    try {
-                        Files.size(it.getAbsPath(prefixToPath))
-                    } catch (e: Exception) {
-                        0L
-                    }
-                }
-
-                // Use the first file's SHA as representative, or empty if no files
-                val firstFileSha = allFiles.firstOrNull()?.sha?.joinToString("") { "%02x".format(it) } ?: ""
-
-                // Get the latest timestamp from all files (in milliseconds)
-                val latestTimestamp = allFiles.maxOfOrNull { it.timestamp } ?: System.currentTimeMillis()
 
                 writeRemoteCacheVdf(
                     appId = appInfo.id,
                     userdataPath = Paths.get(prefixToPath(PathType.SteamUserData.name)).parent,
                     changeNumber = lastCloudAppChangeNumber,
-                    saveDataSize = totalSize,
-                    saveDataSha = firstFileSha,
-                    localTime = latestTimestamp / 1000,
-                    remoteTime = latestTimestamp / 1000,
+                    files = allFiles,
+                    prefixToPath = prefixToPath,
                     syncState = 1, // 1 = syncing (matches Windows behavior)
                 )
             } catch (e: Exception) {
@@ -1347,20 +1331,16 @@ object SteamAutoCloud {
      * @param appId The Steam app ID
      * @param userdataPath Path to the app-specific userdata directory (e.g., "userdata/steamid/appid/")
      * @param changeNumber Cloud change number (0 if not synced)
-     * @param saveDataSize Total size of save data in bytes
-     * @param saveDataSha SHA1 hash of the save data as a hex string
-     * @param localTime Unix timestamp of the local save (seconds)
-     * @param remoteTime Unix timestamp of the remote save (seconds, 0 if not synced)
+     * @param files List of UserFileInfo representing the synced files
+     * @param prefixToPath Function to convert path prefix to absolute path
      * @param syncState Sync state: 0=unknown, 1=syncing, 2=pending, 3=synced
      */
     fun writeRemoteCacheVdf(
         appId: Int,
         userdataPath: Path,
         changeNumber: Long = 0,
-        saveDataSize: Long = 0,
-        saveDataSha: String = "",
-        localTime: Long = System.currentTimeMillis() / 1000,
-        remoteTime: Long = 0,
+        files: List<UserFileInfo>,
+        prefixToPath: (String) -> String,
         syncState: Int = 1,
     ) {
         try {
@@ -1373,18 +1353,32 @@ object SteamAutoCloud {
             root.children.add(KeyValue("ChangeNumber", changeNumber.toString()))
             root.children.add(KeyValue("OSType", "-500")) // -500 = Windows
 
-            val saveData = KeyValue("SaveData")
-            saveData.children.add(KeyValue("root", "0"))
-            saveData.children.add(KeyValue("size", saveDataSize.toString()))
-            saveData.children.add(KeyValue("localtime", localTime.toString()))
-            saveData.children.add(KeyValue("time", localTime.toString()))
-            saveData.children.add(KeyValue("remotetime", remoteTime.toString()))
-            saveData.children.add(KeyValue("sha", saveDataSha))
-            saveData.children.add(KeyValue("syncstate", syncState.toString()))
-            saveData.children.add(KeyValue("persiststate", "0"))
-            saveData.children.add(KeyValue("platformstosync2", "-1"))
+            // Create an entry for each file using the filename as the key
+            files.forEach { fileInfo ->
+                val fileSize = try {
+                    Files.size(fileInfo.getAbsPath(prefixToPath))
+                } catch (e: Exception) {
+                    0L
+                }
 
-            root.children.add(saveData)
+                val fileSha = fileInfo.sha.joinToString("") { "%02x".format(it) }
+                val fileTimestamp = fileInfo.timestamp / 1000 // Convert to seconds
+
+                // Use the filename (or prefixPath) as the key
+                val fileName = fileInfo.prefixPath
+                val fileEntry = KeyValue(fileName)
+                fileEntry.children.add(KeyValue("root", "0"))
+                fileEntry.children.add(KeyValue("size", fileSize.toString()))
+                fileEntry.children.add(KeyValue("localtime", fileTimestamp.toString()))
+                fileEntry.children.add(KeyValue("time", fileTimestamp.toString()))
+                fileEntry.children.add(KeyValue("remotetime", fileTimestamp.toString()))
+                fileEntry.children.add(KeyValue("sha", fileSha))
+                fileEntry.children.add(KeyValue("syncstate", syncState.toString()))
+                fileEntry.children.add(KeyValue("persiststate", "0"))
+                fileEntry.children.add(KeyValue("platformstosync2", "-1"))
+
+                root.children.add(fileEntry)
+            }
 
             // Write to file
             root.saveToFile(remoteCacheFile.toFile(), false)
