@@ -8,6 +8,7 @@ import app.gamenative.BuildConfig;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,7 +16,10 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -26,6 +30,10 @@ public abstract class ProcessHelper {
     private static final byte SIGSTOP = 19;
     private static final byte SIGTERM = 15;
     private static final byte SIGKILL = 9;
+
+    /** Set true when a pause sweep is in progress; cleared by resumeAllWineProcesses() so the
+     *  background verification thread does not re-stop processes that were already resumed. */
+    private static volatile boolean pauseActive = false;
 
     public static void suspendProcess(int pid) {
         Process.sendSignal(pid, SIGSTOP);
@@ -99,12 +107,70 @@ public abstract class ProcessHelper {
     }
 
     public static void pauseAllWineProcesses() {
-        for (String process : listRunningWineProcesses()) {
-            suspendProcess(Integer.parseInt(process));
+        pauseActive = true;
+        final List<String> pids = listRunningWineProcesses();
+        final Set<String> pidSet = new HashSet<>(pids); // O(1) lookup in second sweep
+
+        // Send SIGSTOP immediately on the calling thread so processes stop as fast as possible.
+        for (String pid : pids) {
+            suspendProcess(Integer.parseInt(pid));
         }
+
+        // Verify + retry on a background thread — never block the caller (may be the main thread).
+        //noinspection resource — shutdown() is called after execute(); try-with-resources not available on Android Java 8
+        ExecutorService verifier = Executors.newSingleThreadExecutor();
+        verifier.execute(() -> {
+            // Give the kernel 50 ms to deliver SIGSTOP before reading /proc status.
+            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+
+            // Bail out if resumeAllWineProcesses() was called before we woke up.
+            if (!pauseActive) return;
+
+            // Retry any process whose signal was silently dropped (e.g. SELinux deny).
+            for (String pid : pids) {
+                if (!pauseActive) return;
+                if (!isProcessStopped(Integer.parseInt(pid))) {
+                    suspendProcess(Integer.parseInt(pid));
+                }
+            }
+
+            // Second sweep: stop any Wine processes that spawned after the first scan.
+            for (String pid : listRunningWineProcesses()) {
+                if (!pauseActive) return;
+                if (!pidSet.contains(pid)) {
+                    suspendProcess(Integer.parseInt(pid));
+                }
+            }
+        });
+        verifier.shutdown(); // no new tasks; existing task runs to completion
+    }
+
+    private static boolean isProcessStopped(int pid) {
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(new FileInputStream("/proc/" + pid + "/status")))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.startsWith("State:")) {
+                    // Extract the single state character after "State:" and optional whitespace.
+                    // 'T' = stopped (SIGSTOP), 't' = tracing stop — both mean suspended.
+                    String trimmed = line.substring("State:".length()).trim();
+                    char state = trimmed.isEmpty() ? 0 : trimmed.charAt(0);
+                    return state == 'T' || state == 't';
+                }
+            }
+        } catch (FileNotFoundException ignored) {
+            // Process already gone — counts as stopped.
+        } catch (IOException ignored) {
+            // Unreadable status (unlikely for same-UID process) — assume not stopped so retry fires.
+            return false;
+        }
+        return true;
     }
 
     public static void resumeAllWineProcesses() {
+        // Clear the flag first so the background pause-verification thread bails out
+        // before it can re-stop any process that is about to receive SIGCONT.
+        pauseActive = false;
         for (String process : listRunningWineProcesses()) {
             resumeProcess(Integer.parseInt(process));
         }
