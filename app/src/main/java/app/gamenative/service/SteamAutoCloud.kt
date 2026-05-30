@@ -1354,7 +1354,15 @@ object SteamAutoCloud {
             root.children.add(KeyValue("OSType", "-500")) // -500 = Windows
 
             // Create an entry for each file using the filename as the key
-            files.forEach { fileInfo ->
+            // Sort files by their cloud path for consistent ordering
+            files.sortedBy { fileInfo ->
+                if (fileInfo.cloudPath.isBlank() || fileInfo.cloudPath == ".") {
+                    fileInfo.filename
+                } else {
+                    "${fileInfo.cloudPath}/${fileInfo.filename}".replace("\\", "/")
+                }.replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
+                    .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+            }.forEach { fileInfo ->
                 val fileSize = try {
                     Files.size(fileInfo.getAbsPath(prefixToPath))
                 } catch (e: Exception) {
@@ -1371,6 +1379,7 @@ object SteamAutoCloud {
                     "${fileInfo.cloudPath}/${fileInfo.filename}".replace("\\", "/")
                 }.replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
                     .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+
                 val fileEntry = KeyValue(cloudFilePath)
                 fileEntry.children.add(KeyValue("root", "0"))
                 fileEntry.children.add(KeyValue("size", fileSize.toString()))
