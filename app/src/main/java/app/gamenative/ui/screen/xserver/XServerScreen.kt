@@ -20,6 +20,8 @@ import android.hardware.display.DisplayManager
 import android.hardware.input.InputManager
 import android.view.InputDevice
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import app.gamenative.BuildConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -100,6 +102,7 @@ import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.widget.PerformanceHudView
+import app.gamenative.utils.AssetUtils
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ExecutableSelectionUtils
@@ -143,7 +146,12 @@ import com.winlator.inputcontrols.TouchMouse
 import com.winlator.widget.FrameRating
 import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
+import com.winlator.renderer.GLRenderer
+import com.winlator.renderer.VulkanRenderer
+import com.winlator.renderer.XServerRenderer
+import com.winlator.widget.XServerRendererView
 import com.winlator.widget.XServerView
+import com.winlator.widget.XServerViewGL
 import com.winlator.winhandler.WinHandler
 import com.winlator.winhandler.WinHandler.PreferredInputApi
 import com.winlator.winhandler.OnGetProcessInfoListener
@@ -241,7 +249,7 @@ private fun detectMaxRefreshRateHz(context: Context, attachedView: View?): Int {
 }
 
 private data class XServerViewReleaseBinding(
-    val xServerView: XServerView,
+    val xServerView: XServerRendererView,
     val windowModificationListener: WindowManager.OnWindowModificationListener,
 )
 
@@ -386,8 +394,8 @@ fun XServerScreen(
 
     var currentAppInfo = SteamService.getAppInfoOf(gameId)
 
-    var xServerView: XServerView? by remember {
-        val result = mutableStateOf<XServerView?>(null)
+    var xServerView: XServerRendererView? by remember {
+        val result = mutableStateOf<XServerRendererView?>(null)
         Timber.i("Remembering xServerView as $result")
         result
     }
@@ -520,7 +528,7 @@ fun XServerScreen(
     }
 
     LaunchedEffect(xServerView?.renderer) {
-        xServerView?.renderer?.let { renderer ->
+        (xServerView?.renderer as? VulkanRenderer)?.let { renderer ->
             applyScreenEffectsConfig(renderer, loadScreenEffectsConfig(container))
         }
     }
@@ -576,7 +584,7 @@ fun XServerScreen(
     }
 
     LaunchedEffect(xServerView) {
-        val detectedMax = detectMaxRefreshRateHz(context, xServerView)
+        val detectedMax = detectMaxRefreshRateHz(context, xServerView as? View)
         detectedMaxRefreshRateHz = detectedMax
         val clampedTarget = fpsLimiterTarget.coerceAtMost(detectedMax).coerceAtLeast(5)
         if (clampedTarget != fpsLimiterTarget) {
@@ -906,6 +914,7 @@ fun XServerScreen(
         }
         val isGamepad = ExternalController.isGameController(device)
         if (isGamepad) {
+            xServerView!!.getxServer().winHandler.setCurrentController(device.id);
             if (!showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
                 !container.isTouchscreenMode &&
                 !hasUpdatedScreenGamepad) {
@@ -1261,6 +1270,13 @@ fun XServerScreen(
         }
     }
 
+    // Modern only: API 33+ routes gesture-back through OnBackInvokedDispatcher,
+    // which no longer delivers KEYCODE_BACK to MainActivity.dispatchKeyEvent.
+    // BackHandler registers with OnBackPressedDispatcher to catch that path.
+    // Legacy flavor (targetSdk 28) still receives BACK as a KeyEvent, so it keeps
+    // master's event-bus route via registerBackAction(gameBack) below.
+    BackHandler(enabled = BuildConfig.MODERN_ANDROID) { gameBack() }
+
     DisposableEffect(container) {
         registerBackAction(gameBack)
         onDispose {
@@ -1319,6 +1335,7 @@ fun XServerScreen(
             } else {
                 var handled = false
                 if (isGamepad) {
+                    xServerView!!.getxServer().winHandler.setCurrentController(it.event.device.id);
                     handled = physicalControllerHandler?.onKeyEvent(it.event) == true
                     if (!handled) handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
                     // Final fallback to WinHandler passthrough
@@ -1353,6 +1370,7 @@ fun XServerScreen(
             } else {
                 var handled = false
                 if (isGamepad && it.event != null) {
+                    xServerView!!.getxServer().winHandler.setCurrentController(it.event.device.id);
                     handled = physicalControllerHandler?.onGenericMotionEvent(it.event!!) == true
                     if (!handled) handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
                     // Final fallback to WinHandler passthrough
@@ -1421,11 +1439,12 @@ fun XServerScreen(
 
     DisposableEffect(lifecycleOwner, xServerView) {
         val currentXServerView = xServerView
-        if (currentXServerView == null) {
+        val currentXServerViewAsView = currentXServerView as? View
+        if (currentXServerView == null || currentXServerViewAsView == null) {
             onDispose { }
         } else {
             fun syncRendererToCurrentLifecycleState() {
-                if (!currentXServerView.isAttachedToWindow) return
+                if (!currentXServerViewAsView.isAttachedToWindow) return
 
                 when {
                     lifecycleOwner.lifecycle.currentState == Lifecycle.State.DESTROYED -> Unit
@@ -1459,12 +1478,43 @@ fun XServerScreen(
             }
 
             lifecycleOwner.lifecycle.addObserver(observer)
-            currentXServerView.addOnAttachStateChangeListener(attachStateListener)
+            currentXServerViewAsView.addOnAttachStateChangeListener(attachStateListener)
             syncRendererToCurrentLifecycleState()
             onDispose {
-                currentXServerView.removeOnAttachStateChangeListener(attachStateListener)
+                currentXServerViewAsView.removeOnAttachStateChangeListener(attachStateListener)
                 lifecycleOwner.lifecycle.removeObserver(observer)
             }
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, performanceHudView) {
+        val hud = performanceHudView
+        if (hud != null) {
+            if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                hud.resume()
+            } else {
+                hud.pause()
+            }
+
+            val observer = LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_PAUSE -> {
+                        Timber.d("Pausing PerformanceHudView for lifecycle event: $event")
+                        hud.pause()
+                    }
+                    Lifecycle.Event.ON_RESUME -> {
+                        Timber.d("Resuming PerformanceHudView for lifecycle event: $event")
+                        hud.resume()
+                    }
+                    else -> Unit
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            }
+        } else {
+            onDispose { }
         }
     }
 
@@ -1598,13 +1648,30 @@ fun XServerScreen(
                     ?.getComponent<XServerComponent>(XServerComponent::class.java)
                     ?.xServer
             val xServerToUse = existingXServer ?: XServer(ScreenInfo(xServerState.value.screenSize), usrGlibc)
-            val xServerView = XServerView(
-                context,
-                xServerToUse,
-            ).apply {
+            // VirGL containers always need GL (shared EGL context for the
+            // VirGL passthrough). Default to the legacy GL renderer for all
+            // other containers as well. Uncheck the per-container useLegacyRenderer
+            // setting to switch to the Vulkan renderer.
+            val useGLRenderer = container.graphicsDriver == "virgl" || container.isUseLegacyRenderer
+            val xServerViewInstance: XServerRendererView = if (useGLRenderer) {
+                XServerViewGL(context, xServerToUse)
+            } else {
+                XServerView(context, xServerToUse)
+            }
+            val xServerView = xServerViewInstance.apply {
                 xServerView = this
                 setFrameRateLimit(if (fpsLimiterEnabled) fpsLimiterTarget else 0)
                 val renderer = this.renderer
+                if (!useGLRenderer && renderer is VulkanRenderer) {
+                    val pm = container.rendererPresentMode.ifEmpty { "fifo" }
+                    val vkMode = when (pm.lowercase(Locale.getDefault())) {
+                        "mailbox" -> 1
+                        "immediate" -> 0
+                        "relaxed" -> 3
+                        else -> 2
+                    }
+                    renderer.setVkPresentMode(vkMode)
+                }
                 renderer.setCursorVisible(false)
                 renderer.setOnFrameRenderedListener {
                     if (shouldTrackDisplayedFrames.get()) {
@@ -1692,6 +1759,10 @@ fun XServerScreen(
                     if (container.executablePath.isNotBlank()) {
                         renderer.forceFullscreenWMClass = Paths.get(container.executablePath).name
                     }
+                    // Here, Ludashi calls setDriverInfo to use Adrenotools for the compositor
+                    // We are not doing that because it caused a race and crash in some games (eg Balatro)
+                    // Unless booted from the container - and I didn't know the benefit of custom driver
+                    // on the compositor. I may be wrong though.
                 }
                 // Remove any previous listener before adding a new one (handles key(isPortrait) recreation)
                 windowModificationListener?.let {
@@ -1937,7 +2008,7 @@ fun XServerScreen(
                                 xServerView!!.getxServer(),
                                 containerVariantChanged,
                                 onGameLaunchError,
-                                navigateBack,
+                                isOffline
                             )
                             if (!PluviaApp.isActivityInForeground && !neverSuspend) {
                                 PluviaApp.xEnvironment?.onPause()
@@ -1974,7 +2045,7 @@ fun XServerScreen(
                 )
             }
             frameLayout.addView(gameHost)
-            gameHost.addView(xServerView)
+            gameHost.addView(xServerView as View)
 
             PluviaApp.inputControlsManager = InputControlsManager(context)
 
@@ -2093,7 +2164,7 @@ fun XServerScreen(
                     val surfaceBg = ContextCompat.getColor(context, R.color.external_display_surface_background)
                     ExternalDisplaySwapController(
                         context = context,
-                        xServerViewProvider = { xServerView },
+                        xServerViewProvider = { xServerView as? View },
                         internalGameHostProvider = { gameHost },
                         onGameOnExternalChanged = { gameOnExternal ->
                             if (gameOnExternal) {
@@ -2370,7 +2441,8 @@ fun XServerScreen(
             isVisible = showQuickMenu,
             onDismiss = dismissOverlayMenu,
             onItemSelected = onQuickMenuItemSelected,
-            renderer = xServerView?.renderer,
+            renderer = xServerView?.renderer as? VulkanRenderer,
+            glRenderer = xServerView?.renderer as? GLRenderer,
             container = container,
             wineProcesses = quickMenuWineProcesses,
             isWineProcessesLoading = quickMenuWineProcessesLoading,
@@ -2952,16 +3024,13 @@ private fun setupXEnvironment(
     bootToContainer: Boolean,
     testGraphics: Boolean,
     xServerState: MutableState<XServerState>,
-    // xServerViewModel: XServerViewModel,
     envVars: EnvVars,
-    // generateWinePrefix: Boolean,
     container: Container?,
     appLaunchInfo: LaunchInfo?,
-    // shortcut: Shortcut?,
     xServer: XServer,
     containerVariantChanged: Boolean,
     onGameLaunchError: ((String) -> Unit)? = null,
-    navigateBack: () -> Unit,
+    offline: Boolean = false
 ): XEnvironment {
     ProcessHelper.hardKillStaleWineProcesses()
 
@@ -3081,7 +3150,7 @@ private fun setupXEnvironment(
             }
         }
         gameExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
-            getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent, gameSource) +
+            getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent, gameSource, offline) +
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
         preInstallCommands = PreInstallSteps.getPreInstallCommands(
             container,
@@ -3179,7 +3248,11 @@ private fun setupXEnvironment(
         environment.addComponent(ALSAServerComponent(UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.ALSA_SERVER_PATH), options))
     } else if (xServerState.value.audioDriver == "pulseaudio") {
         envVars.put("PULSE_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.PULSE_SERVER_PATH)
-        environment.addComponent(PulseAudioComponent(UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.PULSE_SERVER_PATH)))
+        environment.addComponent(PulseAudioComponent(
+            UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.PULSE_SERVER_PATH),
+            container.getPulseaudioSuspendBehavior(),
+            container.getPulseaudioLowLatency()
+        ))
     }
 
     if (xServerState.value.graphicsDriver == "virgl") {
@@ -3374,6 +3447,7 @@ private fun getWineStartCommand(
     envVars: EnvVars,
     guestProgramLauncherComponent: GuestProgramLauncherComponent,
     gameSource: GameSource,
+    offline: Boolean
 ): String {
     val tempDir = File(container.getRootDir(), ".wine/drive_c/windows/temp")
     FileUtils.clear(tempDir)
@@ -3472,7 +3546,8 @@ private fun getWineStartCommand(
         // Get Epic launch parameters
         Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
         val runArguments: List<String> = runBlocking {
-            val result = EpicService.buildLaunchParameters(context, container, game, false)
+            val offlineLaunch = offline || container.isEpicOfflineMode;
+            val result = EpicService.buildLaunchParameters(context, container, game, offlineLaunch)
             if (result.isFailure) {
                 Timber.tag("XServerScreen").e(result.exceptionOrNull(), "Failed to build Epic launch parameters")
             }
@@ -4369,7 +4444,15 @@ private fun applyGeneralPatches(
 }
 
 private fun refreshComponentsFiles(context: Context) {
-    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "pulseaudio-gamenative.tzst", File(context.filesDir, "pulseaudio"))
+    val extractionPairs = listOf(
+        "pulseaudio-gamenative-20260529.tzst" to File(context.filesDir, "pulseaudio")
+    )
+
+    AssetUtils.extractComponentsWithVersionCheck(
+        extractionPairs,
+        context.assets,
+        TarCompressorUtils.Type.ZSTD
+    )
 }
 
 private fun extractDXWrapperFiles(

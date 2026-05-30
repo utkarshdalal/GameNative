@@ -16,7 +16,8 @@ import com.winlator.renderer.material.CursorMaterial;
 import com.winlator.renderer.material.ShaderMaterial;
 import com.winlator.renderer.material.WindowMaterial;
 import com.winlator.widget.FrameRating;
-import com.winlator.widget.XServerView;
+import com.winlator.widget.XServerRendererView;
+import com.winlator.widget.XServerViewGL;
 import com.winlator.xserver.Bitmask;
 import com.winlator.xserver.Cursor;
 import com.winlator.xserver.Drawable;
@@ -32,8 +33,8 @@ import java.util.ArrayList;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindowModificationListener, Pointer.OnPointerMotionListener {
-    public final XServerView xServerView;
+public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindowModificationListener, Pointer.OnPointerMotionListener, XServerRenderer {
+    public final XServerViewGL xServerView;
     private final XServer xServer;
     private Runnable onFrameRenderedListener;
     private final VertexAttribute quadVertices = new VertexAttribute("position", 2);
@@ -61,7 +62,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private final EffectComposer effectComposer;
     private FrameRating frameRating;
 
-    public GLRenderer(XServerView xServerView, XServer xServer) {
+    public GLRenderer(XServerViewGL xServerView, XServer xServer) {
         this.xServerView = xServerView;
         this.xServer = xServer;
         this.effectComposer = new EffectComposer(this);
@@ -460,6 +461,11 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     public boolean isFullscreen() {
         return fullscreen;
+    }
+
+    @Override
+    public XServerRendererView getRendererView() {
+        return xServerView;
     }
 
     public float getMagnifierZoom() {

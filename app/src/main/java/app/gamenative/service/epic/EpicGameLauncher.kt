@@ -36,14 +36,10 @@ object EpicGameLauncher {
         return try {
             val params = mutableListOf<String>()
 
-            // Do offline play if offline.
+            // Offline launch if offline (either via the container settings or the device)
             if (offline) {
-                if (game.canRunOffline) {
                     Timber.tag("EPIC").i("Launching ${game.appName} in offline mode (no authentication)")
                     return Result.success(params)
-                } else {
-                    Timber.tag("EPIC").w("${game.appName} cannot run offline, will attempt online launch")
-                }
             }
 
             Timber.tag("EPIC").d("Launching ${game.appName} online, getting game launch token...")

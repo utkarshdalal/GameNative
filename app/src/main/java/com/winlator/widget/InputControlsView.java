@@ -928,6 +928,13 @@ public class InputControlsView extends View {
                     if (!handled) touchpadView.onTouchEvent(event);
                     break;
             }
+
+            // commit on-screen joystick state
+            WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
+            if (winHandler != null) {
+                GamepadState state = profile.getGamepadState();
+                winHandler.sendVirtualGamepadState(state);
+            }
         }
         return true;
     }
@@ -992,8 +999,6 @@ public class InputControlsView extends View {
             if (winHandler != null) {
                 ExternalController controller = winHandler.getCurrentController();
                 if (controller != null) controller.state.copy(state);
-                winHandler.sendGamepadState();
-                winHandler.sendVirtualGamepadState(state);
             }
         }
         else {

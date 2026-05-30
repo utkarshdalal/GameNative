@@ -43,6 +43,8 @@ public class WindowManager extends XResourceManager {
         default void onUpdateWindowAttributes(Window window, Bitmask mask) {}
 
         default void onModifyWindowProperty(Window window, Property property) {}
+
+        default void onDestroyWindow(Window window) {}
     }
 
     public WindowManager(ScreenInfo screenInfo, DrawableManager drawableManager) {

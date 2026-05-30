@@ -4,11 +4,21 @@ plugins {
 }
 android {
     namespace = "app.ubuntufs"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 29
         // testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    flavorDimensions += "androidApi"
+    productFlavors {
+        create("legacy") {
+            dimension = "androidApi"
+        }
+        create("modern") {
+            dimension = "androidApi"
+        }
     }
 
     buildTypes {

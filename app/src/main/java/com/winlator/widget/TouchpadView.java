@@ -71,6 +71,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     // Long-press detection
     private Runnable longPressRunnable;
     private boolean longPressTriggered;
+    private boolean longPressActionHeld, twoFingerHoldActionHeld, threeFingerHoldActionHeld;
 
     // Double-tap detection
     private long lastTapTime;
@@ -728,7 +729,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         int x = (int) pt[0];
         int y = (int) pt[1];
 
-        longPressTriggered = false;
+        longPressTriggered = longPressActionHeld = false;
         doubleTapDetected = false;
         isDragging = false;
         dragButtonPressed = false;
@@ -780,7 +781,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         if (gestureConfig.getLongPressEnabled()) {
             longPressRunnable = () -> {
                 longPressTriggered = true;
-                injectClick(gestureConfig.getLongPressAction());
+                longPressActionHeld = injectHoldAction(gestureConfig.getLongPressAction());
                 notifyHighlight(touchDownRawX, touchDownRawY);
                 notifyGesture("Long Press", true);
             };
@@ -798,7 +799,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         // multi-finger gesture, otherwise the long-press button/key stays
         // down for the rest of the touch sequence.
         if (longPressTriggered) {
-            injectRelease(gestureConfig.getLongPressAction());
+            longPressActionHeld = releaseHoldAction(longPressActionHeld, gestureConfig.getLongPressAction());
             longPressTriggered = false;
         }
         cancelLongPressTimer();
@@ -808,7 +809,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             twoFingerTapPossible = true;
             twoFingerDragging = false;
             twoFingerGestureMode = TWO_FINGER_GESTURE_NONE;
-            twoFingerHoldTriggered = false;
+            twoFingerHoldTriggered = twoFingerHoldActionHeld = false;
             accumulatedPinchDelta = 0;
             accumulatedPanDelta = 0;
             twoFingerDownTime = System.currentTimeMillis();
@@ -832,7 +833,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 twoFingerHoldRunnable = () -> {
                     twoFingerHoldTriggered = true;
                     twoFingerTapPossible = false;
-                    injectClick(gestureConfig.getTwoFingerHoldAction());
+                    twoFingerHoldActionHeld = injectHoldAction(gestureConfig.getTwoFingerHoldAction());
                     notifyHighlight((twoFingerLastX0 + twoFingerLastX1) / 2f, (twoFingerLastY0 + twoFingerLastY1) / 2f);
                     notifyGesture("2F Hold", true);
                 };
@@ -1045,7 +1046,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         stopGestureRefresh();
         // Two-finger hold release
         if (twoFingerHoldTriggered) {
-            injectRelease(gestureConfig.getTwoFingerHoldAction());
+            twoFingerHoldActionHeld = releaseHoldAction(twoFingerHoldActionHeld, gestureConfig.getTwoFingerHoldAction());
             twoFingerHoldTriggered = false;
         }
         // Two-finger tap detection
@@ -1083,7 +1084,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
         if (longPressTriggered) {
             // Release the long-press action
-            injectRelease(gestureConfig.getLongPressAction());
+            longPressActionHeld = releaseHoldAction(longPressActionHeld, gestureConfig.getLongPressAction());
             longPressTriggered = false;
             return;
         }
@@ -1174,15 +1175,15 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             dragButtonPressed = false;
         }
         if (longPressTriggered) {
-            injectRelease(gestureConfig.getLongPressAction());
+            longPressActionHeld = releaseHoldAction(longPressActionHeld, gestureConfig.getLongPressAction());
             longPressTriggered = false;
         }
         if (twoFingerHoldTriggered) {
-            injectRelease(gestureConfig.getTwoFingerHoldAction());
+            twoFingerHoldActionHeld = releaseHoldAction(twoFingerHoldActionHeld, gestureConfig.getTwoFingerHoldAction());
             twoFingerHoldTriggered = false;
         }
         if (threeFingerHoldTriggered) {
-            injectRelease(gestureConfig.getThreeFingerHoldAction());
+            threeFingerHoldActionHeld = releaseHoldAction(threeFingerHoldActionHeld, gestureConfig.getThreeFingerHoldAction());
             threeFingerHoldTriggered = false;
         }
         releasePanKeys();
@@ -1195,6 +1196,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         threeFingerTapFired = false;
         threeFingerGestureMode = THREE_FINGER_GESTURE_NONE;
         longPressTriggered = false;
+        longPressActionHeld = twoFingerHoldActionHeld = threeFingerHoldActionHeld = false;
         multiFingerGestureUsed = false;
         movedBeyondTapThreshold = false;
         doubleTapDetected = false;
@@ -1211,7 +1213,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         // If a two-finger hold already injected its action, release it before
         // transitioning so the held button/key doesn't stay down.
         if (twoFingerHoldTriggered) {
-            injectRelease(gestureConfig.getTwoFingerHoldAction());
+            twoFingerHoldActionHeld = releaseHoldAction(twoFingerHoldActionHeld, gestureConfig.getTwoFingerHoldAction());
             twoFingerHoldTriggered = false;
         }
         // Clean up two-finger state
@@ -1223,7 +1225,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
         threeFingerTapPossible = true;
         threeFingerDragging = false;
-        threeFingerHoldTriggered = false;
+        threeFingerHoldTriggered = threeFingerHoldActionHeld = false;
         threeFingerGestureMode = THREE_FINGER_GESTURE_NONE;
         accumulatedThreeFingerDelta = 0;
         threeFingerDownTime = System.currentTimeMillis();
@@ -1250,7 +1252,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             threeFingerHoldRunnable = () -> {
                 threeFingerHoldTriggered = true;
                 threeFingerTapPossible = false;
-                injectClick(gestureConfig.getThreeFingerHoldAction());
+                threeFingerHoldActionHeld = injectHoldAction(gestureConfig.getThreeFingerHoldAction());
                 notifyHighlight(threeFingerLastMidX, threeFingerLastMidY);
                 notifyGesture("3F Hold", true);
             };
@@ -1325,7 +1327,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         stopGestureRefresh();
 
         if (threeFingerHoldTriggered) {
-            injectRelease(gestureConfig.getThreeFingerHoldAction());
+            threeFingerHoldActionHeld = releaseHoldAction(threeFingerHoldActionHeld, gestureConfig.getThreeFingerHoldAction());
             threeFingerHoldTriggered = false;
         } else if (threeFingerTapPossible && !threeFingerDragging
                 && gestureConfig.getThreeFingerTapEnabled()) {
@@ -1441,6 +1443,26 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 xServer.injectPointerButtonRelease(btn);
             }
         }
+    }
+
+    private boolean injectHoldAction(String action) {
+        injectClick(action);
+        if (isMouseClickAction(action)) {
+            injectRelease(action);
+            return false;
+        }
+        return !TouchGestureConfig.ACTION_SHOW_KEYBOARD.equals(action);
+    }
+
+    private boolean releaseHoldAction(boolean held, String action) {
+        if (held) injectRelease(action);
+        return false;
+    }
+
+    private boolean isMouseClickAction(String action) {
+        return TouchGestureConfig.ACTION_LEFT_CLICK.equals(action)
+                || TouchGestureConfig.ACTION_RIGHT_CLICK.equals(action)
+                || TouchGestureConfig.ACTION_MIDDLE_CLICK.equals(action);
     }
 
     private XKeycode actionToKeycode(String action) {
