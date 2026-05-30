@@ -136,6 +136,7 @@ public abstract class ProcessHelper {
         StringBuilder output = new StringBuilder();
         Thread stderrDrainer = null;
         try {
+            if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
             ProcessBuilder pb = new ProcessBuilder(splitCommand(command));
             Map<String, String> env = pb.environment();
             env.clear();

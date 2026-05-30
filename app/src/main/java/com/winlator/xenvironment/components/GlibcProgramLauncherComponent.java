@@ -290,7 +290,6 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         File rootDir = imageFs.getRootDir();
 
         PrefManager.init(context);
-        StringBuilder output = new StringBuilder();
         EnvVars envVars = new EnvVars();
         envVars.put("HOME", imageFs.home_path);
         envVars.put("USER", ImageFs.USER);
@@ -339,28 +338,5 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         Log.d("GlibcProgramLauncherComponent", "Shell command is " + finalCommand);
         return ProcessHelper.execWithOutput(finalCommand, envVars.toStringArray(),
                 workingDir != null ? workingDir : imageFs.getRootDir(), includeStderr);
-        try {
-            if (BuildConfig.MODERN_ANDROID) finalCommand = "/system/bin/linker64 " + finalCommand;
-            Log.d("GlibcProgramLauncherComponent", "Shell command is " + finalCommand);
-            java.lang.Process process = Runtime.getRuntime().exec(finalCommand, envVars.toStringArray(), workingDir != null ? workingDir : imageFs.getRootDir());
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
-            }
-            if (includeStderr) {
-                while ((line = errorReader.readLine()) != null) {
-                    output.append(line).append("\n");
-                }
-            }
-            process.waitFor();
-        } catch (Exception e) {
-            output.append("Error: ").append(e.getMessage());
-        }
-
-        // Format output: trim trailing whitespace/newlines
-        return output.toString().trim();
     }
 }
