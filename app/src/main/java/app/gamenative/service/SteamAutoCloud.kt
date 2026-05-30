@@ -1369,7 +1369,8 @@ object SteamAutoCloud {
                     fileInfo.filename
                 } else {
                     "${fileInfo.cloudPath}/${fileInfo.filename}".replace("\\", "/")
-                }
+                }.replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
+                    .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
                 val fileEntry = KeyValue(cloudFilePath)
                 fileEntry.children.add(KeyValue("root", "0"))
                 fileEntry.children.add(KeyValue("size", fileSize.toString()))
