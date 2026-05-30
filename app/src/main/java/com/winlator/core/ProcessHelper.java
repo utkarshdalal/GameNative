@@ -34,6 +34,7 @@ public abstract class ProcessHelper {
     /** Set true when a pause sweep is in progress; cleared by resumeAllWineProcesses() so the
      *  background verification thread does not re-stop processes that were already resumed. */
     private static volatile boolean pauseActive = false;
+    private static final Object pauseSignalLock = new Object();
 
     public static void suspendProcess(int pid) {
         Process.sendSignal(pid, SIGSTOP);
@@ -128,17 +129,22 @@ public abstract class ProcessHelper {
 
             // Retry any process whose signal was silently dropped (e.g. SELinux deny).
             for (String pid : pids) {
-                if (!pauseActive) return;
-                if (!isProcessStopped(Integer.parseInt(pid))) {
-                    suspendProcess(Integer.parseInt(pid));
+                synchronized (pauseSignalLock) {
+                    if (!pauseActive) return;
+                    int parsedPid = Integer.parseInt(pid);
+                    if (!isProcessStopped(parsedPid)) {
+                        suspendProcess(parsedPid);
+                    }
                 }
             }
 
             // Second sweep: stop any Wine processes that spawned after the first scan.
             for (String pid : listRunningWineProcesses()) {
-                if (!pauseActive) return;
-                if (!pidSet.contains(pid)) {
-                    suspendProcess(Integer.parseInt(pid));
+                synchronized (pauseSignalLock) {
+                    if (!pauseActive) return;
+                    if (!pidSet.contains(pid)) {
+                        suspendProcess(Integer.parseInt(pid));
+                    }
                 }
             }
         });
@@ -168,11 +174,13 @@ public abstract class ProcessHelper {
     }
 
     public static void resumeAllWineProcesses() {
-        // Clear the flag first so the background pause-verification thread bails out
-        // before it can re-stop any process that is about to receive SIGCONT.
-        pauseActive = false;
-        for (String process : listRunningWineProcesses()) {
-            resumeProcess(Integer.parseInt(process));
+        // Clear the flag and send SIGCONT atomically with the pause-signal lock so the
+        // background verifier thread cannot re-stop a process after we send SIGCONT.
+        synchronized (pauseSignalLock) {
+            pauseActive = false;
+            for (String process : listRunningWineProcesses()) {
+                resumeProcess(Integer.parseInt(process));
+            }
         }
     }
 
