@@ -1364,9 +1364,13 @@ object SteamAutoCloud {
                 val fileSha = fileInfo.sha.joinToString("") { "%02x".format(it) }
                 val fileTimestamp = fileInfo.timestamp / 1000 // Convert to seconds
 
-                // Use just the filename without prefix as the key
-                val fileName = fileInfo.filename
-                val fileEntry = KeyValue(fileName)
+                // Use the cloud path (cloudPath + filename) as the key
+                val cloudFilePath = if (fileInfo.cloudPath.isBlank() || fileInfo.cloudPath == ".") {
+                    fileInfo.filename
+                } else {
+                    "${fileInfo.cloudPath}/${fileInfo.filename}".replace("\\", "/")
+                }
+                val fileEntry = KeyValue(cloudFilePath)
                 fileEntry.children.add(KeyValue("root", "0"))
                 fileEntry.children.add(KeyValue("size", fileSize.toString()))
                 fileEntry.children.add(KeyValue("localtime", fileTimestamp.toString()))
