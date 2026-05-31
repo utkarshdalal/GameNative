@@ -1013,6 +1013,17 @@ public class InputControlsView extends View {
                 }
                 return;
             }
+            else if (binding == Binding.ALT_ENTER) {
+                if (isActionDown) {
+                    xServer.injectKeyPress(Binding.KEY_ALT_L.keycode);
+                    xServer.injectKeyPress(Binding.KEY_ENTER.keycode);
+                }
+                else {
+                    xServer.injectKeyRelease(Binding.KEY_ENTER.keycode);
+                    xServer.injectKeyRelease(Binding.KEY_ALT_L.keycode);
+                }
+                return;
+            }
             else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
                 mouseMoveOffset.x = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
                 if (isActionDown) createMouseMoveTimer();
