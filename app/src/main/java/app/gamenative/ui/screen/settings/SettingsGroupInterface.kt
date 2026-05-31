@@ -471,7 +471,10 @@ fun SettingsGroupInterface(
         val labels = remember(dirs) {
             dirs.map { dir ->
                 // Try to get a user-friendly name, fallback to the folder name (e.g., "1234-5678")
-                sm?.getStorageVolume(dir)?.getDescription(ctx) ?: "SD Card (${dir.name})"
+                val volume = sm?.getStorageVolume(dir)
+                volume?.getDescription(ctx)
+                    ?: volume?.uuid?.let { "SD Card ($it)" }
+                    ?: "SD Card (${dir.parentFile?.parentFile?.parentFile?.parentFile?.name ?: dir.name})"
             }
         }
         
