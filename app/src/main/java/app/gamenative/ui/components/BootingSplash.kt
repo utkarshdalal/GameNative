@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.BrandGradient
+import androidx.compose.ui.platform.LocalContext
+import app.gamenative.R
 import kotlin.math.sin
 import kotlin.random.Random
 import kotlinx.coroutines.delay
@@ -45,32 +47,33 @@ fun BootingSplash(
     progress: Float = -1f, // -1 for indeterminate, 0-1 for determinate
 ) {
     // Tips rotation (no animation cost, safe outside visibility check)
-    val tips = remember {
+    val context = LocalContext.current
+    val tips = remember(context) {
         listOf(
-            "Booting may take a few minutes on first launch",
-            "Tip: You can view the game files by pressing \"Open Container\" in the game settings.",
-            "Tip: You can go to the main settings menu and download custom drivers for your device to be used on Bionic.",
-            "Tip: If you are getting a DirectX error, make sure you are using DXVK 1.10.3-async and leegao-wrapper on Bionic.",
-            "Tip: Try the Direct3D test in the Start Menu after clicking Open Container to check if your device is working correctly.",
-            "Tip: Use DXVK for DirectX 8/9/10/11 games, VKD3D for DirectX 12 games and VirGL + WineD3D for OpenGL games.",
-            "Tip: Use Turnip on glibc or bionic to play DirectX 12 games. DirectX 12 support for devices that don't support Turnip is currently limited.",
-            "Tip: Try the Adreno or Snapdragon 8 Elite drivers on glibc if you are on a compatible device.",
-            "Tip: If you are getting a black screen when launching a game, try Open Container and launching the game from A: drive.",
-            "Tip: You can add different locations for Custom Games in the settings.",
-            "Tip: Use the quick menu performance HUD when you want FPS stats in-game.",
-            "Tip: Install packages in A:\\_CommonRedist if your game doesn't launch.",
-            "Tip: You can enable or disable the onscreen controller with your device's back key.",
-            "Tip: You can bring up the keyboard with your device's back key.",
-            "Tip: You can tap with two fingers inside the container to right click.",
-            "Tip: If you are using the onscreen controller, you can disable the mouse to prevent accidental touches.",
-            "Tip: Report issues on Discord so we can fix them.",
-            "Tip: Use the Vortek driver in glibc or wrapper-leegao in Bionic if you are on a non-Adreno GPU.",
-            "Tip: Lower resolution and use box64 in performance mode to boost FPS.",
-            "Tip: If the game is crashing after loading, increase the video memory.",
-            "Tip: If you are seeing visual glitches, disable DRI3.",
-            "Tip: You can enable touchscreen mode.",
-            "Tip: If you have a Mali GPU, please use System Drivers.",
-            "Tip: Getting a blank screen? Try using the Test Graphics option in the menu to check if your drivers are working correctly.",
+            context.getString(R.string.game_launch_tip_1),
+            context.getString(R.string.game_launch_tip_2, context.getString(R.string.option_open_container)),
+            context.getString(R.string.game_launch_tip_3),
+            context.getString(R.string.game_launch_tip_4),
+            context.getString(R.string.game_launch_tip_5, context.getString(R.string.option_open_container)),
+            context.getString(R.string.game_launch_tip_6),
+            context.getString(R.string.game_launch_tip_7),
+            context.getString(R.string.game_launch_tip_8),
+            context.getString(R.string.game_launch_tip_9, context.getString(R.string.option_open_container)),
+            context.getString(R.string.game_launch_tip_10),
+            context.getString(R.string.game_launch_tip_11),
+            context.getString(R.string.game_launch_tip_12),
+            context.getString(R.string.game_launch_tip_13),
+            context.getString(R.string.game_launch_tip_14),
+            context.getString(R.string.game_launch_tip_15),
+            context.getString(R.string.game_launch_tip_16),
+            context.getString(R.string.game_launch_tip_17),
+            context.getString(R.string.game_launch_tip_18),
+            context.getString(R.string.game_launch_tip_19),
+            context.getString(R.string.game_launch_tip_20),
+            context.getString(R.string.game_launch_tip_21),
+            context.getString(R.string.game_launch_tip_22),
+            context.getString(R.string.game_launch_tip_23),
+            context.getString(R.string.game_launch_tip_24, context.getString(R.string.option_test_graphics)),
         )
     }
 

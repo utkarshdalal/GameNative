@@ -20,12 +20,13 @@ import app.gamenative.enums.OS
 import app.gamenative.enums.OSArch
 import app.gamenative.enums.PathType
 import app.gamenative.enums.ReleaseState
+import app.gamenative.enums.SteamRealm
 import app.gamenative.service.SteamService.Companion.INVALID_APP_ID
 import `in`.dragonbra.javasteam.types.KeyValue
 import java.util.Date
 import timber.log.Timber
 
-const val CURRENT_UFS_PARSE_VERSION = 3
+const val CURRENT_UFS_PARSE_VERSION = 4
 
 /**
  * Extension functions relating to [KeyValue] as the receiver type.
@@ -57,7 +58,7 @@ fun KeyValue.generateSteamApp(): SteamApp {
                     manifests = manifests,
                     encryptedManifests = encryptedManifests,
                     language = currentDepot["config"]["language"].value.orEmpty(),
-                    realm = currentDepot["config"]["realm"].value.orEmpty(),
+                    realm = SteamRealm.from(currentDepot["config"]["realm"].value.orEmpty()),
                     systemDefined = currentDepot["systemdefined"].asBoolean(),
                     optionalDlcId = currentDepot["config"]["optionaldlc"].asInteger(INVALID_APP_ID),
                     steamDeck = currentDepot["config"]["steamdeck"].asBoolean(false),

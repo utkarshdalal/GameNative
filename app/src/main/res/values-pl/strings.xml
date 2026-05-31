@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Logowanie</string>
     <string name="login_2fa">Weryfikacja dwuetapowa</string>
@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Użyj aplikacji mobilnej Steam, aby potwierdzić logowanie…</string>
     <string name="steam_2fa_device">Podaj kod uwierzytelniania dwuskładnikowego z aplikacji uwierzytelniającej.</string>
     <string name="steam_2fa_email">Podaj kod uwierzytelniający wysłany na e-mail %s</string>
+    <string name="steam_2fa_use_guard_totp">Lub użyj kodu do uwierzytelniania dwuskładnikowego</string>
     <string name="steam_install_space_prompt">Instalowana aplikacja ma następujące wymagania dotyczące miejsca. Czy chcesz kontynuować?\n\n\tRozmiar pobierania: %1$s\n\tRozmiar na dysku: %2$s\n\tDostępne miejsce: %3$s</string>
     <string name="steam_install_space">Rozmiar pobierania: %1$s\nRozmiar na dysku: %2$s\nDostępne miejsce: %3$s</string>
     <string name="steam_install_not_enough_space">Instalowana aplikacja wymaga %1$s miejsca, ale na tym urządzeniu pozostało tylko %2$s</string>
@@ -112,6 +113,10 @@
     <string name="downloads_status_failed">Nieudane</string>
     <string name="downloads_status_paused">Wstrzymano</string>
     <string name="downloads_summary">Zarządzaj aktywnymi pobraniami i pamięcią w jednym miejscu</string>
+    <string name="storage_internal">Wewnętrzny</string>
+    <string name="storage_external">Zewnętrzny</string>
+    <string name="storage_free_of_total">%1$s: %2$s wolne z %3$s</string>
+    <string name="storage_calculating">%1$s: Obliczanie…</string>
     <string name="container_storage_title">Menedżer pamięci</string>
     <string name="container_storage_subtitle">Przenoś instalacje między pamięcią wewnętrzną i zewnętrzną</string>
     <string name="container_storage_summary">%1$d elementów • %2$s</string>
@@ -314,6 +319,7 @@
     <string name="performance_hud_fps_limiter_target">Docelowy FPS</string>
     <string name="performance_hud_fps_limiter_off">Bez limitu</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Limiter pomijany gdy LSFG jest aktywny. Tempo źródła kontroluje mnożnik.</string>
     <string name="performance_hud_presets">Presety</string>
     <string name="performance_hud_presets_description">Szybko przełączaj między typowymi układami HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -649,6 +655,10 @@
     <string name="width">Szerokość</string>
     <string name="height">Wysokość</string>
     <string name="audio_driver">Sterownik audio</string>
+    <string name="pulseaudio_suspend_behavior">Zachowanie zawieszenia PulseAudio</string>
+    <string name="pulseaudio_suspend_behavior_thread">Zawieszenie przez wątek (Domyślne)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Zawieszenie przez Pactl (Oszczędzanie energii)</string>
+    <string name="pulseaudio_low_latency">Tryb niskiego opóźnienia PulseAudio</string>
     <string name="show_fps">Pokaż FPS</string>
     <string name="portrait_mode">Tryb pionowy</string>
     <string name="portrait_mode_description">Dla kontrolerów typu 8BitDo FlipPad/GameSir Pocket Taco</string>
@@ -663,6 +673,8 @@
     <string name="launch_steam_client_beta">Uruchom Klienta Steam (Beta)</string>
     <string name="steam_offline_mode">Tryb Offline Steam</string>
     <string name="steam_offline_mode_description">Uruchamiaj gry Steam w trybie offline</string>
+    <string name="epic_offline_mode">Tryb Offline Epic</string>
+    <string name="epic_offline_mode_description">Uruchamiaj gry Epic w trybie offline</string>
     <string name="achievement_unlocked">Osiągnięcie odblokowane</string>
     <string name="settings_achievement_notification_position">Pozycja powiadomienia o osiągnięciu</string>
     <string name="achievement_position_top_left">Lewy górny</string>
@@ -687,6 +699,8 @@
     <string name="vkd3d_feature_level">Poziom funkcji VKD3D</string>
     <string name="use_dri3">Użyj DRI3</string>
     <string name="use_dri3_description">Wyłączenie może naprawić błędy graficzne na niektórych urządzeniach</string>
+    <string name="use_legacy_renderer">Użyj starszego renderera</string>
+    <string name="use_legacy_renderer_description">Użyj starszego GLRenderer zamiast VulkanRenderer. VulkanRenderer poprawia wydajność, ale jest w wersji beta i może powodować problemy.</string>
     <string name="sync_frame">Synchronizuj każdą klatkę</string>
     <string name="disable_present_wait">Wyłącz KHR_present_wait</string>
     <string name="present_modes">Tryby prezentacji</string>
@@ -865,7 +879,7 @@
     <string name="driver_manager">Menedżer sterowników</string>
     <string name="select_a_driver">Wybierz sterownik</string>
     <string name="import_zip_from_device">Importuj ZIP z urządzenia</string>
-    
+
     <!-- Contents Manager -->
     <string name="contents_manager">Menedżer zawartości</string>
     <string name="import_wcp_from_device">Importuj .wcp z urządzenia</string>
@@ -1435,6 +1449,7 @@
     <string name="lsfg_enable">Włącz generowanie klatek LSFG-VK</string>
     <string name="lsfg_multiplier">Mnożnik klatek</string>
     <string name="lsfg_flow_scale">Skala przepływu</string>
+    <string name="lsfg_flow_scale_desc">Niższa wartość jest stabilniejsza; wyższa jest płynniejsza, ale może powodować artefakty.</string>
     <string name="lsfg_performance_mode">Tryb wydajności</string>
     <string name="lsfg_not_supported">Generowanie klatek wymaga kontenera Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling nie jest zainstalowany. Dotknij, aby zainstalować. Wiadomo, że działa tylko na Adreno 6xx i nowszych.</string>
@@ -1443,4 +1458,47 @@
     <string name="lsfg_install_message">Spowoduje to pobranie Lossless Scaling ze Steam, aby umożliwić generowanie klatek.</string>
     <string name="lsfg_installing">Pobieranie Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Zmniejsza jakość dla wyższej przepustowości</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">Uruchamianie może zająć kilka minut przy pierwszym starcie</string>
+    <string name="game_launch_tip_2">Wskazówka: Możesz wyświetlić pliki gry, naciskając \"%s\" w ustawieniach gry.</string>
+    <string name="game_launch_tip_3">Wskazówka: Możesz przejść do głównego menu ustawień i pobrać niestandardowe sterowniki dla swojego urządzenia do użycia na Bionic.</string>
+    <string name="game_launch_tip_4">Wskazówka: Jeśli występuje błąd DirectX, upewnij się, że używasz DXVK 1.10.3-async i leegao-wrapper na Bionic.</string>
+    <string name="game_launch_tip_5">Wskazówka: Wypróbuj test Direct3D w menu Start po kliknięciu \"%s\", aby sprawdzić, czy urządzenie działa poprawnie.</string>
+    <string name="game_launch_tip_6">Wskazówka: Używaj DXVK do gier DirectX 8/9/10/11, VKD3D do gier DirectX 12 oraz VirGL + WineD3D do gier OpenGL.</string>
+    <string name="game_launch_tip_7">Wskazówka: Używaj Turnip na glibc lub bionic do grania w gry DirectX 12. Obsługa DirectX 12 dla urządzeń, które nie obsługują Turnip, jest obecnie ograniczona.</string>
+    <string name="game_launch_tip_8">Wskazówka: Wypróbuj sterowniki Adreno lub Snapdragon 8 Elite na glibc, jeśli masz kompatybilne urządzenie.</string>
+    <string name="game_launch_tip_9">Wskazówka: Jeśli po uruchomieniu gry pojawia się czarny ekran, spróbuj użyć \"%s\" i uruchomić grę z dysku A:.</string>
+    <string name="game_launch_tip_10">Wskazówka: Możesz dodać różne lokalizacje dla niestandardowych gier w ustawieniach.</string>
+    <string name="game_launch_tip_11">Wskazówka: Użyj HUD-a wydajności w szybkim menu, gdy chcesz zobaczyć statystyki FPS w grze.</string>
+    <string name="game_launch_tip_12">Wskazówka: Zainstaluj pakiety w A:\\_CommonRedist, jeśli gra się nie uruchamia.</string>
+    <string name="game_launch_tip_13">Wskazówka: Możesz włączyć lub wyłączyć kontroler ekranowy za pomocą przycisku wstecz na urządzeniu.</string>
+    <string name="game_launch_tip_14">Wskazówka: Możesz wywołać klawiaturę za pomocą przycisku wstecz na urządzeniu.</string>
+    <string name="game_launch_tip_15">Wskazówka: Możesz dotknąć dwoma palcami wewnątrz kontenera, aby kliknąć prawym przyciskiem myszy.</string>
+    <string name="game_launch_tip_16">Wskazówka: Jeśli używasz kontrolera ekranowego, możesz wyłączyć mysz, aby zapobiec przypadkowym dotknięciom.</string>
+    <string name="game_launch_tip_17">Wskazówka: Zgłaszaj problemy na Discordzie, abyśmy mogli je naprawić.</string>
+    <string name="game_launch_tip_18">Wskazówka: Użyj sterownika Vortek na glibc lub wrapper-leegao na Bionic, jeśli masz GPU inne niż Adreno.</string>
+    <string name="game_launch_tip_19">Wskazówka: Obniż rozdzielczość i użyj box64 w trybie wydajności, aby zwiększyć FPS.</string>
+    <string name="game_launch_tip_20">Wskazówka: Jeśli gra ulega awarii po załadowaniu, zwiększ pamięć wideo.</string>
+    <string name="game_launch_tip_21">Wskazówka: Jeśli widzisz artefakty wizualne, wyłącz DRI3.</string>
+    <string name="game_launch_tip_22">Wskazówka: Możesz włączyć tryb ekranu dotykowego.</string>
+    <string name="game_launch_tip_23">Wskazówka: Jeśli masz GPU Mali, użyj sterowników systemowych.</string>
+    <string name="game_launch_tip_24">Wskazówka: Czarny ekran? Wypróbuj opcję \"%s\" w menu, aby sprawdzić, czy sterowniki działają poprawnie.</string>
+    <string name="launch_bionic_steam_description">Włącza grę online, poprawia kompatybilność\nNie zawsze działa\nPrzed użyciem wykonaj kopię zapasową zapisów</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Synchronizacja frontend</string>
+    <string name="settings_interface_frontend_sync_subtitle">Automatycznie eksportuj zainstalowane gry do frontendów biblioteki gier</string>
+    <string name="frontend_sync_dialog_title">Synchronizacja frontend</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Niestandardowe gry</string>
+    <string name="frontend_sync_not_set">Nie ustawiono</string>
+    <string name="frontend_sync_clear_confirm_title">Usunąć stare pliki eksportu?</string>
+    <string name="frontend_sync_clear_confirm_message">Usunąć pliki .%1$s z poprzedniego katalogu?</string>
+    <string name="frontend_sync_confirm_remove">Usuń</string>
+    <string name="frontend_sync_confirm_keep">Zachowaj</string>
+    <string name="frontend_sync_resync_all">Ponowna synchronizacja wszystkich</string>
+    <string name="frontend_sync_resync_complete">Synchronizacja frontend zakończona</string>
 </resources>

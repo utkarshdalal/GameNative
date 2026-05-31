@@ -94,6 +94,7 @@ import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.utils.MathUtils.normalizedProgress
 import com.winlator.container.Container
 import com.winlator.renderer.GLRenderer
+import com.winlator.renderer.VulkanRenderer
 import com.winlator.winhandler.ProcessInfo
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -236,7 +237,8 @@ fun QuickMenu(
     isVisible: Boolean,
     onDismiss: () -> Unit,
     onItemSelected: (Int) -> Boolean,
-    renderer: GLRenderer? = null,
+    renderer: VulkanRenderer? = null,
+    glRenderer: GLRenderer? = null,
     container: Container? = null,
     wineProcesses: List<ProcessInfo> = emptyList(),
     isWineProcessesLoading: Boolean = false,
@@ -476,18 +478,20 @@ fun QuickMenu(
                                         focusRequester = lsfgTabFocusRequester,
                                     )
                                 }
-                                QuickMenuTabButton(
-                                    icon = Icons.Default.AutoFixHigh,
-                                    contentDescriptionResId = R.string.screen_effects,
-                                    selected = selectedTab == QuickMenuTab.EFFECTS,
-                                    accentColor = PluviaTheme.colors.accentPurple,
-                                    onSelected = {
-                                        selectedTab = QuickMenuTab.EFFECTS
-                                        PrefManager.quickMenuLastTab = selectedTab
-                                    },
-                                    modifier = Modifier.width(56.dp),
-                                    focusRequester = effectsTabFocusRequester,
-                                )
+                                if (renderer != null || glRenderer != null) {
+                                    QuickMenuTabButton(
+                                        icon = Icons.Default.AutoFixHigh,
+                                        contentDescriptionResId = R.string.screen_effects,
+                                        selected = selectedTab == QuickMenuTab.EFFECTS,
+                                        accentColor = PluviaTheme.colors.accentPurple,
+                                        onSelected = {
+                                            selectedTab = QuickMenuTab.EFFECTS
+                                            PrefManager.quickMenuLastTab = selectedTab
+                                        },
+                                        modifier = Modifier.width(56.dp),
+                                        focusRequester = effectsTabFocusRequester,
+                                    )
+                                }
                                 QuickMenuTabButton(
                                     icon = Icons.Default.Gamepad,
                                     contentDescriptionResId = R.string.quick_menu_tab_controller,
@@ -565,6 +569,7 @@ fun QuickMenu(
                                             fpsLimiterEnabled = fpsLimiterEnabled,
                                             fpsLimiterTarget = fpsLimiterTarget,
                                             fpsLimiterMax = fpsLimiterMax,
+                                            lsfgMultiplier = if (isLsfgAvailable) lsfgMultiplier else 0,
                                             onTogglePerformanceHud = {
                                                 onItemSelected(QuickMenuAction.PERFORMANCE_HUD)
                                             },
@@ -595,6 +600,14 @@ fun QuickMenu(
                                         if (renderer != null) {
                                             ScreenEffectsTabContent(
                                                 renderer = renderer,
+                                                container = container,
+                                                modifier = Modifier.fillMaxSize(),
+                                                firstItemFocusRequester = effectsItemFocusRequester,
+                                                scrollState = effectsScrollState,
+                                            )
+                                        } else if (glRenderer != null) {
+                                            GLScreenEffectsTabContent(
+                                                renderer = glRenderer,
                                                 container = container,
                                                 modifier = Modifier.fillMaxSize(),
                                                 firstItemFocusRequester = effectsItemFocusRequester,
@@ -740,6 +753,7 @@ private fun PerformanceHudQuickMenuTab(
     fpsLimiterEnabled: Boolean,
     fpsLimiterTarget: Int,
     fpsLimiterMax: Int,
+    lsfgMultiplier: Int,
     onTogglePerformanceHud: () -> Unit,
     onPerformanceHudConfigChanged: (PerformanceHudConfig) -> Unit,
     onFpsLimiterEnabledChanged: (Boolean) -> Unit,
@@ -757,16 +771,22 @@ private fun PerformanceHudQuickMenuTab(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         // ── FPS Limiter (topmost) ────────────────────────────────────────
+        val limiterControlledByLsfg = lsfgMultiplier >= 2
         QuickMenuToggleRow(
             title = stringResource(R.string.performance_hud_fps_limiter),
-            enabled = fpsLimiterEnabled,
-            onToggle = { onFpsLimiterEnabledChanged(!fpsLimiterEnabled) },
+            subtitle = if (limiterControlledByLsfg) {
+                stringResource(R.string.performance_hud_fps_limiter_lsfg_override)
+            } else null,
+            enabled = fpsLimiterEnabled && !limiterControlledByLsfg,
+            onToggle = {
+                if (!limiterControlledByLsfg) onFpsLimiterEnabledChanged(!fpsLimiterEnabled)
+            },
             accentColor = accentColor,
             focusRequester = focusRequester,
         )
 
         AnimatedVisibility(
-            visible = fpsLimiterEnabled,
+            visible = fpsLimiterEnabled && !limiterControlledByLsfg,
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut(),
         ) {
@@ -1124,6 +1144,7 @@ private fun LsfgQuickMenuTab(
                 // ── Flow Scale ────────────────────────────────────────────
                 QuickMenuAdjustmentRow(
                     title = stringResource(R.string.lsfg_flow_scale),
+                    subtitle = stringResource(R.string.lsfg_flow_scale_desc),
                     valueText = String.format(java.util.Locale.US, "%.2f", flowScale),
                     progress = (flowScale - 0.25f) / 0.75f, // 0.25..1.0 → 0..1
                     onDecrease = {
@@ -1456,6 +1477,7 @@ private fun QuickMenuAdjustmentRow(
     accentColor: Color,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
+    subtitle: String? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -1572,6 +1594,15 @@ private fun QuickMenuAdjustmentRow(
                     )
                 }
             }
+        }
+
+        if (subtitle != null) {
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         Spacer(modifier = Modifier.height(10.dp))

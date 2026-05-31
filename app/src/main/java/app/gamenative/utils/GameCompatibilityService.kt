@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import android.content.Context
 import androidx.compose.ui.graphics.Color
+import app.gamenative.BuildConfig
 import app.gamenative.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -79,6 +80,9 @@ object GameCompatibilityService {
             val requestBody = JSONObject().apply {
                 put("gameNames", org.json.JSONArray(gameNames))
                 put("gpuName", gpuName)
+                // Modern build can't run glibc containers — server should weight
+                // compatibility responses against bionic-only configs when true.
+                put("modernBuild", BuildConfig.MODERN_ANDROID)
             }
 
             val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")

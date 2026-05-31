@@ -207,6 +207,7 @@ object IntentLaunchManager {
             installPath = if (json.has("installPath")) json.getString("installPath") else "",
             showFPS = if (json.has("showFPS")) json.getBoolean("showFPS") else false,
             launchRealSteam = if (json.has("launchRealSteam")) json.getBoolean("launchRealSteam") else false,
+            launchBionicSteam = if (json.has("launchBionicSteam")) json.getBoolean("launchBionicSteam") else false,
             cpuList = if (json.has("cpuList")) json.getString("cpuList") else Container.getFallbackCPUList(),
             cpuListWoW64 = if (json.has("cpuListWoW64")) json.getString("cpuListWoW64") else Container.getFallbackCPUListWoW64(),
             wow64Mode = if (json.has("wow64Mode")) json.getBoolean("wow64Mode") else true,
@@ -289,6 +290,7 @@ object IntentLaunchManager {
             // Boolean fields: only override if different from parsing defaults
             showFPS = if (override.showFPS != false) override.showFPS else base.showFPS,
             launchRealSteam = if (override.launchRealSteam != false) override.launchRealSteam else base.launchRealSteam,
+            launchBionicSteam = if (override.launchBionicSteam != false) override.launchBionicSteam else base.launchBionicSteam,
             cpuList = if (override.cpuList != Container.getFallbackCPUList()) override.cpuList else base.cpuList,
             cpuListWoW64 = if (override.cpuListWoW64 != Container.getFallbackCPUListWoW64()) {
                 override.cpuListWoW64

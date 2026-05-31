@@ -65,7 +65,7 @@ object LsfgVkManager {
     private const val ENV_PROCESS = "LSFG_PROCESS"
 
     // Current runtime version (bumped when the bundled .so changes)
-    private const val RUNTIME_VERSION = "v1.0.1-android-arm64-v8a"
+    private const val RUNTIME_VERSION = "v1.0.2-android-arm64-v8a"
 
     // Asset paths
     private const val ASSET_DIR = "lsfg_vk/android_arm64_v8a"
@@ -223,14 +223,16 @@ object LsfgVkManager {
 
         return try {
             val dllPath = containerDllPath(container)
-            val armed = parseBool(container.getExtra(EXTRA_ARMED, "false")) && dllPath != null
+            val savedMultiplier = multiplier(container)
+            val frameGenActive = parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
+                dllPath != null && savedMultiplier >= 2
             val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
             val configText = buildConfigToml(
                 dllPath = dllPath,
-                enabled = armed,
-                multiplier = multiplier(container),
+                enabled = frameGenActive,
+                multiplier = if (frameGenActive) savedMultiplier else 1,
                 flowScale = flowScale(container),
-                performanceMode = performanceMode(container),
+                performanceMode = performanceMode(container) && frameGenActive,
             )
             val ok = FileUtils.writeString(configFile, configText)
             if (ok && configFile.exists()) {
@@ -342,12 +344,13 @@ object LsfgVkManager {
         appendLine("no_fp16 = false")
         appendLine()
 
-        if (enabled && !dllPath.isNullOrBlank()) {
+        if (!dllPath.isNullOrBlank()) {
+            val effectiveMultiplier = if (enabled) multiplier.coerceIn(2, 4) else 1
             appendLine("[[game]]")
             appendLine("exe = ${tomlString(PROCESS_EXE_IDENTIFIER)}")
-            appendLine("multiplier = ${multiplier.coerceIn(2, 4)}")
+            appendLine("multiplier = $effectiveMultiplier")
             appendLine("flow_scale = ${formatFlowScale(flowScale)}")
-            appendLine("performance_mode = ${if (performanceMode) "true" else "false"}")
+            appendLine("performance_mode = ${if (enabled && performanceMode) "true" else "false"}")
             appendLine("hdr_mode = false")
             appendLine("experimental_present_mode = ${tomlString("fifo")}")
         }

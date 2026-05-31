@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Legacy flavor keeps the existing MANAGE_EXTERNAL_STORAGE permission flow.
+         Modern flavor installs to an app-scoped path and does not request this. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+
+    <!-- Legacy targets SDK 28 and uses the legacy-storage model on Android 11+, so it
+         needs READ/WRITE to reach the Downloads-backed D drive. The main manifest caps
+         these at maxSdkVersion=29 for the modern (scoped-storage) flavor; drop the cap here. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        tools:remove="android:maxSdkVersion"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        tools:remove="android:maxSdkVersion"/>
+
+</manifest>

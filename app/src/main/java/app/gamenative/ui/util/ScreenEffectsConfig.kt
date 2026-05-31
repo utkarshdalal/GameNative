@@ -2,6 +2,7 @@ package app.gamenative.ui.util
 
 import com.winlator.container.Container
 import com.winlator.renderer.GLRenderer
+import com.winlator.renderer.VulkanRenderer
 import com.winlator.renderer.effects.ColorEffect
 import com.winlator.renderer.effects.CRTEffect
 import com.winlator.renderer.effects.Effect
@@ -34,6 +35,8 @@ data class ScreenEffectsConfig(
         const val SCALING_MODE_STRETCH = 4
         const val SCALING_MODE_FSR = 5
         const val SCALING_MODE_FSR_ASPECT = 6
+        const val SCALING_MODE_DLS = 7
+        const val SCALING_MODE_NATURAL = 8
         const val FSR_MIN_LEVEL = 1
         const val FSR_MAX_LEVEL = 5
         const val FSR_DEFAULT_LEVEL = 3
@@ -99,14 +102,12 @@ fun fsrQuickMenuLevelToStops(level: Int): Float {
 }
 
 fun applyScreenEffectsConfig(renderer: GLRenderer, config: ScreenEffectsConfig) {
-    val composer = renderer.getEffectComposer()
+    val composer = renderer.effectComposer
     val effects = mutableListOf<Effect>()
 
     when (config.scalingMode) {
-        ScreenEffectsConfig.SCALING_MODE_FSR, ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> {
-            val easuEffect = composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
-            easuEffect.setPreserveAspect(config.scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT)
-            effects += easuEffect
+        ScreenEffectsConfig.SCALING_MODE_FSR -> {
+            effects += composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
             val rcasEffect = composer.getEffect(FSR1RcasEffect::class.java) ?: FSR1RcasEffect()
             rcasEffect.sharpnessStops = fsrQuickMenuLevelToStops(config.fsrSharpnessLevel)
             effects += rcasEffect
@@ -150,4 +151,18 @@ fun applyScreenEffectsConfig(renderer: GLRenderer, config: ScreenEffectsConfig) 
     }
 
     composer.setEffects(effects)
+}
+
+fun applyScreenEffectsConfig(renderer: VulkanRenderer, config: ScreenEffectsConfig) {
+    val effectId = when {
+        config.enableVivid -> VulkanRenderer.EFFECT_HDR
+        config.enableCRT -> VulkanRenderer.EFFECT_CRT
+        config.scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR ||
+            config.scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> VulkanRenderer.EFFECT_FSR
+        config.scalingMode == ScreenEffectsConfig.SCALING_MODE_DLS -> VulkanRenderer.EFFECT_DLS
+        config.scalingMode == ScreenEffectsConfig.SCALING_MODE_NATURAL -> VulkanRenderer.EFFECT_NATURAL
+        else -> VulkanRenderer.EFFECT_NONE
+    }
+    val sharpness = (config.fsrSharpnessLevel.coerceIn(0, 4)) / 4.0f
+    renderer.setEffect(effectId, sharpness)
 }

@@ -19,7 +19,8 @@ import com.winlator.inputcontrols.GamepadState;
 import com.winlator.inputcontrols.TouchMouse;
 import com.winlator.math.XForm;
 import com.winlator.widget.InputControlsView;
-import com.winlator.widget.XServerView;
+import com.winlator.widget.XServerRendererView;
+import com.winlator.xenvironment.ImageFs;
 import com.winlator.xserver.Pointer;
 import com.winlator.xserver.XKeycode;
 import com.winlator.xserver.XServer;
@@ -51,7 +52,7 @@ public class WinHandler {
 
     private static final String TAG = "WinHandler";
     private final ControllerManager controllerManager;
-    public static final int MAX_PLAYERS = 4;
+    public static final int MAX_PLAYERS = 1;
     private final MappedByteBuffer[] extraGamepadBuffers = new MappedByteBuffer[MAX_PLAYERS - 1];
     private final ExternalController[] extraControllers = new ExternalController[MAX_PLAYERS - 1];
     private MappedByteBuffer gamepadBuffer;
@@ -59,6 +60,7 @@ public class WinHandler {
     private static final short CLIENT_PORT = 7946;
     private final ArrayDeque<Runnable> actions;
     private ExternalController currentController;
+    private volatile int currentControllerId;
     private byte dinputMapperType;
     private final List<Integer> gamepadClients;
     private boolean initReceived;
@@ -73,17 +75,31 @@ public class WinHandler {
     private DatagramSocket socket;
     private final ArrayList<Integer> xinputProcesses;
     private final XServer xServer;
-    private final XServerView xServerView;
+    private final XServerRendererView xServerView;
 
     private InputControlsView inputControlsView;
     private Thread rumblePollerThread;
-    private final short[] lastLowFreqs = new short[MAX_PLAYERS];
-    private final short[] lastHighFreqs = new short[MAX_PLAYERS];
-    private final boolean[] isRumbling = new boolean[MAX_PLAYERS];
+    private short lastLowFreq = 0;  // Use 'short' instead of uint16_t
+    private short lastHighFreq = 0; // Use 'short' instead of uint16_t
+    private boolean isRumbling = false;
     private boolean isShowingAssignDialog = false;
     private Context activity;
     private final java.util.Set<Integer> ignoredDeviceIds = new java.util.HashSet<>();
+    private RandomAccessFile gamepadRaf;
+    private RandomAccessFile[] extraGamepadRafs;
 
+    private static final int OFF_LX = 4;
+    private static final int OFF_LY = 6;
+    private static final int OFF_RX = 8;
+    private static final int OFF_RY = 10;
+    private static final int OFF_LT = 12;
+    private static final int OFF_RT = 14;
+    private static final int OFF_BTN = 16;
+    private static final int OFF_HAT = 31;
+    private static final int OFF_RUMBLE_LOW = 32;
+    private static final int OFF_RUMBLE_HIGH = 34;
+
+    // Add method to set InputControlsView
     public void setInputControlsView(InputControlsView view) {
         this.inputControlsView = view;
     }
@@ -95,7 +111,15 @@ public class WinHandler {
         BOTH
     }
 
-    public WinHandler(XServer xServer, XServerView xServerView) {
+    static {
+        System.loadLibrary("evshim");
+    }
+
+    private static native void notifyStateChanged(int playerIndex);
+    public static native int waitForRumble(int idx, int lastSeq);
+    public static native int rumbleTeardown(int idx);
+
+    public WinHandler(XServer xServer, XServerRendererView xServerView) {
         ByteBuffer allocate = ByteBuffer.allocate(64);
         ByteOrder byteOrder = ByteOrder.LITTLE_ENDIAN;
         ByteBuffer order = allocate.order(byteOrder);
@@ -115,51 +139,33 @@ public class WinHandler {
         this.xServerView = xServerView;
         this.controllerManager = ControllerManager.getInstance();
         this.activity = xServerView.getContext();
+        this.currentControllerId = -1;
     }
 
     public void refreshControllerMappings() {
         Log.d(TAG, "Refreshing controller assignments from settings...");
-        // Route through setControllerForSlot() so any in-progress rumble is cancelled and the
-        // per-slot rumble cache (lastLowFreqs/lastHighFreqs/isRumbling) is reset on swap.
-        // Direct writes would leave stale rumble state that can mask the first transition for
-        // the incoming controller.
-        for (int slot = 0; slot < MAX_PLAYERS; slot++) {
-            setControllerForSlot(slot, null);
+        currentController = null;
+        for (int i = 0; i < extraControllers.length; i++) {
+            extraControllers[i] = null;
         }
         controllerManager.scanForDevices();
-        for (int slot = 0; slot < MAX_PLAYERS; slot++) {
-            InputDevice device = controllerManager.getAssignedDeviceForSlot(slot);
-            if (device == null) continue;
-            ExternalController controller = ExternalController.getController(device.getId());
-            if (controller == null) continue;
-            if (slot == 0) controller.setContext(activity);
-            setControllerForSlot(slot, controller);
-            Log.i(TAG, "Initialized Player " + (slot + 1) + " with: " + device.getName());
+        InputDevice p1Device = controllerManager.getAssignedDeviceForSlot(0);
+        if (p1Device != null) {
+            currentController = ExternalController.getController(p1Device.getId());
+            if (currentController != null) {
+                currentController.setContext(activity);
+                Log.i(TAG, "Initialized Player 1 with: " + p1Device.getName());
+            }
         }
-    }
-
-    public MappedByteBuffer getBufferForSlot(int slot) {
-        if (slot == 0) return gamepadBuffer;
-        if (slot > 0 && slot <= extraGamepadBuffers.length) return extraGamepadBuffers[slot - 1];
-        return null;
-    }
-
-    public ExternalController getControllerForSlot(int slot) {
-        if (slot == 0) return currentController;
-        if (slot > 0 && slot <= extraControllers.length) return extraControllers[slot - 1];
-        return null;
-    }
-
-    public void setControllerForSlot(int slot, ExternalController controller) {
-        if (slot < 0 || slot >= MAX_PLAYERS) return;
-        ExternalController old = getControllerForSlot(slot);
-        if (old != null && old != controller) {
-            stopVibrationForSlot(slot, old);
-            lastLowFreqs[slot] = 0;
-            lastHighFreqs[slot] = 0;
+        // Initialize Extra Players (2, 3, 4)
+        for (int i = 0; i < extraControllers.length; i++) {
+            // Player 2 is slot 1, which corresponds to extraControllers[0]
+            InputDevice extraDevice = controllerManager.getAssignedDeviceForSlot(i + 1);
+            if (extraDevice != null) {
+                extraControllers[i] = ExternalController.getController(extraDevice.getId());
+                Log.i(TAG, "Initialized Player " + (i + 2) + " with: " + extraDevice.getName());
+            }
         }
-        if (slot == 0) { currentController = controller; return; }
-        if (slot > 0 && slot <= extraControllers.length) extraControllers[slot - 1] = controller;
     }
 
     private boolean sendPacket(int port) {
@@ -361,6 +367,12 @@ public class WinHandler {
 
     public void stop() {
         this.running = false;
+        rumbleTeardown(0);
+        try {
+            if (rumblePollerThread != null)
+                this.rumblePollerThread.join();
+        } catch (InterruptedException ignored) {
+        }
         DatagramSocket datagramSocket = this.socket;
         if (datagramSocket != null) {
             datagramSocket.close();
@@ -404,21 +416,10 @@ public class WinHandler {
                 final ControlsProfile profile = inputControlsView.getProfile();
                 final boolean useVirtualGamepad = inputControlsView != null && profile != null && profile.isVirtualGamepad();
                 int processId = this.receiveData.getInt();
-
-                Log.d(TAG, "GET_GAMEPAD: isXInput=" + isXInput + " notify=" + notify + " processId=" + processId
-                    + " preferredApi=" + preferredInputApi + " currentController=" + (currentController != null ? currentController.getName() + "(#" + currentController.getDeviceId() + ")" : "null")
-                    + " useVirtualGamepad=" + useVirtualGamepad);
-
                 if (!useVirtualGamepad && ((externalController = this.currentController) == null || !externalController.isConnected())) {
-                    // Use ControllerManager as the single source of truth for slot 0
-                    InputDevice p1Device = controllerManager.getAssignedDeviceForSlot(0);
-                    Log.d(TAG, "GET_GAMEPAD: no current controller, ControllerManager slot0 device=" + (p1Device != null ? p1Device.getName() : "null"));
-                    if (p1Device != null) {
-                        this.currentController = ExternalController.getController(p1Device.getId());
-                    }
+                    this.currentController = ExternalController.getController(0);
                 }
                 boolean enabled2 = this.currentController != null || useVirtualGamepad;
-                Log.d(TAG, "GET_GAMEPAD: final enabled=" + enabled2 + " controller=" + (currentController != null ? currentController.getName() + "(#" + currentController.getDeviceId() + ")" : "null"));
                 if (enabled2) {
                     switch (this.preferredInputApi) {
                         case DINPUT:
@@ -510,6 +511,9 @@ public class WinHandler {
                 final boolean useVirtualGamepad2 = inputControlsView != null && profile2 != null && profile2.isVirtualGamepad();
                 ExternalController externalController2 = this.currentController;
                 final boolean enabled3 = externalController2 != null || useVirtualGamepad2;
+                if (externalController2 != null && externalController2.getDeviceId() != gamepadId) {
+                    this.currentController = null;
+                }
                 addAction(() -> {
                     sendData.rewind();
                     sendData.put(RequestCodes.GET_GAMEPAD_STATE);
@@ -542,28 +546,40 @@ public class WinHandler {
         }
     }
 
+    public void setCurrentController(int deviceId) {
+        if (currentControllerId != deviceId)
+            this.currentControllerId = deviceId;
+    }
+
     public void start() {
         try {
             this.localhost = InetAddress.getLocalHost();
-            // Player 1 (currentController) gets the original non-numbered file
-            String p1_mem_path = "/data/data/app.gamenative/files/imagefs/tmp/gamepad.mem";
-            File p1_memFile = new File(p1_mem_path);
-            p1_memFile.getParentFile().mkdirs();
-            try (RandomAccessFile raf = new RandomAccessFile(p1_memFile, "rw")) {
-                raf.setLength(64);
-                gamepadBuffer = raf.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, 64);
+            Context context = activity.getApplicationContext();
+            File gamepadShmDir = new File(
+                    context.getFilesDir(),
+                    "imagefs/gamepad_shm"
+            );
+
+            if (!gamepadShmDir.exists() && !gamepadShmDir.mkdirs()) {
+                throw new IOException("Failed to create directory: " + gamepadShmDir.getAbsolutePath());
+            }
+
+            File p1_memFile = new File(gamepadShmDir, "gamepad.mem");
+            if (gamepadBuffer == null) {
+                gamepadRaf = new RandomAccessFile(p1_memFile, "rw");
+                gamepadRaf.setLength(64);
+                gamepadBuffer = gamepadRaf.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, 64);
                 gamepadBuffer.order(ByteOrder.LITTLE_ENDIAN);
                 Log.i(TAG, "Successfully created and mapped gamepad file for Player 1");
             }
+
             for (int i = 0; i < extraGamepadBuffers.length; i++) {
-                String extra_mem_path = "/data/data/app.gamenative/files/imagefs/tmp/gamepad" + (i + 1) + ".mem";
-                File extra_memFile = new File(extra_mem_path);
-                try (RandomAccessFile raf = new RandomAccessFile(extra_memFile, "rw")) {
-                    raf.setLength(64);
-                    extraGamepadBuffers[i] = raf.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, 64);
-                    extraGamepadBuffers[i].order(ByteOrder.LITTLE_ENDIAN);
-                    Log.i(TAG, "Successfully created and mapped gamepad file for Player " + (i + 2));
-                }
+                String extra_mem_path = "/data/data/app.gamenative/files/imagefs/gamepad_shm/gamepad" + (i + 1) + ".mem";
+                if (extraGamepadBuffers[i] != null) continue;
+                extraGamepadRafs[i] = new RandomAccessFile(extra_mem_path, "rw");
+                extraGamepadRafs[i].setLength(64);
+                extraGamepadBuffers[i] = extraGamepadRafs[i].getChannel().map(FileChannel.MapMode.READ_WRITE, 0, 64);
+                extraGamepadBuffers[i].order(ByteOrder.LITTLE_ENDIAN);
             }
         } catch (IOException e) {
             Log.e("EVSHIM_HOST", "FATAL: Failed to create memory-mapped file(s).", e);
@@ -572,10 +588,6 @@ public class WinHandler {
             } catch (UnknownHostException e2) {
             }
         }
-        // Pre-register controllers from saved assignments so games that check at
-        // startup sees a controller before any input arrives
-        initializeAssignedControllers();
-
         this.running = true;
         startSendThread();
         Executors.newSingleThreadExecutor().execute(() -> {
@@ -583,7 +595,7 @@ public class WinHandler {
                 DatagramSocket datagramSocket = new DatagramSocket((SocketAddress) null);
                 this.socket = datagramSocket;
                 datagramSocket.setReuseAddress(true);
-                this.socket.bind(new InetSocketAddress((InetAddress) null, 7947));
+                this.socket.bind(new InetSocketAddress((InetAddress) null, SERVER_PORT));
                 while (this.running) {
                     this.socket.receive(this.receivePacket);
                     synchronized (this.actions) {
@@ -592,90 +604,104 @@ public class WinHandler {
                         handleRequest(requestCode, this.receivePacket.getPort());
                     }
                 }
-            } catch (IOException e) {
+            } catch (IOException ignored) {
             }
         });
-
         startRumblePoller();
-        running = true;
-        startSendThread();
     }
 
     private void startRumblePoller() {
-        // poller skips case where controller is null and we
-        // do NOT vibrate phone as of now to prevent issues with docked users.
-        // TODO: add phone vibration option in upcoming ux when no controller device connected
         rumblePollerThread = new Thread(() -> {
+            int curSeq = 0;
+            int lastSeq = 0;
             while (running) {
                 try {
-                    for (int slot = 0; slot < MAX_PLAYERS; slot++) {
-                        MappedByteBuffer buffer = getBufferForSlot(slot);
-                        if (buffer == null) continue;
+                    curSeq = WinHandler.waitForRumble(0, lastSeq);
+                    if (curSeq == lastSeq) {
+                        continue;
+                    }
 
-                        short lowFreq = buffer.getShort(32);
-                        short highFreq = buffer.getShort(34);
+                    lastSeq = curSeq;
 
-                        if (lowFreq != lastLowFreqs[slot] || highFreq != lastHighFreqs[slot]) {
-                            ExternalController controller = getControllerForSlot(slot);
+                    // Read the rumble values from the shared memory file after change was signaled or timeout happened
+                    short lowFreq = gamepadBuffer.getShort(OFF_RUMBLE_LOW);
+                    short highFreq = gamepadBuffer.getShort(OFF_RUMBLE_HIGH);
 
-                            // case: disable vibration, attempt to disable safely
-                            if (lowFreq == 0 && highFreq == 0) {
-                                lastLowFreqs[slot] = lowFreq;
-                                lastHighFreqs[slot] = highFreq;
-                                stopVibrationForSlot(slot, controller);
-
-                            // case: controller exists and vibration exists
-                            } else if (controller != null) {
-                                // Only mark as delivered when we can actually vibrate
-                                lastLowFreqs[slot] = lowFreq;
-                                lastHighFreqs[slot] = highFreq;
-                                startVibrationForSlot(slot, controller, lowFreq, highFreq);
-                            }
-                            // else: controller not yet adopted for this slot — don't update
-                            // lastFreqs so the poller retries on the next tick
+                    // Check if the rumble state has changed
+                    if (lowFreq != lastLowFreq || highFreq != lastHighFreq) {
+                        lastLowFreq = lowFreq;
+                        lastHighFreq = highFreq;
+                        if (lowFreq == 0 && highFreq == 0) {
+                            stopVibration();
+                        } else {
+                            startVibration(lowFreq, highFreq);
                         }
                     }
-                } catch (Exception e) {
-                    continue;
-                }
-                try {
-                    Thread.sleep(20); // Poll for new commands 50 times per second
-                } catch (InterruptedException e) {
-                    break;
+                } catch (Exception ignored) {
                 }
             }
         });
         rumblePollerThread.start();
     }
 
-    private void startVibrationForSlot(int slot, ExternalController controller, short lowFreq, short highFreq) {
+    private void startVibration(short lowFreq, short highFreq) {
+        // --- Step 1: Calculate the base amplitude once at the top ---
         int unsignedLowFreq = lowFreq & 0xFFFF;
         int unsignedHighFreq = highFreq & 0xFFFF;
         int dominantRumble = Math.max(unsignedLowFreq, unsignedHighFreq);
+        // This is the raw amplitude for a physical X-Input device
         int amplitude = Math.round((float) dominantRumble / 65535.0f * 254.0f) + 1;
         if (amplitude > 255) amplitude = 255;
+        // If amplitude is negligible, just stop and exit.
         if (amplitude <= 1) {
-            stopVibrationForSlot(slot, controller);
+            stopVibration();
             return;
         }
-        if (controller == null) return;
-        InputDevice device = InputDevice.getDevice(controller.getDeviceId());
-        if (device == null) return;
-        Vibrator controllerVibrator = device.getVibrator();
-        if (controllerVibrator == null || !controllerVibrator.hasVibrator()) return;
-        isRumbling[slot] = true;
-        controllerVibrator.vibrate(VibrationEffect.createOneShot(50, amplitude));
-    }
+        isRumbling = true; // We know we are going to try to rumble.
+        boolean controllerVibrated = false;
+        // --- Step 2: Attempt to vibrate the physical controller first ---
+        InputDevice device = InputDevice.getDevice(currentControllerId);
+        if (device != null) {
+            Vibrator controllerVibrator = device.getVibrator();
+            if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
+                controllerVibrator.vibrate(VibrationEffect.createOneShot(1000, amplitude));
+                controllerVibrated = true;
+            }
+        }
 
-    private void stopVibrationForSlot(int slot, ExternalController controller) {
-        if (!isRumbling[slot]) return;
-        isRumbling[slot] = false;  // handle before early returns - disconnected or null controller leaves slot, assures to disable
-        if (controller == null) return;
-        InputDevice device = InputDevice.getDevice(controller.getDeviceId());
-        if (device == null) return;
-        Vibrator controllerVibrator = device.getVibrator();
-        if (controllerVibrator == null || !controllerVibrator.hasVibrator()) return;
-        controllerVibrator.cancel();
+        // --- Step 3: Fallback to phone vibration if physical controller fails or doesn't exist ---
+        if (!controllerVibrated) {
+            Log.w("WinHandler", "No physical controller vibrator found, falling back to device vibration.");
+            Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+            if (phoneVibrator != null && phoneVibrator.hasVibrator()) {
+                // --- HAPTIC CURVE LOGIC to make phone vibration feel better ---
+                float normalizedAmplitude = (float) amplitude / 255.0f;
+                float curvedAmplitude = (float) Math.pow(normalizedAmplitude, 0.6f);
+                int finalPhoneAmplitude = (int) (curvedAmplitude * 255);
+                if (finalPhoneAmplitude > 255) finalPhoneAmplitude = 255;
+                if (finalPhoneAmplitude <= 1) finalPhoneAmplitude = 0;
+                if (finalPhoneAmplitude > 0) {
+                    phoneVibrator.vibrate(VibrationEffect.createOneShot(1000, finalPhoneAmplitude));
+                }
+            }
+        }
+    }
+    private void stopVibration() {
+        if (!isRumbling) return; // Simplified check
+        // Attempt to stop the physical controller's vibration if it exists
+        InputDevice device = InputDevice.getDevice(currentControllerId);
+        if (device != null) {
+            Vibrator vibrator = device.getVibrator();
+            if (vibrator != null && vibrator.hasVibrator()) {
+                vibrator.cancel();
+            }
+        }
+        // Always attempt to stop the phone's vibration
+        Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+        if (phoneVibrator != null) {
+            phoneVibrator.cancel();
+        }
+        isRumbling = false;
     }
 
     public void sendGamepadState() {
@@ -705,70 +731,80 @@ public class WinHandler {
         }
     }
 
-    /**
-     * Resolves (or adopts) an ExternalController for the given device into the correct player slot.
-     * Returns the slot index (0-3) or -1 if the device is not a game controller.
-     */
-    private int resolveControllerSlot(int deviceId) {
-        int slot = controllerManager.autoAssignDevice(deviceId);
-        if (slot < 0) return -1;
-
-        ExternalController controller = getControllerForSlot(slot);
-        if (controller == null || controller.getDeviceId() != deviceId) {
+    public boolean onGenericMotionEvent(MotionEvent event) {
+        boolean handled = false;
+        ExternalController externalController = this.currentController;
+        // Adopt newly connected controller if deviceId mismatches
+        if ((externalController == null || externalController.getDeviceId() != event.getDeviceId()) && ExternalController.isJoystickDevice(event)) {
             ExternalController adopted = null;
+            // Try to get controller from profile first (has saved bindings)
             if (inputControlsView != null) {
                 ControlsProfile profile = inputControlsView.getProfile();
                 if (profile != null) {
-                    adopted = profile.getController(deviceId);
+                    adopted = profile.getController(event.getDeviceId());
                 }
             }
+            // Fallback to creating new controller if profile doesn't have one
             if (adopted == null) {
-                adopted = ExternalController.getController(deviceId);
+                adopted = ExternalController.getController(event.getDeviceId());
             }
-            if (adopted != null) {
-                setControllerForSlot(slot, adopted);
-                Timber.d("WinHandler: adopted controller %s(#%d) to slot %d", adopted.getName(), adopted.getDeviceId(), slot);
+            if (adopted != null && "*".equals(adopted.getId())) {
+                this.currentController = adopted;
+                externalController = adopted;
+                Timber.d("WinHandler.onGenericMotionEvent: adopted controller %s(#%d)", adopted.getName(), adopted.getDeviceId());
             }
         }
-        return slot;
-    }
-
-    public boolean onGenericMotionEvent(MotionEvent event) {
-        if (!ExternalController.isJoystickDevice(event)) return false;
-
-        int slot = resolveControllerSlot(event.getDeviceId());
-        if (slot < 0) return false;
-
-        ExternalController controller = getControllerForSlot(slot);
-        if (controller != null && controller.updateStateFromMotionEvent(event)) {
-            MappedByteBuffer buffer = getBufferForSlot(slot);
-            if (buffer != null) sendMemoryFileState(controller, buffer);
-            if (slot == 0) sendGamepadState();
-            return true;
+        if (externalController != null && externalController.getDeviceId() == event.getDeviceId() && (handled = this.currentController.updateStateFromMotionEvent(event))) {
+            if (handled) {
+                sendGamepadState();
+                sendMemoryFileState();
+            }
         }
-        return false;
+        return handled;
     }
 
     public boolean onKeyEvent(KeyEvent event) {
-        InputDevice device = event.getDevice();
-        if (device == null || !ExternalController.isGameController(device) || event.getRepeatCount() != 0) {
-            return false;
-        }
-
-        int slot = resolveControllerSlot(event.getDeviceId());
-        if (slot < 0) return false;
-
-        ExternalController controller = getControllerForSlot(slot);
-        if (controller == null) return false;
-
+        MappedByteBuffer buffer = null;
         boolean handled = false;
-        int action = event.getAction();
-        if (action == KeyEvent.ACTION_DOWN || action == KeyEvent.ACTION_UP) {
-            handled = controller.updateStateFromKeyEvent(event);
+        ExternalController externalController = this.currentController;
+        buffer = gamepadBuffer;
+        // If this is a gamepad event but our controller is null or mismatched, adopt it
+        InputDevice device = event.getDevice();
+        if ((externalController == null || externalController.getDeviceId() != event.getDeviceId())
+                && device != null && ExternalController.isGameController(device)
+                && event.getRepeatCount() == 0) {
+            ExternalController adopted = null;
+            // Try to get controller from profile first (has saved bindings)
+            if (inputControlsView != null) {
+                ControlsProfile profile = inputControlsView.getProfile();
+                if (profile != null) {
+                    adopted = profile.getController(event.getDeviceId());
+                }
+            }
+            // Fallback to creating new controller if profile doesn't have one
+            if (adopted == null) {
+                adopted = ExternalController.getController(event.getDeviceId());
+            }
+            if (adopted != null && "*".equals(adopted.getId())) {
+                this.currentController = adopted;
+                externalController = adopted;
+                Timber.d("WinHandler.onKeyEvent: adopted controller %s(#%d)", adopted.getName(), adopted.getDeviceId());
+            }
         }
-        MappedByteBuffer buffer = getBufferForSlot(slot);
-        if (buffer != null) sendMemoryFileState(controller, buffer);
-        if (handled && slot == 0) sendGamepadState();
+
+
+        if (externalController != null && externalController.getDeviceId() == event.getDeviceId() && event.getRepeatCount() == 0) {
+            int action = event.getAction();
+            if (action == KeyEvent.ACTION_DOWN) {
+                handled = this.currentController.updateStateFromKeyEvent(event);
+            } else if (action == KeyEvent.ACTION_UP) {
+                handled = this.currentController.updateStateFromKeyEvent(event);
+            }
+            sendMemoryFileState(this.currentController, buffer);
+            if (handled) {
+                sendGamepadState();
+            }
+        }
         return handled;
     }
 
@@ -785,7 +821,11 @@ public class WinHandler {
     }
 
 
-    public void sendMemoryFileState(ExternalController controller, MappedByteBuffer buffer) {
+    private void sendMemoryFileState() {
+        sendMemoryFileState(currentController, gamepadBuffer);
+    }
+
+    private void sendMemoryFileState(ExternalController controller, MappedByteBuffer buffer) {
         if (buffer == null || controller == null) {
             return;
         }
@@ -830,63 +870,51 @@ public class WinHandler {
         if (gamepadBuffer == null || state == null) {
             return;
         }
-        gamepadBuffer.clear();
 
-        gamepadBuffer.putShort((short)(state.thumbLX * 32767));
-        gamepadBuffer.putShort((short)(state.thumbLY * 32767));
-        gamepadBuffer.putShort((short)(state.thumbRX * 32767));
-        gamepadBuffer.putShort((short)(state.thumbRY * 32767));
+        // Axes: write by fixed offsets, not sequential position
+        gamepadBuffer.putShort(OFF_LX, (short) (state.thumbLX * 32767));
+        gamepadBuffer.putShort(OFF_LY, (short) (state.thumbLY * 32767));
+        gamepadBuffer.putShort(OFF_RX, (short) (state.thumbRX * 32767));
+        gamepadBuffer.putShort(OFF_RY, (short) (state.thumbRY * 32767));
 
+        // Triggers: curve and map to signed short range like your current code
         float rawL = Math.max(0f, Math.min(1f, state.triggerL));
         float rawR = Math.max(0f, Math.min(1f, state.triggerR));
-        float lCurve = (float)Math.sqrt(rawL);
-        float rCurve = (float)Math.sqrt(rawR);
-        int lAxis = Math.round(lCurve * 65_534f) - 32_767;
-        int rAxis = Math.round(rCurve * 65_534f) - 32_767;
-        gamepadBuffer.putShort((short)lAxis);
-        gamepadBuffer.putShort((short)rAxis);
 
-        // Buttons & D-Pad
+        float lCurve = (float) Math.sqrt(rawL);
+        float rCurve = (float) Math.sqrt(rawR);
+
+        int lAxis = Math.round(lCurve * 65534f) - 32767;
+        int rAxis = Math.round(rCurve * 65534f) - 32767;
+
+        gamepadBuffer.putShort(OFF_LT, (short) lAxis);
+        gamepadBuffer.putShort(OFF_RT, (short) rAxis);
+
+        // Buttons: 15 bytes starting at offset 16
         byte[] sdlButtons = new byte[15];
-        sdlButtons[0] = state.isPressed(0) ? (byte)1 : (byte)0;  // A
-        sdlButtons[1] = state.isPressed(1) ? (byte)1 : (byte)0;  // B
-        sdlButtons[2] = state.isPressed(2) ? (byte)1 : (byte)0;  // X
-        sdlButtons[3] = state.isPressed(3) ? (byte)1 : (byte)0;  // Y
-        sdlButtons[9] = state.isPressed(4) ? (byte)1 : (byte)0;  // Left Bumper
-        sdlButtons[10] = state.isPressed(5) ? (byte)1 : (byte)0; // Right Bumper
-        sdlButtons[4] = state.isPressed(6) ? (byte)1 : (byte)0;  // Select/Back
-        sdlButtons[6] = state.isPressed(7) ? (byte)1 : (byte)0;  // Start
-        sdlButtons[7] = state.isPressed(8) ? (byte)1 : (byte)0;  // Left Stick
-        sdlButtons[8] = state.isPressed(9) ? (byte)1 : (byte)0;  // Right Stick
-        sdlButtons[11] = state.dpad[0] ? (byte)1 : (byte)0;      // DPAD_UP
-        sdlButtons[12] = state.dpad[2] ? (byte)1 : (byte)0;      // DPAD_DOWN
-        sdlButtons[13] = state.dpad[3] ? (byte)1 : (byte)0;      // DPAD_LEFT
-        sdlButtons[14] = state.dpad[1] ? (byte)1 : (byte)0;      // DPAD_RIGHT
-        gamepadBuffer.put(sdlButtons);
-        gamepadBuffer.put((byte)0); // Ignored HAT value
-    }
+        sdlButtons[0]  = state.isPressed(0) ? (byte) 1 : 0;   // A
+        sdlButtons[1]  = state.isPressed(1) ? (byte) 1 : 0;   // B
+        sdlButtons[2]  = state.isPressed(2) ? (byte) 1 : 0;   // X
+        sdlButtons[3]  = state.isPressed(3) ? (byte) 1 : 0;   // Y
+        sdlButtons[9]  = state.isPressed(4) ? (byte) 1 : 0;   // LB
+        sdlButtons[10] = state.isPressed(5) ? (byte) 1 : 0;   // RB
+        sdlButtons[4]  = state.isPressed(6) ? (byte) 1 : 0;   // Back / Select
+        sdlButtons[6]  = state.isPressed(7) ? (byte) 1 : 0;   // Start
+        sdlButtons[7]  = state.isPressed(8) ? (byte) 1 : 0;   // L3
+        sdlButtons[8]  = state.isPressed(9) ? (byte) 1 : 0;   // R3
+        sdlButtons[11] = state.dpad[0] ? (byte) 1 : 0;        // Up
+        sdlButtons[12] = state.dpad[2] ? (byte) 1 : 0;        // Down
+        sdlButtons[13] = state.dpad[3] ? (byte) 1 : 0;        // Left
+        sdlButtons[14] = state.dpad[1] ? (byte) 1 : 0;        // Right
 
-    private void initializeAssignedControllers() {
-        Log.d(TAG, "Initializing controller assignments from saved settings...");
-        for (int i = 0; i < MAX_PLAYERS; i++) {
-            InputDevice device = controllerManager.getAssignedDeviceForSlot(i);
-            if (device != null) {
-                ExternalController controller = ExternalController.getController(device.getId());
-                if (i == 0) {
-                    currentController = controller;
-                    Log.d(TAG, "Assigned '" + device.getName() + "' to Player 1 at startup.");
-                } else {
-                    // Remember that extraControllers is 0-indexed for players 2-4
-                    // So Player 2 (slot index 1) goes into extraControllers[0]
-                    extraControllers[i - 1] = controller;
-                    Log.d(TAG, "Assigned '" + device.getName() + "' to Player " + (i + 1) + " at startup.");
-                }
-            }
+        for (int i = 0; i < 15; i++) {
+            gamepadBuffer.put(OFF_BTN + i, sdlButtons[i]);
         }
-        // This ensures P1-specific settings (like trigger type) are applied from preferences.
-        refreshControllerMappings();
-    }
-    public void clearIgnoredDevices() {
-        ignoredDeviceIds.clear();
+
+        // Hat at offset 31
+        gamepadBuffer.put(OFF_HAT, (byte) 0);
+
+        // Notify native side that state changed
+        notifyStateChanged(0);
     }
 }

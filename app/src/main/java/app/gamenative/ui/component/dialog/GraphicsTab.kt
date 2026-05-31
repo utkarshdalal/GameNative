@@ -29,7 +29,7 @@ import com.winlator.core.envvars.EnvVars
 import kotlin.math.roundToInt
 
 @Composable
-fun GraphicsTabContent(state: ContainerConfigState) {
+fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
     val config = state.config.value
     SettingsGroup() {
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
@@ -135,6 +135,16 @@ fun GraphicsTabContent(state: ContainerConfigState) {
                     val cfg = KeyValueSet(config.graphicsDriverConfig)
                     cfg.put("presentMode", state.presentModes[idx])
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
+                },
+            )
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = stringResource(R.string.renderer_present_modes)) },
+                value = state.rendererPresentModeIndex.value.coerceIn(0, state.rendererPresentModes.lastIndex.coerceAtLeast(0)),
+                items = state.rendererPresentModes,
+                onItemSelected = { idx ->
+                    state.rendererPresentModeIndex.value = idx
+                    state.config.value = config.copy(rendererPresentMode = state.rendererPresentModes[idx])
                 },
             )
             SettingsListDropdown(
@@ -323,7 +333,7 @@ fun GraphicsTabContent(state: ContainerConfigState) {
         // Frame Generation (LSFG) — hooks the Vulkan swapchain for
         // transparent frame generation. Only effective on Bionic containers
         // with a Vortek/Adreno graphics driver.
-        LsfgSection(state)
+        if (!default) LsfgSection(state)
 
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
@@ -340,6 +350,15 @@ fun GraphicsTabContent(state: ContainerConfigState) {
 @Composable
 private fun DxWrapperSection(state: ContainerConfigState) {
     val config = state.config.value
+    SettingsSwitch(
+        colors = settingsTileColorsAlt(),
+        title = { Text(text = stringResource(R.string.use_legacy_renderer)) },
+        subtitle = { Text(text = stringResource(R.string.use_legacy_renderer_description)) },
+        state = config.useLegacyRenderer,
+        onCheckedChange = {
+            state.config.value = config.copy(useLegacyRenderer = it)
+        },
+    )
     SettingsListDropdown(
         colors = settingsTileColors(),
         title = { Text(text = stringResource(R.string.dx_wrapper)) },

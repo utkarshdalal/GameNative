@@ -1,8 +1,10 @@
 package app.gamenative.ui.screen.settings
 
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Environment
 import android.os.storage.StorageManager
+import java.io.File
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -23,10 +25,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -44,6 +52,8 @@ import kotlinx.serialization.json.Json
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import app.gamenative.ui.theme.PluviaTheme
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
@@ -86,10 +96,36 @@ import app.gamenative.ui.screen.auth.GOGOAuthActivity
 import app.gamenative.ui.screen.auth.AmazonOAuthActivity
 import app.gamenative.service.amazon.AmazonAuthManager
 import app.gamenative.utils.PlatformOAuthHandlers
+import app.gamenative.data.GameSource
+import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.ui.util.PlatformAuthUiHelpers
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.StorageUtils
 
+/** Icon button that triggers [FrontendSyncManager.resyncAll] and shows a spinner while syncing. */
+@Composable
+private fun FrontendSyncResyncButton() {
+    val isSyncing by FrontendSyncManager.isSyncing.collectAsState()
+    val resyncLabel = stringResource(R.string.frontend_sync_resync_all)
+    IconButton(
+        onClick = { FrontendSyncManager.resyncAll() },
+        modifier = Modifier.semantics { contentDescription = resyncLabel },
+    ) {
+        if (isSyncing) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.Sync,
+                contentDescription = stringResource(R.string.frontend_sync_resync_all),
+            )
+        }
+    }
+}
+
+/** Settings group covering interface preferences: theme, downloads, frontend sync, language, and icons. */
 @Composable
 fun SettingsGroupInterface(
     appTheme: AppTheme,
@@ -167,6 +203,8 @@ fun SettingsGroupInterface(
     // Epic logout confirmation dialog state
     var showEpicLogoutDialog by rememberSaveable { mutableStateOf(false) }
     var epicLogoutLoading by rememberSaveable { mutableStateOf(false) }
+
+    var showFrontendSyncDialog by rememberSaveable { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
     // Use Activity lifecycle scope for the OAuth result callback so it stays valid after
@@ -321,6 +359,17 @@ fun SettingsGroupInterface(
                     }
                 }
             },
+        )
+
+        val anyFrontendSyncConfigured by FrontendSyncManager.anyConfigured.collectAsState()
+        SettingsMenuLink(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_frontend_sync_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_frontend_sync_subtitle)) },
+            action = if (anyFrontendSyncConfigured) {
+                { FrontendSyncResyncButton() }
+            } else null,
+            onClick = { showFrontendSyncDialog = true },
         )
 
         // Language selection
@@ -665,6 +714,10 @@ fun SettingsGroupInterface(
         progress = -1f, // Indeterminate progress
         message = stringResource(R.string.settings_language_changing),
     )
+
+    if (showFrontendSyncDialog) {
+        FrontendSyncDialog(onDismiss = { showFrontendSyncDialog = false })
+    }
 
     // GOG/Epic/Amazon login and logout flows (including loading dialogs and
     // confirmations) are now owned by the System Menu and shared helpers.

@@ -89,7 +89,10 @@ object SteamUtils {
 
     fun getDownloadBytes(manifest: ManifestInfo?): Long {
         if (manifest == null) return 0L
-        return if (manifest.download > 0L) manifest.download else manifest.size
+        // Cap DownloadSize to installSize due to incorrectly gigantic sizes
+        // DL size should always be smaller than installSize.
+        val hasSaneDownload = manifest.download > 0L && manifest.download <= manifest.size
+        return if (hasSaneDownload) manifest.download else manifest.size
     }
 
     internal val http = Net.http.newBuilder()
@@ -800,7 +803,9 @@ object SteamUtils {
         Timber.i("Finished restoreSteamApi for appId: ${appId}")
 
         // Restore original executable if it exists (for real Steam mode)
-        restoreOriginalExecutable(context, steamAppId)
+        if (!container.isLaunchBionicSteam) {
+            restoreOriginalExecutable(context, steamAppId)
+        }
 
         // Restore original steamclient.dll files if they exist
         restoreSteamclientFiles(context, steamAppId)
@@ -1032,7 +1037,7 @@ object SteamUtils {
         }
 
         val configsIni = settingsDir.resolve("configs.user.ini")
-        val accountName   = PrefManager.username
+        val accountName   = SteamService.instance?.localPersona?.value?.name ?: PrefManager.username
         val accountSteamId = SteamService.userSteamId?.convertToUInt64()?.toString()
             ?: PrefManager.steamUserSteamId64.takeIf { it != 0L }?.toString()
             ?: "0"

@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">User Login</string>
     <string name="login_2fa">Two Factor</string>
@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Use the Steam Mobile App to confirm your sign in…</string>
     <string name="steam_2fa_device">Please enter your 2-factor auth code from your authenticator app.</string>
     <string name="steam_2fa_email">Please enter the auth code sent to the email at %s</string>
+    <string name="steam_2fa_use_guard_totp">Or use 2-factor auth code</string>
     <string name="steam_install_space_prompt">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tSize on Disk: %2$s\n\tAvailable Space: %3$s</string>
     <string name="steam_install_space">Download Size: %1$s\nSize on Disk: %2$s\nAvailable Space: %3$s</string>
     <string name="steam_install_not_enough_space">The app being installed needs %1$s of space but there is only %2$s left on this device</string>
@@ -253,6 +254,8 @@
     <string name="screen_effects_scaling_mode_stretch">Stretch</string>
     <string name="screen_effects_scaling_mode_fsr">FSR</string>
     <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_natural">Natural</string>
     <string name="screen_effects_fsr">FSR 1.0</string>
     <string name="screen_effects_fsr_description">Official AMD FidelityFX Super Resolution 1.0 using EASU + RCAS with a lower internal render resolution and full-resolution upscale.</string>
     <string name="screen_effects_fsr_quality">FSR quality</string>
@@ -290,6 +293,7 @@
     <string name="performance_hud_fps_limiter_target">Target FPS</string>
     <string name="performance_hud_fps_limiter_off">Unlimited</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Limiter overridden while LSFG is active. Source rate is paced by the multiplier.</string>
     <string name="performance_hud_presets">Presets</string>
     <string name="performance_hud_presets_description">Quickly switch between common HUD layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -658,6 +662,10 @@
     <string name="width">Width</string>
     <string name="height">Height</string>
     <string name="audio_driver">Audio Driver</string>
+    <string name="pulseaudio_suspend_behavior">PulseAudio Suspend Behavior</string>
+    <string name="pulseaudio_suspend_behavior_thread">Suspend via Thread (Default)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Suspend via Pactl (Powersave)</string>
+    <string name="pulseaudio_low_latency">PulseAudio Low Latency Mode</string>
     <string name="show_fps">Show FPS</string>
     <string name="portrait_mode">Portrait Mode</string>
     <string name="portrait_mode_description">For 8BitDo FlipPad/GameSir Pocket Taco type controllers</string>
@@ -673,6 +681,8 @@
     <string name="local_saves_only_description">Disable cloud save sync for this game and keep saves on device only</string>
     <string name="launch_steam_client_beta">Launch Steam Client (Beta)</string>
     <string name="launch_steam_client_description">Reduces performance and slows down launch\nAllows online play and fixes DRM and controller issues\nNot all games work</string>
+    <string name="launch_bionic_steam">Enable Experimental Bionic Steam</string>
+    <string name="launch_bionic_steam_description">Enables online play, improves compatibility\nDoes not always work\nBack up your saves before trying this</string>
     <string name="steam_offline_mode">Steam Offline Mode</string>
     <string name="steam_offline_mode_description">Launch Steam games in offline mode</string>
     <string name="achievement_unlocked">Achievement Unlocked</string>
@@ -684,6 +694,10 @@
     <string name="allow_steam_updates">Allow Steam updates</string>
     <string name="allow_steam_updates_description">Updates Steam to the latest version. Significantly reduces performance.</string>
     <string name="steam_type">Steam Type</string>
+
+    <!-- Container Configuration: Epic -->
+    <string name="epic_offline_mode">Epic Offline Mode</string>
+    <string name="epic_offline_mode_description">Launch Epic games in offline mode</string>
 
     <!-- Container Configuration: Graphics -->
     <string name="graphics_driver">Graphics Driver</string>
@@ -698,9 +712,12 @@
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">Use DRI3</string>
     <string name="use_dri3_description">Disabling may fix graphical glitches on some devices</string>
+    <string name="use_legacy_renderer">Use Legacy Renderer</string>
+    <string name="use_legacy_renderer_description">Use legacy GLRenderer instead of VulkanRenderer. VulkanRenderer improves performance, but is in beta and may cause issues.</string>
     <string name="sync_frame">Sync Every Frame</string>
     <string name="disable_present_wait">Disable KHR_present_wait</string>
     <string name="present_modes">Present Modes</string>
+    <string name="renderer_present_modes">Renderer Present Mode</string>
     <string name="resource_type">Memory Resource Type</string>
     <string name="bcn_emulation">BCn Emulation</string>
     <string name="bcn_emulation_type">BCn Emulation Type</string>
@@ -951,6 +968,10 @@
     <string name="settings_storage_title">Storage</string>
     <string name="settings_storage_manage_title">Storage Manager</string>
     <string name="settings_storage_manage_subtitle">Review game and container storage in one place</string>
+    <string name="storage_internal">Internal</string>
+    <string name="storage_external">External</string>
+    <string name="storage_free_of_total">%1$s: %2$s free of %3$s</string>
+    <string name="storage_calculating">%1$s: Calculating…</string>
     <string name="container_storage_title">Container &amp; Storage Manager</string>
     <string name="container_storage_subtitle">Review game and container storage, including installed games without containers</string>
     <string name="container_storage_summary">%1$d items • %2$s</string>
@@ -1480,6 +1501,7 @@
     <string name="lsfg_enable">Enable LSFG-VK frame generation</string>
     <string name="lsfg_multiplier">Frame multiplier</string>
     <string name="lsfg_flow_scale">Flow scale</string>
+    <string name="lsfg_flow_scale_desc">Lower is more stable; higher is smoother but can artifact.</string>
     <string name="lsfg_performance_mode">Performance mode</string>
     <string name="lsfg_not_supported">Frame generation requires a Bionic container</string>
     <string name="lsfg_install_prompt">Lossless Scaling not installed. Tap to install. Only known to work on Adreno 6xx and above.</string>
@@ -1490,4 +1512,47 @@
     <string name="lsfg_performance_mode_desc">Reduces quality for higher throughput</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Show curated indie game picks in your library. Keeping this on helps support indie developers and GameNative.</string>
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Frontend Sync</string>
+    <string name="settings_interface_frontend_sync_subtitle">Auto-export installed games for game library frontends</string>
+    <string name="frontend_sync_dialog_title">Frontend Sync</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Custom Games</string>
+    <string name="frontend_sync_not_set">Not set</string>
+    <string name="frontend_sync_clear_confirm_title">Remove old export files?</string>
+    <string name="frontend_sync_clear_confirm_message">Remove .%1$s files from the previous directory?</string>
+    <string name="frontend_sync_confirm_remove">Remove</string>
+    <string name="frontend_sync_confirm_keep">Keep</string>
+    <string name="frontend_sync_resync_all">Resync all</string>
+    <string name="frontend_sync_resync_complete">Frontend sync complete</string>
+    <string name="frontend_sync_pick_directory_cd">Pick directory for %1$s</string>
+    <string name="frontend_sync_clear_directory_cd">Clear directory for %1$s</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">Booting may take a few minutes on first launch</string>
+    <string name="game_launch_tip_2">Tip: You can view the game files by pressing \"%s\" in the game settings.</string>
+    <string name="game_launch_tip_3">Tip: You can go to the main settings menu and download custom drivers for your device to be used on Bionic.</string>
+    <string name="game_launch_tip_4">Tip: If you are getting a DirectX error, make sure you are using DXVK 1.10.3-async and leegao-wrapper on Bionic.</string>
+    <string name="game_launch_tip_5">Tip: Try the Direct3D test in the Start Menu after clicking \"%s\" to check if your device is working correctly.</string>
+    <string name="game_launch_tip_6">Tip: Use DXVK for DirectX 8/9/10/11 games, VKD3D for DirectX 12 games and VirGL + WineD3D for OpenGL games.</string>
+    <string name="game_launch_tip_7">Tip: Use Turnip on glibc or bionic to play DirectX 12 games. DirectX 12 support for devices that don\'t support Turnip is currently limited.</string>
+    <string name="game_launch_tip_8">Tip: Try the Adreno or Snapdragon 8 Elite drivers on glibc if you are on a compatible device.</string>
+    <string name="game_launch_tip_9">Tip: If you are getting a black screen when launching a game, try \"%s\" and launching the game from A: drive.</string>
+    <string name="game_launch_tip_10">Tip: You can add different locations for Custom Games in the settings.</string>
+    <string name="game_launch_tip_11">Tip: Use the quick menu performance HUD when you want FPS stats in-game.</string>
+    <string name="game_launch_tip_12">Tip: Install packages in A:\\_CommonRedist if your game doesn\'t launch.</string>
+    <string name="game_launch_tip_13">Tip: You can enable or disable the onscreen controller with your device\'s back key.</string>
+    <string name="game_launch_tip_14">Tip: You can bring up the keyboard with your device\'s back key.</string>
+    <string name="game_launch_tip_15">Tip: You can tap with two fingers inside the container to right click.</string>
+    <string name="game_launch_tip_16">Tip: If you are using the onscreen controller, you can disable the mouse to prevent accidental touches.</string>
+    <string name="game_launch_tip_17">Tip: Report issues on Discord so we can fix them.</string>
+    <string name="game_launch_tip_18">Tip: Use the Vortek driver in glibc or wrapper-leegao in Bionic if you are on a non-Adreno GPU.</string>
+    <string name="game_launch_tip_19">Tip: Lower resolution and use box64 in performance mode to boost FPS.</string>
+    <string name="game_launch_tip_20">Tip: If the game is crashing after loading, increase the video memory.</string>
+    <string name="game_launch_tip_21">Tip: If you are seeing visual glitches, disable DRI3.</string>
+    <string name="game_launch_tip_22">Tip: You can enable touchscreen mode.</string>
+    <string name="game_launch_tip_23">Tip: If you have a Mali GPU, please use System Drivers.</string>
+    <string name="game_launch_tip_24">Tip: Getting a blank screen? Try using the \"%s\" option in the menu to check if your drivers are working correctly.</string>
 </resources>

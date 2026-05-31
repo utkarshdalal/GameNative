@@ -10,7 +10,7 @@ GameNative allows you to play games you own on Steam, Epic and GOG directly on A
 ## How to Use
 
 (Note that GameNative is still in its early stages, and all games may not work, or may require tweaking to get working well)
-1. Download the latest release [here](https://downloads.gamenative.app/releases/0.9.1/gamenative-v0.9.1.apk)
+1. Download the latest release [here](https://downloads.gamenative.app/releases/0.9.2/gamenative-v0.9.2.apk)
 2. Install the APK on your Android device
 3. Login to your Steam account
 4. Install your game
@@ -22,6 +22,10 @@ To report issues or receive support, join the [Discord server](https://discord.g
 Do not create issues on GitHub as they will be automatically closed!
 
 You can support GameNative on Ko-fi at https://ko-fi.com/gamenative
+
+## Development
+Message me to join the #development channel on our Discord. You can also open a thread there to discuss.
+You can see current issues we need help with on [Trello](https://trello.com/b/vGRkFoAM/open-source-board)
 
 ## Building
 ### IF YOU JUST WANT TO USE THE APP, PLEASE SEE THE HOW TO USE SECTION ABOVE. THIS IS ONLY NEEDED IF YOU WANT TO CONTRIBUTE FOR DEVELOPMENT.
@@ -60,6 +64,9 @@ This data helps us understand which games work, how well they perform, and autom
 - Cloud sync events
 
 See our full [Privacy Policy](PrivacyPolicy/README.md) for more details.
+
+## Supporters
+Thank you to our [Ko-fi sponsors](https://ko-fi.com/gamenative) and [GitHub sponsors](https://github.com/sponsors/utkarshdalal?preview=true), including [CodeRabbit](https://coderabbit.link/gnative), 
 
 **Disclaimer: This software is intended for playing games that you legally own. Do not use this software for piracy or any other illegal purposes. The maintainer of this fork assumes no
 responsibility for misuse.**
