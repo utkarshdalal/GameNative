@@ -293,6 +293,10 @@ data class EnvVarInfo(
                     "xinput1_3=n,b;xinput1_4=n,b",
                     "xinput9_1_0=n,b;windows.gaming.input=n,b",
                     "xinput1_1=n,b;xinput1_2=n,b",
+                    // Category header: Network
+                    "---Network",
+                    "wininet=n,b",
+
                 ),
             ),
         )
