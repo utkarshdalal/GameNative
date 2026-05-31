@@ -76,33 +76,40 @@ class CustomGameAppScreen : BaseAppScreen() {
 
         // Check for all SteamGridDB images in the game folder
         // Hero view uses horizontal grid (grid_hero)
+        // A user-supplied "coverh"/"cover" image takes priority over SteamGridDB.
+        // coverh = horizontal cover
         val heroImageUrl = remember(gameFolderPath) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
-                findSteamGridDBImage(folder, "grid_hero")
+                CustomGameScanner.findHeroCoverInFolder(folder)
+                    ?: findSteamGridDBImage(folder, "grid_hero")
             }
         }
 
         // Capsule view uses vertical grid (grid_capsule)
+        // A user-supplied "coverv"/"cover" image takes priority over SteamGridDB.
+        // coverv = vertical cover
         val capsuleUrl = remember(gameFolderPath) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
-                findSteamGridDBImage(folder, "grid_capsule")
+                CustomGameScanner.findCapsuleCoverInFolder(folder)
+                    ?: findSteamGridDBImage(folder, "grid_capsule")
             }
         }
 
         // Header view uses heroes endpoint (hero, but not grid_hero)
+        // This is also a horizontal banner, so the user "coverh"/"cover" applies here too.
         val headerUrl = remember(gameFolderPath) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
-                // Find hero image but exclude grid_hero
-                folder.listFiles()?.firstOrNull { file ->
-                    file.name.startsWith("steamgriddb_hero") &&
-                    !file.name.contains("grid") &&
-                    (file.name.endsWith(".png", ignoreCase = true) ||
-                     file.name.endsWith(".jpg", ignoreCase = true) ||
-                     file.name.endsWith(".webp", ignoreCase = true))
-                }?.let { Uri.fromFile(it).toString() }
+                CustomGameScanner.findHeroCoverInFolder(folder)
+                    ?: folder.listFiles()?.firstOrNull { file ->
+                        file.name.startsWith("steamgriddb_hero") &&
+                        !file.name.contains("grid") &&
+                        (file.name.endsWith(".png", ignoreCase = true) ||
+                         file.name.endsWith(".jpg", ignoreCase = true) ||
+                         file.name.endsWith(".webp", ignoreCase = true))
+                    }?.let { Uri.fromFile(it).toString() }
             }
         }
 
