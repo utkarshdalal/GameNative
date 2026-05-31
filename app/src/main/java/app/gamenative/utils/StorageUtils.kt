@@ -93,7 +93,7 @@ object StorageUtils {
             try {
                 for (volume in sm.storageVolumes) {
                     val state = volume.state
-                    if (state == Environment.MEDIA_MOUNTED || state == Environment.MEDIA_MOUNTED_READ_ONLY) {
+                    if (state == Environment.MEDIA_MOUNTED) {
                         val volumeDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                             volume.directory
                         } else {
