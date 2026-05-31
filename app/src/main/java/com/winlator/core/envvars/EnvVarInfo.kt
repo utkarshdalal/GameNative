@@ -261,35 +261,38 @@ data class EnvVarInfo(
             "VKD3D_SHADER_CACHE_PATH" to EnvVarInfo(
                 identifier = "VKD3D_SHADER_CACHE_PATH",
             ),
+            "VKD3D_CONFIG" to EnvVarInfo(
+                identifier = "VKD3D_CONFIG",
+            ),
             "DXVK_CONFIG" to EnvVarInfo(
                 identifier = "DXVK_CONFIG",
             ),
-            "VKD3D_CONFIG" to EnvVarInfo(
-                identifier = "VKD3D_CONFIG",
+            "DXVK_DISABLE_TIMELINE_SEMAPHORES" to EnvVarInfo(
+                identifier = "DXVK_DISABLE_TIMELINE_SEMAPHORES",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1")
             ),
             "MESA_VK_PRESENT_MODE" to EnvVarInfo(
                 identifier = "MESA_VK_PRESENT_MODE",
             ),
-            "DXVK_FILTER_DEVICE_NAME" to EnvVarInfo(
-                identifier = "DXVK_FILTER_DEVICE_NAME",
-                selectionType = EnvVarSelectionType.MULTI_SELECT,
-                possibleValues = listOf(
-                    "NVIDIA GeForce GTX 1080",
-                    "NVIDIA GeForce RTX 3060",
-                    "AMD Radeon RX 580",
-                    "Radeon HD 7900 Series",
-                ),
-            ),
             // Wine DLL overrides — user types freely or picks a common preset
-            // More common DLL overrides can be added in future. Only audio related for now
             "WINEDLLOVERRIDES" to EnvVarInfo(
                 identifier = "WINEDLLOVERRIDES",
                 selectionType = EnvVarSelectionType.SUGGESTIONS,
                 possibleValues = listOf(
+                    // Category header: Audio
+                    "---Audio",
                     "openal32=native,builtin",
                     "soft_oal=native",
                     "openal32=native,builtin;soft_oal=native",
                     "xaudio2_7=native,builtin",
+                    // Category header: Input
+                    "---Input",
+                    "dinput8=n,b",
+                    "dinput8=n,b;dinput=n,b",
+                    "xinput1_3=n,b;xinput1_4=n,b",
+                    "xinput9_1_0=n,b;windows.gaming.input=n,b",
+                    "xinput1_1=n,b;xinput1_2=n,b",
                 ),
             ),
         )
