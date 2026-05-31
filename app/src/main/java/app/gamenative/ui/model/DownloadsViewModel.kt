@@ -716,7 +716,7 @@ class DownloadsViewModel @Inject constructor(
                     val id = appId.toIntOrNull() ?: return@launch
                     SteamService.getAppDownloadInfo(id)?.cancel()
                     SteamService.deleteApp(id)
-                    PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(id))
+                    PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(id, GameSource.STEAM))
                     scheduleRefreshDownloads()
                 }
 

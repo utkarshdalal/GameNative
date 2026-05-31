@@ -61,6 +61,7 @@ class PerformanceHudView(
     private var attachedMetricSignature: List<MetricSignature> = emptyList()
     private var appearance = appearanceFor(initialConfig.size)
     private var smoothedBatteryRuntimeHours: Double? = null
+    private var isPaused = false
 
     private val backgroundDrawable = GradientDrawable().apply {
         shape = GradientDrawable.RECTANGLE
@@ -166,9 +167,27 @@ class PerformanceHudView(
         refreshVisibleMetrics()
     }
 
+    fun pause() {
+        if (!isPaused) {
+            isPaused = true
+            stopUpdates()
+        }
+    }
+
+    fun resume() {
+        if (isPaused) {
+            isPaused = false
+            if (isAttachedToWindow) {
+                startUpdates()
+            }
+        }
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        startUpdates()
+        if (!isPaused) {
+            startUpdates()
+        }
     }
 
     override fun onDetachedFromWindow() {
@@ -759,7 +778,7 @@ class PerformanceHudView(
 
         if (!thermalZoneDiscoveryLogged) {
             thermalZoneDiscoveryLogged = true
-            Timber.d(
+            Timber.v(
                 "[HUD] Discovered %d thermal zones: %s",
                 zones.size,
                 zones.joinToString(", ") { (type, path) ->

@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.util.Log;
 
+import app.gamenative.BuildConfig;
 import app.gamenative.R;
 import app.gamenative.enums.Marker;
 import app.gamenative.service.SteamService;
@@ -88,6 +89,19 @@ public abstract class ImageFsInstaller {
         }
     }
 
+    // Modern flavor ships an additional bionic preload shipped as a flat asset
+    // (src/modern/assets/) until it's folded into redirect.tzst. Copy it next to
+    // the tarball-extracted variant so BionicProgramLauncherComponent can find it
+    private static void ensureBionicLib(Context context, File imagefs) {
+        if (BuildConfig.MODERN_ANDROID) {
+            File wxDest = new File(imagefs, "usr/lib/libredirect-bionic-wx.so");
+            if (!wxDest.exists()) {
+                FileUtils.copy(context, "libredirect-bionic-wx.so", wxDest);
+                chmod(wxDest);
+            }
+        }
+    }
+
     private static Future<Boolean> installFromAssetsFuture(
             final Context context,
             AssetManager assetManager,
@@ -108,11 +122,13 @@ public abstract class ImageFsInstaller {
             clearRootDir(context, rootDir);
             ensureSharedHomeRoot(context, rootDir);
             ensureProtonVersionSymlink(context, rootDir, wineVersion);
+            ensureBionicLib(context, rootDir);
 
             final byte compressionRatio = 22;
             String imagefsFile = containerVariant.equals(Container.GLIBC) ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
             File downloaded = new File(imageFs.getFilesDir(), imagefsFile);
 
+            
             boolean success = false;
 
             if (Arrays.asList(context.getAssets().list("")).contains(imagefsFile) == true){
@@ -189,6 +205,8 @@ public abstract class ImageFsInstaller {
         chmod(new File(imagefs, "usr/lib/libredirect.so"));
         chmod(new File(imagefs, "usr/lib/libredirect-bionic.so"));
 
+        ensureBionicLib(ctx, imagefs);
+
         final String EXTRAS_TAR = "extras.tzst";          // ➊  add this to assets/
         // ➋  Unpack straight into imagefs, preserving relative paths.
         try (InputStream in  = ctx.getAssets().open(EXTRAS_TAR)) {
@@ -227,6 +245,7 @@ public abstract class ImageFsInstaller {
         } else {
             Log.d("ImageFsInstaller", "Image FS already valid and at latest version");
             return Executors.newSingleThreadExecutor().submit(() -> {
+                ensureBionicLib(context, imageFs.getRootDir());
                 return true;
             });
         }

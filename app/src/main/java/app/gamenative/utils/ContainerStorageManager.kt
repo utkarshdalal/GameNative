@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
@@ -36,6 +37,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -69,6 +71,46 @@ object ContainerStorageManager {
         INTERNAL,
         EXTERNAL,
         UNKNOWN,
+    }
+
+    data class VolumeInfo(
+        val label: String,
+        val freeBytes: Long,
+        val totalBytes: Long,
+    )
+
+    suspend fun getInternalVolumeInfo(context: Context): VolumeInfo? = withContext(Dispatchers.IO) {
+        try {
+            VolumeInfo(
+                label = context.getString(R.string.storage_internal),
+                freeBytes = StorageUtils.getAvailableSpace(context.dataDir.path),
+                totalBytes = StorageUtils.getTotalSpace(context.dataDir.path),
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to query internal storage volume info")
+            null
+        }
+    }
+
+    suspend fun getExternalVolumeInfo(context: Context): VolumeInfo? = withContext(Dispatchers.IO) {
+        if (!PrefManager.useExternalStorage) return@withContext null
+        val externalPath = PrefManager.externalStoragePath
+        if (externalPath.isBlank() || !File(externalPath).isDirectory) return@withContext null
+
+        try {
+            VolumeInfo(
+                label = context.getString(R.string.storage_external),
+                freeBytes = StorageUtils.getAvailableSpace(externalPath),
+                totalBytes = StorageUtils.getTotalSpace(externalPath),
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to query external storage volume info")
+            null
+        }
     }
 
     data class Entry(
@@ -280,7 +322,7 @@ object ContainerStorageManager {
         val installSize = entry.gameInstallSizeBytes ?: StorageUtils.getFolderSize(targetDir.absolutePath)
         when (gameSource) {
             GameSource.STEAM -> {
-                steamGameId?.let { PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(it)) }
+                steamGameId?.let { PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(it, GameSource.STEAM)) }
             }
 
             GameSource.GOG -> {
@@ -373,7 +415,7 @@ object ContainerStorageManager {
                         if (entry.hasContainer) {
                             removeContainer(context, entry.containerId)
                         }
-                        PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(gameId))
+                        PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.STEAM))
                         Result.success(Unit)
                     }
                 }

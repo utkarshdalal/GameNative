@@ -43,6 +43,10 @@ interface GOGGameDao {
     @Query("SELECT * FROM gog_games WHERE is_installed = :isInstalled AND exclude = 0 ORDER BY title ASC")
     fun getByInstallStatus(isInstalled: Boolean): Flow<List<GOGGame>>
 
+    /** Returns all installed GOG games, excluding excluded entries, sorted by title. */
+    @Query("SELECT * FROM gog_games WHERE is_installed = 1 AND exclude = 0 ORDER BY title ASC")
+    suspend fun getInstalledGames(): List<GOGGame>
+
     @Query("SELECT * FROM gog_games WHERE is_installed = 0 AND exclude = 0")
     suspend fun getNonInstalledGames(): List<GOGGame>
 

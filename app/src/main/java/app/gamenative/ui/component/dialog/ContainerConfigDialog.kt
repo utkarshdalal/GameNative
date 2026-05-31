@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
+import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.dialog.state.MessageDialogState
@@ -176,6 +177,7 @@ fun ContainerConfigDialog(
         val audioDrivers = stringArrayResource(R.array.audio_driver_entries).toList()
         val gpuCards = ContainerUtils.getGPUCards(context)
         val presentModes = stringArrayResource(R.array.present_mode_entries).toList()
+        val rendererPresentModes = listOf("fifo", "mailbox")
         val resourceTypes = stringArrayResource(R.array.resource_type_entries).toList()
         val bcnEmulationEntries = stringArrayResource(R.array.bcn_emulation_entries).toList()
         val bcnEmulationTypeEntries = stringArrayResource(R.array.bcn_emulation_type_entries).toList()
@@ -209,7 +211,15 @@ fun ContainerConfigDialog(
         val vortekVersions = stringArrayResource(R.array.vortek_version_entries).toList()
         val adrenoVersions = stringArrayResource(R.array.adreno_version_entries).toList()
         val sd8EliteVersions = stringArrayResource(R.array.sd8elite_version_entries).toList()
+        // glibc is not supported on the modern flavor — hide it from the dropdown.
         val containerVariants = stringArrayResource(R.array.container_variant_entries).toList()
+            .let { variants ->
+                if (BuildConfig.MODERN_ANDROID) {
+                    variants.filterNot { it.equals(Container.GLIBC, ignoreCase = true) }
+                } else {
+                    variants
+                }
+            }
         val bionicWineEntriesBase = stringArrayResource(R.array.bionic_wine_entries).toList()
         val glibcWineEntriesBase = stringArrayResource(R.array.glibc_wine_entries).toList()
         val bionicWineEntriesRef = remember { mutableStateOf(bionicWineEntriesBase) }
@@ -568,6 +578,8 @@ fun ContainerConfigDialog(
         var wrapperVersionIndex by wrapperVersionIndexRef
         val presentModeIndexRef = rememberSaveable { mutableIntStateOf(0) }
         var presentModeIndex by presentModeIndexRef
+        val rendererPresentModeIndexRef = rememberSaveable { mutableIntStateOf(0) }
+        var rendererPresentModeIndex by rendererPresentModeIndexRef
         val resourceTypeIndexRef = rememberSaveable { mutableIntStateOf(0) }
         var resourceTypeIndex by resourceTypeIndexRef
         val bcnEmulationIndexRef = rememberSaveable { mutableIntStateOf(0) }
@@ -594,12 +606,17 @@ fun ContainerConfigDialog(
             mutableStateOf(cfg.get("adrenotoolsTurnip", "1") != "0")
         }
         var adrenotoolsTurnipChecked by adrenotoolsTurnipCheckedRef
-        LaunchedEffect(config.graphicsDriverConfig) {
+        LaunchedEffect(config.graphicsDriverConfig, config.rendererPresentMode) {
             val cfg = KeyValueSet(config.graphicsDriverConfig)
             val presentMode = cfg.get("presentMode", "mailbox")
             val defaultPresentIdx = presentModes.indexOfFirst { it.equals("mailbox", true) }.takeIf { it >= 0 } ?: 0
             presentModeIndex =
                 presentModes.indexOfFirst { it.equals(presentMode, true) }.let { if (it >= 0) it else defaultPresentIdx }
+
+            val storedRendererPm = config.rendererPresentMode.ifEmpty { "fifo" }
+            val defaultRendererPresentIdx = rendererPresentModes.indexOfFirst { it.equals("fifo", true) }.takeIf { it >= 0 } ?: 0
+            rendererPresentModeIndex =
+                rendererPresentModes.indexOfFirst { it.equals(storedRendererPm, true) }.let { if (it >= 0) it else defaultRendererPresentIdx }
 
             val resourceType = cfg.get("resourceType", "auto")
             val defaultResourceIdx = resourceTypes.indexOfFirst { it.equals("auto", true) }.takeIf { it >= 0 } ?: 0
@@ -958,6 +975,7 @@ fun ContainerConfigDialog(
             bionicDriverIndex = bionicDriverIndexRef,
             wrapperVersionIndex = wrapperVersionIndexRef,
             presentModeIndex = presentModeIndexRef,
+            rendererPresentModeIndex = rendererPresentModeIndexRef,
             resourceTypeIndex = resourceTypeIndexRef,
             bcnEmulationIndex = bcnEmulationIndexRef,
             bcnEmulationTypeIndex = bcnEmulationTypeIndexRef,
@@ -996,6 +1014,7 @@ fun ContainerConfigDialog(
             vkd3dVersionsBase = vkd3dVersionsBase,
             audioDrivers = audioDrivers,
             presentModes = presentModes,
+            rendererPresentModes = rendererPresentModes,
             resourceTypes = resourceTypes,
             bcnEmulationEntries = bcnEmulationEntries,
             bcnEmulationTypeEntries = bcnEmulationTypeEntries,
@@ -1200,6 +1219,7 @@ private fun Preview_ContainerConfigDialog() {
             installPath = "",
             showFPS = false,
             launchRealSteam = false,
+            launchBionicSteam = false,
             allowSteamUpdates = false,
             steamType = "normal",
             cpuList = "0,1,2,3",

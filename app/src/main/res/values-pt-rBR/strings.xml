@@ -57,6 +57,10 @@
     <string name="downloads_status_failed">Falhou</string>
     <string name="downloads_status_paused">Pausado</string>
     <string name="downloads_summary">Gerencie downloads ativos e armazenamento em um só lugar</string>
+    <string name="storage_internal">Interno</string>
+    <string name="storage_external">Externo</string>
+    <string name="storage_free_of_total">%1$s: %2$s livre de %3$s</string>
+    <string name="storage_calculating">%1$s: Calculando…</string>
     <string name="container_storage_title">Gerenciador de armazenamento</string>
     <string name="container_storage_subtitle">Mova instalações entre armazenamento interno e externo</string>
     <string name="container_storage_summary">%1$d itens • %2$s</string>
@@ -481,6 +485,10 @@
     <string name="width">Largura</string>
     <string name="height">Altura</string>
     <string name="audio_driver">Driver de Áudio</string>
+    <string name="pulseaudio_suspend_behavior">Comportamento de Suspensão do PulseAudio</string>
+    <string name="pulseaudio_suspend_behavior_thread">Suspender via Thread (Padrão)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Suspender via Pactl (Economia de energia)</string>
+    <string name="pulseaudio_low_latency">Modo de Baixa Latência PulseAudio</string>
     <string name="show_fps">Mostrar FPS</string>
     <string name="portrait_mode">Modo Retrato</string>
     <string name="portrait_mode_description">Para controles tipo 8BitDo FlipPad/GameSir Pocket Taco</string>
@@ -492,6 +500,8 @@
     <string name="launch_steam_client_beta">Iniciar o cliente Steam (Beta)</string>
     <string name="steam_offline_mode">Modo Offline do Steam</string>
     <string name="steam_offline_mode_description">Iniciar jogos Steam no modo offline</string>
+    <string name="epic_offline_mode">Modo Offline da Epic</string>
+    <string name="epic_offline_mode_description">Iniciar jogos Epic no modo offline</string>
     <string name="achievement_unlocked">Conquista desbloqueada</string>
     <string name="settings_achievement_notification_position">Posição da notificação de conquista</string>
     <string name="achievement_position_top_left">Superior esquerdo</string>
@@ -516,6 +526,8 @@
     <string name="vkd3d_feature_level">Nível de recurso do VKD3D</string>
     <string name="use_dri3">Usar DRI3</string>
     <string name="use_dri3_description">Desabilitar pode corrigir glitches gráficos em alguns dispositivos</string>
+    <string name="use_legacy_renderer">Usar renderizador legado</string>
+    <string name="use_legacy_renderer_description">Usar o GLRenderer legado em vez do VulkanRenderer. O VulkanRenderer melhora o desempenho, mas está em beta e pode causar problemas.</string>
 
     <!-- Container Configuration: Emulation -->
     <string name="fexcore_version">Versão do FEXCore</string>
@@ -1108,6 +1120,7 @@
 
     <!-- TODO: Revisão manual - Novas strings do último pull -->
     <!-- Diálogos específicos do Steam -->
+    <string name="steam_2fa_use_guard_totp">Ou use o código de autenticação de dois fatores</string>
     <string name="steam_install_space_prompt">O aplicativo sendo instalado tem os seguintes requisitos de espaço. Deseja continuar?\n\n\tTamanho do download: %1$s\n\tTamanho no disco: %2$s\n\tEspaço disponível: %3$s</string>
     <string name="steam_install_space">Tamanho do download: %1$s\nTamanho no disco: %2$s\nEspaço disponível: %3$s</string>
     <string name="steam_install_not_enough_space">O aplicativo sendo instalado precisa de %1$s de espaço, mas há apenas %2$s restante neste dispositivo</string>
@@ -1339,4 +1352,22 @@
     <string name="game_launch_tip_22">Dica: Você pode ativar o modo touchscreen.</string>
     <string name="game_launch_tip_23">Dica: Se você tiver uma GPU Mali, use os drivers do sistema.</string>
     <string name="game_launch_tip_24">Dica: Tela preta? Experimente a opção \"%s\" no menu para verificar se seus drivers estão funcionando corretamente.</string>
+    <string name="launch_bionic_steam_description">Ativa o jogo online e melhora a compatibilidade\nNem sempre funciona\nFaça backup dos seus saves antes de testar</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Sincronização de frontend</string>
+    <string name="settings_interface_frontend_sync_subtitle">Exportar automaticamente os jogos instalados para frontends de biblioteca</string>
+    <string name="frontend_sync_dialog_title">Sincronização de frontend</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Jogos personalizados</string>
+    <string name="frontend_sync_not_set">Não definido</string>
+    <string name="frontend_sync_clear_confirm_title">Remover arquivos de exportação antigos?</string>
+    <string name="frontend_sync_clear_confirm_message">Remover arquivos .%1$s do diretório anterior?</string>
+    <string name="frontend_sync_confirm_remove">Remover</string>
+    <string name="frontend_sync_confirm_keep">Manter</string>
+    <string name="frontend_sync_resync_all">Ressincronizar tudo</string>
+    <string name="frontend_sync_resync_complete">Sincronização de frontend concluída</string>
 </resources>

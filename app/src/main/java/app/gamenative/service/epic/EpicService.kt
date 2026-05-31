@@ -3,6 +3,7 @@ package app.gamenative.service.epic
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.EpicCredentials
@@ -261,7 +262,7 @@ class EpicService : Service() {
 
                 // Trigger library refresh event
                 app.gamenative.PluviaApp.events.emitJava(
-                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(appId)
+                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(appId, app.gamenative.data.GameSource.EPIC)
                 )
 
                 Timber.tag("Epic").i("Game uninstalled: $appId")
@@ -638,8 +639,13 @@ class EpicService : Service() {
 
         val instance = getInstance()
         // Start as foreground service
-        val notification = notificationHelper.createForegroundNotification("Connected")
-        startForeground(1, notification)
+        val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_EPIC, "Connected")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            startForeground(NotificationHelper.NOTIFICATION_ID_EPIC, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(NotificationHelper.NOTIFICATION_ID_EPIC, notification)
+        }
+        notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_EPIC)
 
         // Determine if we should sync based on the action
         val shouldSync = when (intent?.action) {
@@ -707,6 +713,12 @@ class EpicService : Service() {
         return START_STICKY
     }
 
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        super.onTimeout(startId, fgsType)
+        Timber.tag("EPIC").w("Foreground service timeout reached, restarting...")
+        stopSelf()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         Timber.tag("Epic").i("[EpicService] Service destroyed")
@@ -718,7 +730,7 @@ class EpicService : Service() {
 
         scope.cancel() // Cancel any ongoing operations
         stopForeground(STOP_FOREGROUND_REMOVE)
-        notificationHelper.cancel()
+        notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_EPIC)
         instance = null
     }
 
