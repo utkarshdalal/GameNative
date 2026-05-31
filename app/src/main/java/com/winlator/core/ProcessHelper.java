@@ -602,23 +602,39 @@ public abstract class ProcessHelper {
                 return new File(proc, filename).isDirectory() && filename.matches("[0-9]+");
             }
         });
+        if (allPids == null) return filteredPids;
 
-        String procFile = BuildConfig.MODERN_ANDROID ? "/cmdline" : "/stat";
         for (int index = 0; index < allPids.length; index++){
-            String data = "";
-            try (
-                FileInputStream fr = new FileInputStream(proc + "/" + allPids[index] + procFile);
-                BufferedReader br = new BufferedReader(new InputStreamReader(fr));
-            ) {
-                String line = br.readLine();
-                if (line != null) data = line;
+            // Match on the full /cmdline. The comm in /stat (and /proc/<pid>/comm) is truncated
+            // to 15 chars, so a long exe name like "Dishonored_DO.exe" becomes "Dishonored_DO.e"
+            // and loses the ".exe" suffix — game would never be paused/stopped.
+            // /cmdline carries the full path and matches reliably on every
+            // Android version. It reads only the app's own child PIDs, so it is not affected by
+            // the Android 16 SELinux restrictions on global /proc/* files).
+            String data = readProcLine(proc + "/" + allPids[index] + "/cmdline");
+            // Legacy-only safety net: on the legacy flavor we historically read /stat, so keep a
+            // fallback for the rare empty-cmdline case (zombies/kernel threads). The modern
+            // (Android 16 / Play Store) flavor stays on /cmdline exclusively.
+            if (data.isEmpty() && !BuildConfig.MODERN_ANDROID) {
+                data = readProcLine(proc + "/" + allPids[index] + "/stat");
             }
-            catch (IOException e) {}
             for (String filter : filterList) {
-                if (data.contains(filter))
+                if (data.contains(filter)) {
                     filteredPids.add(allPids[index]);
+                    break; // a name containing both "wine" and "exe" must not be added twice
+                }
             }
         }
         return filteredPids;
+    }
+
+    /** Reads the first line of a /proc file, returning "" on any error. */
+    private static String readProcLine(String path) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(path)))) {
+            String line = br.readLine();
+            return line != null ? line : "";
+        } catch (IOException e) {
+            return "";
+        }
     }
 }
