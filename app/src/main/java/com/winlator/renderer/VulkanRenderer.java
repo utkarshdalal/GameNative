@@ -50,6 +50,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private boolean cursorVisible = false;
     private boolean nativeMode = false;
     private String driverPath = null;
+    private boolean preserveAspectFit = true;
     private java.util.concurrent.ExecutorService initExecutor = null;
     private volatile boolean initComplete = false;
     private String driverLibraryName = null;
@@ -276,15 +277,13 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
     private void updateTransform() {
         if (nativeHandle == 0) return;
-        if (fullscreen) {
+        if (fullscreen || !preserveAspectFit) {
             nativeSetTransform(nativeHandle, 0, 0, 1.0f, 1.0f);
-            viewTransformation.update(surfaceWidth, surfaceHeight,
-                xServer.screenInfo.width, xServer.screenInfo.height);
             nativeScanoutSetDst(nativeHandle,
-                viewTransformation.viewOffsetX,
-                viewTransformation.viewOffsetY,
-                viewTransformation.viewWidth,
-                viewTransformation.viewHeight);
+                0,
+                0,
+                surfaceWidth,
+                surfaceHeight);
         } else {
             float py = 0;
             if (screenOffsetYRelativeToCursor) {
@@ -662,10 +661,18 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     }
 
     public void setEffect(int effectId, float sharpness) {
+        setEffect(effectId, sharpness, true);
+    }
+
+    public void setEffect(int effectId, float sharpness, boolean preserveAspectFit) {
         pendingEffectId = Math.max(EFFECT_NONE, Math.min(EFFECT_NATURAL, effectId));
         pendingSharpness = Math.max(0.0f, Math.min(1.0f, sharpness));
+        this.preserveAspectFit = preserveAspectFit;
         synchronized (lock) {
-            if (nativeHandle != 0) nativeSetEffect(nativeHandle, pendingEffectId, pendingSharpness);
+            if (nativeHandle != 0) {
+                nativeSetEffect(nativeHandle, pendingEffectId, pendingSharpness);
+                updateTransform();
+            }
         }
     }
     public int getEffectId() { return pendingEffectId; }

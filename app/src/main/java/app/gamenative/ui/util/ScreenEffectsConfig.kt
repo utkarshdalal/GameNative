@@ -106,8 +106,11 @@ fun applyScreenEffectsConfig(renderer: GLRenderer, config: ScreenEffectsConfig) 
     val effects = mutableListOf<Effect>()
 
     when (config.scalingMode) {
-        ScreenEffectsConfig.SCALING_MODE_FSR -> {
-            effects += composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
+        ScreenEffectsConfig.SCALING_MODE_FSR,
+        ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> {
+            val easuEffect = composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
+            easuEffect.setPreserveAspect(config.scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT)
+            effects += easuEffect
             val rcasEffect = composer.getEffect(FSR1RcasEffect::class.java) ?: FSR1RcasEffect()
             rcasEffect.sharpnessStops = fsrQuickMenuLevelToStops(config.fsrSharpnessLevel)
             effects += rcasEffect
@@ -163,6 +166,13 @@ fun applyScreenEffectsConfig(renderer: VulkanRenderer, config: ScreenEffectsConf
         config.scalingMode == ScreenEffectsConfig.SCALING_MODE_NATURAL -> VulkanRenderer.EFFECT_NATURAL
         else -> VulkanRenderer.EFFECT_NONE
     }
-    val sharpness = (config.fsrSharpnessLevel.coerceIn(0, 4)) / 4.0f
-    renderer.setEffect(effectId, sharpness)
+    val sharpnessRange = ScreenEffectsConfig.FSR_MAX_LEVEL - ScreenEffectsConfig.FSR_MIN_LEVEL
+    val sharpness = if (sharpnessRange > 0) {
+        (config.fsrSharpnessLevel.coerceIn(ScreenEffectsConfig.FSR_MIN_LEVEL, ScreenEffectsConfig.FSR_MAX_LEVEL) -
+            ScreenEffectsConfig.FSR_MIN_LEVEL).toFloat() / sharpnessRange.toFloat()
+    } else {
+        0f
+    }
+    val preserveAspectFit = config.scalingMode != ScreenEffectsConfig.SCALING_MODE_FSR
+    renderer.setEffect(effectId, sharpness, preserveAspectFit)
 }
