@@ -299,6 +299,14 @@ data class EnvVarInfo(
 
                 ),
             ),
+            // ONE UI BUG VARIABLE
+            "FD_DEV_FEATURES" to EnvVarInfo(
+                identifier = "FD_DEV_FEATURES",
+                selectionType = EnvVarSelectionType.SUGGESTIONS,
+                possibleValues = listOf(
+                    "enable_tp_ubwc_flag_hint=1",
+                ),
+            ),
         )
     }
 }
