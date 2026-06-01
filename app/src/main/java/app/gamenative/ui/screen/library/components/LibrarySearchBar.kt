@@ -227,7 +227,6 @@ private fun SearchBarInput(
         // TODO: there must be a better way of doing this
         val textColor = MaterialTheme.colorScheme.onSurface
         val hintColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-        // val cursorColor = MaterialTheme.colorScheme.primary
         val placeholderText = stringResource(R.string.library_search_placeholder)
 
         AndroidView(
