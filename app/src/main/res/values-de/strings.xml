@@ -561,7 +561,7 @@
     <string name="add_custom_game_content_desc">Eigenes Spiel hinzufügen</string>
     <string name="add_custom_game_dialog_title">Eigenes Spiel hinzufügen</string>
     <string name="add_custom_game_dialog_message">Bitte wähle den Ordner aus, der die Spieldateien enthält, die du als eigenes Spiel hinzufügen möchtest.</string>
-    <string name="add_custom_game_dont_show_again">Diesen Hinweis nicht mehr anzeigen</string>
+    <string name="add_custom_game_is_steam_import">Als Steam-Spiel importieren</string>
     <string name="base_app_shortcut_created">Verknüpfung erstellt</string>
     <string name="base_app_shortcut_failed">Verknüpfung konnte nicht erstellt werden: %s</string>
     <string name="base_app_images_fetched">Bilder erfolgreich geladen</string>

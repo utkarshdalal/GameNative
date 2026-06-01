@@ -584,7 +584,7 @@
     <string name="add_custom_game_content_desc">カスタムゲームを追加する</string>
     <string name="add_custom_game_dialog_title">カスタムゲームを追加</string>
     <string name="add_custom_game_dialog_message">カスタム ゲームとして追加するゲーム ファイルが含まれるフォルダーを選択してください。</string>
-    <string name="add_custom_game_dont_show_again">\'このダイアログを再度表示しないでください</string>
+    <string name="add_custom_game_is_steam_import">Steamゲームとしてインポート</string>
     <string name="base_app_shortcut_created">ショートカットが作成されました</string>
     <string name="base_app_shortcut_failed">ショートカットの作成に失敗しました: %s</string>
     <string name="base_app_images_fetched">画像が正常に取得されました</string>

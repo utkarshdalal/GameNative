@@ -624,7 +624,7 @@
     <string name="add_custom_game_content_desc">Añadir juego personalizado</string>
     <string name="add_custom_game_dialog_title">Añadir juego personalizado</string>
     <string name="add_custom_game_dialog_message">Selecciona la carpeta que contiene los archivos del juego que quieres añadir como juego personalizado.</string>
-    <string name="add_custom_game_dont_show_again">No volver a mostrar este diálogo.</string>
+    <string name="add_custom_game_is_steam_import">Importar como juego de Steam</string>
     <string name="base_app_shortcut_created">Acceso directo creado.</string>
     <string name="base_app_shortcut_failed">Error al crear el acceso directo: %s.</string>
     <string name="base_app_images_fetched">Imágenes obtenidas correctamente.</string>

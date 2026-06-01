@@ -31,7 +31,7 @@
     <string name="add_custom_game_content_desc">Добавить пользовательскую игру</string>
     <string name="add_custom_game_dialog_message">Пожалуйста, выберите папку, содержащую файлы игры, которые вы хотите добавить в качестве пользовательской игры.</string>
     <string name="add_custom_game_dialog_title">Добавить пользовательскую игру</string>
-    <string name="add_custom_game_dont_show_again">Не показывать этот диалог снова</string>
+    <string name="add_custom_game_is_steam_import">Импортировать как игру Steam</string>
     <string name="add_drive">Добавить диск</string>
     <string name="add_to_home_screen">Добавить на главный экран</string>
     <string name="adjust_size">Отрегулировать размер</string>

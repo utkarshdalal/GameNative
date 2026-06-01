@@ -580,7 +580,7 @@
     <string name="add_custom_game_content_desc">Aggiungi gioco personalizzato</string>
     <string name="add_custom_game_dialog_title">Aggiungi Gioco Personalizzato</string>
     <string name="add_custom_game_dialog_message">Seleziona la cartella contenente i file del gioco che vuoi aggiungere come gioco personalizzato.</string>
-    <string name="add_custom_game_dont_show_again">Non mostrare più questa finestra</string>
+    <string name="add_custom_game_is_steam_import">Importa come gioco Steam</string>
     <string name="base_app_shortcut_created">Scorciatoia creata</string>
     <string name="base_app_shortcut_failed">Impossibile creare scorciatoia: %s</string>
     <string name="base_app_images_fetched">Immagini recuperate con successo</string>

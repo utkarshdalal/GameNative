@@ -1191,7 +1191,7 @@
     <string name="add_custom_game_content_desc">Tilføj tilpasset spil</string>
     <string name="add_custom_game_dialog_title">Tilføj tilpasset spil</string>
     <string name="add_custom_game_dialog_message">Vælg venligst mappen der indeholder spilfilerne du vil tilføje som et tilpasset spil.</string>
-    <string name="add_custom_game_dont_show_again">Vis ikke denne dialog igen</string>
+    <string name="add_custom_game_is_steam_import">Importér som Steam-spil</string>
     <string name="base_app_shortcut_created">Genvej oprettet</string>
     <string name="base_app_shortcut_failed">Kunne ikke oprette genvej: %s</string>
     <string name="base_app_images_fetched">Billeder hentet</string>

@@ -575,7 +575,7 @@
     <string name="add_custom_game_content_desc">Додати власну гру</string>
     <string name="add_custom_game_dialog_title">Додати власну гру</string>
     <string name="add_custom_game_dialog_message">Будь ласка, виберіть папку з файлами гри, яку ви хочете додати як власну гру.</string>
-    <string name="add_custom_game_dont_show_again">Більше не показувати</string>
+    <string name="add_custom_game_is_steam_import">Імпортувати як гру Steam</string>
     <string name="base_app_shortcut_created">Ярлик створено</string>
     <string name="base_app_shortcut_failed">Не вдалося створити ярлик: %s</string>
     <string name="base_app_images_fetched">Зображення успішно отримано</string>

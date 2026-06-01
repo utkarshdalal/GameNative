@@ -581,7 +581,7 @@
     <string name="add_custom_game_content_desc">Adaugă joc personalizat</string>
     <string name="add_custom_game_dialog_title">Adaugă joc personalizat</string>
     <string name="add_custom_game_dialog_message">Selectează folderul care conține fișierele jocului pe care vrei să-l adaugi ca joc personalizat.</string>
-    <string name="add_custom_game_dont_show_again">Nu mai arăta acest dialog</string>
+    <string name="add_custom_game_is_steam_import">Importă ca joc Steam</string>
     <string name="base_app_shortcut_created">Shortcut creat</string>
     <string name="base_app_shortcut_failed">Nu s-a putut crea shortcut-ul: %s</string>
     <string name="base_app_images_fetched">Imaginile au fost preluate cu succes</string>

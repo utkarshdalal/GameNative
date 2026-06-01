@@ -573,7 +573,7 @@
     <string name="add_custom_game_content_desc">添加自定义游戏</string>
     <string name="add_custom_game_dialog_title">添加自定义游戏</string>
     <string name="add_custom_game_dialog_message">请选择包含您要添加为自定义游戏的文件夹</string>
-    <string name="add_custom_game_dont_show_again">不再显示</string>
+    <string name="add_custom_game_is_steam_import">作为 Steam 游戏导入</string>
     <string name="base_app_shortcut_created">快捷方式已创建</string>
     <string name="base_app_shortcut_failed">无法创建快捷方式：%s</string>
     <string name="base_app_images_fetched">图像获取成功</string>

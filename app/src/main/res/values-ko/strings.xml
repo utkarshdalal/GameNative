@@ -589,7 +589,7 @@
     <string name="add_custom_game_content_desc">커스텀 게임 추가</string>
     <string name="add_custom_game_dialog_title">커스텀 게임 추가</string>
     <string name="add_custom_game_dialog_message">커스텀 게임으로 추가할 게임 파일이 있는 폴더를 선택하세요.</string>
-    <string name="add_custom_game_dont_show_again">이 대화상자 다시 표시 안 함</string>
+    <string name="add_custom_game_is_steam_import">Steam 게임으로 가져오기</string>
     <string name="base_app_shortcut_created">바로가기가 생성되었습니다</string>
     <string name="base_app_shortcut_failed">바로가기 생성 실패: %s</string>
     <string name="base_app_images_fetched">이미지를 성공적으로 가져왔습니다</string>
