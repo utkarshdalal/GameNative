@@ -1237,7 +1237,7 @@ private fun Preview_LibraryScreenContent() {
             onLogout = {},
             onGoOnline = {},
             onSourceToggle = {},
-            onAddCustomGameFolder = {},
+            onAddCustomGameFolder = { _, _ -> },
             onSortOptionChanged = {},
             onOptionsPanelToggle = { isOpen ->
                 state = state.copy(isOptionsPanelOpen = isOpen)
