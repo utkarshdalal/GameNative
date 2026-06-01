@@ -595,7 +595,7 @@
     <string name="add_custom_game_content_desc">Add custom game</string>
     <string name="add_custom_game_dialog_title">Add Custom Game</string>
     <string name="add_custom_game_dialog_message">Please select the folder containing the game files you want to add as a custom game.</string>
-    <string name="add_custom_game_dont_show_again">Don\'t show this dialog again</string>
+    <string name="add_custom_game_is_steam_import">Import as Steam Game</string>
     <string name="base_app_shortcut_created">Shortcut created</string>
     <string name="base_app_shortcut_failed">Failed to create shortcut: %s</string>
     <string name="base_app_images_fetched">Images fetched successfully</string>
@@ -604,7 +604,6 @@
     <string name="base_app_exported">Exported</string>
     <string name="base_app_export_failed">Failed to export: %s</string>
     <string name="base_app_export_cancelled">Export cancelled</string>
-
 
     <!-- App Filter -->
     <string name="app_filter_installed">Installed</string>

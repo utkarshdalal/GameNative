@@ -502,14 +502,14 @@ object CustomGameScanner {
         }
     }
 
-    fun createLibraryItemFromFolder(folderPath: String): LibraryItem? {
+    fun createLibraryItemFromFolder(folderPath: String, importAsSteamGame: Boolean = false): LibraryItem? {
         val folder = File(folderPath)
         if (!folder.exists() || !folder.isDirectory) {
             Timber.tag("CustomGameScanner").w("Folder does not exist or is not a directory: $folderPath")
             return null
         }
 
-        if (SteamService.instance != null) {
+        if (SteamService.instance != null && importAsSteamGame) {
             val steamApps = SteamService.findSteamAppWithInstallDir(dirName = folder.name)
             if (steamApps?.size == 1) {
                 val steamApp = steamApps[0]

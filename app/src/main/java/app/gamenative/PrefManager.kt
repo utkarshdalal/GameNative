@@ -1109,14 +1109,6 @@ object PrefManager {
             setPref(SHOW_RECOMMENDATIONS, value)
         }
 
-    // Show dialog when adding custom game folder
-    private val SHOW_ADD_CUSTOM_GAME_DIALOG = booleanPreferencesKey("show_add_custom_game_dialog")
-    var showAddCustomGameDialog: Boolean
-        get() = getPref(SHOW_ADD_CUSTOM_GAME_DIALOG, true)
-        set(value) {
-            setPref(SHOW_ADD_CUSTOM_GAME_DIALOG, value)
-        }
-
     // Whether to download games only over Wi-Fi.
     private val DOWNLOAD_ON_WIFI_ONLY = booleanPreferencesKey("download_on_wifi_only")
     var downloadOnWifiOnly: Boolean

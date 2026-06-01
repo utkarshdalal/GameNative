@@ -171,7 +171,7 @@ private fun LibraryScreenContent(
     onGoOnline: () -> Unit,
     onDownloadsClick: () -> Unit = {},
     onSourceToggle: (GameSource) -> Unit,
-    onAddCustomGameFolder: (String) -> Unit,
+    onAddCustomGameFolder: (String, Boolean) -> Unit,
     onSortOptionChanged: (SortOption) -> Unit,
     onOptionsPanelToggle: (Boolean) -> Unit,
     onTabChanged: (LibraryTab) -> Unit,
@@ -326,7 +326,7 @@ private fun LibraryScreenContent(
 
     // Dialog state for add custom game prompt
     var showAddCustomGameDialog by remember { mutableStateOf(false) }
-    var dontShowAgain by remember { mutableStateOf(false) }
+    var importAsSteamGame by remember { mutableStateOf(false) }
     var previousAppCount by remember { mutableIntStateOf(state.appInfoList.size) }
     var controllerBootstrapNeeded by remember { mutableStateOf(true) }
     var rootHasFocus by remember { mutableStateOf(false) }
@@ -413,7 +413,7 @@ private fun LibraryScreenContent(
             if (!canAccess && !CustomGameScanner.hasStoragePermission(context, path)) {
                 requestPermissionsForPath(context, path, storagePermissionLauncher)
             }
-            onAddCustomGameFolder(path)
+            onAddCustomGameFolder(path, importAsSteamGame)
         },
         onFailure = { message ->
             SnackbarManager.show(message)
@@ -422,11 +422,7 @@ private fun LibraryScreenContent(
 
     // Handle opening folder picker (with dialog check)
     val onAddCustomGameClick = {
-        if (PrefManager.showAddCustomGameDialog) {
-            showAddCustomGameDialog = true
-        } else {
-            folderPicker.launchPicker()
-        }
+        folderPicker.launchPicker()
     }
 
     BackHandler(enabled = isSystemMenuOpen) {
@@ -1146,12 +1142,12 @@ private fun LibraryScreenContent(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Checkbox(
-                                checked = dontShowAgain,
-                                onCheckedChange = { dontShowAgain = it },
+                                checked = importAsSteamGame,
+                                onCheckedChange = { importAsSteamGame = it },
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = stringResource(R.string.add_custom_game_dont_show_again),
+                                text = stringResource(R.string.add_custom_game_is_steam_import),
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -1160,9 +1156,6 @@ private fun LibraryScreenContent(
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            if (dontShowAgain) {
-                                PrefManager.showAddCustomGameDialog = false
-                            }
                             showAddCustomGameDialog = false
                             folderPicker.launchPicker()
                         },

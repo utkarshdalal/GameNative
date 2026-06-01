@@ -358,10 +358,10 @@ class LibraryViewModel @Inject constructor(
         }
     }
 
-    fun addCustomGameFolder(path: String) {
+    fun addCustomGameFolder(path: String, importAsSteamGame: Boolean = false) {
         viewModelScope.launch(Dispatchers.IO) {
             val normalizedPath = File(path).absolutePath
-            val libraryItem = CustomGameScanner.createLibraryItemFromFolder(normalizedPath)
+            val libraryItem = CustomGameScanner.createLibraryItemFromFolder(normalizedPath, importAsSteamGame)
             if (libraryItem == null) {
                 Timber.tag("LibraryViewModel").w("Selected folder is not a valid custom game: $normalizedPath")
                 return@launch
