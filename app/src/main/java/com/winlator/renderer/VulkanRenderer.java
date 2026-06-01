@@ -33,6 +33,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     public static final int EFFECT_CRT = 3;
     public static final int EFFECT_HDR = 4;
     public static final int EFFECT_NATURAL = 5;
+    public static final int SCALE_FIT = 0;
+    public static final int SCALE_STRETCH = 1;
+    public static final int SCALE_FILL = 2;
 
     public final XServerView xServerView;
     private final XServer xServer;
@@ -50,7 +53,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private boolean cursorVisible = false;
     private boolean nativeMode = false;
     private String driverPath = null;
-    private boolean preserveAspectFit = true;
+    private int outputScalingMode = SCALE_FIT;
     private java.util.concurrent.ExecutorService initExecutor = null;
     private volatile boolean initComplete = false;
     private String driverLibraryName = null;
@@ -277,13 +280,31 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
     private void updateTransform() {
         if (nativeHandle == 0) return;
-        if (fullscreen || !preserveAspectFit) {
+        if (fullscreen || outputScalingMode == SCALE_STRETCH) {
             nativeSetTransform(nativeHandle, 0, 0, 1.0f, 1.0f);
             nativeScanoutSetDst(nativeHandle,
                 0,
                 0,
                 surfaceWidth,
                 surfaceHeight);
+        } else if (outputScalingMode == SCALE_FILL && surfaceWidth > 0 && surfaceHeight > 0) {
+            float scale = Math.max(
+                (float) surfaceWidth / (float) xServer.screenInfo.width,
+                (float) surfaceHeight / (float) xServer.screenInfo.height
+            );
+            float sceneScaleX = (xServer.screenInfo.width * scale) / surfaceWidth;
+            float sceneScaleY = (xServer.screenInfo.height * scale) / surfaceHeight;
+            float sceneOffsetX = (xServer.screenInfo.width - xServer.screenInfo.width * sceneScaleX) * 0.5f;
+            float sceneOffsetY = (xServer.screenInfo.height - xServer.screenInfo.height * sceneScaleY) * 0.5f;
+            nativeSetTransform(nativeHandle, sceneOffsetX, sceneOffsetY, sceneScaleX, sceneScaleY);
+
+            int dstW = Math.round(xServer.screenInfo.width * scale);
+            int dstH = Math.round(xServer.screenInfo.height * scale);
+            nativeScanoutSetDst(nativeHandle,
+                Math.round((surfaceWidth - dstW) * 0.5f),
+                Math.round((surfaceHeight - dstH) * 0.5f),
+                dstW,
+                dstH);
         } else {
             float py = 0;
             if (screenOffsetYRelativeToCursor) {
@@ -661,13 +682,17 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     }
 
     public void setEffect(int effectId, float sharpness) {
-        setEffect(effectId, sharpness, true);
+        setEffect(effectId, sharpness, SCALE_FIT);
     }
 
     public void setEffect(int effectId, float sharpness, boolean preserveAspectFit) {
+        setEffect(effectId, sharpness, preserveAspectFit ? SCALE_FIT : SCALE_STRETCH);
+    }
+
+    public void setEffect(int effectId, float sharpness, int scalingMode) {
         pendingEffectId = Math.max(EFFECT_NONE, Math.min(EFFECT_NATURAL, effectId));
         pendingSharpness = Math.max(0.0f, Math.min(1.0f, sharpness));
-        this.preserveAspectFit = preserveAspectFit;
+        outputScalingMode = Math.max(SCALE_FIT, Math.min(SCALE_FILL, scalingMode));
         synchronized (lock) {
             if (nativeHandle != 0) {
                 nativeSetEffect(nativeHandle, pendingEffectId, pendingSharpness);

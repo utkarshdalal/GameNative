@@ -157,6 +157,12 @@ fun applyScreenEffectsConfig(renderer: GLRenderer, config: ScreenEffectsConfig) 
 }
 
 fun applyScreenEffectsConfig(renderer: VulkanRenderer, config: ScreenEffectsConfig) {
+    val filterMode = when (config.scalingMode) {
+        ScreenEffectsConfig.SCALING_MODE_NEAREST -> 1
+        else -> 0
+    }
+    renderer.setFilterMode(filterMode)
+
     val effectId = when {
         config.enableVivid -> VulkanRenderer.EFFECT_HDR
         config.enableCRT -> VulkanRenderer.EFFECT_CRT
@@ -173,6 +179,11 @@ fun applyScreenEffectsConfig(renderer: VulkanRenderer, config: ScreenEffectsConf
     } else {
         0f
     }
-    val preserveAspectFit = config.scalingMode != ScreenEffectsConfig.SCALING_MODE_FSR
-    renderer.setEffect(effectId, sharpness, preserveAspectFit)
+    val outputScalingMode = when (config.scalingMode) {
+        ScreenEffectsConfig.SCALING_MODE_FILL -> VulkanRenderer.SCALE_FILL
+        ScreenEffectsConfig.SCALING_MODE_STRETCH,
+        ScreenEffectsConfig.SCALING_MODE_FSR -> VulkanRenderer.SCALE_STRETCH
+        else -> VulkanRenderer.SCALE_FIT
+    }
+    renderer.setEffect(effectId, sharpness, outputScalingMode)
 }

@@ -83,6 +83,10 @@ private const val SCREEN_EFFECT_GAMMA_STEP = 0.1f
 
 private val VULKAN_SUPPORTED_SCALING_MODES = listOf(
     ScreenEffectsConfig.SCALING_MODE_NONE,
+    ScreenEffectsConfig.SCALING_MODE_NEAREST,
+    ScreenEffectsConfig.SCALING_MODE_LINEAR,
+    ScreenEffectsConfig.SCALING_MODE_FILL,
+    ScreenEffectsConfig.SCALING_MODE_STRETCH,
     ScreenEffectsConfig.SCALING_MODE_FSR,
     ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT,
     ScreenEffectsConfig.SCALING_MODE_DLS,
