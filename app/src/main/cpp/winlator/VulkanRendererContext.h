@@ -118,6 +118,10 @@ struct WindowPushConstants {
     float sharpness;
     float resW;
     float resH;
+    int   effectMask;
+    float brightness;
+    float contrast;
+    float gamma;
 };
 
 class VulkanRendererContext {
@@ -169,7 +173,7 @@ public:
 
     void setFilterMode(int mode);
     void setSwapRB(bool enabled);
-    void setEffect(int effectId, float sharpness);
+    void setEffect(int effectId, float sharpness, int effectMask, float brightness, float contrast, float gamma);
     void setPresentMode(VkPresentModeKHR mode);
     std::vector<int> getSupportedPresentModes() const;
 
@@ -208,6 +212,10 @@ private:
     bool swapRB = false;
     int activeEffectId = 0;
     float activeSharpness = 1.0f;
+    int activeEffectMask = 0;
+    float activeBrightness = 0.0f;
+    float activeContrast = 0.0f;
+    float activeGamma = 1.0f;
     float maxAnisotropy           = 1.0f;
     bool  cubicSupported          = false;
     VkPhysicalDeviceMemoryProperties memProperties{};

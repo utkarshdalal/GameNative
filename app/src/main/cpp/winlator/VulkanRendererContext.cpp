@@ -769,6 +769,10 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
         pc.sharpness = activeSharpness;
         pc.resW = (float)std::max(1, d.w);
         pc.resH = (float)std::max(1, d.h);
+        pc.effectMask = activeEffectMask;
+        pc.brightness = activeBrightness;
+        pc.contrast = activeContrast;
+        pc.gamma = activeGamma;
         vk_.CmdPushConstants(cb, pipeLayout, VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
         vk_.CmdDraw(cb, 4, 1, 0, 0);
     }
@@ -785,6 +789,10 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
         cpc.sharpness = 0.f;
         cpc.resW = (float)std::max(1, (int)curW);
         cpc.resH = (float)std::max(1, (int)curH);
+        cpc.effectMask = 0;
+        cpc.brightness = 0.0f;
+        cpc.contrast = 0.0f;
+        cpc.gamma = 1.0f;
         vk_.CmdPushConstants(cb, pipeLayout, VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(cpc), &cpc);
         vk_.CmdDraw(cb, 4, 1, 0, 0);
     }
@@ -1233,10 +1241,15 @@ void VulkanRendererContext::setSwapRB(bool enabled) {
 
 }
 
-void VulkanRendererContext::setEffect(int effectId, float sharpness) {
+void VulkanRendererContext::setEffect(int effectId, float sharpness, int effectMask, float brightness, float contrast, float gamma) {
     activeEffectId = effectId;
     activeSharpness = std::max(0.0f, std::min(1.0f, sharpness));
-    RLOG("setEffect: id=%d sharpness=%.3f", activeEffectId, activeSharpness);
+    activeEffectMask = effectMask;
+    activeBrightness = std::max(-1.0f, std::min(1.0f, brightness));
+    activeContrast = std::max(-1.0f, std::min(1.0f, contrast));
+    activeGamma = std::max(0.1f, std::min(4.0f, gamma));
+    RLOG("setEffect: id=%d sharpness=%.3f mask=%d brightness=%.3f contrast=%.3f gamma=%.3f",
+        activeEffectId, activeSharpness, activeEffectMask, activeBrightness, activeContrast, activeGamma);
     needsRender.store(true);
     dirtyCV.notify_one();
 }

@@ -164,8 +164,6 @@ fun applyScreenEffectsConfig(renderer: VulkanRenderer, config: ScreenEffectsConf
     renderer.setFilterMode(filterMode)
 
     val effectId = when {
-        config.enableVivid -> VulkanRenderer.EFFECT_HDR
-        config.enableCRT -> VulkanRenderer.EFFECT_CRT
         config.scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR ||
             config.scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> VulkanRenderer.EFFECT_FSR
         config.scalingMode == ScreenEffectsConfig.SCALING_MODE_DLS -> VulkanRenderer.EFFECT_DLS
@@ -185,5 +183,19 @@ fun applyScreenEffectsConfig(renderer: VulkanRenderer, config: ScreenEffectsConf
         ScreenEffectsConfig.SCALING_MODE_FSR -> VulkanRenderer.SCALE_STRETCH
         else -> VulkanRenderer.SCALE_FIT
     }
-    renderer.setEffect(effectId, sharpness, outputScalingMode)
+    val effectMask =
+        (if (config.enableToon) VulkanRenderer.EFFECT_MASK_TOON else 0) or
+            (if (config.enableFXAA) VulkanRenderer.EFFECT_MASK_FXAA else 0) or
+            (if (config.enableVivid) VulkanRenderer.EFFECT_MASK_VIVID else 0) or
+            (if (config.enableCRT) VulkanRenderer.EFFECT_MASK_CRT else 0) or
+            (if (config.enableNTSC) VulkanRenderer.EFFECT_MASK_NTSC else 0)
+    renderer.setEffect(
+        effectId,
+        sharpness,
+        outputScalingMode,
+        effectMask,
+        config.brightness / 100f,
+        config.contrast / 100f,
+        config.gamma,
+    )
 }
