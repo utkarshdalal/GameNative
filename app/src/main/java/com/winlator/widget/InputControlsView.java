@@ -933,6 +933,7 @@ public class InputControlsView extends View {
             WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
             if (winHandler != null) {
                 GamepadState state = profile.getGamepadState();
+                winHandler.sendGamepadState();
                 winHandler.sendVirtualGamepadState(state);
             }
         }
