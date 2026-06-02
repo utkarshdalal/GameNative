@@ -23,3 +23,4 @@ dependencyResolutionManagement {
 rootProject.name = "gamenative"
 include(":app")
 include(":ubuntufs")
+include(":iq80-leveldb") // vendored pure-Java leveldb fork (ThreadLocal scratch fix); see iq80-leveldb/NOTICE.md
