@@ -2357,7 +2357,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                     steamInstance._steamApps?.notifyGamesPlayed(
                         gamesPlayed = gamesPlayed,
-                        clientOsType = EOSType.AndroidUnknown,
+                        clientOsType = EOSType.WinUnknown,
                     )
                 }
             }
@@ -2413,7 +2413,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                                     "Signaling app launch:\n\tappId: %d\n\tclientId: %s\n\tosType: %s",
                                                     appId,
                                                     PrefManager.clientId,
-                                                    EOSType.AndroidUnknown,
+                                                    EOSType.WinUnknown,
                                                 )
 
                                                 val pendingRemoteOperations = steamCloud.signalAppLaunchIntent(
@@ -2421,7 +2421,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                                     clientId = clientId,
                                                     machineName = SteamUtils.getMachineName(steamInstance),
                                                     ignorePendingOperations = ignorePendingOperations,
-                                                    osType = EOSType.AndroidUnknown,
+                                                    osType = EOSType.WinUnknown,
                                                 ).await()
 
                                                 if (pendingRemoteOperations.isNotEmpty() && !ignorePendingOperations) {
@@ -3419,7 +3419,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        
+
         // Start up the notification early to to avoid ForegroundServiceDidNotStartInTimeException
         val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_STEAM, "Running...")
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
