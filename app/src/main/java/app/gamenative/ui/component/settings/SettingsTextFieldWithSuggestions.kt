@@ -106,7 +106,7 @@ fun SettingsTextFieldWithSuggestions(
                                                     },
                                                 )
                                             }
-                                        }
+                        }
                     }
                 }
             }

@@ -1,5 +1,7 @@
 package com.winlator.core.envvars
 
+import org.intellij.lang.annotations.Identifier
+
 data class EnvVarInfo(
     val identifier: String,
     val selectionType: EnvVarSelectionType = EnvVarSelectionType.NONE,
@@ -258,15 +260,27 @@ data class EnvVarInfo(
             "VKD3D_THREAD_COUNT" to EnvVarInfo(
                 identifier = "VKD3D_THREAD_COUNT",
             ),
+            // Shader cache saves in a folder instead of pipeline
             "VKD3D_SHADER_CACHE_PATH" to EnvVarInfo(
                 identifier = "VKD3D_SHADER_CACHE_PATH",
             ),
+            // 0 to 16 values can be used to trade latency for smooth fps
+            "VKD3D_SWAPCHAIN_LATENCY_FRAMES" to EnvVarInfo(
+                identifier = "VKD3D_SWAPCHAIN_LATENCY_FRAMES",
+            ),
             "VKD3D_CONFIG" to EnvVarInfo(
                 identifier = "VKD3D_CONFIG",
+                selectionType = EnvVarSelectionType.SUGGESTIONS,
+                possibleValues = listOf(
+                    "no_upload_hvv,nodxr", //prevents free use of vram as memory, disables Ray Tracing
+                    "skip_application_workarounds", //disables x86 fixes that are mostly not in android
+                    "no_upload_hvv,nodxr,skip_application_workarounds", //combination of the above two
+                ),
             ),
             "DXVK_CONFIG" to EnvVarInfo(
                 identifier = "DXVK_CONFIG",
             ),
+            // New var for DXVK 2.5.x FPS regressions as per Leegao, ahead of new builds
             "DXVK_DISABLE_TIMELINE_SEMAPHORES" to EnvVarInfo(
                 identifier = "DXVK_DISABLE_TIMELINE_SEMAPHORES",
                 selectionType = EnvVarSelectionType.TOGGLE,
@@ -296,15 +310,22 @@ data class EnvVarInfo(
                     // Category header: Network
                     "---Network",
                     "wininet=n,b",
-
                 ),
             ),
-            // ONE UI BUG VARIABLE
+            // "ONE UI" BUG VARIABLE - seen in a lot of Samsung and A8xx
             "FD_DEV_FEATURES" to EnvVarInfo(
                 identifier = "FD_DEV_FEATURES",
                 selectionType = EnvVarSelectionType.SUGGESTIONS,
                 possibleValues = listOf(
                     "enable_tp_ubwc_flag_hint=1",
+                ),
+            ),
+            // Releases unused memory in background threads, per sec, reducing micro-stutters
+            "MALLOC_CONF" to EnvVarInfo(
+                identifier = "MALLOC_CONF",
+                selectionType = EnvVarSelectionType.SUGGESTIONS,
+                possibleValues = listOf(
+                    "background_thread:true,dirty_decay_ms:1000",
                 ),
             ),
         )
