@@ -87,8 +87,14 @@ public class Container {
     public static final String STEAM_TYPE_LIGHT = "light";
     public static final String STEAM_TYPE_ULTRALIGHT = "ultralight";
     public static final String STEAM_TYPE_HEADLESS = "headless";
+
+    public static final String RUNTIME_WINE = "wine";
+    public static final String RUNTIME_WEBVIEW = "webview";
+
     public static final String GLIBC = "glibc";
     public static final String BIONIC = "bionic";
+    // variant=html5 ⇔ runtime=webview, enforced in setContainerVariant + setRuntime.
+    public static final String CONTAINER_VARIANT_HTML5 = "html5";
     public static final byte MAX_DRIVE_LETTERS = 8;
     public final String id;
     private String name;
@@ -202,6 +208,9 @@ public class Container {
     private String containerVariant = DEFAULT_VARIANT;
 
     private String basePrefix = "";
+
+    // pre-html5 containers have no runtime key in json
+    private String runtime = RUNTIME_WINE;
 
     public String getGraphicsDriverVersion() {
         return graphicsDriverVersion;
@@ -618,6 +627,9 @@ public class Container {
 
     public void setContainerVariant(String variant) {
         this.containerVariant = variant;
+        // html5 variant <=> webview runtime; leaving html5 reverts the runtime to wine.
+        if (CONTAINER_VARIANT_HTML5.equals(variant)) runtime = RUNTIME_WEBVIEW;
+        else if (RUNTIME_WEBVIEW.equals(runtime)) runtime = RUNTIME_WINE;
     }
 
     public String getContainerVariant() {
@@ -906,6 +918,9 @@ public class Container {
             data.put("portraitMode", portraitMode);
             data.put("portraitBelowCutout", portraitBelowCutout);
 
+            // wine is the absent-key default, so wine container JSON stays as it was.
+            if (RUNTIME_WEBVIEW.equals(runtime)) data.put("runtime", runtime);
+
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             return FileUtils.writeString(getConfigFile(), data.toString());
         }
@@ -923,6 +938,9 @@ public class Container {
         for (Iterator<String> it = data.keys(); it.hasNext(); ) {
             String key = it.next();
             switch (key) {
+                case "runtime" :
+                    setRuntime(data.getString(key));
+                    break;
                 case "name" :
                     setName(data.getString(key));
                     break;
@@ -1321,6 +1339,29 @@ public class Container {
 
     public void setSuspendPolicy(String suspendPolicy) {
         this.suspendPolicy = normalizeSuspendPolicy(suspendPolicy);
+    }
+
+    // hand-edited JSON ("WEBVIEW", " Wine ") must still route; unknown values default to wine.
+    public static String normalizeRuntime(String runtime) {
+        String normalized = (runtime == null) ? "" : runtime.trim().toLowerCase(Locale.ROOT);
+        switch (normalized) {
+            case RUNTIME_WEBVIEW:
+                return RUNTIME_WEBVIEW;
+            case RUNTIME_WINE:
+            default:
+                return RUNTIME_WINE;
+        }
+    }
+
+    public String getRuntime() {
+        return normalizeRuntime(runtime);
+    }
+
+    public void setRuntime(String runtime) {
+        this.runtime = normalizeRuntime(runtime);
+        // webview runtime <=> html5 variant; leaving webview reverts the variant to the default.
+        if (RUNTIME_WEBVIEW.equals(this.runtime)) containerVariant = CONTAINER_VARIANT_HTML5;
+        else if (CONTAINER_VARIANT_HTML5.equals(containerVariant)) containerVariant = DEFAULT_VARIANT;
     }
 
     public boolean isPortraitMode() {
