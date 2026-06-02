@@ -221,6 +221,8 @@ internal fun ListViewCard(
                 ) {
                     InstallStatusBadge(appInfo = appInfo, isRefreshing = isRefreshing)
 
+                    RuntimeBadge(runtime = appInfo.runtime)
+
                     // Family share indicator
                     if (appInfo.isShared) {
                         Row(
