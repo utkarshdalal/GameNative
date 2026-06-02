@@ -23,4 +23,5 @@ dependencyResolutionManagement {
 rootProject.name = "gamenative"
 include(":app")
 include(":ubuntufs")
-include(":iq80-leveldb") // vendored pure-Java leveldb fork (ThreadLocal scratch fix); see iq80-leveldb/NOTICE.md
+include(":iq80-leveldb") // leveldb fork, upstream/ submodule; see iq80-leveldb/NOTICE.md
+include(":snappy-java") // snappy-java fork, upstream/ submodule; see snappy-java/NOTICE.md
