@@ -1,0 +1,6 @@
+{
+  "engine": "pack:unity",
+  "entryPoint": "index.html",
+  "contentEncodedCompression": true,
+  "fillCanvas": true
+}
