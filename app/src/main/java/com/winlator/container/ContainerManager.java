@@ -127,7 +127,16 @@ public class ContainerManager {
             boolean isMainWineVersion = !data.has("wineVersion") || WineInfo.isMainWineVersion(data.getString("wineVersion"));
             if (!isMainWineVersion) container.setWineVersion(data.getString("wineVersion"));
 
-            if (!extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null)) {
+            // html5 never runs wine, so skip the ~60MB prefix; the drive_c skeleton gives save-sync a writable
+            // tree. a later flip to wine extracts it (ContainerUtils.applyToContainer).
+            if (Container.RUNTIME_WEBVIEW.equals(container.getRuntime())) {
+                File driveC = new File(containerDir, ".wine/drive_c");
+                if (!driveC.mkdirs() && !driveC.isDirectory()) {
+                    Log.w("ContainerManager", "Failed to create drive_c skeleton for html5 container, deleting.");
+                    FileUtils.delete(containerDir);
+                    return null;
+                }
+            } else if (!extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null)) {
                 Log.w("Container Manager", "Failed to extract container pattern, deleting container directory...");
                 FileUtils.delete(containerDir);
                 return null;

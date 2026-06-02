@@ -39,7 +39,10 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.TextButton
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -279,8 +282,11 @@ fun ContainerConfigDialog(
     default: Boolean = false,
     title: String,
     initialConfig: ContainerData = ContainerData(),
+    // null (e.g. default-config dialog) = ContainerData only, always the wine ControllerTab.
+    appId: String? = null,
     onDismissRequest: () -> Unit,
-    onSave: (ContainerData) -> Unit,
+    // non-suspend to dodge a Compose-compiler bytecode-verify regression; caller runs its own coroutine.
+    onSave: (ContainerData, onComplete: () -> Unit) -> Unit,
 ) {
     if (visible) {
         val context = LocalContext.current
@@ -302,6 +308,10 @@ fun ContainerConfigDialog(
         val staticData = rememberContainerConfigDialogStaticData()
         val screenSizes = staticData.screenSizes
         val baseGraphicsDrivers = staticData.baseGraphicsDrivers
+
+        // the html5 controller tab saves to WebViewContainer, which the ContainerData dirty check can't see;
+        // this drives the * indicator and unsaved-changes prompt instead.
+        var html5Edited by rememberSaveable { mutableStateOf(false) }
         val graphicsDriversRef = remember { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
         var graphicsDrivers by graphicsDriversRef
         val dxWrappers = staticData.dxWrappers
@@ -895,7 +905,9 @@ fun ContainerConfigDialog(
             val selectedVersion = context.ids.getOrNull(dxvkVersionIndex).orEmpty()
             val version = if (selectedVersion.isEmpty()) {
                 if (context.isVortekLike) "async-1.10.3" else DefaultVersion.DXVK
-            } else selectedVersion
+            } else {
+                selectedVersion
+            }
             val envSet = EnvVars(config.envVars)
             // Update dxwrapperConfig version regardless of wrapper type (allows DXVK config even when VKD3D is selected)
             val kvs = KeyValueSet(config.dxwrapperConfig)
@@ -1042,7 +1054,7 @@ fun ContainerConfigDialog(
         }
 
         val onDismissCheck: () -> Unit = {
-            if (initialConfig != config) {
+            if (initialConfig != config || html5Edited) {
                 dismissDialogState = MessageDialogState(
                     visible = true,
                     title = context.getString(R.string.container_config_unsaved_changes_title),
@@ -1228,7 +1240,7 @@ fun ContainerConfigDialog(
                         CenterAlignedTopAppBar(
                             title = {
                                 Text(
-                                    text = "$title${if (initialConfig != config) "*" else ""}",
+                                    text = "$title${if (initialConfig != config || html5Edited) "*" else ""}",
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
@@ -1240,9 +1252,26 @@ fun ContainerConfigDialog(
                                 )
                             },
                             actions = {
+                                // fingerprint runs async on IO; block re-entry while in flight.
+                                var saveInProgress by remember { mutableStateOf(false) }
                                 IconButton(
-                                    onClick = { onSave(config) },
-                                    content = { Icon(Icons.Default.Save, null) },
+                                    onClick = {
+                                        if (saveInProgress) return@IconButton
+                                        saveInProgress = true
+                                        onSave(config) {
+                                            saveInProgress = false
+                                            // gestureConfig was already on disk, but the * should clear on Save.
+                                            html5Edited = false
+                                        }
+                                    },
+                                    enabled = !saveInProgress,
+                                    content = {
+                                        if (saveInProgress) {
+                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                        } else {
+                                            Icon(Icons.Default.Save, null)
+                                        }
+                                    },
                                 )
                             },
                         )
@@ -1271,6 +1300,26 @@ fun ContainerConfigDialog(
                     // can navigate immediately instead of needing a button press first.
                     LaunchedEffect(Unit) { runCatching { firstTabFocusRequester.requestFocus() } }
 
+                    // wine-only tabs are greyed out, not hidden, for html5 containers.
+                    val isHtml5Variant = config.containerVariant.equals(
+                        Container.CONTAINER_VARIANT_HTML5,
+                        ignoreCase = true,
+                    )
+                    val tabEnabled = listOf(
+                        true,            // 0 General -- partial, controlled per-item inside
+                        true,            // 1 Graphics -- partial, controlled per-item inside
+                        !isHtml5Variant, // 2 Emulation
+                        true,            // 3 Controller -- variant-conditional content
+                        !isHtml5Variant, // 4 Wine
+                        !isHtml5Variant, // 5 Win Components
+                        !isHtml5Variant, // 6 Environment
+                        !isHtml5Variant, // 7 Drives
+                        !isHtml5Variant, // 8 Advanced
+                    )
+                    // bounce off disabled tab if user flips variant while sitting on one
+                    LaunchedEffect(isHtml5Variant) {
+                        if (!tabEnabled[selectedTab]) selectedTab = 0
+                    }
                     Column(
                         modifier = Modifier
                             .onPreviewKeyEvent { event ->
@@ -1297,9 +1346,17 @@ fun ContainerConfigDialog(
                     ) {
                         ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 0.dp) {
                             tabs.forEachIndexed { index, label ->
+                                val tabIsEnabled = tabEnabled[index]
                                 Tab(
                                     selected = selectedTab == index,
+                                    enabled = tabIsEnabled,
                                     onClick = { selectedTab = index },
+                                    // Material3's default disabled tint is too subtle.
+                                    unselectedContentColor = if (tabIsEnabled) {
+                                        LocalContentColor.current
+                                    } else {
+                                        LocalContentColor.current.copy(alpha = 0.30f)
+                                    },
                                     text = { Text(text = label) },
                                     modifier = if (index == 0) {
                                         Modifier.focusRequester(firstTabFocusRequester)
@@ -1314,10 +1371,25 @@ fun ContainerConfigDialog(
                                 .verticalScroll(scrollState)
                                 .weight(1f),
                         ) {
-                            if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError)
-                            if (selectedTab == 1) GraphicsTabContent(state, default)
+                            if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError, default, isHtml5Variant)
+                            if (selectedTab == 1) GraphicsTabContent(state, default, isHtml5Variant)
                             if (selectedTab == 2) EmulationTabContent(state)
-                            if (selectedTab == 3) ControllerTabContent(state, default)
+                            if (selectedTab == 3) {
+                                // html5 needs appId to resolve its WebViewContainer; the default-config dialog has none.
+                                if (isHtml5Variant && appId != null) {
+                                    Html5ControllerTabContent(
+                                        appId = appId,
+                                        onWebViewContainerSaved = {
+                                            html5Edited = true
+                                            SnackbarManager.show(
+                                                context.getString(R.string.container_config_html5_controller_saved),
+                                            )
+                                        },
+                                    )
+                                } else {
+                                    ControllerTabContent(state, default)
+                                }
+                            }
                             if (selectedTab == 4) WineTabContent(state)
                             if (selectedTab == 5) WinComponentsTabContent(state)
                             if (selectedTab == 6) EnvironmentTabContent(state)
@@ -1379,7 +1451,9 @@ private fun Preview_ContainerConfigDialog() {
             title = stringResource(R.string.container_config_title),
             initialConfig = previewConfig,
             onDismissRequest = {},
-            onSave = {},
+            onSave = { _, onComplete ->
+                onComplete() /* preview no-op */
+            },
         )
     }
 }
@@ -1394,6 +1468,7 @@ internal fun ExecutablePathDropdown(
     value: String,
     onValueChange: (String) -> Unit,
     containerData: ContainerData,
+    enabled: Boolean = true,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var executables by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -1412,14 +1487,15 @@ internal fun ExecutablePathDropdown(
     }
 
     ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
+        expanded = expanded && enabled,
+        onExpandedChange = { if (enabled) expanded = it },
         modifier = modifier
     ) {
         NoExtractOutlinedTextField(
             value = value,
             onValueChange = onValueChange,
             readOnly = true,
+            enabled = enabled,
             label = { Text(stringResource(R.string.container_config_executable_path)) },
             placeholder = { Text(stringResource(R.string.container_config_executable_path_placeholder)) },
             trailingIcon = {

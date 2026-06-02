@@ -293,6 +293,7 @@ class EpicAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
+            runtime = app.gamenative.utils.ContainerUtils.resolveRuntime(context, libraryItem.appId),
         )
         Timber.tag(TAG).d("Returning GameDisplayInfo: name=${displayInfo.name}, iconUrl=${displayInfo.iconUrl}, heroImageUrl=${displayInfo.heroImageUrl}, developer=${displayInfo.developer}, installLocation=${displayInfo.installLocation}")
         return displayInfo
@@ -620,15 +621,18 @@ class EpicAppScreen : BaseAppScreen() {
         return containerData
     }
 
-    override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
+    override suspend fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData): Boolean {
         Timber.tag(TAG).i("saveContainerConfig: appId=${libraryItem.appId}")
         // Save Epic-specific container configuration using ContainerUtils
         val previousLanguage = ContainerUtils.getContainer(context, libraryItem.appId).language
-        app.gamenative.utils.ContainerUtils.applyToContainer(context, libraryItem.appId, config)
-        Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
-
-        if (previousLanguage != config.language) {
-            triggerEpicUpdateDownload(context, libraryItem, config.language, clearPrerequisiteMarkers = false)
+        return app.gamenative.utils.ContainerUtils.applyToContainerGated(context, libraryItem.appId, config).also {
+            if (it) {
+                Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
+                // gated write refused -> container language unchanged, so nothing to re-download
+                if (previousLanguage != config.language) {
+                    triggerEpicUpdateDownload(context, libraryItem, config.language, clearPrerequisiteMarkers = false)
+                }
+            }
         }
     }
 
@@ -859,6 +863,7 @@ class EpicAppScreen : BaseAppScreen() {
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         Timber.tag(TAG).d("AdditionalDialogs: composing for appId=${libraryItem.appId}")
         val context = LocalContext.current

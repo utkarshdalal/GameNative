@@ -642,6 +642,8 @@ private fun GridStatusIcons(appInfo: LibraryItem) {
                 )
             }
         }
+        // icon-only: the list card's wider RuntimeBadge would overflow the grid status row.
+        Html5RuntimeIcon(runtime = appInfo.runtime)
     }
 }
 

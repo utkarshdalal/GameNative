@@ -12,6 +12,9 @@ interface AndroidEvent<T> : Event<T> {
     data object StartOrientator : AndroidEvent<Unit>
     data object ActivityDestroyed : AndroidEvent<Unit>
     data object GuestProgramTerminated : AndroidEvent<Unit>
+
+    // fires after webView.destroy() returns; save-sync waits on it because the leveldb lock releases post-destroy.
+    data object WebViewDestroyed : AndroidEvent<Unit>
     data class KeyEvent(val event: android.view.KeyEvent) : AndroidEvent<Boolean>
     data class MotionEvent(val event: android.view.MotionEvent?) : AndroidEvent<Boolean>
     data object EndProcess : AndroidEvent<Unit>
@@ -27,6 +30,10 @@ interface AndroidEvent<T> : Event<T> {
     data class PostInstallSyncStatusChanged(val appId: Int, val isSyncing: Boolean) : AndroidEvent<Unit>
     data class LibraryInstallStatusChanged(val appId: Int, val source: GameSource) : AndroidEvent<Unit>
     data class PreferredCopyChanged(val appId: Int) : AndroidEvent<Unit>
+
+    // the "install" moment for custom games, which have no download phase. lets Html5InstallWatcher
+    // fingerprint them like store games on download completion.
+    data class CustomGameDiscovered(val appId: Int, val folderPath: String) : AndroidEvent<Unit>
     data class CustomGameImagesFetched(val appId: String) : AndroidEvent<Unit>
     data object RecommendationToggleChanged : AndroidEvent<Unit>
     data class HiddenGamesSettingChanged(val showHiddenGamesByDefault: Boolean) : AndroidEvent<Unit>

@@ -2,9 +2,13 @@ package app.gamenative.service.epic
 
 import android.content.Context
 import app.gamenative.data.EpicGame
+import app.gamenative.data.GameSource
+import app.gamenative.service.cloud.SyncFileFilter
 import app.gamenative.service.epic.manifest.EpicManifest
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.Net
+import com.winlator.container.Container
+import app.gamenative.utils.ContainerUtils
 import java.io.File
 import java.time.Instant
 import java.util.zip.GZIPInputStream
@@ -109,20 +113,27 @@ object EpicCloudSavesManager {
             val creds = credentials.getOrNull()!!
             Timber.tag("Epic").d("[Cloud Saves] Using account: ${creds.accountId} (${creds.displayName})")
 
+            // runtime check, not Html5Routing, keeps this service free of html5 imports. wine titles must
+            // never have save files filtered out by name.
+            val chromiumProfileSync = ContainerUtils.resolveRuntime(
+                context,
+                GameSource.EPIC.containerPrefix + appId,
+            ) == Container.RUNTIME_WEBVIEW
+
             //  Determine sync action - Upload,Download, Conflict or none
-            val action = determineSyncAction(context, creds.accountId, game, preferredAction)
+            val action = determineSyncAction(context, creds.accountId, game, preferredAction, chromiumProfileSync)
 
             Timber.tag("Epic").i("[Cloud Saves] Sync action determined: $action")
 
             // Execute the action
             val result = when (action) {
-                SyncAction.DOWNLOAD -> downloadSaves(context, appId, creds.accountId)
+                SyncAction.DOWNLOAD -> downloadSaves(context, appId, creds.accountId, chromiumProfileSync)
 
-                SyncAction.UPLOAD -> uploadSaves(context, creds.accountId, game)
+                SyncAction.UPLOAD -> uploadSaves(context, creds.accountId, game, chromiumProfileSync = chromiumProfileSync)
 
                 SyncAction.CONFLICT -> {
                     Timber.tag("Epic").w("[Cloud Saves] Conflict detected - resolving via timestamp comparison")
-                    resolveConflict(context, creds.accountId, game)
+                    resolveConflict(context, creds.accountId, game, chromiumProfileSync)
                 }
 
                 SyncAction.NONE -> {
@@ -155,6 +166,7 @@ object EpicCloudSavesManager {
         accountId: String,
         game: app.gamenative.data.EpicGame,
         preferredAction: String,
+        chromiumProfileSync: Boolean,
     ): SyncAction = withContext(Dispatchers.IO) {
         try {
             // Force action if requested
@@ -196,6 +208,11 @@ object EpicCloudSavesManager {
             val localNewestTimestamp = saveDir?.let { dir ->
                 dir.walkTopDown()
                     .filter { it.isFile }
+                    // a fresh crash dump's mtime would otherwise drag "newest" forward and force a spurious upload.
+                    .filterNot {
+                        chromiumProfileSync &&
+                            SyncFileFilter.isChromiumInternal(it.relativeTo(dir).path.replace('\\', '/'))
+                    }
                     .maxOfOrNull { it.lastModified() }
             }
 
@@ -338,6 +355,7 @@ object EpicCloudSavesManager {
         context: Context,
         accountId: String,
         game: EpicGame,
+        chromiumProfileSync: Boolean,
     ): Boolean = withContext(Dispatchers.IO) {
         try {
             Timber.tag("Epic").i("[Cloud Saves] Starting conflict resolution for ${game.id}")
@@ -354,6 +372,10 @@ object EpicCloudSavesManager {
                     .filter { it.isFile }
                     .forEach { file ->
                         val relativePath = file.relativeTo(saveDir).path.replace("\\", "/")
+                        if (chromiumProfileSync && SyncFileFilter.isChromiumInternal(relativePath)) {
+                            Timber.tag("Epic").d("[Cloud Saves] Skipping chromium-internal local: $relativePath")
+                            return@forEach
+                        }
                         localFiles[relativePath] = file.lastModified()
                     }
             }
@@ -371,7 +393,7 @@ object EpicCloudSavesManager {
             val cloudSaves = cloudSavesResult.getOrNull()!!
             val (manifestPath, manifestInfo) = findLatestManifest(cloudSaves.files) ?: run {
                 Timber.tag("Epic").w("[Cloud Saves] No manifest in cloud, uploading all local files")
-                return@withContext uploadSaves(context, accountId, game)
+                return@withContext uploadSaves(context, accountId, game, chromiumProfileSync = chromiumProfileSync)
             }
 
             // 3. Download and parse manifest to get cloud file list with timestamps
@@ -386,7 +408,7 @@ object EpicCloudSavesManager {
             // Validate manifest is not empty
             if (manifestBytes.isEmpty()) {
                 Timber.tag("Epic").w("[Cloud Saves] Cloud manifest is empty, uploading all local files")
-                return@withContext uploadSaves(context, accountId, game)
+                return@withContext uploadSaves(context, accountId, game, chromiumProfileSync = chromiumProfileSync)
             }
 
             val manifest = try {
@@ -395,7 +417,7 @@ object EpicCloudSavesManager {
                 Timber.tag("Epic").e(e, "[Cloud Saves] Failed to parse manifest (size: ${manifestBytes.size} bytes)")
                 // If manifest is corrupt, upload our local version
                 Timber.tag("Epic").w("[Cloud Saves] Manifest parse failed, uploading local files")
-                return@withContext uploadSaves(context, accountId, game)
+                return@withContext uploadSaves(context, accountId, game, chromiumProfileSync = chromiumProfileSync)
             }
 
             // Build map of cloud files with their modification times
@@ -503,7 +525,7 @@ object EpicCloudSavesManager {
             if (toUpload.isNotEmpty()) {
                 Timber.tag("Epic").i("[Cloud Saves] Uploading ${toUpload.size} files based on timestamp comparison")
                 // ! Upload ALL local files, to ensure the manifest is correct with save-state
-                uploadSuccess = uploadSaves(context, accountId, game)
+                uploadSuccess = uploadSaves(context, accountId, game, chromiumProfileSync = chromiumProfileSync)
             }
 
             // 7. Update sync timestamp if both operations succeeded
@@ -522,7 +544,12 @@ object EpicCloudSavesManager {
     }
 
     // Download saves flow
-    private suspend fun downloadSaves(context: Context, appId: Int, accountId: String): Boolean = withContext(Dispatchers.IO) {
+    private suspend fun downloadSaves(
+        context: Context,
+        appId: Int,
+        accountId: String,
+        chromiumProfileSync: Boolean,
+    ): Boolean = withContext(Dispatchers.IO) {
         try {
             Timber.tag("Epic").i("[Cloud Saves] Starting download for $appId")
 
@@ -613,6 +640,10 @@ object EpicCloudSavesManager {
                         Timber.tag("Epic").w("[Cloud Saves] Skipping path traversal: ${fileManifest.filename}")
                         return@forEach
                     }
+                    if (chromiumProfileSync && SyncFileFilter.isChromiumInternal(fileManifest.filename.replace('\\', '/'))) {
+                        Timber.tag("Epic").d("[Cloud Saves] Skipping chromium-internal cloud entry: ${fileManifest.filename}")
+                        return@forEach
+                    }
                     outputFile.parentFile?.mkdirs()
 
                     Timber.tag("Epic").d("[Cloud Saves] Reconstructing file: ${fileManifest.filename}")
@@ -657,6 +688,7 @@ object EpicCloudSavesManager {
         accountId: String,
         game: EpicGame,
         fileList: List<String>? = null, // Optional: only upload specific files
+        chromiumProfileSync: Boolean,
     ): Boolean = withContext(Dispatchers.IO) {
         try {
             Timber.tag("Epic").i("[Cloud Saves] Starting upload for ${game.id}")
@@ -678,7 +710,7 @@ object EpicCloudSavesManager {
             } else {
                 Timber.tag("Epic").i("[Cloud Saves] Packaging all save files from: ${saveDir.absolutePath}")
             }
-            val packagedFiles = packageSaveFiles(saveDir, game, accountId, fileList)
+            val packagedFiles = packageSaveFiles(saveDir, game, accountId, fileList, chromiumProfileSync)
             if (packagedFiles.isEmpty()) {
                 Timber.tag("Epic").e("[Cloud Saves] Failed to package save files")
                 return@withContext false
@@ -1024,12 +1056,21 @@ object EpicCloudSavesManager {
         game: EpicGame,
         accountId: String,
         fileList: List<String>? = null, // Optional: only package specific files
+        chromiumProfileSync: Boolean,
     ): Map<String, ByteArray> {
         try {
             Timber.tag("Epic").i("[Cloud Saves] Packaging files from: ${saveDir.absolutePath}")
 
             val allFiles = saveDir.walkTopDown()
                 .filter { it.isFile }
+                .filterNot {
+                    val rel = it.relativeTo(saveDir).path.replace("\\", "/")
+                    val excluded = chromiumProfileSync && SyncFileFilter.isChromiumInternal(rel)
+                    if (excluded) {
+                        Timber.tag("Epic").d("[Cloud Saves] Skipping chromium-internal upload: $rel")
+                    }
+                    excluded
+                }
                 .toList()
 
             // Filter to only requested files if fileList is provided
@@ -1303,7 +1344,8 @@ object EpicCloudSavesManager {
     }
 
     // Resolve save directory path
-    private fun resolveSaveDirectory(context: Context, game: EpicGame, accountId: String): File? {
+    // internal so html5 save-sync resolves the same save root as this sync.
+    internal fun resolveSaveDirectory(context: Context, game: EpicGame, accountId: String): File? {
         val cloudSaveFolder = game.saveFolder.ifEmpty { return null }
 
         // Get the container's Wine prefix path (similar to GOG)
