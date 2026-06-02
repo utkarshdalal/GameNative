@@ -2,6 +2,11 @@
 .idea/
 *.iml
 
+# phase 06.4 throwaway save-sync probes (delete after phase close per D-216).
+app/src/test/java/app/gamenative/html5/savesync/AndroidWebViewProbe.kt
+app/src/test/java/app/gamenative/html5/savesync/WaywardDesktopProbe.kt
+app/src/test/resources/wayward-desktop-save/
+
 # Gradle files
 .gradle/
 build/
