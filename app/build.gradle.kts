@@ -222,6 +222,16 @@ android {
             useLegacyPackaging = true
         }
     }
+    // snappy-java jar ships android .so files under org/xerial/snappy/native/Linux/android-*/ — AGP's
+    // mergeNativeLibs strips .so files that aren't already at lib/<abi>/. extractSnappyAndroidJni
+    // (below, outside android {}) relocates them to build/generated/snappy-jni/<abi>/libsnappyjava.so;
+    // this srcDir picks them up as jniLibs so they end up at lib/<abi>/libsnappyjava.so in the APK,
+    // which System.loadLibrary("snappyjava") can find (see use.systemlib wiring in PluviaApp).
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDir(layout.buildDirectory.dir("generated/snappy-jni"))
+        }
+    }
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -322,6 +332,48 @@ android {
     // }
 }
 
+// isolated resolvable configuration so we can fish the snappy-java jar out at build time
+// without affecting main classpath resolution.
+val snappyJniExtract: Configuration by configurations.creating {
+    isTransitive = false
+    isCanBeResolved = true
+    isCanBeConsumed = false
+}
+
+// WHY: AGP's mergeNativeLibs task silently drops .so files that live anywhere in a jar other than
+// lib/<abi>/. snappy-java places Android natives at org/xerial/snappy/native/Linux/android-*/, so
+// shipping the jar unchanged yields an APK with zero libsnappyjava.so. we fish them out here and
+// relocate to lib/<abi>/libsnappyjava.so via the jniLibs srcDir registered in android.sourceSets.
+val extractSnappyAndroidJni by tasks.registering(Copy::class) {
+    from({ snappyJniExtract.map { zipTree(it) } }) {
+        include("org/xerial/snappy/native/Linux/android-aarch64/libsnappyjava.so")
+        include("org/xerial/snappy/native/Linux/android-arm/libsnappyjava.so")
+    }
+    into(layout.buildDirectory.dir("generated/snappy-jni"))
+    eachFile {
+        val abi = when {
+            path.contains("android-aarch64") -> "arm64-v8a"
+            path.contains("android-arm") -> "armeabi-v7a"
+            else -> return@eachFile
+        }
+        relativePath = RelativePath(true, abi, "libsnappyjava.so")
+    }
+    includeEmptyDirs = false
+    doLast {
+        // snappy-java's ABI subdir naming is the load-bearing assumption above. if a future
+        // version reshuffles (e.g. android-arm64, per-OS reorg), the include() patterns
+        // silently match nothing and the APK ships without libsnappyjava.so. fail loudly.
+        val produced = layout.buildDirectory.dir("generated/snappy-jni").get().asFile
+            .walkTopDown().filter { it.isFile && it.name == "libsnappyjava.so" }.count()
+        check(produced > 0) {
+            "extractSnappyAndroidJni produced no .so files — snappy-java jar layout likely changed; " +
+                "audit include() patterns in app/build.gradle.kts vs the snappy-java version in libs.versions.toml."
+        }
+    }
+}
+
+tasks.named("preBuild").configure { dependsOn(extractSnappyAndroidJni) }
+
 dependencies {
     implementation(libs.material)
 
@@ -354,6 +406,17 @@ dependencies {
     implementation(libs.zstd.jni) { artifact { type = "aar" } }
     implementation(libs.xz)
 
+    // leveldb — phase 6 save-sync (D-101, D-101.5). pure-java iq80 picked over leveldbjni-all:1.8
+    // (2013 artifact, no android-arm64-v8a natives) because we need a custom Java comparator
+    // (idb_cmp1). VENDORED as the :iq80-leveldb module (fork of 0.12) — Table.uncompressedScratch
+    // made ThreadLocal to fix concurrent-decompression block corruption (reader vs background
+    // compaction). see iq80-leveldb/NOTICE.md. snappy-java handles chromium-style compression via JNI.
+    implementation(project(":iq80-leveldb"))
+    implementation(libs.snappy.java)
+    // separate non-transitive pull of same jar so extractSnappyAndroidJni can relocate its
+    // android .so files into lib/<abi>/. see that task definition above.
+    snappyJniExtract(libs.snappy.java)
+
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
@@ -366,6 +429,7 @@ dependencies {
     // Support
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.webkit)
     implementation(libs.apng)
     implementation(libs.datastore.preferences)
     implementation(libs.jetbrains.kotlinx.json)
@@ -404,6 +468,7 @@ dependencies {
     testImplementation(libs.zstd.jni)
     testImplementation(libs.orgJson)
     testImplementation(libs.mockwebserver)
+    testImplementation(libs.rhino) // JVM JS engine -- executes pure shims (path.js, require-dispatcher.js) in tests
 
     // Add PostHog Android SDK dependency
     implementation("com.posthog:posthog-android:3.8.0")
