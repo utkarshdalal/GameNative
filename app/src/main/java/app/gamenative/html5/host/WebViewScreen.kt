@@ -65,6 +65,7 @@ import app.gamenative.html5.shim.Html5RuntimeBridge
 import app.gamenative.html5.shim.SteamworksJsBridge
 import app.gamenative.runtime.WebViewContainer
 import app.gamenative.service.SteamService
+import app.gamenative.ui.component.PerformanceQuickMenuState
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
 import app.gamenative.ui.data.PerformanceHudConfig
@@ -816,9 +817,11 @@ fun WebViewScreen(
         QuickMenu(
             isVisible = showQuickMenu,
             onDismiss = { showQuickMenu = false },
-            isPerformanceHudEnabled = isPerformanceHudEnabled,
-            performanceHudConfig = performanceHudConfig,
-            onPerformanceHudConfigChanged = ::applyPerformanceHudConfig,
+            performance = PerformanceQuickMenuState(
+                hudEnabled = isPerformanceHudEnabled,
+                hudConfig = performanceHudConfig,
+                onHudConfigChanged = ::applyPerformanceHudConfig,
+            ),
             isTouchscreenModeActive = container.isTouchscreenMode,
             onTouchGestureSettingsClick = { showGestureDialog = true },
             activeToggleIds = buildSet {
