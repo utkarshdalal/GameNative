@@ -30,6 +30,7 @@ import timber.log.Timber
 import android.content.Context
 import android.content.Intent
 import app.gamenative.data.GameSource
+import app.gamenative.html5.Html5OptInService
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
@@ -1014,6 +1015,7 @@ object GameDownloadService {
         // container / disk work (Epic even `runBlocking`s a Room query), so running
         // one here would ANR a main-thread caller and stall every other queue call.
         queueScope.launch { resumeNextDownload(context.applicationContext) }
+        queueScope.launch { Html5OptInService.notifyIfSwitchable(context.applicationContext, gameSource, gameId) }
     }
 
     /**
