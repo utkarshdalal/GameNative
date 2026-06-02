@@ -82,6 +82,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gamenative.PluviaApp
 import app.gamenative.R
+import app.gamenative.html5.input.Html5ProfileFilter
 import app.gamenative.inputcontrols.ControlProfilePreview
 import app.gamenative.inputcontrols.ControlProfileSection
 import app.gamenative.inputcontrols.ControlProfileService
@@ -175,7 +176,8 @@ fun ControlProfileLibraryDialog(
         manager.reloadProfiles()
         val builtIns = ControlProfileService.builtInProfileNames(context)
         ProfileLibrarySnapshot(
-            entries = manager.getProfiles(false).mapNotNull { profile ->
+            // html5 profiles belong to a single html5 container; never offer them to other games.
+            entries = Html5ProfileFilter.excludeHtml5(manager.getProfiles(false)).mapNotNull { profile ->
                 runCatching {
                     ProfileLibraryEntry(
                         profile = profile,
