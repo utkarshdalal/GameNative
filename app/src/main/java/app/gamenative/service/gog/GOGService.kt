@@ -468,6 +468,9 @@ class GOGService : Service() {
             context: Context,
             appId: String,
             preferredAction: String = "none",
+            // forwarded to syncSaves. default false keeps wine GOG cloud accretive; only the
+            // html5 outbound caller opts into mirror-delete. see GOGCloudSavesManager.syncSaves.
+            propagateDeletions: Boolean = false,
         ): Boolean = withContext(Dispatchers.IO) {
             try {
                 Timber.tag("GOG").d("[Cloud Saves] syncCloudSaves called for $appId with action: $preferredAction")
@@ -570,6 +573,7 @@ class GOGService : Service() {
                                 dirname = location.name,
                                 lastSyncTimestamp = timestamp,
                                 preferredAction = preferredAction,
+                                propagateDeletions = propagateDeletions,
                             )
 
                             if (newTimestamp != timestamp) {
