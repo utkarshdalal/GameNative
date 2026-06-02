@@ -29,5 +29,7 @@ data class GameDisplayInfo(
     val onChangePreferredCopy: (() -> Unit)? = null,
     /** True while available Family library copies are being resolved off the main thread. */
     val isLoadingPreferredCopy: Boolean = false,
+
+    val runtime: String = "wine",
 )
 

@@ -6,6 +6,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import app.gamenative.data.TouchGestureConfig.Companion.ACTION_OPEN_QUICK_MENU
+import app.gamenative.data.TouchGestureConfig.Companion.CURSOR_MODE_ABSOLUTE
+import app.gamenative.data.TouchGestureConfig.Companion.CURSOR_MODE_RELATIVE
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -62,6 +65,7 @@ import com.winlator.inputcontrols.Binding
  * @param gestureConfig  The current [TouchGestureConfig] to display / edit.
  * @param onDismiss      Called when the user cancels (back button or X).
  * @param onSave         Called with the updated [TouchGestureConfig] when the user taps "Save".
+ * @param showHtml5Extras Adds the cursor-mode toggle and swaps show_keyboard for open_quick_menu.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +73,7 @@ fun TouchGestureSettingsDialog(
     gestureConfig: TouchGestureConfig,
     onDismiss: () -> Unit,
     onSave: (TouchGestureConfig) -> Unit,
+    showHtml5Extras: Boolean = false,
 ) {
     var config by remember { mutableStateOf(gestureConfig) }
 
@@ -132,6 +137,7 @@ fun TouchGestureSettingsDialog(
                     TapHoldActionPicker(
                         currentAction = config.tapAction,
                         onActionSelected = { config = config.copy(tapAction = it) },
+                        html5 = showHtml5Extras,
                     )
                 }
 
@@ -176,6 +182,7 @@ fun TouchGestureSettingsDialog(
                     TapHoldActionPicker(
                         currentAction = config.longPressAction,
                         onActionSelected = { config = config.copy(longPressAction = it) },
+                        html5 = showHtml5Extras,
                     )
                     MouseHoldBehaviorPicker(
                         action = config.longPressAction,
@@ -224,6 +231,7 @@ fun TouchGestureSettingsDialog(
                     TapHoldActionPicker(
                         currentAction = config.twoFingerTapAction,
                         onActionSelected = { config = config.copy(twoFingerTapAction = it) },
+                        html5 = showHtml5Extras,
                     )
                 }
 
@@ -237,6 +245,7 @@ fun TouchGestureSettingsDialog(
                     TapHoldActionPicker(
                         currentAction = config.twoFingerHoldAction,
                         onActionSelected = { config = config.copy(twoFingerHoldAction = it) },
+                        html5 = showHtml5Extras,
                     )
                     MouseHoldBehaviorPicker(
                         action = config.twoFingerHoldAction,
@@ -303,6 +312,7 @@ fun TouchGestureSettingsDialog(
                     TapHoldActionPicker(
                         currentAction = config.threeFingerTapAction,
                         onActionSelected = { config = config.copy(threeFingerTapAction = it) },
+                        html5 = showHtml5Extras,
                     )
                 }
 
@@ -316,6 +326,7 @@ fun TouchGestureSettingsDialog(
                     TapHoldActionPicker(
                         currentAction = config.threeFingerHoldAction,
                         onActionSelected = { config = config.copy(threeFingerHoldAction = it) },
+                        html5 = showHtml5Extras,
                     )
                     MouseHoldBehaviorPicker(
                         action = config.threeFingerHoldAction,
@@ -399,6 +410,20 @@ fun TouchGestureSettingsDialog(
                     state = config.showCursorInTouchscreenMode,
                     onCheckedChange = { config = config.copy(showCursorInTouchscreenMode = it) },
                 )
+
+                if (showHtml5Extras) {
+                    SettingsSwitch(
+                        colors = settingsTileColorsAlt(),
+                        title = { Text(stringResource(R.string.gesture_cursor_mode)) },
+                        subtitle = { Text(stringResource(R.string.gesture_cursor_mode_relative_subtitle)) },
+                        state = config.cursorMode == CURSOR_MODE_RELATIVE,
+                        onCheckedChange = { isRelative ->
+                            config = config.copy(
+                                cursorMode = if (isRelative) CURSOR_MODE_RELATIVE else CURSOR_MODE_ABSOLUTE,
+                            )
+                        },
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -484,6 +509,7 @@ private fun tapHoldSingleActionLabel(action: String): String = when (action) {
     ACTION_MIDDLE_CLICK -> stringResource(R.string.gesture_action_middle_click)
     ACTION_SHOW_KEYBOARD -> stringResource(R.string.gesture_action_show_keyboard)
     ACTION_OPEN_RADIAL_MENU -> stringResource(R.string.gesture_action_open_radial_menu)
+    ACTION_OPEN_QUICK_MENU -> stringResource(R.string.gesture_action_open_quick_menu)
     else -> {
         if (action.startsWith("key_")) {
             keyActionLabel(action)
@@ -592,13 +618,18 @@ private fun mouseDragMovementModeLabel(mode: String): String = when (mode) {
 // ── Categorized action picker for tap/hold gestures ─────────────────────
 
 @Composable
-private fun buildActionCategories(): List<SettingsActionCategory> {
+private fun buildActionCategories(html5: Boolean = false): List<SettingsActionCategory> {
+    // html5 can't surface the IME via TouchpadView.
     val special = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_special),
-        actions = listOf(
-            ACTION_SHOW_KEYBOARD to stringResource(R.string.gesture_action_show_keyboard),
-            ACTION_OPEN_RADIAL_MENU to stringResource(R.string.gesture_action_open_radial_menu),
-        )
+        actions = if (html5) {
+            listOf(ACTION_OPEN_QUICK_MENU to stringResource(R.string.gesture_action_open_quick_menu))
+        } else {
+            listOf(
+                ACTION_SHOW_KEYBOARD to stringResource(R.string.gesture_action_show_keyboard),
+                ACTION_OPEN_RADIAL_MENU to stringResource(R.string.gesture_action_open_radial_menu),
+            )
+        },
     )
     val mouse = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_mouse),
@@ -713,13 +744,14 @@ private fun buildActionCategories(): List<SettingsActionCategory> {
 private fun TapHoldActionPicker(
     currentAction: String,
     onActionSelected: (String) -> Unit,
+    html5: Boolean = false,
 ) {
     TouchActionComboPicker(
         currentAction = currentAction,
         currentLabel = tapHoldActionLabel(currentAction),
         rowLabel = stringResource(R.string.gesture_action_label),
         dialogTitle = stringResource(R.string.gesture_action_label),
-        categories = buildActionCategories(),
+        categories = buildActionCategories(html5 = html5),
         actionLabel = { tapHoldSingleActionLabel(it) },
         onActionSelected = onActionSelected,
     )
