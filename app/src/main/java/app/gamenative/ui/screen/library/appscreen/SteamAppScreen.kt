@@ -119,6 +119,32 @@ private data class InstallSizeInfo(
     val availableBytes: Long,
 )
 
+// BLOCKING so callers launch only after install finishes -- an early onClickPlay black-screens xserver.
+// runs on the caller's IO scope, which downloadImageFs needs for its progress loop.
+private suspend fun installImageFsIfNeeded(
+    context: Context,
+    container: Container,
+    scope: CoroutineScope,
+) {
+    val variant = container.containerVariant
+    if (!SteamService.isImageFsInstallable(context, variant)) {
+        SteamService.downloadImageFs(
+            onDownloadProgress = { /* no-op: dialog shows indeterminate progress */ },
+            scope,
+            variant = variant,
+            context = context,
+        ).await()
+    }
+    if (!SteamService.isImageFsInstalled(context)) {
+        withContext(Dispatchers.Main) {
+            SplitCompat.install(context)
+        }
+        ImageFsInstaller.installIfNeededFuture(context, context.assets, container) { _ ->
+            // no-op: dialog shows indeterminate progress
+        }.get()
+    }
+}
+
 private fun buildInstallPromptState(context: Context, info: InstallSizeInfo): MessageDialogState {
     val message = context.getString(
         R.string.steam_install_space_prompt,
@@ -307,16 +333,23 @@ class SteamAppScreen : BaseAppScreen() {
             iconUrl = null,
             gameId = gameId,
             appId = libraryItem.appId,
+            runtime = "wine",
         )
 
         var isInstalled by remember(libraryItem.appId) {
             mutableStateOf(SteamService.isAppInstalled(gameId))
         }
 
+        // re-resolves when a runtime flip re-emits LibraryInstallStatusChanged
+        var runtime by remember(libraryItem.appId) {
+            mutableStateOf(ContainerUtils.resolveRuntime(context, libraryItem.appId))
+        }
+
         DisposableEffect(gameId) {
             val listener: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
                 if (event.appId == gameId) {
                     isInstalled = SteamService.isAppInstalled(gameId)
+                    runtime = ContainerUtils.resolveRuntime(context, libraryItem.appId)
                 }
             }
             PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(listener)
@@ -455,6 +488,7 @@ class SteamAppScreen : BaseAppScreen() {
             storeDetails = StoreGameDetails(
                 reviewPercentage = appInfo.reviewPercentage.toInt().takeIf { it in 1..100 },
             ),
+            runtime = runtime,
         )
     }
 
@@ -742,6 +776,54 @@ class SteamAppScreen : BaseAppScreen() {
                     } else {
                         onEditContainer()
                     }
+                }
+            },
+        )
+    }
+
+    // warn html5 users about one-time wine costs on Open Container: the shared ImageFs (~600 MB) and
+    // per-container prefix extraction on first wine boot (~1.5 GB).
+    @Composable
+    override fun getRunContainerOption(
+        context: Context,
+        libraryItem: LibraryItem,
+        onClickPlay: (Boolean) -> Unit,
+    ): AppMenuOption? {
+        val gameId = libraryItem.gameId
+        val appId = libraryItem.appId
+
+        return AppMenuOption(
+            AppOptionMenuType.RunContainer,
+            onClick = {
+                // wine goes straight to the base handler; an html5 container always exists already.
+                val container = if (app.gamenative.html5.host.Html5Routing.isHtml5App(context, appId)) {
+                    ContainerUtils.getContainer(context, appId)
+                } else {
+                    null
+                }
+                val needsImageFs = container != null && !SteamService.isImageFsInstalled(context)
+                // XServerScreen sets appVersion after the first wine boot; empty = prefix never extracted.
+                val needsPrefix = container != null && container.getExtra("appVersion").isEmpty()
+
+                if (needsImageFs || needsPrefix) {
+                    val message = when {
+                        needsImageFs && needsPrefix -> R.string.steam_imagefs_open_container_message_full
+                        needsImageFs -> R.string.steam_imagefs_open_container_message_imagefs_only
+                        else -> R.string.steam_imagefs_open_container_message_prefix_only
+                    }
+                    showInstallDialog(
+                        gameId,
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.INSTALL_IMAGEFS_FOR_OPEN_CONTAINER,
+                            title = context.getString(R.string.steam_imagefs_open_container_title),
+                            message = context.getString(message),
+                            confirmBtnText = context.getString(R.string.proceed),
+                            dismissBtnText = context.getString(R.string.cancel),
+                        ),
+                    )
+                } else {
+                    onRunContainerClick(context, libraryItem, onClickPlay)
                 }
             },
         )
@@ -1048,6 +1130,7 @@ class SteamAppScreen : BaseAppScreen() {
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         val context = LocalContext.current
         val gameId = libraryItem.gameId
@@ -1389,6 +1472,28 @@ class SteamAppScreen : BaseAppScreen() {
                                 }
                                 // After installation, trigger container edit
                                 SnackbarManager.show(context.getString(R.string.steam_imagefs_installed))
+                            } catch (e: Exception) {
+                                SnackbarManager.show(
+                                    context.getString(
+                                        R.string.steam_imagefs_install_failed,
+                                        e.message ?: "",
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                DialogType.INSTALL_IMAGEFS_FOR_OPEN_CONTAINER -> {
+                    {
+                        hideInstallDialog(gameId)
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+                                installImageFsIfNeeded(context, container, this)
+                                withContext(Dispatchers.Main) {
+                                    onClickPlay(true)
+                                }
                             } catch (e: Exception) {
                                 SnackbarManager.show(
                                     context.getString(

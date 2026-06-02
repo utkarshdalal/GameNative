@@ -146,6 +146,9 @@ object QuickMenuAction {
     const val SC_LAYOUT = 16
     // Single root entry that opens the Steam Controller editor hub (lists the editors above).
     const val SC_ROOT = 17
+
+    // html5-only; the wine path never emits these.
+    const val EDIT_OVERLAY = 18
 }
 
 private object QuickMenuTab {
@@ -419,6 +422,9 @@ fun QuickMenu(
     onShooterModeSettingsClick: () -> Unit = {},
     activeToggleIds: Set<Int> = emptySet(),
     lsfg: LsfgQuickMenuState = LsfgQuickMenuState(),
+    // html5 hides KEYBOARD / PERFORMANCE_HUD and shows EDIT_OVERLAY instead; also hides the
+    // physical-controller tuning gear (stick tuning lives in ExternalController, wine-only).
+    isHtml5: Boolean = false,
     onAnimationComplete: (Boolean) -> Unit = {},
     /** Lets the menu open itself when the running game asks for its Steam invite dialog. */
     onRequestOpen: () -> Unit = {},
@@ -473,6 +479,16 @@ fun QuickMenu(
         // Steam Controller editors live behind a single root entry (most relevant when a Triton is connected).
         if (isSteamControllerLive) {
             add(QuickMenuItem(QuickMenuAction.SC_ROOT, Icons.Filled.Gamepad, R.string.sc_edit_root, PluviaTheme.colors.accentPurple))
+        }
+        // html5: overlay editor instead of the wine keyboard/mouse/profile/shooter/radial/gyro entries.
+        if (isHtml5) {
+            add(QuickMenuItem(QuickMenuAction.EDIT_OVERLAY, Icons.Default.Edit, R.string.quickmenu_edit_overlay, PluviaTheme.colors.accentPurple))
+            add(QuickMenuItem(QuickMenuAction.INPUT_CONTROLS, Icons.Default.TouchApp, R.string.input_controls, PluviaTheme.colors.accentPurple))
+            if (hasPhysicalController && !isSteamControllerLive) {
+                add(QuickMenuItem(QuickMenuAction.EDIT_PHYSICAL_CONTROLLER, Icons.Default.Gamepad, R.string.edit_physical_controller, PluviaTheme.colors.accentPurple))
+            }
+            add(QuickMenuItem(QuickMenuAction.TOUCHSCREEN_MODE, Icons.Default.Fingerprint, R.string.touchscreen_mode, PluviaTheme.colors.accentPurple))
+            return@buildList
         }
         add(
             QuickMenuItem(
@@ -588,6 +604,9 @@ fun QuickMenu(
     var selectedTab by rememberSaveable {
         mutableIntStateOf(
             when {
+                // html5 hides EFFECTS/TOOLS/LSFG.
+                isHtml5 && PrefManager.quickMenuLastTab in setOf(QuickMenuTab.EFFECTS, QuickMenuTab.TOOLS, QuickMenuTab.LSFG) ->
+                    QuickMenuTab.CONTROLLER
                 PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable -> QuickMenuTab.HUD
                 PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null -> QuickMenuTab.HUD
                 PrefManager.quickMenuLastTab == QuickMenuTab.POWER -> QuickMenuTab.HUD
@@ -668,16 +687,16 @@ fun QuickMenu(
 
     // Only the tabs actually shown in the rail, in on-screen order — mirrors the conditions each
     // QuickMenuTabButton below is gated on (isLsfgAvailable, a renderer being available, etc).
-    val availableTabs = remember(isLsfgAvailable, hasEffectsTab, immersiveControls, inviteMenu, isGamescopeSession)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           {
+    val availableTabs = remember(isLsfgAvailable, hasEffectsTab, immersiveControls, inviteMenu, isGamescopeSession, isHtml5) {
         buildList {
             add(QuickMenuTab.HUD)
-            add(QuickMenuTab.POWER)
+            if (!isHtml5) add(QuickMenuTab.POWER)
             if (isGamescopeSession) add(QuickMenuTab.GAMESCOPE)
-            if (isLsfgAvailable) add(QuickMenuTab.LSFG)
+            if (!isHtml5 && isLsfgAvailable) add(QuickMenuTab.LSFG)
             if (inviteMenu != null) add(QuickMenuTab.INVITE)
-            if (hasEffectsTab) add(QuickMenuTab.EFFECTS)
+            if (!isHtml5 && hasEffectsTab) add(QuickMenuTab.EFFECTS)
             add(QuickMenuTab.CONTROLLER)
-            add(QuickMenuTab.TOOLS)
+            if (!isHtml5) add(QuickMenuTab.TOOLS)
             if (immersiveControls != null) add(QuickMenuTab.IMMERSIVE)
         }
     }
@@ -874,6 +893,8 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = hudTabFocusRequester,
                                 )
+                                // html5 never calls PowerManager.autoStart: no profile, nothing to save to.
+                                if (!isHtml5) {
                                 QuickMenuTabButton(
                                     icon = Icons.Default.BatteryChargingFull,
                                     contentDescriptionResId = R.string.power_control,
@@ -886,6 +907,7 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = powerTabFocusRequester,
                                 )
+                                }
                                 if (isGamescopeSession) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.Monitor,
@@ -900,7 +922,7 @@ fun QuickMenu(
                                         focusRequester = gamescopeTabFocusRequester,
                                     )
                                 }
-                                if (isLsfgAvailable) {
+                                if (!isHtml5 && isLsfgAvailable) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.Speed,
                                         contentDescriptionResId = R.string.lsfg_tab_title,
@@ -928,7 +950,7 @@ fun QuickMenu(
                                         focusRequester = inviteTabFocusRequester,
                                     )
                                 }
-                                if (hasEffectsTab) {
+                                if (!isHtml5 && hasEffectsTab) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.AutoFixHigh,
                                         contentDescriptionResId = R.string.screen_effects,
@@ -954,6 +976,7 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = controllerTabFocusRequester,
                                 )
+                                if (!isHtml5) {
                                 QuickMenuTabButton(
                                     icon = Icons.Default.BarChart,
                                     contentDescriptionResId = R.string.task_manager,
@@ -963,6 +986,7 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = toolsTabFocusRequester,
                                 )
+                                }
                                 if (immersiveControls != null) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.ViewInAr,
@@ -1044,6 +1068,7 @@ fun QuickMenu(
                                             scrollState = hudScrollState,
                                             focusRequester = hudItemFocusRequester,
                                             modifier = Modifier.fillMaxSize(),
+                                            isHtml5 = isHtml5,
                                         )
                                     }
 
@@ -1169,6 +1194,9 @@ fun QuickMenu(
                                             val touchscreenEnabled = isTouchscreenModeActive
                                             val shooterEnabled = isShooterModeActive
                                             controllerItems.forEachIndexed { index, item ->
+                                                val hasTuningGear = item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER && !isHtml5
+                                                val hasOscGear = item.id == QuickMenuAction.INPUT_CONTROLS &&
+                                                    item.id in activeToggleIds && !isHtml5
                                                 QuickMenuItemRow(
                                                     item = item,
                                                     isActive = if (item.id == QuickMenuAction.GYRO) {
@@ -1192,9 +1220,9 @@ fun QuickMenu(
                                                     },
                                                     focusRequester = if (index == 0) controllerItemFocusRequester else null,
                                                     onFocused = { lastControllerFocusRequester = it },
-                                                    secondaryIcon = if (item.id == QuickMenuAction.INPUT_CONTROLS && item.id in activeToggleIds)
+                                                    secondaryIcon = if (hasOscGear)
                                                         Icons.Default.Settings
-                                                    else if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
+                                                    else if (hasTuningGear)
                                                         Icons.Default.Settings
                                                     else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
                                                         Icons.Default.Settings
@@ -1203,9 +1231,9 @@ fun QuickMenu(
                                                     else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
                                                         Icons.Default.Settings
                                                     else null,
-                                                    secondaryContentDescriptionResId = if (item.id == QuickMenuAction.INPUT_CONTROLS && item.id in activeToggleIds)
+                                                    secondaryContentDescriptionResId = if (hasOscGear)
                                                         R.string.on_screen_controller_settings
-                                                    else if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
+                                                    else if (hasTuningGear)
                                                         R.string.physical_controller_settings_title
                                                     else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
                                                         R.string.gesture_settings_title
@@ -1214,9 +1242,9 @@ fun QuickMenu(
                                                     else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
                                                         R.string.gyro_settings_title
                                                     else null,
-                                                    onSecondaryClick = if (item.id == QuickMenuAction.INPUT_CONTROLS && item.id in activeToggleIds)
+                                                    onSecondaryClick = if (hasOscGear)
                                                         ({ onScreenControllerSettingsProfile = PluviaApp.inputControlsView?.profile })
-                                                    else if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
+                                                    else if (hasTuningGear)
                                                         ({ onItemSelected(QuickMenuAction.PHYSICAL_CONTROLLER_SETTINGS) })
                                                     else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
                                                         onTouchGestureSettingsClick
@@ -1470,6 +1498,7 @@ private fun PerformanceHudQuickMenuTab(
     scrollState: ScrollState,
     focusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
+    isHtml5: Boolean = false,
 ) {
     val accentColor = PluviaTheme.colors.accentPurple
 
@@ -1479,6 +1508,8 @@ private fun PerformanceHudQuickMenuTab(
             .focusGroup(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        // html5 has no frame limiter to drive.
+        if (!isHtml5) {
         // ── FPS Limiter (topmost) ────────────────────────────────────────
         val lsfgActive = lsfgMultiplier >= 2
         QuickMenuToggleRow(
@@ -1518,6 +1549,7 @@ private fun PerformanceHudQuickMenuTab(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
+        }
 
         // ── Performance HUD ──────────────────────────────────────────────
         QuickMenuToggleRow(
@@ -1526,6 +1558,7 @@ private fun PerformanceHudQuickMenuTab(
             enabled = isPerformanceHudEnabled,
             onToggle = onTogglePerformanceHud,
             accentColor = accentColor,
+            focusRequester = if (isHtml5) focusRequester else null,
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -1802,6 +1835,8 @@ private fun PerformanceHudQuickMenuTab(
             },
             accentColor = accentColor,
         )
+        // needs PerformanceMetricsCollector, which html5 sessions don't start.
+        if (!isHtml5) {
         QuickMenuToggleRow(
             title = stringResource(R.string.performance_hud_bottleneck),
             enabled = performanceHudConfig.showBottleneck,
@@ -1812,6 +1847,7 @@ private fun PerformanceHudQuickMenuTab(
             },
             accentColor = accentColor,
         )
+        }
         if (PowerManager.isFanControlAvailable()) {
             var showFan by remember { mutableStateOf(PrefManager.showPerformanceHudFan) }
             QuickMenuToggleRow(

@@ -21,6 +21,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -43,6 +44,7 @@ import com.alorma.compose.settings.ui.SettingsSwitch
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
+import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.core.DefaultVersion
@@ -56,7 +58,9 @@ import java.util.Locale
 fun GeneralTabContent(
     state: ContainerConfigState,
     nonzeroResolutionError: String,
+    isHtml5: Boolean = false,
 ) {
+    val wineOnlyEnabled = !isHtml5
     val config = state.config.value
 
     // Microphone input is opt-in. The RECORD_AUDIO runtime permission is only requested when
@@ -172,6 +176,12 @@ fun GeneralTabContent(
                 onItemSelected = { idx ->
                     variantIndex.value = idx
                     val newVariant = state.containerVariants[idx]
+                    if (newVariant.equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)) {
+                        // leave wine fields alone so flipping back restores the working state. the save gate
+                        // (Html5OptInService), not this cascade, enforces a fingerprint match.
+                        state.config.value = config.copy(containerVariant = newVariant)
+                        return@SettingsListDropdown
+                    }
                     if (newVariant.equals(Container.GLIBC, ignoreCase = true)) {
                         val defaultDriver = Container.DEFAULT_GRAPHICS_DRIVER
                         val newCfg = KeyValueSet(config.graphicsDriverConfig).apply {
@@ -283,11 +293,13 @@ fun GeneralTabContent(
             value = config.executablePath,
             onValueChange = { state.config.value = config.copy(executablePath = it) },
             containerData = config,
+            enabled = wineOnlyEnabled,
         )
         NoExtractOutlinedTextField(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             value = config.execArgs,
             onValueChange = { state.config.value = config.copy(execArgs = it) },
+            enabled = wineOnlyEnabled,
             label = { Text(text = stringResource(R.string.exec_arguments)) },
             placeholder = { Text(text = stringResource(R.string.exec_arguments_example)) },
             singleLine = true,
@@ -314,6 +326,8 @@ fun GeneralTabContent(
             title = { Text(text = stringResource(R.string.language)) },
             colors = settingsTileColors(),
         )
+        // greys out (doesn't hide) wine-only rows for html5, e.g. screenSize, which is inert for the WebView.
+        CompositionLocalProvider(LocalSettingsGroupEnabled provides wineOnlyEnabled) {
         SettingsListDropdown(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.screen_size)) },
@@ -468,6 +482,7 @@ fun GeneralTabContent(
                     state.config.value = config.copy(steamType = type)
                 },
             )
+        }
         }
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             SettingsSwitch(
