@@ -110,6 +110,8 @@ class LibraryViewModel @Inject constructor(
     var listState: LazyGridState by mutableStateOf(LazyGridState(0, 0))
 
     private val onInstallStatusChanged: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = {
+        // the payload is a bare int appId with no store, so clear everything; install events are rare.
+        runtimeCache.clear()
         onFilterApps(paginationCurrentPage)
     }
 
@@ -152,6 +154,15 @@ class LibraryViewModel @Inject constructor(
 
     private val onLibraryTabsChanged: (AndroidEvent.LibraryTabsChanged) -> Unit = { event ->
         updateVisibleLibraryTabs(event.visibleTabs)
+    }
+
+    // saves a disk read per app on every filter pass. cleared on LibraryInstallStatusChanged, which
+    // ContainerUtils.applyToContainerGated also emits on a runtime flip to keep this honest.
+    private val runtimeCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    private fun resolveRuntimeFor(context: Context, appId: String): String =
+        runtimeCache.getOrPut(appId) {
+            app.gamenative.utils.ContainerUtils.resolveRuntime(context, appId)
     }
 
     // How many items loaded on one page of results
@@ -721,6 +732,7 @@ class LibraryViewModel @Inject constructor(
     fun addCustomGameFolder(path: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val normalizedPath = File(path).absolutePath
+            // a NEW folder is the sideload "install" moment; see CustomGameDiscovered.
             val libraryItem = CustomGameScanner.createLibraryItemFromFolder(normalizedPath)
             if (libraryItem == null) {
                 Timber.tag("LibraryViewModel").w("Selected folder is not a valid custom game: $normalizedPath")
@@ -728,12 +740,21 @@ class LibraryViewModel @Inject constructor(
             }
 
             val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
-            if (!manualFolders.contains(normalizedPath)) {
+            val wasNew = !manualFolders.contains(normalizedPath)
+            if (wasNew) {
                 manualFolders.add(normalizedPath)
                 PrefManager.customGameManualFolders = manualFolders
             }
 
             CustomGameScanner.invalidateCache()
+
+            if (wasNew && GameSource.CUSTOM_GAME.matches(libraryItem.appId)) {
+                val numericId = GameSource.CUSTOM_GAME.idOf(libraryItem.appId).toIntOrNull()
+                if (numericId != null) {
+                    PluviaApp.events.emit(AndroidEvent.CustomGameDiscovered(numericId, normalizedPath))
+                }
+            }
+
             onFilterApps(paginationCurrentPage)
         }
     }
@@ -957,6 +978,7 @@ class LibraryViewModel @Inject constructor(
                         heroImageUrl = item.getHeroUrl(),
                         isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
                         sizeBytes = totalSizeBytes,
+                        runtime = resolveRuntimeFor(context, "${GameSource.STEAM.name}_${item.id}"),
                     ),
                     isInstalled = isInstalled,
                     lastPlayed = lastPlayedFor(appId),
@@ -975,7 +997,13 @@ class LibraryViewModel @Inject constructor(
             val customEntries = customGameItems
                 .filter { !steamEntriesAppIds.contains(it.appId) } // Filter out imported steam appId
                 .filter { passesStatsFilters(currentState, it.gameSource, it.name) }
-                .map { LibraryEntry(it, true, lastPlayed = lastPlayedFor(it.appId)) }
+                .map { item ->
+                    LibraryEntry(
+                        item.copy(runtime = resolveRuntimeFor(context, item.appId)),
+                        true,
+                        lastPlayed = lastPlayedFor(item.appId),
+                    )
+                }
 
             // Filter GOG games
             val filteredGOGGames = gogGameList
@@ -1023,6 +1051,7 @@ class LibraryViewModel @Inject constructor(
                             heroImageUrl = game.imageUrl.ifEmpty { game.iconUrl },
                             isShared = false,
                             gameSource = GameSource.GOG,
+                            runtime = resolveRuntimeFor(context, appId),
                         ),
                         isInstalled = game.isInstalled,
                         lastPlayed = lastPlayedFor(appId),
@@ -1066,6 +1095,7 @@ class LibraryViewModel @Inject constructor(
                             heroImageUrl = game.artPortrait.ifEmpty { game.artSquare.ifEmpty { game.artCover } },
                             isShared = false,
                             gameSource = GameSource.EPIC,
+                            runtime = resolveRuntimeFor(context, appId),
                         ),
                         isInstalled = game.isInstalled,
                         lastPlayed = lastPlayedFor(appId),
@@ -1112,6 +1142,7 @@ class LibraryViewModel @Inject constructor(
                             gridHeroImageScale = AmazonArtwork.GRID_HERO_ZOOM_SCALE,
                             isShared = false,
                             gameSource = GameSource.AMAZON,
+                            runtime = resolveRuntimeFor(context, appId),
                         ),
                         isInstalled = game.isInstalled,
                         lastPlayed = lastPlayedFor(appId),
