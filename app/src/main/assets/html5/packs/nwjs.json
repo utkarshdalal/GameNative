@@ -1,0 +1,11 @@
+{
+  "engine": "pack:nwjs",
+  "entryPoint": "index.html",
+  "packShimPlacement": "append",
+  "shims": ["nw-noop"],
+  "saves": {
+    "sync": {
+      "chromiumProfileSubdir": "User Data/Default"
+    }
+  }
+}
