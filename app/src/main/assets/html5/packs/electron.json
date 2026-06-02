@@ -1,0 +1,29 @@
+{
+  "engine": "pack:electron",
+  "entryPoint": "index.html",
+  "wideViewport": true,
+  "shims": ["webgl1-npot-fbo-compat", "pack-electron"],
+  "overlay": "electron-default-overlay",
+  "gamepadKeySynthesisMap": {
+    "GAMEPAD_BUTTON_A": "KEY_SPACE",
+    "GAMEPAD_BUTTON_B": "KEY_ESC",
+    "GAMEPAD_BUTTON_X": "KEY_X",
+    "GAMEPAD_BUTTON_Y": "KEY_Y",
+    "GAMEPAD_BUTTON_L1": "KEY_Q",
+    "GAMEPAD_BUTTON_R1": "KEY_E",
+    "GAMEPAD_BUTTON_START": "KEY_ESC",
+    "GAMEPAD_BUTTON_SELECT": "KEY_SHIFT_L",
+    "GAMEPAD_DPAD_UP": "KEY_W",
+    "GAMEPAD_DPAD_DOWN": "KEY_S",
+    "GAMEPAD_DPAD_LEFT": "KEY_A",
+    "GAMEPAD_DPAD_RIGHT": "KEY_D",
+    "GAMEPAD_LEFT_THUMB_UP": "KEY_W",
+    "GAMEPAD_LEFT_THUMB_DOWN": "KEY_S",
+    "GAMEPAD_LEFT_THUMB_LEFT": "KEY_A",
+    "GAMEPAD_LEFT_THUMB_RIGHT": "KEY_D",
+    "GAMEPAD_RIGHT_THUMB_UP": "KEY_UP",
+    "GAMEPAD_RIGHT_THUMB_DOWN": "KEY_DOWN",
+    "GAMEPAD_RIGHT_THUMB_LEFT": "KEY_LEFT",
+    "GAMEPAD_RIGHT_THUMB_RIGHT": "KEY_RIGHT"
+  }
+}
