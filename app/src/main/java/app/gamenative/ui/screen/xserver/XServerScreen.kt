@@ -1215,8 +1215,6 @@ fun XServerScreen(
 
         Timber.i("BackHandler")
 
-        keyboardRequestedFromOverlay = false
-
         val controllerManager = ControllerManager.getInstance()
         controllerManager.scanForDevices()
         hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
