@@ -3,13 +3,26 @@ package app.gamenative.data
 import app.gamenative.Constants
 import app.gamenative.utils.CustomGameScanner
 
-enum class GameSource {
-    STEAM,
-    CUSTOM_GAME,
-    GOG,
-    EPIC,
-    AMAZON
+enum class GameSource(val containerPrefix: String) {
+    STEAM("STEAM_"),
+    CUSTOM_GAME("CUSTOM_GAME_"),
+    GOG("GOG_"),
+    EPIC("EPIC_"),
+    AMAZON("AMAZON_"),
     // Add other platforms here..
+    ;
+
+    // the container id prefix scheme (<containerPrefix><numericId>, e.g. "STEAM_440") lives ONLY here.
+    fun matches(containerId: String): Boolean = containerId.startsWith(containerPrefix)
+    fun idOf(containerId: String): String = containerId.removePrefix(containerPrefix)
+
+    companion object {
+        fun fromContainerId(containerId: String): GameSource? =
+            entries.firstOrNull { it.matches(containerId) }
+        // whole string if no known prefix.
+        fun idPart(containerId: String): String =
+            fromContainerId(containerId)?.idOf(containerId) ?: containerId
+    }
 }
 
 enum class GameCompatibilityStatus {
@@ -48,6 +61,9 @@ data class LibraryItem(
     val isFeatured: Boolean = false,
     val isRecTeaser: Boolean = false,
     val isRecLoading: Boolean = false,
+
+    // string-typed like Container.runtime so we don't drag in winlator types.
+    val runtime: String = "wine",
 ) {
     val clientIconUrl: String
         get() = when (gameSource) {
