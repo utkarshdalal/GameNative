@@ -45,10 +45,13 @@ import app.gamenative.data.withoutTitleOnlyDescription
 import app.gamenative.events.AndroidEvent
 import app.gamenative.mods.ModContainerResolver
 import app.gamenative.mods.NexusModManager
+import app.gamenative.html5.Html5OptInService
+import app.gamenative.html5.host.Html5Routing
 import app.gamenative.optimize.OptimizeController
 import app.gamenative.ui.component.dialog.CommunityConfigsDialog
 import app.gamenative.ui.component.dialog.CommunityHardwareScope
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.Html5DialogOptions
 import app.gamenative.ui.component.dialog.ExportFilesDialog
 import app.gamenative.ui.component.dialog.ImportFilesDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
@@ -76,6 +79,7 @@ import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.GpuGameStatsCache
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
+import com.winlator.container.Container
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import com.winlator.container.ContainerData
@@ -553,6 +557,10 @@ abstract class BaseAppScreen {
         onAiDebugRun: () -> Unit,
     ): AppMenuOption? {
         if (PrefManager.hideAiFeatures) return null
+        // the debug run captures wine logs only; on html5 it would relaunch the game and report no log.
+        // remembered: isHtml5App rescans the container dir.
+        val isHtml5 = remember(libraryItem.appId) { Html5Routing.isHtml5App(context, libraryItem.appId) }
+        if (isHtml5) return null
         return AppMenuOption(
             AppOptionMenuType.AiDebugRun,
             onClick = { onAiDebugRun() },
@@ -660,10 +668,15 @@ abstract class BaseAppScreen {
     protected open fun getOptimizeOption(
         context: Context,
         libraryItem: LibraryItem,
-    ): AppMenuOption? = AppMenuOption(
-        optionType = AppOptionMenuType.Optimize,
-        onClick = { requestOptimize(libraryItem.appId) },
-    )
+    ): AppMenuOption? {
+        // optimize tunes the wine container from wine session samples; html5 runs never produce any.
+        val isHtml5 = remember(libraryItem.appId) { Html5Routing.isHtml5App(context, libraryItem.appId) }
+        if (isHtml5) return null
+        return AppMenuOption(
+            optionType = AppOptionMenuType.Optimize,
+            onClick = { requestOptimize(libraryItem.appId) },
+        )
+    }
 
     @Composable
     protected open fun getBrowseCommunityConfigsOption(
@@ -1004,12 +1017,25 @@ abstract class BaseAppScreen {
      */
     protected fun resetContainerToDefaults(context: Context, libraryItem: LibraryItem) {
         val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+        val isHtml5 = container.containerVariant
+            .equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
         var defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
         if (defaults.execArgs.isBlank()) {
             defaults = defaults.copy(execArgs = SteamUtils.defaultLaunchArguments(libraryItem.appId, defaults.executablePath))
         }
 
         ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
+
+        if (isHtml5) {
+            // re-run the install-time opt-in so reset yields a freshly fingerprinted WebViewContainer.
+            CoroutineScope(Dispatchers.IO).launch {
+                runCatching {
+                    Html5OptInService.optIn(context, libraryItem.appId, defaults)
+                }.onFailure {
+                    Timber.tag("BaseAppScreen").w(it, "html5 reset optIn failed for ${libraryItem.appId}")
+                }
+            }
+        }
 
         SnackbarManager.show("Container reset to defaults")
     }
@@ -1606,10 +1632,15 @@ abstract class BaseAppScreen {
         var communityContainerData by remember(appId) {
             mutableStateOf<ContainerData?>(null)
         }
+        var html5Available by remember(appId) { mutableStateOf(false) }
 
         val onEditContainer: () -> Unit = {
             uiScope.launch {
-                containerData = withContext(Dispatchers.IO) { loadContainerData(context, libraryItem) }
+                // html5 settings (inputMap, renderScale) live in the html5 sidecar, not the wine Container
+                containerData = withContext(Dispatchers.IO) {
+                    ContainerUtils.mergeHtml5SidecarFields(loadContainerData(context, libraryItem), libraryItem.appId)
+                }
+                html5Available = withContext(Dispatchers.IO) { Html5OptInService.isWebViewCapable(libraryItem.appId) }
                 showConfigDialog = true
             }
         }
@@ -1932,6 +1963,11 @@ abstract class BaseAppScreen {
                 hasLeftoverInstall = hasLeftoverInstallState,
                 isUpdatePending = canShowUpdatePending(isInstalledState, isDownloadingState) &&
                     isUpdatePendingState,
+                html5SwitchHint = {
+                    app.gamenative.html5.host.Html5SwitchHint(libraryItem.appId, isInstalledState, showConfigDialog) {
+                        loadContainerData(context, libraryItem)
+                    }
+                },
             ),
             downloadInfo = downloadInfo,
             immersiveMode = app.gamenative.ui.screen.library.ImmersiveModeUiState(
@@ -2020,6 +2056,22 @@ abstract class BaseAppScreen {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
                 },
+                html5 = Html5DialogOptions(
+                    appId = libraryItem.appId,
+                    available = html5Available,
+                    onSave = { newConfig, onComplete ->
+                        // html5 has no per-language depot, so no store re-download on a language change.
+                        uiScope.launch {
+                            try {
+                                if (ContainerUtils.applyToContainerGated(context, libraryItem.appId, newConfig)) {
+                                    showConfigDialog = false
+                                }
+                            } finally {
+                                onComplete()
+                            }
+                        }
+                    },
+                ),
             )
         }
 
@@ -2027,7 +2079,7 @@ abstract class BaseAppScreen {
             communityContainerData = if (communityConfigsRequested) {
                 if (isInstalledState) {
                     withContext(Dispatchers.IO) {
-                        loadContainerData(context, libraryItem)
+                        ContainerUtils.mergeHtml5SidecarFields(loadContainerData(context, libraryItem), libraryItem.appId)
                     }
                 } else {
                     ContainerData(envVars = "", execArgs = "")
@@ -2214,7 +2266,8 @@ abstract class BaseAppScreen {
         }
 
         // Render any additional dialogs
-        AdditionalDialogs(libraryItem, onDismiss = {}, onEditContainer = onEditContainer, onBack = onBack)
+        // the steam html5 open-container install dialog launches via onClickPlay(true) once ImageFs is installed.
+        AdditionalDialogs(libraryItem, onDismiss = {}, onEditContainer = onEditContainer, onBack = onBack, onClickPlay = onClickPlay)
     }
 
     /**
@@ -2246,6 +2299,7 @@ abstract class BaseAppScreen {
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         // Default: no additional dialogs
     }
