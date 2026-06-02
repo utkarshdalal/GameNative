@@ -28,6 +28,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
+import app.gamenative.html5.host.PAUSE_MEDIA_JS
+import app.gamenative.html5.host.RESUME_MEDIA_JS
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
@@ -198,9 +200,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // stale keepAlive from a prior crash/swipe — no container is actually running
-        if (SteamService.keepAlive && PluviaApp.xEnvironment == null) {
-            Timber.w("onCreate: clearing stale keepAlive — no container running")
+        // stale keepAlive from a prior crash/swipe -- no runtime is actually running
+        if (SteamService.keepAlive && PluviaApp.xEnvironment == null && PluviaApp.activeWebView == null) {
+            Timber.w("onCreate: clearing stale keepAlive — no runtime running")
             PluviaApp.shutdownEnvironment()
         }
 
@@ -418,8 +420,8 @@ class MainActivity : ComponentActivity() {
             Timber.d("Skipping game %s because suspend policy state is not initialized", action)
             return false
         }
-        if (PluviaApp.xEnvironment == null) {
-            Timber.d("Skipping game %s because xEnvironment is not ready", action)
+        if (PluviaApp.xEnvironment == null && PluviaApp.activeWebView == null) {
+            Timber.d("Skipping game %s because no runtime is ready", action)
             return false
         }
         return true
@@ -446,11 +448,19 @@ class MainActivity : ComponentActivity() {
                 }
                 PluviaApp.isOverlayPaused -> {
                     if (PluviaApp.isManualSuspendMode()) {
+                        // audio was suspended in onPause and stays suspended -- no resume until the
+                        // user taps the resume widget (resumeFromManual runs RESUME_MEDIA_JS).
                         Timber.d("Game remains suspended until user presses Resume")
                     }
                 }
                 else -> {
                     PluviaApp.xEnvironment?.onResume()
+                    // resume the renderer THEN restore the audio PAUSE_MEDIA_JS suspended in onPause
+                    // (RESUME_MEDIA needs live JS, so it must follow onResume).
+                    PluviaApp.activeWebView?.let { webView ->
+                        runCatching { webView.onResume() }.onFailure { Timber.w(it, "webView.onResume failed") }
+                        webView.evaluateJavascript(RESUME_MEDIA_JS, null)
+                    }
                     Timber.d("Game resumed")
                 }
             }
@@ -483,6 +493,13 @@ class MainActivity : ComponentActivity() {
                 }
                 else -> {
                     PluviaApp.xEnvironment?.onPause()
+                    // suspend Web Audio BEFORE freezing the renderer. webView.onPause() stops the
+                    // renderer but NOT AudioContext/<audio>, and once frozen evaluateJavascript can't
+                    // run -- so without this, BGM keeps playing after the display turns off.
+                    PluviaApp.activeWebView?.let { webView ->
+                        webView.evaluateJavascript(PAUSE_MEDIA_JS, null)
+                        runCatching { webView.onPause() }.onFailure { Timber.w(it, "webView.onPause failed") }
+                    }
                     if (PluviaApp.isManualSuspendMode()) {
                         PluviaApp.isOverlayPaused = true
                         Timber.d("Game paused due to app backgrounded (manual resume required)")
