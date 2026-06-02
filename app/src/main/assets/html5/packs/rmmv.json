@@ -1,0 +1,17 @@
+{
+  "engine": "pack:rmmv",
+  "entryPoint": "index.html",
+  "packShimPlacement": "append",
+  "input": {"mode": "native-controller"},
+  "patches": [
+    {"type": "audio-ext-remap", "fromExt": ".rpgmvo", "toExt": ".ogg"},
+    {"type": "asset-decrypt", "kind": "rpgmv-xor"}
+  ],
+  "shims": ["nw-noop", "pack-rmmv"],
+  "overlay": "rmmv-default-overlay",
+  "fsBridgeOnly": true,
+  "gamepadKeySynthesisMap": {
+    "GAMEPAD_BUTTON_START": "KEY_X",
+    "GAMEPAD_BUTTON_SELECT": "KEY_SHIFT_L"
+  }
+}
