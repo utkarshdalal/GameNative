@@ -109,6 +109,10 @@ data class ContainerData(
     val sharpnessEffect: String = "None",
     val sharpnessLevel: Int = 100,
     val sharpnessDenoise: Int = 100,
+    // html5 input mode: "" = pack default, "native-controller", "pointer-with-tap-detection".
+    val inputMap: String = "",
+    // html5 DPR override. -1f = follow PrefManager.html5RenderScale (per-container only), 0f = device-native.
+    val renderScale: Float = -1f,
     // LSFG Vulkan frame generation
     /** Whether LSFG frame generation is enabled for this container */
     val lsfgEnabled: Boolean = false,
@@ -188,6 +192,8 @@ data class ContainerData(
                     "sharpnessEffect" to state.sharpnessEffect,
                     "sharpnessLevel" to state.sharpnessLevel,
                     "sharpnessDenoise" to state.sharpnessDenoise,
+                    "inputMap" to state.inputMap,
+                    "renderScale" to state.renderScale,
                     "lsfgEnabled" to state.lsfgEnabled,
                     "windowsVrEnabled" to state.windowsVrEnabled,
                     "openCompositeEnabled" to state.openCompositeEnabled,
@@ -264,6 +270,8 @@ data class ContainerData(
                     sharpnessEffect = (savedMap["sharpnessEffect"] as? String) ?: "None",
                     sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
+                    inputMap = (savedMap["inputMap"] as? String) ?: "",
+                    renderScale = (savedMap["renderScale"] as? Float) ?: -1f,
                     lsfgEnabled = (savedMap["lsfgEnabled"] as? Boolean) ?: false,
                     windowsVrEnabled = (savedMap["windowsVrEnabled"] as? Boolean) ?: false,
                     openCompositeEnabled = (savedMap["openCompositeEnabled"] as? Boolean) ?: false,

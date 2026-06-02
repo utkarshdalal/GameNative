@@ -12,6 +12,13 @@ import androidx.navigation.NavController
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.events.EventDispatcher
+import app.gamenative.html5.host.ChromiumVersionGate
+import app.gamenative.html5.host.WebViewOrigin
+import app.gamenative.html5.install.Html5InstallWatcher
+import app.gamenative.html5.profile.DefaultProfileWiper
+import app.gamenative.html5.savesync.Html5CrashpadCleanup
+import app.gamenative.html5.savesync.Html5LeveldbHealth
+import app.gamenative.html5.savesync.Html5SaveSyncService
 import app.gamenative.mods.NexusAuthManager
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.ActiveGameRegistry
@@ -19,6 +26,7 @@ import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.ui.screen.xserver.RadialMenuCoordinator
+import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.DeviceInfo
 import app.gamenative.utils.IntentLaunchManager
@@ -54,12 +62,21 @@ class PluviaApp : SplitCompatApplication() {
 
     @Inject lateinit var gogGameDao: GOGGameDao
     @Inject lateinit var amazonGameDao: AmazonGameDao
+    @Inject lateinit var html5InstallWatcher: Html5InstallWatcher
+    @Inject lateinit var html5SaveSyncService: Html5SaveSyncService
 
-    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val appScope: CoroutineScope get() = Companion.appScope
 
     override fun onCreate() {
         super.onCreate()
         instance = this
+
+        // MUST run before any org.xerial.snappy class loads. classpath-resource extraction fails on Android
+        // (AGP strips .so outside lib/<abi>/), so load our lib/<abi>/libsnappyjava.so via System.loadLibrary.
+        // skipped on Robolectric, where only the classpath-resource native exists.
+        if (!android.os.Build.FINGERPRINT.startsWith("robolectric")) {
+            System.setProperty("org.xerial.snappy.use.systemlib", "true")
+        }
 
         preloadSystemLibraries()
 
@@ -86,6 +103,62 @@ class PluviaApp : SplitCompatApplication() {
         PrefManager.init(this)
         NexusAuthManager.initialize(this)
         FrontendSyncManager.init(this)
+
+        // gate-fail flips html5RuntimeDisabled; WebViewScreen, install watcher and save-sync all no-op on it.
+        if (!ChromiumVersionGate.isSupported(this)) {
+            val chromiumMajor = ChromiumVersionGate.getMajor(this)
+            val shown = chromiumMajor?.toString() ?: "unknown"
+            Timber.tag("PluviaApp").w(
+                "chromium %s gate fail — html5 runtime disabled (min major=%d)",
+                shown,
+                ChromiumVersionGate.MIN_MAJOR,
+            )
+            SnackbarManager.show(
+                getString(R.string.webview_unsupported_chromium, shown, ChromiumVersionGate.MIN_MAJOR),
+            )
+            html5RuntimeDisabled = true
+        } else {
+            Timber.tag("PluviaApp").d("chromium gate ok — html5 runtime supported")
+        }
+
+        // MUST run before save-sync starts. a drifting port would orphan saves under the wrong leveldb
+        // origin, so failing to bind the deterministic port disables html5 for the session instead.
+        if (!html5RuntimeDisabled) {
+            WebViewOrigin.init(this)
+            WebViewOrigin.initFailureMessage()?.let { reason ->
+                Timber.tag("PluviaApp").w("html5 port init failed: %s", reason)
+                SnackbarManager.show(reason)
+                html5RuntimeDisabled = true
+            }
+        }
+
+        // off main so Wine-only users don't pay for it. DefaultProfileWiper MUST finish before any WebView
+        // opens (chromium locks the profile); racing the install watcher is fine, it never acts at boot.
+        appScope.launch {
+            runCatching {
+                DefaultProfileWiper.wipeIfNeeded(
+                    context = this@PluviaApp,
+                    flagRead = { PrefManager.html5DefaultProfileWiped },
+                    flagWrite = { PrefManager.html5DefaultProfileWiped = it },
+                )
+            }.onFailure { Timber.e(it, "DefaultProfileWiper boot wipe failed") }
+
+            if (!html5RuntimeDisabled) {
+                // chromium never auto-repairs LocalStorage; one force-stop mid-compaction silently drops all later writes.
+                runCatching { Html5LeveldbHealth.repairIfWedged(this@PluviaApp) }
+                    .onFailure { Timber.e(it, "Html5LeveldbHealth boot scan failed") }
+                // chromium has no knob to disable crashpad dumps; SyncFileFilter keeps them out of cloud.
+                runCatching { Html5CrashpadCleanup.wipe(this@PluviaApp) }
+                    .onFailure { Timber.e(it, "Html5CrashpadCleanup boot wipe failed") }
+            }
+        }
+
+        // after the chromium gate so html5RuntimeDisabled is settled.
+        html5InstallWatcher.start()
+
+        // a start() failure must never block app launch.
+        runCatching { html5SaveSyncService.start() }
+            .onFailure { Timber.e(it, "failed to start Html5SaveSyncService") }
 
         // Initialize GOGConstants
         app.gamenative.service.gog.GOGConstants.init(this)
@@ -133,10 +206,19 @@ class PluviaApp : SplitCompatApplication() {
         Thread({ DeviceInfo.registerGpuSuperProperties(applicationContext) }, "device-info").apply { isDaemon = true }.start()
 
         if (PrefManager.usageAnalyticsEnabled) {
+            // WebView version is the dominant html5 compat variable; tracked to size the old/locked-WebView population.
+            val webView = ChromiumVersionGate.getWebViewInfo(this)
             com.posthog.PostHog.capture(
                 event = "\$set",
                 properties = mapOf(
-                    "\$set" to mapOf("recommendation_enabled" to PrefManager.showRecommendations),
+                    "\$set" to mapOf(
+                        "recommendation_enabled" to PrefManager.showRecommendations,
+                        "webview_package" to (webView.packageName ?: "unknown"),
+                        "webview_version" to (webView.versionName ?: "unknown"),
+                        "webview_chromium_major" to (webView.major ?: -1),
+                        "webview_html5_supported" to ((webView.major ?: 0) >= ChromiumVersionGate.MIN_MAJOR),
+                        "webview_opfs_sah_supported" to ((webView.major ?: 0) >= ChromiumVersionGate.MIN_OPFS_SAH_MAJOR),
+                    ),
                 ),
             )
         }
@@ -221,6 +303,9 @@ class PluviaApp : SplitCompatApplication() {
         private lateinit var instance: PluviaApp
         private var cachedDefaultScreenSize: String? = null
 
+        // for work that must outlive an Activity/Composable/ViewModel (boot init, WebView teardown flush).
+        internal val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
         // TODO: find a way to make this saveable, this is terrible (leak that memory baby)
         internal var xEnvironment: XEnvironment? = null
         internal var xServerView: XServerRendererView? = null
@@ -230,6 +315,9 @@ class PluviaApp : SplitCompatApplication() {
         var radialMenuCoordinator: RadialMenuCoordinator? = null
         var achievementWatcher: app.gamenative.service.AchievementWatcher? = null
 
+        // html5 counterpart of xEnvironment. owned by WebViewScreen (set on attach, cleared on dispose).
+        var activeWebView: android.webkit.WebView? = null
+
         var isOverlayPaused by mutableStateOf(false)
         @Volatile
         var isActivityInForeground: Boolean = true
@@ -237,6 +325,10 @@ class PluviaApp : SplitCompatApplication() {
         // True while the booting splash covers the game screen (and its Resume overlay).
         @Volatile
         var isBootingSplashShowing: Boolean = false
+
+        // set once at boot: chromium below the min major, or WebView unavailable.
+        @Volatile
+        var html5RuntimeDisabled: Boolean = false
 
         // Active runtime suspend policy for the current in-game session.
         var activeSuspendPolicy: String = Container.SUSPEND_POLICY_MANUAL
@@ -277,6 +369,9 @@ class PluviaApp : SplitCompatApplication() {
             touchpadView = null
             radialMenuCoordinator = null
             achievementWatcher = null
+            // MainActivity's stale-keepAlive guard needs BOTH xEnvironment and activeWebView null;
+            // leaving this set wedges keepAlive on the next same-process launch.
+            activeWebView = null
             ActiveGameRegistry.clear()
             SteamService.keepAlive = false
             SteamService.clearPlayingConflict()
