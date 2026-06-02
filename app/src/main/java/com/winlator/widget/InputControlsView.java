@@ -25,6 +25,7 @@ import android.util.SparseArray;
 import androidx.compose.ui.input.pointer.PointerIcon;
 import androidx.core.graphics.ColorUtils;
 
+import app.gamenative.BuildConfig;
 import app.gamenative.R;
 import app.gamenative.data.ShooterModeConfig;
 import com.winlator.inputcontrols.Binding;
@@ -63,6 +64,10 @@ public class InputControlsView extends View {
     private float overlayOpacity = DEFAULT_OVERLAY_OPACITY;
     private TouchpadView touchpadView;
     private XServer xServer;
+    // html5 runtime path: when xServer is null we route KEY_*/MOUSE_* binding presses to
+    // this sink instead of NPE'ing on xServer.injectKeyPress / injectPointerButtonPress.
+    // GAMEPAD_* path already null-guards winHandler so it stays unchanged.
+    private Html5BindingSink html5BindingSink;
     private final Bitmap[] icons = new Bitmap[40];
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
@@ -362,6 +367,14 @@ public class InputControlsView extends View {
         createMouseMoveTimer();
     }
 
+    public Html5BindingSink getHtml5BindingSink() {
+        return html5BindingSink;
+    }
+
+    public void setHtml5BindingSink(Html5BindingSink sink) {
+        this.html5BindingSink = sink;
+    }
+
     public int getMaxWidth() {
         return (int)Mathf.roundTo(getWidth(), snappingSize);
     }
@@ -378,7 +391,10 @@ public class InputControlsView extends View {
     }
 
     private void createMouseMoveTimer() {
-        if (profile != null && mouseMoveTimer == null) {
+        // xServer null guard: html5 setXServer(null) would otherwise schedule a TimerTask
+        // that NPEs on first tick. MOUSE_MOVE bindings on the html5 path forward via
+        // html5BindingSink — no native cursor injection needed.
+        if (profile != null && mouseMoveTimer == null && xServer != null) {
             final float cursorSpeed = profile.getCursorSpeed();
             mouseMoveTimer = new Timer();
             mouseMoveTimer.schedule(new TimerTask() {
@@ -771,11 +787,21 @@ public class InputControlsView extends View {
         float deadzone = getLookJoystickDeadzone();
         float sensitivity = getLookStickSensitivity();
 
+        // dispatch only the directions actually past the dead-zone, and release the others.
+        // prior code fired isDown=true for ALL 4 directions every tick, saturating the virtual
+        // gamepad's axis (whichever direction is dispatched LAST wins) and pinning all four
+        // KEY_* bindings keydown — which on the html5 path showed up as "stick stuck DOWN" +
+        // on-screen joystick "inert" (every direction already pressed).
         for (int i = 0; i < 4; i++) {
+            if (newStates[i]) {
             float value = (i == 1 || i == 3) ? deltaX : deltaY;
             value = getStickOutputValue(value, deadzone, sensitivity);
             handleInputEvent(bindings[i], true, value);
-            rightJoystickStates[i] = true;
+                rightJoystickStates[i] = true;
+            } else if (rightJoystickStates[i]) {
+                handleInputEvent(bindings[i], false, 0f);
+                rightJoystickStates[i] = false;
+            }
         }
         invalidate();
     }
@@ -879,9 +905,17 @@ public class InputControlsView extends View {
         for (int i = 0; i < 4; i++) {
             float value = (i == 1 || i == 3) ? deltaX : deltaY;
             if (bindings[i].isGamepad()) {
-                value = getStickOutputValue(value, analogDeadzone, sensitivity);
-                handleInputEvent(bindings[i], true, value);
-                joystickStates[i] = true;
+                // gate dispatch by direction-past-deadzone so the opposite direction
+                // doesn't fire isDown=true with a sign-flipped value (root of html5
+                // "stick stuck DOWN" / on-screen joystick "inert" -- saturated all 4 keys).
+                if (newStates[i]) {
+                    value = getStickOutputValue(value, analogDeadzone, sensitivity);
+                    handleInputEvent(bindings[i], true, value);
+                    joystickStates[i] = true;
+                } else if (joystickStates[i]) {
+                    handleInputEvent(bindings[i], false, 0f);
+                    joystickStates[i] = false;
+                }
             } else {
                 if (newStates[i] != joystickStates[i]) {
                     handleInputEvent(bindings[i], newStates[i]);
@@ -1145,6 +1179,12 @@ public class InputControlsView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        // HTML5 mode (no sister TouchpadView) — track whether any overlay handled the touch.
+        // unhandled touches must propagate to the underlying WebView so the user can interact
+        // with the page UI; wine path keeps consume-all behaviour via TouchpadView absorption.
+        boolean html5Mode = touchpadView == null;
+        boolean anyHandled = false;
+
         if (editMode && readyToDraw) {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN: {
@@ -1178,6 +1218,8 @@ public class InputControlsView extends View {
                     break;
                 }
             }
+            // editMode always consumes touches (overlay edit drag) regardless of runtime
+            return true;
         }
 
         if (!editMode && profile != null) {
@@ -1194,24 +1236,29 @@ public class InputControlsView extends View {
 
                     // Shooter mode intercept (use containerShooterMode so toggle button is always reachable)
                     if ((shooterModeActive || containerShooterMode) && handleShooterTouchDown(pointerId, x, y)) {
+                        anyHandled = true;
                         break;
                     }
 
+                    // HTML5 runtime layers ICV over WebView with no sister TouchpadView
+                    if (touchpadView != null) {
                     touchpadView.setPointerButtonLeftEnabled(true);
-                    touchpadView.setPointerButtonRightEnabled(true);
+                        touchpadView.setPointerButtonRightEnabled(true);
+                    }
                     for (ControlElement element : profile.getElements()) {
                         if (element.handleTouchDown(pointerId, x, y)) {
                             performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                             handled = true;
                         }
-                        if (element.getBindingAt(0) == Binding.MOUSE_LEFT_BUTTON) {
+                        if (touchpadView != null && element.getBindingAt(0) == Binding.MOUSE_LEFT_BUTTON) {
                             touchpadView.setPointerButtonLeftEnabled(false);
                         }
-                        if (element.getBindingAt(0) == Binding.MOUSE_RIGHT_BUTTON) {
+                        if (touchpadView != null && element.getBindingAt(0) == Binding.MOUSE_RIGHT_BUTTON) {
                             touchpadView.setPointerButtonRightEnabled(false);
                         }
                     }
-                    if (!handled) touchpadView.onTouchEvent(event);
+                    if (!handled && touchpadView != null) touchpadView.onTouchEvent(event);
+                    if (handled) anyHandled = true;
                     break;
                 }
                 case MotionEvent.ACTION_MOVE: {
@@ -1222,12 +1269,16 @@ public class InputControlsView extends View {
                         // Shooter mode intercept per pointer
                         if (shooterModeActive || containerShooterModeRuntime) {
                             int pid = event.getPointerId(i);
-                            if (handleShooterTouchMovePointer(pid, x, y)) continue;
+                            if (handleShooterTouchMovePointer(pid, x, y)) {
+                                anyHandled = true;
+                                continue;
+                            }
                             // Non-intercepted pointer in shooter mode: try elements with correct ID
                             handled = false;
                             for (ControlElement element : profile.getElements()) {
                                 if (element.handleTouchMove(pid, x, y)) handled = true;
                             }
+                            if (handled) anyHandled = true;
                             continue;
                         }
 
@@ -1236,7 +1287,8 @@ public class InputControlsView extends View {
                         for (ControlElement element : profile.getElements()) {
                             if (element.handleTouchMove(pid, x, y)) handled = true;
                         }
-                        if (!handled) touchpadView.onTouchEvent(event);
+                        if (!handled && touchpadView != null) touchpadView.onTouchEvent(event);
+                        if (handled) anyHandled = true;
                     }
                     break;
                 }
@@ -1270,7 +1322,8 @@ public class InputControlsView extends View {
                         }
                     }
                     for (ControlElement element : profile.getElements()) if (element.handleTouchUp(pointerId)) handled = true;
-                    if (!handled) touchpadView.onTouchEvent(event);
+                    if (!handled && touchpadView != null) touchpadView.onTouchEvent(event);
+                    if (handled) anyHandled = true;
                     break;
             }
 
@@ -1282,6 +1335,11 @@ public class InputControlsView extends View {
                 winHandler.sendVirtualGamepadState(state);
             }
         }
+        // wine path: TouchpadView is sister view that absorbs anything ICV didn't claim, so
+        // returning true is correct (no underlying view needs the touch).
+        // html5 path: WebView is the underlying view; only consume when overlay actually
+        // claimed the touch. Otherwise return false so the WebView gets it.
+        if (html5Mode) return anyHandled;
         return true;
     }
 
@@ -1317,6 +1375,18 @@ public class InputControlsView extends View {
             GamepadState state = profile.getGamepadState();
 
             int buttonIdx = binding.ordinal() - Binding.GAMEPAD_BUTTON_A.ordinal();
+            // diagnostic trace for the ICV→sink path. firing per overlay button so DEBUG-only —
+            // missing dispatchBinding downstream points at ICV not firing vs sink being null.
+            // Log.d (not Timber) per Winlator-core-stays-Java rule.
+            if (BuildConfig.DEBUG) {
+                android.util.Log.d("InputControlsView",
+                    "handleInputEvent GAMEPAD binding=" + binding.name() +
+                    " isDown=" + isActionDown + " offset=" + offset +
+                    " buttonIdx=" + buttonIdx +
+                    " inRange=" + (buttonIdx >= 0 && buttonIdx <= ExternalController.IDX_BUTTON_R2) +
+                    " html5Sink=" + (html5BindingSink != null) +
+                    " xServer=" + (xServer != null));
+            }
             if (buttonIdx <= ExternalController.IDX_BUTTON_R2) {
                 if (buttonIdx == ExternalController.IDX_BUTTON_L2) {
                     state.triggerL = isActionDown ? 1.0f : 0f;
@@ -1348,6 +1418,25 @@ public class InputControlsView extends View {
                 ExternalController controller = winHandler.getCurrentController();
                 if (controller != null) controller.state.copy(state);
             }
+
+            // forward GAMEPAD_* binding to html5 sink when running under WebView
+            // (xServer == null). sink lambda in WebViewScreen routes through
+            // Html5InputController.dispatchBinding → handler.applyBinding, which writes the
+            // SAME profile.gamepadState that physical KeyEvents do (single bridge model).
+            if (xServer == null && html5BindingSink != null) {
+                if (BuildConfig.DEBUG) {
+                    android.util.Log.d("InputControlsView",
+                        "  → html5BindingSink.onBinding(" + binding.name() +
+                        ", isDown=" + isActionDown + ", offset=" + offset + ")");
+                }
+                html5BindingSink.onBinding(binding, isActionDown, offset);
+            } else if (xServer == null) {
+                // sink null in html5 mode = wiring race or LaunchedEffect hadn't fired before
+                // the touch landed. warn even in release so it doesn't look like ICV silently
+                // swallowed the binding.
+                android.util.Log.w("InputControlsView",
+                    "  → DROPPED " + binding.name() + " (html5 mode, sink=null)");
+            }
         }
         else {
             if (binding == Binding.SHOW_KEYBOARD) {
@@ -1375,12 +1464,20 @@ public class InputControlsView extends View {
             else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
                 mouseMoveOffset.x = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
                 if (isActionDown) createMouseMoveTimer();
+                // html5 path: forward MOUSE_MOVE to sink so synthesizer can advance synthetic cursor.
+                if (xServer == null && html5BindingSink != null) {
+                    html5BindingSink.onBinding(binding, isActionDown, offset);
+                }
             }
             else if (binding == Binding.MOUSE_MOVE_DOWN || binding == Binding.MOUSE_MOVE_UP) {
                 mouseMoveOffset.y = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_UP ? -1 : 1)) : 0;
                 if (isActionDown) createMouseMoveTimer();
+                if (xServer == null && html5BindingSink != null) {
+                    html5BindingSink.onBinding(binding, isActionDown, offset);
+                }
             }
             else {
+                if (xServer != null) {
                 Pointer.Button pointerButton = binding.getPointerButton();
                 if (isActionDown) {
                     if (pointerButton != null) {
@@ -1392,7 +1489,16 @@ public class InputControlsView extends View {
                     if (pointerButton != null) {
                         xServer.injectPointerButtonRelease(pointerButton);
                     }
-                    else binding.inject(xServer, false);
+                        else binding.inject(xServer, false);
+                    }
+                }
+                else if (html5BindingSink != null) {
+                    // html5 path: synthesizer translates KEY_*/MOUSE_* binding → DOM event spec.
+                    html5BindingSink.onBinding(binding, isActionDown, offset);
+                }
+                else {
+                    Log.w("InputControlsView", "no xServer or Html5BindingSink — dropping " +
+                            binding.name() + " " + (isActionDown ? "down" : "up"));
                 }
             }
         }
