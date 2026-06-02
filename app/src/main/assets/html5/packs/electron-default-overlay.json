@@ -1,0 +1,181 @@
+{
+  "name": "Electron Overlay (default)",
+  "elements": [
+    {
+      "type": "D_PAD",
+      "shape": "CIRCLE",
+      "bindings": ["KEY_W", "KEY_D", "KEY_S", "KEY_A"],
+      "scale": 1.0,
+      "x": 0.15,
+      "y": 0.40,
+      "toggleSwitch": false,
+      "text": "",
+      "iconId": 0
+    },
+    {
+      "type": "BUTTON",
+      "shape": "CIRCLE",
+      "bindings": ["KEY_SPACE", "NONE", "NONE", "NONE"],
+      "scale": 1.0,
+      "x": 0.88,
+      "y": 0.50,
+      "toggleSwitch": false,
+      "text": "USE",
+      "iconId": 0
+    },
+    {
+      "type": "BUTTON",
+      "shape": "CIRCLE",
+      "bindings": ["KEY_ESC", "NONE", "NONE", "NONE"],
+      "scale": 1.0,
+      "x": 0.93,
+      "y": 0.40,
+      "toggleSwitch": false,
+      "text": "BACK",
+      "iconId": 0
+    },
+    {
+      "type": "BUTTON",
+      "shape": "CIRCLE",
+      "bindings": ["KEY_X", "NONE", "NONE", "NONE"],
+      "scale": 1.0,
+      "x": 0.83,
+      "y": 0.40,
+      "toggleSwitch": false,
+      "text": "X",
+      "iconId": 0
+    },
+    {
+      "type": "BUTTON",
+      "shape": "CIRCLE",
+      "bindings": ["KEY_Y", "NONE", "NONE", "NONE"],
+      "scale": 1.0,
+      "x": 0.88,
+      "y": 0.30,
+      "toggleSwitch": false,
+      "text": "Y",
+      "iconId": 0
+    },
+    {
+      "type": "BUTTON",
+      "shape": "RECT",
+      "bindings": ["GAMEPAD_BUTTON_L2", "NONE", "NONE", "NONE"],
+      "scale": 1.5,
+      "x": 0.07,
+      "y": 0.05,
+      "toggleSwitch": false,
+      "text": "L2",
+      "iconId": 0
+    },
+    {
+      "type": "BUTTON",
+      "shape": "RECT",
+      "bindings": ["KEY_Q", "NONE", "NONE", "NONE"],
+      "scale": 1.0,
+      "x": 0.05,
+      "y": 0.18,
+      "toggleSwitch": false,
+      "text": "L1",
+      "iconId": 0
+    },
+    {
+      "type": "BUTTON",
+      "shape": "RECT",
+      "bindings": ["GAMEPAD_BUTTON_R2", "NONE", "NONE", "NONE"],
+      "scale": 1.5,
+      "x": 0.93,
+      "y": 0.13,
+      "toggleSwitch": false,
+      "text": "R2",
+      "iconId": 0
+    },
+    {
+      "type": "BUTTON",
+      "shape": "RECT",
+      "bindings": ["KEY_E", "NONE", "NONE", "NONE"],
+      "scale": 1.0,
+      "x": 0.95,
+      "y": 0.22,
+      "toggleSwitch": false,
+      "text": "R1",
+      "iconId": 0
+    },
+    {
+      "type": "STICK",
+      "shape": "CIRCLE",
+      "bindings": ["KEY_W", "KEY_D", "KEY_S", "KEY_A"],
+      "scale": 1.0,
+      "x": 0.30,
+      "y": 0.80,
+      "toggleSwitch": false,
+      "text": "",
+      "iconId": 0
+    },
+    {
+      "type": "STICK",
+      "shape": "CIRCLE",
+      "bindings": ["KEY_UP", "KEY_RIGHT", "KEY_DOWN", "KEY_LEFT"],
+      "scale": 1.0,
+      "x": 0.70,
+      "y": 0.80,
+      "toggleSwitch": false,
+      "text": "",
+      "iconId": 0
+    },
+    {
+      "type": "BUTTON",
+      "shape": "CIRCLE",
+      "bindings": ["GAMEPAD_BUTTON_L3", "NONE", "NONE", "NONE"],
+      "scale": 0.85,
+      "x": 0.05,
+      "y": 0.85,
+      "toggleSwitch": false,
+      "text": "L3",
+      "iconId": 0
+    },
+    {
+      "type": "BUTTON",
+      "shape": "CIRCLE",
+      "bindings": ["GAMEPAD_BUTTON_R3", "NONE", "NONE", "NONE"],
+      "scale": 0.85,
+      "x": 0.95,
+      "y": 0.85,
+      "toggleSwitch": false,
+      "text": "R3",
+      "iconId": 0
+    },
+    {
+      "type": "BUTTON",
+      "shape": "ROUND_RECT",
+      "bindings": ["KEY_SHIFT_L", "NONE", "NONE", "NONE"],
+      "scale": 0.85,
+      "x": 0.66,
+      "y": 0.05,
+      "toggleSwitch": false,
+      "text": "SELECT",
+      "iconId": 0
+    },
+    {
+      "type": "BUTTON",
+      "shape": "ROUND_RECT",
+      "bindings": ["KEY_ESC", "NONE", "NONE", "NONE"],
+      "scale": 0.85,
+      "x": 0.78,
+      "y": 0.05,
+      "toggleSwitch": false,
+      "text": "START",
+      "iconId": 0
+    },
+    {
+      "type": "BUTTON",
+      "shape": "ROUND_RECT",
+      "bindings": ["OPEN_NAVIGATION_MENU", "NONE", "NONE", "NONE"],
+      "scale": 0.85,
+      "x": 0.90,
+      "y": 0.05,
+      "toggleSwitch": false,
+      "text": "MENU",
+      "iconId": 0
+    }
+  ]
+}
