@@ -46,15 +46,10 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
-    // compile-time only — these mirror iq80 0.12's own dependencies so the vendored source compiles
-    // to bytecode identical to the published jar. at RUNTIME the GameNative app supplies guava +
-    // snappy-java on the shared classpath; org.iq80.snappy is never loaded (the SPI selects xerial).
-    // guava is pinned to 19.0 ONLY for this module's compile because iq80 calls Throwables.propagate
-    // (removed in guava 20+); the app's resolved guava (33.x) governs at runtime, exactly as it did
-    // when this was the published maven artifact.
-    // hardcoded coords (not the app version catalog) so this vendored module is self-contained —
-    // it must configure independently of when the app adds these to libs.versions.toml.
+    // compile-only, mirroring iq80 0.12's own deps; the app supplies guava + :snappy-java at runtime and
+    // org.iq80.snappy is never loaded. guava 19.0 because iq80 calls Throwables.propagate (removed in 20+).
+    // hardcoded coords keep this vendored module independent of the app's version catalog.
     compileOnly("com.google.guava:guava:19.0")
-    compileOnly("org.xerial.snappy:snappy-java:1.1.10.8")
+    compileOnly(project(":snappy-java"))
     compileOnly("org.iq80.snappy:snappy:0.4")
 }
