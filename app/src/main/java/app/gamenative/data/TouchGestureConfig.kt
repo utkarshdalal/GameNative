@@ -73,6 +73,11 @@ data class TouchGestureConfig(
 
     // 15. Movement mode used by mouse-button drag gestures
     val mouseDragMovementMode: String = MOUSE_DRAG_MOVEMENT_DIRECT,
+
+    // HTML5-only -- Wine TouchpadView ignores. "absolute" = dispatch at finger coords;
+    // "relative" = synthetic cursor mirrored from old touch-touchpad.js. Consumed by
+    // touch.js shim only.
+    val cursorMode: String = CURSOR_MODE_ABSOLUTE,
 ) {
 
     // ── Serialisation ────────────────────────────────────────────────────
@@ -120,6 +125,7 @@ data class TouchGestureConfig(
             put(KEY_SHOW_CURSOR_IN_TOUCHSCREEN_MODE, showCursorInTouchscreenMode)
             put(KEY_GESTURE_THRESHOLD, gestureThreshold)
             put(KEY_MOUSE_DRAG_MOVEMENT_MODE, mouseDragMovementMode)
+            put(KEY_CURSOR_MODE, cursorMode)
         }.toString()
     }
 
@@ -141,9 +147,12 @@ data class TouchGestureConfig(
         const val MOUSE_DRAG_MOVEMENT_RELATIVE = "relative"
 
         // ── Special actions ──────────────────────────────────────────────
+        // ACTION_SHOW_KEYBOARD: wine-only (TouchpadView calls Android IME).
+        // ACTION_OPEN_QUICK_MENU: html5-only (touch.js shim invokes the in-game overlay).
         const val ACTION_SHOW_KEYBOARD = "show_keyboard"
         const val ACTION_KEY_ESC = "key_ESC"
         const val ACTION_KEY_TILDE = "key_TILDE"
+        const val ACTION_OPEN_QUICK_MENU = "open_quick_menu"
 
         // ── Action identifiers: two-finger drag (pan) ───────────────────
         const val PAN_WASD = "wasd"
@@ -159,6 +168,10 @@ data class TouchGestureConfig(
         const val ZOOM_SCROLL_WHEEL = "scroll_wheel"
         const val ZOOM_PLUS_MINUS = "plus_minus"
         const val ZOOM_PAGE_UP_DOWN = "page_up_down"
+
+        // ── HTML5-only cursor mode constants ─────────────────────────────
+        const val CURSOR_MODE_ABSOLUTE = "absolute"
+        const val CURSOR_MODE_RELATIVE = "relative"
 
         // ── JSON keys ────────────────────────────────────────────────────
         private const val KEY_TAP_ENABLED = "tapEnabled"
@@ -198,6 +211,7 @@ data class TouchGestureConfig(
         private const val KEY_SHOW_CURSOR_IN_TOUCHSCREEN_MODE = "showCursorInTouchscreenMode"
         private const val KEY_GESTURE_THRESHOLD = "gestureThreshold"
         private const val KEY_MOUSE_DRAG_MOVEMENT_MODE = "mouseDragMovementMode"
+        private const val KEY_CURSOR_MODE = "cursorMode"
 
         /**
          * Compatibility-safe defaults for existing (pre-overhaul) configs.
@@ -213,64 +227,81 @@ data class TouchGestureConfig(
             threeFingerHoldEnabled = false,
         )
 
-        /** Parse from a JSON string. Returns compatibility-safe defaults when the string is null, blank or invalid. */
-        fun fromJson(json: String?): TouchGestureConfig {
-            if (json.isNullOrBlank()) return compatibilityDefaults()
+        /**
+         * HTML5-tuned defaults. show_keyboard isn't actionable in the WebView path, so
+         * 3-finger-tap defaults to OPEN_QUICK_MENU. 3-finger-hold's key_ESC mapping still
+         * works (touch.js translates key_<X>). compatibility-safe (new gestures off).
+         */
+        fun html5Defaults(): TouchGestureConfig = compatibilityDefaults().copy(
+            threeFingerTapAction = ACTION_OPEN_QUICK_MENU,
+        )
+
+        /**
+         * Parse from a JSON string. Returns [defaults] when the string is null, blank or invalid;
+         * each missing field also falls back to the corresponding [defaults] value (so callers
+         * can pass [html5Defaults] to swap wine-only defaults for html5-appropriate ones).
+         */
+        fun fromJson(
+            json: String?,
+            defaults: TouchGestureConfig = compatibilityDefaults(),
+        ): TouchGestureConfig {
+            if (json.isNullOrBlank()) return defaults
             return try {
                 val obj = JSONObject(json)
                 TouchGestureConfig(
-                    tapEnabled = obj.optBoolean(KEY_TAP_ENABLED, true),
-                    tapAction = obj.optString(KEY_TAP_ACTION, ACTION_LEFT_CLICK),
-                    dragEnabled = obj.optBoolean(KEY_DRAG_ENABLED, true),
-                    dragAction = obj.optString(KEY_DRAG_ACTION, PAN_LEFT_CLICK_DRAG),
+                    tapEnabled = obj.optBoolean(KEY_TAP_ENABLED, defaults.tapEnabled),
+                    tapAction = obj.optString(KEY_TAP_ACTION, defaults.tapAction),
+                    dragEnabled = obj.optBoolean(KEY_DRAG_ENABLED, defaults.dragEnabled),
+                    dragAction = obj.optString(KEY_DRAG_ACTION, defaults.dragAction),
                     holdMouseButtonWhileTouchingEnabled = obj.optBoolean(
                         KEY_HOLD_MOUSE_BUTTON_WHILE_TOUCHING_ENABLED,
-                        false,
+                        defaults.holdMouseButtonWhileTouchingEnabled,
                     ),
                     holdMouseButtonWhileTouchingAction = obj.optString(
                         KEY_HOLD_MOUSE_BUTTON_WHILE_TOUCHING_ACTION,
-                        ACTION_LEFT_CLICK,
+                        defaults.holdMouseButtonWhileTouchingAction,
                     ),
-                    longPressEnabled = obj.optBoolean(KEY_LONG_PRESS_ENABLED, false),
-                    longPressAction = obj.optString(KEY_LONG_PRESS_ACTION, ACTION_RIGHT_CLICK),
+                    longPressEnabled = obj.optBoolean(KEY_LONG_PRESS_ENABLED, defaults.longPressEnabled),
+                    longPressAction = obj.optString(KEY_LONG_PRESS_ACTION, defaults.longPressAction),
                     longPressMouseBehavior = normalizeMouseBehavior(
-                        obj.optString(KEY_LONG_PRESS_MOUSE_BEHAVIOR, MOUSE_BEHAVIOR_HOLD)
+                        obj.optString(KEY_LONG_PRESS_MOUSE_BEHAVIOR, defaults.longPressMouseBehavior)
                     ),
-                    longPressDelay = obj.optInt(KEY_LONG_PRESS_DELAY, DEFAULT_DELAY_MS),
-                    doubleTapEnabled = obj.optBoolean(KEY_DOUBLE_TAP_ENABLED, true),
-                    doubleTapDelay = obj.optInt(KEY_DOUBLE_TAP_DELAY, DEFAULT_DELAY_MS),
-                    twoFingerDragEnabled = obj.optBoolean(KEY_TWO_FINGER_DRAG_ENABLED, true),
-                    twoFingerDragAction = obj.optString(KEY_TWO_FINGER_DRAG_ACTION, PAN_ARROW_KEYS),
-                    pinchEnabled = obj.optBoolean(KEY_PINCH_ENABLED, true),
-                    pinchAction = obj.optString(KEY_PINCH_ACTION, ZOOM_SCROLL_WHEEL),
-                    twoFingerTapEnabled = obj.optBoolean(KEY_TWO_FINGER_TAP_ENABLED, true),
-                    twoFingerTapAction = obj.optString(KEY_TWO_FINGER_TAP_ACTION, ACTION_RIGHT_CLICK),
-                    twoFingerHoldEnabled = obj.optBoolean(KEY_TWO_FINGER_HOLD_ENABLED, false),
-                    twoFingerHoldAction = obj.optString(KEY_TWO_FINGER_HOLD_ACTION, ACTION_MIDDLE_CLICK),
+                    longPressDelay = obj.optInt(KEY_LONG_PRESS_DELAY, defaults.longPressDelay),
+                    doubleTapEnabled = obj.optBoolean(KEY_DOUBLE_TAP_ENABLED, defaults.doubleTapEnabled),
+                    doubleTapDelay = obj.optInt(KEY_DOUBLE_TAP_DELAY, defaults.doubleTapDelay),
+                    twoFingerDragEnabled = obj.optBoolean(KEY_TWO_FINGER_DRAG_ENABLED, defaults.twoFingerDragEnabled),
+                    twoFingerDragAction = obj.optString(KEY_TWO_FINGER_DRAG_ACTION, defaults.twoFingerDragAction),
+                    pinchEnabled = obj.optBoolean(KEY_PINCH_ENABLED, defaults.pinchEnabled),
+                    pinchAction = obj.optString(KEY_PINCH_ACTION, defaults.pinchAction),
+                    twoFingerTapEnabled = obj.optBoolean(KEY_TWO_FINGER_TAP_ENABLED, defaults.twoFingerTapEnabled),
+                    twoFingerTapAction = obj.optString(KEY_TWO_FINGER_TAP_ACTION, defaults.twoFingerTapAction),
+                    twoFingerHoldEnabled = obj.optBoolean(KEY_TWO_FINGER_HOLD_ENABLED, defaults.twoFingerHoldEnabled),
+                    twoFingerHoldAction = obj.optString(KEY_TWO_FINGER_HOLD_ACTION, defaults.twoFingerHoldAction),
                     twoFingerHoldMouseBehavior = normalizeMouseBehavior(
-                        obj.optString(KEY_TWO_FINGER_HOLD_MOUSE_BEHAVIOR, MOUSE_BEHAVIOR_HOLD)
+                        obj.optString(KEY_TWO_FINGER_HOLD_MOUSE_BEHAVIOR, defaults.twoFingerHoldMouseBehavior)
                     ),
-                    twoFingerHoldDelay = obj.optInt(KEY_TWO_FINGER_HOLD_DELAY, DEFAULT_DELAY_MS),
-                    threeFingerTapEnabled = obj.optBoolean(KEY_THREE_FINGER_TAP_ENABLED, false),
-                    threeFingerTapAction = obj.optString(KEY_THREE_FINGER_TAP_ACTION, ACTION_SHOW_KEYBOARD),
-                    threeFingerDragEnabled = obj.optBoolean(KEY_THREE_FINGER_DRAG_ENABLED, false),
-                    threeFingerDragAction = obj.optString(KEY_THREE_FINGER_DRAG_ACTION, PAN_ARROW_KEYS),
-                    threeFingerHoldEnabled = obj.optBoolean(KEY_THREE_FINGER_HOLD_ENABLED, false),
-                    threeFingerHoldAction = obj.optString(KEY_THREE_FINGER_HOLD_ACTION, ACTION_KEY_ESC),
+                    twoFingerHoldDelay = obj.optInt(KEY_TWO_FINGER_HOLD_DELAY, defaults.twoFingerHoldDelay),
+                    threeFingerTapEnabled = obj.optBoolean(KEY_THREE_FINGER_TAP_ENABLED, defaults.threeFingerTapEnabled),
+                    threeFingerTapAction = obj.optString(KEY_THREE_FINGER_TAP_ACTION, defaults.threeFingerTapAction),
+                    threeFingerDragEnabled = obj.optBoolean(KEY_THREE_FINGER_DRAG_ENABLED, defaults.threeFingerDragEnabled),
+                    threeFingerDragAction = obj.optString(KEY_THREE_FINGER_DRAG_ACTION, defaults.threeFingerDragAction),
+                    threeFingerHoldEnabled = obj.optBoolean(KEY_THREE_FINGER_HOLD_ENABLED, defaults.threeFingerHoldEnabled),
+                    threeFingerHoldAction = obj.optString(KEY_THREE_FINGER_HOLD_ACTION, defaults.threeFingerHoldAction),
                     threeFingerHoldMouseBehavior = normalizeMouseBehavior(
-                        obj.optString(KEY_THREE_FINGER_HOLD_MOUSE_BEHAVIOR, MOUSE_BEHAVIOR_HOLD)
+                        obj.optString(KEY_THREE_FINGER_HOLD_MOUSE_BEHAVIOR, defaults.threeFingerHoldMouseBehavior)
                     ),
-                    threeFingerHoldDelay = obj.optInt(KEY_THREE_FINGER_HOLD_DELAY, DEFAULT_DELAY_MS),
-                    showClickHighlight = obj.optBoolean(KEY_SHOW_CLICK_HIGHLIGHT, false),
-                    showGestureDebugOverlay = obj.optBoolean(KEY_SHOW_GESTURE_DEBUG_OVERLAY, false),
-                    showCursorInTouchscreenMode = obj.optBoolean(KEY_SHOW_CURSOR_IN_TOUCHSCREEN_MODE, false),
-                    gestureThreshold = obj.optInt(KEY_GESTURE_THRESHOLD, DEFAULT_GESTURE_THRESHOLD),
+                    threeFingerHoldDelay = obj.optInt(KEY_THREE_FINGER_HOLD_DELAY, defaults.threeFingerHoldDelay),
+                    showClickHighlight = obj.optBoolean(KEY_SHOW_CLICK_HIGHLIGHT, defaults.showClickHighlight),
+                    showGestureDebugOverlay = obj.optBoolean(KEY_SHOW_GESTURE_DEBUG_OVERLAY, defaults.showGestureDebugOverlay),
+                    showCursorInTouchscreenMode = obj.optBoolean(KEY_SHOW_CURSOR_IN_TOUCHSCREEN_MODE, defaults.showCursorInTouchscreenMode),
+                    gestureThreshold = obj.optInt(KEY_GESTURE_THRESHOLD, defaults.gestureThreshold),
                     mouseDragMovementMode = normalizeMouseDragMovementMode(
-                        obj.optString(KEY_MOUSE_DRAG_MOVEMENT_MODE, MOUSE_DRAG_MOVEMENT_DIRECT),
+                        obj.optString(KEY_MOUSE_DRAG_MOVEMENT_MODE, defaults.mouseDragMovementMode),
                     ),
+                    cursorMode = obj.optString(KEY_CURSOR_MODE, defaults.cursorMode),
                 )
             } catch (_: Exception) {
-                compatibilityDefaults()
+                defaults
             }
         }
 

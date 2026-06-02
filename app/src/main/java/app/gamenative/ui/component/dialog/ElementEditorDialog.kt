@@ -465,8 +465,9 @@ fun ElementEditorDialog(
                             // Stick is always rendered as CIRCLE
                             listOf(ControlElement.Shape.CIRCLE)
                         }
-                        ControlElement.Type.TRACKPAD,
-                        ControlElement.Type.RANGE_BUTTON -> {
+                            ControlElement.Type.TRACKPAD,
+                            ControlElement.Type.RANGE_BUTTON,
+                            -> {
                             // Trackpad and Range Button are always rendered as ROUND_RECT
                             listOf(ControlElement.Shape.ROUND_RECT)
                         }
@@ -560,8 +561,9 @@ fun ElementEditorDialog(
                                     ControlElement.Type.BUTTON -> {
                                         stringResource(if (i == 0) R.string.primary_action else R.string.secondary_action)
                                     }
-                                    ControlElement.Type.D_PAD,
-                                    ControlElement.Type.STICK -> {
+                                        ControlElement.Type.D_PAD,
+                                        ControlElement.Type.STICK,
+                                        -> {
                                         val directionResId = when (i) {
                                             0 -> R.string.direction_up
                                             1 -> R.string.direction_right

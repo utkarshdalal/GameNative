@@ -773,6 +773,10 @@ object BestConfigService {
                 }
 
                 val containerVariant = originalJson.optString("containerVariant", "")
+                // html5 containers don't run wine -- wineVersion / dxwrapper / dxwrapperConfig
+                // may legitimately be absent on first export. skip the wine-runtime gates;
+                // resultMap below picks up whatever IS present (no spurious defaults).
+                val isHtml5 = containerVariant.equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
 
                 // glibc is not supported on the modern flavor — reject the entire config so neither
                 // server best-config responses nor JSON imports can switch a container to glibc.
@@ -781,7 +785,7 @@ object BestConfigService {
                     return mapOf()
                 }
 
-                if (!originalJson.has("wineVersion") || originalJson.isNull("wineVersion")) {
+                if (!isHtml5 && (!originalJson.has("wineVersion") || originalJson.isNull("wineVersion"))) {
                     if (containerVariant.equals(Container.GLIBC, ignoreCase = true)) {
                         originalJson.put("wineVersion", "wine-9.2-x86_64")
                     }
@@ -790,11 +794,11 @@ object BestConfigService {
                         return mapOf()
                     }
                 }
-                if (!originalJson.has("dxwrapper") || originalJson.isNull("dxwrapper")) {
+                if (!isHtml5 && (!originalJson.has("dxwrapper") || originalJson.isNull("dxwrapper"))) {
                     Timber.tag("BestConfigService").w("dxwrapper is missing or null in original config, returning empty map")
                     return mapOf()
                 }
-                if (!originalJson.has("dxwrapperConfig") || originalJson.isNull("dxwrapperConfig")) {
+                if (!isHtml5 && (!originalJson.has("dxwrapperConfig") || originalJson.isNull("dxwrapperConfig"))) {
                     Timber.tag("BestConfigService").w("dxwrapperConfig is missing or null in original config, returning empty map")
                     return mapOf()
                 }
@@ -808,15 +812,15 @@ object BestConfigService {
                     Timber.tag("BestConfigService").w("containerVariant is empty in original config, returning empty map")
                     return mapOf()
                 }
-                if (wineVersion.isEmpty()) {
+                if (!isHtml5 && wineVersion.isEmpty()) {
                     Timber.tag("BestConfigService").w("wineVersion is empty in original config, returning empty map")
                     return mapOf()
                 }
-                if (dxwrapper.isEmpty()) {
+                if (!isHtml5 && dxwrapper.isEmpty()) {
                     Timber.tag("BestConfigService").w("dxwrapper is empty in original config, returning empty map")
                     return mapOf()
                 }
-                if (dxwrapperConfig.isEmpty()) {
+                if (!isHtml5 && dxwrapperConfig.isEmpty()) {
                     Timber.tag("BestConfigService").w("dxwrapperConfig is empty in original config, returning empty map")
                     return mapOf()
                 }

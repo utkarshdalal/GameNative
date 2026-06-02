@@ -19,10 +19,10 @@ fun EmulationTabContent(state: ContainerConfigState) {
     val wineIsX8664 = config.wineVersion.contains("x86_64", true)
     val wineIsArm64Ec = config.wineVersion.contains("arm64ec", true)
 
-    SettingsGroup() {
+    SettingsGroup {
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             if (wineIsArm64Ec) {
-                SettingsGroup() {
+                SettingsGroup {
                     val fexcoreIndex = state.fexcoreOptions.ids.indexOfFirst { it == config.fexcoreVersion }.coerceAtLeast(0)
                     SettingsListDropdown(
                         colors = settingsTileColors(),
@@ -133,8 +133,9 @@ fun EmulationTabContent(state: ContainerConfigState) {
                 state.config.value = config.copy(box64Preset = state.box64Presets[it].id)
             },
         )
-        if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)
-            && config.wineVersion.contains("arm64ec", ignoreCase = true)) {
+        if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true) &&
+            config.wineVersion.contains("arm64ec", ignoreCase = true)
+        ) {
             SettingsListDropdown(
                 colors = settingsTileColors(),
                 title = { Text(text = stringResource(R.string.fexcore_preset)) },

@@ -39,7 +39,7 @@ import com.winlator.core.envvars.EnvVarSelectionType
 fun EnvironmentTabContent(state: ContainerConfigState) {
     val config = state.config.value
     val envVars = EnvVars(config.envVars)
-    SettingsGroup() {
+    SettingsGroup {
         if (config.envVars.isNotEmpty()) {
             SettingsEnvVars(
                 colors = settingsTileColors(),
@@ -201,7 +201,9 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                         }
                                     }
                                 }
-                            } else null,
+                            } else {
+                                null
+                            },
                         )
                     }
                 }

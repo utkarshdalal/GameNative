@@ -111,15 +111,15 @@ fun ControllerBindingDialog(
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
-            usePlatformDefaultWidth = false,  // Allow custom width beyond platform default
+            usePlatformDefaultWidth = false, // opt out of platform width cap so the Surface sizing below applies
             dismissOnBackPress = true,
             dismissOnClickOutside = false
         )
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth(0.98f)  // Nearly full width for better space utilization
-                .fillMaxHeight(0.92f),  // Taller to maximize vertical space
+                .fillMaxWidth(0.98f)
+                .fillMaxHeight(0.92f),
             shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface
         ) {
@@ -271,10 +271,11 @@ fun ControllerBindingDialog(
                                                 selectedCategory = categoryIndex
                                             }
                                         },
-                                    color = if (isSelected)
+                                    color = if (isSelected) {
                                         MaterialTheme.colorScheme.primaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.surfaceVariant,
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    },
                                     shape = MaterialTheme.shapes.small
                                 ) {
                                     Row(
@@ -292,10 +293,11 @@ fun ControllerBindingDialog(
                                                 text = "($matchCount)",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (isSelected)
+                                                color = if (isSelected) {
                                                     MaterialTheme.colorScheme.primary
-                                                else
+                                                } else {
                                                     MaterialTheme.colorScheme.onSurfaceVariant
+                                                },
                                             )
                                         }
                                     }
@@ -417,10 +419,11 @@ fun BindingOption(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        color = if (isSelected)
+        color = if (isSelected) {
             MaterialTheme.colorScheme.primaryContainer
-        else
-            MaterialTheme.colorScheme.surfaceVariant,
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        },
         shape = MaterialTheme.shapes.small
     ) {
         Row(
@@ -433,10 +436,11 @@ fun BindingOption(
             Text(
                 text = binding.toString(),
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (isSelected)
+                color = if (isSelected) {
                     MaterialTheme.colorScheme.onPrimaryContainer
-                else
+                } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
+                },
             )
 
             if (isSelected) {

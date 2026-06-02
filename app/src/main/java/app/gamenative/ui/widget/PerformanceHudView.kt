@@ -11,6 +11,8 @@ import android.graphics.Path
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
+import android.os.Build
+import android.os.PowerManager
 import android.text.TextUtils
 import android.text.format.DateFormat
 import android.util.TypedValue
@@ -50,6 +52,7 @@ import kotlinx.coroutines.withContext
 class PerformanceHudView(
     context: Context,
     private val fpsProvider: () -> Float,
+    private val frameTimeBuffer: FrameTimeRingBuffer? = null,
     initialConfig: PerformanceHudConfig = PerformanceHudConfig(),
     initialCompactMode: Boolean = false,
 ) : FrameLayout(context) {
@@ -109,6 +112,19 @@ class PerformanceHudView(
     private val gpuTempMetric = createMetricViews(MetricId.GPU_TEMP, 0xFFBDBDBD.toInt())
     private val batteryTempMetric = createMetricViews(MetricId.BATTERY_TEMP, 0xFFBDBDBD.toInt())
 
+    // power-user
+    private val frameTimeMetric = createMetricViews(MetricId.FRAMETIME, 0xFF80DEEA.toInt())
+    private val low1PctMetric = createMetricViews(MetricId.LOW_1PCT, 0xFFFFAB91.toInt())
+    private val low01PctMetric = createMetricViews(MetricId.LOW_01PCT, 0xFFFF7043.toInt())
+    private val cpuCoresMetric = createMetricViews(MetricId.CPU_CORES, 0xFF90CAF9.toInt())
+    private val thermalMetric = createMetricViews(MetricId.THERMAL, 0xFFFFCC80.toInt())
+    private val gpuMemMetric = createMetricViews(MetricId.GPU_MEM, 0xFFCE93D8.toInt())
+
+    // energy
+    private val energySessionMetric = createMetricViews(MetricId.ENERGY_SESSION, 0xFFAED581.toInt())
+    private val mahUsedMetric = createMetricViews(MetricId.MAH_USED, 0xFFC5E1A5.toInt())
+    private val avgPowerMetric = createMetricViews(MetricId.AVG_POWER, 0xFF26C6DA.toInt())
+
     private val allMetrics = listOf(
         fpsMetric,
         cpuMetric,
@@ -121,6 +137,15 @@ class PerformanceHudView(
         cpuTempMetric,
         gpuTempMetric,
         batteryTempMetric,
+        frameTimeMetric,
+        low1PctMetric,
+        low01PctMetric,
+        cpuCoresMetric,
+        thermalMetric,
+        gpuMemMetric,
+        energySessionMetric,
+        mahUsedMetric,
+        avgPowerMetric,
     )
 
     private val allTextRows = allMetrics.flatMap { listOf(it.stackedText, it.compactText) }
@@ -128,6 +153,18 @@ class PerformanceHudView(
 
     private var lastCpuTotal: Long? = null
     private var lastCpuIdle: Long? = null
+    private var perCoreLastTotal: LongArray? = null
+    private var perCoreLastIdle: LongArray? = null
+
+    // session energy integration. integrate instantaneous power × dt at 1Hz collector tick.
+    private var sessionWattHours = 0.0
+    private var sessionMilliAmpHours = 0.0
+    private var sessionStartElapsedMs: Long = 0L
+    private var lastEnergySampleMs: Long = 0L
+    // accumulated FOREGROUND active-play time (sum of valid consecutive sample dt). used as the
+    // avg-power denominator instead of wall-clock so a paused/backgrounded gap dilutes neither the
+    // integrated energy nor the average -- lets the HUD lifecycle-pause stay (no whole-screen side effect).
+    private var sessionActiveHours = 0.0
 
     // ── Mali gpuinfo delta sampling (for devices without a utilisation sysfs node)
     private var lastMaliGpuInfoMs: Long? = null
@@ -224,6 +261,9 @@ class PerformanceHudView(
     private fun stopUpdates() {
         updateJob?.cancel()
         updateJob = null
+        // drop the energy-sampling baseline so the next resume/reattach doesn't integrate the
+        // paused/detached gap as one giant dt. session energy stays foreground-only.
+        lastEnergySampleMs = 0L
     }
 
     private fun applyAppearance() {
@@ -312,6 +352,9 @@ class PerformanceHudView(
         val cpuPercent = readCpuUsagePercent()
         val gpuPercent = readGpuUsagePercent()
         val batterySnapshot = collectBatterySnapshot()
+        integrateSessionEnergy(batterySnapshot.powerWatts, batterySnapshot.currentMilliAmps)
+        val frameStats = frameTimeBuffer?.snapshot()
+        val avgPowerWatts = computeAverageSessionPowerWatts()
         return HudSnapshot(
             fpsValue = currentFps,
             cpuValue = cpuPercent?.toFloat(),
@@ -327,9 +370,55 @@ class PerformanceHudView(
             runtime = batterySnapshot.runtimeText,
             batteryTemp = batterySnapshot.temperatureC?.let { "BAT TEMP ${it}°C" },
             clock = readClockText(),
-            cpuTemp = readCpuTempC()?.let { "CPU TEMP ${it}°C" },
-            gpuTemp = readGpuTempC()?.let { "GPU TEMP ${it}°C" },
+            cpuTemp = readCpuTempC()?.let { "CPU TEMP $it°C" },
+            gpuTemp = readGpuTempC()?.let { "GPU TEMP $it°C" },
+            frameTime = frameStats?.let { String.format(Locale.US, "FT %.1fms", it.meanMs) },
+            low1Pct = frameStats?.let { String.format(Locale.US, "1%% LOW %.0f", percentileMsToFps(it.p99Ms)) },
+            low01Pct = frameStats?.let { String.format(Locale.US, "0.1%% LOW %.0f", percentileMsToFps(it.p999Ms)) },
+            cpuCores = readPerCoreCpuPercent()?.let { cores ->
+                "C ${cores.joinToString(separator = " ") { "%2d".format(it) }}"
+            },
+            thermal = readThermalStatus()?.let { "THM $it" },
+            gpuMem = readGpuMemoryUsedText()?.let { "VRAM $it" },
+            energySession = sessionWattHours.takeIf { it > 0 || lastEnergySampleMs > 0 }?.let {
+                String.format(Locale.US, "WH %.2f", it)
+            },
+            mahUsed = sessionMilliAmpHours.takeIf { it > 0 || lastEnergySampleMs > 0 }?.let {
+                String.format(Locale.US, "mAh %.0f", it)
+            },
+            avgPower = avgPowerWatts?.let { String.format(Locale.US, "AVG %.1fW", it) },
         )
+    }
+
+    private fun percentileMsToFps(ms: Double): Double {
+        if (ms <= 0.0 || !ms.isFinite()) return 0.0
+        return 1000.0 / ms
+    }
+
+    private fun integrateSessionEnergy(watts: Double?, milliAmps: Double?) {
+        val now = SystemClock.elapsedRealtime()
+        if (sessionStartElapsedMs == 0L) {
+            sessionStartElapsedMs = now
+        }
+        val last = lastEnergySampleMs
+        lastEnergySampleMs = now
+        if (last == 0L) return
+        val dtHours = (now - last) / 1000.0 / 3600.0
+        if (dtHours <= 0.0) return
+        sessionActiveHours += dtHours
+        if (watts != null && watts.isFinite() && watts > 0.0) {
+            sessionWattHours += watts * dtHours
+        }
+        if (milliAmps != null && milliAmps.isFinite() && milliAmps > 0.0) {
+            sessionMilliAmpHours += milliAmps * dtHours
+        }
+    }
+
+    private fun computeAverageSessionPowerWatts(): Double? {
+        // denominator is accumulated FOREGROUND time, not wall-clock -- consistent with the
+        // foreground-only numerator so a paused gap doesn't dilute the average.
+        if (sessionActiveHours <= 0.0 || sessionWattHours <= 0.0) return null
+        return sessionWattHours / sessionActiveHours
     }
 
     private fun collectBatterySnapshot(): BatterySnapshot {
@@ -382,6 +471,7 @@ class PerformanceHudView(
         return BatterySnapshot(
             percent = percent,
             powerWatts = powerWatts,
+            currentMilliAmps = if (currentMicroAmps > 0L) currentMicroAmps / 1000.0 else null,
             runtimeText = runtimeText,
             temperatureC = temperatureC,
         )
@@ -419,6 +509,15 @@ class PerformanceHudView(
         updateMetricText(clockMetric, snapshot.clock)
         updateMetricText(cpuTempMetric, snapshot.cpuTemp)
         updateMetricText(gpuTempMetric, snapshot.gpuTemp)
+        updateMetricText(frameTimeMetric, snapshot.frameTime)
+        updateMetricText(low1PctMetric, snapshot.low1Pct)
+        updateMetricText(low01PctMetric, snapshot.low01Pct)
+        updateMetricText(cpuCoresMetric, snapshot.cpuCores)
+        updateMetricText(thermalMetric, snapshot.thermal)
+        updateMetricText(gpuMemMetric, snapshot.gpuMem)
+        updateMetricText(energySessionMetric, snapshot.energySession)
+        updateMetricText(mahUsedMetric, snapshot.mahUsed)
+        updateMetricText(avgPowerMetric, snapshot.avgPower)
     }
 
     private fun updateMetricText(metric: MetricViews, text: String?) {
@@ -430,11 +529,20 @@ class PerformanceHudView(
     private fun refreshVisibleMetrics() {
         val visibleMetrics = buildList {
             addMetricIfVisible(fpsMetric, config.showFrameRate, config.showFrameRateGraph)
+            addMetricIfVisible(frameTimeMetric, config.showFrameTime)
+            addMetricIfVisible(low1PctMetric, config.showLow1Pct)
+            addMetricIfVisible(low01PctMetric, config.showLow01Pct)
             addMetricIfVisible(cpuMetric, config.showCpuUsage, config.showCpuUsageGraph)
+            addMetricIfVisible(cpuCoresMetric, config.showCpuCores)
             addMetricIfVisible(gpuMetric, config.showGpuUsage, config.showGpuUsageGraph)
+            addMetricIfVisible(gpuMemMetric, config.showGpuMemory)
+            addMetricIfVisible(thermalMetric, config.showThermalStatus)
             addMetricIfVisible(ramMetric, config.showRamUsage)
             addMetricIfVisible(batteryMetric, config.showBatteryLevel)
             addMetricIfVisible(powerMetric, config.showPowerDraw)
+            addMetricIfVisible(avgPowerMetric, config.showAvgPower)
+            addMetricIfVisible(energySessionMetric, config.showEnergySession)
+            addMetricIfVisible(mahUsedMetric, config.showMahUsed)
             addMetricIfVisible(runtimeMetric, config.showBatteryRuntime)
             addMetricIfVisible(clockMetric, config.showClockTime)
             addMetricIfVisible(cpuTempMetric, config.showCpuTemperature)
@@ -768,6 +876,90 @@ class PerformanceHudView(
 
     private fun readLongFromLine(path: String): Long? {
         return readFirstLine(path)?.trim()?.toLongOrNull()
+    }
+
+    // /proc/stat per-core: lines `cpu0 <user> <nice> <sys> <idle> <iowait> ...`. compute deltas.
+    private fun readPerCoreCpuPercent(): IntArray? {
+        val lines = try {
+            File("/proc/stat").bufferedReader().use { it.readLines() }
+        } catch (_: Exception) {
+            return null
+        }
+        val coreLines = lines.filter { it.startsWith("cpu") && it.length > 3 && it[3].isDigit() }
+        if (coreLines.isEmpty()) return null
+
+        val totals = LongArray(coreLines.size)
+        val idles = LongArray(coreLines.size)
+        coreLines.forEachIndexed { i, line ->
+            val parts = line.split(Regex("\\s+"))
+            if (parts.size < 5) return@forEachIndexed
+            val values = parts.drop(1).mapNotNull { it.toLongOrNull() }
+            if (values.size < 4) return@forEachIndexed
+            totals[i] = values.sum()
+            idles[i] = values.getOrElse(3) { 0L } + values.getOrElse(4) { 0L }
+        }
+
+        val prevTotals = perCoreLastTotal
+        val prevIdles = perCoreLastIdle
+        perCoreLastTotal = totals
+        perCoreLastIdle = idles
+        if (prevTotals == null || prevIdles == null || prevTotals.size != totals.size) return null
+
+        return IntArray(totals.size) { i ->
+            val tDiff = totals[i] - prevTotals[i]
+            val iDiff = idles[i] - prevIdles[i]
+            if (tDiff <= 0L) {
+                0
+            } else {
+                (((tDiff - iDiff).coerceAtLeast(0L)) * 100L / tDiff).toInt().coerceIn(0, 100)
+            }
+        }
+    }
+
+    private fun readThermalStatus(): String? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+        val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return null
+        return when (pm.currentThermalStatus) {
+            PowerManager.THERMAL_STATUS_NONE -> "NONE"
+            PowerManager.THERMAL_STATUS_LIGHT -> "LIGHT"
+            PowerManager.THERMAL_STATUS_MODERATE -> "MODERATE"
+            PowerManager.THERMAL_STATUS_SEVERE -> "SEVERE"
+            PowerManager.THERMAL_STATUS_CRITICAL -> "CRITICAL"
+            PowerManager.THERMAL_STATUS_EMERGENCY -> "EMERGENCY"
+            PowerManager.THERMAL_STATUS_SHUTDOWN -> "SHUTDOWN"
+            else -> null
+        }
+    }
+
+    // best-effort GPU memory used. Adreno: per-process gpumem_mapped under kgsl proc dir, OR
+    // total alloc bytes. mali / others: not readable from app sandbox without root. returns
+    // null when unavailable.
+    private fun readGpuMemoryUsedText(): String? {
+        // Adreno per-process file (kgsl driver). path: /sys/class/kgsl/kgsl-3d0/proc/<pid>/gpumem_mapped
+        val pid = android.os.Process.myPid()
+        val candidates = listOf(
+            "/sys/class/kgsl/kgsl-3d0/proc/$pid/gpumem_mapped",
+            "/sys/class/kgsl/kgsl-3d0/proc/$pid/total",
+            "/sys/class/kgsl/kgsl-3d0/proc/$pid/gpumem_total",
+        )
+        for (path in candidates) {
+            val raw = readFirstLine(path)?.trim()?.toLongOrNull() ?: continue
+            if (raw <= 0L) continue
+            return formatBytes(raw)
+        }
+        // device-wide fallback (not per-process, but indicative under load).
+        val totalAlloc = readFirstLine("/sys/class/kgsl/kgsl-3d0/page_alloc")?.trim()?.toLongOrNull()
+        if (totalAlloc != null && totalAlloc > 0L) {
+            return formatBytes(totalAlloc)
+        }
+        return null
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        val gb = bytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+        if (gb >= 1.0) return String.format(Locale.US, "%.1fGB", gb)
+        val mb = bytes / (1024L * 1024L)
+        return "${mb}MB"
     }
 
     private fun readUsedRamText(): String {

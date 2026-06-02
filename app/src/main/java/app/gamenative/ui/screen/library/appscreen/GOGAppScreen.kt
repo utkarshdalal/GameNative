@@ -210,6 +210,7 @@ class GOGAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
+            runtime = app.gamenative.utils.ContainerUtils.resolveRuntime(context, libraryItem.appId),
         )
         return displayInfo
     }
@@ -467,16 +468,17 @@ class GOGAppScreen : BaseAppScreen() {
         return containerData
     }
 
-    override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
+    override suspend fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData): Boolean {
         Timber.tag(TAG).i("saveContainerConfig: appId=${libraryItem.appId}")
         val container = getContainer(context, libraryItem.appId)
         val previousLanguage = container.language
-        app.gamenative.utils.ContainerUtils.applyToContainer(context, libraryItem.appId, config)
+        if (!app.gamenative.utils.ContainerUtils.applyToContainerGated(context, libraryItem.appId, config)) return false
         Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
 
         if (previousLanguage != config.language) {
             triggerGOGVerifyDownload(context, libraryItem, config.language)
         }
+        return true
     }
 
     private fun triggerGOGVerifyDownload(context: Context, libraryItem: LibraryItem, language: String) {
@@ -659,6 +661,7 @@ class GOGAppScreen : BaseAppScreen() {
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         Timber.tag(TAG).d("AdditionalDialogs: composing for appId=${libraryItem.appId}")
         val context = LocalContext.current

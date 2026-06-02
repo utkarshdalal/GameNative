@@ -4,6 +4,7 @@ import android.content.Context
 import android.app.Activity
 import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.annotation.VisibleForTesting
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -63,6 +64,10 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
+import app.gamenative.runtime.GameRuntime
+import app.gamenative.runtime.WebViewRuntime
+import app.gamenative.runtime.WineRuntime
+import app.gamenative.runtime.dispatchLaunchByRuntime
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
@@ -117,6 +122,7 @@ import com.winlator.xenvironment.ImageFSLegacyMigrator
 import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.ImageFsInstaller
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
+import dagger.hilt.android.EntryPointAccessors
 import java.io.File
 import java.util.Locale
 import java.util.Date
@@ -135,6 +141,8 @@ import timber.log.Timber
 
 private const val PENDING_LAUNCH_TIMEOUT_MS = 10_000L
 private const val SNACKBAR_SHOW_TIMEOUT_MS = 15_000L
+
+// dispatchLaunchByRuntime moved to app.gamenative.runtime -- runtime seam belongs there, not in ui/.
 
 /** Used to suspend preLaunchApp while the user decides on large workshop updates. */
 private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
@@ -483,7 +491,37 @@ fun PluviaMain(
         viewModel.uiEvent.collect { event ->
             when (event) {
                 MainViewModel.MainUiEvent.LaunchApp -> {
-                    navController.navigate(PluviaScreen.XServer.route)
+                    // dispatch by runtime: html5 -> WebViewScreen, everything else -> wine (container.runtime)
+                    val appId = state.launchedAppId
+                    // html5 titles have no Wine Container; check via WebViewContainer JSON first
+                    // so getContainer's mandatory-throw path doesn't trip on webview-only installs.
+                    // bootToContainer=true (Open Container) forces wine routing for html5; see launchApp.
+                    if (!state.bootToContainer && app.gamenative.html5.host.Html5Routing.isHtml5App(context, appId)) {
+                        dispatchLaunchByRuntime(
+                            runtime = app.gamenative.runtime.WebViewRuntime,
+                            appId = appId,
+                            navigateToWine = { navController.navigate(PluviaScreen.XServer.route) },
+                            navigateToWebView = { navController.navigate(PluviaScreen.WebView.route) },
+                        )
+                        return@collect
+                    }
+                    // prelaunchapp ensures container exists by the time launchapp fires.
+                    // getcontainer THROWS (not nullable) when missing -- wrap to log-and-skip.
+                    val container = try {
+                        ContainerUtils.getContainer(context, appId)
+                    } catch (e: Exception) {
+                        Timber.tag("PluviaMain").e(e, "LaunchApp for $appId but container missing — skipping")
+                        return@collect
+                    }
+                    dispatchLaunchByRuntime(
+                        // string → sealed at the single dispatch seam; unknown ids default wine
+                        // bootToContainer=true (Open Container menu) FORCES wine nav even when
+                        // container.runtime=webview -- user wants the wine file manager view.
+                        runtime = if (state.bootToContainer) WineRuntime else GameRuntime.fromId(container.runtime),
+                        appId = appId,
+                        navigateToWine = { navController.navigate(PluviaScreen.XServer.route) },
+                        navigateToWebView = { navController.navigate(PluviaScreen.WebView.route) },
+                    )
                 }
 
                 is MainViewModel.MainUiEvent.ExternalGameLaunch -> {
@@ -527,7 +565,7 @@ fun PluviaMain(
                 }
 
                 MainViewModel.MainUiEvent.OnBackPressed -> {
-                    if (SteamService.keepAlive){
+                    if (SteamService.keepAlive) {
                         gameBackAction?.invoke() ?: run { navController.popBackStack() }
                     } else if (hasBack) {
                         // TODO: check if back leads to log out and present confidence modal
@@ -1195,13 +1233,19 @@ fun PluviaMain(
                         visible = true,
                         title = context.getString(R.string.container_config_title),
                         initialConfig = config,
+                        appId = appId,
                         onDismissRequest = { openContainerConfigForAppId = null },
-                        onSave = { newConfig ->
+                        onSave = { newConfig, onComplete ->
+                            // html5 gate lives in ContainerUtils.applyToContainerGated -- helper
+                            // emits the snackbar on rejection; caller just decides dialog fate.
                             scope.launch {
-                                withContext(Dispatchers.IO) {
-                                    ContainerUtils.applyToContainer(context, appId, newConfig)
+                                try {
+                                    if (ContainerUtils.applyToContainerGated(context, appId, newConfig)) {
+                                        openContainerConfigForAppId = null
+                                    }
+                                } finally {
+                                    onComplete()
                                 }
-                                openContainerConfigForAppId = null
                             }
                         },
                     )
@@ -1277,8 +1321,12 @@ fun PluviaMain(
             }
 
             // Connection status banner (overlay) - dismissible so users can access navigation
-            if (state.currentScreen != PluviaScreen.LoginUser && !connectionBannerDismissed && initialConnectDone && !state.isSteamConnected &&
-                SteamUtils.hasStoredCredentials()) {
+            if (state.currentScreen != PluviaScreen.LoginUser &&
+                !connectionBannerDismissed &&
+                initialConnectDone &&
+                !state.isSteamConnected &&
+                SteamUtils.hasStoredCredentials()
+            ) {
                 Box(modifier = Modifier.zIndex(5f)) {
                     ConnectionStatusBanner(
                         connectionState = state.connectionState,
@@ -1348,7 +1396,12 @@ fun PluviaMain(
                     LaunchedEffect(Unit) {
                         val shouldShowDialogs = !isOffline || !SteamUtils.hasStoredCredentials()
 
-                        if (shouldShowDialogs && !state.annoyingDialogShown && PluviaApp.xEnvironment == null && !SteamService.keepAlive && !MainActivity.wasLaunchedViaExternalIntent) {
+                        if (shouldShowDialogs &&
+                            !state.annoyingDialogShown &&
+                            PluviaApp.xEnvironment == null &&
+                            !SteamService.keepAlive &&
+                            !MainActivity.wasLaunchedViaExternalIntent
+                        ) {
                             val currentUpdateInfo = updateInfo
                             if (currentUpdateInfo != null) {
                                 viewModel.setAnnoyingDialogShown(true)
@@ -1511,19 +1564,14 @@ fun PluviaMain(
                         },
                         navigateBack = {
                             CoroutineScope(Dispatchers.Main).launch {
-                                val currentRoute = navController.currentBackStackEntry
-                                    ?.destination
-                                    ?.route
-
-                                if (currentRoute == PluviaScreen.XServer.route) {
-                                    if (MainActivity.wasLaunchedViaExternalIntent) {
-                                        Timber.d("[IntentLaunch]: Finishing activity to return to external launcher")
-                                        MainActivity.wasLaunchedViaExternalIntent = false
-                                        (context as? android.app.Activity)?.finish()
-                                    } else {
-                                        navController.popBackStack()
-                                    }
-                                }
+                                app.gamenative.runtime.dispatchNavigateBack(
+                                    expectedRoute = PluviaScreen.XServer.route,
+                                    currentRoute = navController.currentBackStackEntry?.destination?.route,
+                                    wasLaunchedViaExternalIntent = MainActivity.wasLaunchedViaExternalIntent,
+                                    finishActivity = { (context as? android.app.Activity)?.finish() },
+                                    popBackStack = { navController.popBackStack() },
+                                    clearExternalIntentFlag = { MainActivity.wasLaunchedViaExternalIntent = false },
+                                )
                             }
                         },
                         onWindowMapped = { context, window ->
@@ -1534,6 +1582,30 @@ fun PluviaMain(
                         },
                         onGameLaunchError = { error ->
                             viewModel.onGameLaunchError(error)
+                        },
+                    )
+                }
+
+                /** HTML5 Game Screen  **/
+                composable(route = PluviaScreen.WebView.route) {
+                    app.gamenative.html5.host.WebViewScreen(
+                        appId = state.launchedAppId,
+                        navigateBack = {
+                            CoroutineScope(Dispatchers.Main).launch {
+                                app.gamenative.runtime.dispatchNavigateBack(
+                                    expectedRoute = PluviaScreen.WebView.route,
+                                    currentRoute = navController.currentBackStackEntry?.destination?.route,
+                                    wasLaunchedViaExternalIntent = MainActivity.wasLaunchedViaExternalIntent,
+                                    finishActivity = { (context as? android.app.Activity)?.finish() },
+                                    popBackStack = { navController.popBackStack() },
+                                    clearExternalIntentFlag = { MainActivity.wasLaunchedViaExternalIntent = false },
+                                )
+                            }
+                        },
+                        onExit = { onComplete ->
+                            // exitSteamApp is a no-op for non-Steam app IDs, so safe for
+                            // sideloaded CUSTOM_GAME_* apps. wires steam-aware hooks.
+                            viewModel.exitSteamApp(context, state.launchedAppId, onComplete)
                         },
                     )
                 }
@@ -1603,6 +1675,115 @@ fun preLaunchApp(
     setLoadingDialogVisible(true)
     // TODO: add a way to cancel
     // TODO: add fail conditions
+
+    // html5 titles skip wine prefix + manifest prep (no container / DLL swap / executable check)
+    // but still need Steam Cloud sync for Steam-source titles -- otherwise the pre-launch
+    // conflict-resolution dialog never surfaces and cloud state never merges.
+    // bootToContainer=true (Open Container) forces wine prep on html5 so the user
+    // can browse A: drive + wine save dirs via the wine file manager.
+    if (!bootToContainer && app.gamenative.html5.host.Html5Routing.isHtml5App(context, appId)) {
+        Timber.tag("preLaunchApp").i("html5 app $appId — bypassing wine prep")
+        val html5GameId = ContainerUtils.extractGameIdFromContainerId(appId)
+        val html5GameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+        val html5LocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
+        val shouldCloudSync = html5GameSource == GameSource.STEAM &&
+            !isOffline &&
+            !skipCloudSync &&
+            !html5LocalSavesOnly &&
+            SteamService.userSteamId != null
+        // GOG html5 fast-path. mirror Steam's pre-launch sync shape -- pull cloud
+        // into wine prefix via GOGService.syncCloudSaves, then mirror wine→chromium leveldb
+        // via Html5SaveSyncService.syncInbound. wine-launch GOG branch (~line 1914) is
+        // unreachable here because we early-return from the html5 fast-path.
+        val shouldGogSync = html5GameSource == GameSource.GOG && !isOffline && !html5LocalSavesOnly
+        // Epic html5 mirrors the GOG fast-path: EpicCloudSavesManager pulls into wine prefix,
+        // then html5 syncInbound mirrors wine → chromium LS/IDB. exit-side upload is handled
+        // by MainViewModel.handleExitCloudSync's existing EPIC branch (no html5-specific
+        // outbound work needed -- the WebViewDestroyed → Html5SaveSyncService.syncOutbound chain
+        // updates the wine prefix BEFORE exitSteamApp fires the cloud upload).
+        val shouldEpicSync = html5GameSource == GameSource.EPIC && !isOffline && !html5LocalSavesOnly
+        if (!shouldCloudSync && !shouldGogSync && !shouldEpicSync) {
+            setLoadingDialogVisible(false)
+            onSuccess(context, appId)
+            return
+        }
+        // GOG + Epic html5 paths share one shape: store download-sync, then html5 syncInbound
+        // mirrors the wine prefix → chromium LS/IDB, then proceed. (exit-side upload is handled
+        // elsewhere -- see MainViewModel.handleExitCloudSync.)
+        fun runHtml5InboundSync(tag: String, downloadSync: suspend () -> Unit) {
+            CoroutineScope(Dispatchers.IO).launch {
+                Timber.tag(tag).i("[Cloud Saves] html5 $tag $appId — pre-launch download sync")
+                runCatching { downloadSync() }
+                    .onFailure { Timber.tag(tag).w(it, "[Cloud Saves] download sync failed for $appId — proceeding") }
+                runCatching {
+                    val svc = EntryPointAccessors
+                        .fromApplication(
+                            context.applicationContext,
+                            ContainerUtils.Html5SaveSyncEntryPoint::class.java,
+                        )
+                        .html5SaveSyncService()
+                    Timber.tag(tag).d("[Cloud Saves] html5 syncInbound for $appId")
+                    svc.syncInbound(appId)
+                }.onFailure { Timber.tag(tag).w(it, "[Cloud Saves] html5 syncInbound failed for $appId — proceeding") }
+                setLoadingDialogVisible(false)
+                onSuccess(context, appId)
+            }
+        }
+        if (shouldGogSync) {
+            runHtml5InboundSync("GOG") { app.gamenative.service.gog.GOGService.syncCloudSaves(context, appId) }
+            return
+        }
+        if (shouldEpicSync) {
+            runHtml5InboundSync("Epic") {
+                app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
+                    context = context,
+                    appId = html5GameId,
+                    preferredAction = "auto",
+                )
+            }
+            return
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            // activate the html5 container before cloud sync so the global `xuser` symlink
+            // points at THIS game's container. otherwise SteamAutoCloud walks `%WinAppDataLocal%`
+            // through the stale symlink (last-launched game's container) and every download
+            // fails at the missing path. mirrors the wine-launch branch below which does the
+            // same via `containerManager.activateContainer(container)` pre-sync.
+            val html5ContainerManager = ContainerManager(context)
+            val html5Container = ContainerUtils.getOrCreateContainer(context, appId)
+            html5ContainerManager.activateContainer(html5Container)
+            val html5PrefixToPath: (String) -> String = { prefix ->
+                PathType.from(prefix).toAbsPath(html5Container, html5GameId, SteamService.userSteamId!!.accountID)
+            }
+            runSteamCloudSyncAndHandleResult(
+                context = context,
+                appId = appId,
+                gameId = html5GameId,
+                prefixToPath = html5PrefixToPath,
+                preferredSave = preferredSave,
+                ignorePendingOperations = ignorePendingOperations,
+                isOffline = isOffline,
+                parentScope = this,
+                setLoadingDialogVisible = setLoadingDialogVisible,
+                setLoadingProgress = setLoadingProgress,
+                setLoadingMessage = setLoadingMessage,
+                setMessageDialogState = setMessageDialogState,
+                onSuccess = onSuccess,
+                useTemporaryOverride = useTemporaryOverride,
+                retryCount = retryCount,
+                bootToContainer = bootToContainer,
+                // html5 leveldb saves churn files on every compaction -- without delete
+                // propagation, cloud accumulates stale .ldb/MANIFEST-* and desktop chromium
+                // reads a broken mix. Wine games keep the accretive default (false).
+                propagateDeletions = true,
+                // symmetric to propagateDeletions on the download side: honor cloud tombstones
+                // locally so Android-to-Android convergence works when device B syncs after
+                // device A deleted orphaned leveldb files.
+                applyRemoteTombstones = true,
+            )
+        }
+        return
+    }
 
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
@@ -1755,7 +1936,8 @@ fun preLaunchApp(
                 ).await()
             }
 
-            if (!container.isUseLegacyDRM && !container.isLaunchRealSteam &&
+            if (!container.isUseLegacyDRM &&
+                !container.isLaunchRealSteam &&
                 !SteamService.isFileInstallable(context, "experimental-drm-20260116.tzst")
             ) {
                 setLoadingMessage("Downloading extras")
@@ -1918,6 +2100,23 @@ fun preLaunchApp(
                 } else {
                     Timber.tag("GOG").i("[Cloud Saves] Pre-game sync completed successfully for $appId")
                 }
+
+                // GOG download just landed in the wine prefix; if this container will boot
+                // via webview, mirror wine→chromium leveldb before page load. failure non-fatal --
+                // syncInbound surfaces its own snackbar via SaveSyncFailure ; we proceed regardless.
+                runCatching {
+                    val container = ContainerManager(context).getContainerById(appId)
+                    if (container?.runtime == Container.RUNTIME_WEBVIEW) {
+                        val svc = EntryPointAccessors
+                            .fromApplication(
+                                context.applicationContext,
+                                ContainerUtils.Html5SaveSyncEntryPoint::class.java,
+                            )
+                            .html5SaveSyncService()
+                        Timber.tag("GOG").d("[Cloud Saves] webview runtime — running html5 syncInbound for $appId")
+                        svc.syncInbound(appId)
+                    }
+                }.onFailure { Timber.tag("GOG").w(it, "[Cloud Saves] html5 syncInbound failed for $appId — proceeding to launch") }
             }
 
             setLoadingDialogVisible(false)
@@ -2146,19 +2345,67 @@ fun preLaunchApp(
             }
         }
 
+        runSteamCloudSyncAndHandleResult(
+            context = context,
+            appId = appId,
+            gameId = gameId,
+            prefixToPath = prefixToPath,
+            preferredSave = preferredSave,
+            ignorePendingOperations = ignorePendingOperations,
+            isOffline = isOffline,
+            parentScope = this,
+            setLoadingDialogVisible = setLoadingDialogVisible,
+            setLoadingProgress = setLoadingProgress,
+            setLoadingMessage = setLoadingMessage,
+            setMessageDialogState = setMessageDialogState,
+            onSuccess = onSuccess,
+            useTemporaryOverride = useTemporaryOverride,
+            retryCount = retryCount,
+            bootToContainer = bootToContainer,
+        )
+    }
+}
+
+// B: shared Steam Cloud sync + result-handling helper. invoked by preLaunchApp for
+// both Wine-runtime and HTML5-runtime Steam titles. keeps conflict-dialog + pending-operations +
+// failure dispatch semantics identical across runtimes -- HTML5 was previously bypassing this
+// entire block, so the SYNC_CONFLICT dialog never surfaced and fsbridge saves never reconciled
+// against Steam Cloud state.
+private suspend fun runSteamCloudSyncAndHandleResult(
+    context: Context,
+    appId: String,
+    gameId: Int,
+    prefixToPath: (String) -> String,
+    preferredSave: SaveLocation,
+    ignorePendingOperations: Boolean,
+    isOffline: Boolean,
+    parentScope: CoroutineScope,
+    setLoadingDialogVisible: (Boolean) -> Unit,
+    setLoadingProgress: (Float) -> Unit,
+    setLoadingMessage: (String) -> Unit,
+    setMessageDialogState: (MessageDialogState) -> Unit,
+    onSuccess: KFunction2<Context, String, Unit>,
+    useTemporaryOverride: Boolean,
+    retryCount: Int,
+    bootToContainer: Boolean,
+    propagateDeletions: Boolean = false,
+    applyRemoteTombstones: Boolean = false,
+) {
         setLoadingMessage("Syncing cloud saves")
         setLoadingProgress(-1f)
         val postSyncInfo = SteamService.beginLaunchApp(
             appId = gameId,
             prefixToPath = prefixToPath,
             ignorePendingOperations = ignorePendingOperations,
-            preferredSave = preferredSave,
-            parentScope = this,
+        preferredSave = preferredSave,
+        parentScope = parentScope,
             isOffline = isOffline,
             onProgress = { message, progress ->
                 setLoadingMessage(message)
                 setLoadingProgress(if (progress < 0) -1f else progress)
-            },
+        },
+        propagateDeletions = propagateDeletions,
+        applyRemoteTombstones = applyRemoteTombstones,
         ).await()
 
         setLoadingDialogVisible(false)
@@ -2381,4 +2628,3 @@ fun preLaunchApp(
             -> onSuccess(context, appId)
         }
     }
-}

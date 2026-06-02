@@ -23,5 +23,8 @@ data class GameDisplayInfo(
     val compatibilityMessage: String? = null, // Compatibility message text (e.g., "Works on your GPU")
     val compatibilityColor: ULong? = null, // Compatibility message color (ARGB)
     val hltbStats: app.gamenative.utils.HltbService.Stats? = null, // How Long To Beat stats
+    // -- runtime indicator for the detail screen "Runtime" InfoCard.
+    // string-typed for parity with LibraryItem.runtime + Container.runtime; default "wine".
+    val runtime: String = "wine",
 )
 

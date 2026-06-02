@@ -37,7 +37,7 @@ import com.winlator.container.Container
 fun DrivesTabContent(state: ContainerConfigState) {
     val context = LocalContext.current
     val config = state.config.value
-    SettingsGroup() {
+    SettingsGroup {
         if (config.drives.isNotEmpty()) {
             for (drive in Container.drivesIterator(config.drives)) {
                 val driveLetter = drive[0]

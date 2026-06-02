@@ -102,6 +102,33 @@ private data class InstallSizeInfo(
     val availableBytes: Long,
 )
 
+// downloads the wine imagefs (if installable) then installs it. BLOCKING via .get() so callers
+// can sequence a launch only after install finishes -- kicking onClickPlay early black-screens
+// xserver. runs on the caller's IO scope; downloadImageFs needs that scope for its progress loop.
+private suspend fun installImageFsIfNeeded(
+    context: Context,
+    container: Container,
+    scope: CoroutineScope,
+) {
+    val variant = container.containerVariant
+    if (!SteamService.isImageFsInstallable(context, variant)) {
+        SteamService.downloadImageFs(
+            onDownloadProgress = { /* no-op: dialog shows indeterminate progress */ },
+            scope,
+            variant = variant,
+            context = context,
+        ).await()
+    }
+    if (!SteamService.isImageFsInstalled(context)) {
+        withContext(Dispatchers.Main) {
+            SplitCompat.install(context)
+        }
+        ImageFsInstaller.installIfNeededFuture(context, context.assets, container) { _ ->
+            // no-op: dialog shows indeterminate progress
+        }.get()
+    }
+}
+
 private fun buildInstallPromptState(context: Context, info: InstallSizeInfo): MessageDialogState {
     val message = context.getString(
         R.string.steam_install_space_prompt,
@@ -154,6 +181,21 @@ class SteamAppScreen : BaseAppScreen() {
 
         fun shouldShowUninstallDialog(appId: String): Boolean {
             return uninstallDialogAppIds.contains(appId)
+        }
+
+        // debug-build-only: clear-cloud confirm dialog state (keyed by gameId)
+        private val clearCloudConfirmGameIds = mutableStateListOf<Int>()
+
+        fun showClearCloudConfirm(gameId: Int) {
+            if (!clearCloudConfirmGameIds.contains(gameId)) clearCloudConfirmGameIds.add(gameId)
+        }
+
+        fun hideClearCloudConfirm(gameId: Int) {
+            clearCloudConfirmGameIds.remove(gameId)
+        }
+
+        fun shouldShowClearCloudConfirm(gameId: Int): Boolean {
+            return clearCloudConfirmGameIds.contains(gameId)
         }
 
         // Shared state for install dialog - map of gameId to MessageDialogState
@@ -246,16 +288,23 @@ class SteamAppScreen : BaseAppScreen() {
             iconUrl = null,
             gameId = gameId,
             appId = libraryItem.appId,
+            runtime = "wine",
         )
 
         var isInstalled by remember(libraryItem.appId) {
             mutableStateOf(SteamService.isAppInstalled(gameId))
         }
 
+        // re-resolves on auto-flip when Html5InstallWatcher re-emits after the runtime flips
+        var runtime by remember(libraryItem.appId) {
+            mutableStateOf(ContainerUtils.resolveRuntime(context, libraryItem.appId))
+        }
+
         DisposableEffect(gameId) {
             val listener: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
                 if (event.appId == gameId) {
                     isInstalled = SteamService.isAppInstalled(gameId)
+                    runtime = ContainerUtils.resolveRuntime(context, libraryItem.appId)
                 }
             }
             PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(listener)
@@ -363,6 +412,7 @@ class SteamAppScreen : BaseAppScreen() {
             playtimeText = playtimeText,
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
+            runtime = runtime,
         )
     }
 
@@ -650,6 +700,61 @@ class SteamAppScreen : BaseAppScreen() {
     }
 
     /**
+     * Override Run Container ("Open Container") to warn html5 users about first-wine costs.
+     * Wine variants pass through unchanged. Two distinct one-time costs may apply for html5:
+     *   1. Shared Wine Ubuntu ImageFs (~600 MB) -- once across all games.
+     *   2. Per-container Windows prefix extraction (~1.5 GB) -- once per html5 container, on
+     *      first wine boot. Detected via empty `appVersion` extra (XServerScreen sets it after
+     *      first successful boot).
+     * Wine variants and html5 containers already wine-booted: no prompt.
+     */
+    @Composable
+    override fun getRunContainerOption(
+        context: Context,
+        libraryItem: LibraryItem,
+        onClickPlay: (Boolean) -> Unit,
+    ): AppMenuOption? {
+        val gameId = libraryItem.gameId
+        val appId = libraryItem.appId
+
+        return AppMenuOption(
+            AppOptionMenuType.RunContainer,
+            onClick = {
+                val container = ContainerUtils.getOrCreateContainer(context, appId)
+                val variant = container.containerVariant
+                val isHtml5 = variant.equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
+                val needsImageFs = isHtml5 && !SteamService.isImageFsInstalled(context)
+                // appVersion extra is set by XServerScreen after first wine boot (see
+                // XServerScreen firstTimeBoot logic). empty = wine has never extracted the
+                // prefix into this container.
+                val needsPrefix = isHtml5 && container.getExtra("appVersion").isEmpty()
+
+                if (needsImageFs || needsPrefix) {
+                    val message = when {
+                        needsImageFs && needsPrefix -> R.string.steam_imagefs_open_container_message_full
+                        needsImageFs -> R.string.steam_imagefs_open_container_message_imagefs_only
+                        else -> R.string.steam_imagefs_open_container_message_prefix_only
+                    }
+                    showInstallDialog(
+                        gameId,
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.INSTALL_IMAGEFS_FOR_OPEN_CONTAINER,
+                            title = context.getString(R.string.steam_imagefs_open_container_title),
+                            message = context.getString(message),
+                            confirmBtnText = context.getString(R.string.proceed),
+                            dismissBtnText = context.getString(R.string.cancel),
+                        ),
+                    )
+                } else {
+                    // wine variant OR html5 already wine-booted → standard run-container.
+                    onRunContainerClick(context, libraryItem, onClickPlay)
+                }
+            },
+        )
+    }
+
+    /**
      * Override Reset Container to show confirmation dialog
      */
     @Composable
@@ -853,23 +958,33 @@ class SteamAppScreen : BaseAppScreen() {
             ),
         )
 
+        if (BuildConfig.DEBUG) {
+            options += AppMenuOption(
+                AppOptionMenuType.ClearSteamCloud,
+                onClick = { showClearCloudConfirm(gameId) },
+            )
+        }
+
         return options
     }
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {
         val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        return ContainerUtils.toContainerData(container)
+        return ContainerUtils.mergeHtml5SidecarFields(
+            ContainerUtils.toContainerData(container),
+            libraryItem.appId,
+        )
     }
 
-    override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
+    override suspend fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData): Boolean {
         val container = getContainer(context, libraryItem.appId)
-        ContainerUtils.applyToContainer(context, libraryItem.appId, config)
-
+        if (!ContainerUtils.applyToContainerGated(context, libraryItem.appId, config)) return false
         if (container.language != config.language) {
             CoroutineScope(Dispatchers.IO).launch {
                 SteamService.downloadApp(libraryItem.gameId)
             }
         }
+        return true
     }
 
     override fun supportsContainerConfig(): Boolean = true
@@ -882,6 +997,7 @@ class SteamAppScreen : BaseAppScreen() {
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         val context = LocalContext.current
         val gameId = libraryItem.gameId
@@ -891,6 +1007,12 @@ class SteamAppScreen : BaseAppScreen() {
 
         // Track uninstall dialog state
         var showUninstallDialog by remember { mutableStateOf(shouldShowUninstallDialog(libraryItem.appId)) }
+        var showClearCloudDialog by remember(gameId) { mutableStateOf(shouldShowClearCloudConfirm(gameId)) }
+
+        LaunchedEffect(gameId) {
+            snapshotFlow { shouldShowClearCloudConfirm(gameId) }
+                .collect { showClearCloudDialog = it }
+        }
 
         LaunchedEffect(libraryItem.appId) {
             snapshotFlow { shouldShowUninstallDialog(libraryItem.appId) }
@@ -1221,6 +1343,32 @@ class SteamAppScreen : BaseAppScreen() {
                     }
                 }
 
+                DialogType.INSTALL_IMAGEFS_FOR_OPEN_CONTAINER -> {
+                    {
+                        hideInstallDialog(gameId)
+                        // html5 open-container path: install wine imagefs first (BLOCKING via .get()),
+                        // then drive onClickPlay(true) on main thread to launch into the container view.
+                        // WHY blocking: kicking onClickPlay before install finishes black-screens xserver.
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+                                installImageFsIfNeeded(context, container, this)
+                                // launch ONLY on success -- failure path falls into catch and skips onClickPlay.
+                                withContext(Dispatchers.Main) {
+                                    onClickPlay(true)
+                                }
+                            } catch (e: Exception) {
+                                SnackbarManager.show(
+                                    context.getString(
+                                        R.string.steam_imagefs_install_failed,
+                                        e.message ?: "",
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+
                 else -> null
             }
 
@@ -1309,6 +1457,42 @@ class SteamAppScreen : BaseAppScreen() {
                     TextButton(onClick = {
                         hideUninstallDialog(libraryItem.appId)
                     }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                },
+            )
+        }
+
+        if (showClearCloudDialog) {
+            val gameName = appInfo?.name ?: libraryItem.name
+            AlertDialog(
+                onDismissRequest = { hideClearCloudConfirm(gameId) },
+                title = { Text(stringResource(R.string.debug_clear_cloud_title)) },
+                text = { Text(stringResource(R.string.debug_clear_cloud_body, gameName)) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            hideClearCloudConfirm(gameId)
+                            CoroutineScope(Dispatchers.IO).launch {
+                                SnackbarManager.show(context.getString(R.string.debug_clear_cloud_in_progress, gameName))
+                                val result = SteamService.clearCloudForApp(gameId)
+                                if (result.success) {
+                                    SnackbarManager.show(
+                                        context.getString(R.string.debug_clear_cloud_success, result.filesDeleted, gameName),
+                                    )
+                                } else {
+                                    SnackbarManager.show(
+                                        context.getString(R.string.debug_clear_cloud_failed, result.error ?: "unknown"),
+                                    )
+                                }
+                            }
+                        },
+                    ) {
+                        Text(stringResource(R.string.debug_clear_cloud_confirm), color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { hideClearCloudConfirm(gameId) }) {
                         Text(stringResource(R.string.cancel))
                     }
                 },
@@ -1422,9 +1606,9 @@ class SteamAppScreen : BaseAppScreen() {
                         val idsString = enabledIds.joinToString(",")
                         CoroutineScope(Dispatchers.IO).launch {
                             appDao?.updateWorkshopState(gameId, enabledIds.isNotEmpty(), idsString)
-                            if (enabledIds.isNotEmpty()
-                                && SteamService.isAppInstalled(gameId)
-                                && NetworkMonitor.hasInternet.value
+                            if (enabledIds.isNotEmpty() &&
+                                SteamService.isAppInstalled(gameId) &&
+                                NetworkMonitor.hasInternet.value
                             ) {
                                 WorkshopManager.startWorkshopDownload(gameId, enabledIds, context)
                             } else if (enabledIds.isEmpty() && SteamService.isAppInstalled(gameId)) {

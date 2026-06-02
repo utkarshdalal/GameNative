@@ -2,6 +2,7 @@ package app.gamenative.service.epic
 
 import android.content.Context
 import app.gamenative.data.EpicGame
+import app.gamenative.html5.savesync.SyncFileFilter
 import app.gamenative.service.epic.manifest.EpicManifest
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.Net
@@ -185,10 +186,14 @@ object EpicCloudSavesManager {
             val lastSync = getSyncTimestamp(context, game.id)
             val cloudTimestamp = manifestInfo.lastModified
 
-            // Get local newest file timestamp
+            // exclude chromium-internal files (Crashpad, etc.) so a fresh crash dump's mtime
+            // doesn't drag "newest" forward and trick conflict detection into a spurious upload.
             val localNewestTimestamp = saveDir?.let { dir ->
                 dir.walkTopDown()
                     .filter { it.isFile }
+                    .filterNot {
+                        SyncFileFilter.isChromiumInternal(it.relativeTo(dir).path.replace('\\', '/'))
+                    }
                     .maxOfOrNull { it.lastModified() }
             }
 
@@ -341,6 +346,10 @@ object EpicCloudSavesManager {
                     .filter { it.isFile }
                     .forEach { file ->
                         val relativePath = file.relativeTo(saveDir).path.replace("\\", "/")
+                        if (SyncFileFilter.isChromiumInternal(relativePath)) {
+                            Timber.tag("Epic").d("[Cloud Saves] Skipping chromium-internal local: $relativePath")
+                            return@forEach
+                        }
                         localFiles[relativePath] = file.lastModified()
                     }
             }
@@ -649,6 +658,10 @@ object EpicCloudSavesManager {
                         Timber.tag("Epic").w("[Cloud Saves] Skipping path traversal: ${fileManifest.filename}")
                         return@forEach
                     }
+                    if (SyncFileFilter.isChromiumInternal(fileManifest.filename.replace('\\', '/'))) {
+                        Timber.tag("Epic").d("[Cloud Saves] Skipping chromium-internal cloud entry: ${fileManifest.filename}")
+                        return@forEach
+                    }
                     outputFile.parentFile?.mkdirs()
 
                     Timber.tag("Epic").d("[Cloud Saves] Reconstructing file: ${fileManifest.filename}")
@@ -905,6 +918,14 @@ object EpicCloudSavesManager {
 
             val allFiles = saveDir.walkTopDown()
                 .filter { it.isFile }
+                .filterNot {
+                    val rel = it.relativeTo(saveDir).path.replace("\\", "/")
+                    val excluded = SyncFileFilter.isChromiumInternal(rel)
+                    if (excluded) {
+                        Timber.tag("Epic").d("[Cloud Saves] Skipping chromium-internal upload: $rel")
+                    }
+                    excluded
+                }
                 .toList()
 
             // Filter to only requested files if fileList is provided
@@ -1184,7 +1205,9 @@ object EpicCloudSavesManager {
     }
 
     // Resolve save directory path
-    private fun resolveSaveDirectory(context: Context, game: EpicGame, accountId: String): File? {
+    // visible to CloudSource.EpicSavedGames so html5 path can resolve the same wine save root
+    // sync uses internally -- single source of truth for path-template expansion.
+    internal fun resolveSaveDirectory(context: Context, game: EpicGame, accountId: String): File? {
         val cloudSaveFolder = game.saveFolder.ifEmpty { return null }
 
         // Get the container's Wine prefix path (similar to GOG)

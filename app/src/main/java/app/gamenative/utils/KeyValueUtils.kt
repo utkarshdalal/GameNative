@@ -282,3 +282,10 @@ fun KeyValue.printAllKeyValues(depth: Int = 0) {
         Timber.i("$tabString${parent.name}: ${parent.value}")
     }
 }
+
+// memory-only sibling to generateSteamApp's launch parser. order matches config.launch
+// children index -- parallel to LaunchInfo list. used by the OMORI decrypt path to read
+// the Steam launch arg `--<aes-key>` without bumping Room schema. callers cache via
+// SteamService.cacheLaunchArguments.
+fun KeyValue.parseLaunchArguments(): List<String> =
+    this["config"]["launch"].children.map { it["arguments"].value.orEmpty() }

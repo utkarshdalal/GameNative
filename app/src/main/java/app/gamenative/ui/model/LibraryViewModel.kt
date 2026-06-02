@@ -96,6 +96,10 @@ class LibraryViewModel @Inject constructor(
     var listState: LazyGridState by mutableStateOf(LazyGridState(0, 0))
 
     private val onInstallStatusChanged: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = {
+        // event payload is the bare int appId -- can't target a specific prefix without
+        // store context. install events are rare (download completion); a full cache clear
+        // costs one disk re-scan on the next filter pass, still a win over O(N) per scroll.
+        runtimeCache.clear()
         onFilterApps(paginationCurrentPage)
     }
 
@@ -107,6 +111,18 @@ class LibraryViewModel @Inject constructor(
 
     private val onRecommendationToggleChanged: (AndroidEvent.RecommendationToggleChanged) -> Unit = {
         refreshRecommendationHero()
+    }
+
+    // cached so each onFilterApps pass is O(library) cache reads, not O(library) disk reads.
+    // invalidated (full clear) on LibraryInstallStatusChanged. Container.runtime can change at
+    // install time AND via a Container Config webview↔wine flip -- the latter emits this event
+    // from ContainerUtils.applyToContainerGated specifically to keep this cache honest.
+    // sized like the library (a few thousand entries max); ConcurrentHashMap is sufficient.
+    private val runtimeCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    private fun resolveRuntimeFor(context: Context, appId: String): String =
+        runtimeCache.getOrPut(appId) {
+            app.gamenative.utils.ContainerUtils.resolveRuntime(context, appId)
     }
 
     // How many items loaded on one page of results
@@ -510,6 +526,11 @@ class LibraryViewModel @Inject constructor(
     fun addCustomGameFolder(path: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val normalizedPath = File(path).absolutePath
+            // sideload "install" moment: emit CustomGameDiscovered after a NEW folder is added
+            // so Html5InstallWatcher can auto-fingerprint + flip variant=html5 when an engine
+            // matches. mirrors Steam/GOG/Epic/Amazon download-completion auto-flip. user can
+            // still manually flip variant via Container Config -- Html5OptInService is the
+            // shared seam for both paths.
             val libraryItem = CustomGameScanner.createLibraryItemFromFolder(normalizedPath)
             if (libraryItem == null) {
                 Timber.tag("LibraryViewModel").w("Selected folder is not a valid custom game: $normalizedPath")
@@ -517,12 +538,23 @@ class LibraryViewModel @Inject constructor(
             }
 
             val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
-            if (!manualFolders.contains(normalizedPath)) {
+            val wasNew = !manualFolders.contains(normalizedPath)
+            if (wasNew) {
                 manualFolders.add(normalizedPath)
                 PrefManager.customGameManualFolders = manualFolders
             }
 
             CustomGameScanner.invalidateCache()
+
+            // emit only on first add (matches Steam/GOG fire-once-per-install semantics).
+            // appId comes off the LibraryItem we already constructed -- CUSTOM_GAME_<int>.
+            if (wasNew && GameSource.CUSTOM_GAME.matches(libraryItem.appId)) {
+                val numericId = GameSource.CUSTOM_GAME.idOf(libraryItem.appId).toIntOrNull()
+                if (numericId != null) {
+                    PluviaApp.events.emit(AndroidEvent.CustomGameDiscovered(numericId))
+                }
+            }
+
             onFilterApps(paginationCurrentPage)
         }
     }
@@ -701,6 +733,7 @@ class LibraryViewModel @Inject constructor(
                         heroImageUrl = item.getHeroUrl(),
                         isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
                         sizeBytes = totalSizeBytes,
+                        runtime = resolveRuntimeFor(context, "${GameSource.STEAM.name}_${item.id}"),
                     ),
                     isInstalled = isInstalled,
                     lastPlayed = lastPlayedFor(appId),
@@ -719,7 +752,13 @@ class LibraryViewModel @Inject constructor(
             val customEntries = customGameItems
                 .filter { !steamEntriesAppIds.contains(it.appId) } // Filter out imported steam appId
                 .filter { passesStatsFilters(currentState, it.gameSource, it.name) }
-                .map { LibraryEntry(it, true, lastPlayed = lastPlayedFor(it.appId)) }
+                .map { item ->
+                    LibraryEntry(
+                        item.copy(runtime = resolveRuntimeFor(context, item.appId)),
+                        true,
+                        lastPlayed = lastPlayedFor(item.appId),
+                    )
+                }
 
             // Filter GOG games
             val filteredGOGGames = gogGameList
@@ -758,6 +797,7 @@ class LibraryViewModel @Inject constructor(
                             heroImageUrl = game.imageUrl.ifEmpty { game.iconUrl },
                             isShared = false,
                             gameSource = GameSource.GOG,
+                            runtime = resolveRuntimeFor(context, appId),
                         ),
                         isInstalled = game.isInstalled,
                         lastPlayed = lastPlayedFor(appId),
@@ -801,6 +841,7 @@ class LibraryViewModel @Inject constructor(
                             heroImageUrl = game.artPortrait.ifEmpty { game.artSquare.ifEmpty { game.artCover } },
                             isShared = false,
                             gameSource = GameSource.EPIC,
+                            runtime = resolveRuntimeFor(context, appId),
                         ),
                         isInstalled = game.isInstalled,
                         lastPlayed = lastPlayedFor(appId),
@@ -847,6 +888,7 @@ class LibraryViewModel @Inject constructor(
                             gridHeroImageScale = AmazonArtwork.GRID_HERO_ZOOM_SCALE,
                             isShared = false,
                             gameSource = GameSource.AMAZON,
+                            runtime = resolveRuntimeFor(context, appId),
                         ),
                         isInstalled = game.isInstalled,
                         lastPlayed = lastPlayedFor(appId),
@@ -885,23 +927,32 @@ class LibraryViewModel @Inject constructor(
                 currentTab.showCustom
             }
 
-            val includeGOG = (if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
+            val includeGOG = (
+                if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
                 currentState.showGOGInLibrary
             } else {
-                currentTab.showGoG
-            }) && GOGService.hasStoredCredentials(context)
+                    currentTab.showGoG
+                }
+                ) &&
+                GOGService.hasStoredCredentials(context)
 
-            val includeEpic = (if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
+            val includeEpic = (
+                if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
                 currentState.showEpicInLibrary
             } else {
-                currentTab.showEpic
-            }) && EpicService.hasStoredCredentials(context)
+                    currentTab.showEpic
+                }
+                ) &&
+                EpicService.hasStoredCredentials(context)
 
-            val includeAmazon = (if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
+            val includeAmazon = (
+                if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
                 currentState.showAmazonInLibrary
             } else {
-                currentTab.showAmazon
-            }) && AmazonService.hasStoredCredentials(context)
+                    currentTab.showAmazon
+                }
+                ) &&
+                AmazonService.hasStoredCredentials(context)
 
             // Combine both lists and apply sort option
             val sortComparator: Comparator<LibraryEntry> = when (currentState.currentSortOption) {
@@ -1048,7 +1099,7 @@ class LibraryViewModel @Inject constructor(
      * Compares the game name against the search query using an exact match
      * and then again using a normalized form with diacritics removed.
      */
-    private fun matches(gameName: String, searchQuery:String): Boolean {
+    private fun matches(gameName: String, searchQuery: String): Boolean {
         return gameName.contains(searchQuery, ignoreCase = true) || gameName.unaccent().contains(searchQuery, ignoreCase = true)
     }
 

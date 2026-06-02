@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!--  Winlator  -->
+    <!-- Winlator -->
     <string-array name="screen_size_entries">
         <item>Custom</item>
         <item>640x480 (4:3)</item>
@@ -263,6 +263,7 @@
     <string-array name="container_variant_entries">
         <item>glibc</item>
         <item>bionic</item>
+        <item>html5</item>
     </string-array>
     <string-array name="vkbasalt_sharpness_entries">
         <item>None</item>
