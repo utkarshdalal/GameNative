@@ -23,6 +23,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Check out leveldb + snappy submodules
+      run: git submodule update --init --recursive iq80-leveldb/upstream snappy-java/upstream
     - name: Add swap
       run: |
         sudo fallocate -l 8G /mnt/swapfile.ci
