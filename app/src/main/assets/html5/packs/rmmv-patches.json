@@ -1,0 +1,15 @@
+{
+  "byAppId": {
+    "STEAM_1150690": {
+      "patches": [
+        {"type": "asset-decrypt", "kind": "omori-aes-ctr"},
+        {"type": "response-body-replace", "pathPattern": "js/rpg_managers\\.js$", "find": "fs.readFileSync(base + \"/\" + this._path + name)", "replace": "null"},
+        {"type": "response-body-replace", "pathPattern": "js/rpg_managers\\.js$", "find": "script.innerHTML = applySteamLibrary(buff).toString()", "replace": "script.src = url; script.async = false"},
+        {"type": "response-body-replace", "pathPattern": "js/plugins/.*\\.OMORI$", "find": "if(!!err) {throw new Error(err)}", "replace": "if(!!err) {return;}"},
+        {"type": "response-body-replace", "pathPattern": "js/plugins/.*\\.OMORI$", "find": "static _applyCanvasFilter() {\r\n\t\t\tGraphics._renderer.clear();", "replace": "static _applyCanvasFilter() {\r\n\t\t\tif (Graphics._renderer && Graphics._renderer.clear) Graphics._renderer.clear();"},
+        {"type": "response-body-replace", "pathPattern": "js/rpg_managers\\.js$", "find": "    } catch (e) {\r\n        this.catchException(e);", "replace": "    } catch (e) {\r\n        try { console.error('[gamenative] SceneManager.run caught:', e && (e.stack || e.message || String(e))); } catch (_e) {}\r\n        this.catchException(e);"},
+        {"type": "response-body-replace", "pathPattern": "js/plugins/.*\\.OMORI$", "find": "    else this._realScale = 0.5;", "replace": "    /* gamenative: don't snap to 0.5 on android viewports where computed scale < 1 */"}
+      ]
+    }
+  }
+}
