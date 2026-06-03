@@ -95,8 +95,10 @@ class PhysicalControllerHandler(
 
                     val winHandler = xServer?.winHandler
                     val state = profile?.gamepadState
-                    if (winHandler != null)
+                    if (winHandler != null) {
+                        winHandler.sendGamepadState()
                         winHandler.sendVirtualGamepadState(state)
+                    }
                     return true
                 }
             }
@@ -153,8 +155,10 @@ class PhysicalControllerHandler(
 
                 val winHandler = xServer?.winHandler
                 val state = profile?.gamepadState
-                if (winHandler != null)
+                if (winHandler != null) {
+                    winHandler.sendGamepadState()
                     winHandler.sendVirtualGamepadState(state)
+                }
                 return true
             }
         }

@@ -250,9 +250,18 @@ Java_com_winlator_renderer_VulkanRenderer_nativeSetPresentMode(JNIEnv*, jobject,
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_winlator_renderer_VulkanRenderer_nativeSetEffect(JNIEnv*, jobject, jlong handle, jint effectId, jfloat sharpness) {
+Java_com_winlator_renderer_VulkanRenderer_nativeSetEffect(
+    JNIEnv*, jobject, jlong handle, jint effectId, jfloat sharpness,
+    jint effectMask, jfloat brightness, jfloat contrast, jfloat gamma) {
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
-    if (r) r->setEffect((int)effectId, (float)sharpness);
+    if (r) r->setEffect(
+        (int)effectId,
+        (float)sharpness,
+        (int)effectMask,
+        (float)brightness,
+        (float)contrast,
+        (float)gamma
+    );
 }
 
 extern "C" JNIEXPORT jintArray JNICALL

@@ -20,6 +20,7 @@ import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
+import `in`.dragonbra.javasteam.enums.EOSType
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileChangeList
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileInfo
@@ -1351,7 +1352,7 @@ object SteamAutoCloud {
             // Build VDF structure using KeyValue
             val root = KeyValue(appId.toString())
             root.children.add(KeyValue("ChangeNumber", changeNumber.toString()))
-            root.children.add(KeyValue("OSType", "-500")) // -500 = Windows
+            root.children.add(KeyValue("OSType", EOSType.WinUnknown.toString())) // 0 = Windows
 
             // Create an entry for each file using the filename as the key
             // Sort files by their cloud path for consistent ordering

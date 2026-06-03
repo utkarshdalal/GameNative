@@ -437,6 +437,7 @@ fun XServerScreen(
     var debugGestureName by remember { mutableStateOf("") }
     var debugGestureKey by remember { mutableIntStateOf(0) }
     var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
+    var shouldForceResumeOnMenuClose by remember { mutableStateOf(false) }
     var showQuickMenu by remember { mutableStateOf(false) }
     var quickMenuToolsVisible by remember { mutableStateOf(false) }
     var quickMenuWineProcesses by remember { mutableStateOf<List<ProcessInfo>>(emptyList()) }
@@ -528,8 +529,10 @@ fun XServerScreen(
     }
 
     LaunchedEffect(xServerView?.renderer) {
-        (xServerView?.renderer as? VulkanRenderer)?.let { renderer ->
-            applyScreenEffectsConfig(renderer, loadScreenEffectsConfig(container))
+        val screenEffectsConfig = loadScreenEffectsConfig(container)
+        when (val renderer = xServerView?.renderer) {
+            is VulkanRenderer -> applyScreenEffectsConfig(renderer, screenEffectsConfig)
+            is GLRenderer -> applyScreenEffectsConfig(renderer, screenEffectsConfig)
         }
     }
 
@@ -930,15 +933,8 @@ fun XServerScreen(
         if (!keyboardRequestedFromOverlay) {
             imeInputReceiver?.hideKeyboard()
         }
-        val resumeImmediatelyForKeyboard = keyboardRequestedFromOverlay && manualResumeMode
+        shouldForceResumeOnMenuClose = keyboardRequestedFromOverlay && manualResumeMode && !keepPausedForEditor
         keyboardRequestedFromOverlay = false
-        if (!keepPausedForEditor) {
-            if (resumeImmediatelyForKeyboard) {
-                forceResumeIfSuspended()
-            } else {
-                resumeIfAllowedAfterOverlay()
-            }
-        }
         showQuickMenu = false
     }
 
@@ -1220,10 +1216,6 @@ fun XServerScreen(
         }
 
         Timber.i("BackHandler")
-
-        // Suspend game and audio while the navigation overlay is visible.
-        pauseForOverlayIfAllowed()
-        keyboardRequestedFromOverlay = false
 
         val controllerManager = ControllerManager.getInstance()
         controllerManager.scanForDevices()
@@ -2482,6 +2474,18 @@ fun XServerScreen(
             onLsfgMultiplierChanged = ::applyLsfgMultiplier,
             onLsfgFlowScaleChanged = ::applyLsfgFlowScale,
             onLsfgPerformanceModeChanged = ::applyLsfgPerformanceMode,
+            onAnimationComplete = { isMenuVisible ->
+                if (isMenuVisible) {
+                    pauseForOverlayIfAllowed()
+                } else {
+                    if (shouldForceResumeOnMenuClose) {
+                        forceResumeIfSuspended()
+                        shouldForceResumeOnMenuClose = false
+                    } else if (!keepPausedForEditor) {
+                        resumeIfAllowedAfterOverlay()
+                    }
+                }
+            },
         )
 
         if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu && !keepPausedForEditor) {

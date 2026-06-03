@@ -59,9 +59,6 @@ object SteamBootstrap {
     @JvmStatic
     private external fun nativePrepareApp(appIds: IntArray)
 
-    @JvmStatic
-    private external fun nativeSetCloudEnabled(appId: Int, enabled: Boolean)
-
     /**
      * Boot the native Steam client. Safe to call multiple times: only the
      * first call performs the dlopen + handshake; subsequent calls are no-ops
@@ -339,22 +336,6 @@ object SteamBootstrap {
             nativePrepareApp(finalIds)
         } catch (t: Throwable) {
             Log.e(TAG, "nativePrepareApp threw", t)
-        }
-    }
-
-    fun setCloudEnabled(appId: Int, enabled: Boolean) {
-        if (!initialized) {
-            Log.i(TAG, "setCloudEnabled($appId, $enabled) called but not initialized; skipping")
-            return
-        }
-        if (appId <= 0) {
-            Log.i(TAG, "setCloudEnabled called with appId=$appId; skipping")
-            return
-        }
-        try {
-            nativeSetCloudEnabled(appId, enabled)
-        } catch (t: Throwable) {
-            Log.e(TAG, "nativeSetCloudEnabled threw", t)
         }
     }
 }

@@ -26,19 +26,18 @@ import app.gamenative.BuildConfig;
  * Suspend Behavior Modes:
  *
  * 1. suspend-via-thread (default):
- *    Suspend: cancel timers -> set isPaused=true + updateSink(true) -> suspend timer (200ms) -> suspendProcess(SIGSTOP)
- *    Resume: cancel timers -> set isPaused=false -> resumeProcess(SIGCONT) -> resume timer (200ms) -> updateSink(false)
+ *    Suspend: cancel timers -> set isPaused=true + updateSink(true) -> suspendProcess(SIGSTOP)
+ *    Resume: cancel timers -> set isPaused=false -> resumeProcess(SIGCONT) -> updateSink(false)
  *    - Fast and lightweight, uses ProcessHelper.suspendProcess/resumeProcess
- *    - isPaused set immediately, updateSink(true) on pause immediately, updateSink(false) on resume delayed
- *    - Process suspend/resume operations are delayed via timers
+ *    - No delays, all operations execute immediately
  *
  * 2. suspend-via-pactl (power-saving):
  *    Suspend: cancel timers -> set isPaused=true + updateSink(true) -> suspend timer (120s/10s debug) -> pactl unload module
- *    Resume: cancel timers -> set isPaused=false -> resume timer (200ms) -> check sink alive -> pactl load module OR updateSink(false)
- *    - Quick resume (< timeout): Cancels timer and resumes sink (no module reload)
+ *    Resume: cancel timers -> set isPaused=false -> check sink alive -> pactl load module OR updateSink(false)
+ *    - Quick resume (< timeout): Cancels timer and resumes sink immediately (no module reload)
  *    - Long pause (≥ timeout): Module unloaded to save CPU
  *    - Resume after unload: Automatically detects missing sink and reloads module
- *    - isPaused set immediately, all sink operations delayed via timer to avoid UI blocking
+ *    - No delay on resume for instant audio restoration
  */
 public class PulseAudioComponent extends EnvironmentComponent {
     public static final String SUSPEND_BEHAVIOR_THREAD = "suspend-via-thread";
@@ -115,18 +114,12 @@ public class PulseAudioComponent extends EnvironmentComponent {
                 updateSink(true);
 
                 if (SUSPEND_BEHAVIOR_THREAD.equals(suspendBehavior)) {
-                    // Schedule process suspend after 200ms delay
-                    startSuspendTimer(200, () -> {
-                        synchronized (lock) {
-                            if (isPaused.get() && isServerRunning()) {
-                                int pid = ProcessHelper.getPid(pulseProcess);
-                                if (pid > 0) {
-                                    ProcessHelper.suspendProcess(pid);
-                                    Log.d("PulseAudioComponent", "Process suspended with PID: " + pid);
-                                }
-                            }
-                        }
-                    });
+                    // Suspend process immediately (no delay)
+                    int pid = ProcessHelper.getPid(pulseProcess);
+                    if (pid > 0) {
+                        ProcessHelper.suspendProcess(pid);
+                        Log.d("PulseAudioComponent", "Process suspended with PID: " + pid);
+                    }
                 } else {
                     // Schedule module unload after delay (120s release / 10s debug)
                     long unloadDelay = BuildConfig.DEBUG ? 10000 : 120000;
@@ -159,22 +152,15 @@ public class PulseAudioComponent extends EnvironmentComponent {
                     isPaused.set(false);
 
                     if (SUSPEND_BEHAVIOR_THREAD.equals(suspendBehavior)) {
-                        // Resume Process first
+                        // Resume process and update sink immediately (no delay)
                         int pid = ProcessHelper.getPid(pulseProcess);
                         if (pid > 0) {
                             ProcessHelper.resumeProcess(pid);
                             Log.d("PulseAudioComponent", "Process resumed with PID: " + pid);
                         }
-
-                        // Schedule updateSink after 200ms delay
-                        startResumeTimer(200, () -> {
-                            synchronized (lock) {
-                                if (!isPaused.get() && isServerRunning()) {
-                                    updateSink(false);
-                                }
-                            }
-                        });
+                        updateSink(false);
                     } else {
+                        // Pactl mode: resume immediately (no delay)
                         if (!isModuleLoaded.get()) {
                             if (!isSinkAlive()) {
                                 Log.d("PulseAudioComponent", "Sink not alive, reloading module");
@@ -183,15 +169,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
                                 updateSink(false);
                             }
                         } else {
-                            // Start a timer here to avoid UI locking
-                            startResumeTimer(200, () -> {
-                                synchronized (lock) {
-                                    if (!isPaused.get() && isServerRunning()) {
-                                        // Check if module was unloaded during pause, reload if needed
-                                        updateSink(false);
-                                    }
-                                }
-                            });
+                            updateSink(false);
                         }
                     }
                     Log.d("PulseAudioComponent", "Audio resumed");
