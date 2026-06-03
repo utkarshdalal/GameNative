@@ -15,7 +15,6 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
-import app.gamenative.BuildConfig;
 import com.winlator.PrefManager;
 
 import app.gamenative.utils.LsfgVkManager;
@@ -51,6 +50,7 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 
+import app.gamenative.BuildConfig;
 import app.gamenative.PluviaApp;
 import app.gamenative.events.AndroidEvent;
 import app.gamenative.service.SteamService;
@@ -671,7 +671,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
-        StringBuilder output = new StringBuilder();
         EnvVars envVars = new EnvVars();
         addBox64EnvVars(envVars, false);
 
@@ -716,49 +715,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             FileUtils.chmod(box64File, 0755);
         }
 
-        // Execute the command and capture its output.
-        //
-        // IMPORTANT: stderr MUST be drained concurrently with stdout, even when
-        // includeStderr=false. Wine spits out a flood of fixme:/err: lines on
-        // stderr; if we don't read it, the kernel's pipe buffer (~64 KB) fills,
-        // wine's next write(stderr,...) blocks, and the whole subprocess hangs
-        // forever -- which then deadlocks our stdout read too. SteamTokenLogin
-        // calls this with includeStderr=false, so this used to hang on boot.
-        try {
-            if (BuildConfig.MODERN_ANDROID) finalCommand = "/system/bin/linker64 " + finalCommand;
-            Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
-            java.lang.Process process = Runtime.getRuntime().exec(finalCommand, envVars.toStringArray(), workingDir != null ? workingDir : imageFs.getRootDir());
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-
-            final StringBuilder stderrBuf = new StringBuilder();
-            Thread stderrPump = new Thread(() -> {
-                try {
-                    String l;
-                    while ((l = errorReader.readLine()) != null) {
-                        if (includeStderr) stderrBuf.append(l).append('\n');
-                        // else: discard, but we MUST still consume the stream
-                    }
-                } catch (IOException ignored) {
-                    // Subprocess closed stderr; fine.
-                }
-            }, "execShellCommand-stderr-pump");
-            stderrPump.setDaemon(true);
-            stderrPump.start();
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
-            }
-            process.waitFor();
-            stderrPump.join();
-            if (includeStderr) output.append(stderrBuf);
-        } catch (Exception e) {
-            output.append("Error: ").append(e.getMessage());
-        }
-
-        // Format output: trim trailing whitespace/newlines
-        return output.toString().trim();
+        Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
+        return ProcessHelper.execWithOutput(finalCommand, envVars.toStringArray(),
+                workingDir != null ? workingDir : imageFs.getRootDir(), includeStderr);
     }
 
     public void restartWineServer() {

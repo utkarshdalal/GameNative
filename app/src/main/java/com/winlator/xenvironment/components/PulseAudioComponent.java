@@ -2,9 +2,6 @@ package com.winlator.xenvironment.components;
 
 import android.content.Context;
 import android.media.AudioManager;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Process;
 import android.util.Log;
 
 import com.winlator.core.AppUtils;
@@ -16,44 +13,56 @@ import com.winlator.xenvironment.EnvironmentComponent;
 import com.winlator.xenvironment.XEnvironment;
 
 import java.io.File;
-import java.lang.reflect.Field;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import app.gamenative.BuildConfig;
 
+/**
+ * PulseAudio component with timer-based suspend strategy for efficient pause/resume management.
+ *
+ * Suspend Behavior Modes:
+ *
+ * 1. suspend-via-thread (default):
+ *    Suspend: cancel timers -> set isPaused=true + updateSink(true) -> suspendProcess(SIGSTOP)
+ *    Resume: cancel timers -> set isPaused=false -> resumeProcess(SIGCONT) -> updateSink(false)
+ *    - Fast and lightweight, uses ProcessHelper.suspendProcess/resumeProcess
+ *    - No delays, all operations execute immediately
+ *
+ * 2. suspend-via-pactl (power-saving):
+ *    Suspend: cancel timers -> set isPaused=true + updateSink(true) -> suspend timer (120s/10s debug) -> pactl unload module
+ *    Resume: cancel timers -> set isPaused=false -> check sink alive -> pactl load module OR updateSink(false)
+ *    - Quick resume (< timeout): Cancels timer and resumes sink immediately (no module reload)
+ *    - Long pause (≥ timeout): Module unloaded to save CPU
+ *    - Resume after unload: Automatically detects missing sink and reloads module
+ *    - No delay on resume for instant audio restoration
+ */
 public class PulseAudioComponent extends EnvironmentComponent {
+    public static final String SUSPEND_BEHAVIOR_THREAD = "suspend-via-thread";
+    public static final String SUSPEND_BEHAVIOR_PACTL = "suspend-via-pactl";
+
     private final UnixSocketConfig socketConfig;
+    private final String SINK_NAME = "AAudioSink";
 
     private java.lang.Process pulseProcess;
     private final Object lock = new Object();
     private float volume = 1.0f;
     private byte performanceMode = 1;
-    private boolean isPaused = false;
+    private final AtomicBoolean isPaused = new AtomicBoolean(false);
+    private final AtomicBoolean isModuleLoaded = new AtomicBoolean(true);
+    private Timer suspendTimer;
+    private Timer resumeTimer;
+    private String suspendBehavior = SUSPEND_BEHAVIOR_THREAD;
+    private boolean lowLatency = false;
 
-    public PulseAudioComponent(UnixSocketConfig socketConfig) {
+    public PulseAudioComponent(UnixSocketConfig socketConfig, String suspendBehavior, boolean lowLatency) {
         this.socketConfig = socketConfig;
+        this.suspendBehavior = suspendBehavior;
+        this.lowLatency = lowLatency;
     }
 
-    // Add this method to detect optimal sample rate
-    private int getOptimalSampleRate() {
-        final int fallbackSampleRate = 44100;
-        AudioManager audioManager = (AudioManager) environment.getContext().getSystemService(Context.AUDIO_SERVICE);
-        if (audioManager == null) {
-            return fallbackSampleRate;
-        }
-
-        String rate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE);
-        if (rate == null) {
-            return fallbackSampleRate;
-        }
-
-        try {
-            int parsed = Integer.parseInt(rate.trim());
-            return parsed > 0 ? parsed : fallbackSampleRate;
-        } catch (NumberFormatException ignored) {
-            return fallbackSampleRate;
-        }
-    }
 
     @Override
     public void start() {
@@ -61,7 +70,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
         synchronized (lock) {
             if (pulseProcess == null) {
                 pulseProcess = execPulseAudio();
-                isPaused = false;
+                isPaused.set(false);
             }
         }
     }
@@ -70,6 +79,10 @@ public class PulseAudioComponent extends EnvironmentComponent {
     public void stop() {
         Log.d("PulseAudioComponent", "Stopping...");
         synchronized (lock) {
+            // Cancel timers if active
+            stopSuspendTimer();
+            stopResumeTimer();
+
             if (isServerRunning()) {
                 pulseProcess.destroy(); // Sends SIGTERM
                 try {
@@ -83,47 +96,83 @@ public class PulseAudioComponent extends EnvironmentComponent {
                 }
                 pulseProcess = null;
             }
-            isPaused = false;
+            isPaused.set(false);
         }
     }
 
     public void pause() {
-        Log.d("PulseAudioComponent", "Pausing...");
         synchronized (lock) {
-            if (!isPaused) {
-                if (isServerRunning()) {
-                    executePactl(true);
-                    isPaused = true;
-                    final int capturedPid = getPid();
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (!isPaused.get() && isServerRunning()) {
+                Log.d("PulseAudioComponent", "Pausing...");
+
+                // Cancel timers if active
+                stopSuspendTimer();
+                stopResumeTimer();
+
+                // Suspend sink and set isPaused together immediately
+                isPaused.set(true);
+                updateSink(true);
+
+                if (SUSPEND_BEHAVIOR_THREAD.equals(suspendBehavior)) {
+                    // Suspend process immediately (no delay)
+                    int pid = ProcessHelper.getPid(pulseProcess);
+                    if (pid > 0) {
+                        ProcessHelper.suspendProcess(pid);
+                        Log.d("PulseAudioComponent", "Process suspended with PID: " + pid);
+                    }
+                } else {
+                    // Schedule module unload after delay (120s release / 10s debug)
+                    long unloadDelay = BuildConfig.DEBUG ? 10000 : 120000;
+
+                    startSuspendTimer(unloadDelay, () -> {
                         synchronized (lock) {
-                            if (isPaused && capturedPid == getPid()) {
-                                ProcessHelper.suspendProcess(capturedPid);
-                                Log.d("PulseAudioComponent", "Audio paused");
+                            if (isPaused.get() && isServerRunning()) {
+                                unloadModule();
+                                Log.d("PulseAudioComponent", "Module unloaded after timeout");
                             }
                         }
-                    }, 200);
+                    });
                 }
+                Log.d("PulseAudioComponent", "Audio paused");
             }
         }
     }
 
     public void resume() {
-        Log.d("PulseAudioComponent", "Resuming...");
         synchronized (lock) {
-            if (isPaused) {
+            if (isPaused.get()) {
+                Log.d("PulseAudioComponent", "Resuming...");
+
+                // Cancel timers if active
+                stopSuspendTimer();
+                stopResumeTimer();
+
                 if (isServerRunning()) {
-                    final int capturedPid = getPid();
-                    ProcessHelper.resumeProcess(capturedPid);
-                    isPaused = false;
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        synchronized (lock) {
-                            if (!isPaused && capturedPid == getPid()) {
-                                executePactl(false);
-                                Log.d("PulseAudioComponent", "Audio resumed");
-                            }
+                    // Set isPaused immediately
+                    isPaused.set(false);
+
+                    if (SUSPEND_BEHAVIOR_THREAD.equals(suspendBehavior)) {
+                        // Resume process and update sink immediately (no delay)
+                        int pid = ProcessHelper.getPid(pulseProcess);
+                        if (pid > 0) {
+                            ProcessHelper.resumeProcess(pid);
+                            Log.d("PulseAudioComponent", "Process resumed with PID: " + pid);
                         }
-                    }, 200);
+                        updateSink(false);
+                    } else {
+                        // Pactl mode: resume immediately (no delay)
+                        if (!isModuleLoaded.get()) {
+                            if (!isSinkAlive()) {
+                                Log.d("PulseAudioComponent", "Sink not alive, reloading module");
+                                loadModule();
+                            } else {
+                                updateSink(false);
+                            }
+                        } else {
+                            updateSink(false);
+                        }
+                    }
+                    Log.d("PulseAudioComponent", "Audio resumed");
                 } else {
                     pulseProcess = null;
                     start();
@@ -132,22 +181,48 @@ public class PulseAudioComponent extends EnvironmentComponent {
         }
     }
 
-    public boolean isServerRunning() {
-        return pulseProcess != null && pulseProcess.isAlive();
+    private void startSuspendTimer(long delayMs, Runnable action) {
+        stopSuspendTimer();
+
+        suspendTimer = new Timer();
+        TimerTask suspendTask = new TimerTask() {
+            @Override
+            public void run() {
+                action.run();
+            }
+        };
+        suspendTimer.schedule(suspendTask, delayMs);
     }
 
-    public int getPid() {
-        if (isServerRunning()) {
-            try {
-                Field pidField = pulseProcess.getClass().getDeclaredField("pid");
-                pidField.setAccessible(true);
-                return pidField.getInt(pulseProcess);
-            } catch (Exception e) {
-                return -1;
-            }
-        } else {
-            return -1;
+    private void stopSuspendTimer() {
+        if (suspendTimer != null) {
+            suspendTimer.cancel();
+            suspendTimer = null;
         }
+    }
+
+    private void startResumeTimer(long delayMs, Runnable action) {
+        stopResumeTimer();
+
+        resumeTimer = new Timer();
+        TimerTask resumeTask = new TimerTask() {
+            @Override
+            public void run() {
+                action.run();
+            }
+        };
+        resumeTimer.schedule(resumeTask, delayMs);
+    }
+
+    private void stopResumeTimer() {
+        if (resumeTimer != null) {
+            resumeTimer.cancel();
+            resumeTimer = null;
+        }
+    }
+
+    public boolean isServerRunning() {
+        return pulseProcess != null && pulseProcess.isAlive();
     }
 
     public void setVolume(float volume) {
@@ -159,8 +234,6 @@ public class PulseAudioComponent extends EnvironmentComponent {
     }
 
     private java.lang.Process execPulseAudio() {
-        final int bitRate = getOptimalSampleRate();
-
         Context context = environment.getContext();
         String nativeLibraryDir = context.getApplicationInfo().nativeLibraryDir;
         // nativeLibraryDir = nativeLibraryDir.replace("arm64", "arm64-v8a");
@@ -171,10 +244,13 @@ public class PulseAudioComponent extends EnvironmentComponent {
         }
 
         File configFile = new File(workingDir, "default.pa");
+        String sinkParams = "volume=" + this.volume + " performance_mode=" + ((int) this.performanceMode);
+        if (lowLatency) {
+            sinkParams += " low_latency=true";
+        }
         FileUtils.writeString(configFile, String.join("\n",
                 "load-module module-native-protocol-unix auth-anonymous=1 auth-cookie-enabled=0 socket=\""+socketConfig.path+"\"",
-                "load-module module-aaudio-sink volume=" + this.volume + " performance_mode=" + ((int) this.performanceMode) + " rate=" + bitRate,
-                "set-default-sink AAudioSink"
+                "load-module module-aaudio-sink " + sinkParams
         ));
 
         String archName = AppUtils.getArchName();
@@ -201,7 +277,45 @@ public class PulseAudioComponent extends EnvironmentComponent {
         return ProcessHelper.startProcess(command, envVars.toStringArray(), workingDir);
     }
 
-    private void executePactl(boolean suspend) {
+    private void execPactlCommand(String command) {
+        Context context = environment.getContext();
+        String nativeLibraryDir = context.getApplicationInfo().nativeLibraryDir;
+        File workingDir = new File(context.getFilesDir(), "/pulseaudio");
+
+        if (!workingDir.isDirectory()) {
+            workingDir.mkdirs();
+            FileUtils.chmod(workingDir, 0771);
+        }
+
+        File modulesDir = new File(workingDir, "modules");
+        EnvVars envVars = new EnvVars();
+        envVars.put("LD_LIBRARY_PATH", "/system/lib64:" + nativeLibraryDir + ":" + modulesDir);
+        envVars.put("HOME", workingDir);
+        envVars.put("TMPDIR", XEnvironment.getTmpDir(context));
+        envVars.put("PULSE_SERVER", socketConfig.path);
+
+        ProcessHelper.exec(workingDir + "/pactl " + command, envVars.toStringArray(), workingDir);
+    }
+
+    private void updateSink(boolean suspend) {
+        execPactlCommand("suspend-sink " + SINK_NAME + " " + (suspend ? "true" : "false"));
+    }
+
+    private void unloadModule() {
+        execPactlCommand("unload-module module-aaudio-sink");
+        isModuleLoaded.set(false);
+    }
+
+    private void loadModule() {
+        String sinkParams = "volume=" + this.volume + " performance_mode=" + ((int) this.performanceMode);
+        if (lowLatency) {
+            sinkParams += " low_latency=true";
+        }
+        execPactlCommand("load-module module-aaudio-sink " + sinkParams);
+        isModuleLoaded.set(true);
+    }
+
+    private boolean isSinkAlive() {
         Context context = environment.getContext();
         String nativeLibraryDir = context.getApplicationInfo().nativeLibraryDir;
 
@@ -211,13 +325,16 @@ public class PulseAudioComponent extends EnvironmentComponent {
             FileUtils.chmod(workingDir, 0771);
         }
 
+        File modulesDir = new File(workingDir, "modules");
         EnvVars envVars = new EnvVars();
-        envVars.put("LD_LIBRARY_PATH", "/system/lib64:"+nativeLibraryDir);
+        envVars.put("LD_LIBRARY_PATH", "/system/lib64:" + nativeLibraryDir + ":" + modulesDir);
         envVars.put("HOME", workingDir);
         envVars.put("TMPDIR", XEnvironment.getTmpDir(context));
         envVars.put("PULSE_SERVER", socketConfig.path);
 
-        String suspendCommand = workingDir + "/pactl suspend-sink AAudioSink " + (suspend ? "true" : "false");
-        ProcessHelper.exec(suspendCommand, envVars.toStringArray(), workingDir);
+        String checkCommand = workingDir + "/pactl list sinks short";
+        String output = ProcessHelper.execWithOutput(checkCommand, envVars.toStringArray(), workingDir);
+        //Log.d("PulseAudioComponent", "isSinkAlive output: " + output);
+        return output.contains(SINK_NAME);
     }
 }

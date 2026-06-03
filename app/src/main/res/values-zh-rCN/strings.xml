@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">正在通过Steam移动应用确认登录…</string>
     <string name="steam_2fa_device">请输入您验证器应用中的双重验证码</string>
     <string name="steam_2fa_email">请输入发送至邮箱 %s 的验证码</string>
+    <string name="steam_2fa_use_guard_totp">或使用双因素认证码</string>
     <string name="steam_install_space_prompt">要安装的应用有以下空间要求：\n\n\t下载大小：%1$s\n\t磁盘占用空间：%2$s\n\t可用空间：%3$s</string>
     <string name="steam_install_space">下载大小：%1$s\n\t磁盘占用空间：%2$s\n\t可用空间：%3$s</string>
     <string name="steam_install_not_enough_space">要安装的应用需要 %1$s 空间，但设备仅剩 %2$s 可用空间</string>
@@ -636,6 +637,10 @@
     <string name="width">宽度</string>
     <string name="height">高度</string>
     <string name="audio_driver">音频驱动程序</string>
+    <string name="pulseaudio_suspend_behavior">PulseAudio 暂停行为</string>
+    <string name="pulseaudio_suspend_behavior_thread">通过线程暂停（默认）</string>
+    <string name="pulseaudio_suspend_behavior_pactl">通过 Pactl 暂停（省电）</string>
+    <string name="pulseaudio_low_latency">PulseAudio 低延迟模式</string>
     <string name="show_fps">显示帧率</string>
     <string name="portrait_mode">竖屏模式</string>
     <string name="portrait_mode_description">适用于 8BitDo FlipPad/GameSir Pocket Taco 类型控制器</string>
@@ -650,6 +655,8 @@
     <string name="launch_steam_client_beta">启动 Steam 客户端（Beta）</string>
     <string name="steam_offline_mode">Steam 离线模式</string>
     <string name="steam_offline_mode_description">以离线模式启动 Steam 游戏</string>
+    <string name="epic_offline_mode">Epic 离线模式</string>
+    <string name="epic_offline_mode_description">以离线模式启动 Epic 游戏</string>
     <string name="achievement_unlocked">成就已解锁</string>
     <string name="achievements">成就</string>
     <string name="achievements_view_all">查看全部</string>
@@ -678,6 +685,8 @@
     <string name="vkd3d_feature_level">VKD3D 功能级别</string>
     <string name="use_dri3">使用 DRI3</string>
     <string name="use_dri3_description">在某些设备上禁用此功能或许能修复图形故障</string>
+    <string name="use_legacy_renderer">使用旧版渲染器</string>
+    <string name="use_legacy_renderer_description">使用旧版 GLRenderer 而非 VulkanRenderer。VulkanRenderer 可提升性能，但目前为 Beta 版，可能会造成问题。</string>
     <string name="sync_frame">同步每帧图像</string>
     <string name="disable_present_wait">禁用 KHR_present_wait</string>
     <string name="present_modes">呈现模式</string>
@@ -1551,4 +1560,21 @@
     <string name="game_launch_tip_23">提示：如果你使用的是 Mali GPU，请使用系统驱动。</string>
     <string name="game_launch_tip_24">提示：出现黑屏？尝试使用菜单中的\"%s\"选项检查驱动是否正常工作。</string>
     <string name="launch_bionic_steam_description">启用在线游玩并提升兼容性\n不一定总能正常工作\n尝试前请先备份存档</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">前端同步</string>
+    <string name="settings_interface_frontend_sync_subtitle">自动将已安装的游戏导出到游戏库前端程序</string>
+    <string name="frontend_sync_dialog_title">前端同步</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">自定义游戏</string>
+    <string name="frontend_sync_not_set">未设置</string>
+    <string name="frontend_sync_clear_confirm_title">删除旧的导出文件？</string>
+    <string name="frontend_sync_clear_confirm_message">从上一个目录删除 .%1$s 文件？</string>
+    <string name="frontend_sync_confirm_remove">删除</string>
+    <string name="frontend_sync_confirm_keep">保留</string>
+    <string name="frontend_sync_resync_all">重新同步全部</string>
+    <string name="frontend_sync_resync_complete">前端同步完成</string>
 </resources>

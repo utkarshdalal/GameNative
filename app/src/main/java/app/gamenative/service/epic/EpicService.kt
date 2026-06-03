@@ -262,7 +262,7 @@ class EpicService : Service() {
 
                 // Trigger library refresh event
                 app.gamenative.PluviaApp.events.emitJava(
-                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(appId)
+                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(appId, app.gamenative.data.GameSource.EPIC)
                 )
 
                 Timber.tag("Epic").i("Game uninstalled: $appId")

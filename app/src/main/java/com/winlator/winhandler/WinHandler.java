@@ -557,7 +557,7 @@ public class WinHandler {
             Context context = activity.getApplicationContext();
             File gamepadShmDir = new File(
                     context.getFilesDir(),
-                    "imagefs/gamepad_shm"
+                    "gamepad_shm"
             );
 
             if (!gamepadShmDir.exists() && !gamepadShmDir.mkdirs()) {
@@ -574,7 +574,7 @@ public class WinHandler {
             }
 
             for (int i = 0; i < extraGamepadBuffers.length; i++) {
-                String extra_mem_path = "/data/data/app.gamenative/files/imagefs/gamepad_shm/gamepad" + (i + 1) + ".mem";
+                File extra_mem_path = new File(gamepadShmDir, "gamepad" + (i + 1) + ".mem");
                 if (extraGamepadBuffers[i] != null) continue;
                 extraGamepadRafs[i] = new RandomAccessFile(extra_mem_path, "rw");
                 extraGamepadRafs[i].setLength(64);
@@ -589,6 +589,24 @@ public class WinHandler {
             }
         }
         this.running = true;
+        startSendThread();
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                DatagramSocket datagramSocket = new DatagramSocket((SocketAddress) null);
+                this.socket = datagramSocket;
+                datagramSocket.setReuseAddress(true);
+                this.socket.bind(new InetSocketAddress((InetAddress) null, SERVER_PORT));
+                while (this.running) {
+                    this.socket.receive(this.receivePacket);
+                    synchronized (this.actions) {
+                        this.receiveData.rewind();
+                        byte requestCode = this.receiveData.get();
+                        handleRequest(requestCode, this.receivePacket.getPort());
+                    }
+                }
+            } catch (IOException ignored) {
+            }
+        });
         startRumblePoller();
     }
 

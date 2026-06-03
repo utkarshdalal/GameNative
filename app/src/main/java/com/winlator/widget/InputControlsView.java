@@ -933,6 +933,7 @@ public class InputControlsView extends View {
             WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
             if (winHandler != null) {
                 GamepadState state = profile.getGamepadState();
+                winHandler.sendGamepadState();
                 winHandler.sendVirtualGamepadState(state);
             }
         }
@@ -1010,6 +1011,17 @@ public class InputControlsView extends View {
                     }
                 } else {
                     showKeyboardPressed = false;
+                }
+                return;
+            }
+            else if (binding == Binding.ALT_ENTER) {
+                if (isActionDown) {
+                    xServer.injectKeyPress(Binding.KEY_ALT_L.keycode);
+                    xServer.injectKeyPress(Binding.KEY_ENTER.keycode);
+                }
+                else {
+                    xServer.injectKeyRelease(Binding.KEY_ENTER.keycode);
+                    xServer.injectKeyRelease(Binding.KEY_ALT_L.keycode);
                 }
                 return;
             }

@@ -10,6 +10,7 @@ import app.gamenative.R
 import app.gamenative.data.AmazonCredentials
 import app.gamenative.data.AmazonGame
 import app.gamenative.data.DownloadInfo
+import app.gamenative.data.GameSource
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
@@ -472,7 +473,7 @@ class AmazonService : Service() {
                         downloadInfo.clearPersistedBytesDownloaded(installPath)
                         SnackbarManager.show("Download completed: ${game.title}")
                         PluviaApp.events.emitJava(
-                            AndroidEvent.LibraryInstallStatusChanged(game.appId)
+                            AndroidEvent.LibraryInstallStatusChanged(game.appId, GameSource.AMAZON)
                         )
                     } else {
                         val error = result.exceptionOrNull()
@@ -642,7 +643,7 @@ class AmazonService : Service() {
                     )
 
                     PluviaApp.events.emitJava(
-                        AndroidEvent.LibraryInstallStatusChanged(game.appId)
+                        AndroidEvent.LibraryInstallStatusChanged(game.appId, GameSource.AMAZON)
                     )
 
                     Timber.tag("Amazon").i("Game uninstalled: $productId")
@@ -887,7 +888,7 @@ class AmazonService : Service() {
             ContainerUtils.deleteContainer(context, "AMAZON_${game.appId}")
         }
 
-        PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(game.appId))
+        PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(game.appId, GameSource.AMAZON))
     }
 
     // ── Instance helpers (for callers that hold a direct reference) ───────────

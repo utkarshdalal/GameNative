@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Bitte bestätige die Anmeldung in der Steam Mobile App…</string>
     <string name="steam_2fa_device">Bitte gib deinen Zwei-Faktor-Code aus deiner Authenticator-App ein.</string>
     <string name="steam_2fa_email">Bitte gib den Authentifizierungscode ein, der an die E-Mail-Adresse %s gesendet wurde</string>
+    <string name="steam_2fa_use_guard_totp">Oder verwende den Code für die Zwei-Faktor-Authentifizierung</string>
     <string name="steam_install_space_prompt">Die App benötigt folgenden Speicherplatz. Möchtest du fortfahren?\n\n\tDownloadgröße: %1$s\n\tBelegter Speicher: %2$s\n\tVerfügbarer Speicher: %3$s</string>
     <string name="steam_install_not_enough_space">Diese App benötigt %1$s Speicherplatz, aber auf diesem Gerät sind nur noch %2$s frei</string>
     <string name="steam_cancel_download_message">Bist du sicher, dass du den Download der App abbrechen möchtest?</string>
@@ -619,6 +620,10 @@
     <string name="width">Breite</string>
     <string name="height">Höhe</string>
     <string name="audio_driver">Audiotreiber</string>
+    <string name="pulseaudio_suspend_behavior">PulseAudio Suspend-Verhalten</string>
+    <string name="pulseaudio_suspend_behavior_thread">Suspend via Thread (Standard)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Suspend via Pactl (Energiesparen)</string>
+    <string name="pulseaudio_low_latency">PulseAudio Niedrige Latenz Modus</string>
     <string name="show_fps">FPS anzeigen</string>
     <string name="portrait_mode">Hochformat-Modus</string>
     <string name="portrait_mode_description">Für 8BitDo FlipPad/GameSir Pocket Taco Controller</string>
@@ -632,6 +637,8 @@
     <string name="launch_steam_client_beta">Steam-Client starten (Beta)</string>
     <string name="steam_offline_mode">Steam Offline-Modus</string>
     <string name="steam_offline_mode_description">Steam-Spiele im Offlinemodus starten</string>
+    <string name="epic_offline_mode">Epic Offline-Modus</string>
+    <string name="epic_offline_mode_description">Epic-Spiele im Offlinemodus starten</string>
     <string name="achievement_unlocked">Erfolg freigeschaltet</string>
     <string name="achievements">Erfolge</string>
     <string name="achievements_view_all">Alle anzeigen</string>
@@ -659,6 +666,8 @@
     <string name="vkd3d_feature_level">VKD3D-Featurelevel</string>
     <string name="use_dri3">DRI3 verwenden</string>
     <string name="use_dri3_description">Deaktivieren kann Grafikprobleme auf manchen Geräten beheben</string>
+    <string name="use_legacy_renderer">Alten Renderer verwenden</string>
+    <string name="use_legacy_renderer_description">Verwendet den alten GLRenderer statt des VulkanRenderers. Der VulkanRenderer verbessert die Leistung, befindet sich aber in der Beta-Phase und kann Probleme verursachen.</string>
     <string name="sync_frame">Jedes Frame synchronisieren</string>
     <string name="disable_present_wait">KHR_present_wait deaktivieren</string>
     <string name="present_modes">Präsentationsmodi</string>
@@ -1416,4 +1425,21 @@
     <string name="game_launch_tip_23">Tipp: Wenn Sie eine Mali-GPU haben, verwenden Sie bitte die Systemtreiber.</string>
     <string name="game_launch_tip_24">Tipp: Zeigt sich ein schwarzer Bildschirm? Versuchen Sie die \"%s\"-Option im Menü, um zu überprüfen, ob Ihre Treiber korrekt funktionieren.</string>
     <string name="launch_bionic_steam_description">Aktiviert Online-Spiel und verbessert die Kompatibilität\nFunktioniert nicht immer\nSichere deine Spielstände, bevor du es ausprobierst</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Frontend-Synchronisierung</string>
+    <string name="settings_interface_frontend_sync_subtitle">Installierte Spiele automatisch für Frontend-Programme exportieren</string>
+    <string name="frontend_sync_dialog_title">Frontend-Synchronisierung</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Benutzerdefinierte Spiele</string>
+    <string name="frontend_sync_not_set">Nicht festgelegt</string>
+    <string name="frontend_sync_clear_confirm_title">Alte Exportdateien entfernen?</string>
+    <string name="frontend_sync_clear_confirm_message">.%1$s-Dateien aus dem vorherigen Verzeichnis entfernen?</string>
+    <string name="frontend_sync_confirm_remove">Entfernen</string>
+    <string name="frontend_sync_confirm_keep">Behalten</string>
+    <string name="frontend_sync_resync_all">Alle neu synchronisieren</string>
+    <string name="frontend_sync_resync_complete">Frontend-Synchronisierung abgeschlossen</string>
 </resources>

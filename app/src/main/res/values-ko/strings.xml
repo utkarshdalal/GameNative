@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Steam 모바일 앱을 사용하여 로그인을 확인하세요…</string>
     <string name="steam_2fa_device">인증 앱에서 2단계 인증 코드를 입력하세요.</string>
     <string name="steam_2fa_email">%s 이메일로 전송된 인증 코드를 입력하세요</string>
+    <string name="steam_2fa_use_guard_totp">또는 2단계 인증 코드를 사용하세요</string>
     <string name="steam_install_space_prompt">설치할 앱의 공간 요구사항은 다음과 같습니다. 계속하시겠습니까?\n\n\t다운로드 크기: %1$s\n\t디스크 사용량: %2$s\n\t사용 가능한 공간: %3$s</string>
     <string name="steam_install_space">다운로드 크기: %1$s\n디스크 사용량: %2$s\n사용 가능한 공간: %3$s</string>
     <string name="steam_install_not_enough_space">설치할 앱에 %1$s의 공간이 필요하지만 이 기기에는 %2$s만 남아있습니다</string>
@@ -655,6 +656,10 @@
     <string name="width">너비</string>
     <string name="height">높이</string>
     <string name="audio_driver">오디오 드라이버</string>
+    <string name="pulseaudio_suspend_behavior">PulseAudio 일시 중단 동작</string>
+    <string name="pulseaudio_suspend_behavior_thread">스레드를 통한 일시 중단 (기본값)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Pactl을 통한 일시 중단 (절전)</string>
+    <string name="pulseaudio_low_latency">PulseAudio 저지연 모드</string>
     <string name="show_fps">FPS 표시</string>
     <string name="portrait_mode">세로 모드</string>
     <string name="portrait_mode_description">8BitDo FlipPad/GameSir Pocket Taco 유형 컨트롤러용</string>
@@ -669,6 +674,8 @@
     <string name="launch_steam_client_beta">Steam 클라이언트 실행(베타)</string>
     <string name="steam_offline_mode">Steam 오프라인 모드</string>
     <string name="steam_offline_mode_description">Steam 게임을 오프라인 모드로 실행</string>
+    <string name="epic_offline_mode">Epic 오프라인 모드</string>
+    <string name="epic_offline_mode_description">Epic 게임을 오프라인 모드로 실행</string>
     <string name="achievement_unlocked">업적 달성</string>
     <string name="achievements">업적</string>
     <string name="achievements_view_all">모두 보기</string>
@@ -697,6 +704,8 @@
     <string name="vkd3d_feature_level">VKD3D 기능 수준</string>
     <string name="use_dri3">DRI3 사용</string>
     <string name="use_dri3_description">비활성화하면 일부 장치에서 그래픽 결함이 수정될 수 있습니다</string>
+    <string name="use_legacy_renderer">레거시 렌더러 사용</string>
+    <string name="use_legacy_renderer_description">VulkanRenderer 대신 레거시 GLRenderer를 사용합니다. VulkanRenderer는 성능을 향상시키지만, 베타 버전이므로 문제가 발생할 수 있습니다.</string>
     <string name="sync_frame">모든 프레임 동기화</string>
     <string name="disable_present_wait">KHR_present_wait 비활성화</string>
     <string name="present_modes">프레젠트 모드</string>
@@ -1480,4 +1489,21 @@
     <string name="game_launch_tip_23">팁: Mali GPU를 사용하는 경우 시스템 드라이버를 사용하세요.</string>
     <string name="game_launch_tip_24">팁: 검은 화면이 나타나나요? 메뉴에서 \"%s\" 옵션을 사용하여 드라이버가 올바르게 작동하는지 확인하세요.</string>
     <string name="launch_bionic_steam_description">온라인 플레이 활성화, 호환성 향상\n항상 작동하지 않을 수 있음\n시도하기 전에 저장 파일을 백업하세요</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">프론트엔드 동기화</string>
+    <string name="settings_interface_frontend_sync_subtitle">설치된 게임을 게임 라이브러리 프론트엔드에 자동으로 내보내기</string>
+    <string name="frontend_sync_dialog_title">프론트엔드 동기화</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">커스텀 게임</string>
+    <string name="frontend_sync_not_set">설정되지 않음</string>
+    <string name="frontend_sync_clear_confirm_title">이전 내보내기 파일을 제거하시겠습니까?</string>
+    <string name="frontend_sync_clear_confirm_message">이전 디렉토리에서 .%1$s 파일을 제거하시겠습니까?</string>
+    <string name="frontend_sync_confirm_remove">제거</string>
+    <string name="frontend_sync_confirm_keep">유지</string>
+    <string name="frontend_sync_resync_all">전체 재동기화</string>
+    <string name="frontend_sync_resync_complete">프론트엔드 동기화 완료</string>
 </resources>

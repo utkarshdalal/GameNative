@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Folosește aplicația Steam Mobile pentru a confirma autentificarea…</string>
     <string name="steam_2fa_device">Introdu codul de autentificare din aplicația ta de autentificare.</string>
     <string name="steam_2fa_email">Introdu codul trimis la adresa de email %s</string>
+    <string name="steam_2fa_use_guard_totp">Sau folosește codul de autentificare în doi pași</string>
     <string name="steam_install_space_prompt">Aplicația ce urmează să fie instalată are următoarele cerințe de spațiu. Vrei să continui?\n\n\tDimensiune descărcare: %1$s\n\tSpațiu pe disc: %2$s\n\tSpațiu disponibil: %3$s</string>
     <string name="steam_install_space">Dimensiune descărcare: %1$s\nSpațiu pe disc: %2$s\nSpațiu disponibil: %3$s</string>
     <string name="steam_install_not_enough_space">Aplicația necesită %1$s spațiu, dar pe dispozitiv sunt disponibile doar %2$s</string>
@@ -646,6 +647,10 @@
 	<string name="width">Lățime</string>
 	<string name="height">Înălțime</string>
 	<string name="audio_driver">Driver audio</string>
+	<string name="pulseaudio_suspend_behavior">Comportament suspendare PulseAudio</string>
+	<string name="pulseaudio_suspend_behavior_thread">Suspendare prin Thread (Implicit)</string>
+	<string name="pulseaudio_suspend_behavior_pactl">Suspendare prin Pactl (Economisire energie)</string>
+	<string name="pulseaudio_low_latency">Mod latență redusă PulseAudio</string>
 	<string name="show_fps">Afișează FPS</string>
 	<string name="portrait_mode">Mod portret</string>
 	<string name="portrait_mode_description">Pentru controlere de tip 8BitDo FlipPad/GameSir Pocket Taco</string>
@@ -660,6 +665,8 @@
 	<string name="launch_steam_client_beta">Pornește Steam Client (Beta)</string>
 	<string name="steam_offline_mode">Mod Offline Steam</string>
 	<string name="steam_offline_mode_description">Pornește jocurile Steam în mod offline</string>
+	<string name="epic_offline_mode">Mod Offline Epic</string>
+	<string name="epic_offline_mode_description">Pornește jocurile Epic în mod offline</string>
 	<string name="achievement_unlocked">Realizare deblocată</string>
 	<string name="achievements">Realizări</string>
 	<string name="achievements_view_all">Vezi toate</string>
@@ -688,6 +695,8 @@
 	<string name="vkd3d_feature_level">Nivel funcțional VKD3D</string>
 	<string name="use_dri3">Folosește DRI3</string>
 	<string name="use_dri3_description">Dezactivarea poate rezolva artefacte grafice pe unele dispozitive</string>
+	<string name="use_legacy_renderer">Folosește redarea veche</string>
+	<string name="use_legacy_renderer_description">Folosește vechiul GLRenderer în loc de VulkanRenderer. VulkanRenderer îmbunătățește performanța, dar este în beta și poate cauza probleme.</string>
 	<string name="sync_frame">Sincronizează fiecare cadru</string>
 	<string name="disable_present_wait">Dezactivează KHR_present_wait</string>
 	<string name="present_modes">Moduri de prezentare</string>
@@ -1481,4 +1490,21 @@
 	<string name="game_launch_tip_23">Sfat: Dacă aveți un GPU Mali, vă rugăm să utilizați driverele de sistem.</string>
 	<string name="game_launch_tip_24">Sfat: Ecran negru? Încercați opțiunea \"%s\" din meniu pentru a verifica dacă driverele dvs. funcționează corect.</string>
     <string name="launch_bionic_steam_description">Activează jocul online și îmbunătățește compatibilitatea\nNu funcționează întotdeauna\nFă backup salvărilor înainte să încerci</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Sincronizare frontend</string>
+    <string name="settings_interface_frontend_sync_subtitle">Exportați automat jocurile instalate pentru frontend-uri de bibliotecă</string>
+    <string name="frontend_sync_dialog_title">Sincronizare frontend</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Jocuri personalizate</string>
+    <string name="frontend_sync_not_set">Nesetat</string>
+    <string name="frontend_sync_clear_confirm_title">Eliminați fișierele de export vechi?</string>
+    <string name="frontend_sync_clear_confirm_message">Eliminați fișierele .%1$s din directorul anterior?</string>
+    <string name="frontend_sync_confirm_remove">Eliminați</string>
+    <string name="frontend_sync_confirm_keep">Păstrați</string>
+    <string name="frontend_sync_resync_all">Resincronizare completă</string>
+    <string name="frontend_sync_resync_complete">Sincronizare frontend finalizată</string>
 </resources>

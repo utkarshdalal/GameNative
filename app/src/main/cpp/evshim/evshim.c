@@ -80,7 +80,7 @@ static void build_gamepad_dir(char *out, size_t size)
         base = "/data/data/app.gamenative/files";
     }
 
-    snprintf(out, size, "%s/imagefs/gamepad_shm", base);
+    snprintf(out, size, "%s/gamepad_shm", base);
 }
 
 static int mkdir_gameshm(const char *path)

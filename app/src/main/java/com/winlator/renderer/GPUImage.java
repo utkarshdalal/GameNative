@@ -112,11 +112,13 @@ public class GPUImage extends Texture {
         }
     }
 
-    public void unlock() {
+    public int unlock() {
         if (hardwareBufferPtr != 0 && virtualData != null) {
-            unlockHardwareBuffer(hardwareBufferPtr);
+            int fenceFd = unlockHardwareBuffer(hardwareBufferPtr);
             virtualData = null;
+            return fenceFd;
         }
+        return -1;
     }
 
     private native long hardwareBufferFromSocket(int fd);
@@ -127,7 +129,7 @@ public class GPUImage extends Texture {
 
     private native ByteBuffer lockHardwareBuffer(long hardwareBufferPtr);
 
-    private native void unlockHardwareBuffer(long hardwareBufferPtr);
+    private native int unlockHardwareBuffer(long hardwareBufferPtr);
 
     private native long createImageKHR(long hardwareBufferPtr, int textureId);
 
