@@ -1,5 +1,6 @@
 package app.gamenative.db.dao
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -13,6 +14,15 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+
+data class SteamAppPlayStatsUpdate(
+    @ColumnInfo(name = "id")
+    val id: Int,
+    @ColumnInfo(name = "last_played")
+    val lastPlayed: Long,
+    @ColumnInfo(name = "play_time_minutes")
+    val playTimeMinutes: Int,
+)
 
 // An app is considered "owned" if there's any non-expired license that grants access
 // to it: either its own package's license, or any DLC of it (e.g. for free-to-start
@@ -61,14 +71,14 @@ interface SteamAppDao {
     @Update
     suspend fun update(app: SteamApp)
 
-    // observe change count — triggers re-load without pulling all blobs into one CursorWindow
+    // observe lightweight library changes — triggers re-load without pulling all blobs into one CursorWindow
     @Query(
-        "SELECT COUNT(*) FROM steam_app AS app " + OWNED_APPS_WHERE,
+        "SELECT COUNT(*) + COALESCE(SUM(app.last_played), 0) FROM steam_app AS app " + OWNED_APPS_WHERE,
     )
-    fun _observeOwnedAppCount(
+    fun _observeOwnedAppLibraryVersion(
         invalidPkgId: Int = INVALID_PKG_ID,
         includeExpired: Int = 0,
-    ): Flow<Int>
+    ): Flow<Long>
 
     // paged data load — each page fits comfortably in a CursorWindow
     @Query(
@@ -118,8 +128,8 @@ interface SteamAppDao {
         includeExpired: Boolean = false,
     ): Flow<List<SteamApp>> {
         val includeExpiredFlag = if (includeExpired) 1 else 0
-        return _observeOwnedAppCount(invalidPkgId, includeExpiredFlag)
-            .distinctUntilChanged() // skip reload when count unchanged
+        return _observeOwnedAppLibraryVersion(invalidPkgId, includeExpiredFlag)
+            .distinctUntilChanged() // skip reload when lightweight library state is unchanged
             .flatMapLatest { // cancel stale reloads during rapid PICS inserts
                 flow { emit(_getAllOwnedAppsPaged(invalidPkgId, includeExpiredFlag)) }
             }
@@ -144,6 +154,9 @@ interface SteamAppDao {
 
     @Query("SELECT * FROM steam_app WHERE id = :appId")
     suspend fun findApp(appId: Int): SteamApp?
+
+    @Query("SELECT id, last_played, play_time_minutes FROM steam_app WHERE id IN (:appIds)")
+    suspend fun findAccountPlayStats(appIds: List<Int>): List<SteamAppPlayStatsUpdate>
 
     /** Returns all Steam apps sorted by name. */
     @Query("SELECT * FROM steam_app ORDER BY name ASC")
@@ -194,6 +207,9 @@ interface SteamAppDao {
 
     @Query("UPDATE steam_app SET workshop_mods = 0, enabled_workshop_item_ids = '', workshop_download_pending = 0 WHERE id = :appId")
     suspend fun clearWorkshopState(appId: Int)
+
+    @Update(entity = SteamApp::class)
+    suspend fun updateAccountPlayStats(stats: List<SteamAppPlayStatsUpdate>)
 
     @Query("SELECT * FROM steam_app WHERE config LIKE '%\"installDir\":\"' || :dirName || '\",%'")
     suspend fun findSteamAppWithInstallDir(dirName: String): List<SteamApp>

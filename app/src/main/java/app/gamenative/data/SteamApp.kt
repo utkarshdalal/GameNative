@@ -46,6 +46,10 @@ data class SteamApp(
     val releaseDate: Long = 0L,
     @ColumnInfo("metacritic_score")
     val metacriticScore: Byte = 0,
+    @ColumnInfo(name = "last_played", defaultValue = "0")
+    val lastPlayed: Long = 0L,
+    @ColumnInfo(name = "play_time_minutes", defaultValue = "0")
+    val playTimeMinutes: Int = 0,
     @ColumnInfo("metacritic_full_url")
     val metacriticFullUrl: String = "",
     // source: https://github.com/JosefNemec/PlayniteExtensions/blob/f2ad8c9b2ca206195e2c94b75606b56e2f6281df/source/Libraries/SteamLibrary/SteamShared/MetadataProvider.cs#L164

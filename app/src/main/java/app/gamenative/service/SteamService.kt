@@ -39,6 +39,7 @@ import app.gamenative.db.dao.ChangeNumbersDao
 import app.gamenative.db.dao.EncryptedAppTicketDao
 import app.gamenative.db.dao.FileChangeListsDao
 import app.gamenative.db.dao.SteamAppDao
+import app.gamenative.db.dao.SteamAppPlayStatsUpdate
 import app.gamenative.db.dao.SteamFileHashCacheDao
 import app.gamenative.db.dao.SteamLicenseDao
 import app.gamenative.enums.LoginResult
@@ -301,6 +302,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     companion object {
         const val MAX_PICS_BUFFER = 256
+        const val MAX_SQL_BIND_VARIABLES = 900
 
         const val MAX_RETRY_ATTEMPTS = 20
 
@@ -796,6 +798,63 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 val localAppIds = service.appDao.getAllAppIds().toSet()
                 val missingAppIds = remoteAppIds - localAppIds
+                val existingAppIds = remoteAppIds - missingAppIds
+
+                val statsByAppId = ownedGames
+                    .asSequence()
+                    .filter { it.appId > 0 }
+                    .associate { game ->
+                        game.appId to SteamAppPlayStatsUpdate(
+                            id = game.appId,
+                            lastPlayed = game.rtimeLastPlayed.toLong(),
+                            playTimeMinutes = game.playtimeForever,
+                        )
+                    }
+
+                if (existingAppIds.isNotEmpty()) {
+                    val currentStatsByAppId = existingAppIds
+                        .toList()
+                        .chunked(MAX_SQL_BIND_VARIABLES)
+                        .flatMap { appIds -> service.appDao.findAccountPlayStats(appIds) }
+                        .associateBy { it.id }
+                    val changedStats = existingAppIds
+                        .asSequence()
+                        .mapNotNull { statsByAppId[it] }
+                        .filter { newStats ->
+                            val currentStats = currentStatsByAppId[newStats.id]
+                            currentStats == null ||
+                                currentStats.lastPlayed != newStats.lastPlayed ||
+                                currentStats.playTimeMinutes != newStats.playTimeMinutes
+                        }
+                        .toList()
+
+                    if (changedStats.isNotEmpty()) {
+                        service.db.withTransaction {
+                            service.appDao.updateAccountPlayStats(changedStats)
+                        }
+                    }
+                }
+
+                if (missingAppIds.isNotEmpty()) {
+                    val missingApps = ownedGames
+                        .asSequence()
+                        .filter { it.appId in missingAppIds }
+                        .map { game ->
+                            val stats = statsByAppId.getValue(game.appId)
+                            SteamApp(
+                                id = game.appId,
+                                name = game.name,
+                                lastPlayed = stats.lastPlayed,
+                                playTimeMinutes = stats.playTimeMinutes,
+                            )
+                        }
+                        .toList()
+
+                    service.db.withTransaction {
+                        service.appDao.insertAll(missingApps)
+                    }
+                }
+
                 if (missingAppIds.isEmpty()) {
                     return@runCatching 0
                 }
@@ -4274,6 +4333,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                                     receivedPICS = true,
                                     lastChangeNumber = app.changeNumber,
                                     licenseFlags = packageFromDb?.licenseFlags ?: EnumSet.noneOf(ELicenseFlags::class.java),
+                                    lastPlayed = appFromDb?.lastPlayed ?: 0L,
+                                    playTimeMinutes = appFromDb?.playTimeMinutes ?: 0,
                                 )
                                 if (ufsParseVersionOutdated && newApp.ufs.saveFilePatterns.any { it.uploadRoot != it.root || it.uploadPath != it.path }) {
                                     // UFS path logic changed and this app has rootoverrides: store 0 to force one
