@@ -422,7 +422,7 @@ private fun LibraryScreenContent(
 
     // Handle opening folder picker (with dialog check)
     val onAddCustomGameClick = {
-        folderPicker.launchPicker()
+        showAddCustomGameDialog = true
     }
 
     BackHandler(enabled = isSystemMenuOpen) {
