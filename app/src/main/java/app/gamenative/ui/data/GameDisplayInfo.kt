@@ -1,5 +1,7 @@
 package app.gamenative.ui.data
 
+import app.gamenative.data.GameSource
+
 /**
  * Common data structure for displaying game information in the UI.
  * This allows both Steam and Custom Games to use the same UI layout.

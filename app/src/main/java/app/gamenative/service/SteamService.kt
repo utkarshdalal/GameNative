@@ -103,7 +103,6 @@ import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.LoggedOffCallb
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.LoggedOnCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.PlayingSessionStateCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.Stats
-import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.AchievementBlocks
 import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.SteamUserStats
 import `in`.dragonbra.javasteam.steam.handlers.steamworkshop.SteamWorkshop
 import `in`.dragonbra.javasteam.steam.steamclient.AsyncJobFailedException
@@ -175,6 +174,7 @@ import com.winlator.container.ContainerManager
 import app.gamenative.statsgen.StatType
 import app.gamenative.statsgen.StatsAchievementsGenerator
 import app.gamenative.statsgen.VdfParser
+import app.gamenative.ui.data.Achievement
 import app.gamenative.utils.DownloadSpeedConfig
 import app.gamenative.utils.CustomGameScanner
 import java.nio.ByteBuffer
@@ -3069,13 +3069,25 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-         // Fetches achievements for a Steam app for display in the game details page.
-        suspend fun fetchAchievementsForDisplay(appId: Int): List<AchievementBlocks>? {
+        // Fetches achievements for a Steam app for display in the game details page.
+        suspend fun fetchAchievementsForDisplay(appId: Int): List<Achievement>? {
             if (!isConnected) return null
             return try {
                 val steamUser = instance?._steamUser ?: return null
                 val userStats = instance?._steamUserStats?.getUserStats(appId, steamUser.steamID!!)?.await() ?: return null
-                userStats.getExpandedAchievements()
+                val baseIconUrl = SteamUtils.getBaseAchievementIconUrl(appId)
+                userStats.getExpandedAchievements().map { block ->
+                    Achievement(
+                        displayName = block.displayName ?: block.name ?: "",
+                        name = block.name,
+                        isUnlocked = block.isUnlocked,
+                        description = block.description ?: "",
+                        unlockTimestamp = block.unlockTimestamp,
+                        hidden = block.hidden,
+                        icon = if (!block.icon.isNullOrEmpty()) "$baseIconUrl${block.icon}" else "",
+                        iconGray = if (!block.iconGray.isNullOrEmpty()) "$baseIconUrl${block.iconGray}" else null,
+                    )
+                }
             } catch (e: Exception) {
                 Timber.e(e, "fetchAchievementsForDisplay failed for appId=$appId")
                 null

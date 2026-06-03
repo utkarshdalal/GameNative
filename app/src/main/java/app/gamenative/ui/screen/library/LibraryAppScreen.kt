@@ -2,6 +2,7 @@
 
 package app.gamenative.ui.screen.library
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
 import app.gamenative.ui.screen.library.components.ambient.AmbientDownloadOverlay
@@ -129,15 +130,14 @@ import app.gamenative.ui.theme.PluviaTheme
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.window.Dialog
+import app.gamenative.ui.data.Achievement
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
-import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.AchievementBlocks
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
-import app.gamenative.utils.SteamUtils
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -520,7 +520,7 @@ internal fun AppScreenContent(
     onDeleteDownloadClick: () -> Unit,
     onUpdateClick: () -> Unit,
     onBack: () -> Unit = {},
-    achievements: List<AchievementBlocks>? = null,
+    achievements: List<Achievement>? = null,
     achievementsAppId: Int? = null,
     vararg optionsMenu: AppMenuOption,
 ) {
@@ -1115,10 +1115,9 @@ internal fun AppScreenContent(
                         }
                     }
                 }
-
-                // Achievements row (Steam only, shown when data is available)
-                if (libraryItem.gameSource == GameSource.STEAM && achievements != null && achievementsAppId != null && achievements.isNotEmpty()) {
-                    AchievementsRow(achievements = achievements, appId = achievementsAppId)
+                // Achievements Row
+                if (!achievements.isNullOrEmpty()) {
+                    AchievementsRow(achievements = achievements)
                 }
             }
         }
@@ -1238,20 +1237,19 @@ fun GameMigrationDialog(
     )
 }
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 private fun AchievementsRow(
-    achievements: List<AchievementBlocks>,
-    appId: Int,
+    achievements: List<Achievement>,
 ) {
     // Temporarily this is Steam. We can expand later for other storefronts as they become available.
     val unlockedCount = achievements.count { it.isUnlocked }
     val totalCount = achievements.size
     var showDialog by remember { mutableStateOf(false) }
     val grayMatrix = remember { ColorMatrix().apply { setToSaturation(0f) } }
-    val baseIconUrl = SteamUtils.getBaseAchievementIconUrl(appId)
 
     val sortedAchievements = achievements.sortedWith(
-        compareByDescending<AchievementBlocks> { it.isUnlocked }
+        compareByDescending<Achievement> { it.isUnlocked }
             .thenByDescending { it.unlockTimestamp },
     )
 
@@ -1285,9 +1283,9 @@ private fun AchievementsRow(
                     .coerceIn(1, sortedAchievements.size)
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
                     sortedAchievements.take(count).forEach { ach ->
-                        val iconFile = if (ach.isUnlocked) ach.icon ?: ach.iconGray else ach.iconGray ?: ach.icon
+                        val iconUrl = if (ach.isUnlocked) ach.icon.ifEmpty { ach.iconGray } else ach.iconGray ?: ach.icon.ifEmpty { null }
                         CoilImage(
-                            imageModel = { if (iconFile != null) "$baseIconUrl$iconFile" else "" },
+                            imageModel = { iconUrl ?: "" },
                             imageOptions = ImageOptions(
                                 contentScale = ContentScale.Crop,
                                 colorFilter = if (ach.isUnlocked) null else ColorFilter.colorMatrix(grayMatrix),
@@ -1337,7 +1335,6 @@ private fun AchievementsRow(
     if (showDialog) {
         AchievementsDialog(
             achievements = sortedAchievements,
-            appId = appId,
             onDismiss = { showDialog = false },
         )
     }
@@ -1345,12 +1342,10 @@ private fun AchievementsRow(
 
 @Composable
 private fun AchievementsDialog(
-    achievements: List<AchievementBlocks>,
-    appId: Int,
+    achievements: List<Achievement>,
     onDismiss: () -> Unit,
 ) {
     val grayMatrix = remember { ColorMatrix().apply { setToSaturation(0f) } }
-    val baseIconUrl = SteamUtils.getBaseAchievementIconUrl(appId)
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -1370,7 +1365,7 @@ private fun AchievementsDialog(
                 HorizontalDivider()
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     items(achievements) { ach ->
-                        val iconFile = if (ach.isUnlocked) ach.icon ?: ach.iconGray else ach.iconGray ?: ach.icon
+                        val iconUrl = if (ach.isUnlocked) ach.icon.ifEmpty { ach.iconGray } else ach.iconGray ?: ach.icon.ifEmpty { null }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1379,7 +1374,7 @@ private fun AchievementsDialog(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             CoilImage(
-                                imageModel = { if (iconFile != null) "$baseIconUrl$iconFile" else "" },
+                                imageModel = { iconUrl ?: "" },
                                 imageOptions = ImageOptions(
                                     contentScale = ContentScale.Crop,
                                     colorFilter = if (ach.isUnlocked) null else ColorFilter.colorMatrix(grayMatrix),
@@ -1406,7 +1401,7 @@ private fun AchievementsDialog(
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                 }
-                                val unlockTime = ach.getFormattedUnlockTime()
+                                val unlockTime = ach.getFormattedUnlockTime(ach.unlockTimestamp)
                                 if (ach.isUnlocked && unlockTime != null) {
                                     Text(
                                         text = stringResource(R.string.achievements_unlocked_at, unlockTime),

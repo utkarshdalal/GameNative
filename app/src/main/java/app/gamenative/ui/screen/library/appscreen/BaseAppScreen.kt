@@ -36,6 +36,7 @@ import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.dialog.LoadingDialog
+import app.gamenative.ui.data.Achievement
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.GameCompatibilityCache
@@ -923,14 +924,21 @@ abstract class BaseAppScreen {
         }
 
         var achievementsState by remember(libraryItem.gameId) {
-            mutableStateOf<List<AchievementBlocks>?>(null)
+            mutableStateOf<List<Achievement>?>(null)
         }
 
+        // Achievements Fetching
         LaunchedEffect(libraryItem.gameId) {
-            if (libraryItem.gameSource == app.gamenative.data.GameSource.STEAM) {
-                achievementsState = withContext(Dispatchers.IO) {
-                    app.gamenative.service.SteamService.fetchAchievementsForDisplay(libraryItem.gameId)
+            when(libraryItem.gameSource){
+                GameSource.STEAM -> {
+                    achievementsState = withContext(Dispatchers.IO) {
+                        app.gamenative.service.SteamService.fetchAchievementsForDisplay(libraryItem.gameId)
+                    }
                 }
+                GameSource.EPIC -> { } // Add later with Epic achievements
+                GameSource.GOG -> { } // Add later with GOG achievements
+                GameSource.AMAZON -> { }
+                GameSource.CUSTOM_GAME -> { }
             }
         }
 
@@ -1170,11 +1178,11 @@ abstract class BaseAppScreen {
 
         // Get download info based on game source for progress tracking
         val downloadInfo = when (libraryItem.gameSource) {
-            app.gamenative.data.GameSource.STEAM -> app.gamenative.service.SteamService.getAppDownloadInfo(displayInfo.gameId)
-            app.gamenative.data.GameSource.EPIC -> app.gamenative.service.epic.EpicService.getDownloadInfo(displayInfo.gameId)
-            app.gamenative.data.GameSource.GOG -> app.gamenative.service.gog.GOGService.getDownloadInfo(displayInfo.gameId.toString())
-            app.gamenative.data.GameSource.CUSTOM_GAME -> null // Custom games don't support downloads yet
-            app.gamenative.data.GameSource.AMAZON -> app.gamenative.service.amazon.AmazonService.getDownloadInfoByAppId(libraryItem.gameId)
+            GameSource.STEAM -> app.gamenative.service.SteamService.getAppDownloadInfo(displayInfo.gameId)
+            GameSource.EPIC -> app.gamenative.service.epic.EpicService.getDownloadInfo(displayInfo.gameId)
+            GameSource.GOG -> app.gamenative.service.gog.GOGService.getDownloadInfo(displayInfo.gameId.toString())
+            GameSource.CUSTOM_GAME -> null // Custom games don't support downloads yet
+            GameSource.AMAZON -> app.gamenative.service.amazon.AmazonService.getDownloadInfoByAppId(libraryItem.gameId)
         }
 
         DisposableEffect(libraryItem.appId) {
