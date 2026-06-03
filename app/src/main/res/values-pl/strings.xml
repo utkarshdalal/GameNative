@@ -680,6 +680,7 @@
     <string name="achievements_view_all">Wyświetl wszystkie</string>
     <string name="achievements_all_title">Wszystkie osiągnięcia</string>
     <string name="achievements_unlocked_at">Odblokowano: %s</string>
+    <string name="achievements_complete">Wszystkie osiągnięcia odblokowane</string>
     <string name="settings_achievement_notification_position">Pozycja powiadomienia o osiągnięciu</string>
     <string name="achievement_position_top_left">Lewy górny</string>
     <string name="achievement_position_top_right">Prawy górny</string>

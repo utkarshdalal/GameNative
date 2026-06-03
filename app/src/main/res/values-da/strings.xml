@@ -505,6 +505,7 @@
     <string name="achievements_view_all">Se alle</string>
     <string name="achievements_all_title">Alle præstationer</string>
     <string name="achievements_unlocked_at">Låst op: %s</string>
+    <string name="achievements_complete">Alle præstationer låst op</string>
     <string name="settings_achievement_notification_position">Placering af præstationsnotifikation</string>
     <string name="achievement_position_top_left">Øverst til venstre</string>
     <string name="achievement_position_top_right">Øverst til højre</string>

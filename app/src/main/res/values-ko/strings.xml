@@ -681,6 +681,7 @@
     <string name="achievements_view_all">모두 보기</string>
     <string name="achievements_all_title">모든 업적</string>
     <string name="achievements_unlocked_at">달성: %s</string>
+    <string name="achievements_complete">모든 도전 과제 달성</string>
     <string name="settings_achievement_notification_position">업적 알림 위치</string>
     <string name="achievement_position_top_left">좌측 상단</string>
     <string name="achievement_position_top_right">우측 상단</string>

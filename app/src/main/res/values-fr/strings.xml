@@ -667,6 +667,7 @@
     <string name="achievements_view_all">Voir tout</string>
     <string name="achievements_all_title">Tous les succès</string>
     <string name="achievements_unlocked_at">Débloqué : %s</string>
+    <string name="achievements_complete">Tous les succès débloqués</string>
     <string name="settings_achievement_notification_position">Position de la notification de succès</string>
     <string name="achievement_position_top_left">En haut à gauche</string>
     <string name="achievement_position_top_right">En haut à droite</string>

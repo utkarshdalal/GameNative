@@ -690,6 +690,7 @@
     <string name="achievements_view_all">View all</string>
     <string name="achievements_all_title">All Achievements</string>
     <string name="achievements_unlocked_at">Unlocked: %s</string>
+    <string name="achievements_complete">All achievements unlocked</string>
     <string name="settings_achievement_notification_position">Achievement Notification Position</string>
     <string name="achievement_position_top_left">Top Left</string>
     <string name="achievement_position_top_right">Top Right</string>

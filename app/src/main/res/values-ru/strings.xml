@@ -1331,6 +1331,7 @@ https://gamenative.app
     <string name="achievements_view_all">Просмотреть все</string>
     <string name="achievements_all_title">Все достижения</string>
     <string name="achievements_unlocked_at">Разблокировано: %s</string>
+    <string name="achievements_complete">Все достижения разблокированы</string>
     <string name="settings_achievement_notification_position">Позиция уведомления о достижении</string>
     <string name="achievement_position_top_left">Верхний левый</string>
     <string name="achievement_position_top_right">Верхний правый</string>

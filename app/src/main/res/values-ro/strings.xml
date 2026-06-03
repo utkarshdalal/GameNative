@@ -672,6 +672,7 @@
 	<string name="achievements_view_all">Vezi toate</string>
 	<string name="achievements_all_title">Toate realizările</string>
 	<string name="achievements_unlocked_at">Deblocat: %s</string>
+    <string name="achievements_complete">Toate realizările deblocate</string>
 	<string name="settings_achievement_notification_position">Poziția notificării realizării</string>
 	<string name="achievement_position_top_left">Stânga sus</string>
 	<string name="achievement_position_top_right">Dreapta sus</string>

@@ -679,6 +679,7 @@
     <string name="achievements_view_all">すべて表示</string>
     <string name="achievements_all_title">すべての実績</string>
     <string name="achievements_unlocked_at">アンロック日時: %s</string>
+    <string name="achievements_complete">すべての実績を解除しました</string>
     <string name="settings_achievement_notification_position">達成通知位置</string>
     <string name="achievement_position_top_left">左上</string>
     <string name="achievement_position_top_right">右上</string>

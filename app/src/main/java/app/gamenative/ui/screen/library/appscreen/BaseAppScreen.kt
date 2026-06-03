@@ -44,7 +44,6 @@ import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
 import kotlinx.coroutines.CancellationException
-import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.AchievementBlocks
 import com.winlator.container.ContainerData
 import com.winlator.core.GPUInformation
 import java.io.File
@@ -931,8 +930,15 @@ abstract class BaseAppScreen {
         LaunchedEffect(libraryItem.gameId) {
             when(libraryItem.gameSource){
                 GameSource.STEAM -> {
-                    achievementsState = withContext(Dispatchers.IO) {
-                        app.gamenative.service.SteamService.fetchAchievementsForDisplay(libraryItem.gameId)
+                    try {
+                        achievementsState = withContext(Dispatchers.IO) {
+                            app.gamenative.service.SteamService.fetchAchievementsForDisplay(libraryItem.gameId)
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to fetch achievements for gameId=${libraryItem.gameId}: ${e.message}")
+                        achievementsState = null
                     }
                 }
                 GameSource.EPIC -> { } // Add later with Epic achievements
@@ -1239,7 +1245,6 @@ abstract class BaseAppScreen {
             },
             onBack = onBack,
             achievements = achievementsState,
-            achievementsAppId = libraryItem.gameId.takeIf { achievementsState != null },
             optionsMenu = optionsMenu.toTypedArray(),
         )
 

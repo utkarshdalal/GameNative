@@ -521,7 +521,6 @@ internal fun AppScreenContent(
     onUpdateClick: () -> Unit,
     onBack: () -> Unit = {},
     achievements: List<Achievement>? = null,
-    achievementsAppId: Int? = null,
     vararg optionsMenu: AppMenuOption,
 ) {
 
@@ -1314,7 +1313,7 @@ private fun AchievementsRow(
                     if(totalCount >= 1 && unlockedCount == totalCount) {
                         Icon(
                             imageVector = Icons.Filled.Star,
-                            contentDescription = "Star",
+                            contentDescription = stringResource(R.string.achievements_complete),
                             tint = Color(0xFFFFD700),
                             modifier = Modifier.size(16.dp),
                         )
@@ -1401,7 +1400,7 @@ private fun AchievementsDialog(
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                 }
-                                val unlockTime = ach.getFormattedUnlockTime(ach.unlockTimestamp)
+                                val unlockTime = ach.getFormattedUnlockTime()
                                 if (ach.isUnlocked && unlockTime != null) {
                                     Text(
                                         text = stringResource(R.string.achievements_unlocked_at, unlockTime),
