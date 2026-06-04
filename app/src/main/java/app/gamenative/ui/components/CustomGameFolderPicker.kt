@@ -19,7 +19,7 @@ import app.gamenative.utils.CustomGameScanner
  * Converts a document tree URI to a file path.
  * Returns null if conversion fails.
  */
-fun getPathFromTreeUri(uri: Uri?): String? {
+fun getPathFromTreeUri(context: Context, uri: Uri?): String? {
     if (uri == null) return null
 
     return try {
@@ -41,16 +41,30 @@ fun getPathFromTreeUri(uri: Uri?): String? {
                 if (parts.size == 2) {
                     val volumeId = parts[0]
                     val path = parts[1]
-                    val possiblePath = if (path.isEmpty()) {
-                        "/storage/$volumeId"
+                    // Resolve the real mount point for this volume. SD cards typically live at
+                    // /storage/<uuid>, but USB OTG drives on some devices (e.g. Samsung) are only
+                    // mounted at the path reported by StorageVolume.getDirectory()
+                    // (e.g. /mnt/media_rw/<uuid>), with no /storage view at all.
+                    val defaultRoot = "/storage/$volumeId"
+                    val volumeRoot = if (java.io.File(defaultRoot).exists()) {
+                        defaultRoot
                     } else {
-                        "/storage/$volumeId/$path"
+                        val sm = context.getSystemService(android.os.storage.StorageManager::class.java)
+                        val volume = sm?.storageVolumes?.firstOrNull {
+                            it.uuid?.equals(volumeId, ignoreCase = true) == true
+                        }
+                        val resolved = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            volume?.directory?.absolutePath
+                        } else {
+                            null
+                        }
+                        resolved ?: defaultRoot
                     }
-                    val file = java.io.File(possiblePath)
-                    if (file.exists() || file.parentFile?.exists() == true) {
-                        return possiblePath
+                    return if (path.isEmpty()) {
+                        volumeRoot
+                    } else {
+                        "$volumeRoot/$path"
                     }
-                    return possiblePath
                 }
             }
 
@@ -127,7 +141,7 @@ fun rememberCustomGameFolderPicker(
             return@rememberLauncherForActivityResult
         }
 
-        val path = getPathFromTreeUri(uri)
+        val path = getPathFromTreeUri(context, uri)
         if (path != null) {
             onPathSelected(path)
         } else {
