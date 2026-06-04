@@ -774,6 +774,8 @@
     <string name="gesture_tap_subtitle">Left Click</string>
     <string name="gesture_drag">Drag Finger</string>
     <string name="gesture_drag_subtitle">Drag Left Click (Box Selection)</string>
+    <string name="gesture_hold_mouse_button_while_touching">Hold Mouse Button While Touching</string>
+    <string name="gesture_mouse_button_label">Mouse Button</string>
     <string name="gesture_long_press">Long Press</string>
     <string name="gesture_long_press_delay">Long Press Delay (ms)</string>
     <string name="gesture_double_tap">Double-Tap</string>
@@ -817,6 +819,8 @@
     <string name="gesture_show_click_highlight_subtitle">Show a circle at tap location</string>
     <string name="gesture_show_debug_overlay">Show Gesture Debug Overlay</string>
     <string name="gesture_show_debug_overlay_subtitle">Show temporary gesture labels at top center</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Show Cursor in Touchscreen Mode</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Keep the mouse cursor visible while touchscreen gestures are active</string>
 
     <string name="external_display_input">External Display Input</string>
     <string name="external_display_input_subtitle">Choose how a connected presentation display should behave</string>

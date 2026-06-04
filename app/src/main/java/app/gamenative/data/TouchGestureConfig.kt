@@ -16,6 +16,8 @@ data class TouchGestureConfig(
     // 2. Drag (box selection) — customizable pan/drag action
     val dragEnabled: Boolean = true,
     val dragAction: String = PAN_LEFT_CLICK_DRAG,
+    val holdMouseButtonWhileTouchingEnabled: Boolean = false,
+    val holdMouseButtonWhileTouchingAction: String = ACTION_LEFT_CLICK,
 
     // 3. Long Press — customizable action, disabled by default
     val longPressEnabled: Boolean = false,
@@ -64,6 +66,7 @@ data class TouchGestureConfig(
 
     // 13. Gesture debug overlay text (Tap, 2F Drag, etc.)
     val showGestureDebugOverlay: Boolean = false,
+    val showCursorInTouchscreenMode: Boolean = false,
 
     // 14. Gesture threshold (px) for two-finger gesture lock-in
     val gestureThreshold: Int = DEFAULT_GESTURE_THRESHOLD,
@@ -77,6 +80,14 @@ data class TouchGestureConfig(
             put(KEY_TAP_ACTION, tapAction)
             put(KEY_DRAG_ENABLED, dragEnabled)
             put(KEY_DRAG_ACTION, dragAction)
+            put(
+                KEY_HOLD_MOUSE_BUTTON_WHILE_TOUCHING_ENABLED,
+                holdMouseButtonWhileTouchingEnabled,
+            )
+            put(
+                KEY_HOLD_MOUSE_BUTTON_WHILE_TOUCHING_ACTION,
+                holdMouseButtonWhileTouchingAction,
+            )
             put(KEY_LONG_PRESS_ENABLED, longPressEnabled)
             put(KEY_LONG_PRESS_ACTION, longPressAction)
             put(KEY_LONG_PRESS_MOUSE_BEHAVIOR, longPressMouseBehavior)
@@ -103,6 +114,7 @@ data class TouchGestureConfig(
             put(KEY_THREE_FINGER_HOLD_DELAY, threeFingerHoldDelay)
             put(KEY_SHOW_CLICK_HIGHLIGHT, showClickHighlight)
             put(KEY_SHOW_GESTURE_DEBUG_OVERLAY, showGestureDebugOverlay)
+            put(KEY_SHOW_CURSOR_IN_TOUCHSCREEN_MODE, showCursorInTouchscreenMode)
             put(KEY_GESTURE_THRESHOLD, gestureThreshold)
         }.toString()
     }
@@ -142,6 +154,10 @@ data class TouchGestureConfig(
         private const val KEY_TAP_ACTION = "tapAction"
         private const val KEY_DRAG_ENABLED = "dragEnabled"
         private const val KEY_DRAG_ACTION = "dragAction"
+        private const val KEY_HOLD_MOUSE_BUTTON_WHILE_TOUCHING_ENABLED =
+            "holdMouseButtonWhileTouchingEnabled"
+        private const val KEY_HOLD_MOUSE_BUTTON_WHILE_TOUCHING_ACTION =
+            "holdMouseButtonWhileTouchingAction"
         private const val KEY_LONG_PRESS_ENABLED = "longPressEnabled"
         private const val KEY_LONG_PRESS_ACTION = "longPressAction"
         private const val KEY_LONG_PRESS_MOUSE_BEHAVIOR = "longPressMouseBehavior"
@@ -168,6 +184,7 @@ data class TouchGestureConfig(
         private const val KEY_THREE_FINGER_HOLD_DELAY = "threeFingerHoldDelay"
         private const val KEY_SHOW_CLICK_HIGHLIGHT = "showClickHighlight"
         private const val KEY_SHOW_GESTURE_DEBUG_OVERLAY = "showGestureDebugOverlay"
+        private const val KEY_SHOW_CURSOR_IN_TOUCHSCREEN_MODE = "showCursorInTouchscreenMode"
         private const val KEY_GESTURE_THRESHOLD = "gestureThreshold"
 
         /**
@@ -194,6 +211,14 @@ data class TouchGestureConfig(
                     tapAction = obj.optString(KEY_TAP_ACTION, ACTION_LEFT_CLICK),
                     dragEnabled = obj.optBoolean(KEY_DRAG_ENABLED, true),
                     dragAction = obj.optString(KEY_DRAG_ACTION, PAN_LEFT_CLICK_DRAG),
+                    holdMouseButtonWhileTouchingEnabled = obj.optBoolean(
+                        KEY_HOLD_MOUSE_BUTTON_WHILE_TOUCHING_ENABLED,
+                        false,
+                    ),
+                    holdMouseButtonWhileTouchingAction = obj.optString(
+                        KEY_HOLD_MOUSE_BUTTON_WHILE_TOUCHING_ACTION,
+                        ACTION_LEFT_CLICK,
+                    ),
                     longPressEnabled = obj.optBoolean(KEY_LONG_PRESS_ENABLED, false),
                     longPressAction = obj.optString(KEY_LONG_PRESS_ACTION, ACTION_RIGHT_CLICK),
                     longPressMouseBehavior = normalizeMouseBehavior(
@@ -226,6 +251,7 @@ data class TouchGestureConfig(
                     threeFingerHoldDelay = obj.optInt(KEY_THREE_FINGER_HOLD_DELAY, DEFAULT_DELAY_MS),
                     showClickHighlight = obj.optBoolean(KEY_SHOW_CLICK_HIGHLIGHT, false),
                     showGestureDebugOverlay = obj.optBoolean(KEY_SHOW_GESTURE_DEBUG_OVERLAY, false),
+                    showCursorInTouchscreenMode = obj.optBoolean(KEY_SHOW_CURSOR_IN_TOUCHSCREEN_MODE, false),
                     gestureThreshold = obj.optInt(KEY_GESTURE_THRESHOLD, DEFAULT_GESTURE_THRESHOLD),
                 )
             } catch (_: Exception) {

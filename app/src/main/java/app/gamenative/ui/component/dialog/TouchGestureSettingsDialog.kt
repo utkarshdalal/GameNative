@@ -131,6 +131,22 @@ fun TouchGestureSettingsDialog(
                     )
                 }
 
+                GestureRow(
+                    title = stringResource(R.string.gesture_hold_mouse_button_while_touching),
+                    subtitle = tapHoldActionLabel(config.holdMouseButtonWhileTouchingAction),
+                    enabled = config.holdMouseButtonWhileTouchingEnabled,
+                    onEnabledChange = {
+                        config = config.copy(holdMouseButtonWhileTouchingEnabled = it)
+                    },
+                ) {
+                    MouseButtonActionPicker(
+                        currentAction = config.holdMouseButtonWhileTouchingAction,
+                        onActionSelected = {
+                            config = config.copy(holdMouseButtonWhileTouchingAction = it)
+                        },
+                    )
+                }
+
                 // ── Double-Tap (fixed action, customisable delay) ────────
                 GestureRow(
                     title = stringResource(R.string.gesture_double_tap),
@@ -352,6 +368,14 @@ fun TouchGestureSettingsDialog(
                     subtitle = { Text(stringResource(R.string.gesture_show_debug_overlay_subtitle)) },
                     state = config.showGestureDebugOverlay,
                     onCheckedChange = { config = config.copy(showGestureDebugOverlay = it) },
+                )
+
+                SettingsSwitch(
+                    colors = settingsTileColorsAlt(),
+                    title = { Text(stringResource(R.string.gesture_show_cursor_touchscreen_mode)) },
+                    subtitle = { Text(stringResource(R.string.gesture_show_cursor_touchscreen_mode_subtitle)) },
+                    state = config.showCursorInTouchscreenMode,
+                    onCheckedChange = { config = config.copy(showCursorInTouchscreenMode = it) },
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -691,6 +715,23 @@ private fun TapHoldActionPicker(
             },
         )
     }
+}
+
+@Composable
+private fun MouseButtonActionPicker(
+    currentAction: String,
+    onActionSelected: (String) -> Unit,
+) {
+    val actions = listOf(ACTION_LEFT_CLICK, ACTION_RIGHT_CLICK, ACTION_MIDDLE_CLICK)
+    SettingsListDropdown(
+        colors = settingsTileColors(),
+        title = { Text(stringResource(R.string.gesture_mouse_button_label)) },
+        value = actions.indexOf(currentAction).coerceAtLeast(0),
+        items = actions.map { tapHoldActionLabel(it) },
+        onItemSelected = { index ->
+            onActionSelected(actions[index])
+        },
+    )
 }
 
 @Composable

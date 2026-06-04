@@ -438,6 +438,13 @@ fun XServerScreen(
     var currentGestureConfig by remember {
         mutableStateOf(app.gamenative.data.TouchGestureConfig.fromJson(container.getGestureConfig()))
     }
+    fun shouldShowMouseCursor(): Boolean {
+        return !container.isDisableMouseInput &&
+            (!container.isTouchscreenMode || currentGestureConfig.showCursorInTouchscreenMode)
+    }
+    fun applyMouseCursorVisibility() {
+        xServerView?.renderer?.setCursorVisible(shouldShowMouseCursor())
+    }
     val clickHighlightPoints = remember { mutableStateListOf<app.gamenative.ui.component.HighlightPoint>() }
     var debugGestureName by remember { mutableStateOf("") }
     var debugGestureKey by remember { mutableIntStateOf(0) }
@@ -1024,10 +1031,10 @@ fun XServerScreen(
                 container.setDisableMouseInput(newValue)
                 container.saveData()
                 PluviaApp.touchpadView?.setTouchscreenMouseDisabled(newValue)
-                if (!newValue && !container.isTouchscreenMode) {
-                    xServerView?.renderer?.setCursorVisible(true)
-                } else if (newValue) {
+                if (newValue) {
                     xServerView?.renderer?.setCursorVisible(false)
+                } else {
+                    applyMouseCursorVisibility()
                 }
                 true
             }
@@ -1127,13 +1134,9 @@ fun XServerScreen(
                         areControlsVisible = false
                     }
 
-                    // Hide cursor in touchscreen mode
-                    xServerView?.renderer?.setCursorVisible(false)
+                    applyMouseCursorVisibility()
                 } else {
-                    // Restore cursor if mouse input is allowed
-                    if (!container.isDisableMouseInput) {
-                        xServerView?.renderer?.setCursorVisible(true)
-                    }
+                    applyMouseCursorVisibility()
 
                     // Re-evaluate whether to show on-screen controls
                     // (same logic as scanForExternalDevices startup path)
@@ -1837,7 +1840,7 @@ fun XServerScreen(
 
                         override fun onUpdateWindowContent(window: Window) {
                             if (!xServerState.value.winStarted && window.isApplicationWindow()) {
-                                if (!container.isDisableMouseInput && !container.isTouchscreenMode) renderer?.setCursorVisible(true)
+                                if (shouldShowMouseCursor()) renderer?.setCursorVisible(true)
                                 xServerState.value.winStarted = true
                             }
                             if (frameRatingWindowId == -1 && window.isApplicationWindow()) {
@@ -2576,6 +2579,7 @@ fun XServerScreen(
                 container.setGestureConfig(newConfig.toJson())
                 container.saveData()
                 PluviaApp.touchpadView?.setGestureConfig(newConfig)
+                applyMouseCursorVisibility()
                 showTouchGestureDialog = false
             },
         )
