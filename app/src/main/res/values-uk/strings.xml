@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Підтвердіть вхід, за допомогою мобільного застосунку Steam…</string>
     <string name="steam_2fa_device">Введіть код двофакторної автентифікації.</string>
     <string name="steam_2fa_email">Введіть код, відправлений на пошту: %s</string>
+    <string name="steam_2fa_use_guard_totp">Або скористайтеся кодом двофакторної аутентифікації</string>
     <string name="steam_install_space_prompt">Застосунок, що інсталюється, має такі вимоги до обсягу пам\'яті. Продовжити?\n\n\tРозмір завантаження: %1$s\n\tРозмір на диску: %2$s\n\tДоступне місце: %3$s</string>
     <string name="steam_install_space">Розмір завантаження: %1$s\nРозмір на диску: %2$s\nДоступне місце: %3$s</string>
     <string name="steam_install_not_enough_space">Для інсталяції застосунка потрібно %1$s вільного місця, але на цьому пристрої доступно лише %2$s</string>
@@ -640,6 +641,10 @@
     <string name="width">Ширина</string>
     <string name="height">Висота</string>
     <string name="audio_driver">Аудіо драйвер</string>
+    <string name="pulseaudio_suspend_behavior">Поведінка призупинення PulseAudio</string>
+    <string name="pulseaudio_suspend_behavior_thread">Призупинення через потік (За замовчуванням)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Призупинення через Pactl (Енергозбереження)</string>
+    <string name="pulseaudio_low_latency">Режим низької затримки PulseAudio</string>
     <string name="show_fps">Показати FPS</string>
     <string name="portrait_mode">Портретний режим</string>
     <string name="portrait_mode_description">Для контролерів типу 8BitDo FlipPad/GameSir Pocket Taco</string>
@@ -654,6 +659,8 @@
     <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
     <string name="steam_offline_mode">Режим Офлайн Steam</string>
     <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
+    <string name="epic_offline_mode">Режим Офлайн Epic</string>
+    <string name="epic_offline_mode_description">Запускати ігри Epic в офлайн режимі</string>
     <string name="achievement_unlocked">Досягнення розблоковано</string>
     <string name="settings_achievement_notification_position">Позиція сповіщення про досягнення</string>
     <string name="achievement_position_top_left">Лівий верхній</string>
@@ -678,6 +685,8 @@
     <string name="vkd3d_feature_level">Рівень функцій VKD3D</string>
     <string name="use_dri3">Використовувати DRI3</string>
     <string name="use_dri3_description">Вимкнення параметра може виправити графічні проблеми на деяких пристроях</string>
+    <string name="use_legacy_renderer">Використовувати старий рендерер</string>
+    <string name="use_legacy_renderer_description">Використовувати старий GLRenderer замість VulkanRenderer. VulkanRenderer покращує продуктивність, але перебуває в стадії бета-тестування і може спричиняти проблеми.</string>
     <string name="sync_frame">Синхронізувати кожен кадр</string>
     <string name="disable_present_wait">Вимкнути KHR_present_wait</string>
     <string name="present_modes">Режими відображення</string>
@@ -1472,4 +1481,21 @@
     <string name="game_launch_tip_23">Порада: Якщо у вас GPU Mali, будь ласка, використовуйте системні драйвери.</string>
     <string name="game_launch_tip_24">Порада: Чорний екран? Спробуйте опцію \"%s\" у меню, щоб перевірити, чи ваші драйвери працюють правильно.</string>
     <string name="launch_bionic_steam_description">Увімкнення онлайн-гри та покращення сумісності\nПрацює не завжди\nПеред спробою зробіть резервну копію збережень</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Синхронізація frontend</string>
+    <string name="settings_interface_frontend_sync_subtitle">Автоматично експортувати встановлені ігри для фронтендів бібліотеки</string>
+    <string name="frontend_sync_dialog_title">Синхронізація frontend</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Власні ігри</string>
+    <string name="frontend_sync_not_set">Не задано</string>
+    <string name="frontend_sync_clear_confirm_title">Видалити старі файли експорту?</string>
+    <string name="frontend_sync_clear_confirm_message">Видалити файли .%1$s з попереднього каталогу?</string>
+    <string name="frontend_sync_confirm_remove">Видалити</string>
+    <string name="frontend_sync_confirm_keep">Зберегти</string>
+    <string name="frontend_sync_resync_all">Повторна синхронізація всього</string>
+    <string name="frontend_sync_resync_complete">Синхронізація frontend завершена</string>
 </resources>

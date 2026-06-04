@@ -14,6 +14,7 @@ public class Drawable extends XResource {
     private ByteBuffer data;
     public final short height;
     private boolean offscreenStorage;
+    private boolean directScanout = false;
     private Callback<Drawable> onDestroyListener;
     private Runnable onDrawListener;
     public final Object renderLock;
@@ -76,6 +77,21 @@ public class Drawable extends XResource {
 
     public ByteBuffer getData() {
         return data;
+    }
+
+    // Alias for {@link #getData()}. Added to mirror the API expected by
+    // {@code com.winlator.renderer.VulkanRenderer} (ported from Winlator-Ludashi),
+    // which uses {@code getBuffer()}. Keeping the alias avoids diverging from upstream.
+    public ByteBuffer getBuffer() {
+        return data;
+    }
+
+    public void setDirectScanout(boolean value) {
+        this.directScanout = value;
+    }
+
+    public boolean isDirectScanout() {
+        return directScanout;
     }
 
     public void setData(ByteBuffer data) {

@@ -322,7 +322,7 @@ object ContainerStorageManager {
         val installSize = entry.gameInstallSizeBytes ?: StorageUtils.getFolderSize(targetDir.absolutePath)
         when (gameSource) {
             GameSource.STEAM -> {
-                steamGameId?.let { PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(it)) }
+                steamGameId?.let { PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(it, GameSource.STEAM)) }
             }
 
             GameSource.GOG -> {
@@ -415,7 +415,7 @@ object ContainerStorageManager {
                         if (entry.hasContainer) {
                             removeContainer(context, entry.containerId)
                         }
-                        PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(gameId))
+                        PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.STEAM))
                         Result.success(Unit)
                     }
                 }

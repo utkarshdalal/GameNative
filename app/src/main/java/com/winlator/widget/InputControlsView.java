@@ -928,6 +928,14 @@ public class InputControlsView extends View {
                     if (!handled) touchpadView.onTouchEvent(event);
                     break;
             }
+
+            // commit on-screen joystick state
+            WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
+            if (winHandler != null) {
+                GamepadState state = profile.getGamepadState();
+                winHandler.sendGamepadState();
+                winHandler.sendVirtualGamepadState(state);
+            }
         }
         return true;
     }
@@ -992,8 +1000,6 @@ public class InputControlsView extends View {
             if (winHandler != null) {
                 ExternalController controller = winHandler.getCurrentController();
                 if (controller != null) controller.state.copy(state);
-                winHandler.sendGamepadState();
-                winHandler.sendVirtualGamepadState(state);
             }
         }
         else {
@@ -1005,6 +1011,17 @@ public class InputControlsView extends View {
                     }
                 } else {
                     showKeyboardPressed = false;
+                }
+                return;
+            }
+            else if (binding == Binding.ALT_ENTER) {
+                if (isActionDown) {
+                    xServer.injectKeyPress(Binding.KEY_ALT_L.keycode);
+                    xServer.injectKeyPress(Binding.KEY_ENTER.keycode);
+                }
+                else {
+                    xServer.injectKeyRelease(Binding.KEY_ENTER.keycode);
+                    xServer.injectKeyRelease(Binding.KEY_ALT_L.keycode);
                 }
                 return;
             }

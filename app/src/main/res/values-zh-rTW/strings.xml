@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">使用Steam行動應用程式確認登入…</string>
     <string name="steam_2fa_device">請輸入您的驗證器應用程式中的雙重驗證碼</string>
     <string name="steam_2fa_email">請輸入發送至郵件信箱 %s 的驗證碼</string>
+    <string name="steam_2fa_use_guard_totp">或使用雙因素驗證碼</string>
     <string name="steam_install_space_prompt">正在安裝的應用程式有以下空間需求:\n\n\t下載大小: %1$s\n\t磁碟佔用空間: %2$s\n\t可用空間: %3$s</string>
     <string name="steam_install_space">下載大小: %1$s\n磁碟佔用空間: %2$s\n可用空間: %3$s</string>
     <string name="steam_install_not_enough_space">正在安裝的應用程式需要 %1$s 的空間, 但此設備上只剩下 %2$s 的空間</string>
@@ -638,6 +639,10 @@
     <string name="width">寬度</string>
     <string name="height">高度</string>
     <string name="audio_driver">音訊驅動程式</string>
+    <string name="pulseaudio_suspend_behavior">PulseAudio 暫停行為</string>
+    <string name="pulseaudio_suspend_behavior_thread">透過執行緒暫停（預設）</string>
+    <string name="pulseaudio_suspend_behavior_pactl">透過 Pactl 暫停（省電）</string>
+    <string name="pulseaudio_low_latency">PulseAudio 低延遲模式</string>
     <string name="show_fps">顯示幀率</string>
     <string name="portrait_mode">直向模式</string>
     <string name="portrait_mode_description">適用於 8BitDo FlipPad/GameSir Pocket Taco 類型控制器</string>
@@ -652,6 +657,8 @@
     <string name="launch_steam_client_beta">啟動 Steam 用戶端 (Beta)</string>
     <string name="steam_offline_mode">Steam 離線模式</string>
     <string name="steam_offline_mode_description">以離線模式啟動 Steam 遊戲</string>
+    <string name="epic_offline_mode">Epic 離線模式</string>
+    <string name="epic_offline_mode_description">以離線模式啟動 Epic 遊戲</string>
     <string name="achievement_unlocked">成就已解鎖</string>
     <string name="settings_achievement_notification_position">成就通知位置</string>
     <string name="achievement_position_top_left">左上</string>
@@ -676,6 +683,8 @@
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">使用 DRI3</string>
     <string name="use_dri3_description">在某些裝置上停用此功能或許能修復圖形故障</string>
+    <string name="use_legacy_renderer">使用舊版渲染器</string>
+    <string name="use_legacy_renderer_description">使用舊版 GLRenderer 而非 VulkanRenderer。VulkanRenderer 可提升效能，但目前為 Beta 版，可能會造成問題。</string>
     <string name="sync_frame">同步每幀影像</string>
     <string name="disable_present_wait">停用 KHR_present_wait</string>
     <string name="present_modes">當前模式</string>
@@ -1481,6 +1490,8 @@
     <string name="screen_effects_scaling_mode_stretch">拉伸</string>
     <string name="screen_effects_scaling_mode_fsr">FSR</string>
     <string name="screen_effects_scaling_mode_fsr_aspect">FSR 適配</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_natural">自然</string>
     <string name="screen_effects_fsr">FSR 1.0</string>
     <string name="screen_effects_fsr_description">官方 AMD FidelityFX Super Resolution 1.0，使用 EASU + RCAS，以較低的內部分辨率渲染並進行全分辨率放大。</string>
     <string name="screen_effects_fsr_quality">FSR 品質</string>
@@ -1538,4 +1549,21 @@
     <string name="game_launch_tip_23">提示：如果你使用的是 Mali GPU，請使用系統驅動。</string>
     <string name="game_launch_tip_24">提示：出現黑畫面？嘗試使用選單中的「%s」選項檢查驅動是否正常運作。</string>
     <string name="launch_bionic_steam_description">啟用線上遊玩並提升相容性\n不一定總能正常運作\n嘗試前請先備份存檔</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">前端同步</string>
+    <string name="settings_interface_frontend_sync_subtitle">自動將已安裝的遊戲匯出到遊戲庫前端程式</string>
+    <string name="frontend_sync_dialog_title">前端同步</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">自訂遊戲</string>
+    <string name="frontend_sync_not_set">未設定</string>
+    <string name="frontend_sync_clear_confirm_title">刪除舊的匯出檔案？</string>
+    <string name="frontend_sync_clear_confirm_message">從前一個目錄刪除 .%1$s 檔案？</string>
+    <string name="frontend_sync_confirm_remove">刪除</string>
+    <string name="frontend_sync_confirm_keep">保留</string>
+    <string name="frontend_sync_resync_all">重新同步全部</string>
+    <string name="frontend_sync_resync_complete">前端同步完成</string>
 </resources>

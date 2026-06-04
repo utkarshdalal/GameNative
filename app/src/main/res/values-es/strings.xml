@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Usa la aplicación móvil de Steam para confirmar tu inicio de sesión…</string>
     <string name="steam_2fa_device">Introduce el código de autenticación de dos factores desde tu aplicación de autenticación.</string>
     <string name="steam_2fa_email">Introduce el código de autenticación enviado al correo %s.</string>
+    <string name="steam_2fa_use_guard_totp">O utiliza el código de autenticación de dos factores</string>
     <string name="steam_install_space_prompt">La aplicación a instalar requiere el siguiente espacio. ¿Deseas continuar?\n\n\tTamaño de descarga: %1$s\n\tTamaño en disco: %2$s\n\tEspacio disponible: %3$s</string>
     <string name="steam_install_space">Tamaño de descarga: %1$s\nTamaño en disco: %2$s\nEspacio disponible: %3$s</string>
     <string name="steam_install_not_enough_space">La aplicación a instalar requiere %1$s de espacio, pero solo quedan %2$s en este dispositivo.</string>
@@ -691,6 +692,10 @@
     <string name="width">Ancho</string>
     <string name="height">Alto</string>
     <string name="audio_driver">Controlador de audio</string>
+    <string name="pulseaudio_suspend_behavior">Comportamiento de suspensión de PulseAudio</string>
+    <string name="pulseaudio_suspend_behavior_thread">Suspender vía Thread (Predeterminado)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Suspender vía Pactl (Ahorro de energía)</string>
+    <string name="pulseaudio_low_latency">Modo de baja latencia PulseAudio</string>
     <string name="show_fps">Mostrar FPS</string>
     <string name="portrait_mode">Modo vertical</string>
     <string name="portrait_mode_description">Para controles tipo 8BitDo FlipPad/GameSir Pocket Taco</string>
@@ -706,6 +711,8 @@
     <string name="launch_steam_client_description">Reduce el rendimiento y ralentiza el inicio.\nPermite el juego en línea y soluciona problemas de DRM y de mando.\nNo todos los juegos funcionan.</string>
     <string name="steam_offline_mode">Modo sin conexión de Steam</string>
     <string name="steam_offline_mode_description">Inicia juegos de Steam en modo sin conexión.</string>
+    <string name="epic_offline_mode">Modo sin conexión de Epic</string>
+    <string name="epic_offline_mode_description">Inicia juegos de Epic en modo sin conexión.</string>
     <string name="achievement_unlocked">Logro desbloqueado</string>
     <string name="settings_achievement_notification_position">Posición de notificación de logro</string>
     <string name="achievement_position_top_left">Arriba izquierda</string>
@@ -729,6 +736,8 @@
     <string name="vkd3d_feature_level">Feature Level de VKD3D</string>
     <string name="use_dri3">Usar DRI3</string>
     <string name="use_dri3_description">Desactivarlo puede corregir fallos gráficos en algunos dispositivos.</string>
+    <string name="use_legacy_renderer">Usar renderizador heredado</string>
+    <string name="use_legacy_renderer_description">Usa el GLRenderer heredado en lugar del VulkanRenderer. VulkanRenderer mejora el rendimiento, pero está en beta y puede causar problemas.</string>
     <string name="sync_frame">Sincronizar cada fotograma</string>
     <string name="disable_present_wait">Desactivar KHR_present_wait</string>
     <string name="present_modes">Modos de presentación</string>
@@ -1479,4 +1488,21 @@
     <string name="game_launch_tip_23">Consejo: Si tienes una GPU Mali, usa los controladores del sistema.</string>
     <string name="game_launch_tip_24">Consejo: ¿Pantalla negra? Prueba la opción \"%s\" en el menú para verificar si tus controladores funcionan correctamente.</string>
     <string name="launch_bionic_steam_description">Habilita el juego en línea y mejora la compatibilidad\nNo siempre funciona\nHaz una copia de seguridad de tus partidas guardadas antes de probarlo</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Sincronización de frontend</string>
+    <string name="settings_interface_frontend_sync_subtitle">Exportar automáticamente los juegos instalados para frontends de biblioteca</string>
+    <string name="frontend_sync_dialog_title">Sincronización de frontend</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Juegos personalizados</string>
+    <string name="frontend_sync_not_set">No establecido</string>
+    <string name="frontend_sync_clear_confirm_title">¿Eliminar archivos de exportación antiguos?</string>
+    <string name="frontend_sync_clear_confirm_message">¿Eliminar archivos .%1$s del directorio anterior?</string>
+    <string name="frontend_sync_confirm_remove">Eliminar</string>
+    <string name="frontend_sync_confirm_keep">Conservar</string>
+    <string name="frontend_sync_resync_all">Resincronizar todo</string>
+    <string name="frontend_sync_resync_complete">Sincronización de frontend completada</string>
 </resources>

@@ -89,6 +89,10 @@
     <string name="appbar_scrolling_view_behavior">com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior</string>
     <string name="appearance">Внешний вид</string>
     <string name="audio_driver">Аудиодрайвер</string>
+    <string name="pulseaudio_suspend_behavior">Поведение приостановки PulseAudio</string>
+    <string name="pulseaudio_suspend_behavior_thread">Приостановка через поток (По умолчанию)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Приостановка через Pactl (Энергосбережение)</string>
+    <string name="pulseaudio_low_latency">Режим низкой задержки PulseAudio</string>
     <string name="auth_webview_title">Авторизация</string>
     <string name="autofill">Автозаполнение</string>
     <string name="back">Назад</string>
@@ -1111,6 +1115,7 @@ https://gamenative.app
     <string name="steam_install_space">Размер загрузки: %1$s
 Размер на диске: %2$s
 Доступное место: %3$s</string>
+    <string name="steam_2fa_use_guard_totp">Или введите код двухфакторной аутентификации</string>
     <string name="steam_install_space_prompt">Устанавливаемое приложение имеет следующие требования к пространству. Вы хотите продолжить?
 
 	Размер загрузки: %1$s
@@ -1120,6 +1125,8 @@ https://gamenative.app
     <string name="steam_not_logged_in">Вы должны войти в Steam, чтобы использовать эту функцию</string>
     <string name="steam_offline_mode">Автономный режим Steam</string>
     <string name="steam_offline_mode_description">Запускать игры Steam в автономном режиме</string>
+    <string name="epic_offline_mode">Автономный режим Epic</string>
+    <string name="epic_offline_mode_description">Запускать игры Epic в автономном режиме</string>
     <string name="steam_reset_container_message">Это восстановит ваш контейнер к конфигурации по умолчанию.</string>
     <string name="steam_reset_container_title">Сбросить контейнер</string>
     <string name="steam_sign_in">Войти в Steam</string>
@@ -1253,6 +1260,8 @@ https://gamenative.app
     <string name="use_adrenotools_turnip">Использовать Adrenotools Turnip</string>
     <string name="use_dri3">Использовать DRI3</string>
     <string name="use_dri3_description">Отключение может исправить графические глюки на некоторых устройствах</string>
+    <string name="use_legacy_renderer">Использовать устаревший рендерер</string>
+    <string name="use_legacy_renderer_description">Использовать устаревший GLRenderer вместо VulkanRenderer. VulkanRenderer повышает производительность, но находится в бета-версии и может вызывать проблемы.</string>
     <string name="use_legacy_drm">Использовать Legacy DRM</string>
     <string name="use_sdl_api">Использовать SDL API</string>
     <string name="use_steam_input">Использовать Steam Input</string>
@@ -1406,4 +1415,21 @@ https://gamenative.app
     <string name="game_launch_tip_23">Совет: Если у вас GPU Mali, используйте системные драйверы.</string>
     <string name="game_launch_tip_24">Совет: Черный экран? Попробуйте использовать опцию \"%s\" в меню, чтобы проверить, правильно ли работают ваши драйверы.</string>
     <string name="launch_bionic_steam_description">Включает онлайн-игру и улучшает совместимость\nРаботает не всегда\nСделайте резервную копию сохранений перед использованием</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Синхронизация frontend</string>
+    <string name="settings_interface_frontend_sync_subtitle">Автоматически экспортировать установленные игры для фронтендов библиотеки</string>
+    <string name="frontend_sync_dialog_title">Синхронизация frontend</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Пользовательские игры</string>
+    <string name="frontend_sync_not_set">Не задано</string>
+    <string name="frontend_sync_clear_confirm_title">Удалить старые файлы экспорта?</string>
+    <string name="frontend_sync_clear_confirm_message">Удалить файлы .%1$s из предыдущего каталога?</string>
+    <string name="frontend_sync_confirm_remove">Удалить</string>
+    <string name="frontend_sync_confirm_keep">Сохранить</string>
+    <string name="frontend_sync_resync_all">Повторная синхронизация всего</string>
+    <string name="frontend_sync_resync_complete">Синхронизация frontend завершена</string>
 </resources>

@@ -1,5 +1,6 @@
 package app.gamenative.events
 
+import app.gamenative.data.GameSource
 import app.gamenative.ui.enums.Orientation
 import java.util.EnumSet
 
@@ -22,7 +23,7 @@ interface AndroidEvent<T> : Event<T> {
     data class DownloadPausedDueToConnectivity(val appId: Int) : AndroidEvent<Unit>
     data class DownloadStatusChanged(val appId: Int, val isDownloading: Boolean) : AndroidEvent<Unit>
     data class PostInstallSyncStatusChanged(val appId: Int, val isSyncing: Boolean) : AndroidEvent<Unit>
-    data class LibraryInstallStatusChanged(val appId: Int) : AndroidEvent<Unit>
+    data class LibraryInstallStatusChanged(val appId: Int, val source: GameSource) : AndroidEvent<Unit>
     data class CustomGameImagesFetched(val appId: String) : AndroidEvent<Unit>
     data object RecommendationToggleChanged : AndroidEvent<Unit>
     data class GOGAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>

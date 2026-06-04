@@ -41,6 +41,7 @@ import com.winlator.core.DefaultVersion
 import com.winlator.core.KeyValueSet
 import com.winlator.core.StringUtils
 import com.winlator.contents.ContentProfile
+import com.winlator.xenvironment.components.PulseAudioComponent
 import java.util.Locale
 
 @Composable
@@ -323,6 +324,37 @@ fun GeneralTabContent(
                 state.config.value = config.copy(audioDriver = StringUtils.parseIdentifier(state.audioDrivers[it]))
             },
         )
+        if (config.audioDriver == "pulseaudio") {
+            run {
+                val audioSuspendBehaviorEntries = listOf(
+                    stringResource(R.string.pulseaudio_suspend_behavior_thread),
+                    stringResource(R.string.pulseaudio_suspend_behavior_pactl),
+                )
+                val audioSuspendBehaviorIndex = when (config.pulseaudioSuspendBehavior) {
+                    PulseAudioComponent.SUSPEND_BEHAVIOR_PACTL -> 1
+                    else -> 0
+                }
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.pulseaudio_suspend_behavior)) },
+                    value = audioSuspendBehaviorIndex,
+                    items = audioSuspendBehaviorEntries,
+                    onItemSelected = { index ->
+                        val behavior = when (index) {
+                            1 -> PulseAudioComponent.SUSPEND_BEHAVIOR_PACTL
+                            else -> PulseAudioComponent.SUSPEND_BEHAVIOR_THREAD
+                        }
+                        state.config.value = config.copy(pulseaudioSuspendBehavior = behavior)
+                    },
+                )
+            }
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.pulseaudio_low_latency)) },
+                state = config.pulseaudioLowLatency,
+                onCheckedChange = { state.config.value = config.copy(pulseaudioLowLatency = it) },
+            )
+        }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.force_dlc)) },
@@ -330,13 +362,7 @@ fun GeneralTabContent(
             state = config.forceDlc,
             onCheckedChange = { state.config.value = config.copy(forceDlc = it) },
         )
-//        SettingsSwitch(
-//            colors = settingsTileColorsAlt(),
-//            title = { Text(text = stringResource(R.string.local_saves_only)) },
-//            subtitle = { Text(text = stringResource(R.string.local_saves_only_description)) },
-//            state = config.localSavesOnly,
-//            onCheckedChange = { state.config.value = config.copy(localSavesOnly = it) },
-//        )
+
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.use_legacy_drm)) },
@@ -358,6 +384,13 @@ fun GeneralTabContent(
             subtitle = { Text(text = stringResource(R.string.steam_offline_mode_description)) },
             state = config.steamOfflineMode,
             onCheckedChange = { state.config.value = config.copy(steamOfflineMode = it) },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.epic_offline_mode)) },
+            subtitle = { Text(text = stringResource(R.string.epic_offline_mode_description)) },
+            state = config.epicOfflineMode,
+            onCheckedChange = { state.config.value = config.copy(epicOfflineMode = it) },
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),

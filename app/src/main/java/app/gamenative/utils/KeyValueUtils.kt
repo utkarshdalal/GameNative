@@ -26,7 +26,7 @@ import `in`.dragonbra.javasteam.types.KeyValue
 import java.util.Date
 import timber.log.Timber
 
-const val CURRENT_UFS_PARSE_VERSION = 3
+const val CURRENT_UFS_PARSE_VERSION = 4
 
 /**
  * Extension functions relating to [KeyValue] as the receiver type.

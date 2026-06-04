@@ -553,7 +553,7 @@ class GOGDownloadManager @Inject constructor(
             app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false),
         )
         app.gamenative.PluviaApp.events.emitJava(
-            app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId.toIntOrNull() ?: 0),
+            app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId.toIntOrNull() ?: 0, app.gamenative.data.GameSource.GOG),
         )
     }
 

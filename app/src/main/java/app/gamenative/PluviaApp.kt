@@ -12,6 +12,7 @@ import app.gamenative.events.EventDispatcher
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
+import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.PlayIntegrity
@@ -28,7 +29,7 @@ import com.winlator.container.Container
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
-import com.winlator.widget.XServerView
+import com.winlator.widget.XServerRendererView
 import com.winlator.xenvironment.XEnvironment
 import timber.log.Timber
 import dagger.hilt.android.HiltAndroidApp
@@ -74,6 +75,7 @@ class PluviaApp : SplitCompatApplication() {
 
         // Init our datastore preferences.
         PrefManager.init(this)
+        FrontendSyncManager.init(this)
 
         // Initialize GOGConstants
         app.gamenative.service.gog.GOGConstants.init(this)
@@ -193,7 +195,7 @@ class PluviaApp : SplitCompatApplication() {
 
         // TODO: find a way to make this saveable, this is terrible (leak that memory baby)
         internal var xEnvironment: XEnvironment? = null
-        internal var xServerView: XServerView? = null
+        internal var xServerView: XServerRendererView? = null
         var inputControlsView: InputControlsView? = null
         var inputControlsManager: InputControlsManager? = null
         var touchpadView: TouchpadView? = null

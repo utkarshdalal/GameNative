@@ -82,7 +82,6 @@ import `in`.dragonbra.javasteam.steam.authentication.AuthenticationException
 import `in`.dragonbra.javasteam.steam.authentication.IAuthenticator
 import `in`.dragonbra.javasteam.steam.authentication.IChallengeUrlChanged
 import `in`.dragonbra.javasteam.steam.authentication.QrAuthSession
-import `in`.dragonbra.javasteam.depotdownloader.Steam3Session
 import `in`.dragonbra.javasteam.steam.discovery.FileServerListProvider
 import `in`.dragonbra.javasteam.steam.discovery.ServerQuality
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.GamePlayedInfo
@@ -115,7 +114,6 @@ import `in`.dragonbra.javasteam.steam.steamclient.configuration.SteamConfigurati
 import `in`.dragonbra.javasteam.types.DepotManifest
 import `in`.dragonbra.javasteam.types.FileData
 import `in`.dragonbra.javasteam.types.KeyValue
-import `in`.dragonbra.javasteam.types.PublishedFileID
 import `in`.dragonbra.javasteam.types.SteamID
 import `in`.dragonbra.javasteam.util.log.LogListener
 import `in`.dragonbra.javasteam.util.log.LogManager
@@ -173,7 +171,6 @@ import okhttp3.FormBody
 import org.json.JSONArray
 import org.json.JSONObject
 import com.winlator.container.ContainerManager
-import app.gamenative.statsgen.Achievement
 import app.gamenative.statsgen.StatType
 import app.gamenative.statsgen.StatsAchievementsGenerator
 import app.gamenative.statsgen.VdfParser
@@ -1821,6 +1818,15 @@ class SteamService : Service(), IChallengeUrlChanged {
                     Timber.i("Resumed download: initialized with $persistedBytes bytes")
                 }
 
+                // register BEFORE launching: a fast verify/update on up-to-date data can
+                // complete the launch body synchronously (DepotDownloader has no chunks to
+                // fetch). removeDownloadJob inside that body must find the entry to emit
+                // DownloadStatusChanged(false); otherwise the UI hangs at 0% and the next
+                // downloadApp call returns the stale DownloadInfo from the still-populated
+                // map (line ~1666 short-circuit).
+                downloadJobs[appId] = di
+                notifyDownloadStarted(appId)
+
                 val downloadJob = instance!!.scope.launch {
                     try {
                         // Get licenses from database
@@ -2069,7 +2075,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         // Remove the job here — Play button becomes visible after this
                         removeDownloadJob(appId)
-                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId))
+                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId, GameSource.STEAM))
 
                         // Remove the downloading app info
                         instance?.downloadingAppInfoDao?.deleteApp(appId)
@@ -2088,16 +2094,18 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
                 downloadJob.invokeOnCompletion { throwable ->
+                    // safety net for paths the inline removeDownloadJob doesn't cover:
+                    // early `return@launch` on empty licenses, exceptions before the catch
+                    // handlers, and cancellations thrown out of suspension points.
+                    // second call is a no-op if the inline path already removed the entry.
+                    removeDownloadJob(appId)
                     if (throwable is kotlinx.coroutines.CancellationException) {
                         Timber.d(throwable, "Download canceled for app $appId")
-                        removeDownloadJob(appId)
                     }
                 }
                 di.setDownloadJob(downloadJob)
             }
 
-            downloadJobs[appId] = info
-            notifyDownloadStarted(appId)
             return info
         }
 
@@ -2349,7 +2357,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                     steamInstance._steamApps?.notifyGamesPlayed(
                         gamesPlayed = gamesPlayed,
-                        clientOsType = EOSType.AndroidUnknown,
+                        clientOsType = EOSType.WinUnknown,
                     )
                 }
             }
@@ -2405,7 +2413,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                                     "Signaling app launch:\n\tappId: %d\n\tclientId: %s\n\tosType: %s",
                                                     appId,
                                                     PrefManager.clientId,
-                                                    EOSType.AndroidUnknown,
+                                                    EOSType.WinUnknown,
                                                 )
 
                                                 val pendingRemoteOperations = steamCloud.signalAppLaunchIntent(
@@ -2413,7 +2421,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                                     clientId = clientId,
                                                     machineName = SteamUtils.getMachineName(steamInstance),
                                                     ignorePendingOperations = ignorePendingOperations,
-                                                    osType = EOSType.AndroidUnknown,
+                                                    osType = EOSType.WinUnknown,
                                                 ).await()
 
                                                 if (pendingRemoteOperations.isNotEmpty() && !ignorePendingOperations) {
@@ -2727,10 +2735,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                     PluviaApp.events.emit(event)
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Login failed")
+                Timber.e(if (e is CancellationException) "Login cancelled or timed out" else "Login failed")
 
                 val message = when (e) {
-                    is CancellationException -> "Unknown cancellation"
+                    is CancellationException -> null
                     is AuthenticationException -> e.result?.name ?: e.message
                     else -> e.message ?: e.javaClass.name
                 }
@@ -3065,7 +3073,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()
             val schemaArray = userStats.schema.toByteArray()
             val generator = StatsAchievementsGenerator()
-            val result = generator.generateStatsAchievements(schemaArray, configDirectory)
+            val result = generator.generateStatsAchievements(schemaArray, userStats, configDirectory)
             cachedAchievements = result.achievements
             cachedAchievementsAppId = appId
 
@@ -3079,6 +3087,53 @@ class SteamService : Service(), IChallengeUrlChanged {
                     mappingJson.put(name, JSONArray(listOf(pair.first, pair.second)))
                 }
                 File(configDir, "achievement_name_to_block.json").writeText(mappingJson.toString(), Charsets.UTF_8)
+            }
+
+            // Seed the GSE Saves file with the real earned state from Steam to avoid re-trigger notifications
+            val context = instance!!.applicationContext
+            val gseDirs = getGseSaveDirs(context, appId)
+            seedGseSaveAchievements(gseDirs, result.achievements)
+        }
+
+        // Seed the GSE achievements file to ensure that we don't get early unlock triggers (Games such as Brotato do re-triggers on launch).
+        // merges results with ones from Steam Servers so we don't overwrite offline achievements.
+        private fun seedGseSaveAchievements(dirs: List<File>, achievements: List<app.gamenative.statsgen.Achievement>) {
+            if (achievements.isEmpty()) return
+            for (dir in dirs) {
+                try {
+                    dir.mkdirs()
+                    val file = File(dir, "achievements.json")
+                    // grab existing file or create new if nothing exists.
+                    val merged = if (file.exists()) {
+                        try {
+                            JSONObject(file.readText(Charsets.UTF_8))
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to parse existing GSE achievements.json in ${dir.absolutePath}, starting fresh")
+                            JSONObject()
+                        }
+                    } else {
+                        JSONObject()
+                    }
+
+                    // Apply achievements earned & timestamp to file where matched & persists local if local is earned & timestamped.
+                    for (ach in achievements) {
+                        val existing = if (merged.has(ach.name)) merged.getJSONObject(ach.name) else JSONObject()
+                        val localEarned = existing.optBoolean("earned", false)
+                        val steamEarned = ach.unlocked ?: false
+                        val earned = localEarned || steamEarned
+                        val localTime = existing.optLong("earned_time", 0L)
+                        val steamTime = (ach.unlockTimestamp ?: 0).toLong()
+                        val earnedTime = maxOf(localTime, steamTime)
+                        existing.put("earned", earned)
+                        existing.put("earned_time", earnedTime)
+                        merged.put(ach.name, existing)
+                    }
+
+                    file.writeText(merged.toString(2), Charsets.UTF_8)
+                    Timber.d("Seeded GSE Saves achievements.json in ${dir.absolutePath}")
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to seed GSE Saves achievements.json in ${dir.absolutePath}")
+                }
             }
         }
 
@@ -3364,7 +3419,16 @@ class SteamService : Service(), IChallengeUrlChanged {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Notification intents
+
+        // Start up the notification early to to avoid ForegroundServiceDidNotStartInTimeException
+        val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_STEAM, "Running...")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification)
+        }
+        notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_STEAM)
+
         when (intent?.action) {
             NotificationHelper.ACTION_EXIT -> {
                 Timber.d("Exiting app via notification intent")
@@ -3450,14 +3514,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             connectToSteam()
         }
-
-        val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_STEAM, "Running...")
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification)
-        }
-        notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_STEAM)
 
         return START_STICKY
     }
@@ -4220,10 +4276,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                                     licenseFlags = packageFromDb?.licenseFlags ?: EnumSet.noneOf(ELicenseFlags::class.java),
                                 )
                                 if (ufsParseVersionOutdated && newApp.ufs.saveFilePatterns.any { it.uploadRoot != it.root || it.uploadPath != it.path }) {
-                                    // UFS path logic changed and this app has rootoverrides — clear
-                                    // the file cache so the next sync detects the mismatch and
-                                    // prompts the user to choose between local and cloud saves.
-                                    fileChangeListsDao.deleteByAppId(app.id)
+                                    // UFS path logic changed and this app has rootoverrides: store 0 to force one
+                                    // full cloud query while preserving the local sync snapshot.
+                                    changeNumbersDao.insert(app.id, 0L)
                                 }
                                 newApp
                             } else {

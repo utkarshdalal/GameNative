@@ -3,6 +3,7 @@ package app.gamenative.ui.component
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -94,6 +95,7 @@ import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.utils.MathUtils.normalizedProgress
 import com.winlator.container.Container
 import com.winlator.renderer.GLRenderer
+import com.winlator.renderer.VulkanRenderer
 import com.winlator.winhandler.ProcessInfo
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -236,7 +238,8 @@ fun QuickMenu(
     isVisible: Boolean,
     onDismiss: () -> Unit,
     onItemSelected: (Int) -> Boolean,
-    renderer: GLRenderer? = null,
+    renderer: VulkanRenderer? = null,
+    glRenderer: GLRenderer? = null,
     container: Container? = null,
     wineProcesses: List<ProcessInfo> = emptyList(),
     isWineProcessesLoading: Boolean = false,
@@ -262,6 +265,7 @@ fun QuickMenu(
     onLsfgMultiplierChanged: (Int) -> Unit = {},
     onLsfgFlowScaleChanged: (Float) -> Unit = {},
     onLsfgPerformanceModeChanged: (Boolean) -> Unit = {},
+    onAnimationComplete: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val exitGameItem = QuickMenuItem(
@@ -354,6 +358,15 @@ fun QuickMenu(
     val toolsItemFocusRequester = remember { FocusRequester() }
     val lsfgItemFocusRequester = remember { FocusRequester() }
 
+    val visibleState = remember { MutableTransitionState(false) }
+    visibleState.targetState = isVisible
+
+    LaunchedEffect(visibleState.currentState, visibleState.isIdle) {
+        if (visibleState.isIdle) {
+            onAnimationComplete(visibleState.currentState)
+        }
+    }
+
     BackHandler(enabled = isVisible) {
         onDismiss()
     }
@@ -377,20 +390,14 @@ fun QuickMenu(
         }
 
         AnimatedVisibility(
-            visible = isVisible,
+            visibleState = visibleState,
             enter = slideInHorizontally(
                 initialOffsetX = { fullWidth -> -fullWidth },
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessMediumLow,
-                ),
+                animationSpec = tween(200),
             ),
             exit = slideOutHorizontally(
                 targetOffsetX = { fullWidth -> -fullWidth },
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMedium,
-                ),
+                animationSpec = tween(150),
             ),
             modifier = Modifier.align(Alignment.CenterStart),
         ) {
@@ -476,18 +483,20 @@ fun QuickMenu(
                                         focusRequester = lsfgTabFocusRequester,
                                     )
                                 }
-                                QuickMenuTabButton(
-                                    icon = Icons.Default.AutoFixHigh,
-                                    contentDescriptionResId = R.string.screen_effects,
-                                    selected = selectedTab == QuickMenuTab.EFFECTS,
-                                    accentColor = PluviaTheme.colors.accentPurple,
-                                    onSelected = {
-                                        selectedTab = QuickMenuTab.EFFECTS
-                                        PrefManager.quickMenuLastTab = selectedTab
-                                    },
-                                    modifier = Modifier.width(56.dp),
-                                    focusRequester = effectsTabFocusRequester,
-                                )
+                                if (renderer != null || glRenderer != null) {
+                                    QuickMenuTabButton(
+                                        icon = Icons.Default.AutoFixHigh,
+                                        contentDescriptionResId = R.string.screen_effects,
+                                        selected = selectedTab == QuickMenuTab.EFFECTS,
+                                        accentColor = PluviaTheme.colors.accentPurple,
+                                        onSelected = {
+                                            selectedTab = QuickMenuTab.EFFECTS
+                                            PrefManager.quickMenuLastTab = selectedTab
+                                        },
+                                        modifier = Modifier.width(56.dp),
+                                        focusRequester = effectsTabFocusRequester,
+                                    )
+                                }
                                 QuickMenuTabButton(
                                     icon = Icons.Default.Gamepad,
                                     contentDescriptionResId = R.string.quick_menu_tab_controller,
@@ -596,6 +605,14 @@ fun QuickMenu(
                                         if (renderer != null) {
                                             ScreenEffectsTabContent(
                                                 renderer = renderer,
+                                                container = container,
+                                                modifier = Modifier.fillMaxSize(),
+                                                firstItemFocusRequester = effectsItemFocusRequester,
+                                                scrollState = effectsScrollState,
+                                            )
+                                        } else if (glRenderer != null) {
+                                            GLScreenEffectsTabContent(
+                                                renderer = glRenderer,
                                                 container = container,
                                                 modifier = Modifier.fillMaxSize(),
                                                 firstItemFocusRequester = effectsItemFocusRequester,
