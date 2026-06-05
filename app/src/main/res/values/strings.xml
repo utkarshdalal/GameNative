@@ -241,6 +241,7 @@
     <string name="open_navigation_menu">Open Navigation Menu</string>
     <string name="quick_menu_title">Quick Menu</string>
     <string name="quick_menu_back">Back</string>
+    <string name="display_brightness">Display brightness</string>
     <string name="screen_effects">Screen Effects</string>
     <string name="screen_effects_live_preview">Changes apply instantly to the current game.</string>
     <string name="screen_effects_scaling">Scaling</string>
