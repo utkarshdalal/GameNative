@@ -1635,11 +1635,20 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             case TouchGestureConfig.PAN_MIDDLE_MOUSE:
                 performMiddleMousePan(dx, dy);
                 break;
+            case TouchGestureConfig.PAN_INVERTED_MIDDLE_MOUSE:
+                performMiddleMousePan(-dx, -dy);
+                break;
             case TouchGestureConfig.PAN_WASD:
                 performKeyPan(dx, dy, XKeycode.KEY_A, XKeycode.KEY_D, XKeycode.KEY_W, XKeycode.KEY_S);
                 break;
+            case TouchGestureConfig.PAN_INVERTED_WASD:
+                performKeyPan(dx, dy, XKeycode.KEY_D, XKeycode.KEY_A, XKeycode.KEY_S, XKeycode.KEY_W);
+                break;
             case TouchGestureConfig.PAN_ARROW_KEYS:
                 performKeyPan(dx, dy, XKeycode.KEY_LEFT, XKeycode.KEY_RIGHT, XKeycode.KEY_UP, XKeycode.KEY_DOWN);
+                break;
+            case TouchGestureConfig.PAN_INVERTED_ARROW_KEYS:
+                performKeyPan(dx, dy, XKeycode.KEY_RIGHT, XKeycode.KEY_LEFT, XKeycode.KEY_DOWN, XKeycode.KEY_UP);
                 break;
             case TouchGestureConfig.PAN_LEFT_CLICK_DRAG:
                 performClickDrag(dx, dy, Pointer.Button.BUTTON_LEFT);

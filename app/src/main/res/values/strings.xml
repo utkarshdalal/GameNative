@@ -793,8 +793,11 @@
     <string name="gesture_action_right_click">Right Click</string>
     <string name="gesture_action_middle_click">Middle Click</string>
     <string name="gesture_pan_middle_mouse">Middle Mouse Pan</string>
+    <string name="gesture_pan_inverted_middle_mouse">Inverted Middle Mouse Pan</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">Inverted WASD</string>
     <string name="gesture_pan_arrow_keys">Arrow Keys</string>
+    <string name="gesture_pan_inverted_arrow_keys">Inverted Arrow Keys</string>
     <string name="gesture_pan_left_click_drag">Left Click Drag</string>
     <string name="gesture_pan_right_click_drag">Right Click Drag</string>
     <string name="gesture_zoom_scroll_wheel">Scroll Wheel</string>
@@ -808,9 +811,13 @@
     <string name="gesture_header_special">Special</string>
     <string name="gesture_header_mouse">Mouse</string>
     <string name="gesture_header_common_game">Common Game Keys</string>
+    <string name="gesture_header_navigation_editing">Navigation / Editing</string>
+    <string name="gesture_header_symbols">Symbols</string>
     <string name="gesture_header_letters">Letters A\u2013Z</string>
     <string name="gesture_header_numbers">Numbers 0\u20139</string>
+    <string name="gesture_header_numpad">Numpad</string>
     <string name="gesture_header_function_keys">Function Keys</string>
+    <string name="gesture_header_modifiers_locks">Modifiers / Locks</string>
     <string name="gesture_delay_label">Delay</string>
     <string name="gesture_two_finger_hold">Two-Finger Hold</string>
     <string name="gesture_two_finger_hold_delay">Two-Finger Hold Delay (ms)</string>
