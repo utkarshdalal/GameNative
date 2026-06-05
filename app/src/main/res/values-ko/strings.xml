@@ -292,6 +292,7 @@
     <string name="open_navigation_menu">탐색 메뉴 열기</string>
     <string name="quick_menu_title">빠른 메뉴</string>
     <string name="quick_menu_back">뒤로</string>
+    <string name="display_brightness">디스플레이 밝기</string>
     <string name="screen_effects">화면 효과</string>
     <string name="screen_effects_live_preview">변경 사항이 현재 게임에 즉시 적용됩니다.</string>
     <string name="screen_effects_color_adjustments">색상 조정</string>

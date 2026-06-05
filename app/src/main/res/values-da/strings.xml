@@ -209,6 +209,7 @@
     <string name="open_navigation_menu">Åbn navigationsmenu</string>
     <string name="quick_menu_title">Hurtig menu</string>
     <string name="quick_menu_back">Tilbage</string>
+    <string name="display_brightness">Skærmens lysstyrke</string>
     <string name="screen_effects">Skærmeffekter</string>
     <string name="screen_effects_live_preview">Ændringer anvendes straks på det aktuelle spil.</string>
     <string name="screen_effects_color_adjustments">Farvejusteringer</string>

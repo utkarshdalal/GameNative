@@ -281,6 +281,7 @@
     <string name="open_navigation_menu">Deschide meniul de navigare</string>
     <string name="quick_menu_title">Meniu rapid</string>
     <string name="quick_menu_back">Înapoi</string>
+    <string name="display_brightness">Luminozitatea ecranului</string>
     <string name="screen_effects">Efecte de ecran</string>
     <string name="screen_effects_live_preview">Modificările se aplică instantaneu jocului curent.</string>
     <string name="screen_effects_color_adjustments">Ajustări de culoare</string>

@@ -240,6 +240,7 @@
     <string name="open_navigation_menu">ナビゲーションメニューを開く</string>
     <string name="quick_menu_title">クイックメニュー</string>
     <string name="quick_menu_back">戻る</string>
+    <string name="display_brightness">ディスプレイの明るさ</string>
     <string name="screen_effects">画面効果</string>
     <string name="screen_effects_live_preview">変更は現在のゲームに即座に適用されます。</string>
     <string name="screen_effects_scaling">スケーリング</string>
