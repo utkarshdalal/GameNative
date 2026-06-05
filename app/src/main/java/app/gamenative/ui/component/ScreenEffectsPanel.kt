@@ -155,14 +155,16 @@ private fun DisplayBrightnessRow(
 ) {
     val context = LocalContext.current
     val activity = remember(context) { BrightnessManager.findActivity(context) }
+    // Without an Activity there is no window brightness target to control.
+    if (activity == null) return
     var displayBrightness by remember(activity) {
-        mutableFloatStateOf(activity?.let(BrightnessManager::readDisplayBrightness) ?: 0.5f)
+        mutableFloatStateOf(BrightnessManager.readDisplayBrightness(activity))
     }
 
     fun setDisplayBrightness(value: Float) {
         val next = BrightnessManager.snapDisplayBrightness(value)
         displayBrightness = next
-        activity?.let { BrightnessManager.applyDisplayBrightness(it, next) }
+        BrightnessManager.applyDisplayBrightness(activity, next)
     }
 
     ScreenEffectAdjustmentRow(

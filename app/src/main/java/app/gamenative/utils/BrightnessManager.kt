@@ -54,6 +54,7 @@ class BrightnessManager(private val activity: Activity, private val targetBright
                 .coerceIn(DISPLAY_BRIGHTNESS_MIN, DISPLAY_BRIGHTNESS_MAX)
         }
 
+        @MainThread
         fun readDisplayBrightness(activity: Activity): Float {
             val windowBrightness = activity.window.attributes.screenBrightness
             if (windowBrightness in DISPLAY_BRIGHTNESS_MIN..DISPLAY_BRIGHTNESS_MAX) {
