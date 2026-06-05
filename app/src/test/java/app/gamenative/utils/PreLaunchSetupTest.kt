@@ -90,6 +90,21 @@ class PreLaunchSetupTest {
     }
 
     @Test
+    fun buildChain_skipsInstallScript_forNonSteamSources() {
+        PreInstallSteps.setStepsProviderForTests { emptyList() }
+
+        val chain = PreLaunchSetup.buildChain(
+            container = container,
+            appId = "GOG_400",
+            gameSource = GameSource.GOG,
+            screenInfo = "1280x720",
+            containerVariantChanged = false,
+        )
+
+        assertTrue(chain.isEmpty())
+    }
+
+    @Test
     fun buildChain_onComplete_createsMarkerFile() {
         PreInstallSteps.setStepsProviderForTests {
             listOf(FakeStep(Marker.OPENAL_INSTALLED, applies = true, command = "echo openal"))
