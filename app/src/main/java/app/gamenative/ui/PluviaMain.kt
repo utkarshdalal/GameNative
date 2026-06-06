@@ -1158,7 +1158,11 @@ fun PluviaMain(
                         visible = true,
                         title = context.getString(R.string.container_config_title),
                         initialConfig = config,
-                        steamAppId = appId.removePrefix("STEAM_").toIntOrNull()?.takeIf { appId.startsWith("STEAM_") },
+                        steamAppId = if (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM) {
+                            runCatching { ContainerUtils.extractGameIdFromContainerId(appId) }.getOrNull()
+                        } else {
+                            null
+                        },
                         onDismissRequest = { openContainerConfigForAppId = null },
                         onSave = { newConfig ->
                             scope.launch {
