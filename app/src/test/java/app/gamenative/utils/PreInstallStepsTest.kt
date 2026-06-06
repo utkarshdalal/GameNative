@@ -71,8 +71,8 @@ class PreInstallStepsTest {
 
         val result = PreInstallSteps.getPreInstallCommands(
             container = container,
-            appId = "STEAM_400",
-            gameSource = GameSource.STEAM,
+            appId = "GOG_400",
+            gameSource = GameSource.GOG,
             screenInfo = "1280x720",
             containerVariantChanged = false,
         )
@@ -94,8 +94,8 @@ class PreInstallStepsTest {
 
         val withoutReset = PreInstallSteps.getPreInstallCommands(
             container = container,
-            appId = "STEAM_400",
-            gameSource = GameSource.STEAM,
+            appId = "GOG_400",
+            gameSource = GameSource.GOG,
             screenInfo = "1280x720",
             containerVariantChanged = false,
         )
@@ -103,8 +103,8 @@ class PreInstallStepsTest {
 
         val withReset = PreInstallSteps.getPreInstallCommands(
             container = container,
-            appId = "STEAM_400",
-            gameSource = GameSource.STEAM,
+            appId = "GOG_400",
+            gameSource = GameSource.GOG,
             screenInfo = "1280x720",
             containerVariantChanged = true,
         )

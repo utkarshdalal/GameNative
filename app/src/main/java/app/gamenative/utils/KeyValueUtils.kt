@@ -62,6 +62,7 @@ fun KeyValue.generateSteamApp(): SteamApp {
                     systemDefined = currentDepot["systemdefined"].asBoolean(),
                     optionalDlcId = currentDepot["config"]["optionaldlc"].asInteger(INVALID_APP_ID),
                     steamDeck = currentDepot["config"]["steamdeck"].asBoolean(false),
+                    installScript = currentDepot["installscript"].value.orEmpty(),
                 )
             },
         branches = this["depots"]["branches"].children.associate {

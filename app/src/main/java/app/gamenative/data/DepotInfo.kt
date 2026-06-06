@@ -26,6 +26,7 @@ data class DepotInfo(
     val realm: SteamRealm = SteamRealm.Unknown,
     val systemDefined: Boolean = false,
     val steamDeck: Boolean = false,
+    val installScript: String = "",
 ) {
     /** Windows or OS-untagged (neither Linux nor macOS) */
     val isWindowsCompatible: Boolean

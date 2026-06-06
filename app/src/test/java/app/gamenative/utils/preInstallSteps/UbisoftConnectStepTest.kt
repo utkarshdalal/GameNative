@@ -29,12 +29,17 @@ class UbisoftConnectStepTest {
     @Test
     fun appliesTo_returnsFalse_whenMarkerExists() {
         MarkerUtils.addMarker(gameDir.absolutePath, Marker.UBISOFT_CONNECT_INSTALLED)
+        assertFalse(UbisoftConnectStep.appliesTo(container, GameSource.GOG, gameDir.absolutePath))
+    }
+
+    @Test
+    fun appliesTo_returnsFalse_forSteamGames() {
         assertFalse(UbisoftConnectStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
     }
 
     @Test
     fun appliesTo_returnsTrue_whenMarkerMissing() {
-        assertTrue(UbisoftConnectStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
+        assertTrue(UbisoftConnectStep.appliesTo(container, GameSource.GOG, gameDir.absolutePath))
     }
 
     @Test
