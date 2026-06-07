@@ -1067,10 +1067,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             String twoFingerDragAction = gestureConfig.getTwoFingerDragAction();
             if (isClickDragAction(twoFingerDragAction)) {
                 if (useRelativeMouseDragMovement()) {
-                    if (Math.abs(dx) > 3f || Math.abs(dy) > 3f) {
-                        twoFingerDragging = true;
-                        performClickDragWithRelativeMovement(dx, dy, twoFingerDragAction);
-                    }
+                    twoFingerDragging = true;
+                    performClickDragWithRelativeMovement(dx, dy, twoFingerDragAction);
                 } else {
                     twoFingerDragging = true;
                     performClickDragAt(midX, midY, twoFingerDragAction);
@@ -1361,14 +1359,12 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         }
 
         if (threeFingerGestureMode == THREE_FINGER_GESTURE_PAN) {
-            // #3: Minimum drag distance — require 3px of per-frame movement to emit pan events
+            // #3: Minimum drag distance - require 3px of per-frame movement for non-click pan actions
             String threeFingerDragAction = gestureConfig.getThreeFingerDragAction();
             if (isClickDragAction(threeFingerDragAction)) {
                 if (useRelativeMouseDragMovement()) {
-                    if (Math.abs(dx) > 3f || Math.abs(dy) > 3f) {
-                        threeFingerDragging = true;
-                        performClickDragWithRelativeMovement(dx, dy, threeFingerDragAction);
-                    }
+                    threeFingerDragging = true;
+                    performClickDragWithRelativeMovement(dx, dy, threeFingerDragAction);
                 } else {
                     threeFingerDragging = true;
                     performClickDragAt(midX, midY, threeFingerDragAction);
