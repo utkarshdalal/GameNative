@@ -772,6 +772,10 @@
     <string name="gesture_three_finger_hold_delay">三指長按延遲 (ms)</string>
     <string name="gesture_threshold">手勢閾值 (px)</string>
     <string name="gesture_threshold_subtitle">鎖定手勢類型所需的移動距離（越低越靈敏）</string>
+    <string name="gesture_mouse_drag_movement">拖曳時的滑鼠移動</string>
+    <string name="gesture_mouse_drag_movement_subtitle">直接模式適用於大多數遊戲。如果拖曳造成鏡頭或游標問題，請使用相對模式</string>
+    <string name="gesture_mouse_drag_movement_direct">直接</string>
+    <string name="gesture_mouse_drag_movement_relative">相對</string>
     <string name="gesture_show_click_highlight">顯示點擊高亮</string>
     <string name="gesture_show_click_highlight_subtitle">在點擊位置顯示圓圈</string>
     <string name="gesture_show_debug_overlay">顯示手勢除錯疊加層</string>

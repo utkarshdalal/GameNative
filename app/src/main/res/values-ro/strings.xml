@@ -780,6 +780,10 @@
     <string name="gesture_three_finger_hold_delay">Întârziere menținere cu trei degete (ms)</string>
     <string name="gesture_threshold">Prag gest (px)</string>
     <string name="gesture_threshold_subtitle">Mișcare necesară pentru a bloca tipul de gest (mai mic = mai receptiv)</string>
+    <string name="gesture_mouse_drag_movement">Mișcarea mouse-ului la glisare</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Direct funcționează în majoritatea jocurilor. Folosește Relativ dacă glisarea provoacă probleme cu camera sau cursorul</string>
+    <string name="gesture_mouse_drag_movement_direct">Direct</string>
+    <string name="gesture_mouse_drag_movement_relative">Relativ</string>
     <string name="gesture_show_click_highlight">Afișează evidențierea clicului</string>
     <string name="gesture_show_click_highlight_subtitle">Afișează un cerc la locația atingerii</string>
     <string name="gesture_show_debug_overlay">Afișează suprapunerea de depanare a gesturilor</string>

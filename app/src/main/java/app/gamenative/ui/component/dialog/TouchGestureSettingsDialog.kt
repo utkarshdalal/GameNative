@@ -33,6 +33,9 @@ import app.gamenative.data.TouchGestureConfig.Companion.ACTION_RIGHT_CLICK
 import app.gamenative.data.TouchGestureConfig.Companion.ACTION_SHOW_KEYBOARD
 import app.gamenative.data.TouchGestureConfig.Companion.MOUSE_BEHAVIOR_CLICK
 import app.gamenative.data.TouchGestureConfig.Companion.MOUSE_BEHAVIOR_HOLD
+import app.gamenative.data.TouchGestureConfig.Companion.MOUSE_DRAG_MOVEMENT_DIRECT
+import app.gamenative.data.TouchGestureConfig.Companion.MOUSE_DRAG_MOVEMENT_MODES
+import app.gamenative.data.TouchGestureConfig.Companion.MOUSE_DRAG_MOVEMENT_RELATIVE
 import app.gamenative.data.TouchGestureConfig.Companion.PAN_ACTIONS
 import app.gamenative.data.TouchGestureConfig.Companion.PAN_ARROW_KEYS
 import app.gamenative.data.TouchGestureConfig.Companion.PAN_LEFT_CLICK_DRAG
@@ -353,6 +356,19 @@ fun TouchGestureSettingsDialog(
                     onValueChange = { config = config.copy(gestureThreshold = it) },
                 )
 
+                SettingsListDropdown(
+                    colors = settingsTileColorsAlt(),
+                    title = { Text(stringResource(R.string.gesture_mouse_drag_movement)) },
+                    subtitle = { Text(stringResource(R.string.gesture_mouse_drag_movement_subtitle)) },
+                    value = MOUSE_DRAG_MOVEMENT_MODES
+                        .indexOf(config.mouseDragMovementMode)
+                        .coerceAtLeast(0),
+                    items = MOUSE_DRAG_MOVEMENT_MODES.map { mouseDragMovementModeLabel(it) },
+                    onItemSelected = { index ->
+                        config = config.copy(mouseDragMovementMode = MOUSE_DRAG_MOVEMENT_MODES[index])
+                    },
+                )
+
                 // ── Show Click Highlight ─────────────────────────────────
                 SettingsSwitch(
                     colors = settingsTileColorsAlt(),
@@ -587,6 +603,13 @@ private fun zoomActionLabel(action: String): String = when (action) {
     ZOOM_PLUS_MINUS -> stringResource(R.string.gesture_zoom_plus_minus)
     ZOOM_PAGE_UP_DOWN -> stringResource(R.string.gesture_zoom_page_up_down)
     else -> action
+}
+
+@Composable
+private fun mouseDragMovementModeLabel(mode: String): String = when (mode) {
+    MOUSE_DRAG_MOVEMENT_RELATIVE -> stringResource(R.string.gesture_mouse_drag_movement_relative)
+    MOUSE_DRAG_MOVEMENT_DIRECT -> stringResource(R.string.gesture_mouse_drag_movement_direct)
+    else -> mode
 }
 
 // ── Categorized action picker for tap/hold gestures ─────────────────────

@@ -70,6 +70,9 @@ data class TouchGestureConfig(
 
     // 14. Gesture threshold (px) for two-finger gesture lock-in
     val gestureThreshold: Int = DEFAULT_GESTURE_THRESHOLD,
+
+    // 15. Movement mode used by mouse-button drag gestures
+    val mouseDragMovementMode: String = MOUSE_DRAG_MOVEMENT_DIRECT,
 ) {
 
     // ── Serialisation ────────────────────────────────────────────────────
@@ -116,6 +119,7 @@ data class TouchGestureConfig(
             put(KEY_SHOW_GESTURE_DEBUG_OVERLAY, showGestureDebugOverlay)
             put(KEY_SHOW_CURSOR_IN_TOUCHSCREEN_MODE, showCursorInTouchscreenMode)
             put(KEY_GESTURE_THRESHOLD, gestureThreshold)
+            put(KEY_MOUSE_DRAG_MOVEMENT_MODE, mouseDragMovementMode)
         }.toString()
     }
 
@@ -132,6 +136,9 @@ data class TouchGestureConfig(
 
         const val MOUSE_BEHAVIOR_HOLD = "hold"
         const val MOUSE_BEHAVIOR_CLICK = "click"
+
+        const val MOUSE_DRAG_MOVEMENT_DIRECT = "direct"
+        const val MOUSE_DRAG_MOVEMENT_RELATIVE = "relative"
 
         // ── Special actions ──────────────────────────────────────────────
         const val ACTION_SHOW_KEYBOARD = "show_keyboard"
@@ -186,6 +193,7 @@ data class TouchGestureConfig(
         private const val KEY_SHOW_GESTURE_DEBUG_OVERLAY = "showGestureDebugOverlay"
         private const val KEY_SHOW_CURSOR_IN_TOUCHSCREEN_MODE = "showCursorInTouchscreenMode"
         private const val KEY_GESTURE_THRESHOLD = "gestureThreshold"
+        private const val KEY_MOUSE_DRAG_MOVEMENT_MODE = "mouseDragMovementMode"
 
         /**
          * Compatibility-safe defaults for existing (pre-overhaul) configs.
@@ -253,6 +261,9 @@ data class TouchGestureConfig(
                     showGestureDebugOverlay = obj.optBoolean(KEY_SHOW_GESTURE_DEBUG_OVERLAY, false),
                     showCursorInTouchscreenMode = obj.optBoolean(KEY_SHOW_CURSOR_IN_TOUCHSCREEN_MODE, false),
                     gestureThreshold = obj.optInt(KEY_GESTURE_THRESHOLD, DEFAULT_GESTURE_THRESHOLD),
+                    mouseDragMovementMode = normalizeMouseDragMovementMode(
+                        obj.optString(KEY_MOUSE_DRAG_MOVEMENT_MODE, MOUSE_DRAG_MOVEMENT_DIRECT),
+                    ),
                 )
             } catch (_: Exception) {
                 compatibilityDefaults()
@@ -270,6 +281,14 @@ data class TouchGestureConfig(
             return if (value == MOUSE_BEHAVIOR_CLICK) MOUSE_BEHAVIOR_CLICK else MOUSE_BEHAVIOR_HOLD
         }
 
+        fun normalizeMouseDragMovementMode(mode: String?): String {
+            return if (mode == MOUSE_DRAG_MOVEMENT_RELATIVE) {
+                MOUSE_DRAG_MOVEMENT_RELATIVE
+            } else {
+                MOUSE_DRAG_MOVEMENT_DIRECT
+            }
+        }
+
         /** Ordered list of pan/camera-drag actions. */
         val PAN_ACTIONS = listOf(
             PAN_ARROW_KEYS,
@@ -277,6 +296,11 @@ data class TouchGestureConfig(
             PAN_MIDDLE_MOUSE,
             PAN_LEFT_CLICK_DRAG,
             PAN_RIGHT_CLICK_DRAG,
+        )
+
+        val MOUSE_DRAG_MOVEMENT_MODES = listOf(
+            MOUSE_DRAG_MOVEMENT_DIRECT,
+            MOUSE_DRAG_MOVEMENT_RELATIVE,
         )
 
         /** Ordered list of zoom/pinch actions. */

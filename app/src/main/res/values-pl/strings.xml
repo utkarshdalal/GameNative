@@ -788,6 +788,10 @@
     <string name="gesture_three_finger_hold_delay">Opóźnienie przytrzymania trzema palcami (ms)</string>
     <string name="gesture_threshold">Próg gestu (px)</string>
     <string name="gesture_threshold_subtitle">Ruch wymagany do zablokowania typu gestu (niższy = większa responsywność)</string>
+    <string name="gesture_mouse_drag_movement">Ruch myszy podczas przeciągania</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Bezpośredni działa w większości gier. Użyj względnego, jeśli przeciąganie powoduje problemy z kamerą lub kursorem</string>
+    <string name="gesture_mouse_drag_movement_direct">Bezpośredni</string>
+    <string name="gesture_mouse_drag_movement_relative">Względny</string>
     <string name="gesture_show_click_highlight">Pokaż podświetlenie kliknięcia</string>
     <string name="gesture_show_click_highlight_subtitle">Pokaż okrąg w miejscu stuknięcia</string>
     <string name="gesture_show_debug_overlay">Pokaż nakładkę debugowania gestów</string>

@@ -795,6 +795,10 @@
     <string name="gesture_three_finger_hold_delay">3 本指ホールド遅延 (ミリ秒)</string>
     <string name="gesture_threshold">ジェスチャーのしきい値 (px)</string>
     <string name="gesture_threshold_subtitle">ジェスチャ タイプをロックするために必要な動作 (低い = 応答性が高い)</string>
+    <string name="gesture_mouse_drag_movement">ドラッグ時のマウス移動</string>
+    <string name="gesture_mouse_drag_movement_subtitle">ほとんどのゲームではダイレクトが動作します。ドラッグでカメラやカーソルに問題が出る場合は相対を使用してください</string>
+    <string name="gesture_mouse_drag_movement_direct">ダイレクト</string>
+    <string name="gesture_mouse_drag_movement_relative">相対</string>
     <string name="gesture_show_click_highlight">クリックハイライトを表示</string>
     <string name="gesture_show_click_highlight_subtitle">タップした位置に円を表示</string>
     <string name="gesture_show_debug_overlay">ジェスチャ デバッグ オーバーレイを表示</string>

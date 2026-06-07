@@ -815,6 +815,10 @@
     <string name="gesture_three_finger_hold_delay">Three-Finger Hold Delay (ms)</string>
     <string name="gesture_threshold">Gesture Threshold (px)</string>
     <string name="gesture_threshold_subtitle">Movement needed to lock gesture type (lower = more responsive)</string>
+    <string name="gesture_mouse_drag_movement">Mouse Drag Movement</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Direct works for most games. Use Relative if dragging causes camera or cursor issues</string>
+    <string name="gesture_mouse_drag_movement_direct">Direct</string>
+    <string name="gesture_mouse_drag_movement_relative">Relative</string>
     <string name="gesture_show_click_highlight">Show Click Highlight</string>
     <string name="gesture_show_click_highlight_subtitle">Show a circle at tap location</string>
     <string name="gesture_show_debug_overlay">Show Gesture Debug Overlay</string>

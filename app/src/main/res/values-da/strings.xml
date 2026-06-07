@@ -600,6 +600,10 @@
     <string name="gesture_three_finger_hold_delay">Forsinkelse for hold med tre fingre (ms)</string>
     <string name="gesture_threshold">Gestus-tærskel (px)</string>
     <string name="gesture_threshold_subtitle">Bevægelse, der kræves for at låse gestustypen (lavere = mere responsiv)</string>
+    <string name="gesture_mouse_drag_movement">Musebevægelse ved træk</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Direkte virker for de fleste spil. Brug Relativ, hvis træk giver kamera- eller markørproblemer</string>
+    <string name="gesture_mouse_drag_movement_direct">Direkte</string>
+    <string name="gesture_mouse_drag_movement_relative">Relativ</string>
     <string name="gesture_show_click_highlight">Vis klikfremhævning</string>
     <string name="gesture_show_click_highlight_subtitle">Vis en cirkel ved trykplacering</string>
     <string name="gesture_show_debug_overlay">Vis fejlfindings-overlay for gestus</string>

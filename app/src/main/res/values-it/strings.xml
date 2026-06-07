@@ -779,6 +779,10 @@
     <string name="gesture_three_finger_hold_delay">Ritardo pressione con tre dita (ms)</string>
     <string name="gesture_threshold">Soglia gesto (px)</string>
     <string name="gesture_threshold_subtitle">Movimento necessario per bloccare il tipo di gesto (più basso = più reattivo)</string>
+    <string name="gesture_mouse_drag_movement">Movimento del mouse durante il trascinamento</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Diretto funziona con la maggior parte dei giochi. Usa Relativo se il trascinamento causa problemi alla visuale o al cursore</string>
+    <string name="gesture_mouse_drag_movement_direct">Diretto</string>
+    <string name="gesture_mouse_drag_movement_relative">Relativo</string>
     <string name="gesture_show_click_highlight">Mostra evidenziazione clic</string>
     <string name="gesture_show_click_highlight_subtitle">Mostra un cerchio nella posizione del tocco</string>
     <string name="gesture_show_debug_overlay">Mostra overlay debug gesture</string>

@@ -774,6 +774,10 @@
     <string name="gesture_three_finger_hold_delay">Затримка утримання трьома пальцями (мс)</string>
     <string name="gesture_threshold">Поріг жесту (px)</string>
     <string name="gesture_threshold_subtitle">Рух, потрібний для фіксації типу жесту (нижче = вища чутливість)</string>
+    <string name="gesture_mouse_drag_movement">Рух миші під час перетягування</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Прямий режим працює в більшості ігор. Використовуйте відносний, якщо перетягування спричиняє проблеми з камерою або курсором</string>
+    <string name="gesture_mouse_drag_movement_direct">Прямий</string>
+    <string name="gesture_mouse_drag_movement_relative">Відносний</string>
     <string name="gesture_show_click_highlight">Показувати підсвічування кліку</string>
     <string name="gesture_show_click_highlight_subtitle">Показувати коло в місці торкання</string>
     <string name="gesture_show_debug_overlay">Показувати оверлей налагодження жестів</string>

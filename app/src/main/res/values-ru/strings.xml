@@ -475,6 +475,10 @@
     <string name="gesture_three_finger_hold_delay">Задержка удержания тремя пальцами (мс)</string>
     <string name="gesture_threshold">Порог жеста (px)</string>
     <string name="gesture_threshold_subtitle">Движение, необходимое для фиксации типа жеста (меньше = быстрее отклик)</string>
+    <string name="gesture_mouse_drag_movement">Движение мыши при перетаскивании</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Прямой режим подходит для большинства игр. Используйте относительный, если перетаскивание вызывает проблемы с камерой или курсором</string>
+    <string name="gesture_mouse_drag_movement_direct">Прямой</string>
+    <string name="gesture_mouse_drag_movement_relative">Относительный</string>
     <string name="gesture_show_click_highlight">Показывать подсветку клика</string>
     <string name="gesture_show_click_highlight_subtitle">Показывать круг в месте касания</string>
     <string name="gesture_show_debug_overlay">Показывать отладочный оверлей жестов</string>

@@ -775,6 +775,10 @@
     <string name="gesture_three_finger_hold_delay">Délai du maintien à trois doigts (ms)</string>
     <string name="gesture_threshold">Seuil du geste (px)</string>
     <string name="gesture_threshold_subtitle">Mouvement requis pour verrouiller le type de geste (plus bas = plus réactif)</string>
+    <string name="gesture_mouse_drag_movement">Mouvement de la souris lors du glissement</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Direct fonctionne pour la plupart des jeux. Utilisez Relatif si le glissement provoque des problèmes de caméra ou de curseur</string>
+    <string name="gesture_mouse_drag_movement_direct">Direct</string>
+    <string name="gesture_mouse_drag_movement_relative">Relatif</string>
     <string name="gesture_show_click_highlight">Afficher la mise en évidence du clic</string>
     <string name="gesture_show_click_highlight_subtitle">Afficher un cercle à l\'emplacement du toucher</string>
     <string name="gesture_show_debug_overlay">Afficher la superposition de débogage des gestes</string>

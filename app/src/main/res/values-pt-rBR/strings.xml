@@ -600,6 +600,10 @@
     <string name="gesture_three_finger_hold_delay">Atraso ao segurar com três dedos (ms)</string>
     <string name="gesture_threshold">Limite do gesto (px)</string>
     <string name="gesture_threshold_subtitle">Movimento necessário para travar o tipo de gesto (menor = mais responsivo)</string>
+    <string name="gesture_mouse_drag_movement">Movimento do mouse ao arrastar</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Direto funciona na maioria dos jogos. Use Relativo se arrastar causar problemas na câmera ou no cursor</string>
+    <string name="gesture_mouse_drag_movement_direct">Direto</string>
+    <string name="gesture_mouse_drag_movement_relative">Relativo</string>
     <string name="gesture_show_click_highlight">Mostrar destaque de clique</string>
     <string name="gesture_show_click_highlight_subtitle">Mostrar um círculo no local do toque</string>
     <string name="gesture_show_debug_overlay">Mostrar sobreposição de depuração de gestos</string>
