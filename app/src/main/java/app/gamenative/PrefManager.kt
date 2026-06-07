@@ -1308,4 +1308,33 @@ object PrefManager {
     var usageAnalyticsEnabled: Boolean
         get() = getPref(USAGE_ANALYTICS_ENABLED, true)
         set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
+
+    private val NEXUS_API_KEY_ENC = byteArrayPreferencesKey("nexus_api_key_enc")
+    var nexusApiKey: String
+        get() {
+            val encryptedBytes = getPref(NEXUS_API_KEY_ENC, ByteArray(0))
+            return if (encryptedBytes.isEmpty()) {
+                ""
+            } else {
+                runCatching { String(Crypto.decrypt(encryptedBytes)) }.getOrDefault("")
+            }
+        }
+        set(value) {
+            if (value.isBlank()) {
+                removePref(NEXUS_API_KEY_ENC)
+            } else {
+                setPref(NEXUS_API_KEY_ENC, Crypto.encrypt(value.toByteArray()))
+            }
+        }
+
+    private val NEXUS_LAST_PLACEMENT_JSON = stringPreferencesKey("nexus_last_placement_json")
+    var nexusLastPlacementJson: String
+        get() = getPref(NEXUS_LAST_PLACEMENT_JSON, "{}")
+        set(value) {
+            if (value.isBlank() || value == "{}") {
+                removePref(NEXUS_LAST_PLACEMENT_JSON)
+            } else {
+                setPref(NEXUS_LAST_PLACEMENT_JSON, value)
+            }
+        }
 }

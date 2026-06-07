@@ -14,6 +14,7 @@ import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
+import app.gamenative.mods.NexusModManager
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
@@ -492,6 +493,11 @@ class CustomGameAppScreen : BaseAppScreen() {
                                     // Remove from manual folders list and invalidate cache
                                     withContext(Dispatchers.IO) {
                                         val folderPath = CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
+                                        NexusModManager.deleteInstallsForApp(
+                                            context = context,
+                                            appId = libraryItem.appId,
+                                            gameRootDir = folderPath?.let(::File),
+                                        )
                                         if (folderPath != null) {
                                             val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
                                             manualFolders.remove(folderPath)

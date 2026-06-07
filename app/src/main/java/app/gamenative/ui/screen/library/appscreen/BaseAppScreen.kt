@@ -28,7 +28,9 @@ import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
+import app.gamenative.mods.ModContainerResolver
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
@@ -139,6 +141,7 @@ abstract class BaseAppScreen {
         private val importConfigRequests = mutableStateMapOf<String, Boolean>()
         private val exportSavesRequests = mutableStateMapOf<String, Boolean>()
         private val importSavesRequests = mutableStateMapOf<String, Boolean>()
+        private val manageModsRequests = mutableStateMapOf<String, Boolean>()
         private val knownConfigInstallStates = mutableStateMapOf<Int, KnownConfigInstallState>()
 
         fun showInstallDialog(appId: String, state: app.gamenative.ui.component.dialog.state.MessageDialogState) {
@@ -199,6 +202,18 @@ abstract class BaseAppScreen {
 
         fun shouldImportSaves(appId: String): Boolean {
             return importSavesRequests[appId] == true
+        }
+
+        fun requestManageMods(appId: String) {
+            manageModsRequests[appId] = true
+        }
+
+        fun clearManageModsRequest(appId: String) {
+            manageModsRequests.remove(appId)
+        }
+
+        fun shouldManageMods(appId: String): Boolean {
+            return manageModsRequests[appId] == true
         }
 
         // missing components that prevent config from being applied
@@ -576,6 +591,17 @@ abstract class BaseAppScreen {
         )
     }
 
+    @Composable
+    protected open fun getManageModsOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption = AppMenuOption(
+        optionType = AppOptionMenuType.ManageMods,
+        onClick = {
+            requestManageMods(libraryItem.appId)
+        },
+    )
+
     /**
      * Get Create Shortcut menu option. Subclasses can override to customize behavior.
      */
@@ -868,6 +894,10 @@ abstract class BaseAppScreen {
         // Add any source-specific options
         menuOptions.addAll(getSourceSpecificMenuOptions(context, libraryItem, onEditContainer, onBack, onClickPlay, isInstalled))
 
+        if (isInstalled) {
+            menuOptions.add(getManageModsOption(context, libraryItem))
+        }
+
         // Add config-related options (export/import) after source-specific options,
         // so container-related items appear as:
         // Reset Container, Reset DRM, Use Known Config, Export Config, Import Config.
@@ -1157,6 +1187,17 @@ abstract class BaseAppScreen {
             }
         }
 
+        var manageModsRequested by remember(appId) {
+            mutableStateOf(shouldManageMods(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldManageMods(appId) }
+                .collect { shouldRequest ->
+                    manageModsRequested = shouldRequest
+                }
+        }
+
         val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, exportFrontendLauncher)
 
         // Get download info based on game source for progress tracking
@@ -1230,6 +1271,18 @@ abstract class BaseAppScreen {
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
+                },
+            )
+        }
+
+        if (manageModsRequested) {
+            NexusModsDialog(
+                visible = true,
+                libraryItem = libraryItem,
+                gameRootDir = getInstallPath(context, libraryItem)?.let { File(it) },
+                winePrefix = ModContainerResolver.getWinePrefix(context, libraryItem.appId),
+                onDismissRequest = {
+                    clearManageModsRequest(appId)
                 },
             )
         }

@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.data.EpicGame
 import app.gamenative.data.LibraryItem
+import app.gamenative.mods.NexusModManager
 import app.gamenative.service.DownloadService
 import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.service.epic.EpicConstants
@@ -486,6 +487,11 @@ class EpicAppScreen : BaseAppScreen() {
                 DownloadService.invalidateCache()
 
                 if (result.isSuccess) {
+                    NexusModManager.deleteInstallsForApp(
+                        context = context,
+                        appId = libraryItem.appId,
+                        gameRootDir = getInstallPath(context, libraryItem)?.let(::File),
+                    )
                     Timber.tag(TAG).i("Epic game uninstalled successfully: ${libraryItem.appId}")
                 } else {
                     Timber.e("Failed to uninstall Epic game: ${libraryItem.appId} - ${result.exceptionOrNull()?.message}")

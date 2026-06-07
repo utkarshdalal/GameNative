@@ -23,6 +23,7 @@ import app.gamenative.data.AmazonGame
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
+import app.gamenative.mods.NexusModManager
 import app.gamenative.service.DownloadService
 import app.gamenative.service.amazon.AmazonConstants
 import app.gamenative.service.amazon.AmazonService
@@ -43,6 +44,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.io.File
 
 /** Amazon-specific [BaseAppScreen] implementation. */
 class AmazonAppScreen : BaseAppScreen() {
@@ -349,6 +351,11 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
             val result = AmazonService.deleteGame(context, productId)
             DownloadService.invalidateCache()
             if (result.isSuccess) {
+                NexusModManager.deleteInstallsForApp(
+                    context = context,
+                    appId = libraryItem.appId,
+                    gameRootDir = getInstallPath(context, libraryItem)?.let(::File),
+                )
                 Timber.tag(TAG).i("Uninstall succeeded for $productId")
             } else {
                 Timber.tag(TAG).e("Uninstall failed for $productId: ${result.exceptionOrNull()?.message}")

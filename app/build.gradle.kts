@@ -263,6 +263,7 @@ dependencies {
 
     // Winlator
     implementation(libs.bundles.winlator)
+    implementation(libs.libarchive.android)
     implementation(libs.zstd.jni) { artifact { type = "aar" } }
     implementation(libs.xz)
 

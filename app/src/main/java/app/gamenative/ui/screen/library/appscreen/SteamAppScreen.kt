@@ -48,6 +48,7 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.DownloadService
+import app.gamenative.mods.NexusModManager
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.ui.component.dialog.MessageDialog
@@ -1247,6 +1248,13 @@ class SteamAppScreen : BaseAppScreen() {
 
                                 val success = SteamService.deleteApp(gameId)
                                 DownloadService.invalidateCache()
+                                if (success) {
+                                    NexusModManager.deleteInstallsForApp(
+                                        context = context,
+                                        appId = libraryItem.appId,
+                                        gameRootDir = getInstallPath(context, libraryItem)?.let(::File),
+                                    )
+                                }
                                 withContext(Dispatchers.Main) {
                                     ContainerUtils.deleteContainer(context, libraryItem.appId)
                                 }

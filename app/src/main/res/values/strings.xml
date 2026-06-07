@@ -1494,6 +1494,7 @@
     <string name="option_test_graphics">Test graphics</string>
     <string name="option_manage_dlc">Manage DLC</string>
     <string name="option_manage_workshop">Manage Workshop</string>
+    <string name="option_manage_mods">Manage Nexus Mods</string>
     <!-- Recommendations -->
     <string name="recommended_badge">Recommended</string>
     <string name="recommended_buy_button">Check It Out</string>
