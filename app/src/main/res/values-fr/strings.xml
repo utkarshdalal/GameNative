@@ -735,6 +735,8 @@
     <string name="gesture_tap_subtitle">Clic gauche</string>
     <string name="gesture_drag">Glisser le doigt</string>
     <string name="gesture_drag_subtitle">Glisser clic gauche (sélection rectangulaire)</string>
+    <string name="gesture_hold_mouse_button_while_touching">Maintenir le bouton de la souris au toucher</string>
+    <string name="gesture_mouse_button_label">Bouton de souris</string>
     <string name="gesture_long_press">Appui long</string>
     <string name="gesture_long_press_delay">Délai appui long (ms)</string>
     <string name="gesture_double_tap">Double appui</string>
@@ -761,6 +763,9 @@
     <string name="gesture_pan_left_click_drag">Glisser avec clic gauche</string>
     <string name="gesture_pan_right_click_drag">Glisser avec clic droit</string>
     <string name="gesture_action_show_keyboard">Afficher le clavier</string>
+    <string name="gesture_mouse_behavior_label">Comportement de la souris</string>
+    <string name="gesture_mouse_behavior_click">Clic</string>
+    <string name="gesture_mouse_behavior_hold">Maintien</string>
     <string name="gesture_header_special">Spécial</string>
     <string name="gesture_header_mouse">Souris</string>
     <string name="gesture_header_common_game">Touches de jeu courantes</string>
@@ -779,6 +784,8 @@
     <string name="gesture_show_click_highlight_subtitle">Afficher un cercle à l\'emplacement du toucher</string>
     <string name="gesture_show_debug_overlay">Afficher la superposition de débogage des gestes</string>
     <string name="gesture_show_debug_overlay_subtitle">Afficher des libellés de geste temporaires en haut au centre</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Afficher le curseur en mode écran tactile</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Garder le curseur de la souris visible lorsque les gestes tactiles sont actifs</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Paramètres des joysticks dynamiques</string>

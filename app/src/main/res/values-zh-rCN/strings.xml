@@ -730,6 +730,8 @@
     <string name="gesture_tap_subtitle">左键单击</string>
     <string name="gesture_drag">拖动</string>
     <string name="gesture_drag_subtitle">左键拖动（框选）</string>
+    <string name="gesture_hold_mouse_button_while_touching">触摸时按住鼠标按钮</string>
+    <string name="gesture_mouse_button_label">鼠标按钮</string>
     <string name="gesture_long_press">长按</string>
     <string name="gesture_long_press_delay">长按延迟（毫秒）</string>
     <string name="gesture_double_tap">双击</string>
@@ -756,6 +758,9 @@
     <string name="gesture_pan_left_click_drag">左键拖动</string>
     <string name="gesture_pan_right_click_drag">右键拖动</string>
     <string name="gesture_action_show_keyboard">显示键盘</string>
+    <string name="gesture_mouse_behavior_label">鼠标行为</string>
+    <string name="gesture_mouse_behavior_click">单击</string>
+    <string name="gesture_mouse_behavior_hold">按住</string>
     <string name="gesture_header_special">特殊</string>
     <string name="gesture_header_mouse">鼠标</string>
     <string name="gesture_header_common_game">常用游戏按键</string>
@@ -774,6 +779,8 @@
     <string name="gesture_show_click_highlight_subtitle">在点击位置显示圆圈</string>
     <string name="gesture_show_debug_overlay">显示手势调试叠加层</string>
     <string name="gesture_show_debug_overlay_subtitle">在顶部中央显示临时手势标签</string>
+    <string name="gesture_show_cursor_touchscreen_mode">在触屏模式下显示光标</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">触屏手势处于活动状态时保持鼠标光标可见</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">动态摇杆设置</string>
