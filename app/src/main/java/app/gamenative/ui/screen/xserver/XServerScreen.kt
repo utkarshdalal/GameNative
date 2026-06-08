@@ -4064,11 +4064,14 @@ private fun unpackExecutableFile(
     if (needsUnpacking || containerVariantChanged){
         try {
             PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Mono..."))
-            val monoCmd = "wine msiexec /i Z:\\opt\\mono-gecko-offline\\wine-mono-11.0.0-x86.msi && wineserver -k"
+            // Note: && is NOT interpreted by ProcessBuilder (no shell), so wineserver -k must
+            // be a separate execShellCommand call after the wine process exits.
+            val monoCmd = "wine msiexec /i Z:\\opt\\mono-gecko-offline\\wine-mono-11.0.0-x86.msi"
             Timber.i("Install mono command $monoCmd")
             val monoOutput = guestProgramLauncherComponent.execShellCommand(monoCmd)
             output.append(monoOutput)
             Timber.i("Result of mono command " + output)
+            guestProgramLauncherComponent.execShellCommand("wineserver -k")
         } catch (e: Exception) {
             Timber.e("Error during mono installation: $e")
         }
@@ -4102,6 +4105,8 @@ private fun unpackExecutableFile(
                                 val genCmd = "wine z:\\generate_interfaces_file.exe A:\\" + relDllPath.replace('/', '\\')
                                 Timber.i("Running generate_interfaces_file $genCmd")
                                 val genOutput = guestProgramLauncherComponent.execShellCommand(genCmd)
+                                // Note: && is NOT interpreted by ProcessBuilder (no shell) — run wineserver -k separately.
+                                guestProgramLauncherComponent.execShellCommand("wineserver -k")
 
                                 val origSteamInterfaces = File("${imageFs.wineprefix}/dosdevices/z:/steam_interfaces.txt")
                                 if (origSteamInterfaces.exists()) {
@@ -4169,6 +4174,7 @@ private fun unpackExecutableFile(
 
                         val slCmd = "wine z:\\tmp\\steamless_wrapper.bat"
                         val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
+                        guestProgramLauncherComponent.execShellCommand("wineserver -k")
                         output.append(slOutput)
                         Timber.i("Finished processing executable. Result: $output")
                     } catch (e: Exception) {
