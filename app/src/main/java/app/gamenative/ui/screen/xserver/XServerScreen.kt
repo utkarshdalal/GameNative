@@ -4104,9 +4104,18 @@ private fun unpackExecutableFile(
                             if (origDll.exists()) {
                                 val genCmd = "wine z:\\generate_interfaces_file.exe A:\\" + relDllPath.replace('/', '\\')
                                 Timber.i("Running generate_interfaces_file $genCmd")
-                                val genOutput = guestProgramLauncherComponent.execShellCommand(genCmd)
-                                // Note: && is NOT interpreted by ProcessBuilder (no shell) — run wineserver -k separately.
-                                guestProgramLauncherComponent.execShellCommand("wineserver -k")
+                                var genOutput = ""
+                                try {
+                                    genOutput = guestProgramLauncherComponent.execShellCommand(genCmd)
+                                } finally {
+                                    // Kill wineserver to flush registry state written by
+                                    // generate_interfaces_file.exe before reading its output file.
+                                    try {
+                                        guestProgramLauncherComponent.execShellCommand("wineserver -k")
+                                    } catch (_: Exception) {
+                                        // cleanup failure — don't propagate
+                                    }
+                                }
 
                                 val origSteamInterfaces = File("${imageFs.wineprefix}/dosdevices/z:/steam_interfaces.txt")
                                 if (origSteamInterfaces.exists()) {
@@ -4174,13 +4183,19 @@ private fun unpackExecutableFile(
 
                         val slCmd = "wine z:\\tmp\\steamless_wrapper.bat"
                         val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
-                        guestProgramLauncherComponent.execShellCommand("wineserver -k")
                         output.append(slOutput)
                         Timber.i("Finished processing executable. Result: $output")
                     } catch (e: Exception) {
                         Timber.e(e, "Error running Steamless on $executablePath")
                         output.append("Error processing $executablePath: ${e.message}\n")
                     } finally {
+                        // Kill wineserver after each Steamless run to ensure clean state for
+                        // the next iteration and prevent stale wineserver processes accumulating.
+                        try {
+                            guestProgramLauncherComponent.execShellCommand("wineserver -k")
+                        } catch (_: Exception) {
+                            // cleanup failure — don't propagate
+                        }
                         batchFile?.delete()
                     }
 
