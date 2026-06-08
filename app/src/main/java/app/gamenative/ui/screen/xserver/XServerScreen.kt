@@ -3967,10 +3967,15 @@ private fun exit(
     // down so the next launch can stand up a fresh pipe / user instead of
     // inheriting the previous session's half-dead state.
     if (container.isLaunchBionicSteam) {
-        try {
-            SteamBootstrap.stop()
-        } catch (e: Exception) {
-            Timber.e(e, "SteamBootstrap.stop() failed during exit")
+        // Launch async to avoid ANR if nativeShutdown() takes >5s
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                Timber.d("SteamBootstrap stopping...")
+                SteamBootstrap.stop()
+                Timber.d("SteamBootstrap stopped successfully")
+            } catch (e: Exception) {
+                Timber.e(e, "SteamBootstrap.stop() failed during exit")
+            }
         }
     }
 
