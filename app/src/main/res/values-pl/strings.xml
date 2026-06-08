@@ -748,6 +748,8 @@
     <string name="gesture_tap_subtitle">Kliknięcie lewe</string>
     <string name="gesture_drag">Przeciągnij palcem</string>
     <string name="gesture_drag_subtitle">Przeciągnij lewy przycisk (zaznaczenie prostokątne)</string>
+    <string name="gesture_hold_mouse_button_while_touching">Przytrzymaj przycisk myszy podczas dotyku</string>
+    <string name="gesture_mouse_button_label">Przycisk myszy</string>
     <string name="gesture_long_press">Długie naciśnięcie</string>
     <string name="gesture_long_press_delay">Opóźnienie długiego naciśnięcia (ms)</string>
     <string name="gesture_double_tap">Podwójne dotknięcie</string>
@@ -774,6 +776,9 @@
     <string name="gesture_pan_left_click_drag">Przeciąganie lewym kliknięciem</string>
     <string name="gesture_pan_right_click_drag">Przeciąganie prawym kliknięciem</string>
     <string name="gesture_action_show_keyboard">Pokaż klawiaturę</string>
+    <string name="gesture_mouse_behavior_label">Zachowanie myszy</string>
+    <string name="gesture_mouse_behavior_click">Kliknięcie</string>
+    <string name="gesture_mouse_behavior_hold">Przytrzymanie</string>
     <string name="gesture_header_special">Specjalne</string>
     <string name="gesture_header_mouse">Mysz</string>
     <string name="gesture_header_common_game">Popularne klawisze gier</string>
@@ -788,10 +793,16 @@
     <string name="gesture_three_finger_hold_delay">Opóźnienie przytrzymania trzema palcami (ms)</string>
     <string name="gesture_threshold">Próg gestu (px)</string>
     <string name="gesture_threshold_subtitle">Ruch wymagany do zablokowania typu gestu (niższy = większa responsywność)</string>
+    <string name="gesture_mouse_drag_movement">Ruch myszy podczas przeciągania</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Bezpośredni działa w większości gier. Użyj względnego, jeśli przeciąganie powoduje problemy z kamerą lub kursorem</string>
+    <string name="gesture_mouse_drag_movement_direct">Bezpośredni</string>
+    <string name="gesture_mouse_drag_movement_relative">Względny</string>
     <string name="gesture_show_click_highlight">Pokaż podświetlenie kliknięcia</string>
     <string name="gesture_show_click_highlight_subtitle">Pokaż okrąg w miejscu stuknięcia</string>
     <string name="gesture_show_debug_overlay">Pokaż nakładkę debugowania gestów</string>
     <string name="gesture_show_debug_overlay_subtitle">Pokaż tymczasowe etykiety gestów u góry na środku</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Pokaż kursor w trybie ekranu dotykowego</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Utrzymuj widoczny kursor myszy, gdy gesty dotykowe są aktywne</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Ustawienia dynamicznych joysticków</string>

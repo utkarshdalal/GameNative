@@ -348,13 +348,11 @@ public abstract class WindowRequests {
         }
 
         if (dstWindow == null) {
-            client.xServer.pointer.setX(client.xServer.pointer.getX() + dstX);
-            client.xServer.pointer.setY(client.xServer.pointer.getY() + dstY);
+            client.xServer.pointer.setPosition(client.xServer.pointer.getX() + dstX, client.xServer.pointer.getY() + dstY);
         }
         else {
             short[] localPoint = dstWindow.localPointToRoot(dstX, dstY);
-            client.xServer.pointer.setX(localPoint[0]);
-            client.xServer.pointer.setY(localPoint[1]);
+            client.xServer.pointer.setPosition(localPoint[0], localPoint[1]);
         }
     }
 

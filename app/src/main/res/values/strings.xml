@@ -774,6 +774,8 @@
     <string name="gesture_tap_subtitle">Left Click</string>
     <string name="gesture_drag">Drag Finger</string>
     <string name="gesture_drag_subtitle">Drag Left Click (Box Selection)</string>
+    <string name="gesture_hold_mouse_button_while_touching">Hold Mouse Button While Touching</string>
+    <string name="gesture_mouse_button_label">Mouse Button</string>
     <string name="gesture_long_press">Long Press</string>
     <string name="gesture_long_press_delay">Long Press Delay (ms)</string>
     <string name="gesture_double_tap">Double-Tap</string>
@@ -795,6 +797,9 @@
     <string name="gesture_zoom_page_up_down">Page Up/Down</string>
     <string name="gesture_action_label">Action</string>
     <string name="gesture_action_show_keyboard">Show Keyboard</string>
+    <string name="gesture_mouse_behavior_label">Mouse behavior</string>
+    <string name="gesture_mouse_behavior_click">Click</string>
+    <string name="gesture_mouse_behavior_hold">Hold</string>
     <string name="gesture_header_special">Special</string>
     <string name="gesture_header_mouse">Mouse</string>
     <string name="gesture_header_common_game">Common Game Keys</string>
@@ -810,10 +815,16 @@
     <string name="gesture_three_finger_hold_delay">Three-Finger Hold Delay (ms)</string>
     <string name="gesture_threshold">Gesture Threshold (px)</string>
     <string name="gesture_threshold_subtitle">Movement needed to lock gesture type (lower = more responsive)</string>
+    <string name="gesture_mouse_drag_movement">Mouse Drag Movement</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Direct works for most games. Use Relative if dragging causes camera or cursor issues</string>
+    <string name="gesture_mouse_drag_movement_direct">Direct</string>
+    <string name="gesture_mouse_drag_movement_relative">Relative</string>
     <string name="gesture_show_click_highlight">Show Click Highlight</string>
     <string name="gesture_show_click_highlight_subtitle">Show a circle at tap location</string>
     <string name="gesture_show_debug_overlay">Show Gesture Debug Overlay</string>
     <string name="gesture_show_debug_overlay_subtitle">Show temporary gesture labels at top center</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Show Cursor in Touchscreen Mode</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Keep the mouse cursor visible while touchscreen gestures are active</string>
 
     <string name="external_display_input">External Display Input</string>
     <string name="external_display_input_subtitle">Choose how a connected presentation display should behave</string>

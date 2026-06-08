@@ -784,6 +784,8 @@
     <string name="gesture_tap_subtitle">Clic izquierdo</string>
     <string name="gesture_drag">Arrastrar dedo</string>
     <string name="gesture_drag_subtitle">Arrastrar clic izquierdo (selección rectangular)</string>
+    <string name="gesture_hold_mouse_button_while_touching">Mantener botón del ratón mientras se toca</string>
+    <string name="gesture_mouse_button_label">Botón del ratón</string>
     <string name="gesture_long_press">Pulsación larga</string>
     <string name="gesture_long_press_delay">Retardo pulsación larga (ms)</string>
     <string name="gesture_double_tap">Doble toque</string>
@@ -810,6 +812,9 @@
     <string name="gesture_pan_left_click_drag">Arrastrar con clic izquierdo</string>
     <string name="gesture_pan_right_click_drag">Arrastrar con clic derecho</string>
     <string name="gesture_action_show_keyboard">Mostrar teclado</string>
+    <string name="gesture_mouse_behavior_label">Comportamiento del ratón</string>
+    <string name="gesture_mouse_behavior_click">Clic</string>
+    <string name="gesture_mouse_behavior_hold">Mantener</string>
     <string name="gesture_header_special">Especial</string>
     <string name="gesture_header_mouse">Ratón</string>
     <string name="gesture_header_common_game">Teclas comunes de juego</string>
@@ -824,10 +829,16 @@
     <string name="gesture_three_finger_hold_delay">Retardo de mantener con tres dedos (ms)</string>
     <string name="gesture_threshold">Umbral de gesto (px)</string>
     <string name="gesture_threshold_subtitle">Movimiento necesario para bloquear el tipo de gesto (menor = más sensible)</string>
+    <string name="gesture_mouse_drag_movement">Movimiento del ratón al arrastrar</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Directo funciona en la mayoría de juegos. Usa Relativo si arrastrar causa problemas de cámara o cursor</string>
+    <string name="gesture_mouse_drag_movement_direct">Directo</string>
+    <string name="gesture_mouse_drag_movement_relative">Relativo</string>
     <string name="gesture_show_click_highlight">Mostrar resaltado de clic</string>
     <string name="gesture_show_click_highlight_subtitle">Mostrar un círculo en la ubicación del toque</string>
     <string name="gesture_show_debug_overlay">Mostrar superposición de depuración de gestos</string>
     <string name="gesture_show_debug_overlay_subtitle">Mostrar etiquetas temporales de gestos en la parte superior central</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Mostrar cursor en modo de pantalla táctil</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Mantener visible el cursor del ratón mientras los gestos táctiles están activos</string>
 
     <string name="external_display_input">Entrada de pantalla externa</string>
     <string name="external_display_input_subtitle">Elige el comportamiento al conectar una pantalla de presentación.</string>

@@ -109,6 +109,8 @@ object ContainerUtils {
             dxwrapper = PrefManager.dxWrapper,
             dxwrapperConfig = PrefManager.dxWrapperConfig,
             audioDriver = PrefManager.audioDriver,
+            pulseaudioSuspendBehavior = PrefManager.pulseaudioSuspendBehavior,
+            pulseaudioLowLatency = PrefManager.pulseaudioLowLatency,
             wincomponents = PrefManager.winComponents,
             drives = PrefManager.drives,
             execArgs = PrefManager.execArgs,
@@ -173,6 +175,8 @@ object ContainerUtils {
         PrefManager.dxWrapper = containerData.dxwrapper
         PrefManager.dxWrapperConfig = containerData.dxwrapperConfig
         PrefManager.audioDriver = containerData.audioDriver
+        PrefManager.pulseaudioSuspendBehavior = containerData.pulseaudioSuspendBehavior
+        PrefManager.pulseaudioLowLatency = containerData.pulseaudioLowLatency
         PrefManager.winComponents = containerData.wincomponents
         PrefManager.drives = containerData.drives
         PrefManager.execArgs = containerData.execArgs
@@ -852,6 +856,8 @@ object ContainerUtils {
                 dxwrapper = initialDxWrapper,
                 dxwrapperConfig = PrefManager.dxWrapperConfig,
                 audioDriver = PrefManager.audioDriver,
+                pulseaudioSuspendBehavior = PrefManager.pulseaudioSuspendBehavior,
+                pulseaudioLowLatency = PrefManager.pulseaudioLowLatency,
                 wincomponents = PrefManager.winComponents,
                 drives = drives,
                 execArgs = PrefManager.execArgs,

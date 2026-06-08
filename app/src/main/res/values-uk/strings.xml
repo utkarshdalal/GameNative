@@ -734,6 +734,8 @@
     <string name="gesture_tap_subtitle">Лівий клік</string>
     <string name="gesture_drag">Перетягування</string>
     <string name="gesture_drag_subtitle">Перетягування лівим кліком (виділення)</string>
+    <string name="gesture_hold_mouse_button_while_touching">Утримувати кнопку миші під час дотику</string>
+    <string name="gesture_mouse_button_label">Кнопка миші</string>
     <string name="gesture_long_press">Довге натискання</string>
     <string name="gesture_long_press_delay">Затримка довгого натискання (мс)</string>
     <string name="gesture_double_tap">Подвійне натискання</string>
@@ -760,6 +762,9 @@
     <string name="gesture_pan_left_click_drag">Перетягування лівою кнопкою миші</string>
     <string name="gesture_pan_right_click_drag">Перетягування правою кнопкою миші</string>
     <string name="gesture_action_show_keyboard">Показати клавіатуру</string>
+    <string name="gesture_mouse_behavior_label">Поведінка миші</string>
+    <string name="gesture_mouse_behavior_click">Клік</string>
+    <string name="gesture_mouse_behavior_hold">Утримання</string>
     <string name="gesture_header_special">Спеціальні</string>
     <string name="gesture_header_mouse">Миша</string>
     <string name="gesture_header_common_game">Поширені ігрові клавіші</string>
@@ -774,10 +779,16 @@
     <string name="gesture_three_finger_hold_delay">Затримка утримання трьома пальцями (мс)</string>
     <string name="gesture_threshold">Поріг жесту (px)</string>
     <string name="gesture_threshold_subtitle">Рух, потрібний для фіксації типу жесту (нижче = вища чутливість)</string>
+    <string name="gesture_mouse_drag_movement">Рух миші під час перетягування</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Прямий режим працює в більшості ігор. Використовуйте відносний, якщо перетягування спричиняє проблеми з камерою або курсором</string>
+    <string name="gesture_mouse_drag_movement_direct">Прямий</string>
+    <string name="gesture_mouse_drag_movement_relative">Відносний</string>
     <string name="gesture_show_click_highlight">Показувати підсвічування кліку</string>
     <string name="gesture_show_click_highlight_subtitle">Показувати коло в місці торкання</string>
     <string name="gesture_show_debug_overlay">Показувати оверлей налагодження жестів</string>
     <string name="gesture_show_debug_overlay_subtitle">Показувати тимчасові підписи жестів угорі по центру</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Показувати курсор у режимі сенсорного екрану</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Залишати курсор миші видимим, доки жести сенсорного екрану активні</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Налаштування динамічних джойстиків</string>

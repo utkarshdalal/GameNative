@@ -560,6 +560,8 @@
     <string name="gesture_tap_subtitle">Venstreklik</string>
     <string name="gesture_drag">Træk finger</string>
     <string name="gesture_drag_subtitle">Træk venstreklik (rektangelvalg)</string>
+    <string name="gesture_hold_mouse_button_while_touching">Hold museknap nede under berøring</string>
+    <string name="gesture_mouse_button_label">Museknap</string>
     <string name="gesture_long_press">Langt tryk</string>
     <string name="gesture_long_press_delay">Forsinkelse langt tryk (ms)</string>
     <string name="gesture_double_tap">Dobbelt tryk</string>
@@ -586,6 +588,9 @@
     <string name="gesture_pan_left_click_drag">Træk med venstreklik</string>
     <string name="gesture_pan_right_click_drag">Træk med højreklik</string>
     <string name="gesture_action_show_keyboard">Vis tastatur</string>
+    <string name="gesture_mouse_behavior_label">Museadfærd</string>
+    <string name="gesture_mouse_behavior_click">Klik</string>
+    <string name="gesture_mouse_behavior_hold">Hold</string>
     <string name="gesture_header_special">Særlige</string>
     <string name="gesture_header_mouse">Mus</string>
     <string name="gesture_header_common_game">Almindelige spiltaster</string>
@@ -600,10 +605,16 @@
     <string name="gesture_three_finger_hold_delay">Forsinkelse for hold med tre fingre (ms)</string>
     <string name="gesture_threshold">Gestus-tærskel (px)</string>
     <string name="gesture_threshold_subtitle">Bevægelse, der kræves for at låse gestustypen (lavere = mere responsiv)</string>
+    <string name="gesture_mouse_drag_movement">Musebevægelse ved træk</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Direkte virker for de fleste spil. Brug Relativ, hvis træk giver kamera- eller markørproblemer</string>
+    <string name="gesture_mouse_drag_movement_direct">Direkte</string>
+    <string name="gesture_mouse_drag_movement_relative">Relativ</string>
     <string name="gesture_show_click_highlight">Vis klikfremhævning</string>
     <string name="gesture_show_click_highlight_subtitle">Vis en cirkel ved trykplacering</string>
     <string name="gesture_show_debug_overlay">Vis fejlfindings-overlay for gestus</string>
     <string name="gesture_show_debug_overlay_subtitle">Vis midlertidige gestusetiketter øverst i midten</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Vis markør i touchskærmstilstand</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Hold musemarkøren synlig, mens touchskærmsgestus er aktive</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Indstillinger for dynamiske joysticks</string>

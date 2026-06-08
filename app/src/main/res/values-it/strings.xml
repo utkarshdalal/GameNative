@@ -739,6 +739,8 @@
     <string name="gesture_tap_subtitle">Clic sinistro</string>
     <string name="gesture_drag">Trascina dito</string>
     <string name="gesture_drag_subtitle">Trascina clic sinistro (selezione rettangolare)</string>
+    <string name="gesture_hold_mouse_button_while_touching">Tieni premuto il pulsante del mouse durante il tocco</string>
+    <string name="gesture_mouse_button_label">Pulsante mouse</string>
     <string name="gesture_long_press">Pressione lunga</string>
     <string name="gesture_long_press_delay">Ritardo pressione lunga (ms)</string>
     <string name="gesture_double_tap">Doppio tocco</string>
@@ -765,6 +767,9 @@
     <string name="gesture_pan_left_click_drag">Trascina con clic sinistro</string>
     <string name="gesture_pan_right_click_drag">Trascina con clic destro</string>
     <string name="gesture_action_show_keyboard">Mostra tastiera</string>
+    <string name="gesture_mouse_behavior_label">Comportamento mouse</string>
+    <string name="gesture_mouse_behavior_click">Clic</string>
+    <string name="gesture_mouse_behavior_hold">Tieni premuto</string>
     <string name="gesture_header_special">Speciale</string>
     <string name="gesture_header_mouse">Mouse</string>
     <string name="gesture_header_common_game">Tasti di gioco comuni</string>
@@ -779,10 +784,16 @@
     <string name="gesture_three_finger_hold_delay">Ritardo pressione con tre dita (ms)</string>
     <string name="gesture_threshold">Soglia gesto (px)</string>
     <string name="gesture_threshold_subtitle">Movimento necessario per bloccare il tipo di gesto (più basso = più reattivo)</string>
+    <string name="gesture_mouse_drag_movement">Movimento del mouse durante il trascinamento</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Diretto funziona con la maggior parte dei giochi. Usa Relativo se il trascinamento causa problemi alla visuale o al cursore</string>
+    <string name="gesture_mouse_drag_movement_direct">Diretto</string>
+    <string name="gesture_mouse_drag_movement_relative">Relativo</string>
     <string name="gesture_show_click_highlight">Mostra evidenziazione clic</string>
     <string name="gesture_show_click_highlight_subtitle">Mostra un cerchio nella posizione del tocco</string>
     <string name="gesture_show_debug_overlay">Mostra overlay debug gesture</string>
     <string name="gesture_show_debug_overlay_subtitle">Mostra etichette temporanee dei gesti in alto al centro</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Mostra cursore in modalità touchscreen</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Mantieni visibile il cursore del mouse mentre le gesture touchscreen sono attive</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Impostazioni joystick dinamici</string>

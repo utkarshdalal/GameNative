@@ -7,7 +7,6 @@ import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.GOGGameDao
-import app.gamenative.events.AndroidEvent
 import app.gamenative.events.EventDispatcher
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.DownloadService
@@ -16,6 +15,7 @@ import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.PlayIntegrity
+import app.gamenative.utils.downloader.ContainerFilesDownloader
 import java.io.File
 import javax.inject.Inject
 import kotlinx.coroutines.runBlocking
@@ -90,6 +90,11 @@ class PluviaApp : SplitCompatApplication() {
                 onProgressUpdate = null,
                 onComplete = null
             )
+        }
+
+        // Preload all container files in the background
+        appScope.launch {
+            ContainerFilesDownloader.preloadAllContainerFiles(applicationContext)
         }
 
         // Clear any stale temporary config overrides from previous app sessions

@@ -23,6 +23,7 @@ import com.materialkolor.PaletteStyle
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.container.Container
 import com.winlator.core.DefaultVersion
+import com.winlator.xenvironment.components.PulseAudioComponent
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import java.util.EnumSet
 import kotlinx.coroutines.CoroutineScope
@@ -301,6 +302,20 @@ object PrefManager {
             setPref(AUDIO_DRIVER, value)
         }
 
+    private val PULSEAUDIO_SUSPEND_BEHAVIOR = stringPreferencesKey("pulseaudio_suspend_behavior")
+    var pulseaudioSuspendBehavior: String
+        get() = getPref(PULSEAUDIO_SUSPEND_BEHAVIOR, PulseAudioComponent.SUSPEND_BEHAVIOR_THREAD)
+        set(value) {
+            setPref(PULSEAUDIO_SUSPEND_BEHAVIOR, value)
+        }
+
+    private val PULSEAUDIO_LOW_LATENCY = booleanPreferencesKey("pulseaudio_low_latency")
+    var pulseaudioLowLatency: Boolean
+        get() = getPref(PULSEAUDIO_LOW_LATENCY, false)
+        set(value) {
+            setPref(PULSEAUDIO_LOW_LATENCY, value)
+        }
+
     private val WIN_COMPONENTS = stringPreferencesKey("wincomponents")
     var winComponents: String
         get() = getPref(WIN_COMPONENTS, Container.DEFAULT_WINCOMPONENTS)
@@ -517,7 +532,7 @@ object PrefManager {
         set(value) {
             setPref(EPIC_OFFLINE_MODE, value)
         }
-    
+
 
     private val USE_LEGACY_DRM = booleanPreferencesKey("use_legacy_drm")
     var useLegacyDRM: Boolean

@@ -740,6 +740,8 @@
 	<string name="gesture_tap_subtitle">Clic stânga</string>
 	<string name="gesture_drag">Trage cu degetul</string>
 	<string name="gesture_drag_subtitle">Trage clic stânga (selecție dreptunghiulară)</string>
+	<string name="gesture_hold_mouse_button_while_touching">Menține butonul mouse-ului apăsat în timpul atingerii</string>
+	<string name="gesture_mouse_button_label">Buton mouse</string>
 	<string name="gesture_long_press">Apăsare lungă</string>
 	<string name="gesture_long_press_delay">Întârziere apăsare lungă (ms)</string>
 	<string name="gesture_double_tap">Atingere dublă</string>
@@ -766,6 +768,9 @@
     <string name="gesture_pan_left_click_drag">Tragere cu clic stânga</string>
     <string name="gesture_pan_right_click_drag">Tragere cu clic dreapta</string>
     <string name="gesture_action_show_keyboard">Afișează tastatura</string>
+    <string name="gesture_mouse_behavior_label">Comportament mouse</string>
+    <string name="gesture_mouse_behavior_click">Clic</string>
+    <string name="gesture_mouse_behavior_hold">Menținere</string>
     <string name="gesture_header_special">Special</string>
     <string name="gesture_header_mouse">Mouse</string>
     <string name="gesture_header_common_game">Taste comune de joc</string>
@@ -780,10 +785,16 @@
     <string name="gesture_three_finger_hold_delay">Întârziere menținere cu trei degete (ms)</string>
     <string name="gesture_threshold">Prag gest (px)</string>
     <string name="gesture_threshold_subtitle">Mișcare necesară pentru a bloca tipul de gest (mai mic = mai receptiv)</string>
+    <string name="gesture_mouse_drag_movement">Mișcarea mouse-ului la glisare</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Direct funcționează în majoritatea jocurilor. Folosește Relativ dacă glisarea provoacă probleme cu camera sau cursorul</string>
+    <string name="gesture_mouse_drag_movement_direct">Direct</string>
+    <string name="gesture_mouse_drag_movement_relative">Relativ</string>
     <string name="gesture_show_click_highlight">Afișează evidențierea clicului</string>
     <string name="gesture_show_click_highlight_subtitle">Afișează un cerc la locația atingerii</string>
     <string name="gesture_show_debug_overlay">Afișează suprapunerea de depanare a gesturilor</string>
     <string name="gesture_show_debug_overlay_subtitle">Afișează etichete temporare de gesturi în partea de sus, centru</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Afișează cursorul în modul touchscreen</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Menține cursorul mouse-ului vizibil cât timp gesturile touchscreen sunt active</string>
 
 	<!-- Shooter Mode -->
 	<string name="shooter_mode_settings">Setări joystick-uri dinamice</string>

@@ -1,8 +1,11 @@
 package com.winlator.xenvironment.components;
 
 import android.content.Context;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
 import android.media.AudioManager;
-import android.util.Log;
+import android.os.Handler;
+import android.os.Looper;
 
 import com.winlator.core.AppUtils;
 import com.winlator.core.FileUtils;
@@ -13,12 +16,15 @@ import com.winlator.xenvironment.EnvironmentComponent;
 import com.winlator.xenvironment.XEnvironment;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import app.gamenative.BuildConfig;
+import timber.log.Timber;
 
 /**
  * PulseAudio component with timer-based suspend strategy for efficient pause/resume management.
@@ -53,7 +59,6 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private final AtomicBoolean isPaused = new AtomicBoolean(false);
     private final AtomicBoolean isModuleLoaded = new AtomicBoolean(true);
     private Timer suspendTimer;
-    private Timer resumeTimer;
     private String suspendBehavior = SUSPEND_BEHAVIOR_THREAD;
     private boolean lowLatency = false;
 
@@ -63,12 +68,38 @@ public class PulseAudioComponent extends EnvironmentComponent {
         this.lowLatency = lowLatency;
     }
 
+    private void killAllPulseAudioProcesses() {
+        List<ProcessHelper.ProcessInfo> allProcesses = ProcessHelper.listSubProcesses();
+        List<Integer> pulsePids = new ArrayList<>();
+
+        for (ProcessHelper.ProcessInfo info : allProcesses) {
+            if (info.name.contains("libpulseaudio.so")) {
+                pulsePids.add(info.pid);
+            }
+        }
+
+        if (!pulsePids.isEmpty()) {
+            Timber.tag("PulseAudioComponent").w("Found %d pulseaudio process(es), killing: %s",
+                pulsePids.size(), pulsePids.toString());
+
+            for (int pid : pulsePids) {
+                ProcessHelper.killProcess(pid);
+            }
+
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
 
     @Override
     public void start() {
-        Log.d("PulseAudioComponent", "Starting...");
+        Timber.tag("PulseAudioComponent").d("Starting...");
         synchronized (lock) {
             if (pulseProcess == null) {
+                killAllPulseAudioProcesses();
                 pulseProcess = execPulseAudio();
                 isPaused.set(false);
             }
@@ -77,11 +108,13 @@ public class PulseAudioComponent extends EnvironmentComponent {
 
     @Override
     public void stop() {
-        Log.d("PulseAudioComponent", "Stopping...");
+        Timber.tag("PulseAudioComponent").d("Stopping...");
         synchronized (lock) {
             // Cancel timers if active
             stopSuspendTimer();
-            stopResumeTimer();
+
+            // Stop sink here
+            updateSink(true);
 
             if (isServerRunning()) {
                 pulseProcess.destroy(); // Sends SIGTERM
@@ -97,43 +130,50 @@ public class PulseAudioComponent extends EnvironmentComponent {
                 pulseProcess = null;
             }
             isPaused.set(false);
+
+            killAllPulseAudioProcesses();
         }
     }
 
     public void pause() {
         synchronized (lock) {
             if (!isPaused.get() && isServerRunning()) {
-                Log.d("PulseAudioComponent", "Pausing...");
+                Timber.tag("PulseAudioComponent").d("Pausing...");
 
                 // Cancel timers if active
                 stopSuspendTimer();
-                stopResumeTimer();
 
                 // Suspend sink and set isPaused together immediately
                 isPaused.set(true);
                 updateSink(true);
 
-                if (SUSPEND_BEHAVIOR_THREAD.equals(suspendBehavior)) {
-                    // Suspend process immediately (no delay)
-                    int pid = ProcessHelper.getPid(pulseProcess);
-                    if (pid > 0) {
-                        ProcessHelper.suspendProcess(pid);
-                        Log.d("PulseAudioComponent", "Process suspended with PID: " + pid);
-                    }
-                } else {
-                    // Schedule module unload after delay (120s release / 10s debug)
-                    long unloadDelay = BuildConfig.DEBUG ? 10000 : 120000;
+                // Schedule module unload after delay (120s release / 10s debug)
+                final long suspendDelay = BuildConfig.DEBUG ? 10000 : 120000;
 
-                    startSuspendTimer(unloadDelay, () -> {
+                if (SUSPEND_BEHAVIOR_THREAD.equals(suspendBehavior)) {
+                    startSuspendTimer(suspendDelay, () -> {
+                        synchronized (lock) {
+                            if (isPaused.get() && isServerRunning()) {
+                                // Suspend process immediately (no delay)
+                                int pid = ProcessHelper.getPid(pulseProcess);
+                                if (pid > 0) {
+                                    ProcessHelper.suspendProcess(pid);
+                                    Timber.tag("PulseAudioComponent").d("Process suspended with PID: %s after timeout", pid);
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    startSuspendTimer(suspendDelay, () -> {
                         synchronized (lock) {
                             if (isPaused.get() && isServerRunning()) {
                                 unloadModule();
-                                Log.d("PulseAudioComponent", "Module unloaded after timeout");
+                                Timber.tag("PulseAudioComponent").d("Module unloaded after timeout");
                             }
                         }
                     });
                 }
-                Log.d("PulseAudioComponent", "Audio paused");
+                Timber.tag("PulseAudioComponent").d("Audio paused");
             }
         }
     }
@@ -141,11 +181,10 @@ public class PulseAudioComponent extends EnvironmentComponent {
     public void resume() {
         synchronized (lock) {
             if (isPaused.get()) {
-                Log.d("PulseAudioComponent", "Resuming...");
+                Timber.tag("PulseAudioComponent").d("Resuming...");
 
                 // Cancel timers if active
                 stopSuspendTimer();
-                stopResumeTimer();
 
                 if (isServerRunning()) {
                     // Set isPaused immediately
@@ -156,14 +195,14 @@ public class PulseAudioComponent extends EnvironmentComponent {
                         int pid = ProcessHelper.getPid(pulseProcess);
                         if (pid > 0) {
                             ProcessHelper.resumeProcess(pid);
-                            Log.d("PulseAudioComponent", "Process resumed with PID: " + pid);
+                            Timber.tag("PulseAudioComponent").d("Process resumed with PID: " + pid);
                         }
                         updateSink(false);
                     } else {
                         // Pactl mode: resume immediately (no delay)
                         if (!isModuleLoaded.get()) {
                             if (!isSinkAlive()) {
-                                Log.d("PulseAudioComponent", "Sink not alive, reloading module");
+                                Timber.tag("PulseAudioComponent").d("Sink not alive, reloading module");
                                 loadModule();
                             } else {
                                 updateSink(false);
@@ -172,7 +211,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
                             updateSink(false);
                         }
                     }
-                    Log.d("PulseAudioComponent", "Audio resumed");
+                    Timber.tag("PulseAudioComponent").d("Audio resumed");
                 } else {
                     pulseProcess = null;
                     start();
@@ -198,26 +237,6 @@ public class PulseAudioComponent extends EnvironmentComponent {
         if (suspendTimer != null) {
             suspendTimer.cancel();
             suspendTimer = null;
-        }
-    }
-
-    private void startResumeTimer(long delayMs, Runnable action) {
-        stopResumeTimer();
-
-        resumeTimer = new Timer();
-        TimerTask resumeTask = new TimerTask() {
-            @Override
-            public void run() {
-                action.run();
-            }
-        };
-        resumeTimer.schedule(resumeTask, delayMs);
-    }
-
-    private void stopResumeTimer() {
-        if (resumeTimer != null) {
-            resumeTimer.cancel();
-            resumeTimer = null;
         }
     }
 
@@ -298,7 +317,11 @@ public class PulseAudioComponent extends EnvironmentComponent {
     }
 
     private void updateSink(boolean suspend) {
-        execPactlCommand("suspend-sink " + SINK_NAME + " " + (suspend ? "true" : "false"));
+        if (!suspend) {
+            execPactlCommand("suspend-sink " + SINK_NAME + " false");
+        } else {
+            execPactlCommand("suspend-sink " + SINK_NAME + " true");
+        }
     }
 
     private void unloadModule() {

@@ -759,6 +759,8 @@
     <string name="gesture_tap_subtitle">左クリック</string>
     <string name="gesture_drag">指をドラッグ</string>
     <string name="gesture_drag_subtitle">ドラッグ 左クリック (ボックス選択)</string>
+    <string name="gesture_hold_mouse_button_while_touching">タッチ中にマウスボタンを保持</string>
+    <string name="gesture_mouse_button_label">マウスボタン</string>
     <string name="gesture_long_press">長押し</string>
     <string name="gesture_long_press_delay">長押し遅延 (ミリ秒)</string>
     <string name="gesture_double_tap">ダブルタップ</string>
@@ -780,6 +782,9 @@
     <string name="gesture_zoom_page_up_down">ページアップ/ページダウン</string>
     <string name="gesture_action_label">アクション</string>
     <string name="gesture_action_show_keyboard">キーボードを表示</string>
+    <string name="gesture_mouse_behavior_label">マウス動作</string>
+    <string name="gesture_mouse_behavior_click">クリック</string>
+    <string name="gesture_mouse_behavior_hold">ホールド</string>
     <string name="gesture_header_special">特別</string>
     <string name="gesture_header_mouse">ねずみ</string>
     <string name="gesture_header_common_game">共通のゲームキー</string>
@@ -795,10 +800,16 @@
     <string name="gesture_three_finger_hold_delay">3 本指ホールド遅延 (ミリ秒)</string>
     <string name="gesture_threshold">ジェスチャーのしきい値 (px)</string>
     <string name="gesture_threshold_subtitle">ジェスチャ タイプをロックするために必要な動作 (低い = 応答性が高い)</string>
+    <string name="gesture_mouse_drag_movement">ドラッグ時のマウス移動</string>
+    <string name="gesture_mouse_drag_movement_subtitle">ほとんどのゲームではダイレクトが動作します。ドラッグでカメラやカーソルに問題が出る場合は相対を使用してください</string>
+    <string name="gesture_mouse_drag_movement_direct">ダイレクト</string>
+    <string name="gesture_mouse_drag_movement_relative">相対</string>
     <string name="gesture_show_click_highlight">クリックハイライトを表示</string>
     <string name="gesture_show_click_highlight_subtitle">タップした位置に円を表示</string>
     <string name="gesture_show_debug_overlay">ジェスチャ デバッグ オーバーレイを表示</string>
     <string name="gesture_show_debug_overlay_subtitle">上部中央に一時的なジェスチャ ラベルを表示する</string>
+    <string name="gesture_show_cursor_touchscreen_mode">タッチスクリーンモードでカーソルを表示</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">タッチスクリーンジェスチャーが有効な間、マウスカーソルを表示したままにします</string>
 
     <string name="external_display_input">外部ディスプレイ入力</string>
     <string name="external_display_input_subtitle">接続されたプレゼンテーション表示の動作を選択する</string>

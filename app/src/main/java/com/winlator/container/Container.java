@@ -1009,6 +1009,10 @@ public class Container {
                 }
             }
 
+            if (!data.has("wincomponents")) {
+                data.put("wincomponents", DEFAULT_WINCOMPONENTS);
+            }
+
             KeyValueSet wincomponents1 = new KeyValueSet(DEFAULT_WINCOMPONENTS);
             KeyValueSet wincomponents2 = new KeyValueSet(data.getString("wincomponents"));
             String result = "";
