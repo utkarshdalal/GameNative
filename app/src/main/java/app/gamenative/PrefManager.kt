@@ -8,10 +8,10 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.byteArrayPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
-import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.gamenative.data.GameSource
 import app.gamenative.enums.AppTheme
@@ -26,9 +26,11 @@ import com.winlator.core.DefaultVersion
 import com.winlator.xenvironment.components.PulseAudioComponent
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import java.util.EnumSet
+import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -41,12 +43,21 @@ import timber.log.Timber
  */
 object PrefManager {
 
+    // dedicated single thread for ALL datastore work -- NOT Dispatchers.IO. getPref/setPrefBlocking
+    // do runBlocking { dataStore.data.first() }; when those run ON an IO thread (e.g. FrontendSyncManager
+    // .syncGame launches on IO then reads a pref) they block that thread waiting for the datastore read.
+    // if the read also needed an IO thread, enough concurrent readers (>= IO pool size) starve the pool
+    // and deadlock. a private thread keeps reads/writes always runnable regardless of IO pressure.
+    private val dataStoreDispatcher =
+        Executors.newSingleThreadExecutor { r -> Thread(r, "PrefDataStore") }.asCoroutineDispatcher()
+
     private val Context.datastore by preferencesDataStore(
         name = "PluviaPreferences",
         corruptionHandler = ReplaceFileCorruptionHandler {
             Timber.e("Preferences (somehow got) corrupted, resetting.")
             emptyPreferences()
         },
+        scope = CoroutineScope(dataStoreDispatcher + SupervisorJob()),
     )
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -825,16 +836,12 @@ object PrefManager {
     private val EXTERNAL_DISPLAY_INPUT_MODE = stringPreferencesKey("external_display_input_mode")
     var externalDisplayInputMode: String
         get() = getPref(EXTERNAL_DISPLAY_INPUT_MODE, Container.DEFAULT_EXTERNAL_DISPLAY_MODE)
-        set(value) {
-            setPref(EXTERNAL_DISPLAY_INPUT_MODE, value)
-        }
+        set(value) { setPref(EXTERNAL_DISPLAY_INPUT_MODE, value) }
 
     private val EXTERNAL_DISPLAY_SWAP = booleanPreferencesKey("external_display_swap")
     var externalDisplaySwap: Boolean
         get() = getPref(EXTERNAL_DISPLAY_SWAP, false)
-        set(value) {
-            setPref(EXTERNAL_DISPLAY_SWAP, value)
-        }
+        set(value) { setPref(EXTERNAL_DISPLAY_SWAP, value) }
 
     // Disable Mouse Input (prevents external mouse events)
     private val DISABLE_MOUSE_INPUT = booleanPreferencesKey("disable_mouse_input")
@@ -871,6 +878,7 @@ object PrefManager {
         set(value) {
             setPref(EXEC_ARGS, value)
         }
+
 
     /* Recent Crash Flag */
     private val RECENTLY_CRASHED = booleanPreferencesKey("recently_crashed")
@@ -1505,16 +1513,12 @@ object PrefManager {
     private val GOG_AMAZON_PATH_MIGRATED = booleanPreferencesKey("gog_amazon_path_migrated")
     var gogAmazonPathMigrated: Boolean
         get() = getPref(GOG_AMAZON_PATH_MIGRATED, false)
-        set(value) {
-            setPref(GOG_AMAZON_PATH_MIGRATED, value)
-        }
+        set(value) { setPref(GOG_AMAZON_PATH_MIGRATED, value) }
 
     private val ACHIEVEMENT_SHOW_NOTIFICATION = booleanPreferencesKey("achievement_show_notification")
     var achievementShowNotification: Boolean
         get() = getPref(ACHIEVEMENT_SHOW_NOTIFICATION, true)
-        set(value) {
-            setPref(ACHIEVEMENT_SHOW_NOTIFICATION, value)
-        }
+        set(value) { setPref(ACHIEVEMENT_SHOW_NOTIFICATION, value) }
 
     private val ACHIEVEMENT_PLAY_SOUND = booleanPreferencesKey("achievement_play_sound")
     var achievementPlaySound: Boolean
@@ -1524,16 +1528,12 @@ object PrefManager {
     private val ACHIEVEMENT_NOTIFICATION_POSITION = stringPreferencesKey("achievement_notification_position")
     var achievementNotificationPosition: String
         get() = getPref(ACHIEVEMENT_NOTIFICATION_POSITION, "bottom_right")
-        set(value) {
-            setPref(ACHIEVEMENT_NOTIFICATION_POSITION, value)
-        }
+        set(value) { setPref(ACHIEVEMENT_NOTIFICATION_POSITION, value) }
 
     private val WARN_BEFORE_EXIT = booleanPreferencesKey("warn_before_exit")
     var warnBeforeExit: Boolean
         get() = getPref(WARN_BEFORE_EXIT, false)
-        set(value) {
-            setPref(WARN_BEFORE_EXIT, value)
-        }
+        set(value) { setPref(WARN_BEFORE_EXIT, value) }
 
     private val USAGE_ANALYTICS_ENABLED = booleanPreferencesKey("usage_analytics_enabled")
     var usageAnalyticsEnabled: Boolean
