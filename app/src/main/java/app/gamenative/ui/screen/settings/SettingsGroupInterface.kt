@@ -418,7 +418,7 @@ fun SettingsGroupInterface(
 
     // Custom Game Settings
     SettingsGroup(
-        modifier = Modifier.background(Color.Cyan),
+        modifier = Modifier.background(Color.Transparent),
         title = { Text(text = stringResource(R.string.settings_interface_custom_games)) },
     ) {
         var importCustomGameAsSteamGame by rememberSaveable { mutableStateOf(PrefManager.importCustomGameAsSteamGame) }
