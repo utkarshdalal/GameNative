@@ -1039,6 +1039,7 @@
     <!-- Generic/Reusable strings -->
     <string name="continue_action">続く</string>
     <string name="settings_text">設定</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">検索する</string>
 
 
     <!-- Connecting to Servers Screen -->

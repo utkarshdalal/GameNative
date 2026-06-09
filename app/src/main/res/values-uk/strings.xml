@@ -998,7 +998,7 @@
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Продовжити</string>
     <string name="settings_text">Налаштування</string>
-
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">шукати</string>
 
     <!-- Connecting to Servers Screen -->
     <string name="connect_to_remote_server">Підключення до віддалених серверів...</string>

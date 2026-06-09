@@ -1012,7 +1012,7 @@
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Kontynuuj</string>
     <string name="settings_text">Ustawienia</string>
-
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">szukać</string>
 
     <!-- Connecting to Servers Screen -->
     <string name="connect_to_remote_server">Łączenie z serwerami zdalnymi...</string>

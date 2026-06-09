@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.ui.component.settings.SettingsListDropdown
+import app.gamenative.ui.component.settings.SettingsListDropdownSearchable
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
@@ -16,7 +17,7 @@ fun WineTabContent(state: ContainerConfigState) {
     val config = state.config.value
     val gpuCardsValues = state.gpuCards.values.toList()
     SettingsGroup() {
-        SettingsListDropdown(
+        SettingsListDropdownSearchable(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.renderer)) },
             value = state.gpuNameIndex.value,
@@ -31,7 +32,7 @@ fun WineTabContent(state: ContainerConfigState) {
                 )
             },
         )
-        SettingsListDropdown(
+        SettingsListDropdownSearchable(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.gpu_name)) },
             value = state.gpuNameIndex.value,

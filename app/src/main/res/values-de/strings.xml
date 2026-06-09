@@ -960,6 +960,7 @@
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Fortfahren</string>
     <string name="settings_text">Einstellungen</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">suchen</string>
     <!-- Connecting to Servers Screen -->
     <string name="connect_to_remote_server">Verbindung zu Servern wird hergestellt…</string>
     <!-- LibraryAppScreen: Dialogs -->

@@ -1054,7 +1054,7 @@
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Continue</string>
     <string name="settings_text">Settings</string>
-
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">search</string>
 
     <!-- Connecting to Servers Screen -->
     <string name="connect_to_remote_server">Connecting to remote servers...</string>
@@ -1577,4 +1577,5 @@
     <string name="game_launch_tip_22">Tip: You can enable touchscreen mode.</string>
     <string name="game_launch_tip_23">Tip: If you have a Mali GPU, please use System Drivers.</string>
     <string name="game_launch_tip_24">Tip: Getting a blank screen? Try using the \"%s\" option in the menu to check if your drivers are working correctly.</string>
+
 </resources>

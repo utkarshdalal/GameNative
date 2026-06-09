@@ -824,6 +824,7 @@
     <string name="settings_text">Configurações</string>
     <string name="download">Baixar</string>
     <string name="install">Instalar</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">procurar</string>
 
     <!-- TODO: Revisão manual - Tela de conexão aos servidores -->
     <string name="connect_to_remote_server">Conectando aos servidores remotos...</string>

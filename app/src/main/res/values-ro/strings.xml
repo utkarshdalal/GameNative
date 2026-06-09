@@ -1004,6 +1004,7 @@
 	<!-- Generic/Reusable strings -->
 	<string name="continue_action">Continuă</string>
 	<string name="settings_text">Setări</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">a căuta</string>
 
 	<!-- Connecting to Servers Screen -->
 	<string name="connect_to_remote_server">Se conectează la serverele remote...</string>

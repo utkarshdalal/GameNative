@@ -1065,6 +1065,7 @@ https://gamenative.app
     <string name="settings_select_language">Выберите язык</string>
     <string name="settings_subtitle">Настройте ваш опыт</string>
     <string name="settings_text">Настройки</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">искать</string>
     <string name="settings_theme_alternate">Альтернативная</string>
     <string name="settings_theme_default">По умолчанию</string>
     <string name="settings_title">Настройки</string>

@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.settings.SettingsListDropdown
+import app.gamenative.ui.component.settings.SettingsListDropdownSearchable
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
@@ -45,7 +46,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                 },
             )
             // Bionic: Graphics Driver Version (stored in graphicsDriverConfig.version; list from manifest + installed)
-            SettingsListDropdown(
+            SettingsListDropdownSearchable(
                 colors = settingsTileColors(),
                 title = { Text(text = stringResource(R.string.graphics_driver_version)) },
                 value = state.wrapperVersionIndex.value.coerceIn(0, (state.wrapperOptions.labels.size - 1).coerceAtLeast(0)),
@@ -61,7 +62,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                             cfg.put("version", state.wrapperOptions.labels[idx])
                             state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                         }
-                        return@SettingsListDropdown
+                        return@SettingsListDropdownSearchable
                     }
                     state.wrapperVersionIndex.value = idx
                     val cfg = KeyValueSet(config.graphicsDriverConfig)

@@ -995,6 +995,7 @@
     <!-- 通用/可复用字符串 -->
     <string name="continue_action">继续</string>
     <string name="settings_text">设置</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">寻找</string>
 
     <!-- 连接至服务器界面 -->
     <string name="connect_to_remote_server">正在连接到远程服务器...</string>
