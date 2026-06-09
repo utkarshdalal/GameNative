@@ -824,7 +824,7 @@
     <string name="settings_text">Indstillinger</string>
     <string name="download">Download</string>
     <string name="install">Installér</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">søge</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">Søg</string>
 
     <!-- TODO: Manual review - Connecting to Servers Screen -->
     <string name="connect_to_remote_server">Forbinder til fjernservere...</string>
