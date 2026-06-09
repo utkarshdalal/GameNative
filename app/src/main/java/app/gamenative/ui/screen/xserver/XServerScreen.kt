@@ -4502,7 +4502,15 @@ private suspend fun applyGeneralPatches(
 }
 
 private fun refreshComponentsFiles(context: Context) {
-    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "pulseaudio-gamenative-20260609.tzst", File(context.filesDir, "pulseaudio"))
+    val extractionPairs = listOf(
+        "pulseaudio-gamenative-20260609.tzst" to File(context.filesDir, "pulseaudio")
+    )
+
+    AssetUtils.extractComponentsWithVersionCheck(
+        extractionPairs,
+        context.assets,
+        TarCompressorUtils.Type.ZSTD
+    )
 }
 
 /**
