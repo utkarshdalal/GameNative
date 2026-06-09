@@ -8,6 +8,9 @@ import androidx.compose.material.icons.filled.Diversity3
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.InstallMobile
 import androidx.compose.material.icons.filled.VideogameAsset
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.SportsEsports
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.gamenative.enums.AppType
@@ -58,6 +61,21 @@ enum class AppFilter(
         code = 0x80,
         displayText = "Expired",
         icon = Icons.Default.HourglassEmpty,
+    ),
+    PLAYABLE(
+        code = 0x100,
+        displayText = "Playable (30+ FPS)",
+        icon = Icons.Rounded.Speed,
+    ),
+    FIVE_STAR(
+        code = 0x200,
+        displayText = "Has 5-star reviews",
+        icon = Icons.Rounded.Star,
+    ),
+    PROVEN_GPU(
+        code = 0x400,
+        displayText = "Proven on your GPU",
+        icon = Icons.Rounded.SportsEsports,
     ),
     // ALPHABETIC(
     //     code = 0x20,

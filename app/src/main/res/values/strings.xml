@@ -1217,6 +1217,12 @@
     <string name="library_compatibility_unknown">Unknown</string>
     <string name="library_not_compatible">Not Compatible</string>
 
+    <!-- Device game stats key/legend (for your device) -->
+    <string name="stats_key_runs">Successful runs on your GPU</string>
+    <string name="stats_key_reviews">5 star reviews on your device</string>
+    <string name="stats_key_fps">Expected FPS</string>
+    <string name="stats_key_session">Longest session on your device</string>
+
     <!-- Best Config Compatibility Messages -->
     <string name="best_config_exact_gpu_match">Known config works on your GPU</string>
     <string name="best_config_gpu_family_match">Known config should work on your GPU</string>
@@ -1278,6 +1284,10 @@
     <string name="sort_recently_played">Recently Played</string>
     <string name="sort_size_smallest">Size (Smallest)</string>
     <string name="sort_size_largest">Size (Largest)</string>
+    <string name="sort_fps">Expected FPS</string>
+    <string name="sort_runs">Successful runs</string>
+    <string name="sort_reviews">5-star reviews</string>
+    <string name="library_runs_well">Runs well</string>
 
     <!-- Game Options Panel -->
     <string name="game_options_title">Options</string>

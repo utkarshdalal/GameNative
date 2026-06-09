@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameCompatibilityStatus
@@ -28,6 +29,7 @@ import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.data.LibraryState
+import app.gamenative.ui.data.statsFor
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.enums.LibraryTab.Companion.next
@@ -36,8 +38,11 @@ import app.gamenative.ui.enums.SortOption
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.data.RecommendationRepository
 import app.gamenative.data.RecommendedGame
+import app.gamenative.utils.DeviceGameStatsCache
+import app.gamenative.utils.GpuGameStatsCache
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
+import app.gamenative.utils.HardwareUtils
 import app.gamenative.utils.unaccent
 import com.winlator.core.GPUInformation
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -60,6 +65,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+
+private const val PLAYABLE_FPS_THRESHOLD = 30
+private const val PROVEN_RUNS_THRESHOLD = 5
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
@@ -128,6 +136,32 @@ class LibraryViewModel @Inject constructor(
     }
 
     init {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (gpuName != "Unknown GPU") {
+                DeviceGameStatsCache.refreshIfStale(
+                    deviceModel = HardwareUtils.getMachineName(),
+                    gpuName = gpuName,
+                    modernBuild = BuildConfig.MODERN_ANDROID,
+                )
+                GpuGameStatsCache.refreshIfStale(
+                    gpuName = gpuName,
+                    modernBuild = BuildConfig.MODERN_ANDROID,
+                )
+            } else {
+                Timber.tag("LibraryViewModel").w("Skipping device/GPU game stats fetch - GPU name is unknown")
+            }
+            _state.update {
+                it.copy(
+                    deviceGameStats = DeviceGameStatsCache.getAll(),
+                    gpuGameStats = GpuGameStatsCache.getAll(),
+                )
+            }
+            // Re-run filtering/sorting now that stats are available, if anything depends on them.
+            if (usesStats(_state.value)) {
+                onFilterApps(paginationCurrentPage)
+            }
+        }
+
         @OptIn(ExperimentalCoroutinesApi::class)
         viewModelScope.launch(Dispatchers.IO) {
             // Re-create the underlying DAO Flow whenever the EXPIRED filter is toggled,
@@ -328,6 +362,8 @@ class LibraryViewModel @Inject constructor(
 
             // Clear compatibility cache on manual refresh to get fresh data
             GameCompatibilityCache.clear()
+            DeviceGameStatsCache.clear()
+            GpuGameStatsCache.clear()
 
             try {
                 val newApps = SteamService.refreshOwnedGamesFromServer()
@@ -353,7 +389,27 @@ class LibraryViewModel @Inject constructor(
                 if (currentPageGames.isNotEmpty()) {
                     fetchCompatibilityForPage(currentPageGames)
                 }
-                _state.update { it.copy(isRefreshing = false) }
+                if (gpuName != "Unknown GPU") {
+                    DeviceGameStatsCache.refreshIfStale(
+                        deviceModel = HardwareUtils.getMachineName(),
+                        gpuName = gpuName,
+                        modernBuild = BuildConfig.MODERN_ANDROID,
+                    )
+                    GpuGameStatsCache.refreshIfStale(
+                        gpuName = gpuName,
+                        modernBuild = BuildConfig.MODERN_ANDROID,
+                    )
+                }
+                _state.update {
+                    it.copy(
+                        isRefreshing = false,
+                        deviceGameStats = DeviceGameStatsCache.getAll(),
+                        gpuGameStats = GpuGameStatsCache.getAll(),
+                    )
+                }
+                if (usesStats(_state.value)) {
+                    onFilterApps(paginationCurrentPage)
+                }
             }
         }
     }
@@ -376,6 +432,33 @@ class LibraryViewModel @Inject constructor(
             CustomGameScanner.invalidateCache()
             onFilterApps(paginationCurrentPage)
         }
+    }
+
+    /** Whether the current sort or any active filter depends on per-game stats. */
+    private fun usesStats(state: LibraryState): Boolean {
+        val statSorts = setOf(SortOption.FPS_HIGH, SortOption.RUNS_HIGH, SortOption.REVIEWS_HIGH)
+        if (state.currentSortOption in statSorts) return true
+        return state.appInfoSortType.any {
+            it == AppFilter.PLAYABLE || it == AppFilter.FIVE_STAR || it == AppFilter.PROVEN_GPU
+        }
+    }
+
+    /**
+     * Returns true if the item satisfies all active stat filters. Games with no stats data are
+     * hidden whenever a stat filter is active.
+     */
+    private fun passesStatsFilters(state: LibraryState, item: LibraryItem): Boolean {
+        val filters = state.appInfoSortType
+        val playable = filters.contains(AppFilter.PLAYABLE)
+        val fiveStar = filters.contains(AppFilter.FIVE_STAR)
+        val proven = filters.contains(AppFilter.PROVEN_GPU)
+        if (!playable && !fiveStar && !proven) return true
+
+        val stats = state.statsFor(item)
+        if (playable && (stats?.medianFps ?: 0) < PLAYABLE_FPS_THRESHOLD) return false
+        if (fiveStar && (stats?.fiveStarReviews ?: 0) < 1) return false
+        if (proven && (stats?.successfulRuns ?: 0) < PROVEN_RUNS_THRESHOLD) return false
+        return true
     }
 
     private fun onFilterApps(paginationPage: Int = 0): Job {
@@ -701,6 +784,18 @@ class LibraryViewModel @Inject constructor(
 
                 SortOption.SIZE_LARGEST -> compareByDescending<LibraryEntry> { it.item.sizeBytes }
                     .thenBy { it.item.name.lowercase() }
+
+                SortOption.FPS_HIGH -> compareByDescending<LibraryEntry> {
+                    currentState.statsFor(it.item)?.medianFps ?: -1
+                }.thenBy { it.item.name.lowercase() }
+
+                SortOption.RUNS_HIGH -> compareByDescending<LibraryEntry> {
+                    currentState.statsFor(it.item)?.successfulRuns ?: -1
+                }.thenBy { it.item.name.lowercase() }
+
+                SortOption.REVIEWS_HIGH -> compareByDescending<LibraryEntry> {
+                    currentState.statsFor(it.item)?.fiveStarReviews ?: -1
+                }.thenBy { it.item.name.lowercase() }
             }
 
             val combined = buildList {
@@ -709,7 +804,8 @@ class LibraryViewModel @Inject constructor(
                 if (includeGOG) addAll(gogEntries)
                 if (includeEpic) addAll(epicEntries)
                 if (includeAmazon) addAll(amazonEntries)
-            }.sortedWith(sortComparator).mapIndexed { idx, entry ->
+            }.filter { passesStatsFilters(currentState, it.item) }
+                .sortedWith(sortComparator).mapIndexed { idx, entry ->
                 entry.item.copy(index = idx, isInstalled = entry.isInstalled)
             }
 

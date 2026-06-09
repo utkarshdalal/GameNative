@@ -46,7 +46,9 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.CompatibilityBadge
+import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.util.ListItemImage
+import app.gamenative.utils.DeviceGameStatsService.DeviceGameStats
 import app.gamenative.utils.CustomGameScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -64,6 +66,7 @@ internal fun ListViewCard(
     onFocusChanged: (Boolean) -> Unit,
     isRefreshing: Boolean,
     compatibilityStatus: GameCompatibilityStatus?,
+    gameStats: DeviceGameStats?,
     context: Context,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -180,6 +183,11 @@ internal fun ListViewCard(
                         }
                     }
                 }
+
+                GameStatsRow(
+                    stats = gameStats,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             val badgeStatus = if (appInfo.isRecommended) {
