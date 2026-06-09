@@ -1558,7 +1558,7 @@
     <string name="download_paused_wifi">다운로드 일시 중지됨 - Wi-Fi 또는 LAN 연결 대기 중</string>
     <string name="main_downloading_entry">%s 다운로드 중</string>
     <string name="option_open_store_page">상점 페이지 열기</string>
-    <string name="option_export_for_frontend">frontend용으로 내보내기</string>
+    <string name="option_export_for_frontend">프론트엔드용으로 내보내기</string>
     <string name="option_open_container">컨테이너 열기</string>
     <string name="option_edit_container">컨테이너 편집</string>
     <string name="option_reset_to_defaults">컨테이너 초기화</string>
@@ -1577,5 +1577,5 @@
     <string name="option_fetch_game_images">게임 이미지 가져오기</string>
     <string name="option_test_graphics">그래픽 테스트</string>
     <string name="option_manage_dlc">DLC 관리</string>
-    <string name="option_manage_workshop">Workshop 관리</string>
+    <string name="option_manage_workshop">워크숍 관리</string>
 </resources>
