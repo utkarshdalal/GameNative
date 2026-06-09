@@ -40,7 +40,7 @@ runner = "1.6.2" # https://mvnrepository.com/artifact/androidx.test/runner
 settings = "2.10.0" # https://github.com/alorma/Compose-Settings/releases
 spongycastle = "1.58.0.0" # https://mvnrepository.com/artifact/com.madgag.spongycastle/prov
 timber = "5.0.1" # https://mvnrepository.com/artifact/com.jakewharton.timber/timber
-zstd-jni = "1.5.7-5" # https://mvnrepository.com/artifact/com.github.luben/zstd-jni
+zstd-jni = "1.5.7-9" # https://mvnrepository.com/artifact/com.github.luben/zstd-jni
 zxing = "3.5.3" # https://mvnrepository.com/artifact/com.google.zxing/core
 
 [libraries]
