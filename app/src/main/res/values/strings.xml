@@ -1054,7 +1054,7 @@
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Continue</string>
     <string name="settings_text">Settings</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">search</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">Search</string>
 
     <!-- Connecting to Servers Screen -->
     <string name="connect_to_remote_server">Connecting to remote servers...</string>

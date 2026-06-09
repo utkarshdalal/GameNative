@@ -997,8 +997,7 @@
     <!-- Generic/Reusable strings -->
     <string name="continue_action">繼續</string>
     <string name="settings_text">設定</string>
-    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">尋找</string>
-
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">搜尋</string>
 
     <!-- Connecting to Servers Screen -->
     <string name="connect_to_remote_server">正在連接至遠端伺服器...</string>
