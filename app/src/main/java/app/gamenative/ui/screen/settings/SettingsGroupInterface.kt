@@ -425,7 +425,6 @@ fun SettingsGroupInterface(
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.settings_interface_custom_game_import_as_steam)) },
-            subtitle = { Text(text = stringResource(R.string.settings_interface_custom_game_import_as_steam)) },
             state = importCustomGameAsSteamGame,
             onCheckedChange = {
                 importCustomGameAsSteamGame = it
