@@ -3239,8 +3239,10 @@ private fun setupXEnvironment(
                 containerVariantChanged = containerVariantChanged,
                 onError = onGameLaunchError
             )
-            if (preInstallCommands.isNotEmpty()) {
+    if (preInstallCommands.isNotEmpty()) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
+            } else if (bootToContainer) {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Opening container..."))
             } else {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
             }
@@ -3340,7 +3342,11 @@ private fun setupXEnvironment(
             }
             val nextRemaining = remaining.drop(1)
             if (nextRemaining.isEmpty()) {
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
+                if (bootToContainer) {
+                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Opening container..."))
+                } else {
+                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
+                }
             } else {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
             }
