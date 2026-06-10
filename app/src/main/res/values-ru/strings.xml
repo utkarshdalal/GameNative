@@ -1471,7 +1471,7 @@ https://gamenative.app
     <string name="sort_runs">Успешные запуски</string>
     <string name="sort_reviews">5-звёздочные отзывы (устройство)</string>
     <string name="sort_reviews_gpu">5-звёздочные отзывы (GPU)</string>
-    <string name="filter_expired">Истёк</string>
+    <string name="filter_expired">Истекшие</string>
     <string name="filter_playable">Играбельно (30+ FPS)</string>
     <string name="filter_five_star_device">5-звёздочные отзывы на устройстве</string>
     <string name="filter_five_star_gpu">5-звёздочные отзывы на GPU</string>
