@@ -1481,6 +1481,6 @@
     <string name="filter_expired">Abgelaufen</string>
     <string name="filter_playable">Spielbar (30+ FPS)</string>
     <string name="filter_five_star_device">5-Sterne-Bewertungen auf Gerät</string>
-    <string name="filter_five_star_gpu">5-Sterne-Bewertungen auf GPU</string>
+    <string name="filter_five_star_gpu">5-Sterne-Bewertungen auf der GPU</string>
     <string name="filter_proven_gpu">Bewährt auf deiner GPU</string>
 </resources>
