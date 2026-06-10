@@ -3584,8 +3584,7 @@ private fun getWineStartCommand(
         // Get Epic launch parameters
         Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
         val runArguments: List<String> = runBlocking {
-            val offlineLaunch = offline || container.isEpicOfflineMode;
-            val result = EpicService.buildLaunchParameters(context, container, game, offlineLaunch)
+            val result = EpicService.buildLaunchParameters(context, container, game, container.isEpicOfflineMode)
             if (result.isFailure) {
                 Timber.tag("XServerScreen").e(result.exceptionOrNull(), "Failed to build Epic launch parameters")
             }
