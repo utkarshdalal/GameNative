@@ -5,16 +5,16 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,21 +27,23 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.gamenative.R
-import app.gamenative.utils.DeviceGameStatsService.DeviceGameStats
+import app.gamenative.ui.data.GameCardStats
 
 /**
- * The four device stats, in display order, paired with the icon that represents each.
- * Decoded for the user by [GameStatsKey] (shown in the library options panel).
+ * The card stats, in display order, paired with the icon that represents each. The reviews entry
+ * shows device and GPU counts together as "device/GPU". Decoded by [GameStatsKey].
  */
 private data class StatEntry(val icon: ImageVector, val value: String)
 
-@Composable
-private fun statEntries(stats: DeviceGameStats): List<StatEntry> = listOf(
-    StatEntry(Icons.Rounded.SportsEsports, stats.successfulRuns.toString()),
-    StatEntry(Icons.Rounded.Star, stats.fiveStarReviews.toString()),
-    StatEntry(Icons.Rounded.Speed, stats.medianFps.toString()),
-    StatEntry(Icons.Rounded.Schedule, formatSessionLength(stats.medianSessionSec)),
+private fun Int?.orUnknown(): String = this?.toString() ?: "?"
+
+private fun statEntries(stats: GameCardStats?): List<StatEntry> = listOf(
+    StatEntry(Icons.Rounded.SportsEsports, (stats?.runsGpu ?: 0).toString()),
+    StatEntry(Icons.Rounded.Star, "${stats?.reviewsGpu ?: 0}/${stats?.reviewsDevice ?: 0}"),
+    StatEntry(Icons.Rounded.Speed, (stats?.fps).orUnknown()),
+    StatEntry(Icons.Rounded.Timer, (stats?.sessionSec)?.let { formatSessionLength(it) } ?: "?"),
 )
 
 /**
@@ -54,12 +56,11 @@ private fun statEntries(stats: DeviceGameStats): List<StatEntry> = listOf(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GameStatsRow(
-    stats: DeviceGameStats?,
+    stats: GameCardStats?,
     tint: Color,
     modifier: Modifier = Modifier,
     onDark: Boolean = false,
 ) {
-    if (stats == null) return
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -88,15 +89,14 @@ private fun StatItem(
             imageVector = icon,
             contentDescription = null,
             tint = tint,
-            modifier = Modifier.size(12.dp),
+            modifier = Modifier.size(11.dp),
         )
+        val textStyle = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp)
         Text(
             text = value,
-            style = MaterialTheme.typography.labelSmall.let {
-                if (onDark) it.copy(shadow = Shadow(color = Color.Black, blurRadius = 2f)) else it
-            },
+            style = if (onDark) textStyle.copy(shadow = Shadow(color = Color.Black, blurRadius = 2f)) else textStyle,
             color = tint,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Normal,
             maxLines = 1,
         )
     }
@@ -104,7 +104,7 @@ private fun StatItem(
 
 /**
  * Vertical key explaining each stat icon, with device-specific descriptions. Designed to sit at the
- * top of the library options panel; its rows match the style of [OptionListItem].
+ * top of the library options panel. Matches the white icon/text styling used on the game cards.
  */
 @Composable
 fun GameStatsKey(modifier: Modifier = Modifier) {
@@ -112,7 +112,7 @@ fun GameStatsKey(modifier: Modifier = Modifier) {
         KeyRow(Icons.Rounded.SportsEsports, stringResource(R.string.stats_key_runs))
         KeyRow(Icons.Rounded.Star, stringResource(R.string.stats_key_reviews))
         KeyRow(Icons.Rounded.Speed, stringResource(R.string.stats_key_fps))
-        KeyRow(Icons.Rounded.Schedule, stringResource(R.string.stats_key_session))
+        KeyRow(Icons.Rounded.Timer, stringResource(R.string.stats_key_session))
     }
 }
 
@@ -124,20 +124,20 @@ private fun KeyRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(22.dp),
+            tint = Color.White,
+            modifier = Modifier.size(14.dp),
         )
-        Spacer(modifier = Modifier.width(14.dp))
+        Spacer(modifier = Modifier.width(10.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
         )
     }
 }

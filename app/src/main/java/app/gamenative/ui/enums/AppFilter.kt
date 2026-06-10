@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Stars
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.gamenative.enums.AppType
@@ -69,8 +70,13 @@ enum class AppFilter(
     ),
     FIVE_STAR(
         code = 0x200,
-        displayText = "Has 5-star reviews",
+        displayText = "5-star reviews on device",
         icon = Icons.Rounded.Star,
+    ),
+    FIVE_STAR_GPU(
+        code = 0x800,
+        displayText = "5-star reviews on GPU",
+        icon = Icons.Rounded.Stars,
     ),
     PROVEN_GPU(
         code = 0x400,

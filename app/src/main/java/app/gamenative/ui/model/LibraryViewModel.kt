@@ -439,25 +439,29 @@ class LibraryViewModel @Inject constructor(
         val statSorts = setOf(SortOption.FPS_HIGH, SortOption.RUNS_HIGH, SortOption.REVIEWS_HIGH)
         if (state.currentSortOption in statSorts) return true
         return state.appInfoSortType.any {
-            it == AppFilter.PLAYABLE || it == AppFilter.FIVE_STAR || it == AppFilter.PROVEN_GPU
+            it == AppFilter.PLAYABLE || it == AppFilter.FIVE_STAR ||
+                it == AppFilter.FIVE_STAR_GPU || it == AppFilter.PROVEN_GPU
         }
     }
 
     /**
-     * Returns true if the item satisfies all active stat filters. Games with no stats data are
-     * hidden whenever a stat filter is active.
+     * Returns true if a game satisfies all active stat filters. Applied per-source (like
+     * [GameCompatibilityCache]'s compatible filter) so the per-source tab counts stay accurate.
+     * Games with no stats data are hidden whenever a stat filter is active.
      */
-    private fun passesStatsFilters(state: LibraryState, item: LibraryItem): Boolean {
+    private fun passesStatsFilters(state: LibraryState, source: GameSource, name: String): Boolean {
         val filters = state.appInfoSortType
         val playable = filters.contains(AppFilter.PLAYABLE)
         val fiveStar = filters.contains(AppFilter.FIVE_STAR)
+        val fiveStarGpu = filters.contains(AppFilter.FIVE_STAR_GPU)
         val proven = filters.contains(AppFilter.PROVEN_GPU)
-        if (!playable && !fiveStar && !proven) return true
+        if (!playable && !fiveStar && !fiveStarGpu && !proven) return true
 
-        val stats = state.statsFor(item)
-        if (playable && (stats?.medianFps ?: 0) < PLAYABLE_FPS_THRESHOLD) return false
-        if (fiveStar && (stats?.fiveStarReviews ?: 0) < 1) return false
-        if (proven && (stats?.successfulRuns ?: 0) < PROVEN_RUNS_THRESHOLD) return false
+        val stats = state.statsFor(source, name)
+        if (playable && (stats?.fps ?: 0) < PLAYABLE_FPS_THRESHOLD) return false
+        if (fiveStar && (stats?.reviewsDevice ?: 0) < 1) return false
+        if (fiveStarGpu && (stats?.reviewsGpu ?: 0) < 1) return false
+        if (proven && (stats?.runsGpu ?: 0) < PROVEN_RUNS_THRESHOLD) return false
         return true
     }
 
@@ -531,6 +535,7 @@ class LibraryViewModel @Inject constructor(
             val filteredSteamApps: List<SteamApp> = steamFilteredBeforeCompatibility
                 .asSequence()
                 .filter { item -> passesCompatibleFilter(item.name) }
+                .filter { item -> passesStatsFilters(currentState, GameSource.STEAM, item.name) }
                 .sortedWith(
                     compareByDescending<SteamApp> {
                         downloadDirectorySet.contains(SteamService.getAppDirName(it))
@@ -590,6 +595,7 @@ class LibraryViewModel @Inject constructor(
             }
             val customEntries = customGameItems
                 .filter { !steamEntriesAppIds.contains(it.appId) } // Filter out imported steam appId
+                .filter { passesStatsFilters(currentState, it.gameSource, it.name) }
                 .map { LibraryEntry(it, true) }
 
             // Filter GOG games
@@ -615,6 +621,7 @@ class LibraryViewModel @Inject constructor(
 
             val gogEntries = filteredGOGGames
                 .filter { passesCompatibleFilter(it.title) }
+                .filter { passesStatsFilters(currentState, GameSource.GOG, it.title) }
                 .map { game ->
                 LibraryEntry(
                     item = LibraryItem(
@@ -655,6 +662,7 @@ class LibraryViewModel @Inject constructor(
 
             val epicEntries = filteredEpicGames
                 .filter { passesCompatibleFilter(it.title) }
+                .filter { passesStatsFilters(currentState, GameSource.EPIC, it.title) }
                 .map { game ->
                 LibraryEntry(
                     item = LibraryItem(
@@ -695,6 +703,7 @@ class LibraryViewModel @Inject constructor(
 
             val amazonEntries = filteredAmazonGames
                 .filter { passesCompatibleFilter(it.title) }
+                .filter { passesStatsFilters(currentState, GameSource.AMAZON, it.title) }
                 .map { game ->
                 val layoutHero = AmazonArtwork.layoutHeroFromProductJson(game.productJson)
                     .ifEmpty { game.heroUrl.ifEmpty { game.artUrl } }
@@ -786,15 +795,19 @@ class LibraryViewModel @Inject constructor(
                     .thenBy { it.item.name.lowercase() }
 
                 SortOption.FPS_HIGH -> compareByDescending<LibraryEntry> {
-                    currentState.statsFor(it.item)?.medianFps ?: -1
+                    currentState.statsFor(it.item)?.fps ?: -1
                 }.thenBy { it.item.name.lowercase() }
 
                 SortOption.RUNS_HIGH -> compareByDescending<LibraryEntry> {
-                    currentState.statsFor(it.item)?.successfulRuns ?: -1
+                    currentState.statsFor(it.item)?.runsGpu ?: -1
                 }.thenBy { it.item.name.lowercase() }
 
                 SortOption.REVIEWS_HIGH -> compareByDescending<LibraryEntry> {
-                    currentState.statsFor(it.item)?.fiveStarReviews ?: -1
+                    currentState.statsFor(it.item)?.reviewsDevice ?: -1
+                }.thenBy { it.item.name.lowercase() }
+
+                SortOption.REVIEWS_GPU_HIGH -> compareByDescending<LibraryEntry> {
+                    currentState.statsFor(it.item)?.reviewsGpu ?: -1
                 }.thenBy { it.item.name.lowercase() }
             }
 
@@ -804,8 +817,7 @@ class LibraryViewModel @Inject constructor(
                 if (includeGOG) addAll(gogEntries)
                 if (includeEpic) addAll(epicEntries)
                 if (includeAmazon) addAll(amazonEntries)
-            }.filter { passesStatsFilters(currentState, it.item) }
-                .sortedWith(sortComparator).mapIndexed { idx, entry ->
+            }.sortedWith(sortComparator).mapIndexed { idx, entry ->
                 entry.item.copy(index = idx, isInstalled = entry.isInstalled)
             }
 

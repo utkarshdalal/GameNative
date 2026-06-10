@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Stars
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -246,33 +247,9 @@ fun LibraryOptionsPanel(
                                         AppFilter.SHARED,
                                         AppFilter.COMPATIBLE,
                                         AppFilter.EXPIRED,
-                                    )
-                                ) {
-                                    OptionListItem(
-                                        text = appFilter.displayText,
-                                        selected = selectedFilters.contains(appFilter),
-                                        onClick = { onFilterChanged(appFilter) },
-                                        icon = appFilter.icon,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        OptionSectionHeader(text = stringResource(R.string.library_runs_well))
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusGroup()
-                                .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            AppFilter.entries.forEach { appFilter ->
-                                if (appFilter in listOf(
                                         AppFilter.PLAYABLE,
                                         AppFilter.FIVE_STAR,
+                                        AppFilter.FIVE_STAR_GPU,
                                         AppFilter.PROVEN_GPU,
                                     )
                                 ) {
@@ -396,4 +373,5 @@ private fun SortOption.icon(): ImageVector = when (this) {
     SortOption.FPS_HIGH -> Icons.Rounded.Speed
     SortOption.RUNS_HIGH -> Icons.Rounded.SportsEsports
     SortOption.REVIEWS_HIGH -> Icons.Rounded.Star
+    SortOption.REVIEWS_GPU_HIGH -> Icons.Rounded.Stars
 }

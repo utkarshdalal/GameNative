@@ -58,8 +58,8 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.component.GameStatsRow
+import app.gamenative.ui.data.GameCardStats
 import app.gamenative.ui.enums.PaneType
-import app.gamenative.utils.DeviceGameStatsService.DeviceGameStats
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
@@ -87,7 +87,7 @@ internal fun GridViewCard(
     imageAlpha: Float,
     onImageLoadFailed: () -> Unit,
     compatibilityStatus: GameCompatibilityStatus?,
-    gameStats: DeviceGameStats?,
+    gameStats: GameCardStats?,
     showFocusGlow: Boolean,
     context: Context,
 ) {
@@ -283,7 +283,7 @@ internal fun GridViewCard(
 
                     GameStatsRow(
                         stats = gameStats,
-                        tint = Color.White,
+                        tint = Color.White.copy(alpha = 0.55f),
                         onDark = true,
                     )
                 }

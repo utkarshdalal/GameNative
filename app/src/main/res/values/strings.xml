@@ -1219,7 +1219,7 @@
 
     <!-- Device game stats key/legend (for your device) -->
     <string name="stats_key_runs">Successful runs on your GPU</string>
-    <string name="stats_key_reviews">5 star reviews on your device</string>
+    <string name="stats_key_reviews">5 star reviews (your GPU / your device)</string>
     <string name="stats_key_fps">Expected FPS</string>
     <string name="stats_key_session">Longest session on your device</string>
 
@@ -1286,8 +1286,8 @@
     <string name="sort_size_largest">Size (Largest)</string>
     <string name="sort_fps">Expected FPS</string>
     <string name="sort_runs">Successful runs</string>
-    <string name="sort_reviews">5-star reviews</string>
-    <string name="library_runs_well">Runs well</string>
+    <string name="sort_reviews">5-star reviews (device)</string>
+    <string name="sort_reviews_gpu">5-star reviews (GPU)</string>
 
     <!-- Game Options Panel -->
     <string name="game_options_title">Options</string>

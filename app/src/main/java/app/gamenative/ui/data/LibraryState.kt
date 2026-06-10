@@ -67,18 +67,30 @@ data class LibraryState(
 )
 
 /**
- * Combined stats for a library item: successful runs come from the GPU-wide dataset, while the
- * other three metrics (5-star reviews, expected FPS, longest session) are device-specific.
- * Returns null when neither dataset has an entry for the game.
+ * Stats shown on a library card. Runs and 5-star reviews are counts that default to 0 when their
+ * dataset has no entry (absence means "none recorded"). FPS and session are device measurements
+ * that are unknown without a run, so they are null (rendered as "?") and never fall back to GPU.
  */
-fun LibraryState.statsFor(item: LibraryItem): DeviceGameStats? {
-    val device = deviceGameStats[item.gameSource]?.get(item.name)
-    val gpu = gpuGameStats[item.gameSource]?.get(item.name)
+data class GameCardStats(
+    val runsGpu: Int,
+    val reviewsDevice: Int,
+    val reviewsGpu: Int,
+    val fps: Int?,
+    val sessionSec: Int?,
+)
+
+fun LibraryState.statsFor(item: LibraryItem): GameCardStats? = statsFor(item.gameSource, item.name)
+
+/** Combined device + GPU stats for a game, or null when neither dataset has an entry. */
+fun LibraryState.statsFor(source: GameSource, name: String): GameCardStats? {
+    val device = deviceGameStats[source]?.get(name)
+    val gpu = gpuGameStats[source]?.get(name)
     if (device == null && gpu == null) return null
-    return DeviceGameStats(
-        successfulRuns = gpu?.successfulRuns ?: device?.successfulRuns ?: 0,
-        medianFps = device?.medianFps ?: gpu?.medianFps ?: 0,
-        fiveStarReviews = device?.fiveStarReviews ?: gpu?.fiveStarReviews ?: 0,
-        medianSessionSec = device?.medianSessionSec ?: gpu?.medianSessionSec ?: 0,
+    return GameCardStats(
+        runsGpu = gpu?.successfulRuns ?: 0,
+        reviewsDevice = device?.fiveStarReviews ?: 0,
+        reviewsGpu = gpu?.fiveStarReviews ?: 0,
+        fps = device?.medianFps,
+        sessionSec = device?.medianSessionSec,
     )
 }
