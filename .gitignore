@@ -25,6 +25,8 @@ proguard/
 
 # Log Files
 *.log
+# but leveldb test fixtures keep their write-ahead .log files -- that IS the DB data, not a log
+!app/src/test/resources/html5-saves/**/*leveldb/*.log
 
 # Built application files
 *.apk
