@@ -161,6 +161,8 @@ object ContainerUtils {
             sharpnessEffect = PrefManager.sharpnessEffect,
             sharpnessLevel = PrefManager.sharpnessLevel,
             sharpnessDenoise = PrefManager.sharpnessDenoise,
+            vibrationMode = PrefManager.vibrationMode,
+            vibrationIntensity = PrefManager.vibrationIntensity,
         )
     }
 
@@ -228,6 +230,8 @@ object ContainerUtils {
         PrefManager.sharpnessEffect = containerData.sharpnessEffect
         PrefManager.sharpnessLevel = containerData.sharpnessLevel
         PrefManager.sharpnessDenoise = containerData.sharpnessDenoise
+        PrefManager.vibrationMode = containerData.vibrationMode
+        PrefManager.vibrationIntensity = containerData.vibrationIntensity
     }
 
     fun toContainerData(container: Container): ContainerData {
@@ -347,6 +351,11 @@ object ContainerUtils {
             sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
             sharpnessLevel = container.getExtra("sharpnessLevel", "100").toIntOrNull() ?: 100,
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
+            vibrationMode = PrefManager.normalizeVibrationModeInput(
+                container.getExtra("vibrationMode", "controller"),
+            ),
+            vibrationIntensity = (container.getExtra("vibrationIntensity", "100").toIntOrNull() ?: 100)
+                .coerceIn(0, 100),
             // LSFG Vulkan frame generation
             lsfgEnabled = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean(),
         )
@@ -523,6 +532,14 @@ object ContainerUtils {
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
+        container.putExtra(
+            "vibrationMode",
+            PrefManager.normalizeVibrationModeInput(containerData.vibrationMode),
+        )
+        container.putExtra(
+            "vibrationIntensity",
+            containerData.vibrationIntensity.coerceIn(0, 100).toString(),
+        )
         // LSFG Vulkan frame generation
         container.putExtra(LsfgVkManager.EXTRA_ARMED, containerData.lsfgEnabled.toString())
         try {
@@ -901,6 +918,8 @@ object ContainerUtils {
                 portraitMode = PrefManager.portraitMode,
                 externalDisplayMode = PrefManager.externalDisplayInputMode,
                 externalDisplaySwap = PrefManager.externalDisplaySwap,
+                vibrationMode = PrefManager.vibrationMode,
+                vibrationIntensity = PrefManager.vibrationIntensity,
             )
         }
 

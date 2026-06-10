@@ -69,6 +69,15 @@ _Static_assert(sizeof(struct gamepad_io) <= SHM_DATA_SIZE, "gamepad_io exceeds S
 
 static struct gamepad_io *shm [MAX_GAMEPADS];
 static int vjoy_ids[MAX_GAMEPADS];
+static SDL_Joystick *vjoy_handles[MAX_GAMEPADS];
+
+// SDL stops a rumble after its duration and would then call OnRumble(0,0) itself, capping
+// vibration at ~1s. A keepalive thread re-arms SDL with the current shm rumble every 500ms so
+// that expiry never fires, preserving XInput "set and forget". t_keepalive_active marks our own
+// re-arm so the synchronous OnRumble() re-entry it triggers is not echoed back into shm.
+#define RUMBLE_KEEPALIVE_US     500000
+#define RUMBLE_KEEPALIVE_DUR_MS 2000
+static __thread int t_keepalive_active = 0;
 static size_t g_shm_map_size = 0;
 static int g_is_wine = 0;
 
@@ -176,6 +185,7 @@ static int          (*p_SDL_JoystickSetVirtualAxis)  (SDL_Joystick *, int, int16
 static int          (*p_SDL_JoystickSetVirtualButton)(SDL_Joystick *, int, uint8_t);
 static int          (*p_SDL_JoystickSetVirtualHat)   (SDL_Joystick *, int, uint8_t);
 static void         (*p_SDL_GetVersion)              (SDL_version *);
+static int          (*p_SDL_JoystickRumble)          (SDL_Joystick *, uint16_t, uint16_t, uint32_t);
 
 #define GETFUNCPTR(name) \
     do { \
@@ -187,6 +197,10 @@ static int OnRumble(void *userdata, uint16_t low, uint16_t high)
 {
     int idx = (int)(intptr_t)userdata;
     if (idx < 0 || idx >= MAX_GAMEPADS || !shm[idx]) return -1;
+
+    // Our own keepalive re-arm calls back here synchronously; don't echo it into shm — the game
+    // may have already stopped rumble, and re-writing the old value would resurrect it.
+    if (t_keepalive_active) return 0;
 
     shm[idx]->state.low_freq_rumble  = low;
     shm[idx]->state.high_freq_rumble = high;
@@ -233,6 +247,7 @@ static void *vjoy_updater(void *arg)
         LOGE("evshim: P%d SDL_JoystickOpen failed\n", idx);
         return NULL;
     }
+    vjoy_handles[idx] = js;
 
     LOGI("evshim: vjoy_updater P%d running (PID %d)\n", idx, getpid());
 
@@ -273,6 +288,26 @@ static void *vjoy_updater(void *arg)
     return NULL;
 }
 
+// Re-arms SDL's rumble before its internal expiry timer can fire a false OnRumble(0,0).
+static void *rumble_keepalive(void *arg)
+{
+    (void)arg;
+    for (;;) {
+        usleep(RUMBLE_KEEPALIVE_US);
+        for (int i = 0; i < MAX_GAMEPADS; i++) {
+            SDL_Joystick *js = vjoy_handles[i];
+            if (!js || !shm[i]) continue;
+            uint16_t lo = shm[i]->state.low_freq_rumble;
+            uint16_t hi = shm[i]->state.high_freq_rumble;
+            if (lo == 0 && hi == 0) continue;
+            t_keepalive_active = 1;
+            p_SDL_JoystickRumble(js, lo, hi, RUMBLE_KEEPALIVE_DUR_MS);
+            t_keepalive_active = 0;
+        }
+    }
+    return NULL;
+}
+
 static void initialize_wine(int players)
 {
     sdl_handle = dlopen("libSDL2-2.0.so.0", RTLD_LAZY | RTLD_GLOBAL);
@@ -283,6 +318,7 @@ static void initialize_wine(int players)
     GETFUNCPTR(SDL_JoystickSetVirtualAxis);  GETFUNCPTR(SDL_JoystickSetVirtualButton);
     GETFUNCPTR(SDL_JoystickSetVirtualHat);
     GETFUNCPTR(SDL_GetVersion);
+    GETFUNCPTR(SDL_JoystickRumble);  // optional: missing only disables the rumble keepalive
     if (!p_SDL_Init || !p_SDL_GetError || !p_SDL_JoystickOpen ||
                 !p_SDL_JoystickAttachVirtualEx || !p_SDL_JoystickSetVirtualAxis ||
                 !p_SDL_JoystickSetVirtualButton || !p_SDL_JoystickSetVirtualHat ||
@@ -329,6 +365,12 @@ static void initialize_wine(int players)
         pthread_t tid;
         pthread_create(&tid, NULL, vjoy_updater, (void *)(intptr_t)i);
         pthread_detach(tid);
+    }
+
+    if (p_SDL_JoystickRumble) {
+        pthread_t kt;
+        pthread_create(&kt, NULL, rumble_keepalive, NULL);
+        pthread_detach(kt);
     }
 }
 
