@@ -1603,4 +1603,9 @@
     <string name="sort_runs">成功运行次数</string>
     <string name="sort_reviews">五星好评（设备）</string>
     <string name="sort_reviews_gpu">五星好评（GPU）</string>
+    <string name="filter_expired">已过期</string>
+    <string name="filter_playable">可流畅运行（30+ FPS）</string>
+    <string name="filter_five_star_device">设备上的五星好评</string>
+    <string name="filter_five_star_gpu">GPU上的五星好评</string>
+    <string name="filter_proven_gpu">已在您的GPU上验证</string>
 </resources>

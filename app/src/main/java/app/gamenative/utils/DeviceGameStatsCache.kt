@@ -44,6 +44,7 @@ object DeviceGameStatsCache {
         successfulRuns, medianFps, fiveStarReviews, medianSessionSec,
     )
 
+    @Synchronized
     private fun loadCache() {
         if (cacheLoaded) return
         try {
@@ -86,7 +87,8 @@ object DeviceGameStatsCache {
         loadCache()
 
         val now = System.currentTimeMillis()
-        if (inMemory.isNotEmpty() && now - loadedTimestamp < CACHE_TTL_MS) {
+        // Use the timestamp (not emptiness) so a valid empty response is still cached for the TTL.
+        if (loadedTimestamp != 0L && now - loadedTimestamp < CACHE_TTL_MS) {
             Timber.tag("DeviceGameStatsCache").d("Cache is fresh, skipping fetch")
             return
         }

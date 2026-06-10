@@ -1543,4 +1543,9 @@
     <string name="sort_runs">Rulări reușite</string>
     <string name="sort_reviews">Recenzii de 5 stele (dispozitiv)</string>
     <string name="sort_reviews_gpu">Recenzii de 5 stele (GPU)</string>
+    <string name="filter_expired">Expirat</string>
+    <string name="filter_playable">Jucabil (30+ FPS)</string>
+    <string name="filter_five_star_device">Recenzii de 5 stele pe dispozitiv</string>
+    <string name="filter_five_star_gpu">Recenzii de 5 stele pe GPU</string>
+    <string name="filter_proven_gpu">Testat pe GPU-ul tău</string>
 </resources>

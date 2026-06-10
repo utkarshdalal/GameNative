@@ -1408,4 +1408,9 @@
     <string name="sort_runs">Vellykkede kørsler</string>
     <string name="sort_reviews">5-stjernede anmeldelser (enhed)</string>
     <string name="sort_reviews_gpu">5-stjernede anmeldelser (GPU)</string>
+    <string name="filter_expired">Udløbet</string>
+    <string name="filter_playable">Spilbar (30+ FPS)</string>
+    <string name="filter_five_star_device">5-stjernede anmeldelser på enhed</string>
+    <string name="filter_five_star_gpu">5-stjernede anmeldelser på GPU</string>
+    <string name="filter_proven_gpu">Afprøvet på din GPU</string>
 </resources>

@@ -14,73 +14,74 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Stars
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.annotation.StringRes
 import app.gamenative.enums.AppType
 import app.gamenative.R
 import java.util.EnumSet
 
 enum class AppFilter(
     val code: Int,
-    val displayText: String,
+    @param:StringRes val displayTextRes: Int,
     val icon: ImageVector,
 ) {
     INSTALLED(
         code = 0x01,
-        displayText = "Installed",
+        displayTextRes = R.string.app_filter_installed,
         icon = Icons.Default.InstallMobile,
     ),
     GAME(
         code = 0x02,
-        displayText = "Game",
+        displayTextRes = R.string.app_filter_game,
         icon = Icons.Default.VideogameAsset,
     ),
     APPLICATION(
         code = 0x04,
-        displayText = "Application",
+        displayTextRes = R.string.app_filter_application,
         icon = Icons.Default.Computer,
     ),
     TOOL(
         code = 0x08,
-        displayText = "Tool",
+        displayTextRes = R.string.app_filter_tool,
         icon = Icons.Default.Build,
     ),
     DEMO(
         code = 0x10,
-        displayText = "Demo",
+        displayTextRes = R.string.app_filter_demo,
         icon = Icons.Default.AvTimer,
     ),
     SHARED(
         code = 0x20,
-        displayText = "Family Sharing",
+        displayTextRes = R.string.library_family_shared,
         icon = Icons.Default.Diversity3,
     ),
     COMPATIBLE(
         code = 0x40,
-        displayText = "Compatible",
+        displayTextRes = R.string.library_compatible,
         icon = Icons.Rounded.Verified,
     ),
     EXPIRED(
         code = 0x80,
-        displayText = "Expired",
+        displayTextRes = R.string.filter_expired,
         icon = Icons.Default.HourglassEmpty,
     ),
     PLAYABLE(
         code = 0x100,
-        displayText = "Playable (30+ FPS)",
+        displayTextRes = R.string.filter_playable,
         icon = Icons.Rounded.Speed,
     ),
     FIVE_STAR(
         code = 0x200,
-        displayText = "5-star reviews on device",
+        displayTextRes = R.string.filter_five_star_device,
         icon = Icons.Rounded.Star,
     ),
     FIVE_STAR_GPU(
         code = 0x800,
-        displayText = "5-star reviews on GPU",
+        displayTextRes = R.string.filter_five_star_gpu,
         icon = Icons.Rounded.Stars,
     ),
     PROVEN_GPU(
         code = 0x400,
-        displayText = "Proven on your GPU",
+        displayTextRes = R.string.filter_proven_gpu,
         icon = Icons.Rounded.SportsEsports,
     ),
     // ALPHABETIC(

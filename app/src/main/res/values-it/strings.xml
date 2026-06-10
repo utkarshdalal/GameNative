@@ -1534,4 +1534,9 @@
     <string name="sort_runs">Esecuzioni riuscite</string>
     <string name="sort_reviews">Recensioni a 5 stelle (dispositivo)</string>
     <string name="sort_reviews_gpu">Recensioni a 5 stelle (GPU)</string>
+    <string name="filter_expired">Scaduto</string>
+    <string name="filter_playable">Giocabile (30+ FPS)</string>
+    <string name="filter_five_star_device">Recensioni a 5 stelle sul dispositivo</string>
+    <string name="filter_five_star_gpu">Recensioni a 5 stelle sulla GPU</string>
+    <string name="filter_proven_gpu">Collaudato sulla tua GPU</string>
 </resources>

@@ -436,7 +436,12 @@ class LibraryViewModel @Inject constructor(
 
     /** Whether the current sort or any active filter depends on per-game stats. */
     private fun usesStats(state: LibraryState): Boolean {
-        val statSorts = setOf(SortOption.FPS_HIGH, SortOption.RUNS_HIGH, SortOption.REVIEWS_HIGH)
+        val statSorts = setOf(
+            SortOption.FPS_HIGH,
+            SortOption.RUNS_HIGH,
+            SortOption.REVIEWS_HIGH,
+            SortOption.REVIEWS_GPU_HIGH,
+        )
         if (state.currentSortOption in statSorts) return true
         return state.appInfoSortType.any {
             it == AppFilter.PLAYABLE || it == AppFilter.FIVE_STAR ||

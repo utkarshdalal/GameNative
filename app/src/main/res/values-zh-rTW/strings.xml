@@ -1595,4 +1595,9 @@
     <string name="sort_runs">成功執行次數</string>
     <string name="sort_reviews">五星評論（裝置）</string>
     <string name="sort_reviews_gpu">五星評論（GPU）</string>
+    <string name="filter_expired">已過期</string>
+    <string name="filter_playable">可流暢執行（30+ FPS）</string>
+    <string name="filter_five_star_device">裝置上的五星評論</string>
+    <string name="filter_five_star_gpu">GPU上的五星評論</string>
+    <string name="filter_proven_gpu">已在您的GPU上驗證</string>
 </resources>

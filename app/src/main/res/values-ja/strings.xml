@@ -1552,4 +1552,9 @@
     <string name="sort_runs">成功した実行回数</string>
     <string name="sort_reviews">5つ星レビュー（デバイス）</string>
     <string name="sort_reviews_gpu">5つ星レビュー（GPU）</string>
+    <string name="filter_expired">期限切れ</string>
+    <string name="filter_playable">プレイ可能（30+ FPS）</string>
+    <string name="filter_five_star_device">5つ星レビュー（デバイス）</string>
+    <string name="filter_five_star_gpu">5つ星レビュー（GPU）</string>
+    <string name="filter_proven_gpu">お使いのGPUで実証済み</string>
 </resources>

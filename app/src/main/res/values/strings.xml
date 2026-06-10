@@ -624,6 +624,11 @@
     <string name="app_filter_tool">Tool</string>
     <string name="app_filter_demo">Demo</string>
     <string name="app_filter_family">Family</string>
+    <string name="filter_expired">Expired</string>
+    <string name="filter_playable">Playable (30+ FPS)</string>
+    <string name="filter_five_star_device">5-star reviews on device</string>
+    <string name="filter_five_star_gpu">5-star reviews on GPU</string>
+    <string name="filter_proven_gpu">Proven on your GPU</string>
 
     <!-- Login & Connection -->
     <string name="connecting_to_steam">Connecting to Steam…</string>

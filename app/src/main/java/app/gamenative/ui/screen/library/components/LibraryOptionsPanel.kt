@@ -221,7 +221,7 @@ fun LibraryOptionsPanel(
                                     )
                                 ) {
                                     OptionListItem(
-                                        text = appFilter.displayText,
+                                        text = stringResource(appFilter.displayTextRes),
                                         selected = selectedFilters.contains(appFilter),
                                         onClick = { onFilterChanged(appFilter) },
                                         icon = appFilter.icon,
@@ -254,7 +254,7 @@ fun LibraryOptionsPanel(
                                     )
                                 ) {
                                     OptionListItem(
-                                        text = appFilter.displayText,
+                                        text = stringResource(appFilter.displayTextRes),
                                         selected = selectedFilters.contains(appFilter),
                                         onClick = { onFilterChanged(appFilter) },
                                         icon = appFilter.icon,

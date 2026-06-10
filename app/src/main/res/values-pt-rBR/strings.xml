@@ -1408,4 +1408,9 @@
     <string name="sort_runs">Execuções bem-sucedidas</string>
     <string name="sort_reviews">Avaliações 5 estrelas (dispositivo)</string>
     <string name="sort_reviews_gpu">Avaliações 5 estrelas (GPU)</string>
+    <string name="filter_expired">Expirado</string>
+    <string name="filter_playable">Jogável (30+ FPS)</string>
+    <string name="filter_five_star_device">Avaliações 5 estrelas no dispositivo</string>
+    <string name="filter_five_star_gpu">Avaliações 5 estrelas na GPU</string>
+    <string name="filter_proven_gpu">Comprovado na sua GPU</string>
 </resources>
