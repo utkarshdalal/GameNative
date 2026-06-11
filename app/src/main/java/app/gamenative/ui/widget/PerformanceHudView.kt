@@ -599,39 +599,61 @@ class PerformanceHudView(
         val parts = readFirstLine("/proc/stat")
             ?.trim()
             ?.split(Regex("\\s+"))
-            ?: return null
 
-        if (parts.size < 5 || parts.firstOrNull() != "cpu") {
-            Timber.w("[HUD] /proc/stat unexpected format: ${parts.take(5)}")
+        if (parts != null) {
+            if (parts.size < 5 || parts.firstOrNull() != "cpu") {
+                Timber.w("[HUD] /proc/stat unexpected format: ${parts.take(5)}")
+            } else {
+                val values = parts.drop(1).mapNotNull { it.toLongOrNull() }
+                if (values.size >= 4) {
+                    val idle = values.getOrElse(3) { 0L }
+                    val iowait = values.getOrElse(4) { 0L }
+                    val total = values.sum()
+                    val idleTotal = idle + iowait
+
+                    val previousTotal = lastCpuTotal
+                    val previousIdle = lastCpuIdle
+                    lastCpuTotal = total
+                    lastCpuIdle = idleTotal
+
+                    if (previousTotal != null && previousIdle != null) {
+                        val totalDiff = total - previousTotal
+                        val idleDiff = idleTotal - previousIdle
+                        if (totalDiff > 0) {
+                            return (((totalDiff - idleDiff).coerceAtLeast(0L)) * 100L / totalDiff)
+                                .toInt()
+                                .coerceIn(0, 100)
+                        }
+                    }
+                }
+            }
+        }
+
+        val fallback = readCpuUsagePercentFromFrequency()
+        if (fallback != null) {
+            Timber.d("[HUD] CPU usage: %d%% from cpufreq ratio", fallback)
+        }
+        return fallback
+    }
+
+    private fun readCpuUsagePercentFromFrequency(): Int? {
+        var currentTotal = 0L
+        var maxTotal = 0L
+
+        repeat(Runtime.getRuntime().availableProcessors()) { cpuIndex ->
+            val current = readLongFromLine("/sys/devices/system/cpu/cpu$cpuIndex/cpufreq/scaling_cur_freq")
+            val max = readLongFromLine("/sys/devices/system/cpu/cpu$cpuIndex/cpufreq/cpuinfo_max_freq")
+            if (current != null && max != null && max > 0L) {
+                currentTotal += current.coerceIn(0L, max)
+                maxTotal += max
+            }
+        }
+
+        if (maxTotal <= 0L) {
             return null
         }
 
-        val values = parts.drop(1).mapNotNull { it.toLongOrNull() }
-        if (values.size < 4) {
-            return null
-        }
-
-        val idle = values.getOrElse(3) { 0L }
-        val iowait = values.getOrElse(4) { 0L }
-        val total = values.sum()
-        val idleTotal = idle + iowait
-
-        val previousTotal = lastCpuTotal
-        val previousIdle = lastCpuIdle
-        lastCpuTotal = total
-        lastCpuIdle = idleTotal
-
-        if (previousTotal == null || previousIdle == null) {
-            return null
-        }
-
-        val totalDiff = total - previousTotal
-        val idleDiff = idleTotal - previousIdle
-        if (totalDiff <= 0) {
-            return null
-        }
-
-        return (((totalDiff - idleDiff).coerceAtLeast(0L)) * 100L / totalDiff).toInt().coerceIn(0, 100)
+        return ((currentTotal * 100L) / maxTotal).toInt().coerceIn(0, 100)
     }
 
     private data class GpuUsageReading(val percent: Int, val source: String)
@@ -666,6 +688,10 @@ class PerformanceHudView(
             "/sys/class/misc/mali0/device/utilisation",
             "/sys/class/misc/mali0/device/utilization",
             "/sys/class/misc/mali0/device/gpuinfo",
+            "/sys/devices/platform/mali/utilization",
+            "/sys/kernel/gpu/gpu_busy",
+            "/sys/class/misc/pvrsrvkm/device/utilisation",
+            "/sys/class/devfreq/gpu/load",
         ).forEach(::add)
 
         listOf(
@@ -745,6 +771,10 @@ class PerformanceHudView(
             .firstOrNull { it.isNotEmpty() }
             ?: return null
         return token.toIntOrNull()?.coerceIn(0, 100)
+    }
+
+    private fun readLongFromLine(path: String): Long? {
+        return readFirstLine(path)?.trim()?.toLongOrNull()
     }
 
     private fun readUsedRamText(): String {
