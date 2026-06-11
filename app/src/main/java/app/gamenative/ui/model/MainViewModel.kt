@@ -447,11 +447,19 @@ class MainViewModel @Inject constructor(
     }
 
          fun launchApp(context: Context, appId: String) {
-         // Show booting splash before launching the app
-         viewModelScope.launch {
-             setShowBootingSplash(true)
-+            // Set the correct splash text immediately so it doesn't flash stale text from a previous session
-+            setBootingSplashText(if (_state.value.bootToContainer) "Opening container..." else "Launching game...")
+        // Show booting splash before launching the app
+        viewModelScope.launch {
+            // Show the booting splash with a neutral default text.
+            // The text ("Launching game..." / "Opening container...")
+            // is set later by setupXEnvironment in XServerScreen based on the actual
+            // bootToContainer parameter, so there is no flicker  when the two
+            // sources disagree.
+            _state.update {
+                it.copy(
+                    showBootingSplash = true,
+                    bootingSplashText = "Booting...",
+                )
+            }
              PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
             val apiJob = viewModelScope.async(Dispatchers.IO) {
