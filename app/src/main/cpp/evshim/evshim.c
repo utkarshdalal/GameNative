@@ -72,12 +72,16 @@ static int vjoy_ids[MAX_GAMEPADS];
 static _Atomic(SDL_Joystick *) vjoy_handles[MAX_GAMEPADS];
 
 // SDL stops a rumble after its duration and would then call OnRumble(0,0) itself, capping
-// vibration at ~1s. A keepalive thread re-arms SDL with the current shm rumble every 500ms so
-// that expiry never fires, preserving XInput "set and forget". t_keepalive_active marks our own
+// vibration at ~1s. A keepalive thread re-arms SDL with the last rumble every 500ms so that
+// expiry never fires, preserving XInput "set and forget". t_keepalive_active marks our own
 // re-arm so the synchronous OnRumble() re-entry it triggers is not echoed back into shm.
 #define RUMBLE_KEEPALIVE_US     500000
 #define RUMBLE_KEEPALIVE_DUR_MS 2000
 static __thread int t_keepalive_active = 0;
+// Atomic snapshot of the last rumble OnRumble received, read race-free by the keepalive thread.
+// (The plain shm rumble fields are written separately for the cross-process Java reader.)
+static _Atomic uint16_t last_rumble_low [MAX_GAMEPADS];
+static _Atomic uint16_t last_rumble_high[MAX_GAMEPADS];
 static size_t g_shm_map_size = 0;
 static int g_is_wine = 0;
 
@@ -205,6 +209,10 @@ static int OnRumble(void *userdata, uint16_t low, uint16_t high)
     shm[idx]->state.low_freq_rumble  = low;
     shm[idx]->state.high_freq_rumble = high;
 
+    // Race-free snapshot for the keepalive thread (release pairs with its acquire loads).
+    atomic_store_explicit(&last_rumble_low[idx],  low,  memory_order_release);
+    atomic_store_explicit(&last_rumble_high[idx], high, memory_order_release);
+
     // Wake up the Java thread waiting for rumble updates
     atomic_thread_fence(memory_order_seq_cst);
     atomic_fetch_add_explicit(&shm[idx]->rumble_seq, 1u, memory_order_release);
@@ -296,12 +304,11 @@ static void *rumble_keepalive(void *arg)
         usleep(RUMBLE_KEEPALIVE_US);
         for (int i = 0; i < MAX_GAMEPADS; i++) {
             SDL_Joystick *js = atomic_load_explicit(&vjoy_handles[i], memory_order_acquire);
-            if (!js || !shm[i]) continue;
-            // Acquire fence pairs with OnRumble's seq_cst fence so the rumble-field reads below
-            // observe the latest values written by Wine's OnRumble (no stale read / C11 data race).
-            atomic_thread_fence(memory_order_acquire);
-            uint16_t lo = shm[i]->state.low_freq_rumble;
-            uint16_t hi = shm[i]->state.high_freq_rumble;
+            if (!js) continue;
+            // Acquire-load the atomic snapshot (pairs with OnRumble's release store); no plain
+            // reads of the shm rumble fields, so there is no C11 data race.
+            uint16_t lo = atomic_load_explicit(&last_rumble_low[i],  memory_order_acquire);
+            uint16_t hi = atomic_load_explicit(&last_rumble_high[i], memory_order_acquire);
             if (lo == 0 && hi == 0) continue;
             t_keepalive_active = 1;
             p_SDL_JoystickRumble(js, lo, hi, RUMBLE_KEEPALIVE_DUR_MS);
