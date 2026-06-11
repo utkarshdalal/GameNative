@@ -83,6 +83,13 @@ static __thread int t_keepalive_active = 0;
 // two separate atomics could tear (e.g. re-arm a stale value after a stop). The plain shm rumble
 // fields are written separately for the cross-process Java reader.
 static _Atomic uint32_t last_rumble[MAX_GAMEPADS];   // (high << 16) | low
+// The keepalive thread is created lazily on the first real rumble (pthread_once) and blocks on
+// this condvar while no pad is rumbling, so wine processes that never rumble never spawn it and
+// it never polls while idle. OnRumble signals it when a rumble arrives.
+static pthread_once_t  rumble_ka_once  = PTHREAD_ONCE_INIT;
+static pthread_mutex_t rumble_ka_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t  rumble_ka_cond;   // initialized (CLOCK_MONOTONIC) in rumble_keepalive_init
+static void rumble_keepalive_init(void);
 static size_t g_shm_map_size = 0;
 static int g_is_wine = 0;
 
@@ -220,6 +227,15 @@ static int OnRumble(void *userdata, uint16_t low, uint16_t high)
     syscall(SYS_futex, &shm[idx]->rumble_seq, FUTEX_WAKE, 1, NULL, NULL, 0);
 
     LOGD("evshim: rumble P%d low=%u high=%u\n", idx, low, high);
+
+    // Lazily spawn the keepalive on the first real rumble (wine processes that never rumble never
+    // create it); wake it if it is blocked idle.
+    if ((low || high) && p_SDL_JoystickRumble) {
+        pthread_once(&rumble_ka_once, rumble_keepalive_init);
+        pthread_mutex_lock(&rumble_ka_mutex);
+        pthread_cond_signal(&rumble_ka_cond);
+        pthread_mutex_unlock(&rumble_ka_mutex);
+    }
     return 0;
 }
 
@@ -302,22 +318,52 @@ static void *rumble_keepalive(void *arg)
 {
     (void)arg;
     for (;;) {
-        usleep(RUMBLE_KEEPALIVE_US);
+        // Re-arm every pad that is currently rumbling (resets SDL's expiry timer).
         for (int i = 0; i < MAX_GAMEPADS; i++) {
             SDL_Joystick *js = atomic_load_explicit(&vjoy_handles[i], memory_order_acquire);
             if (!js) continue;
             // Acquire-load the packed snapshot (pairs with OnRumble's release store): one atomic
             // read yields a consistent low/high pair (no torn snapshot, no plain shm reads).
             uint32_t r = atomic_load_explicit(&last_rumble[i], memory_order_acquire);
-            uint16_t lo = (uint16_t) r;
-            uint16_t hi = (uint16_t) (r >> 16);
-            if (lo == 0 && hi == 0) continue;
+            if (r == 0) continue;
             t_keepalive_active = 1;
-            p_SDL_JoystickRumble(js, lo, hi, RUMBLE_KEEPALIVE_DUR_MS);
+            p_SDL_JoystickRumble(js, (uint16_t) r, (uint16_t) (r >> 16), RUMBLE_KEEPALIVE_DUR_MS);
             t_keepalive_active = 0;
         }
+
+        pthread_mutex_lock(&rumble_ka_mutex);
+        // Re-scan under the lock so a concurrent OnRumble signal can't be lost.
+        int any = 0;
+        for (int i = 0; i < MAX_GAMEPADS; i++)
+            if (atomic_load_explicit(&last_rumble[i], memory_order_acquire) != 0) { any = 1; break; }
+        if (any) {
+            // Active: re-arm again in ~500ms (woken sooner if a new rumble arrives).
+            struct timespec ts;
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            ts.tv_nsec += RUMBLE_KEEPALIVE_US * 1000L;
+            ts.tv_sec  += ts.tv_nsec / 1000000000L;
+            ts.tv_nsec %= 1000000000L;
+            pthread_cond_timedwait(&rumble_ka_cond, &rumble_ka_mutex, &ts);
+        } else {
+            // Idle: block until OnRumble signals a new rumble. No polling.
+            pthread_cond_wait(&rumble_ka_cond, &rumble_ka_mutex);
+        }
+        pthread_mutex_unlock(&rumble_ka_mutex);
     }
     return NULL;
+}
+
+static void rumble_keepalive_init(void)
+{
+    pthread_condattr_t attr;
+    pthread_condattr_init(&attr);
+    pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
+    pthread_cond_init(&rumble_ka_cond, &attr);
+    pthread_condattr_destroy(&attr);
+
+    pthread_t kt;
+    if (pthread_create(&kt, NULL, rumble_keepalive, NULL) == 0)
+        pthread_detach(kt);
 }
 
 static void initialize_wine(int players)
@@ -377,12 +423,6 @@ static void initialize_wine(int players)
         pthread_t tid;
         pthread_create(&tid, NULL, vjoy_updater, (void *)(intptr_t)i);
         pthread_detach(tid);
-    }
-
-    if (p_SDL_JoystickRumble) {
-        pthread_t kt;
-        pthread_create(&kt, NULL, rumble_keepalive, NULL);
-        pthread_detach(kt);
     }
 }
 
