@@ -1587,4 +1587,17 @@
     <string name="frontend_sync_confirm_keep">保留</string>
     <string name="frontend_sync_resync_all">重新同步全部</string>
     <string name="frontend_sync_resync_complete">前端同步完成</string>
+    <string name="stats_key_runs">在您的GPU上成功執行的次數</string>
+    <string name="stats_key_reviews">五星評論（您的GPU / 您的裝置）</string>
+    <string name="stats_key_fps">預計FPS</string>
+    <string name="stats_key_session">在您裝置上的最長遊戲時長</string>
+    <string name="sort_fps">預計FPS</string>
+    <string name="sort_runs">成功執行次數</string>
+    <string name="sort_reviews">五星評論（裝置）</string>
+    <string name="sort_reviews_gpu">五星評論（GPU）</string>
+    <string name="filter_expired">已過期</string>
+    <string name="filter_playable">可流暢執行（30+ FPS）</string>
+    <string name="filter_five_star_device">裝置上的五星評論</string>
+    <string name="filter_five_star_gpu">GPU上的五星評論</string>
+    <string name="filter_proven_gpu">已在您的GPU上驗證</string>
 </resources>

@@ -1463,4 +1463,17 @@ https://gamenative.app
     <string name="screen_effects_scaling_mode_dls_desc">Повышение резкости / чёткости.</string>
     <string name="screen_effects_scaling_mode_natural">Естественный</string>
     <string name="screen_effects_scaling_mode_natural_desc">Более тёплый оттенок.</string>
+    <string name="stats_key_runs">Успешные запуски на вашем GPU</string>
+    <string name="stats_key_reviews">5-звёздочные отзывы (ваш GPU / ваше устройство)</string>
+    <string name="stats_key_fps">Ожидаемый FPS</string>
+    <string name="stats_key_session">Самая длинная сессия на вашем устройстве</string>
+    <string name="sort_fps">Ожидаемый FPS</string>
+    <string name="sort_runs">Успешные запуски</string>
+    <string name="sort_reviews">5-звёздочные отзывы (устройство)</string>
+    <string name="sort_reviews_gpu">5-звёздочные отзывы (GPU)</string>
+    <string name="filter_expired">Истекшие</string>
+    <string name="filter_playable">Играбельно (30+ FPS)</string>
+    <string name="filter_five_star_device">5-звёздочные отзывы на устройстве</string>
+    <string name="filter_five_star_gpu">5-звёздочные отзывы на GPU</string>
+    <string name="filter_proven_gpu">Проверено на вашем GPU</string>
 </resources>

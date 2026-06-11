@@ -1535,4 +1535,17 @@
     <string name="screen_effects_scaling_mode_dls_desc">Trecere de claritate.</string>
     <string name="screen_effects_scaling_mode_natural">Natural</string>
     <string name="screen_effects_scaling_mode_natural_desc">Ton de culoare mai cald.</string>
+    <string name="stats_key_runs">Rulări reușite pe GPU-ul tău</string>
+    <string name="stats_key_reviews">Recenzii de 5 stele (GPU-ul tău / dispozitivul tău)</string>
+    <string name="stats_key_fps">FPS estimat</string>
+    <string name="stats_key_session">Cea mai lungă sesiune pe dispozitivul tău</string>
+    <string name="sort_fps">FPS estimat</string>
+    <string name="sort_runs">Rulări reușite</string>
+    <string name="sort_reviews">Recenzii de 5 stele (dispozitiv)</string>
+    <string name="sort_reviews_gpu">Recenzii de 5 stele (GPU)</string>
+    <string name="filter_expired">Expirat</string>
+    <string name="filter_playable">Jucabil (30+ FPS)</string>
+    <string name="filter_five_star_device">Recenzii de 5 stele pe dispozitiv</string>
+    <string name="filter_five_star_gpu">Recenzii de 5 stele pe GPU</string>
+    <string name="filter_proven_gpu">Testat pe GPU-ul tău</string>
 </resources>

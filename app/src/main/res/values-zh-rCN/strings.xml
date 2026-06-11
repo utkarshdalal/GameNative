@@ -1595,4 +1595,17 @@
     <string name="frontend_sync_confirm_keep">保留</string>
     <string name="frontend_sync_resync_all">重新同步全部</string>
     <string name="frontend_sync_resync_complete">前端同步完成</string>
+    <string name="stats_key_runs">在您的GPU上成功运行的次数</string>
+    <string name="stats_key_reviews">五星好评（您的GPU / 您的设备）</string>
+    <string name="stats_key_fps">预计FPS</string>
+    <string name="stats_key_session">在您设备上的最长游戏时长</string>
+    <string name="sort_fps">预计FPS</string>
+    <string name="sort_runs">成功运行次数</string>
+    <string name="sort_reviews">五星好评（设备）</string>
+    <string name="sort_reviews_gpu">五星好评（GPU）</string>
+    <string name="filter_expired">已过期</string>
+    <string name="filter_playable">可流畅运行（30+ FPS）</string>
+    <string name="filter_five_star_device">设备上的五星好评</string>
+    <string name="filter_five_star_gpu">GPU上的五星好评</string>
+    <string name="filter_proven_gpu">已在您的GPU上验证</string>
 </resources>

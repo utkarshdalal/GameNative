@@ -1534,4 +1534,17 @@
     <string name="screen_effects_scaling_mode_dls_desc">샤픈/선명도 패스.</string>
     <string name="screen_effects_scaling_mode_natural">자연</string>
     <string name="screen_effects_scaling_mode_natural_desc">더 따뜻한 색조.</string>
+    <string name="stats_key_runs">내 GPU에서 성공한 실행</string>
+    <string name="stats_key_reviews">별 5개 리뷰 (내 GPU / 내 기기)</string>
+    <string name="stats_key_fps">예상 FPS</string>
+    <string name="stats_key_session">내 기기에서의 최장 세션</string>
+    <string name="sort_fps">예상 FPS</string>
+    <string name="sort_runs">성공한 실행</string>
+    <string name="sort_reviews">별 5개 리뷰 (기기)</string>
+    <string name="sort_reviews_gpu">별 5개 리뷰 (GPU)</string>
+    <string name="filter_expired">만료됨</string>
+    <string name="filter_playable">플레이 가능 (30+ FPS)</string>
+    <string name="filter_five_star_device">기기에서의 별 5개 리뷰</string>
+    <string name="filter_five_star_gpu">GPU에서의 별 5개 리뷰</string>
+    <string name="filter_proven_gpu">내 GPU에서 검증됨</string>
 </resources>

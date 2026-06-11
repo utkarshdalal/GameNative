@@ -1400,4 +1400,17 @@
     <string name="screen_effects_scaling_mode_dls_desc">Skarphed / klarhed.</string>
     <string name="screen_effects_scaling_mode_natural">Naturlig</string>
     <string name="screen_effects_scaling_mode_natural_desc">Varmere farvetone.</string>
+    <string name="stats_key_runs">Vellykkede kørsler på din GPU</string>
+    <string name="stats_key_reviews">5-stjernede anmeldelser (din GPU / din enhed)</string>
+    <string name="stats_key_fps">Forventet FPS</string>
+    <string name="stats_key_session">Længste session på din enhed</string>
+    <string name="sort_fps">Forventet FPS</string>
+    <string name="sort_runs">Vellykkede kørsler</string>
+    <string name="sort_reviews">5-stjernede anmeldelser (enhed)</string>
+    <string name="sort_reviews_gpu">5-stjernede anmeldelser (GPU)</string>
+    <string name="filter_expired">Udløbet</string>
+    <string name="filter_playable">Spilbar (30+ FPS)</string>
+    <string name="filter_five_star_device">5-stjernede anmeldelser på enhed</string>
+    <string name="filter_five_star_gpu">5-stjernede anmeldelser på GPU</string>
+    <string name="filter_proven_gpu">Afprøvet på din GPU</string>
 </resources>
