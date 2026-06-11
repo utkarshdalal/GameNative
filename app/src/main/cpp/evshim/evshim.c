@@ -69,7 +69,7 @@ _Static_assert(sizeof(struct gamepad_io) <= SHM_DATA_SIZE, "gamepad_io exceeds S
 
 static struct gamepad_io *shm [MAX_GAMEPADS];
 static int vjoy_ids[MAX_GAMEPADS];
-static SDL_Joystick *vjoy_handles[MAX_GAMEPADS];
+static _Atomic(SDL_Joystick *) vjoy_handles[MAX_GAMEPADS];
 
 // SDL stops a rumble after its duration and would then call OnRumble(0,0) itself, capping
 // vibration at ~1s. A keepalive thread re-arms SDL with the current shm rumble every 500ms so
@@ -247,7 +247,7 @@ static void *vjoy_updater(void *arg)
         LOGE("evshim: P%d SDL_JoystickOpen failed\n", idx);
         return NULL;
     }
-    vjoy_handles[idx] = js;
+    atomic_store_explicit(&vjoy_handles[idx], js, memory_order_release);
 
     LOGI("evshim: vjoy_updater P%d running (PID %d)\n", idx, getpid());
 
@@ -295,8 +295,11 @@ static void *rumble_keepalive(void *arg)
     for (;;) {
         usleep(RUMBLE_KEEPALIVE_US);
         for (int i = 0; i < MAX_GAMEPADS; i++) {
-            SDL_Joystick *js = vjoy_handles[i];
+            SDL_Joystick *js = atomic_load_explicit(&vjoy_handles[i], memory_order_acquire);
             if (!js || !shm[i]) continue;
+            // Acquire fence pairs with OnRumble's seq_cst fence so the rumble-field reads below
+            // observe the latest values written by Wine's OnRumble (no stale read / C11 data race).
+            atomic_thread_fence(memory_order_acquire);
             uint16_t lo = shm[i]->state.low_freq_rumble;
             uint16_t hi = shm[i]->state.high_freq_rumble;
             if (lo == 0 && hi == 0) continue;

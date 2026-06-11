@@ -13,7 +13,6 @@ import android.annotation.TargetApi;
 import android.media.AudioAttributes;
 import android.os.Build;
 import android.os.CombinedVibration;
-import android.os.SystemClock;
 import android.os.VibrationAttributes;
 import android.os.VibratorManager;
 
@@ -421,6 +420,8 @@ public class WinHandler {
                 this.rumbleKeepaliveThread.join();
         } catch (InterruptedException ignored) {
         }
+        // Cancel any in-flight one-shot so the device doesn't keep vibrating after shutdown.
+        stopVibration();
         DatagramSocket datagramSocket = this.socket;
         if (datagramSocket != null) {
             datagramSocket.close();
@@ -698,28 +699,30 @@ public class WinHandler {
     /**
      * waitForRumble() blocks until the game issues a NEW rumble command, so the poller cannot
      * refresh a sustained rumble — the motor one-shot would lapse (~1s) while the game holds a
-     * constant value. This thread re-applies the active rumble on a fixed cadence so it sustains,
-     * and stops as soon as the poller clears the rumble (game sent 0,0) or the mode/intensity
-     * disables it. Re-issuing the same constant amplitude is seamless on the vibrator.
+     * constant value. This thread re-applies the active rumble on a per-mode cadence so it sustains.
+     * It is event-driven: it blocks on rumbleLock while idle and is woken by startVibration(), so it
+     * does not poll when nothing is rumbling. Re-issuing the same constant amplitude is seamless.
      */
     private void startRumbleKeepalive() {
         rumbleKeepaliveThread = new Thread(() -> {
-            long lastApplyMs = 0;
-            while (running) {
-                try {
-                    Thread.sleep(RUMBLE_KEEPALIVE_MS);
-                } catch (InterruptedException e) {
-                    return;
-                }
-                synchronized (rumbleLock) {
-                    if (!isRumbling || (lastLowFreq == 0 && lastHighFreq == 0)) continue;
-                    // Controller one-shots are short and need frequent refresh; the device one-shot
-                    // is long, so only refresh it as it nears expiry.
-                    long interval = "device".equals(vibrationMode) ? DEVICE_RUMBLE_REFRESH_MS : RUMBLE_KEEPALIVE_MS;
-                    long now = SystemClock.uptimeMillis();
-                    if (now - lastApplyMs >= interval) {
-                        startVibration(lastLowFreq, lastHighFreq);
-                        lastApplyMs = now;
+            synchronized (rumbleLock) {
+                while (running) {
+                    try {
+                        if (!isRumbling || (lastLowFreq == 0 && lastHighFreq == 0)) {
+                            // Idle: block until a rumble starts (woken by startVibration). No polling.
+                            rumbleLock.wait();
+                        } else {
+                            // Active: controller one-shots are short and need frequent refresh; the
+                            // device one-shot is long, so only refresh it as it nears expiry.
+                            long interval = "device".equals(vibrationMode)
+                                    ? DEVICE_RUMBLE_REFRESH_MS : RUMBLE_KEEPALIVE_MS;
+                            rumbleLock.wait(interval);
+                            if (isRumbling && (lastLowFreq != 0 || lastHighFreq != 0)) {
+                                startVibration(lastLowFreq, lastHighFreq);
+                            }
+                        }
+                    } catch (InterruptedException e) {
+                        return;
                     }
                 }
             }
@@ -901,25 +904,27 @@ public class WinHandler {
         return false;
     }
 
-    /** Vibrates the Android device's built-in vibrator with a haptic-curved amplitude. */
-    private void vibrateDevice(short lowFreq, short highFreq) {
+    /** Vibrates the Android device's built-in vibrator with a haptic-curved amplitude. Returns true if a vibration was issued. */
+    private boolean vibrateDevice(short lowFreq, short highFreq) {
         try {
             int lowMSB = scaleAmplitude(lowFreq, vibrationIntensity);
             int highMSB = scaleAmplitude(highFreq, vibrationIntensity);
             int rawAmplitude = blendMotors(lowMSB, highMSB);
 
             Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
-            if (phoneVibrator == null || !phoneVibrator.hasVibrator()) return;
+            if (phoneVibrator == null || !phoneVibrator.hasVibrator()) return false;
 
             if (rawAmplitude <= 0) {
                 phoneVibrator.cancel();
-            } else {
-                float curved = (float) Math.pow((float) rawAmplitude / 255f, 0.6f);
-                int amp = Math.max(1, Math.round(curved * 255));
-                vibrateSingle(phoneVibrator, amp, DEVICE_RUMBLE_MS);
+                return false;
             }
+            float curved = (float) Math.pow((float) rawAmplitude / 255f, 0.6f);
+            int amp = Math.max(1, Math.round(curved * 255));
+            vibrateSingle(phoneVibrator, amp, DEVICE_RUMBLE_MS);
+            return true;
         } catch (Exception e) {
             Log.e(TAG, "Rumble: exception vibrating device", e);
+            return false;
         }
     }
 
@@ -930,11 +935,16 @@ public class WinHandler {
                 stopVibration();
                 return;
             }
-            isRumbling = true;
-            if ("device".equals(vibrationMode)) {
-                vibrateDevice(lowFreq, highFreq);
-            } else { // "controller"
-                vibrateController(lowFreq, highFreq);
+            boolean started = "device".equals(vibrationMode)
+                    ? vibrateDevice(lowFreq, highFreq)
+                    : vibrateController(lowFreq, highFreq);
+            if (started) {
+                isRumbling = true;
+                rumbleLock.notifyAll();  // wake the idle keepalive so it begins refreshing
+            } else {
+                // Nothing handled it (e.g. no controller present) — don't mark rumbling so the
+                // keepalive won't retry, and clear any prior in-flight rumble.
+                stopVibration();
             }
         }
     }
