@@ -134,6 +134,9 @@ class PerformanceHudView(
     private var lastMaliGpuInfoWallMs: Long = 0L
 
     private var thermalZoneDiscoveryLogged = false
+    private var thermalZonesCache: List<Pair<String, String>>? = null
+    private var gpuUsageDiscoveryLogged = false
+    private var gpuUsagePathsCache: List<String>? = null
 
     init {
         background = backgroundDrawable
@@ -631,51 +634,117 @@ class PerformanceHudView(
         return (((totalDiff - idleDiff).coerceAtLeast(0L)) * 100L / totalDiff).toInt().coerceIn(0, 100)
     }
 
+    private data class GpuUsageReading(val percent: Int, val source: String)
+
     private fun readGpuUsagePercent(): Int? {
-        // 1. Qualcomm Adreno: kgsl gpubusy
-        readFirstLine("/sys/class/kgsl/kgsl-3d0/gpubusy")?.let { raw ->
-            val parts = raw.trim().split(Regex("\\s+"))
-            if (parts.size >= 2) {
-                val busy = parts[0].toLongOrNull() ?: return@let
-                val total = parts[1].toLongOrNull() ?: return@let
-                if (total > 0L) {
-                    return ((busy * 100L) / total).toInt().coerceIn(0, 100)
+        val reading = discoverGpuUsagePaths()
+            .asSequence()
+            .mapNotNull { readGpuUsageSample(it) }
+            .firstOrNull()
+
+        if (reading != null) {
+            Timber.d("[HUD] GPU usage: %d%% from %s", reading.percent, reading.source)
+        }
+
+        return reading?.percent
+    }
+
+    private fun discoverGpuUsagePaths(): List<String> {
+        gpuUsagePathsCache?.let { return it }
+
+        val candidates = linkedSetOf<String>()
+        fun add(path: String) {
+            if (File(path).canRead()) {
+                candidates += path
+            }
+        }
+
+        listOf(
+            "/sys/class/kgsl/kgsl-3d0/gpubusy",
+            "/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage",
+            "/sys/class/kgsl/kgsl-3d0/devfreq/gpu_load",
+            "/sys/class/misc/mali0/device/utilisation",
+            "/sys/class/misc/mali0/device/utilization",
+            "/sys/class/misc/mali0/device/gpuinfo",
+        ).forEach(::add)
+
+        listOf(
+            File("/sys/class/devfreq"),
+            File("/sys/devices/virtual/devfreq"),
+        ).forEach { devfreqRoot ->
+            if (!devfreqRoot.isDirectory) return@forEach
+            val nodeDirs = devfreqRoot.listFiles { file -> file.isDirectory } ?: emptyArray<File>()
+            for (nodeDir in nodeDirs) {
+                val nodePath = nodeDir.path.lowercase(Locale.US)
+                val looksLikeGpuNode = listOf("gpu", "mali", "g3d", "kgsl").any { token ->
+                    nodePath.contains(token)
+                }
+                val usageFiles = listOf(
+                    "gpu_busy_percentage",
+                    "gpu_load",
+                    "utilisation",
+                    "utilization",
+                    "load",
+                    "gpuinfo",
+                )
+                for (fileName in usageFiles) {
+                    val file = File(nodeDir, fileName)
+                    if (!file.canRead()) continue
+                    if (looksLikeGpuNode || fileName == "gpu_busy_percentage" || fileName == "gpuinfo") {
+                        candidates += file.path
+                    }
                 }
             }
         }
 
-        // 2. Mali: utilisation (present on some Mali drivers, e.g. Samsung/Exynos)
-        readFirstLine("/sys/class/misc/mali0/device/utilisation")
-            ?.trim()
-            ?.replace(Regex("[^0-9]"), "")
-            ?.toIntOrNull()
-            ?.coerceIn(0, 100)
-            ?.let { return it }
+        val paths = candidates.toList()
+        gpuUsagePathsCache = paths
+        if (!gpuUsageDiscoveryLogged) {
+            gpuUsageDiscoveryLogged = true
+            Timber.v("[HUD] Discovered GPU usage paths: %s", paths.joinToString())
+        }
+        return paths
+    }
 
-        // 3. Mali: delta of cumulative GPU-active ms from gpuinfo
-        //    Works on Unisoc/other Mali platforms that don't expose a utilisation node.
-        //    gpuinfo line 2 format: "mali0   <total_gpu_ms>"
-        readNthLine("/sys/class/misc/mali0/device/gpuinfo", 1)
-            ?.trim()
-            ?.split(Regex("\\s+"))
-            ?.lastOrNull()
-            ?.toLongOrNull()
-            ?.let { gpuMs ->
+    private fun readGpuUsageSample(path: String): GpuUsageReading? {
+        val fileName = path.substringAfterLast("/")
+        return when (fileName) {
+            "gpubusy" -> {
+                val raw = readFirstLine(path)?.trim() ?: return null
+                val parts = raw.split(Regex("\\s+"))
+                if (parts.size < 2) return null
+                val busy = parts[0].toLongOrNull() ?: return null
+                val total = parts[1].toLongOrNull() ?: return null
+                if (total <= 0L) return null
+                GpuUsageReading(((busy * 100L) / total).toInt().coerceIn(0, 100), path)
+            }
+            "gpuinfo" -> {
+                val line = readNthLine(path, 1)?.trim() ?: return null
+                val gpuMs = line.split(Regex("\\s+")).lastOrNull()?.toLongOrNull() ?: return null
                 val now = SystemClock.elapsedRealtime()
                 val prevMs = lastMaliGpuInfoMs
                 val prevWall = lastMaliGpuInfoWallMs
                 lastMaliGpuInfoMs = gpuMs
                 lastMaliGpuInfoWallMs = now
-                if (prevMs != null && prevWall > 0L) {
-                    val wallDelta = now - prevWall
-                    if (wallDelta > 0L) {
-                        val gpuDelta = (gpuMs - prevMs).coerceAtLeast(0L)
-                        return ((gpuDelta * 100L) / wallDelta).toInt().coerceIn(0, 100)
-                    }
-                }
+                if (prevMs == null || prevWall <= 0L) return null
+                val wallDelta = now - prevWall
+                if (wallDelta <= 0L) return null
+                val gpuDelta = (gpuMs - prevMs).coerceAtLeast(0L)
+                GpuUsageReading(((gpuDelta * 100L) / wallDelta).toInt().coerceIn(0, 100), path)
             }
+            else -> readPercentFromLine(path)?.let { percent ->
+                GpuUsageReading(percent, path)
+            }
+        }
+    }
 
-        return null
+    private fun readPercentFromLine(path: String): Int? {
+        val raw = readFirstLine(path)?.trim() ?: return null
+        val token = raw.split(Regex("\\s+"))
+            .map { it.replace(Regex("[^0-9]"), "") }
+            .firstOrNull { it.isNotEmpty() }
+            ?: return null
+        return token.toIntOrNull()?.coerceIn(0, 100)
     }
 
     private fun readUsedRamText(): String {
@@ -693,9 +762,7 @@ class PerformanceHudView(
     }
 
     private fun readCpuTempC(): Int? {
-        val reading = readTemperatureCWithSource(
-            discoverPrioritizedCpuTempPaths(),
-        )
+        val reading = readTemperatureCWithSource(discoverPrioritizedCpuTempPaths())
         if (reading != null) {
             Timber.d("[HUD] CPU temp: %d°C from %s", reading.celsius, reading.source)
         }
@@ -703,11 +770,14 @@ class PerformanceHudView(
     }
 
     private fun readGpuTempC(): Int? {
-        val paths = listOf(
-            "/sys/class/kgsl/kgsl-3d0/temp",
-            "/sys/class/misc/mali0/device/temp",
-        ) + discoverPrioritizedGpuTempPaths()
-        val reading = readTemperatureCWithSource(paths)
+        val reading = readTemperatureCWithSource(
+            listOf(
+                "/sys/class/kgsl/kgsl-3d0/temp",
+                "/sys/class/kgsl/kgsl-3d0/devfreq/temp",
+                "/sys/class/misc/mali0/device/temp",
+                "/sys/kernel/gpu/temp",
+            ) + discoverPrioritizedGpuTempPaths(),
+        )
         if (reading != null) {
             Timber.d("[HUD] GPU temp: %d°C from %s", reading.celsius, reading.source)
         }
@@ -721,8 +791,10 @@ class PerformanceHudView(
      *   1. Zones with "cpu-silicon" in the type  — most representative
      *   2. Zones with "cpu-0" (cluster 0 / big-core)
      *   3. Zones with "cpu" in the type (generic)
-     *   4. Zones with "cputop" in the type (MediaTek style)
-     *   5. Zones with "tsens" in the type (Qualcomm generic, last resort)
+     *   4. Zones with "soc" in the type (Samsung/Exynos generic)
+     *   5. Zones with "s5p-tmu" in the type (Samsung)
+     *   6. Zones with "cputop" in the type (MediaTek style)
+     *   7. Zones with "tsens" in the type (Qualcomm generic, last resort)
      */
     private fun discoverPrioritizedCpuTempPaths(): List<String> {
         val zones = discoverAllThermalZones()
@@ -731,8 +803,12 @@ class PerformanceHudView(
                 type.contains("cpu-silicon") -> 0
                 type.contains("cpu-0") -> 1
                 type.contains("cpu") && !type.contains("gpu") -> 2
-                type.contains("cputop") -> 3
-                type.contains("tsens") -> 4
+                type.contains("soc") -> 3
+                type.contains("s5p-tmu") -> 4
+                type.contains("cputop") -> 5
+                type.contains("tsens") -> 6
+                type.contains("cluster") -> 7
+                type.contains("big") || type.contains("little") -> 8
                 else -> null
             }
         }
@@ -744,8 +820,9 @@ class PerformanceHudView(
      * Priority (highest to lowest):
      *   1. Zones with "gpu-silicon" in the type
      *   2. Zones with "gpu" in the type (generic)
-     *   3. Zones with "kgsl" in the type (Qualcomm Adreno)
-     *   4. Zones with "mali" in the type (ARM Mali / MediaTek)
+     *   3. Zones with "g3d" in the type (some Exynos kernels)
+     *   4. Zones with "kgsl" in the type (Qualcomm Adreno)
+     *   5. Zones with "mali" in the type (ARM Mali / MediaTek)
      */
     private fun discoverPrioritizedGpuTempPaths(): List<String> {
         val zones = discoverAllThermalZones()
@@ -753,8 +830,9 @@ class PerformanceHudView(
             when {
                 type.contains("gpu-silicon") -> 0
                 type.contains("gpu") -> 1
-                type.contains("kgsl") -> 2
-                type.contains("mali") -> 3
+                type.contains("g3d") -> 2
+                type.contains("kgsl") -> 3
+                type.contains("mali") -> 4
                 else -> null
             }
         }
@@ -764,25 +842,32 @@ class PerformanceHudView(
      * Read all thermal zones once, cache the discovery log, return (type, tempPath) pairs.
      */
     private fun discoverAllThermalZones(): List<Pair<String, String>> {
-        val thermalDir = File("/sys/class/thermal")
-        val zoneDirs = thermalDir.listFiles { file ->
-            file.isDirectory && file.name.startsWith("thermal_zone")
-        } ?: return emptyList()
+        thermalZonesCache?.let { return it }
 
-        val zones = zoneDirs.mapNotNull { zone ->
-            val type = readFirstLine(File(zone, "type").path)
-                ?.trim()?.lowercase(Locale.US)
-                ?: return@mapNotNull null
-            Pair(type, File(zone, "temp").path)
-        }
+        val zones = listOf(
+            File("/sys/class/thermal"),
+            File("/sys/devices/virtual/thermal"),
+        ).flatMap { thermalDir ->
+            val zoneDirs = thermalDir.listFiles { file ->
+                file.isDirectory && file.name.startsWith("thermal_zone")
+            } ?: return@flatMap emptyList<Pair<String, String>>()
 
+            zoneDirs.mapNotNull { zone ->
+                val type = readFirstLine(File(zone, "type").path)
+                    ?.trim()
+                    ?.lowercase(Locale.US)
+                    ?: return@mapNotNull null
+                Pair(type, File(zone, "temp").path)
+            }
+        }.distinctBy { it.second }
+
+        thermalZonesCache = zones
         if (!thermalZoneDiscoveryLogged) {
             thermalZoneDiscoveryLogged = true
             Timber.v(
                 "[HUD] Discovered %d thermal zones: %s",
                 zones.size,
                 zones.joinToString(", ") { (type, path) ->
-                    val zoneName = path.substringAfterLast("/").substringBefore("/")
                     val zoneDir = path.substringBeforeLast("/")
                     val zoneId = zoneDir.substringAfterLast("/")
                     "$zoneId=$type"
