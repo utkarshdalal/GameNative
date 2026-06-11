@@ -3292,8 +3292,7 @@ private fun setupXEnvironment(
         envVars.put("PULSE_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.PULSE_SERVER_PATH)
         environment.addComponent(PulseAudioComponent(
             UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.PULSE_SERVER_PATH),
-            container.getPulseaudioSuspendBehavior(),
-            container.getPulseaudioLowLatency()
+            container.pulseaudioLowLatency
         ))
     }
 
@@ -4507,7 +4506,7 @@ private suspend fun applyGeneralPatches(
 
 private fun refreshComponentsFiles(context: Context) {
     val extractionPairs = listOf(
-        "pulseaudio-gamenative-20260609.tzst" to File(context.filesDir, "pulseaudio")
+        "pulseaudio-gamenative-20260612.tzst" to File(context.filesDir, "pulseaudio")
     )
 
     AssetUtils.extractComponentsWithVersionCheck(

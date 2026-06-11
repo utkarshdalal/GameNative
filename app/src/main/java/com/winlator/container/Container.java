@@ -84,7 +84,6 @@ public class Container {
     private boolean useLegacyRenderer = false;
     private String wincomponents = DEFAULT_WINCOMPONENTS;
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
-    private String pulseaudioSuspendBehavior = PulseAudioComponent.SUSPEND_BEHAVIOR_THREAD;
     private boolean pulseaudioLowLatency = false;
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
@@ -283,14 +282,6 @@ public class Container {
 
     public void setAudioDriver(String audioDriver) {
         this.audioDriver = audioDriver;
-    }
-
-    public String getPulseaudioSuspendBehavior() {
-        return pulseaudioSuspendBehavior != null ? pulseaudioSuspendBehavior : PulseAudioComponent.SUSPEND_BEHAVIOR_THREAD;
-    }
-
-    public void setPulseaudioSuspendBehavior(String pulseaudioSuspendBehavior) {
-        this.pulseaudioSuspendBehavior = pulseaudioSuspendBehavior;
     }
 
     public boolean getPulseaudioLowLatency() {
@@ -690,7 +681,6 @@ public class Container {
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
             data.put("audioDriver", audioDriver);
-            data.put("pulseaudioSuspendBehavior", pulseaudioSuspendBehavior);
             data.put("pulseaudioLowLatency", pulseaudioLowLatency);
             data.put("wincomponents", wincomponents);
             data.put("drives", drives);
@@ -889,9 +879,6 @@ public class Container {
                     break;
                 case "audioDriver" :
                     setAudioDriver(data.getString(key));
-                    break;
-                case "pulseaudioSuspendBehavior" :
-                    setPulseaudioSuspendBehavior(data.getString(key));
                     break;
                 case "pulseaudioLowLatency" :
                     setPulseaudioLowLatency(data.getBoolean(key));

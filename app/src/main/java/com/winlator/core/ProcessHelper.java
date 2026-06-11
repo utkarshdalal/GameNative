@@ -54,19 +54,6 @@ public abstract class ProcessHelper {
         Process.sendSignal(pid, SIGKILL);
     }
 
-    public static int getPid(java.lang.Process process) {
-        try {
-            Field pidField = process.getClass().getDeclaredField("pid");
-            pidField.setAccessible(true);
-            int pid = pidField.getInt(process);
-            pidField.setAccessible(false);
-            return pid;
-        } catch (Exception e) {
-            Log.e("ProcessHelper", "Failed to get PID from process: " + e);
-            return -1;
-        }
-    }
-
     public static void terminateAllWineProcesses() {
         for (String process : listRunningWineProcesses()) {
             terminateProcess(Integer.parseInt(process));
@@ -210,6 +197,7 @@ public abstract class ProcessHelper {
         StringBuilder output = new StringBuilder();
         Thread stderrDrainer = null;
         try {
+            Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
             if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
             ProcessBuilder pb = new ProcessBuilder(splitCommand(command));
             Map<String, String> env = pb.environment();
@@ -326,44 +314,6 @@ public abstract class ProcessHelper {
         } catch (Exception e) {
             Log.e("ProcessHelper", "Failed to execute command: " + e);
             return null;
-        }
-    }
-
-    public static String execWithOutput(String command, String[] envp, File workingDir) {
-        StringBuilder output = new StringBuilder();
-        java.lang.Process process = null;
-        try {
-            Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
-            if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
-            process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
-
-            // Drain stderr in background to prevent blocking
-            java.lang.Process finalProcess = process;
-            Executors.newSingleThreadExecutor().execute(() -> {
-                try (BufferedReader errReader = new BufferedReader(new InputStreamReader(finalProcess.getErrorStream()))) {
-                    while (errReader.readLine() != null) { /* discard */ }
-                } catch (IOException ignored) {}
-            });
-
-
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    output.append(line).append("\n");
-                }
-            }
-
-            if (!process.waitFor(5, TimeUnit.SECONDS)) {
-                process.destroyForcibly();
-            }
-
-            return output.toString();
-        } catch (Exception e) {
-            Log.e("ProcessHelper", "Failed to execute command with output: " + e);
-            if (process != null) {
-                process.destroyForcibly();
-            }
-            return "";
         }
     }
 
