@@ -79,9 +79,10 @@ static _Atomic(SDL_Joystick *) vjoy_handles[MAX_GAMEPADS];
 #define RUMBLE_KEEPALIVE_DUR_MS 2000
 static __thread int t_keepalive_active = 0;
 // Atomic snapshot of the last rumble OnRumble received, read race-free by the keepalive thread.
-// (The plain shm rumble fields are written separately for the cross-process Java reader.)
-static _Atomic uint16_t last_rumble_low [MAX_GAMEPADS];
-static _Atomic uint16_t last_rumble_high[MAX_GAMEPADS];
+// low/high are packed into one 32-bit atomic so the pair is stored and observed indivisibly —
+// two separate atomics could tear (e.g. re-arm a stale value after a stop). The plain shm rumble
+// fields are written separately for the cross-process Java reader.
+static _Atomic uint32_t last_rumble[MAX_GAMEPADS];   // (high << 16) | low
 static size_t g_shm_map_size = 0;
 static int g_is_wine = 0;
 
@@ -209,9 +210,9 @@ static int OnRumble(void *userdata, uint16_t low, uint16_t high)
     shm[idx]->state.low_freq_rumble  = low;
     shm[idx]->state.high_freq_rumble = high;
 
-    // Race-free snapshot for the keepalive thread (release pairs with its acquire loads).
-    atomic_store_explicit(&last_rumble_low[idx],  low,  memory_order_release);
-    atomic_store_explicit(&last_rumble_high[idx], high, memory_order_release);
+    // Race-free snapshot for the keepalive thread (release pairs with its acquire load); low+high
+    // packed into one atomic so the pair is stored indivisibly.
+    atomic_store_explicit(&last_rumble[idx], ((uint32_t) high << 16) | low, memory_order_release);
 
     // Wake up the Java thread waiting for rumble updates
     atomic_thread_fence(memory_order_seq_cst);
@@ -305,10 +306,11 @@ static void *rumble_keepalive(void *arg)
         for (int i = 0; i < MAX_GAMEPADS; i++) {
             SDL_Joystick *js = atomic_load_explicit(&vjoy_handles[i], memory_order_acquire);
             if (!js) continue;
-            // Acquire-load the atomic snapshot (pairs with OnRumble's release store); no plain
-            // reads of the shm rumble fields, so there is no C11 data race.
-            uint16_t lo = atomic_load_explicit(&last_rumble_low[i],  memory_order_acquire);
-            uint16_t hi = atomic_load_explicit(&last_rumble_high[i], memory_order_acquire);
+            // Acquire-load the packed snapshot (pairs with OnRumble's release store): one atomic
+            // read yields a consistent low/high pair (no torn snapshot, no plain shm reads).
+            uint32_t r = atomic_load_explicit(&last_rumble[i], memory_order_acquire);
+            uint16_t lo = (uint16_t) r;
+            uint16_t hi = (uint16_t) (r >> 16);
             if (lo == 0 && hi == 0) continue;
             t_keepalive_active = 1;
             p_SDL_JoystickRumble(js, lo, hi, RUMBLE_KEEPALIVE_DUR_MS);
