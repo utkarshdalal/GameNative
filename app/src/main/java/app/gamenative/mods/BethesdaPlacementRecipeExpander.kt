@@ -20,6 +20,11 @@ object BethesdaPlacementRecipeExpander {
             ?: return recipes
         val expanded = mutableListOf<ModPlacementRecipe>()
         val existingRecipeKeys = recipes.mapTo(mutableSetOf()) { recipeKey(toBethesdaDataRecipe(it)) }
+        val coveredDataSourceFiles = recipes
+            .filter { it.enabled && isBethesdaDataTarget(it) }
+            .flatMap { recipe -> ModPlacementSources.decode(recipe.sourceSubpath) }
+            .mapNotNull { sourceSubpath -> resolveSource(extractedRoot, sourceSubpath)?.takeIf { it.isFile } }
+            .mapTo(mutableSetOf()) { it.canonicalFile.path }
 
         recipes.forEach { recipe ->
             val dataTarget = isBethesdaDataTarget(recipe)
@@ -31,6 +36,8 @@ object BethesdaPlacementRecipeExpander {
                 val sourceFile = resolveSource(extractedRoot, sourceSubpath) ?: return@forEach
                 if (!sourceFile.isFile || sourceFile.extension.lowercase() !in pluginExtensions) return@forEach
                 pluginSidecars(sourceFile).forEach { sidecar ->
+                    val sidecarPath = sidecar.canonicalFile.path
+                    if (sidecarPath in coveredDataSourceFiles) return@forEach
                     val relative = sidecar.relativeTo(extractedRoot).path.replace(File.separatorChar, '/')
                     val sidecarRecipe = effectiveRecipe.copy(
                         recipeId = 0L,
@@ -39,8 +46,11 @@ object BethesdaPlacementRecipeExpander {
                         stripPrefixSegments = 0,
                         includeSourceDirectory = false,
                     )
-                    if (recipeKey(sidecarRecipe) !in existingRecipeKeys) {
+                    val key = recipeKey(sidecarRecipe)
+                    if (key !in existingRecipeKeys) {
                         expanded += sidecarRecipe
+                        existingRecipeKeys += key
+                        coveredDataSourceFiles += sidecarPath
                     }
                 }
             }

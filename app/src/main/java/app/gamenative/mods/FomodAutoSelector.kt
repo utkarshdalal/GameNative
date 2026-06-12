@@ -40,7 +40,9 @@ object FomodAutoSelector {
                         candidates.size == 1 -> candidates
                         else -> return null
                     }
-                    FomodGroupType.SELECT_AT_LEAST_ONE -> preferred.ifEmpty { return null }
+                    FomodGroupType.SELECT_AT_LEAST_ONE -> preferred.ifEmpty {
+                        if (candidates.size == 1) candidates else return null
+                    }
                     FomodGroupType.SELECT_AT_MOST_ONE -> when {
                         preferred.size <= 1 -> preferred
                         else -> return null

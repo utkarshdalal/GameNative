@@ -293,12 +293,16 @@ class NexusModImportService : Service() {
 
         fun resumeInterruptedImports(context: Context) {
             val appContext = context.applicationContext
-            ContextCompat.startForegroundService(
-                appContext,
-                Intent(appContext, NexusModImportService::class.java).apply {
-                    action = ACTION_RESUME_IMPORTS
-                },
-            )
+            try {
+                ContextCompat.startForegroundService(
+                    appContext,
+                    Intent(appContext, NexusModImportService::class.java).apply {
+                        action = ACTION_RESUME_IMPORTS
+                    },
+                )
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to resume Nexus imports")
+            }
         }
 
         private fun putImportRequest(intent: Intent, request: NexusImportRequest) {

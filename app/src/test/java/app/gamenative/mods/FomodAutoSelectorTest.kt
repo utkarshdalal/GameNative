@@ -64,4 +64,31 @@ class FomodAutoSelectorTest {
 
         assertNull(FomodAutoSelector.selectDeterministic("install", installer))
     }
+
+    @Test
+    fun selectDeterministic_selectsSingleAtLeastOneOption() {
+        val installer = FomodInstaller(
+            moduleName = "Test",
+            requiredFiles = emptyList(),
+            steps = listOf(
+                FomodStep(
+                    name = "Install",
+                    groups = listOf(
+                        FomodGroup(
+                            name = "Optional files",
+                            type = FomodGroupType.SELECT_AT_LEAST_ONE,
+                            plugins = listOf(
+                                FomodPlugin("Only", "", "", FomodPluginType.OPTIONAL, listOf(FomodFileMapping("Only", "", 0, true))),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val result = FomodAutoSelector.selectDeterministic("install", installer)
+
+        assertNotNull(result)
+        assertEquals(listOf("Only"), result!!.recipes.map { it.sourceSubpath })
+    }
 }

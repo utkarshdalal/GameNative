@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -32,9 +33,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.gamenative.R
 import app.gamenative.mods.NexusCollectionFile
 import app.gamenative.mods.NexusCollectionInstallClassification
 import app.gamenative.mods.NexusFileSelector
@@ -42,12 +46,12 @@ import app.gamenative.mods.NexusModFile
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.utils.StorageUtils
 
-private enum class CollectionDisplayFilter(val label: String) {
-    ALL("All"),
-    AUTO("Downloadable"),
-    PLACEMENT("Placement"),
-    MANUAL("Manual"),
-    UNSUPPORTED("Unsupported"),
+private enum class CollectionDisplayFilter(@StringRes val labelRes: Int) {
+    ALL(R.string.nexus_filter_all),
+    AUTO(R.string.nexus_filter_downloadable),
+    PLACEMENT(R.string.nexus_filter_placement),
+    MANUAL(R.string.nexus_filter_manual),
+    UNSUPPORTED(R.string.nexus_filter_unsupported),
 }
 @Composable
 internal fun ApiKeySection(
@@ -60,15 +64,15 @@ internal fun ApiKeySection(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.Key, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text("Nexus account", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.nexus_account_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             }
             Text(
-                "Log in to Nexus Mods, open your profile menu, then go to Site preferences > API Access. Copy your Personal API Key and paste it here.",
+                stringResource(R.string.nexus_account_api_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                "Your key is stored locally on this device.",
+                stringResource(R.string.nexus_account_key_local),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -76,11 +80,11 @@ internal fun ApiKeySection(
                 value = apiKey,
                 onValueChange = onApiKeyChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Personal API key") },
+                label = { Text(stringResource(R.string.nexus_personal_api_key)) },
                 singleLine = true,
             )
             OutlinedButton(onClick = onValidate, enabled = apiKey.isNotBlank()) {
-                Text("Save and check key")
+                Text(stringResource(R.string.nexus_save_check_key))
             }
             validationState?.let { state ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -111,19 +115,19 @@ internal fun ImportSection(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.Link, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text("Add from Nexus Mods", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.nexus_add_from_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             }
             NoExtractOutlinedTextField(
                 value = nexusUrl,
                 onValueChange = onUrlChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Mod or collection URL") },
+                label = { Text(stringResource(R.string.nexus_url_label)) },
                 singleLine = true,
             )
             Button(onClick = onImport, enabled = nexusUrl.isNotBlank()) {
                 Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
-                Text("Find files")
+                Text(stringResource(R.string.nexus_find_files))
             }
         }
     }
@@ -141,7 +145,7 @@ internal fun FileSelectionSection(
 
     Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Choose a file to download", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.nexus_choose_file_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(
                 pending.modInfo.name,
                 style = MaterialTheme.typography.bodyMedium,
@@ -151,7 +155,7 @@ internal fun FileSelectionSection(
             )
 
             if (filesToShow.isEmpty()) {
-                Text("No current downloadable files were found.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.nexus_no_current_files), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             filesToShow.forEach { file ->
@@ -165,7 +169,7 @@ internal fun FileSelectionSection(
                         onCheckedChange = { showOlderFiles = it },
                     )
                     Text(
-                        text = "Show older or archived files",
+                        text = stringResource(R.string.nexus_show_older_files),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -192,6 +196,7 @@ internal fun CollectionSelectionSection(
     onResumeAll: () -> Unit,
     onCancelAll: () -> Unit,
 ) {
+    val context = LocalContext.current
     val importable = pending.mods.count { it.canImport }
     val failed = pending.mods.size - importable
     val selectedCount = pending.mods.count { it.canImport && it.collectionKey() in selectedKeys }
@@ -224,13 +229,16 @@ internal fun CollectionSelectionSection(
             }
         }
     }
+    val collectionIndexByKey = remember(pending) {
+        pending.mods.mapIndexed { index, mod -> mod.collectionKey() to index }.toMap()
+    }
 
     Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.Inventory2, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Column(Modifier.weight(1f)) {
-                    Text("Nexus collection", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.nexus_collection_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text(
                         pending.collection.name,
                         style = MaterialTheme.typography.bodySmall,
@@ -242,15 +250,19 @@ internal fun CollectionSelectionSection(
             }
             Text(
                 text = if (failed == 0) {
-                    "$importable mod(s) ready. $selectedCount selected."
+                    stringResource(R.string.nexus_collection_ready, importable, selectedCount)
                 } else {
-                    "$importable mod(s) ready; $failed could not be resolved. $selectedCount selected."
+                    stringResource(R.string.nexus_collection_ready_with_failed, importable, failed, selectedCount)
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "Estimated temporary space: ${StorageUtils.formatBinarySize(estimatedRequiredBytes)}; available ${StorageUtils.formatBinarySize(availableBytes)}.",
+                text = stringResource(
+                    R.string.nexus_estimated_temp_space,
+                    StorageUtils.formatBinarySize(estimatedRequiredBytes),
+                    StorageUtils.formatBinarySize(availableBytes),
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (availableBytes < estimatedRequiredBytes) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -266,10 +278,10 @@ internal fun CollectionSelectionSection(
                 val firstRow: @Composable () -> Unit = {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = onSelectAll, enabled = importable > 0) {
-                            Text("Select all")
+                            Text(stringResource(R.string.nexus_select_all))
                         }
                         TextButton(onClick = onClearSelection, enabled = selectedCount > 0) {
-                            Text("Clear")
+                            Text(stringResource(R.string.nexus_clear))
                         }
                     }
                 }
@@ -277,7 +289,7 @@ internal fun CollectionSelectionSection(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (failedQueueCount > 0) {
                             TextButton(onClick = onRetryFailed) {
-                                Text("Retry failed")
+                                Text(stringResource(R.string.nexus_retry_failed))
                             }
                         }
                     }
@@ -320,7 +332,8 @@ internal fun CollectionSelectionSection(
                 val key = mod.collectionKey()
                 val queueItem = queueItems[key]
                 val selected = key in selectedKeys
-                val index = pending.mods.indexOf(mod)
+                val index = collectionIndexByKey[key] ?: 0
+                val fileFallback = stringResource(R.string.nexus_file_fallback, mod.collectionFile.fileId)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -334,13 +347,15 @@ internal fun CollectionSelectionSection(
                     Text("${index + 1}.", style = MaterialTheme.typography.labelMedium)
                     Column(Modifier.weight(1f)) {
                         Text(
-                            mod.modInfo?.name ?: mod.collectionFile.modName.ifBlank { "Nexus mod ${mod.collectionFile.modId}" },
+                            mod.modInfo?.name ?: mod.collectionFile.modName.ifBlank {
+                                stringResource(R.string.nexus_collection_mod_fallback_name, mod.collectionFile.modId)
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            mod.file?.name ?: mod.collectionFile.fileName.ifBlank { mod.error ?: "File ${mod.collectionFile.fileId}" },
+                            mod.file?.name ?: mod.collectionFile.fileName.ifBlank { mod.error ?: fileFallback },
                             style = MaterialTheme.typography.bodySmall,
                             color = if (mod.canImport) {
                                 MaterialTheme.colorScheme.onSurfaceVariant
@@ -353,7 +368,15 @@ internal fun CollectionSelectionSection(
                         CollectionClassificationText(mod)
                         queueItem?.let { item ->
                             Text(
-                                text = collectionQueueLabel(item),
+                                text = collectionQueueLabel(
+                                    item = item,
+                                    queuedLabel = stringResource(R.string.nexus_queue_queued),
+                                    importingLabel = stringResource(R.string.nexus_queue_importing),
+                                    importedLabel = stringResource(R.string.nexus_queue_imported),
+                                    failedLabel = stringResource(R.string.nexus_status_failed),
+                                    canceledLabel = stringResource(R.string.nexus_status_canceled),
+                                    etaLeft = { eta -> context.getString(R.string.nexus_eta_left, eta) },
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = when (item.status) {
                                     CollectionQueueStatus.FAILED -> MaterialTheme.colorScheme.error
@@ -385,7 +408,7 @@ internal fun CollectionSelectionSection(
                 }
             }
             if (filteredMods.isEmpty()) {
-                Text("No collection items match this filter.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.nexus_no_collection_items_filter), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val compact = maxWidth < 420.dp
@@ -394,7 +417,7 @@ internal fun CollectionSelectionSection(
                         Button(onClick = onImportSelected, enabled = selectedCount > 0, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(8.dp))
-                            Text("Download selected")
+                            Text(stringResource(R.string.nexus_download_selected))
                         }
                         CollectionQueueControlButtons(
                             paused = paused,
@@ -410,7 +433,7 @@ internal fun CollectionSelectionSection(
                         Button(onClick = onImportSelected, enabled = selectedCount > 0) {
                             Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(8.dp))
-                            Text("Download selected")
+                            Text(stringResource(R.string.nexus_download_selected))
                         }
                         CollectionQueueControlButtons(
                             paused = paused,
@@ -435,9 +458,15 @@ private fun CollectionChecklist(
     unsupportedCount: Int,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("Collection checklist", style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.nexus_collection_checklist_title), style = MaterialTheme.typography.labelLarge)
         Text(
-            "$autoCount downloadable with no manifest instructions | $placementCount need placement review | $manualCount manual/external | $unsupportedCount unsupported/unresolved",
+            stringResource(
+                R.string.nexus_collection_checklist_summary,
+                autoCount,
+                placementCount,
+                manualCount,
+                unsupportedCount,
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -452,21 +481,25 @@ private fun CollectionManifestDetails(pending: PendingCollectionSelection) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (rules.pluginLoadOrder.isNotEmpty()) {
             Text(
-                "Plugin load order detected: ${rules.pluginLoadOrder.size} plugin(s). GN will use it when applying managed plugins from this collection.",
+                stringResource(R.string.nexus_plugin_load_order_detected, rules.pluginLoadOrder.size),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         if (rules.fileConflictRules.isNotEmpty()) {
             Text(
-                "File/mod conflict rules detected: ${rules.fileConflictRules.size}. These are shown for review; unsupported per-file winners are not silently applied.",
+                stringResource(R.string.nexus_file_conflict_rules_detected, rules.fileConflictRules.size),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         if (rules.ruleSources.isNotEmpty()) {
             Text(
-                "Rule fields: ${rules.ruleSources.take(4).joinToString { it.path }}${if (rules.ruleSources.size > 4) "..." else ""}",
+                stringResource(
+                    R.string.nexus_rule_fields,
+                    rules.ruleSources.take(4).joinToString { it.path },
+                    if (rules.ruleSources.size > 4) stringResource(R.string.nexus_rule_fields_more) else "",
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
@@ -475,7 +508,7 @@ private fun CollectionManifestDetails(pending: PendingCollectionSelection) {
         }
         if (rules.unsupportedRules.isNotEmpty()) {
             Text(
-                "Unsupported collection rules: ${rules.unsupportedRules.size}. Review manual steps before applying order.",
+                stringResource(R.string.nexus_unsupported_collection_rules, rules.unsupportedRules.size),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )
@@ -504,11 +537,11 @@ private fun CollectionFilterButton(
 ) {
     if (selected) {
         Button(onClick = onClick, modifier = modifier) {
-            Text(filter.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(stringResource(filter.labelRes), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     } else {
         OutlinedButton(onClick = onClick, modifier = modifier) {
-            Text(filter.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(stringResource(filter.labelRes), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -517,10 +550,10 @@ private fun CollectionFilterButton(
 private fun CollectionClassificationText(mod: PendingCollectionMod) {
     val classification = mod.collectionFile.classification
     val label = when (classification) {
-        NexusCollectionInstallClassification.AUTO_INSTALLABLE -> "Downloadable; archive not checked yet"
-        NexusCollectionInstallClassification.NEEDS_PLACEMENT -> "Needs placement review"
-        NexusCollectionInstallClassification.EXTERNAL_MANUAL -> "Manual or external step"
-        NexusCollectionInstallClassification.UNSUPPORTED -> "Unsupported rule"
+        NexusCollectionInstallClassification.AUTO_INSTALLABLE -> stringResource(R.string.nexus_class_downloadable)
+        NexusCollectionInstallClassification.NEEDS_PLACEMENT -> stringResource(R.string.nexus_class_needs_placement)
+        NexusCollectionInstallClassification.EXTERNAL_MANUAL -> stringResource(R.string.nexus_class_manual_external)
+        NexusCollectionInstallClassification.UNSUPPORTED -> stringResource(R.string.nexus_class_unsupported)
     }
     val color = when (classification) {
         NexusCollectionInstallClassification.AUTO_INSTALLABLE -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -531,7 +564,7 @@ private fun CollectionClassificationText(mod: PendingCollectionMod) {
     Text(label, style = MaterialTheme.typography.labelSmall, color = color)
     if (mod.collectionFile.expectedDestination.isNotBlank()) {
         Text(
-            "Destination: ${mod.collectionFile.expectedDestination}",
+            stringResource(R.string.nexus_destination, mod.collectionFile.expectedDestination),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -570,15 +603,15 @@ private fun CollectionQueueControlButtons(
     val modifier = if (compact) Modifier.fillMaxWidth() else Modifier
     if (paused) {
         OutlinedButton(onClick = onResumeAll, modifier = modifier) {
-            Text("Resume queue")
+            Text(stringResource(R.string.nexus_resume_queue))
         }
     } else {
         OutlinedButton(onClick = onPauseAll, enabled = cancelEnabled, modifier = modifier) {
-            Text("Pause after current")
+            Text(stringResource(R.string.nexus_pause_after_current))
         }
     }
     OutlinedButton(onClick = onCancelAll, enabled = cancelEnabled, modifier = modifier) {
-        Text("Cancel queue")
+        Text(stringResource(R.string.nexus_cancel_queue))
     }
 }
 
@@ -587,6 +620,12 @@ private fun FileRow(
     file: NexusModFile,
     onImport: (NexusModFile) -> Unit,
 ) {
+    val categoryLabel = file.categoryName.ifBlank { stringResource(R.string.nexus_file_category_default) }
+    val versionPrefix = if (file.version.isNotBlank()) {
+        stringResource(R.string.nexus_file_version_prefix, file.version)
+    } else {
+        ""
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -600,8 +639,11 @@ private fun FileRow(
             Text(file.name.ifBlank { file.fileName }, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 buildString {
-                    if (file.version.isNotBlank()) append("Version ${file.version} - ")
-                    append(file.categoryName.ifBlank { "File" })
+                    if (versionPrefix.isNotBlank()) {
+                        append(versionPrefix)
+                        append(" - ")
+                    }
+                    append(categoryLabel)
                     append(" - ")
                     append(StorageUtils.formatBinarySize(file.sizeBytes))
                 },
@@ -624,7 +666,7 @@ private fun FileRow(
                 color = MaterialTheme.colorScheme.primaryContainer,
             ) {
                 Text(
-                    text = "Recommended",
+                    text = stringResource(R.string.nexus_recommended),
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,

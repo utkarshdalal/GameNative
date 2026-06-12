@@ -23,7 +23,6 @@ import app.gamenative.data.AmazonGame
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
-import app.gamenative.mods.NexusModManager
 import app.gamenative.service.DownloadService
 import app.gamenative.service.amazon.AmazonConstants
 import app.gamenative.service.amazon.AmazonService
@@ -348,14 +347,11 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
         val productId = productIdOf(libraryItem)
         Timber.tag(TAG).i("performUninstall: deleting game $productId")
         CoroutineScope(Dispatchers.IO).launch {
+            val gameRootDir = getInstallPath(context, libraryItem)?.let(::File)
             val result = AmazonService.deleteGame(context, productId)
             DownloadService.invalidateCache()
             if (result.isSuccess) {
-                NexusModManager.deleteInstallsForApp(
-                    context = context,
-                    appId = libraryItem.appId,
-                    gameRootDir = getInstallPath(context, libraryItem)?.let(::File),
-                )
+                cleanupNexusModsForApp(context, libraryItem, gameRootDir)
                 Timber.tag(TAG).i("Uninstall succeeded for $productId")
             } else {
                 Timber.tag(TAG).e("Uninstall failed for $productId: ${result.exceptionOrNull()?.message}")

@@ -70,13 +70,13 @@ interface ModDao {
     @Query("UPDATE mod_profile SET active = 0, updated_at = :updatedAt WHERE app_id = :appId")
     suspend fun clearActiveProfile(appId: String, updatedAt: Long = System.currentTimeMillis())
 
-    @Query("UPDATE mod_profile SET active = 1, updated_at = :updatedAt WHERE profile_id = :profileId")
-    suspend fun setProfileActive(profileId: String, updatedAt: Long = System.currentTimeMillis())
+    @Query("UPDATE mod_profile SET active = 1, updated_at = :updatedAt WHERE app_id = :appId AND profile_id = :profileId")
+    suspend fun setProfileActive(appId: String, profileId: String, updatedAt: Long = System.currentTimeMillis())
 
     @Transaction
     suspend fun activateProfile(appId: String, profileId: String) {
         clearActiveProfile(appId)
-        setProfileActive(profileId)
+        setProfileActive(appId, profileId)
     }
 
     @Query("DELETE FROM mod_profile WHERE profile_id = :profileId")
@@ -88,8 +88,33 @@ interface ModDao {
     @Query("SELECT * FROM mod_profile_install_state WHERE app_id = :appId AND profile_id = :profileId ORDER BY priority, install_id")
     suspend fun getProfileInstallStates(appId: String, profileId: String): List<ModProfileInstallState>
 
+    @Query("SELECT * FROM mod_profile_install_state WHERE profile_id = :profileId AND install_id = :installId LIMIT 1")
+    suspend fun getProfileInstallState(profileId: String, installId: String): ModProfileInstallState?
+
+    @Query("SELECT COALESCE(MAX(priority) + 1, 0) FROM mod_profile_install_state WHERE app_id = :appId AND profile_id = :profileId")
+    suspend fun nextProfileInstallPriority(appId: String, profileId: String): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertProfileInstallState(state: ModProfileInstallState)
+
+    @Transaction
+    suspend fun ensureProfileInstallState(
+        profile: ModProfile,
+        installId: String,
+        enabled: Boolean = true,
+        priority: Int? = null,
+    ): ModProfileInstallState {
+        getProfileInstallState(profile.profileId, installId)?.let { return it }
+        val state = ModProfileInstallState(
+            profileId = profile.profileId,
+            installId = installId,
+            appId = profile.appId,
+            enabled = enabled,
+            priority = priority ?: nextProfileInstallPriority(profile.appId, profile.profileId),
+        )
+        upsertProfileInstallState(state)
+        return state
+    }
 
     @Query("DELETE FROM mod_profile_install_state WHERE install_id = :installId")
     suspend fun deleteProfileInstallStatesForInstall(installId: String)
@@ -141,7 +166,10 @@ interface ModDao {
 
     @Transaction
     suspend fun replaceOverwriteManifestsForTargets(installId: String, manifests: List<ModOverwriteManifest>) {
-        if (manifests.isEmpty()) return
+        if (manifests.isEmpty()) {
+            deleteOverwriteManifests(installId)
+            return
+        }
         deleteOverwriteManifestsForTargets(installId, manifests.map { it.targetPath })
         insertOverwriteManifests(manifests)
     }

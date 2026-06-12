@@ -2,6 +2,7 @@ package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -47,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.ModInstall
 import app.gamenative.data.ModInstallStatus
@@ -129,11 +132,11 @@ internal enum class PlacementChoice {
     CUSTOM,
 }
 
-private enum class ManageModsTab(val label: String) {
-    IMPORT("Import"),
-    MODS("Mods"),
-    PLACEMENT("Placement"),
-    ISSUES("Issues"),
+private enum class ManageModsTab {
+    IMPORT,
+    MODS,
+    PLACEMENT,
+    ISSUES,
 }
 
 private const val MIN_APPLY_FREE_BYTES = 2L * 1024L * 1024L * 1024L
@@ -216,6 +219,7 @@ internal data class PlacementPresetOption(
 
 private data class ModDiagnosticsSnapshot(
     val conflicts: List<ModFileConflictReport>,
+    val placementNeededInstallIds: Set<String>,
     val bethesdaGame: BethesdaGame?,
     val plugins: List<BethesdaPlugin>,
     val pluginIssues: List<BethesdaPluginDependencyIssue>,
@@ -231,6 +235,7 @@ private data class ProfileOrderPlan(
     val recipesByInstallId: Map<String, List<ModPlacementRecipe>>,
     val recipesToPersistByInstallId: Map<String, List<ModPlacementRecipe>>,
     val unconfiguredCount: Int,
+    val unconfiguredNames: List<String>,
     val bethesdaGame: BethesdaGame?,
     val plugins: List<BethesdaPlugin>,
     val pluginIssues: List<BethesdaPluginDependencyIssue>,
@@ -294,11 +299,17 @@ private fun ManageModsSummaryBar(
     }
     val queueText = activeDownload?.status ?: when {
         busyText != null -> busyText
-        diagnosticsLoading -> "Scanning"
-        issueCount > 0 -> "$issueCount issue(s)"
-        else -> "Idle"
+        diagnosticsLoading -> stringResource(R.string.nexus_scanning)
+        issueCount > 0 -> stringResource(R.string.nexus_issue_count, issueCount)
+        else -> stringResource(R.string.nexus_idle)
     }
-    val summary = "${placeable.size} mods | $enabledCount enabled | ${activeProfile?.name ?: "Default"} | $queueText"
+    val summary = stringResource(
+        R.string.nexus_summary_bar,
+        placeable.size,
+        enabledCount,
+        activeProfile?.name ?: stringResource(R.string.nexus_default_profile),
+        queueText,
+    )
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
@@ -325,22 +336,30 @@ private fun ManageModsTabs(
     onSelect: (ManageModsTab) -> Unit,
 ) {
     val tabs = ManageModsTab.entries
-    TabRow(
-        selectedTabIndex = tabs.indexOf(selectedTab),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        tabs.forEach { tab ->
-            Tab(
-                selected = tab == selectedTab,
-                onClick = { onSelect(tab) },
-                text = {
-                    Text(
-                        text = tab.label,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-            )
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val compact = maxWidth < 420.dp
+        TabRow(
+            selectedTabIndex = tabs.indexOf(selectedTab),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            tabs.forEach { tab ->
+                Tab(
+                    selected = tab == selectedTab,
+                    onClick = { onSelect(tab) },
+                    text = {
+                        Text(
+                            text = when (tab) {
+                                ManageModsTab.IMPORT -> stringResource(R.string.nexus_tab_import)
+                                ManageModsTab.MODS -> stringResource(R.string.nexus_tab_mods)
+                                ManageModsTab.PLACEMENT -> stringResource(if (compact) R.string.nexus_tab_placement_short else R.string.nexus_tab_placement)
+                                ManageModsTab.ISSUES -> stringResource(R.string.nexus_tab_issues)
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                )
+            }
         }
     }
 }
@@ -386,7 +405,7 @@ private fun OverwriteConfirmDialog(
                         fontFamily = FontFamily.Monospace,
                     )
                 }
-                if (conflicts.size > 12) Text("+ ${conflicts.size - 12} more")
+                if (conflicts.size > 12) Text(stringResource(R.string.nexus_more_prefixed, conflicts.size - 12))
             }
         },
         confirmButton = {
@@ -396,7 +415,7 @@ private fun OverwriteConfirmDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         },
     )
@@ -452,40 +471,54 @@ private fun StorageCleanupSection(
     val failedArchives = breakdown?.failedArchiveBytes ?: 0L
     val redundantBackupCount = breakdown?.redundantBackupCount ?: 0
     val redundantBackupLabel = if (redundantBackupCount > 0) {
-        "Backups safe to clean ($redundantBackupCount records)"
+        stringResource(R.string.nexus_backups_safe_to_clean_records, redundantBackupCount)
     } else {
-        "Backups safe to clean"
+        stringResource(R.string.nexus_backups_safe_to_clean)
     }
     NexusSectionCard {
-        NexusSectionHeader("Storage cleanup", loading, "Scan", onScan)
+        NexusSectionHeader(stringResource(R.string.nexus_storage_cleanup_title), loading, stringResource(R.string.nexus_scan), onScan)
         Text(
-            "Shows storage used by Nexus mod downloads, extracted cache, and backups for this game.",
+            stringResource(R.string.nexus_storage_cleanup_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            "Extracted cache and rollback backups are kept so mods can be reapplied, disabled, or restored safely.",
+            stringResource(R.string.nexus_storage_cleanup_cache_backups_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            "Clean temp removes abandoned files. Delete failed archives removes failed downloads, so retry will download again. Clean redundant backups removes backups that are no longer needed.",
+            stringResource(R.string.nexus_storage_cleanup_actions_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Line("Temp/orphaned files", cleanable)
-        Line("Failed download archives", failedArchives)
+        Line(stringResource(R.string.nexus_temp_orphaned_files), cleanable)
+        Line(stringResource(R.string.nexus_failed_download_archives), failedArchives)
         breakdown?.let {
-            Line("Extracted mod cache", it.extractedCacheBytes)
-            Line("Rollback backups", it.backupBytes)
+            Line(stringResource(R.string.nexus_extracted_mod_cache), it.extractedCacheBytes)
+            Line(stringResource(R.string.nexus_rollback_backups), it.backupBytes)
             Line(redundantBackupLabel, it.redundantBackupBytes)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            TextButton(onClick = onCleanTemp, enabled = !loading && cleanable > 0L, modifier = Modifier.weight(1f)) {
-                Text("Clean temp", maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            TextButton(onClick = onDeleteFailedArchives, enabled = !loading && failedArchives > 0L, modifier = Modifier.weight(1f)) {
-                Text("Delete failed archives", maxLines = 1, overflow = TextOverflow.Ellipsis)
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val compact = maxWidth < 420.dp
+            if (compact) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onCleanTemp, enabled = !loading && cleanable > 0L, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.nexus_clean_temp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    TextButton(onClick = onDeleteFailedArchives, enabled = !loading && failedArchives > 0L, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.nexus_delete_failed_archives), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onCleanTemp, enabled = !loading && cleanable > 0L, modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.nexus_clean_temp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    TextButton(onClick = onDeleteFailedArchives, enabled = !loading && failedArchives > 0L, modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.nexus_delete_failed_archives), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
             }
         }
         TextButton(
@@ -493,7 +526,7 @@ private fun StorageCleanupSection(
             enabled = !loading && redundantBackupCount > 0,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Clean redundant backups", maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(stringResource(R.string.nexus_clean_redundant_backups), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -505,18 +538,18 @@ private fun InstallHealthSection(
     onCheck: () -> Unit,
 ) {
     NexusSectionCard {
-        NexusSectionHeader("Install health", loading, "Check", onCheck)
+        NexusSectionHeader(stringResource(R.string.nexus_install_health_title), loading, stringResource(R.string.nexus_check), onCheck)
         Text(
-            "Checks for missing mod files, broken install records, unsafe backups, and files that need to be restored.",
+            stringResource(R.string.nexus_install_health_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         report?.let { current ->
             if (current.issues.isEmpty()) {
-                Text("No install health issues found.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.nexus_no_install_health_issues), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
             } else {
                 val summaryColor = if (current.errorCount > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                Text("${current.errorCount} problem(s), ${current.warningCount} warning(s)", style = MaterialTheme.typography.bodySmall, color = summaryColor)
+                Text(stringResource(R.string.nexus_install_health_summary, current.errorCount, current.warningCount), style = MaterialTheme.typography.bodySmall, color = summaryColor)
                 current.issues.take(8).forEach { issue ->
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         val titleColor = if (issue.severity == ModHealthSeverity.ERROR) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
@@ -525,7 +558,7 @@ private fun InstallHealthSection(
                     }
                 }
                 if (current.issues.size > 8) {
-                    Text("+ ${current.issues.size - 8} more", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.nexus_more_prefixed, current.issues.size - 8), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -560,10 +593,10 @@ fun NexusModsDialog(
     val priorityByInstallId = remember(profileStates) { profileStates.associate { it.installId to it.priority } }
     val profileEnabledByInstallId = remember(profileStates) { profileStates.associate { it.installId to it.enabled } }
     val apiClient = remember { NexusApiClient() }
-    val roots = remember(gameRootDir, winePrefix) {
+    val roots = remember(gameRootDir, winePrefix, context) {
         ModTargetResolver.roots(gameRootDir, winePrefix).ifEmpty {
             listOfNotNull(gameRootDir?.takeIf { it.isDirectory }?.let {
-                app.gamenative.mods.ResolvedModTargetRoot(ModTargetRoot.GAME_DIR, "Game Directory", it)
+                app.gamenative.mods.ResolvedModTargetRoot(ModTargetRoot.GAME_DIR, context.getString(R.string.nexus_game_directory_root), it)
             })
         }
     }
@@ -581,6 +614,7 @@ fun NexusModsDialog(
     var archiveEntries by remember { mutableStateOf<List<ModArchiveEntry>>(emptyList()) }
     var selectedFomodInstaller by remember { mutableStateOf<FomodInstaller?>(null) }
     var conflictReports by remember { mutableStateOf<List<ModFileConflictReport>>(emptyList()) }
+    var placementNeededInstallIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var bethesdaGame by remember(libraryItem.name) { mutableStateOf(BethesdaPluginManager.detectGame(libraryItem.name)) }
     var bethesdaPlugins by remember { mutableStateOf<List<BethesdaPlugin>>(emptyList()) }
     var bethesdaPluginIssues by remember { mutableStateOf<List<BethesdaPluginDependencyIssue>>(emptyList()) }
@@ -595,6 +629,9 @@ fun NexusModsDialog(
     var activeCollectionInstallId by remember { mutableStateOf<String?>(null) }
     var pendingApply by remember { mutableStateOf<PendingApply?>(null) }
     var pendingProfileApply by remember { mutableStateOf<PendingProfileApply?>(null) }
+    var modApplyInProgress by remember { mutableStateOf(false) }
+    var profileApplyInProgress by remember { mutableStateOf(false) }
+    var placementApplyStatusMessage by remember { mutableStateOf<String?>(null) }
     var pendingProfileNameEdit by remember { mutableStateOf<PendingProfileNameEdit?>(null) }
     var pendingProfileDelete by remember { mutableStateOf<ModProfile?>(null) }
     var placementChoice by remember { mutableStateOf(PlacementChoice.AUTOMATIC) }
@@ -632,9 +669,9 @@ fun NexusModsDialog(
                     NexusModManager.cleanupOrphanedFilesForApp(context, libraryItem.appId)
                 }
                 storageBreakdown = NexusModManager.scanStorageForApp(context, libraryItem.appId)
-                SnackbarManager.show("Freed ${StorageUtils.formatBinarySize(result.reclaimedBytes)}")
+                SnackbarManager.show(context.getString(R.string.nexus_freed_size, StorageUtils.formatBinarySize(result.reclaimedBytes)))
             } catch (e: Exception) {
-                SnackbarManager.show(e.message ?: "Storage cleanup failed")
+                SnackbarManager.show(e.message ?: context.getString(R.string.nexus_storage_cleanup_failed))
             } finally {
                 storageLoading = false
             }
@@ -647,9 +684,9 @@ fun NexusModsDialog(
             try {
                 val result = NexusModManager.cleanupRedundantBackupsForApp(context, libraryItem.appId)
                 storageBreakdown = NexusModManager.scanStorageForApp(context, libraryItem.appId)
-                SnackbarManager.show("Freed ${StorageUtils.formatBinarySize(result.reclaimedBytes)}")
+                SnackbarManager.show(context.getString(R.string.nexus_freed_size, StorageUtils.formatBinarySize(result.reclaimedBytes)))
             } catch (e: Exception) {
-                SnackbarManager.show(e.message ?: "Redundant backup cleanup failed")
+                SnackbarManager.show(e.message ?: context.getString(R.string.nexus_redundant_backup_cleanup_failed))
             } finally {
                 storageLoading = false
             }
@@ -669,13 +706,13 @@ fun NexusModsDialog(
                 val report = healthReport
                 SnackbarManager.show(
                     if (report?.issues.isNullOrEmpty()) {
-                        "No install health issues found"
+                        context.getString(R.string.nexus_no_install_health_issues)
                     } else {
-                        "Found ${report?.issues?.size ?: 0} install health issue(s)"
+                        context.getString(R.string.nexus_found_install_health_issues, report?.issues?.size ?: 0)
                     },
                 )
             } catch (e: Exception) {
-                SnackbarManager.show(e.message ?: "Install health check failed")
+                SnackbarManager.show(e.message ?: context.getString(R.string.nexus_install_health_check_failed))
             } finally {
                 healthLoading = false
             }
@@ -751,13 +788,11 @@ fun NexusModsDialog(
             delay(300)
             val snapshot = withContext(Dispatchers.IO) {
                 val profile = activeProfile ?: ModProfileManager.ensureActiveProfile(dao, libraryItem.appId)
-                installs.filter { it.canPlaceFiles() }.forEach { install ->
-                    val state = ModProfileManager.ensureStateForInstall(dao, profile, install.installId)
-                    if (install.status == ModInstallStatus.DISABLED.name && state.enabled) {
-                        dao.upsertProfileInstallState(state.copy(enabled = false, updatedAt = System.currentTimeMillis()))
-                    }
-                }
-                val states = dao.getProfileInstallStates(libraryItem.appId, profile.profileId)
+                val states = ModProfileManager.ensureStatesForInstalls(
+                    dao = dao,
+                    profile = profile,
+                    installs = installs.filter { it.canPlaceFiles() },
+                )
                 val enabledStateByInstallId = states.associate { it.installId to it.enabled }
                 val usableInstalls = installs.filter { it.canPlaceFiles() && isEnabledInProfile(it, enabledStateByInstallId) }
                 val priorities = states.associate { it.installId to it.priority }
@@ -784,6 +819,9 @@ fun NexusModsDialog(
                 }.orEmpty()
                 ModDiagnosticsSnapshot(
                     conflicts = conflicts,
+                    placementNeededInstallIds = usableInstalls
+                        .filter { install -> recipesByInstallId[install.installId].orEmpty().isEmpty() }
+                        .mapTo(mutableSetOf()) { it.installId },
                     bethesdaGame = game,
                     plugins = detectedPlugins,
                     pluginIssues = game?.let {
@@ -798,6 +836,7 @@ fun NexusModsDialog(
                 )
             }
             conflictReports = snapshot.conflicts
+            placementNeededInstallIds = snapshot.placementNeededInstallIds
             bethesdaGame = snapshot.bethesdaGame
             bethesdaPlugins = snapshot.plugins
             bethesdaPluginIssues = snapshot.pluginIssues
@@ -805,10 +844,11 @@ fun NexusModsDialog(
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             conflictReports = emptyList()
+            placementNeededInstallIds = emptySet()
             bethesdaPlugins = emptyList()
             bethesdaPluginIssues = emptyList()
             bethesdaPluginAssetIssues = emptyList()
-            SnackbarManager.show(e.message ?: "Failed to scan Nexus mod diagnostics")
+            SnackbarManager.show(e.message ?: context.getString(R.string.nexus_diagnostics_scan_failed))
         } finally {
             diagnosticsLoading = false
         }
@@ -817,7 +857,7 @@ fun NexusModsDialog(
     fun createProfile(name: String) {
         val trimmedName = name.trim()
         if (trimmedName.isBlank()) {
-            SnackbarManager.show("Enter a profile name")
+            SnackbarManager.show(context.getString(R.string.nexus_enter_profile_name))
             return
         }
         scope.launch {
@@ -840,9 +880,9 @@ fun NexusModsDialog(
                 }
                 dao.activateProfile(libraryItem.appId, profile.profileId)
                 pendingProfileNameEdit = null
-                SnackbarManager.show("Created $trimmedName")
+                SnackbarManager.show(context.getString(R.string.nexus_profile_created, trimmedName))
             } catch (e: Exception) {
-                SnackbarManager.show(e.message ?: "Failed to create profile")
+                SnackbarManager.show(e.message ?: context.getString(R.string.nexus_profile_create_failed))
             }
         }
     }
@@ -850,16 +890,16 @@ fun NexusModsDialog(
     fun renameProfile(profile: ModProfile, name: String) {
         val trimmedName = name.trim()
         if (trimmedName.isBlank()) {
-            SnackbarManager.show("Enter a profile name")
+            SnackbarManager.show(context.getString(R.string.nexus_enter_profile_name))
             return
         }
         scope.launch {
             try {
                 dao.renameProfile(profile.profileId, trimmedName)
                 pendingProfileNameEdit = null
-                SnackbarManager.show("Renamed profile")
+                SnackbarManager.show(context.getString(R.string.nexus_profile_renamed))
             } catch (e: Exception) {
-                SnackbarManager.show(e.message ?: "Failed to rename profile")
+                SnackbarManager.show(e.message ?: context.getString(R.string.nexus_profile_rename_failed))
             }
         }
     }
@@ -868,7 +908,7 @@ fun NexusModsDialog(
         scope.launch {
             val currentProfiles = dao.getProfilesForApp(libraryItem.appId)
             if (currentProfiles.size <= 1) {
-                SnackbarManager.show("At least one profile is required")
+                SnackbarManager.show(context.getString(R.string.nexus_profile_required))
                 pendingProfileDelete = null
                 return@launch
             }
@@ -878,24 +918,26 @@ fun NexusModsDialog(
                 dao.activateProfile(libraryItem.appId, replacement.profileId)
             }
             pendingProfileDelete = null
-            SnackbarManager.show("Deleted ${profile.name}")
+            SnackbarManager.show(context.getString(R.string.nexus_profile_deleted, profile.name))
         }
     }
 
     fun activateProfile(profile: ModProfile) {
         scope.launch {
             dao.activateProfile(libraryItem.appId, profile.profileId)
-            installs.filter { it.canPlaceFiles() }.forEach { install ->
-                ModProfileManager.ensureStateForInstall(dao, profile.copy(active = true), install.installId)
-            }
-            SnackbarManager.show("Profile switched. Use Apply order to update game files.")
+            ModProfileManager.ensureStatesForInstalls(
+                dao = dao,
+                profile = profile.copy(active = true),
+                installs = installs.filter { it.canPlaceFiles() },
+            )
+            SnackbarManager.show(context.getString(R.string.nexus_profile_switched_apply))
         }
     }
 
     fun setProfileInstallEnabled(install: ModInstall, enabled: Boolean) {
         scope.launch {
             val profile = activeProfile ?: ModProfileManager.ensureActiveProfile(dao, libraryItem.appId)
-            val state = ModProfileManager.ensureStateForInstall(dao, profile, install.installId)
+            val state = ModProfileManager.ensureStateForInstall(dao, profile, install.installId, enabled = enabled)
             dao.upsertProfileInstallState(state.copy(enabled = enabled, updatedAt = System.currentTimeMillis()))
             if (!enabled) {
                 val skipped = NexusModManager.disableInstall(
@@ -907,16 +949,16 @@ fun NexusModsDialog(
                 )
                 SnackbarManager.show(
                     if (skipped.isEmpty()) {
-                        "Disabled in ${profile.name}"
+                        context.getString(R.string.nexus_disabled_in_named_profile, profile.name)
                     } else {
-                        "Disabled in ${profile.name}; ${skipped.size} changed file(s) were left in place"
+                        context.getString(R.string.nexus_disabled_in_profile_with_skipped, profile.name, skipped.size)
                     },
                 )
             } else {
                 if (install.status == ModInstallStatus.DISABLED.name) {
                     dao.updateInstallEnabled(install.installId, true, ModInstallStatus.READY.name)
                 }
-                SnackbarManager.show("Enabled in ${profile.name}. Use Apply order to place files.")
+                SnackbarManager.show(context.getString(R.string.nexus_enabled_in_named_profile, profile.name))
             }
         }
     }
@@ -924,10 +966,11 @@ fun NexusModsDialog(
     fun moveInstallPriority(installId: String, direction: Int) {
         scope.launch {
             val profile = activeProfile ?: ModProfileManager.ensureActiveProfile(dao, libraryItem.appId)
-            installs.filter { it.canPlaceFiles() }.forEach { install ->
-                ModProfileManager.ensureStateForInstall(dao, profile, install.installId)
-            }
-            val states = dao.getProfileInstallStates(libraryItem.appId, profile.profileId)
+            val states = ModProfileManager.ensureStatesForInstalls(
+                dao = dao,
+                profile = profile,
+                installs = installs.filter { it.canPlaceFiles() },
+            )
                 .sortedWith(compareByDescending<ModProfileInstallState> { it.priority }.thenBy { it.installId })
             val index = states.indexOfFirst { it.installId == installId }
             val otherIndex = index + direction
@@ -942,10 +985,11 @@ fun NexusModsDialog(
     fun makeInstallHighestPriority(installId: String) {
         scope.launch {
             val profile = activeProfile ?: ModProfileManager.ensureActiveProfile(dao, libraryItem.appId)
-            installs.filter { it.canPlaceFiles() }.forEach { install ->
-                ModProfileManager.ensureStateForInstall(dao, profile, install.installId)
-            }
-            val states = dao.getProfileInstallStates(libraryItem.appId, profile.profileId)
+            val states = ModProfileManager.ensureStatesForInstalls(
+                dao = dao,
+                profile = profile,
+                installs = installs.filter { it.canPlaceFiles() },
+            )
             val current = states.firstOrNull { it.installId == installId } ?: return@launch
             val topPriority = states.maxOfOrNull { it.priority } ?: current.priority
             dao.upsertProfileInstallState(
@@ -980,9 +1024,9 @@ fun NexusModsDialog(
             bethesdaPluginAssetIssues = BethesdaPluginManager.diagnosePluginAssets(updated)
             SnackbarManager.show(
                 if (issues.hasBlockingPluginIssues()) {
-                    "Plugin list saved, but missing or disabled masters need attention"
+                    context.getString(R.string.nexus_plugin_list_saved_with_warnings)
                 } else {
-                    "Plugin list saved"
+                    context.getString(R.string.nexus_plugin_list_saved)
                 },
             )
         }
@@ -992,7 +1036,7 @@ fun NexusModsDialog(
         val masterKeys = masterNames.map { it.trim().removePrefix("*").lowercase() }.toSet()
         val moving = bethesdaPlugins.filter { it.fileName.lowercase() in masterKeys }
         if (moving.isEmpty()) {
-            SnackbarManager.show("The required plugin is not managed by this mod list.")
+            SnackbarManager.show(context.getString(R.string.nexus_required_plugin_not_managed))
             return
         }
         val reordered = bethesdaPlugins.toMutableList()
@@ -1006,25 +1050,36 @@ fun NexusModsDialog(
         writePluginState(reordered)
     }
 
-    fun applyProfileOrder(allowOverwrite: Boolean) {
-        scope.launch {
+    fun applyProfileOrder(allowOverwrite: Boolean): kotlinx.coroutines.Job? {
+        if (profileApplyInProgress) {
+            SnackbarManager.show(context.getString(R.string.nexus_mod_order_already_applying))
+            return null
+        }
+        return scope.launch {
+            profileApplyInProgress = true
             diagnosticsPaused = true
             try {
-                SnackbarManager.show("Applying mod order. Large mod lists may take a while.")
-                loadingMessage = "Checking mod order"
+                SnackbarManager.show(context.getString(R.string.nexus_applying_order_may_take_time))
+                loadingMessage = context.getString(R.string.nexus_checking_mod_order)
                 var effectiveAllowOverwrite = allowOverwrite
                 val collectionPluginOrder = pendingCollectionSelection?.collection?.manifestInfo?.rules?.pluginLoadOrder.orEmpty()
                 val conflictInstallIds = conflictReports
                     .flatMap { report -> report.participants.map { it.installId } }
                     .toSet()
                 val plan = withContext(Dispatchers.IO) {
-                    val profile = activeProfile ?: ModProfileManager.ensureActiveProfile(dao, libraryItem.appId)
-                    val stateByInstallId = dao.getProfileInstallStates(libraryItem.appId, profile.profileId)
+                    val profile = ModProfileManager.ensureActiveProfile(dao, libraryItem.appId)
+                    val currentInstalls = dao.getInstallsForApp(libraryItem.appId)
+                        .filter { it.canPlaceFiles() }
+                    val stateByInstallId = ModProfileManager.ensureStatesForInstalls(
+                        dao = dao,
+                        profile = profile,
+                        installs = currentInstalls,
+                    )
                         .associateBy { it.installId }
-                    val disabledInstalls = installs
-                        .filter { it.canPlaceFiles() && !(stateByInstallId[it.installId]?.enabled ?: (it.status != ModInstallStatus.DISABLED.name)) }
-                    val orderedInstalls = installs
-                        .filter { it.canPlaceFiles() && (stateByInstallId[it.installId]?.enabled ?: (it.status != ModInstallStatus.DISABLED.name)) }
+                    val disabledInstalls = currentInstalls
+                        .filter { stateByInstallId[it.installId]?.enabled != true }
+                    val orderedInstalls = currentInstalls
+                        .filter { stateByInstallId[it.installId]?.enabled == true }
                         .sortedWith(compareBy<ModInstall> { stateByInstallId[it.installId]?.priority ?: 0 }.thenBy { it.installId })
                     val recipesToPersistByInstallId = mutableMapOf<String, List<ModPlacementRecipe>>()
                     val recipesByInstallId = orderedInstalls.associate { install ->
@@ -1036,6 +1091,7 @@ fun NexusModsDialog(
                         install.installId to effectiveRecipes
                     }
                     val configuredInstalls = orderedInstalls.filter { recipesByInstallId[it.installId].orEmpty().isNotEmpty() }
+                    val unconfiguredInstalls = orderedInstalls - configuredInstalls.toSet()
                     val game = BethesdaPluginManager.detectGame(libraryItem.name)
                     val plugins = game?.let {
                         BethesdaPluginManager.detectPlugins(
@@ -1083,7 +1139,8 @@ fun NexusModsDialog(
                         missingTargetRepairInstallIds = missingTargetRepairInstallIds,
                         recipesByInstallId = recipesByInstallId,
                         recipesToPersistByInstallId = recipesToPersistByInstallId,
-                        unconfiguredCount = orderedInstalls.size - configuredInstalls.size,
+                        unconfiguredCount = unconfiguredInstalls.size,
+                        unconfiguredNames = unconfiguredInstalls.map { it.modName },
                         bethesdaGame = game,
                         plugins = plugins,
                         pluginIssues = pluginIssues,
@@ -1095,13 +1152,13 @@ fun NexusModsDialog(
                 bethesdaPluginIssues = plan.pluginIssues
                 bethesdaPluginAssetIssues = plan.pluginAssetIssues
                 if (plan.pluginIssues.hasBlockingPluginIssues()) {
-                    SnackbarManager.show("Fix plugin master warnings before applying order.")
+                    SnackbarManager.show(context.getString(R.string.nexus_fix_plugin_warnings_before_apply))
                     return@launch
                 }
                 var disabledSkipped = 0
 
                 if (!allowOverwrite) {
-                    loadingMessage = "Checking file conflicts"
+                    loadingMessage = context.getString(R.string.nexus_checking_file_conflicts)
                     val check = withContext(Dispatchers.IO) {
                         val targetCheckInstalls = plan.installsToApply.filter { it.status != ModInstallStatus.APPLIED.name }
                         val overwriteManifests = targetCheckInstalls.flatMap { install ->
@@ -1126,7 +1183,7 @@ fun NexusModsDialog(
                         return@launch
                     }
                     if (check.conflicts.isNotEmpty()) {
-                        SnackbarManager.show("Profile order has existing target files. Use Overwrite files and create backups for mods that should win conflicts.")
+                        SnackbarManager.show(context.getString(R.string.nexus_profile_order_target_files_exist))
                         return@launch
                     }
                     effectiveAllowOverwrite = check.rawConflicts.isNotEmpty()
@@ -1135,7 +1192,7 @@ fun NexusModsDialog(
                 val availableBytes = NexusModManager.cacheRoot(context, libraryItem.appId).usableSpace
                 if (availableBytes < MIN_APPLY_FREE_BYTES) {
                     SnackbarManager.show(
-                        "Storage is too low to apply mod order. Free at least ${StorageUtils.formatBinarySize(MIN_APPLY_FREE_BYTES - availableBytes)} more.",
+                        context.getString(R.string.nexus_storage_low_apply_order, StorageUtils.formatBinarySize(MIN_APPLY_FREE_BYTES - availableBytes)),
                     )
                     return@launch
                 }
@@ -1149,7 +1206,7 @@ fun NexusModsDialog(
                 }
 
                 if (plan.disabledInstalls.isNotEmpty()) {
-                    loadingMessage = "Applying mod order"
+                    loadingMessage = context.getString(R.string.nexus_applying_mod_order)
                     disabledSkipped = withContext(Dispatchers.IO) {
                         plan.disabledInstalls.sumOf { install ->
                             NexusModManager.disableInstall(
@@ -1163,7 +1220,7 @@ fun NexusModsDialog(
                     }
                 }
 
-                loadingMessage = "Applying mod order"
+                loadingMessage = context.getString(R.string.nexus_applying_mod_order)
                 val result = withContext(Dispatchers.IO) {
                     var errors = 0
                     plan.installsToApply.forEach { install ->
@@ -1242,10 +1299,20 @@ fun NexusModsDialog(
                     bethesdaPluginIssues = result.pluginIssues
                     bethesdaPluginAssetIssues = result.pluginAssetIssues
                 }
-                val suffix = if (disabledSkipped > 0) "; $disabledSkipped changed disabled-file(s) left in place" else ""
-                val skippedSuffix = if (plan.unconfiguredCount > 0) "; ${plan.unconfiguredCount} mod(s) need placement setup" else ""
+                val suffix = if (disabledSkipped > 0) {
+                    context.getString(R.string.nexus_changed_disabled_files_left_in_place, disabledSkipped)
+                } else {
+                    ""
+                }
+                val skippedSuffix = if (plan.unconfiguredCount > 0) {
+                    val visibleNames = plan.unconfiguredNames.take(3).joinToString(", ")
+                    val remaining = if (plan.unconfiguredCount > 3) ", ..." else ""
+                    "; ${context.getString(R.string.nexus_apply_needs_placement, plan.unconfiguredCount, visibleNames, remaining)}"
+                } else {
+                    ""
+                }
                 if (healthReport != null) {
-                    loadingMessage = "Refreshing install health"
+                    loadingMessage = context.getString(R.string.nexus_refreshing_install_health)
                     runCatching {
                         withContext(Dispatchers.IO) {
                             NexusModManager.checkInstallHealthForApp(
@@ -1259,12 +1326,13 @@ fun NexusModsDialog(
                         healthReport = refreshedHealth
                     }
                 }
-                SnackbarManager.show(if (result.errors == 0) "Mod order applied$suffix$skippedSuffix" else "Mod order applied with ${result.errors} error(s)$suffix$skippedSuffix")
+                SnackbarManager.show(if (result.errors == 0) context.getString(R.string.nexus_mod_order_applied, suffix, skippedSuffix) else context.getString(R.string.nexus_mod_order_applied_with_errors, result.errors, suffix, skippedSuffix))
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                SnackbarManager.show(e.message ?: "Failed to apply mod order")
+                SnackbarManager.show(e.message ?: context.getString(R.string.nexus_apply_mod_order_failed))
             } finally {
+                profileApplyInProgress = false
                 loadingMessage = null
                 diagnosticsPaused = false
             }
@@ -1327,16 +1395,20 @@ fun NexusModsDialog(
             try {
                 val cleanup = NexusModManager.cleanupOrphanedFilesForApp(context, libraryItem.appId)
                 if (cleanup.reclaimedBytes > 0L) {
-                    SnackbarManager.show("Cleaned ${StorageUtils.formatBinarySize(cleanup.reclaimedBytes)} from old mod temp files")
+                    SnackbarManager.show(context.getString(R.string.nexus_cleaned_old_temp_files, StorageUtils.formatBinarySize(cleanup.reclaimedBytes)))
                 }
                 val storage = NexusModManager.checkImportStorage(context, libraryItem.appId, listOf(file))
                 if (!storage.canImport) {
                     SnackbarManager.show(
-                        "Not enough storage. Need about ${StorageUtils.formatBinarySize(storage.estimatedRequiredBytes)}, available ${StorageUtils.formatBinarySize(storage.availableBytes)}.",
+                        context.getString(
+                            R.string.nexus_not_enough_storage_import,
+                            StorageUtils.formatBinarySize(storage.estimatedRequiredBytes),
+                            StorageUtils.formatBinarySize(storage.availableBytes),
+                        ),
                     )
                     return@launch
                 }
-                loadingMessage = "Starting ${file.name.ifBlank { file.fileName }}"
+                loadingMessage = context.getString(R.string.nexus_starting_named_file, file.name.ifBlank { file.fileName })
                 progress = 0f
                 importProgress = null
                 val install = NexusModImportService.enqueueImport(
@@ -1353,7 +1425,7 @@ fun NexusModsDialog(
                 placementChoice = PlacementChoice.AUTOMATIC
                 loadRecipes(install)
                 refreshEntries(install)
-                SnackbarManager.show("Nexus mod imported")
+                SnackbarManager.show(context.getString(R.string.nexus_nexus_mod_imported))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -1389,13 +1461,20 @@ fun NexusModsDialog(
         )
     }
 
+    fun localizedImportStatus(status: String): String = when (status) {
+        "Starting" -> context.getString(R.string.nexus_queue_starting)
+        "Downloading" -> context.getString(R.string.nexus_import_status_downloading)
+        "Unpacking" -> context.getString(R.string.nexus_import_status_unpacking)
+        else -> status
+    }
+
     suspend fun resolveCollectionMod(collectionFile: NexusCollectionFile): PendingCollectionMod {
         if (collectionFile.modId <= 0L || collectionFile.fileId <= 0L) {
             return PendingCollectionMod(
                 collectionFile = collectionFile,
                 modInfo = null,
                 file = null,
-                error = "Manual or external collection entry",
+                error = context.getString(R.string.nexus_collection_manual_external_entry),
             )
         }
         return try {
@@ -1411,7 +1490,7 @@ fun NexusModsDialog(
                     collectionFile = collectionFile,
                     modInfo = NexusModInfo(
                         modId = collectionFile.modId,
-                        name = collectionFile.modName.ifBlank { "Nexus mod ${collectionFile.modId}" },
+                        name = collectionFile.modName.ifBlank { context.getString(R.string.nexus_collection_mod_fallback_name, collectionFile.modId) },
                         summary = "",
                         version = collectionFile.version,
                     ),
@@ -1423,7 +1502,7 @@ fun NexusModsDialog(
                     collectionFile = collectionFile,
                     modInfo = null,
                     file = null,
-                    error = e.message ?: "Could not resolve this collection mod",
+                    error = e.message ?: context.getString(R.string.nexus_collection_mod_resolve_failed),
                 )
             }
         }
@@ -1433,29 +1512,29 @@ fun NexusModsDialog(
         PrefManager.nexusApiKey = apiKey.trim()
         scope.launch {
             try {
-                loadingMessage = "Resolving Nexus collection"
+                loadingMessage = context.getString(R.string.nexus_resolving_nexus_collection)
                 progress = 0f
                 importProgress = null
                 val collection = apiClient.getCollectionRevision(reference)
                 if (collection.files.isEmpty()) {
-                    SnackbarManager.show("No downloadable mods were returned for this collection")
+                    SnackbarManager.show(context.getString(R.string.nexus_collection_no_downloadable_mods))
                     return@launch
                 }
                 val resolvedMods = mutableListOf<PendingCollectionMod>()
                 collection.files.forEachIndexed { index, file ->
-                    loadingMessage = "Resolving collection ${index + 1}/${collection.files.size}"
+                    loadingMessage = context.getString(R.string.nexus_resolving_collection_item, index + 1, collection.files.size)
                     resolvedMods += resolveCollectionMod(file)
                 }
                 pendingFileSelection = null
                 pendingCollectionSelection = PendingCollectionSelection(collection, resolvedMods)
                 selectedTab = ManageModsTab.IMPORT
-                SnackbarManager.show("Collection ready: ${resolvedMods.count { it.canImport }} mod(s)")
+                SnackbarManager.show(context.getString(R.string.nexus_collection_resolve_ready, resolvedMods.count { it.canImport }))
             } catch (e: NexusApiException) {
-                SnackbarManager.show(NexusImportState.userMessage(e, "Failed to resolve Nexus collection"))
+                SnackbarManager.show(NexusImportState.userMessage(e, context.getString(R.string.nexus_resolve_collection_failed)))
             } catch (e: Exception) {
-                SnackbarManager.show(NexusImportState.userMessage(e, "Failed to resolve Nexus collection"))
+                SnackbarManager.show(NexusImportState.userMessage(e, context.getString(R.string.nexus_resolve_collection_failed)))
             } finally {
-                if (loadingMessage?.startsWith("Resolving") == true) loadingMessage = null
+                if (loadingMessage?.startsWith(context.getString(R.string.nexus_resolving_prefix)) == true) loadingMessage = null
             }
         }
     }
@@ -1463,7 +1542,7 @@ fun NexusModsDialog(
     fun importCollection(pending: PendingCollectionSelection, selectedKeys: Set<String>) {
         val collectionMods = pending.mods.filter { it.canImport && it.collectionKey() in selectedKeys }
         if (collectionMods.isEmpty()) {
-            SnackbarManager.show("No selected collection mods are ready to download")
+            SnackbarManager.show(context.getString(R.string.nexus_no_selected_collection_mods_ready))
             return
         }
         PrefManager.nexusApiKey = apiKey.trim()
@@ -1481,7 +1560,10 @@ fun NexusModsDialog(
             ) {
                 val key = pendingMod.collectionKey()
                 val current = collectionQueue[key]
-                collectionQueue[key] = (current ?: pendingMod.toQueueItem(status)).copy(
+                collectionQueue[key] = (current ?: pendingMod.toQueueItem(
+                    status = status,
+                    fallbackName = context.getString(R.string.nexus_collection_mod_fallback_name, pendingMod.collectionFile.modId),
+                )).copy(
                     status = status,
                     progress = progress ?: current?.progress ?: 0f,
                     message = message,
@@ -1562,9 +1644,10 @@ fun NexusModsDialog(
                     }
                 }
                 withContext(Dispatchers.IO) {
+                    val targetProfile = dao.getActiveProfileForApp(libraryItem.appId) ?: profile
                     val state = ModProfileManager.ensureStateForInstall(
                         dao = dao,
-                        profile = profile,
+                        profile = targetProfile,
                         installId = install.installId,
                         enabled = true,
                         priority = suggestedPriority,
@@ -1591,17 +1674,17 @@ fun NexusModsDialog(
                 }
                 val queueReasons = buildList {
                     if (reusedExisting && install.nexusFileId != (reference.fileId ?: file.fileId)) {
-                        add("Collection requested a different file; existing installed file reused")
+                        add(context.getString(R.string.nexus_collection_different_file_reused))
                     }
-                    if (existingRecipes.isNotEmpty() && reusedExisting) add("Existing placement kept")
+                    if (existingRecipes.isNotEmpty() && reusedExisting) add(context.getString(R.string.nexus_collection_existing_placement_kept))
                     addAll(assessment.reasons)
                     addAll(fomodAutoSelection?.reasons.orEmpty())
                 }.distinct()
                 val queueMessage = when {
-                    reusedExisting && install.nexusFileId != (reference.fileId ?: file.fileId) -> "Already imported; using existing file"
-                    reusedExisting && existingRecipes.isNotEmpty() -> "Already imported; kept placement"
-                    reusedExisting -> "Already imported"
-                    fomodAutoSelection != null -> "Imported; FOMOD auto-selected"
+                    reusedExisting && install.nexusFileId != (reference.fileId ?: file.fileId) -> context.getString(R.string.nexus_collection_already_imported_using_existing_file)
+                    reusedExisting && existingRecipes.isNotEmpty() -> context.getString(R.string.nexus_collection_already_imported_kept_placement)
+                    reusedExisting -> context.getString(R.string.nexus_collection_already_imported)
+                    fomodAutoSelection != null -> context.getString(R.string.nexus_collection_imported_fomod_auto_selected)
                     else -> assessment.queueMessage
                 }
                 return queueMessage to queueReasons.joinToString("; ")
@@ -1609,7 +1692,7 @@ fun NexusModsDialog(
             try {
                 val cleanup = NexusModManager.cleanupOrphanedFilesForApp(context, libraryItem.appId)
                 if (cleanup.reclaimedBytes > 0L) {
-                    SnackbarManager.show("Cleaned ${StorageUtils.formatBinarySize(cleanup.reclaimedBytes)} from old mod temp files")
+                    SnackbarManager.show(context.getString(R.string.nexus_cleaned_old_temp_files, StorageUtils.formatBinarySize(cleanup.reclaimedBytes)))
                 }
                 collectionPaused = false
                 collectionCancelRequested = false
@@ -1634,19 +1717,28 @@ fun NexusModsDialog(
                 )
                 if (!storage.canImport) {
                     SnackbarManager.show(
-                        "Not enough storage. Need about ${StorageUtils.formatBinarySize(storage.estimatedRequiredBytes)}, available ${StorageUtils.formatBinarySize(storage.availableBytes)}.",
+                        context.getString(
+                            R.string.nexus_not_enough_storage_import,
+                            StorageUtils.formatBinarySize(storage.estimatedRequiredBytes),
+                            StorageUtils.formatBinarySize(storage.availableBytes),
+                        ),
                     )
                     return@launch
                 }
                 val suggestedPriorities = NexusCollectionPrioritySuggester.priorities(collectionMods.map { it.collectionFile })
-                val profile = activeProfile ?: ModProfileManager.ensureActiveProfile(dao, libraryItem.appId)
+                val profile = withContext(Dispatchers.IO) {
+                    ModProfileManager.ensureActiveProfile(dao, libraryItem.appId)
+                }
+                val collectionPriorityBase = withContext(Dispatchers.IO) {
+                    (dao.getProfileInstallStates(libraryItem.appId, profile.profileId).maxOfOrNull { it.priority } ?: -1) + 1
+                }
                 for ((index, pendingMod) in collectionMods.withIndex()) {
                     while (collectionPaused && !collectionCancelRequested) {
-                        updateQueue(pendingMod, CollectionQueueStatus.QUEUED, message = "Paused")
+                        updateQueue(pendingMod, CollectionQueueStatus.QUEUED, message = context.getString(R.string.nexus_queue_paused))
                         delay(300L)
                     }
                     if (collectionCancelRequested) {
-                        updateQueue(pendingMod, CollectionQueueStatus.CANCELED, message = "Canceled")
+                        updateQueue(pendingMod, CollectionQueueStatus.CANCELED, message = context.getString(R.string.nexus_queue_canceled))
                         break
                     }
                     val modInfo = pendingMod.modInfo ?: continue
@@ -1664,10 +1756,10 @@ fun NexusModsDialog(
                             fileId = reference.fileId ?: file.fileId,
                         )
                         activeCollectionInstallId = installId
-                        loadingMessage = "Preparing collection ${index + 1}/${collectionMods.size}: ${modInfo.name}"
+                        loadingMessage = context.getString(R.string.nexus_preparing_collection_item, index + 1, collectionMods.size, modInfo.name)
                         progress = 0f
                         importProgress = null
-                        val suggestedPriority = suggestedPriorities[pendingMod.collectionKey()] ?: index
+                        val suggestedPriority = collectionPriorityBase + (suggestedPriorities[pendingMod.collectionKey()] ?: index)
                         val reusableInstall = reusableInstalls[pendingMod.collectionKey()] ?: existingReusableInstall(pendingMod)
                         if (reusableInstall != null) {
                             if (reusableInstall.installId != installId) {
@@ -1686,7 +1778,7 @@ fun NexusModsDialog(
                                 pendingMod,
                                 status = CollectionQueueStatus.IMPORTING,
                                 progress = 1f,
-                                message = "Already imported",
+                                message = context.getString(R.string.nexus_collection_already_imported),
                                 startedAt = System.currentTimeMillis(),
                             )
                             val (queueMessage, queueError) = configureCollectionInstall(
@@ -1709,11 +1801,11 @@ fun NexusModsDialog(
                             )
                             continue
                         }
-                        loadingMessage = "Starting collection ${index + 1}/${collectionMods.size}: ${modInfo.name}"
+                        loadingMessage = context.getString(R.string.nexus_starting_collection_item, index + 1, collectionMods.size, modInfo.name)
                         updateQueue(
                             pendingMod,
                             status = CollectionQueueStatus.IMPORTING,
-                            message = "Starting",
+                            message = context.getString(R.string.nexus_queue_starting),
                             startedAt = System.currentTimeMillis(),
                         )
                         val install = NexusModImportService.enqueueImport(
@@ -1722,14 +1814,14 @@ fun NexusModsDialog(
                             reference = reference,
                             modInfo = modInfo,
                             file = file,
-                            displayName = "Collection ${index + 1}/${collectionMods.size}: ${modInfo.name}",
+                            displayName = context.getString(R.string.nexus_collection_display_name, index + 1, collectionMods.size, modInfo.name),
                             onProgress = { detail ->
                                 scope.launch(Dispatchers.Main) {
                                     updateQueue(
                                         pendingMod,
                                         CollectionQueueStatus.IMPORTING,
                                         progress = detail.progress,
-                                        message = detail.status,
+                                        message = localizedImportStatus(detail.status),
                                     )
                                 }
                             },
@@ -1760,7 +1852,7 @@ fun NexusModsDialog(
                         updateQueue(
                             pendingMod,
                             status = if (canceled) CollectionQueueStatus.CANCELED else CollectionQueueStatus.FAILED,
-                            message = if (canceled) "Canceled" else "Failed",
+                            message = if (canceled) context.getString(R.string.nexus_queue_canceled) else context.getString(R.string.nexus_queue_failed),
                             error = NexusImportState.userMessage(e),
                         )
                     } finally {
@@ -1769,14 +1861,16 @@ fun NexusModsDialog(
                 }
                 val prepared = imported + reused
                 val suffix = buildString {
-                    if (reused > 0) append("; $reused already imported")
-                    if (failed > 0) append("; $failed failed")
+                    if (reused > 0) append(context.getString(R.string.nexus_collection_summary_already_imported, reused))
+                    if (failed > 0) append(context.getString(R.string.nexus_collection_summary_failed, failed))
                 }
                 if (collectionCancelRequested) {
-                    SnackbarManager.show("Collection import canceled after $prepared prepared mod(s)$suffix.")
+                    SnackbarManager.show(context.getString(R.string.nexus_collection_import_canceled, prepared, suffix))
                 } else {
-                    SnackbarManager.show("Prepared $prepared collection mod(s)$suffix. Applying configured mods.")
-                    if (prepared > 0) applyProfileOrder(allowOverwrite = false)
+                    SnackbarManager.show(context.getString(R.string.nexus_collection_prepared_applying, prepared, suffix))
+                    if (prepared > 0) {
+                        applyProfileOrder(allowOverwrite = false)?.join()
+                    }
                 }
             } finally {
                 activeCollectionInstallId = null
@@ -1794,19 +1888,19 @@ fun NexusModsDialog(
         }
         val reference = NexusUrlParser.parse(nexusUrl)
         if (reference == null) {
-            SnackbarManager.show("Enter a valid Nexus mod or collection URL")
+            SnackbarManager.show(context.getString(R.string.nexus_enter_valid_nexus_url))
             return
         }
         PrefManager.nexusApiKey = apiKey.trim()
         scope.launch {
             try {
-                loadingMessage = "Resolving Nexus mod"
+                loadingMessage = context.getString(R.string.nexus_resolving_nexus_mod)
                 progress = 0f
                 importProgress = null
                 val modInfo = apiClient.getModInfo(reference.gameDomain, reference.modId)
                 val files = apiClient.getModFiles(reference.gameDomain, reference.modId)
                 if (files.isEmpty()) {
-                    SnackbarManager.show("No downloadable files were returned for this mod")
+                    SnackbarManager.show(context.getString(R.string.nexus_no_downloadable_files_mod))
                     return@launch
                 }
                 val file = reference.fileId?.let { fileId -> files.firstOrNull { it.fileId == fileId } }
@@ -1818,11 +1912,11 @@ fun NexusModsDialog(
                     selectedTab = ManageModsTab.IMPORT
                 }
             } catch (e: NexusApiException) {
-                SnackbarManager.show(NexusImportState.userMessage(e, "Failed to resolve Nexus URL"))
+                SnackbarManager.show(NexusImportState.userMessage(e, context.getString(R.string.nexus_resolve_url_failed)))
             } catch (e: Exception) {
-                SnackbarManager.show(NexusImportState.userMessage(e, "Failed to resolve Nexus URL"))
+                SnackbarManager.show(NexusImportState.userMessage(e, context.getString(R.string.nexus_resolve_url_failed)))
             } finally {
-                if (loadingMessage == "Resolving Nexus mod") loadingMessage = null
+                if (loadingMessage == context.getString(R.string.nexus_resolving_nexus_mod)) loadingMessage = null
             }
         }
     }
@@ -1834,62 +1928,90 @@ fun NexusModsDialog(
             recipes = recipeDrafts.map { draft -> draft.toRecipe(install.installId) },
         )
 
-    fun applyRecipes(install: ModInstall, allowOverwrite: Boolean) {
-        val recipes = buildRecipes(install)
+    suspend fun applyRecipesInternal(
+        install: ModInstall,
+        recipes: List<ModPlacementRecipe>,
+        allowOverwrite: Boolean,
+    ) {
+        loadingMessage = context.getString(R.string.nexus_applying_mod_files)
+        val (cleanupSkipped, result) = withContext(Dispatchers.IO) {
+            val oldRecipes = dao.getRecipesForInstall(install.installId)
+            val skipped = NexusModManager.cleanupBeforeRecipeReplacement(
+                context = context,
+                install = install,
+                oldRecipes = oldRecipes,
+                newRecipes = recipes,
+                gameRootDir = gameRootDir,
+                winePrefix = winePrefix,
+            )
+            dao.replaceRecipes(install.installId, recipes)
+            val applied = NexusModManager.applyInstall(
+                context = context,
+                install = install,
+                recipes = recipes,
+                gameRootDir = gameRootDir,
+                winePrefix = winePrefix,
+                allowOverwrite = allowOverwrite,
+            )
+            if (applied.errors.isEmpty()) {
+                val profile = activeProfile ?: ModProfileManager.ensureActiveProfile(dao, libraryItem.appId)
+                val state = ModProfileManager.ensureStateForInstall(dao, profile, install.installId)
+                dao.upsertProfileInstallState(state.copy(enabled = true, updatedAt = System.currentTimeMillis()))
+            }
+            skipped to applied
+        }
+        val message = if (result.errors.isEmpty()) {
+            lastPlacementDrafts = recipes.map { it.toDraft() }
+            val cleanupSuffix = if (cleanupSkipped.isNotEmpty()) {
+                context.getString(R.string.nexus_old_files_left_in_place_suffix, cleanupSkipped.size)
+            } else {
+                ""
+            }
+            context.getString(R.string.nexus_applied_items_backups, result.created, result.backedUp, cleanupSuffix)
+        } else {
+            context.getString(R.string.nexus_applied_with_errors, result.errors.size)
+        }
+        placementApplyStatusMessage = message
+        SnackbarManager.show(message)
+        selectedInstall = install.copy(status = if (result.errors.isEmpty()) ModInstallStatus.APPLIED.name else ModInstallStatus.ERROR.name)
+    }
+
+    fun applyRecipes(
+        install: ModInstall,
+        recipes: List<ModPlacementRecipe>,
+        allowOverwrite: Boolean,
+    ) {
+        if (modApplyInProgress) {
+            SnackbarManager.show(context.getString(R.string.nexus_mod_apply_already_running))
+            return
+        }
         scope.launch {
+            modApplyInProgress = true
             try {
-                loadingMessage = "Applying mod files"
-                val (cleanupSkipped, result) = withContext(Dispatchers.IO) {
-                    val oldRecipes = dao.getRecipesForInstall(install.installId)
-                    val skipped = NexusModManager.cleanupBeforeRecipeReplacement(
-                        context = context,
-                        install = install,
-                        oldRecipes = oldRecipes,
-                        newRecipes = recipes,
-                        gameRootDir = gameRootDir,
-                        winePrefix = winePrefix,
-                    )
-                    dao.replaceRecipes(install.installId, recipes)
-                    val applied = NexusModManager.applyInstall(
-                        context = context,
-                        install = install,
-                        recipes = recipes,
-                        gameRootDir = gameRootDir,
-                        winePrefix = winePrefix,
-                        allowOverwrite = allowOverwrite,
-                    )
-                    if (applied.errors.isEmpty()) {
-                        val profile = activeProfile ?: ModProfileManager.ensureActiveProfile(dao, libraryItem.appId)
-                        val state = ModProfileManager.ensureStateForInstall(dao, profile, install.installId)
-                        dao.upsertProfileInstallState(state.copy(enabled = true, updatedAt = System.currentTimeMillis()))
-                    }
-                    skipped to applied
-                }
-                val message = if (result.errors.isEmpty()) {
-                    lastPlacementDrafts = recipes.map { it.toDraft() }
-                    val cleanupSuffix = if (cleanupSkipped.isNotEmpty()) "; ${cleanupSkipped.size} old file(s) left in place" else ""
-                    "Applied ${result.created} item(s), backed up ${result.backedUp}$cleanupSuffix"
-                } else {
-                    "Applied with ${result.errors.size} error(s)"
-                }
-                SnackbarManager.show(message)
-                selectedInstall = install.copy(status = if (result.errors.isEmpty()) ModInstallStatus.APPLIED.name else ModInstallStatus.ERROR.name)
+                placementApplyStatusMessage = null
+                applyRecipesInternal(install, recipes, allowOverwrite)
             } catch (e: Exception) {
-                SnackbarManager.show(e.message ?: "Failed to apply mod")
+                val message = e.message ?: context.getString(R.string.nexus_failed_to_apply_mod)
+                placementApplyStatusMessage = message
+                SnackbarManager.show(message)
             } finally {
+                modApplyInProgress = false
                 loadingMessage = null
             }
         }
     }
 
+    fun applyRecipes(install: ModInstall, allowOverwrite: Boolean) =
+        applyRecipes(install, buildRecipes(install), allowOverwrite)
+
     fun saveAndApply() {
         val install = selectedInstall ?: return
         if (!install.canPlaceFiles()) {
-            SnackbarManager.show("This mod did not finish importing.")
+            SnackbarManager.show(context.getString(R.string.nexus_mod_not_finished_importing))
             return
         }
         if (!recipeDrafts.all { draft -> roots.any { root -> root.type.name == draft.targetRoot } }) {
-            SnackbarManager.show("Choose a destination inside this game or container.")
+            SnackbarManager.show(context.getString(R.string.nexus_choose_destination_inside))
             return
         }
         if (
@@ -1897,12 +2019,19 @@ fun NexusModsDialog(
             placementChoice != PlacementChoice.CUSTOM &&
             recipeDrafts.any { draft -> ModPlacementSources.decode(draft.sourceSubpath).isEmpty() }
         ) {
-            SnackbarManager.show("Configure the FOMOD installer or choose Custom placement before applying.")
+            SnackbarManager.show(context.getString(R.string.nexus_fomod_or_custom_required))
             return
         }
         val recipes = buildRecipes(install)
+        if (modApplyInProgress) {
+            SnackbarManager.show(context.getString(R.string.nexus_mod_apply_already_running))
+            return
+        }
         scope.launch {
+            modApplyInProgress = true
             try {
+                placementApplyStatusMessage = null
+                loadingMessage = context.getString(R.string.nexus_checking_target_files)
                 val (rawConflicts, conflicts) = withContext(Dispatchers.IO) {
                     val raw = ModMaterializer.scanConflicts(
                         install = install,
@@ -1919,12 +2048,19 @@ fun NexusModsDialog(
                 if (conflicts.isNotEmpty() && hasOverwriteRecipe) {
                     pendingApply = PendingApply(install, recipes, conflicts)
                 } else if (conflicts.isNotEmpty()) {
-                    SnackbarManager.show("Target files already exist. Choose Overwrite files and create backups to replace them.")
+                    val message = context.getString(R.string.nexus_target_files_exist_overwrite)
+                    placementApplyStatusMessage = message
+                    SnackbarManager.show(message)
                 } else {
-                    applyRecipes(install, allowOverwrite = rawConflicts.isNotEmpty())
+                    applyRecipesInternal(install, recipes, allowOverwrite = rawConflicts.isNotEmpty())
                 }
             } catch (e: Exception) {
-                SnackbarManager.show(e.message ?: "Failed to scan placement conflicts")
+                val message = e.message ?: context.getString(R.string.nexus_scan_placement_conflicts_failed)
+                placementApplyStatusMessage = message
+                SnackbarManager.show(message)
+            } finally {
+                modApplyInProgress = false
+                loadingMessage = null
             }
         }
     }
@@ -1933,6 +2069,7 @@ fun NexusModsDialog(
 
     fun selectInstallForPlacement(install: ModInstall) {
         selectedInstall = install
+        placementApplyStatusMessage = null
         loadRecipes(install)
         refreshEntries(install)
         selectedTab = ManageModsTab.PLACEMENT
@@ -1946,7 +2083,7 @@ fun NexusModsDialog(
             if (current.status == CollectionQueueStatus.QUEUED) {
                 collectionQueue[key] = current.copy(
                     status = CollectionQueueStatus.CANCELED,
-                    message = "Canceled",
+                    message = context.getString(R.string.nexus_queue_canceled),
                 )
             }
         }
@@ -2016,7 +2153,7 @@ fun NexusModsDialog(
                 ) {
                     Icon(Icons.Default.Extension, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Manage Nexus Mods", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.option_manage_mods), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                         Text(
                             text = libraryItem.name,
                             style = MaterialTheme.typography.bodyMedium,
@@ -2026,7 +2163,7 @@ fun NexusModsDialog(
                         )
                     }
                     TextButton(onClick = onDismissRequest) {
-                        Text("Close")
+                        Text(stringResource(R.string.close))
                     }
                 }
 
@@ -2079,20 +2216,20 @@ fun NexusModsDialog(
                                     PrefManager.nexusApiKey = apiKey.trim()
                                     scope.launch {
                                         try {
-                                            apiKeyValidation = ApiKeyValidationState(checking = true, message = "Validating Nexus API key")
-                                            loadingMessage = "Validating Nexus API key"
+                                            apiKeyValidation = ApiKeyValidationState(checking = true, message = context.getString(R.string.nexus_validating_api_key))
+                                            loadingMessage = context.getString(R.string.nexus_validating_api_key)
                                             val user = apiClient.validateKey()
                                             apiKeyValidation = ApiKeyValidationState(
-                                                message = "Connected to Nexus as ${user.name}",
+                                                message = context.getString(R.string.nexus_connected_nexus_user, user.name),
                                                 success = true,
                                             )
-                                            SnackbarManager.show("Connected to Nexus as ${user.name}")
+                                            SnackbarManager.show(context.getString(R.string.nexus_connected_nexus_user, user.name))
                                         } catch (e: Exception) {
                                             apiKeyValidation = ApiKeyValidationState(
-                                                message = e.message ?: "Nexus API key validation failed",
+                                                message = e.message ?: context.getString(R.string.nexus_api_key_validation_failed),
                                                 success = false,
                                             )
-                                            SnackbarManager.show(e.message ?: "Nexus API key validation failed")
+                                            SnackbarManager.show(e.message ?: context.getString(R.string.nexus_api_key_validation_failed))
                                         } finally {
                                             loadingMessage = null
                                         }
@@ -2118,7 +2255,7 @@ fun NexusModsDialog(
                                 profiles = profiles,
                                 activeProfile = activeProfile,
                                 onActivate = ::activateProfile,
-                                onCreate = { pendingProfileNameEdit = PendingProfileNameEdit(null, nextProfileName(profiles)) },
+                                onCreate = { pendingProfileNameEdit = PendingProfileNameEdit(null, nextProfileName(profiles, context.getString(R.string.nexus_profile_name_prefix))) },
                                 onRename = { profile -> pendingProfileNameEdit = PendingProfileNameEdit(profile, profile.name) },
                                 onDelete = { profile -> pendingProfileDelete = profile },
                             )
@@ -2127,6 +2264,7 @@ fun NexusModsDialog(
                                 priorityByInstallId = priorityByInstallId,
                                 enabledByInstallId = profileEnabledByInstallId,
                                 selectedInstall = selectedInstall,
+                                placementNeededInstallIds = placementNeededInstallIds,
                                 onSelect = ::selectInstallForPlacement,
                                 onSetEnabled = ::setProfileInstallEnabled,
                                 onDelete = { install ->
@@ -2140,7 +2278,11 @@ fun NexusModsDialog(
                                         )
                                         if (selectedInstall?.installId == install.installId) selectedInstall = null
                                         SnackbarManager.show(
-                                            if (skipped.isEmpty()) "Mod deleted" else "Mod deleted; ${skipped.size} changed file(s) were left in place",
+                                            if (skipped.isEmpty()) {
+                                                context.getString(R.string.nexus_mod_deleted)
+                                            } else {
+                                                context.getString(R.string.nexus_mod_deleted_with_skipped, skipped.size)
+                                            },
                                         )
                                     }
                                 },
@@ -2163,6 +2305,7 @@ fun NexusModsDialog(
                                     placementChoice = placementChoice,
                                     canUseLastPlacement = lastPlacementDrafts.isNotEmpty(),
                                     onPlacementChoiceChange = { choice ->
+                                        placementApplyStatusMessage = null
                                         val currentDrafts = recipeDrafts.toList()
                                         placementChoice = choice
                                         recipeDrafts.clear()
@@ -2175,33 +2318,46 @@ fun NexusModsDialog(
                                         }
                                     },
                                     onUseLastPlacement = {
+                                        placementApplyStatusMessage = null
                                         placementChoice = PlacementChoice.LAST_USED
                                         recipeDrafts.clear()
                                         recipeDrafts += compatibleLastPlacementDrafts(lastPlacementDrafts, archiveEntries, defaultDraft)
                                     },
                                     onPresetSelected = { drafts ->
+                                        placementApplyStatusMessage = null
                                         placementChoice = PlacementChoice.PRESET
                                         recipeDrafts.clear()
                                         recipeDrafts += drafts
                                     },
-                                    onUpdateDraft = { index, draft -> recipeDrafts[index] = draft },
-                                    onAddDraft = { recipeDrafts += defaultDraft },
+                                    onUpdateDraft = { index, draft ->
+                                        placementApplyStatusMessage = null
+                                        recipeDrafts[index] = draft
+                                    },
+                                    onAddDraft = {
+                                        placementApplyStatusMessage = null
+                                        recipeDrafts += defaultDraft
+                                    },
                                     onRemoveDraft = { index ->
-                                        if (recipeDrafts.size > 1) recipeDrafts.removeAt(index)
+                                        if (recipeDrafts.size > 1) {
+                                            placementApplyStatusMessage = null
+                                            recipeDrafts.removeAt(index)
+                                        }
                                     },
                                     onFomodRecipes = { drafts, unsupportedCount ->
+                                        placementApplyStatusMessage = null
                                         placementChoice = PlacementChoice.CUSTOM
                                         recipeDrafts.clear()
                                         recipeDrafts += drafts
                                         if (unsupportedCount > 0) {
-                                            SnackbarManager.show("$unsupportedCount FOMOD file mapping(s) need manual placement")
+                                            SnackbarManager.show(context.getString(R.string.nexus_fomod_mappings_need_manual_placement, unsupportedCount))
                                         } else {
-                                            SnackbarManager.show("FOMOD choices added")
+                                            SnackbarManager.show(context.getString(R.string.nexus_fomod_choices_added))
                                         }
                                     },
+                                    applyStatusMessage = placementApplyStatusMessage,
                                     onSaveAndApply = ::saveAndApply,
                                 )
-                            } ?: EmptyWorkflowSection("No mod selected", "Select a mod from the Mods tab.")
+                            } ?: EmptyWorkflowSection(stringResource(R.string.nexus_no_mod_selected), stringResource(R.string.nexus_select_mod_from_mods_tab))
                         }
 
                         ManageModsTab.ISSUES -> {
@@ -2219,7 +2375,7 @@ fun NexusModsDialog(
                                 onCleanRedundantBackups = ::cleanRedundantBackups,
                             )
                             if (issueCount == 0 && bethesdaGame == null && bethesdaPlugins.isEmpty()) {
-                                EmptyWorkflowSection("No issues found", "Conflicts and plugin warnings will appear here.")
+                                EmptyWorkflowSection(stringResource(R.string.nexus_no_issues_found), stringResource(R.string.nexus_no_issues_description))
                             }
                             if (conflictReports.isNotEmpty()) {
                                 ConflictSummarySection(
@@ -2268,7 +2424,7 @@ fun NexusModsDialog(
                 }
 
                 val displayedImportProgress = activeImportProgress ?: importProgress
-                val displayedLoadingMessage = activeDownload?.let { "${it.displayName}: ${it.status}" } ?: loadingMessage
+                val displayedLoadingMessage = activeDownload?.let { "${it.displayName}: ${localizedImportStatus(it.status)}" } ?: loadingMessage
                 displayedLoadingMessage?.let { message ->
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
@@ -2284,10 +2440,14 @@ fun NexusModsDialog(
                                     val totalText = if (detail.totalBytes > 0L) {
                                         StorageUtils.formatBinarySize(detail.totalBytes)
                                     } else {
-                                        "unknown"
+                                        stringResource(R.string.nexus_progress_unknown)
                                     }
                                     Text(
-                                        text = "${StorageUtils.formatBinarySize(detail.downloadedBytes)} / $totalText downloaded",
+                                        text = stringResource(
+                                            R.string.nexus_downloaded_progress,
+                                            StorageUtils.formatBinarySize(detail.downloadedBytes),
+                                            totalText,
+                                        ),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -2295,10 +2455,14 @@ fun NexusModsDialog(
                                     Text(
                                         text = when {
                                             detail.totalBytes > 0L && detail.downloadedBytes > 0L ->
-                                                "${StorageUtils.formatBinarySize(detail.downloadedBytes)} / ${StorageUtils.formatBinarySize(detail.totalBytes)} unpacked"
+                                                stringResource(
+                                                    R.string.nexus_unpacked_progress,
+                                                    StorageUtils.formatBinarySize(detail.downloadedBytes),
+                                                    StorageUtils.formatBinarySize(detail.totalBytes),
+                                                )
                                             detail.downloadedBytes > 0L ->
-                                                "${StorageUtils.formatBinarySize(detail.downloadedBytes)} unpacked"
-                                            else -> "Unpacking archive"
+                                                stringResource(R.string.nexus_unpacked_size, StorageUtils.formatBinarySize(detail.downloadedBytes))
+                                            else -> stringResource(R.string.nexus_unpacking_archive)
                                         },
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -2328,13 +2492,13 @@ fun NexusModsDialog(
 
     pendingApply?.let { pending ->
         OverwriteConfirmDialog(
-            title = "Overwrite existing files?",
-            message = "GameNative will back up existing files before replacing them.",
+            title = stringResource(R.string.nexus_overwrite_existing_title),
+            message = stringResource(R.string.nexus_overwrite_existing_message),
             conflicts = pending.conflicts,
-            confirmLabel = "Back Up & Overwrite",
+            confirmLabel = stringResource(R.string.nexus_backup_overwrite),
             onConfirm = {
                 pendingApply = null
-                applyRecipes(pending.install, allowOverwrite = true)
+                applyRecipes(pending.install, pending.recipes, allowOverwrite = true)
             },
             onDismiss = { pendingApply = null },
         )
@@ -2342,10 +2506,10 @@ fun NexusModsDialog(
 
     pendingProfileApply?.let { pending ->
         OverwriteConfirmDialog(
-            title = "Apply mod order?",
-            message = "GameNative will apply enabled mods from lowest to highest priority and back up replaced files.",
+            title = stringResource(R.string.nexus_apply_mod_order_title),
+            message = stringResource(R.string.nexus_apply_mod_order_message),
             conflicts = pending.conflicts,
-            confirmLabel = "Back Up & Apply",
+            confirmLabel = stringResource(R.string.nexus_backup_apply),
             onConfirm = {
                 pendingProfileApply = null
                 applyProfileOrder(allowOverwrite = true)
@@ -2356,14 +2520,14 @@ fun NexusModsDialog(
 
     pendingProfileNameEdit?.let { edit ->
         ProfileNameDialog(
-            title = if (edit.profile == null) "New profile" else "Rename profile",
+            title = if (edit.profile == null) stringResource(R.string.nexus_profile_new_title) else stringResource(R.string.nexus_profile_rename_title),
             initialName = edit.initialName,
             onConfirm = { name ->
                 val existing = profiles.any { profile ->
                     profile.profileId != edit.profile?.profileId && profile.name.equals(name.trim(), ignoreCase = true)
                 }
                 if (existing) {
-                    SnackbarManager.show("A profile with that name already exists")
+                            SnackbarManager.show(context.getString(R.string.nexus_profile_name_duplicate))
                 } else if (edit.profile == null) {
                     createProfile(name)
                 } else {
@@ -2377,16 +2541,16 @@ fun NexusModsDialog(
     pendingProfileDelete?.let { profile ->
         AlertDialog(
             onDismissRequest = { pendingProfileDelete = null },
-            title = { Text("Delete profile?") },
-            text = { Text("This removes the profile and its mod order. Installed mods are not deleted.") },
+            title = { Text(stringResource(R.string.nexus_profile_delete_title)) },
+            text = { Text(stringResource(R.string.nexus_profile_delete_message)) },
             confirmButton = {
                 TextButton(onClick = { deleteProfile(profile) }) {
-                    Text("Delete")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingProfileDelete = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )

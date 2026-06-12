@@ -437,8 +437,12 @@ object NexusModManager {
 
     fun saveLastPlacementForApp(appId: String, recipes: List<ModPlacementRecipe>) {
         val enabledRecipes = recipes.filter { it.enabled }
-        if (enabledRecipes.isEmpty()) return
         val root = runCatching { JSONObject(PrefManager.nexusLastPlacementJson) }.getOrElse { JSONObject() }
+        if (enabledRecipes.isEmpty()) {
+            root.remove(appId)
+            PrefManager.nexusLastPlacementJson = root.toString()
+            return
+        }
         val savedRecipes = JSONArray()
         enabledRecipes.forEach { recipe ->
             savedRecipes.put(

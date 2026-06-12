@@ -2,8 +2,11 @@ package app.gamenative.mods
 
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -11,7 +14,9 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.time.format.DateTimeParseException
@@ -55,6 +60,7 @@ data class NexusCollectionFile(
     val modName: String = "",
     val fileName: String = "",
     val version: String = "",
+    val sizeBytes: Long = 0L,
     val position: Int = 0,
     val required: Boolean = true,
     val dependencyModIds: List<Long> = emptyList(),
@@ -88,7 +94,20 @@ class NexusApiClient(
         "https://api-router.nexusmods.com/graphql",
     ),
 ) {
+    private companion object {
+        private const val MAX_COLLECTION_PAYLOAD_BYTES = 256L * 1024L * 1024L
+        private const val MAX_COLLECTION_JSON_BYTES = 64L * 1024L * 1024L
+    }
+
     private val jsonMediaType = "application/json".toMediaType()
+    private val configuredHosts: Set<String> =
+        (listOf(baseUrl, nexusBaseUrl) + graphUrls)
+            .mapNotNull { it.toHttpUrlOrNull()?.host?.lowercase() }
+            .toSet()
+    private val configuredHttpHosts: Set<String> =
+        (listOf(baseUrl, nexusBaseUrl) + graphUrls)
+            .mapNotNull { it.toHttpUrlOrNull()?.takeIf { url -> url.scheme == "http" }?.host?.lowercase() }
+            .toSet()
 
     suspend fun validateKey(apiKey: String = PrefManager.nexusApiKey): NexusUserInfo =
         withContext(Dispatchers.IO) {
@@ -166,9 +185,13 @@ class NexusApiClient(
         var lastError: NexusApiException? = null
         try {
             return@withContext getCollectionRevisionGraph(reference, apiKey)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: NexusApiException) {
             if (e.statusCode == 401 || e.statusCode == 403 || e.statusCode == 429) throw e
             lastError = e
+        } catch (e: Exception) {
+            lastError = e.toNexusApiException()
         }
 
         val revisionPaths = buildList {
@@ -182,12 +205,17 @@ class NexusApiClient(
         for (path in revisionPaths) {
             try {
                 return@withContext parseCollectionRevision(getObject(path, apiKey), reference)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: NexusApiException) {
                 if (e.statusCode == 404 || e.statusCode == 500 || e.statusCode == 502 || e.statusCode == 503) {
                     lastError = e
                     continue
                 }
                 throw e
+            } catch (e: Exception) {
+                lastError = e.toNexusApiException()
+                continue
             }
         }
         throw lastError ?: NexusApiException("Nexus collection was not found", 404)
@@ -214,7 +242,13 @@ class NexusApiClient(
                 val graphInfo = parseCollectionRevisionGraph(data, reference)
                 val downloadLink = revision.optStringFromAny("downloadLink", "download_link")
                 val manifestInfo = if (downloadLink.isNotBlank()) {
-                    runCatching { getCollectionManifest(downloadLink, graphInfo, apiKey) }.getOrNull()
+                    try {
+                        getCollectionManifest(downloadLink, graphInfo, apiKey)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        null
+                    }
                 } else {
                     null
                 }
@@ -223,9 +257,13 @@ class NexusApiClient(
                     manifestInfo.files.size >= graphInfo.files.size -> manifestInfo
                     else -> graphInfo.copy(manifestInfo = manifestInfo.manifestInfo)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: NexusApiException) {
                 if (e.statusCode == 401 || e.statusCode == 403 || e.statusCode == 429) throw e
                 lastError = e
+            } catch (e: Exception) {
+                lastError = e.toNexusApiException()
             }
         }
         throw lastError ?: NexusApiException("Nexus collection was not found", 404)
@@ -311,8 +349,19 @@ class NexusApiClient(
         return parseCollectionManifest(JSONObject(jsonText), graphInfo)
     }
 
-    private fun fetchCollectionPayload(url: String, apiKey: String): ByteArray =
-        executeBytes(baseRequest(url, apiKey).build())
+    private fun fetchCollectionPayload(url: String, apiKey: String): ByteArray {
+        val parsed = url.toHttpUrlOrNull()
+            ?: throw NexusApiException("Invalid Nexus collection download URL")
+        if (!parsed.isAllowedCollectionScheme()) {
+            throw NexusApiException("Nexus collection download URL must use HTTPS")
+        }
+        val request = if (parsed.shouldAttachApiKey()) {
+            baseRequest(url, apiKey)
+        } else {
+            publicRequest(url)
+        }.build()
+        return executeBytes(request, MAX_COLLECTION_PAYLOAD_BYTES)
+    }
 
     private fun JSONObject.firstDownloadLink(): String? =
         optJSONArray("download_links")?.let { links ->
@@ -332,13 +381,14 @@ class NexusApiClient(
     }
 
     private fun collectionJsonText(bytes: ByteArray): String? {
-        val trimmed = bytes.toString(StandardCharsets.UTF_8).trimStart()
-        if (trimmed.startsWith("{")) return trimmed
+        if (looksLikeJsonObject(bytes)) {
+            return bytes.toString(StandardCharsets.UTF_8).trimStart()
+        }
         ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: return null
                 if (!entry.isDirectory && entry.name.endsWith("collection.json", ignoreCase = true)) {
-                    return zip.readBytes().toString(StandardCharsets.UTF_8)
+                    return zip.readLimitedBytes(MAX_COLLECTION_JSON_BYTES).toString(StandardCharsets.UTF_8)
                 }
             }
         }
@@ -366,6 +416,14 @@ class NexusApiClient(
             .addHeader("User-Agent", "GameNative/${BuildConfig.VERSION_NAME}")
     }
 
+    private fun publicRequest(url: String): Request.Builder =
+        Request.Builder()
+            .url(url)
+            .addHeader("Accept", "application/json")
+            .addHeader("Application-Name", "GameNative")
+            .addHeader("Application-Version", BuildConfig.VERSION_NAME)
+            .addHeader("User-Agent", "GameNative/${BuildConfig.VERSION_NAME}")
+
     private fun execute(request: Request, displayPath: String): String {
         client.newCall(request).execute().use { response ->
             val hourly = response.header("x-rl-hourly-remaining")?.toIntOrNull()
@@ -388,12 +446,12 @@ class NexusApiClient(
         }
     }
 
-    private fun executeBytes(request: Request): ByteArray {
+    private fun executeBytes(request: Request, maxBytes: Long = Long.MAX_VALUE): ByteArray {
         client.newCall(request).execute().use { response ->
             val hourly = response.header("x-rl-hourly-remaining")?.toIntOrNull()
             val daily = response.header("x-rl-daily-remaining")?.toIntOrNull()
-            val body = response.body.bytes()
             if (!response.isSuccessful) {
+                response.body.string()
                 val message = when (response.code) {
                     401, 403 -> "Nexus API key was rejected"
                     429 -> "Nexus API rate limit reached"
@@ -401,8 +459,42 @@ class NexusApiClient(
                 }
                 throw NexusApiException(message, response.code, hourly, daily)
             }
-            return body
+            return response.body.byteStream().use { it.readLimitedBytes(maxBytes) }
         }
+    }
+
+    private fun looksLikeJsonObject(bytes: ByteArray): Boolean =
+        bytes.firstOrNull { !(it.toInt() and 0xff).toChar().isWhitespace() }
+            ?.let { (it.toInt() and 0xff).toChar() == '{' }
+            ?: false
+
+    private fun HttpUrl.isAllowedCollectionScheme(): Boolean =
+        scheme == "https" || (scheme == "http" && host.lowercase() in configuredHttpHosts)
+
+    private fun HttpUrl.shouldAttachApiKey(): Boolean =
+        isNexusOwnedHost(host) || host.lowercase() in configuredHosts
+
+    private fun isNexusOwnedHost(host: String): Boolean {
+        val normalized = host.lowercase()
+        return normalized == "nexusmods.com" || normalized.endsWith(".nexusmods.com")
+    }
+
+    private fun Exception.toNexusApiException(): NexusApiException =
+        this as? NexusApiException
+            ?: NexusApiException(message ?: "Nexus collection request failed")
+
+    private fun InputStream.readLimitedBytes(maxBytes: Long): ByteArray {
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(8 * 1024)
+        var total = 0L
+        while (true) {
+            val read = read(buffer)
+            if (read <= 0) break
+            total += read
+            if (total > maxBytes) throw IOException("Nexus collection response is too large")
+            output.write(buffer, 0, read)
+        }
+        return output.toByteArray()
     }
 
     private fun parseCollectionRevisionGraph(
@@ -432,6 +524,7 @@ class NexusApiClient(
                         modName = mod.optStringFromAny("name", "mod_name"),
                         fileName = file.optStringFromAny("name", "uri", "file_name"),
                         version = file.optStringFromAny("version"),
+                        sizeBytes = collectionGraphFileSizeBytes(file),
                         position = i,
                         required = !item.optBooleanFlexible("optional", default = false),
                     ),
@@ -543,6 +636,7 @@ class NexusApiClient(
         val fileName = item.optStringFromAny("file_name", "fileName")
             .ifBlank { fileObject.optStringFromAny("file_name", "fileName", "name") }
             .ifBlank { sourceObject.optStringFromAny("logicalFileName", "logicalFilename", "fileName", "file_name", "name") }
+        val sizeBytes = collectionFileSizeBytes(item, fileObject, sourceObject)
         val manifestData = NexusCollectionManifestParser.classify(
             item = item,
             modId = modId,
@@ -564,6 +658,7 @@ class NexusApiClient(
             fileName = fileName,
             version = item.optStringFromAny("version", "file_version", "fileVersion")
                 .ifBlank { fileObject.optStringFromAny("version", "file_version", "fileVersion") },
+            sizeBytes = sizeBytes,
             position = item.optIntOrNull("position", "order", "sort_order") ?: position,
             required = item.optBooleanFlexible("required", default = !item.optBooleanFlexible("optional", default = false)),
             dependencyModIds = parseDependencyModIds(item),
@@ -573,6 +668,42 @@ class NexusApiClient(
             externalUrl = manifestData.externalUrl,
         )
     }
+
+    private fun collectionGraphFileSizeBytes(file: JSONObject): Long =
+        file.optFileSizeBytes(
+            "sizeInBytes",
+            "size_bytes",
+            "sizeBytes",
+            "fileSizeBytes",
+            "file_size_bytes",
+            "bytes",
+        ) ?: file.optFileSizeBytes("size").orZero()
+
+    private fun collectionFileSizeBytes(vararg objects: JSONObject): Long =
+        objects.firstNotNullOfOrNull {
+            it.optFileSizeBytes(
+                "sizeBytes",
+                "sizeInBytes",
+                "fileSizeBytes",
+                "file_size_bytes",
+                "bytes",
+                "fileBytes",
+                "file_bytes",
+                "downloadSizeBytes",
+                "download_size_bytes",
+            )
+        } ?: objects.firstNotNullOfOrNull {
+            it.optFileSizeKilobytes(
+                "sizeKB",
+                "size_kb",
+                "fileSizeKB",
+                "file_size_kb",
+                "downloadSizeKB",
+                "download_size_kb",
+            )
+        } ?: objects.firstNotNullOfOrNull {
+            it.optFileSizeBytes("size", "fileSize", "file_size", "downloadSize", "download_size")
+        }.orZero()
 
     private fun parseDependencyModIds(item: JSONObject): List<Long> {
         val arrays = listOfNotNull(
@@ -614,8 +745,51 @@ class NexusApiClient(
                 is Number -> value.toLong()
                 is String -> value.toLongOrNull()
                 else -> null
+        }
+    }
+
+    private fun JSONObject.optFileSizeBytes(vararg names: String): Long? =
+        names.firstNotNullOfOrNull { name ->
+            when (val value = opt(name)) {
+                is Number -> value.toLong().takeIf { it > 0L }
+                is String -> parseFileSizeBytes(value)
+                else -> null
             }
         }
+
+    private fun JSONObject.optFileSizeKilobytes(vararg names: String): Long? =
+        names.firstNotNullOfOrNull { name ->
+            when (val value = opt(name)) {
+                is Number -> value.toLong().takeIf { it > 0L }?.let(::kilobytesToBytes)
+                is String -> value.toLongOrNull()?.takeIf { it > 0L }?.let(::kilobytesToBytes)
+                else -> null
+            }
+        }
+
+    private fun parseFileSizeBytes(value: String): Long? {
+        val normalized = value.trim().replace(",", "")
+        normalized.toLongOrNull()?.takeIf { it > 0L }?.let { return it }
+        val match = Regex("""^([0-9]+(?:\.[0-9]+)?)\s*([kmgt]?i?b?|bytes?)$""", RegexOption.IGNORE_CASE)
+            .matchEntire(normalized)
+            ?: return null
+        val amount = match.groupValues[1].toDoubleOrNull() ?: return null
+        val multiplier = when (match.groupValues[2].lowercase()) {
+            "b", "byte", "bytes" -> 1L
+            "k", "kb", "kib" -> 1024L
+            "m", "mb", "mib" -> 1024L * 1024L
+            "g", "gb", "gib" -> 1024L * 1024L * 1024L
+            "t", "tb", "tib" -> 1024L * 1024L * 1024L * 1024L
+            else -> return null
+        }
+        val bytes = amount * multiplier
+        if (bytes.isNaN() || bytes.isInfinite() || bytes <= 0.0 || bytes > Long.MAX_VALUE.toDouble()) return null
+        return bytes.toLong()
+    }
+
+    private fun kilobytesToBytes(value: Long): Long =
+        if (value > Long.MAX_VALUE / 1024L) Long.MAX_VALUE else value * 1024L
+
+    private fun Long?.orZero(): Long = this ?: 0L
 
     private fun JSONObject.optIntOrNull(vararg names: String): Int? =
         names.firstNotNullOfOrNull { name ->

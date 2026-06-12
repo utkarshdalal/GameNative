@@ -48,7 +48,9 @@ object ModArchiveExtractor {
     ): ModArchiveExtractionResult =
         withContext(Dispatchers.IO) {
             if (!archiveFile.isFile) throw IOException("Archive does not exist: ${archiveFile.absolutePath}")
-            if (destination.exists()) destination.deleteRecursively()
+            if (destination.exists() && !destination.deleteRecursively()) {
+                throw IOException("Could not clear extraction directory: ${destination.absolutePath}")
+            }
             if (!destination.mkdirs() && !destination.isDirectory) {
                 throw IOException("Could not create extraction directory: ${destination.absolutePath}")
             }
@@ -142,9 +144,18 @@ object ModArchiveExtractor {
         val entries = mutableListOf<ModArchiveEntry>()
         var expandedBytes = 0L
         ZipFile(archiveFile).use { zip ->
-            val zipEntries = zip.entries().asSequence().toList()
-            val totalBytes = zipEntries.filter { !it.isDirectory && it.size > 0L }.sumOf { it.size }
-            zipEntries.forEach { entry ->
+            val totalEntries = zip.size()
+            if (totalEntries > MAX_ENTRIES) throw IOException("Archive has too many entries")
+            var totalBytes = 0L
+            zip.entries().asSequence().forEach { entry ->
+                if (!entry.isDirectory && entry.size > 0L) {
+                    totalBytes += entry.size
+                    if (totalBytes > MAX_EXPANDED_BYTES) {
+                        throw IOException("Archive expands beyond the safety limit")
+                    }
+                }
+            }
+            zip.entries().asSequence().forEach { entry ->
                 if (entries.size >= MAX_ENTRIES) throw IOException("Archive has too many entries")
                 val outFile = safeDestination(destination, entry.name)
                 if (entry.isDirectory) {
@@ -163,13 +174,13 @@ object ModArchiveExtractor {
                                     throw IOException("Archive expands beyond the safety limit")
                                 }
                                 output.write(buffer, 0, read)
-                                emitProgress(onProgress, "zip", entries.size, zipEntries.size, expandedBytes, totalBytes, entry.name)
+                                emitProgress(onProgress, "zip", entries.size, totalEntries, expandedBytes, totalBytes, entry.name)
                             }
                         }
                     }
                     entries += ModArchiveEntry(normalizeArchivePath(entry.name), false, outFile.length())
                 }
-                emitProgress(onProgress, "zip", entries.size, zipEntries.size, expandedBytes, totalBytes, entry.name)
+                emitProgress(onProgress, "zip", entries.size, totalEntries, expandedBytes, totalBytes, entry.name)
             }
         }
         return entries

@@ -18,6 +18,24 @@ data class ModPlacementPresetDraft(
 )
 
 object ModPlacementPresetDetector {
+    private val bethesdaContentDirs = setOf(
+        "meshes",
+        "textures",
+        "scripts",
+        "interface",
+        "sound",
+        "seq",
+        "skse",
+        "f4se",
+        "sfse",
+        "strings",
+        "video",
+        "music",
+        "lodsettings",
+        "calientetools",
+        "nemesis_engine",
+    )
+
     fun detect(gameName: String, entries: List<ModArchiveEntry>): List<ModPlacementPreset> {
         if (entries.isEmpty()) return emptyList()
 
@@ -58,7 +76,7 @@ object ModPlacementPresetDetector {
                 ModPlacementPresetDraft(
                     sourceSubpath = source,
                     targetRelativePath = game.dataDirName,
-                    includeSourceDirectory = false,
+                    includeSourceDirectory = dataPath == null && sources.any(::isTopLevelBethesdaContentDir),
                 ),
             ),
         )
@@ -138,6 +156,7 @@ object ModPlacementPresetDetector {
         val looksLikeCyberpunk = gameName.lowercase(Locale.US).let { name ->
             name.contains("cyberpunk") || name.contains("redmod")
         }
+        if (!looksLikeCyberpunk) return null
         val targets = listOf(
             "archive/pc/mod",
             "r6",
@@ -154,7 +173,6 @@ object ModPlacementPresetDetector {
                 )
             }
         }
-        if (!looksLikeCyberpunk && drafts.isEmpty()) return null
         if (drafts.isEmpty()) return null
         return ModPlacementPreset(
             id = "redmod",
@@ -188,27 +206,10 @@ object ModPlacementPresetDetector {
         any { normalizePath(it.path).endsWith("fomod/ModuleConfig.xml", ignoreCase = true) }
 
     private fun List<ModArchiveEntry>.bethesdaSourceRoots(): List<String> {
-        val contentDirs = setOf(
-            "meshes",
-            "textures",
-            "scripts",
-            "interface",
-            "sound",
-            "seq",
-            "skse",
-            "f4se",
-            "sfse",
-            "strings",
-            "video",
-            "music",
-            "lodsettings",
-            "calientetools",
-            "nemesis_engine",
-        )
         val roots = mapNotNull { entry ->
             val path = normalizePath(entry.path)
             val segments = path.split('/').filter { it.isNotBlank() }
-            val contentIndex = segments.indexOfFirst { it.lowercase(Locale.US) in contentDirs }
+            val contentIndex = segments.indexOfFirst { it.lowercase(Locale.US) in bethesdaContentDirs }
             when {
                 contentIndex == 0 -> segments.first()
                 contentIndex > 0 -> segments.take(contentIndex).joinToString("/")
@@ -222,6 +223,13 @@ object ModPlacementPresetDetector {
         return roots.filterNot { source ->
             roots.any { other -> source != other && source.startsWith("$other/", ignoreCase = true) }
         }
+    }
+
+    private fun isTopLevelBethesdaContentDir(source: String): Boolean {
+        val normalized = normalizePath(source)
+        return normalized.isNotBlank() &&
+            !normalized.contains("/") &&
+            normalized.lowercase(Locale.US) in bethesdaContentDirs
     }
 
     private fun String.endsWithBethesdaDataFile(): Boolean =

@@ -139,6 +139,7 @@ object ModMaterializer {
         var backedUp = 0
         val errors = linkedMapOf<String, String>()
         val manifests = mutableListOf<ModOverwriteManifest>()
+        val targetsWrittenThisApply = mutableSetOf<String>()
 
         backupRoot.mkdirs()
         recipes.filter { it.enabled }.forEach { recipe ->
@@ -167,6 +168,7 @@ object ModMaterializer {
                                 source = entry.source,
                                 backupRoot = backupRoot,
                                 allowOverwrite = allowOverwrite,
+                                targetsWrittenThisApply = targetsWrittenThisApply,
                             )
                             created += result.created
                             backedUp += result.backedUp
@@ -553,8 +555,9 @@ object ModMaterializer {
         source: File,
         backupRoot: File,
         allowOverwrite: Boolean,
+        targetsWrittenThisApply: MutableSet<String>,
     ): CopyBackupResult {
-        if (!allowOverwrite && source.isFile && targetNeedsOverwrite(target, source)) {
+        if (!allowOverwrite && source.isFile && targetNeedsOverwrite(target, source) && target.absolutePath !in targetsWrittenThisApply) {
             throw IOException("Overwrite was not confirmed for ${target.absolutePath}")
         }
         if (!allowOverwrite && source.isDirectory && Files.isSymbolicLink(target.toPath())) {
@@ -572,10 +575,11 @@ object ModMaterializer {
                 .forEach { file ->
                     val relative = file.relativeTo(source).path
                     val targetFile = safeChildTarget(target, relative)
-                    if (!allowOverwrite && targetNeedsOverwrite(targetFile, file)) {
+                    val sameApplyTarget = targetFile.absolutePath in targetsWrittenThisApply
+                    if (!allowOverwrite && !sameApplyTarget && targetNeedsOverwrite(targetFile, file)) {
                         throw IOException("Overwrite was not confirmed for ${targetFile.absolutePath}")
                     }
-                    val backup = backupIfNeeded(install, targetFile, file, backupRoot)
+                    val backup = if (sameApplyTarget) BackupIfNeededResult() else backupIfNeeded(install, targetFile, file, backupRoot)
                     if (backup.manifest != null) {
                         if (backup.backedUp) backedUp++
                         manifests += backup.manifest
@@ -583,15 +587,17 @@ object ModMaterializer {
                     if (backup.skipCopy) {
                         return@forEach
                     }
-                    ensureSpaceForCopy(backupRoot, targetFile, file)
+                    ensureSpaceForCopy(existingSpaceRoot(targetFile), targetFile, file)
                     deleteTargetSymlinkIfPresent(targetFile)
                     ensureRealParentDirectories(targetFile, stopAt = target)
                     file.copyTo(targetFile, overwrite = true)
+                    targetsWrittenThisApply += targetFile.absolutePath
                     created++
                     manifests.replaceLastForTarget(targetFile, install)
                 }
         } else {
-            val backup = backupIfNeeded(install, target, source, backupRoot)
+            val sameApplyTarget = target.absolutePath in targetsWrittenThisApply
+            val backup = if (sameApplyTarget) BackupIfNeededResult() else backupIfNeeded(install, target, source, backupRoot)
             if (backup.manifest != null) {
                 if (backup.backedUp) {
                     backedUp++
@@ -601,10 +607,11 @@ object ModMaterializer {
             if (backup.skipCopy) {
                 return CopyBackupResult(created, backedUp, manifests)
             }
-            ensureSpaceForCopy(backupRoot, target, source)
+            ensureSpaceForCopy(existingSpaceRoot(target), target, source)
             deleteTargetSymlinkIfPresent(target)
             ensureRealParentDirectories(target, stopAt = target.parentFile)
             source.copyTo(target, overwrite = true)
+            targetsWrittenThisApply += target.absolutePath
             created++
             manifests.replaceLastForTarget(target, install)
         }

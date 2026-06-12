@@ -4,6 +4,7 @@ import app.gamenative.data.ModInstall
 import app.gamenative.data.ModPlacementRecipe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import java.io.File
 
 data class ModConflictParticipant(
@@ -35,11 +36,14 @@ object ModConflictAnalyzer {
             runCatching {
                 ModMaterializer.plannedEntries(install, recipes, gameRootDir, winePrefix)
                     .flatMap { it.toPlannedFiles() }
-            }.getOrDefault(emptyList())
+            }.getOrElse { error ->
+                Timber.w(error, "Skipping Nexus conflict analysis for install %s", install.installId)
+                emptyList()
+            }
         }
 
         plannedFiles
-            .groupBy { it.target.canonicalFile.absolutePath }
+            .groupBy { it.target.safeCanonicalPath() }
             .filterValues { it.map { file -> file.installId }.distinct().size > 1 }
             .map { (targetPath, files) ->
                 val sorted = files.sortedWith(
@@ -105,4 +109,7 @@ object ModConflictAnalyzer {
             val fileCanonical = canonicalFile
             fileCanonical == rootCanonical || fileCanonical.path.startsWith(rootCanonical.path + File.separator)
         }.getOrDefault(false)
+
+    private fun File.safeCanonicalPath(): String =
+        runCatching { canonicalFile.absolutePath }.getOrDefault(absolutePath)
 }

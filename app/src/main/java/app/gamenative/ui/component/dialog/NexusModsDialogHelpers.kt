@@ -54,10 +54,16 @@ internal fun isEnabledInProfile(
     install: ModInstall,
     enabledByInstallId: Map<String, Boolean>,
 ): Boolean =
-    enabledByInstallId[install.installId] ?: (install.status != ModInstallStatus.DISABLED.name)
+    enabledByInstallId[install.installId] ?: false
 
 internal fun ModInstall.metadataSummary(): String =
     runCatching { JSONObject(metadataJson).optString("summary") }.getOrDefault("")
+
+internal fun ModInstall.profileStatus(enabledInProfile: Boolean): String =
+    when {
+        canPlaceFiles() && !enabledInProfile -> "PROFILE_DISABLED"
+        else -> status
+    }
 
 internal fun ModDownloadInfo.toImportProgress(): ModImportProgress =
     ModImportProgress(
@@ -75,24 +81,33 @@ internal fun PendingCollectionMod.collectionKey(): String =
 
 internal fun PendingCollectionMod.toQueueItem(
     status: CollectionQueueStatus,
+    fallbackName: String,
 ): CollectionQueueItem =
     CollectionQueueItem(
         key = collectionKey(),
-        name = modInfo?.name ?: collectionFile.modName.ifBlank { "Nexus mod ${collectionFile.modId}" },
+        name = modInfo?.name ?: collectionFile.modName.ifBlank { fallbackName },
         status = status,
     )
 
-internal fun collectionQueueLabel(item: CollectionQueueItem): String {
+internal fun collectionQueueLabel(
+    item: CollectionQueueItem,
+    queuedLabel: String,
+    importingLabel: String,
+    importedLabel: String,
+    failedLabel: String,
+    canceledLabel: String,
+    etaLeft: (String) -> String,
+): String {
     val base = when (item.status) {
-        CollectionQueueStatus.QUEUED -> item.message.ifBlank { "Queued" }
+        CollectionQueueStatus.QUEUED -> item.message.ifBlank { queuedLabel }
         CollectionQueueStatus.IMPORTING -> {
             val percent = (item.progress * 100f).toInt().coerceIn(0, 100)
             val eta = collectionEta(item)
-            "${item.message.ifBlank { "Importing" }} $percent%${if (eta.isNotBlank()) " - $eta left" else ""}"
+            "${item.message.ifBlank { importingLabel }} $percent%${if (eta.isNotBlank()) " - ${etaLeft(eta)}" else ""}"
         }
-        CollectionQueueStatus.IMPORTED -> item.message.ifBlank { "Imported" }
-        CollectionQueueStatus.FAILED -> item.error.ifBlank { "Failed" }
-        CollectionQueueStatus.CANCELED -> "Canceled"
+        CollectionQueueStatus.IMPORTED -> item.message.ifBlank { importedLabel }
+        CollectionQueueStatus.FAILED -> item.error.ifBlank { failedLabel }
+        CollectionQueueStatus.CANCELED -> canceledLabel
     }
     return "${item.name}: $base"
 }
@@ -123,7 +138,7 @@ internal fun NexusCollectionFile.toFallbackNexusFile(): NexusModFile? {
         name = resolvedFileName,
         version = version,
         fileName = resolvedFileName,
-        sizeBytes = 0L,
+        sizeBytes = sizeBytes,
         uploadedTimestamp = 0L,
         isPrimary = true,
     )
@@ -157,11 +172,11 @@ internal fun RecipeDraft.normalizedTargetPath(): String =
         ModTargetResolver.normalizeRelativePath(targetRelativePath)
     }
 
-internal fun nextProfileName(profiles: List<ModProfile>): String {
+internal fun nextProfileName(profiles: List<ModProfile>, prefix: String): String {
     val existing = profiles.map { it.name }.toSet()
     var index = profiles.size + 1
-    while ("Profile $index" in existing) index++
-    return "Profile $index"
+    while ("$prefix $index" in existing) index++
+    return "$prefix $index"
 }
 
 internal fun automaticDraftsFor(
@@ -308,22 +323,6 @@ internal fun fomodImageFile(extractedRoot: File, imagePath: String): File? {
     }
 }
 
-internal fun placementModeLabel(mode: String): String = when (mode) {
-    ModPlacementMode.SYMLINK.name -> "Link files"
-    ModPlacementMode.COPY.name -> "Copy files"
-    ModPlacementMode.OVERWRITE_COPY.name -> "Overwrite files and create backups"
-    else -> mode
-}
-
-internal fun sourceSelectionSummary(sourceSubpath: String): String {
-    val sources = ModPlacementSources.decode(sourceSubpath).filter { it.isNotBlank() }
-    return when (sources.size) {
-        0 -> "Everything in the mod"
-        1 -> sources.single()
-        else -> "${sources.size} selected: ${sources.take(2).joinToString(", ")}${if (sources.size > 2) ", ..." else ""}"
-    }
-}
-
 internal fun sourceManualText(sourceSubpath: String): String =
     ModPlacementSources.decode(sourceSubpath)
         .filter { it.isNotBlank() }
@@ -332,9 +331,10 @@ internal fun sourceManualText(sourceSubpath: String): String =
 internal fun placementSummary(
     draft: RecipeDraft,
     roots: List<ResolvedModTargetRoot>,
+    baseFolderLabel: String,
 ): String {
     val rootLabel = roots.firstOrNull { it.type.name == draft.targetRoot }?.label ?: draft.targetRoot
-    val relative = draft.targetRelativePath.ifBlank { "the base folder" }
+    val relative = draft.targetRelativePath.ifBlank { baseFolderLabel }
     return if (draft.targetRelativePath.isBlank()) {
         rootLabel
     } else {
@@ -349,7 +349,7 @@ internal fun archiveChildren(entries: List<ModArchiveEntry>, currentPath: String
     entries.forEach { entry ->
         val path = normalizeArchivePath(entry.path)
         if (path.isBlank() || (prefix.isNotBlank() && !path.startsWith(prefix, ignoreCase = true))) return@forEach
-        val remaining = path.removePrefix(prefix)
+        val remaining = if (prefix.isBlank()) path else path.substring(prefix.length)
         if (remaining.isBlank()) return@forEach
         val name = remaining.substringBefore('/')
         val childPath = if (prefix.isBlank()) name else prefix + name

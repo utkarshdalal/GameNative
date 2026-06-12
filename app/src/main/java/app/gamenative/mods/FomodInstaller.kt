@@ -5,7 +5,9 @@ import app.gamenative.data.ModPlacementRecipe
 import app.gamenative.data.ModTargetRoot
 import org.w3c.dom.Element
 import org.w3c.dom.Node
+import timber.log.Timber
 import java.io.File
+import java.io.IOException
 import javax.xml.parsers.DocumentBuilderFactory
 
 data class FomodInstaller(
@@ -128,7 +130,10 @@ object FomodInstallerDetector {
 }
 
 object FomodParser {
+    private const val MAX_DOCTYPE_SCAN_BYTES = 1024 * 1024
+
     fun parse(moduleConfigXml: File, extractedRoot: File? = null): FomodInstaller {
+        rejectDoctype(moduleConfigXml)
         val document = secureFactory().newDocumentBuilder().parse(moduleConfigXml)
         val root = document.documentElement
         val fomodBase = moduleConfigXml.parentFile?.parentFile ?: moduleConfigXml.parentFile ?: moduleConfigXml
@@ -300,12 +305,36 @@ object FomodParser {
     private fun secureFactory(): DocumentBuilderFactory =
         DocumentBuilderFactory.newInstance().apply {
             isNamespaceAware = false
-            runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
-            runCatching { setFeature("http://xml.org/sax/features/external-general-entities", false) }
-            runCatching { setFeature("http://xml.org/sax/features/external-parameter-entities", false) }
-            runCatching { setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false) }
+            trySetFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+            trySetFeature("http://xml.org/sax/features/external-general-entities", false)
+            trySetFeature("http://xml.org/sax/features/external-parameter-entities", false)
+            trySetFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
             isExpandEntityReferences = false
         }
+
+    private fun rejectDoctype(file: File) {
+        val scanLength = minOf(file.length().coerceAtLeast(0L), MAX_DOCTYPE_SCAN_BYTES.toLong()).toInt()
+        if (scanLength <= 0) return
+        val buffer = ByteArray(scanLength)
+        val read = file.inputStream().use { input ->
+            var offset = 0
+            while (offset < scanLength) {
+                val count = input.read(buffer, offset, scanLength - offset)
+                if (count <= 0) break
+                offset += count
+            }
+            offset
+        }
+        if (read <= 0) return
+        if (String(buffer, 0, read, Charsets.UTF_8).contains("<!DOCTYPE", ignoreCase = true)) {
+            throw IOException("FOMOD ModuleConfig.xml DOCTYPE is not supported")
+        }
+    }
+
+    private fun DocumentBuilderFactory.trySetFeature(feature: String, value: Boolean) {
+        runCatching { setFeature(feature, value) }
+            .onFailure { Timber.w(it, "FOMOD XML parser does not support feature %s", feature) }
+    }
 }
 
 object FomodRecipeGenerator {
@@ -320,13 +349,20 @@ object FomodRecipeGenerator {
         targetRelativePath: String = "Data",
         mode: String = ModPlacementMode.OVERWRITE_COPY.name,
     ): FomodRecipeGenerationResult {
-        val selectedPluginKeys = installer.steps.flatMapIndexed { stepIndex, step ->
+        val pluginEntries = installer.steps.flatMapIndexed { stepIndex, step ->
             step.groups.flatMapIndexed { groupIndex, group ->
-                group.plugins.mapIndexedNotNull { pluginIndex, plugin ->
-                    if (plugin.name in selectedPluginNames) pluginKey(stepIndex, groupIndex, pluginIndex) else null
+                group.plugins.mapIndexed { pluginIndex, plugin ->
+                    pluginKey(stepIndex, groupIndex, pluginIndex) to plugin
                 }
             }
-        }.toSet()
+        }
+        selectedPluginNames.forEach { name ->
+            val matches = pluginEntries.count { (_, plugin) -> plugin.name == name }
+            require(matches <= 1) { "FOMOD option name is ambiguous: $name. Use generateForPluginKeys." }
+        }
+        val selectedPluginKeys = pluginEntries
+            .mapNotNull { (key, plugin) -> if (plugin.name in selectedPluginNames) key else null }
+            .toSet()
         return generateForPluginKeys(installId, installer, selectedPluginKeys, targetRoot, targetRelativePath, mode)
     }
 

@@ -35,6 +35,7 @@ class ModPlacementPresetDetectorTest {
 
         val sources = ModPlacementSources.decode(presets.single { it.id == "bethesda-data" }.drafts.single().sourceSubpath)
         assertEquals(setOf("meshes", "textures", "Plugin.esp"), sources.toSet())
+        assertTrue(presets.single { it.id == "bethesda-data" }.drafts.single().includeSourceDirectory)
     }
 
     @Test
@@ -51,6 +52,7 @@ class ModPlacementPresetDetectorTest {
 
         val sources = ModPlacementSources.decode(presets.single { it.id == "bethesda-data" }.drafts.single().sourceSubpath)
         assertEquals(setOf("AMatterOfTime.bsa", "AMatterOfTime.esp"), sources.toSet())
+        assertTrue(!presets.single { it.id == "bethesda-data" }.drafts.single().includeSourceDirectory)
     }
 
     @Test
@@ -67,6 +69,7 @@ class ModPlacementPresetDetectorTest {
         val preset = presets.single { it.id == "bethesda-data" }
         assertEquals("Main", preset.drafts.single().sourceSubpath)
         assertEquals("Data", preset.drafts.single().targetRelativePath)
+        assertTrue(!preset.drafts.single().includeSourceDirectory)
     }
 
     @Test
@@ -81,6 +84,7 @@ class ModPlacementPresetDetectorTest {
         val preset = presets.single { it.id == "bethesda-data" }
         assertEquals("SKSE", preset.drafts.single().sourceSubpath)
         assertEquals("Data", preset.drafts.single().targetRelativePath)
+        assertTrue(preset.drafts.single().includeSourceDirectory)
     }
 
     @Test
@@ -135,5 +139,17 @@ class ModPlacementPresetDetectorTest {
         val preset = presets.single { it.id == "unreal-paks" }
         assertEquals("Content/Paks", preset.drafts.single().targetRelativePath)
         assertTrue(ModPlacementSources.decode(preset.drafts.single().sourceSubpath).contains("mod_P.pak"))
+    }
+
+    @Test
+    fun detect_redmodPreset_requiresCyberpunkGame() {
+        val presets = ModPlacementPresetDetector.detect(
+            gameName = "Unity Game",
+            entries = listOf(
+                ModArchiveEntry("mods/example.archive", directory = false, sizeBytes = 1),
+            ),
+        )
+
+        assertTrue(presets.none { it.id == "redmod" })
     }
 }

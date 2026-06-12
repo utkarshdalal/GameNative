@@ -78,6 +78,34 @@ class BethesdaPlacementRecipeExpanderTest {
     }
 
     @Test
+    fun expand_doesNotDuplicateSidecarsAlreadySelectedInMultiSourceRecipe() {
+        File(extracted, "Book Covers Skyrim.esp").writeText("plugin")
+        File(extracted, "Book Covers Skyrim.bsa").writeText("bsa")
+        File(extracted, "Book Covers Skyrim - Textures.bsa").writeText("textures")
+        val sources = ModPlacementSources.encode(
+            listOf(
+                "Book Covers Skyrim - Textures.bsa",
+                "Book Covers Skyrim.bsa",
+                "Book Covers Skyrim.esp",
+            ),
+        )
+        val install = install()
+        val recipe = recipe(
+            sourceSubpath = sources,
+            targetRelativePath = "Data",
+            mode = ModPlacementMode.OVERWRITE_COPY,
+        )
+
+        val expanded = BethesdaPlacementRecipeExpander.expand(
+            gameName = "Skyrim Special Edition",
+            install = install,
+            recipes = listOf(recipe),
+        )
+
+        assertEquals(listOf(sources), expanded.map { it.sourceSubpath })
+    }
+
+    @Test
     fun expand_leavesNonBethesdaGamesUnchanged() {
         val install = install()
         val recipe = recipe(

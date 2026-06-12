@@ -18,7 +18,6 @@ import app.gamenative.R
 import app.gamenative.data.GOGGame
 import app.gamenative.data.LibraryItem
 import app.gamenative.enums.Marker
-import app.gamenative.mods.NexusModManager
 import app.gamenative.service.DownloadService
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
@@ -398,16 +397,13 @@ class GOGAppScreen : BaseAppScreen() {
         Timber.i("Uninstalling GOG game: ${libraryItem.appId}")
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                val gameRootDir = getInstallPath(context, libraryItem)?.let(::File)
                 // Delegate to GOGService which calls GOGManager.deleteGame
                 val result = GOGService.deleteGame(context, libraryItem)
                 DownloadService.invalidateCache()
 
                 if (result.isSuccess) {
-                    NexusModManager.deleteInstallsForApp(
-                        context = context,
-                        appId = libraryItem.appId,
-                        gameRootDir = getInstallPath(context, libraryItem)?.let(::File),
-                    )
+                    cleanupNexusModsForApp(context, libraryItem, gameRootDir)
                     Timber.i("Successfully uninstalled GOG game: ${libraryItem.appId}")
                     SnackbarManager.show("Game uninstalled successfully")
                 } else {

@@ -5,6 +5,7 @@ import app.gamenative.data.ModInstallStatus
 import app.gamenative.data.ModPlacementRecipe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import java.io.File
 
 enum class BethesdaGame(
@@ -102,7 +103,10 @@ object BethesdaPluginManager {
                             sourcePath = plugin.source.absolutePath,
                         )
                     }
-            }.getOrDefault(emptyList())
+            }.getOrElse { error ->
+                Timber.w(error, "Skipping Bethesda plugin detection for Nexus install %s", install.installId)
+                emptyList()
+            }
         }
             .distinctBy { it.fileName.lowercase() to it.installId }
             .sortedWith(

@@ -12,14 +12,16 @@ import org.junit.Test
 
 class NexusApiClientTest {
     private lateinit var server: MockWebServer
+    private lateinit var okHttpClient: OkHttpClient
     private lateinit var client: NexusApiClient
 
     @Before
     fun setUp() {
         server = MockWebServer()
         server.start()
+        okHttpClient = OkHttpClient()
         client = NexusApiClient(
-            client = OkHttpClient(),
+            client = okHttpClient,
             baseUrl = server.url("/v1").toString().trimEnd('/'),
             nexusBaseUrl = server.url("").toString().trimEnd('/'),
             graphUrls = listOf(server.url("/graphql").toString()),
@@ -28,6 +30,9 @@ class NexusApiClientTest {
 
     @After
     fun tearDown() {
+        okHttpClient.dispatcher.executorService.shutdown()
+        okHttpClient.connectionPool.evictAll()
+        okHttpClient.cache?.close()
         server.shutdown()
     }
 
@@ -129,6 +134,7 @@ class NexusApiClientTest {
                               "file": {
                                 "fileId": 1000,
                                 "name": "main.zip",
+                                "sizeInBytes": 73400320,
                                 "version": "1.0",
                                 "mod": {
                                   "modId": 100,
@@ -154,6 +160,7 @@ class NexusApiClientTest {
         assertEquals(5, collection.revision)
         assertEquals(listOf(100L), collection.files.map { it.modId })
         assertEquals(listOf(1000L), collection.files.map { it.fileId })
+        assertEquals(listOf(73400320L), collection.files.map { it.sizeBytes })
         assertTrue(collection.files.single().required)
         val request = server.takeRequest()
         assertEquals("/graphql", request.path)
@@ -263,7 +270,8 @@ class NexusApiClientTest {
                             "game": "skyrimspecialedition",
                             "modId": 100,
                             "fileId": 1000,
-                            "logicalFileName": "first.zip"
+                            "logicalFileName": "first.zip",
+                            "sizeBytes": 41943040
                           }
                         },
                         {
@@ -274,7 +282,8 @@ class NexusApiClientTest {
                             "game": "skyrimspecialedition",
                             "modId": 200,
                             "fileId": 2000,
-                            "logicalFileName": "second.zip"
+                            "logicalFileName": "second.zip",
+                            "size": "30 MB"
                           }
                         },
                         {
@@ -303,6 +312,7 @@ class NexusApiClientTest {
         assertEquals("Big Collection", collection.name)
         assertEquals(8, collection.revision)
         assertEquals(listOf(100L, 200L, 0L), collection.files.map { it.modId })
+        assertEquals(listOf(41943040L, 30L * 1024L * 1024L, 0L), collection.files.map { it.sizeBytes })
         assertEquals(listOf(true, false, true), collection.files.map { it.required })
         assertEquals(
             listOf(

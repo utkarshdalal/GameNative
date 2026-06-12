@@ -143,6 +143,34 @@ class FomodInstallerTest {
     }
 
     @Test
+    fun detector_findsNestedCapitalizedFomodFolder() {
+        val moduleConfig = File(tempDir, "Mod Name/Fomod/ModuleConfig.xml").apply {
+            parentFile?.mkdirs()
+            writeText("<config />")
+        }
+
+        assertEquals(moduleConfig.canonicalFile, FomodInstallerDetector.moduleConfigFile(tempDir)?.canonicalFile)
+    }
+
+    @Test
+    fun parse_rejectsDoctypeXml() {
+        val moduleConfig = writeModuleConfig(
+            """
+            <!DOCTYPE config [
+                <!ENTITY local SYSTEM "file:///etc/passwd">
+            ]>
+            <config>
+                <moduleName>&local;</moduleName>
+            </config>
+            """.trimIndent(),
+        )
+
+        val error = runCatching { FomodParser.parse(moduleConfig) }.exceptionOrNull()
+
+        assertTrue(error is java.io.IOException)
+    }
+
+    @Test
     fun generate_reportsRenamedFileMappingsAsUnsupported() {
         val installer = FomodInstaller(
             moduleName = "Example",
@@ -195,6 +223,45 @@ class FomodInstallerTest {
         )
 
         assertEquals(listOf("B"), result.recipes.map { it.sourceSubpath })
+    }
+
+    @Test
+    fun generate_rejectsAmbiguousDuplicateOptionNames() {
+        val installer = FomodInstaller(
+            moduleName = "Example",
+            requiredFiles = emptyList(),
+            steps = listOf(
+                FomodStep(
+                    name = "Step",
+                    groups = listOf(
+                        FomodGroup(
+                            name = "A",
+                            type = FomodGroupType.SELECT_EXACTLY_ONE,
+                            plugins = listOf(
+                                FomodPlugin("Default", "", "", FomodPluginType.OPTIONAL, listOf(FomodFileMapping("A", "A", 0, true))),
+                            ),
+                        ),
+                        FomodGroup(
+                            name = "B",
+                            type = FomodGroupType.SELECT_EXACTLY_ONE,
+                            plugins = listOf(
+                                FomodPlugin("Default", "", "", FomodPluginType.OPTIONAL, listOf(FomodFileMapping("B", "B", 0, true))),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val error = runCatching {
+            FomodRecipeGenerator.generate(
+                installId = "install",
+                installer = installer,
+                selectedPluginNames = setOf("Default"),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(error is IllegalArgumentException)
     }
 
     @Test

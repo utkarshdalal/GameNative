@@ -20,18 +20,15 @@ object ModTargetResolver {
         }
         if (winePrefix.isNotBlank()) {
             val driveC = File(winePrefix, "drive_c")
-            if (driveC.isDirectory) result += ResolvedModTargetRoot(ModTargetRoot.WINE_C, "C: Drive", driveC)
-            val userHome = ModContainerResolver.getWineUserHome(winePrefix)
-            val documents = File(userHome, "Documents")
-            if (documents.isDirectory) result += ResolvedModTargetRoot(ModTargetRoot.DOCUMENTS, "My Documents", documents)
-            val myGames = File(userHome, "Documents/My Games")
-            if (myGames.isDirectory) result += ResolvedModTargetRoot(ModTargetRoot.MY_GAMES, "My Games", myGames)
-            val roaming = File(userHome, "AppData/Roaming")
-            if (roaming.isDirectory) result += ResolvedModTargetRoot(ModTargetRoot.APPDATA_ROAMING, "AppData / Roaming", roaming)
-            val local = File(userHome, "AppData/Local")
-            if (local.isDirectory) result += ResolvedModTargetRoot(ModTargetRoot.APPDATA_LOCAL, "AppData / Local", local)
-            val localLow = File(userHome, "AppData/LocalLow")
-            if (localLow.isDirectory) result += ResolvedModTargetRoot(ModTargetRoot.APPDATA_LOCALLOW, "AppData / LocalLow", localLow)
+            if (driveC.isDirectory) {
+                result += ResolvedModTargetRoot(ModTargetRoot.WINE_C, "C: Drive", driveC)
+                val userHome = ModContainerResolver.getWineUserHome(winePrefix)
+                result += ResolvedModTargetRoot(ModTargetRoot.DOCUMENTS, "My Documents", File(userHome, "Documents"))
+                result += ResolvedModTargetRoot(ModTargetRoot.MY_GAMES, "My Games", File(userHome, "Documents/My Games"))
+                result += ResolvedModTargetRoot(ModTargetRoot.APPDATA_ROAMING, "AppData / Roaming", File(userHome, "AppData/Roaming"))
+                result += ResolvedModTargetRoot(ModTargetRoot.APPDATA_LOCAL, "AppData / Local", File(userHome, "AppData/Local"))
+                result += ResolvedModTargetRoot(ModTargetRoot.APPDATA_LOCALLOW, "AppData / LocalLow", File(userHome, "AppData/LocalLow"))
+            }
         }
         return result
     }
@@ -46,23 +43,30 @@ object ModTargetResolver {
         if (rootType == ModTargetRoot.CUSTOM_ABSOLUTE) {
             val rawTarget = File(targetRelativePath.trim().replace('\\', '/'))
             if (!rawTarget.isAbsolute) return null
-            val target = rawTarget.canonicalFile
-            val allowedRoots = roots(gameRootDir, winePrefix).map { it.dir.canonicalFile }
+            val target = rawTarget.safeCanonicalFile() ?: return null
+            val allowedRoots = roots(gameRootDir, winePrefix).mapNotNull { it.dir.safeCanonicalFile() }
             return target.takeIf { candidate ->
                 allowedRoots.any { root -> candidate.isInsideOrEqual(root) }
             }
         }
         val root = roots(gameRootDir, winePrefix).firstOrNull { it.type == rootType }?.dir ?: return null
         val cleanRelative = normalizeRelativePath(targetRelativePath)
-        val rootCanonical = root.canonicalFile
+        val rootCanonical = root.safeCanonicalFile() ?: return null
         val target = if (cleanRelative.isBlank()) {
             rootCanonical
         } else {
-            File(rootCanonical, cleanRelative).canonicalFile
+            File(rootCanonical, cleanRelative).safeCanonicalFile() ?: return null
         }
         return target.takeIf { it.isInsideOrEqual(rootCanonical) }
     }
 
-    private fun File.isInsideOrEqual(root: File): Boolean =
-        this == root || path.startsWith(root.path + File.separator)
+    private fun File.safeCanonicalFile(): File? =
+        runCatching { canonicalFile }.getOrNull()
+
+    private fun File.isInsideOrEqual(root: File): Boolean {
+        if (this == root) return true
+        val rootPath = root.path
+        if (rootPath == File.separator) return path.startsWith(rootPath)
+        return path.startsWith(rootPath.trimEnd(File.separatorChar) + File.separator)
+    }
 }

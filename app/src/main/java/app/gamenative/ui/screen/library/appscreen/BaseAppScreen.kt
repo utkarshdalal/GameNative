@@ -29,6 +29,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.mods.ModContainerResolver
+import app.gamenative.mods.NexusModManager
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
@@ -601,6 +602,22 @@ abstract class BaseAppScreen {
             requestManageMods(libraryItem.appId)
         },
     )
+
+    protected suspend fun cleanupNexusModsForApp(
+        context: Context,
+        libraryItem: LibraryItem,
+        gameRootDir: File?,
+    ) {
+        runCatching {
+            NexusModManager.deleteInstallsForApp(
+                context = context,
+                appId = libraryItem.appId,
+                gameRootDir = gameRootDir,
+            )
+        }.onFailure { error ->
+            Timber.w(error, "Failed to clean Nexus mods for app %s", libraryItem.appId)
+        }
+    }
 
     /**
      * Get Create Shortcut menu option. Subclasses can override to customize behavior.

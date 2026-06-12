@@ -39,11 +39,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.gamenative.R
 import app.gamenative.data.ModPlacementMode
 import app.gamenative.mods.FomodGroupType
 import app.gamenative.mods.FomodInstaller
@@ -61,12 +63,12 @@ internal fun FomodSummarySection(
     Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("FOMOD installer", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.nexus_fomod_installer), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
                 OutlinedButton(
                     onClick = onConfigure,
                     enabled = installer.steps.isNotEmpty() && installer.unsupportedWarnings.none { it.contains("C# FOMOD", ignoreCase = true) },
                 ) {
-                    Text("Configure")
+                    Text(stringResource(R.string.nexus_configure))
                 }
             }
             Text(
@@ -76,7 +78,7 @@ internal fun FomodSummarySection(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "${installer.steps.size} step(s), ${installer.steps.sumOf { it.groups.sumOf { group -> group.plugins.size } }} option(s)",
+                text = stringResource(R.string.nexus_fomod_step_option_count, installer.steps.size, installer.steps.sumOf { it.groups.sumOf { group -> group.plugins.size } }),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -150,7 +152,10 @@ internal fun FomodWizardDialog(
     }
 
     val selectedFlags = fomodSelectedFlags(installer, selectedByGroup)
-    val invalidGroups = fomodInvalidGroups(installer, selectedByGroup, selectedFlags)
+    val fallbackStepNames = installer.steps.indices.map { index ->
+        stringResource(R.string.nexus_fomod_step, index + 1)
+    }
+    val invalidGroups = fomodInvalidGroups(installer, selectedByGroup, selectedFlags, fallbackStepNames)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -165,7 +170,7 @@ internal fun FomodWizardDialog(
         ) {
             Column(Modifier.fillMaxSize()) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("FOMOD installer", style = MaterialTheme.typography.headlineSmall)
+                    Text(stringResource(R.string.nexus_fomod_installer), style = MaterialTheme.typography.headlineSmall)
                     Text(
                         installer.moduleName.ifBlank { "ModuleConfig.xml" },
                         style = MaterialTheme.typography.bodySmall,
@@ -184,7 +189,7 @@ internal fun FomodWizardDialog(
                 ) {
                     if (installer.requiredFiles.isNotEmpty()) {
                         Text(
-                            "${installer.requiredFiles.size} required file mapping(s)",
+                            stringResource(R.string.nexus_fomod_required_mappings, installer.requiredFiles.size),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -198,14 +203,14 @@ internal fun FomodWizardDialog(
                     }
                     if (invalidGroups.isNotEmpty()) {
                         Text(
-                            "Complete required FOMOD groups: ${invalidGroups.joinToString(", ")}",
+                            stringResource(R.string.nexus_fomod_complete_required_groups, invalidGroups.joinToString(", ")),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
                     installer.steps.forEachIndexed { stepIndex, step ->
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(step.name.ifBlank { "Step ${stepIndex + 1}" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(step.name.ifBlank { stringResource(R.string.nexus_fomod_step, stepIndex + 1) }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             step.groups.forEachIndexed { groupIndex, group ->
                                 val groupKey = "$stepIndex:$groupIndex"
                                 Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
@@ -271,7 +276,7 @@ internal fun FomodWizardDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                     Button(
                         onClick = {
@@ -281,20 +286,20 @@ internal fun FomodWizardDialog(
                                 installer = installer,
                                 selectedPluginKeys = selectedKeys,
                                 targetRoot = baseDraft.targetRoot,
-                                targetRelativePath = "Data",
+                                targetRelativePath = baseDraft.targetRelativePath.ifBlank { "Data" },
                                 mode = ModPlacementMode.OVERWRITE_COPY.name,
                             )
                             pendingResult = PendingFomodResult(
                                 drafts = result.recipes.map { it.toDraft() },
                                 unsupportedCount = result.unsupportedMappings.size,
-                                selectedOptions = fomodSelectedOptionLabels(installer, selectedKeys),
+                                selectedOptions = fomodSelectedOptionLabels(installer, selectedKeys, fallbackStepNames),
                                 conditionalRuleCount = installer.conditionalFileInstalls.size,
                             )
                         },
                         enabled = invalidGroups.isEmpty(),
                         modifier = Modifier.padding(start = 8.dp),
                     ) {
-                        Text("Use Choices")
+                        Text(stringResource(R.string.nexus_fomod_use_choices))
                     }
                 }
             }
@@ -319,7 +324,7 @@ internal fun FomodWizardDialog(
             },
             confirmButton = {
                 TextButton(onClick = { previewImage = null }) {
-                    Text("Close")
+                    Text(stringResource(R.string.close))
                 }
             },
         )
@@ -328,20 +333,20 @@ internal fun FomodWizardDialog(
     pendingResult?.let { result ->
         AlertDialog(
             onDismissRequest = { pendingResult = null },
-            title = { Text("Apply FOMOD choices?") },
+            title = { Text(stringResource(R.string.nexus_fomod_apply_choices_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${result.selectedOptions.size} option(s), ${result.drafts.size} placement rule(s).")
+                    Text(stringResource(R.string.nexus_fomod_choice_summary, result.selectedOptions.size, result.drafts.size))
                     if (result.conditionalRuleCount > 0) {
                         Text(
-                            "${result.conditionalRuleCount} conditional rule(s) evaluated.",
+                            stringResource(R.string.nexus_fomod_conditional_rules, result.conditionalRuleCount),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     if (result.unsupportedCount > 0) {
                         Text(
-                            "${result.unsupportedCount} file mapping(s) still need manual placement.",
+                            stringResource(R.string.nexus_fomod_unsupported_mapping_count, result.unsupportedCount),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
@@ -351,7 +356,7 @@ internal fun FomodWizardDialog(
                     }
                     if (result.selectedOptions.size > 12) {
                         Text(
-                            "${result.selectedOptions.size - 12} more option(s)",
+                            stringResource(R.string.nexus_fomod_more_options, result.selectedOptions.size - 12),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -365,12 +370,12 @@ internal fun FomodWizardDialog(
                         onApply(result.drafts, result.unsupportedCount)
                     },
                 ) {
-                    Text("Apply Choices")
+                    Text(stringResource(R.string.nexus_fomod_apply_choices))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingResult = null }) {
-                    Text("Back")
+                    Text(stringResource(R.string.back))
                 }
             },
         )
@@ -422,6 +427,7 @@ private fun fomodInvalidGroups(
     installer: FomodInstaller,
     selectedByGroup: Map<String, Set<String>>,
     flags: Map<String, String>,
+    fallbackStepNames: List<String>,
 ): List<String> =
     buildList {
         installer.steps.forEachIndexed { stepIndex, step ->
@@ -438,7 +444,7 @@ private fun fomodInvalidGroups(
                     FomodGroupType.SELECT_ANY -> false
                 }
                 if (invalid) {
-                    add("${step.name.ifBlank { "Step ${stepIndex + 1}" }} / ${group.name}")
+                    add("${step.name.ifBlank { fallbackStepNames.getOrElse(stepIndex) { "" } }} / ${group.name}")
                 }
             }
         }
@@ -465,6 +471,7 @@ private fun fomodSelectedFlags(
 private fun fomodSelectedOptionLabels(
     installer: FomodInstaller,
     selectedKeys: Set<String>,
+    fallbackStepNames: List<String>,
 ): List<String> =
     buildList {
         val selectedPlugins = FomodRecipeGenerator.selectedPluginsForKeys(installer, selectedKeys).toSet()
@@ -473,17 +480,18 @@ private fun fomodSelectedOptionLabels(
                 group.plugins.forEachIndexed { pluginIndex, plugin ->
                     val key = FomodRecipeGenerator.pluginKey(stepIndex, groupIndex, pluginIndex)
                     if (plugin in selectedPlugins) {
-                        add("${step.name.ifBlank { "Step ${stepIndex + 1}" }} / ${group.name}: ${plugin.name}")
+                        add("${step.name.ifBlank { fallbackStepNames.getOrElse(stepIndex) { "" } }} / ${group.name}: ${plugin.name}")
                     }
                 }
             }
         }
     }
 
+@Composable
 private fun fomodPluginTypeLabel(type: FomodPluginType): String = when (type) {
-    FomodPluginType.REQUIRED -> "Required"
-    FomodPluginType.RECOMMENDED -> "Recommended"
-    FomodPluginType.OPTIONAL -> "Optional"
-    FomodPluginType.NOT_USABLE -> "Not usable"
-    FomodPluginType.COULD_BE_USABLE -> "Maybe"
+    FomodPluginType.REQUIRED -> stringResource(R.string.nexus_fomod_type_required)
+    FomodPluginType.RECOMMENDED -> stringResource(R.string.nexus_fomod_type_recommended)
+    FomodPluginType.OPTIONAL -> stringResource(R.string.nexus_fomod_type_optional)
+    FomodPluginType.NOT_USABLE -> stringResource(R.string.nexus_fomod_type_not_usable)
+    FomodPluginType.COULD_BE_USABLE -> stringResource(R.string.nexus_fomod_type_maybe)
 }

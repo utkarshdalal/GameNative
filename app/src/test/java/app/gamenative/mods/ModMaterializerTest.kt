@@ -149,6 +149,39 @@ class ModMaterializerTest {
     }
 
     @Test
+    fun apply_overwriteCopyAllowsLaterRecipeToOverlayEarlierRecipeWithoutExternalOverwrite() = runBlocking {
+        File(extracted, "00 Required Slim/Data/body.nif").apply {
+            parentFile?.mkdirs()
+            writeText("slim")
+        }
+        File(extracted, "02 Vanilla/Data/body.nif").apply {
+            parentFile?.mkdirs()
+            writeText("vanilla")
+        }
+        val result = ModMaterializer.apply(
+            install = install(),
+            recipes = listOf(
+                recipe(mode = ModPlacementMode.OVERWRITE_COPY).copy(
+                    sourceSubpath = "00 Required Slim/Data",
+                    targetRelativePath = "Data",
+                ),
+                recipe(mode = ModPlacementMode.OVERWRITE_COPY).copy(
+                    sourceSubpath = "02 Vanilla/Data",
+                    targetRelativePath = "Data",
+                ),
+            ),
+            gameRootDir = gameDir,
+            winePrefix = "",
+            backupRoot = backupDir,
+            allowOverwrite = false,
+        )
+
+        assertTrue(result.errors.isEmpty())
+        assertEquals("vanilla", File(gameDir, "Data/body.nif").readText())
+        assertEquals(0, result.backedUp)
+    }
+
+    @Test
     fun apply_overwriteCopyWithoutAllowOverwriteRejectsDifferentExistingFile() = runBlocking {
         File(extracted, "config.ini").writeText("modded")
         File(gameDir, "config.ini").writeText("original")

@@ -19,7 +19,10 @@ object ModPlacementSources {
                     if (path.isNotBlank()) add(path)
                 }
             }
-        }.getOrDefault(emptyList())
+        }.getOrElse {
+            val normalized = normalize(trimmed)
+            return if (normalized.isBlank()) emptyList() else listOf(normalized)
+        }
 
         return parsed.distinct()
     }

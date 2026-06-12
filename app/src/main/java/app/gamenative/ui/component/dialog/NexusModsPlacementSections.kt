@@ -56,12 +56,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.gamenative.R
 import app.gamenative.data.ModInstall
 import app.gamenative.data.ModInstallStatus
 import app.gamenative.data.ModPlacementMode
@@ -80,16 +82,17 @@ import java.io.File
 @Composable
 internal fun StatusChip(status: String) {
     val (label, color, contentColor) = when (status) {
-        ModInstallStatus.READY.name -> Triple("Ready", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
-        ModInstallStatus.APPLIED.name -> Triple("Applied", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
-        ModInstallStatus.DISABLED.name -> Triple("Disabled", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurfaceVariant)
-        ModInstallStatus.ERROR.name -> Triple("Failed", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
-        ModInstallStatus.IMPORTING.name -> Triple("Importing", MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
-        ModInstallStatus.PAUSED.name -> Triple("Paused", MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
-        ModInstallStatus.CANCELED.name -> Triple("Canceled", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurfaceVariant)
-        "PROFILE_DISABLED" -> Triple("Off in profile", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurfaceVariant)
-        "ENABLED" -> Triple("Enabled", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
-        "WINS" -> Triple("Wins", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
+        ModInstallStatus.READY.name -> Triple(stringResource(R.string.nexus_status_ready), MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
+        ModInstallStatus.APPLIED.name -> Triple(stringResource(R.string.nexus_status_applied), MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
+        ModInstallStatus.DISABLED.name -> Triple(stringResource(R.string.nexus_status_disabled), MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurfaceVariant)
+        ModInstallStatus.ERROR.name -> Triple(stringResource(R.string.nexus_status_failed), MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
+        ModInstallStatus.IMPORTING.name -> Triple(stringResource(R.string.nexus_status_importing), MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
+        ModInstallStatus.PAUSED.name -> Triple(stringResource(R.string.nexus_status_paused), MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
+        ModInstallStatus.CANCELED.name -> Triple(stringResource(R.string.nexus_status_canceled), MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurfaceVariant)
+        "PROFILE_DISABLED" -> Triple(stringResource(R.string.nexus_status_off_in_profile), MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurfaceVariant)
+        "NEEDS_PLACEMENT" -> Triple(stringResource(R.string.nexus_status_needs_placement), MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
+        "ENABLED" -> Triple(stringResource(R.string.nexus_status_enabled), MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
+        "WINS" -> Triple(stringResource(R.string.nexus_status_wins), MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
         else -> Triple(status.lowercase().replaceFirstChar { it.uppercase() }, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurfaceVariant)
     }
     Surface(shape = RoundedCornerShape(999.dp), color = color) {
@@ -118,6 +121,7 @@ internal fun PlacementSection(
     onAddDraft: () -> Unit,
     onRemoveDraft: (Int) -> Unit,
     onFomodRecipes: (List<RecipeDraft>, Int) -> Unit,
+    applyStatusMessage: String?,
     onSaveAndApply: () -> Unit,
 ) {
     var showArchiveBrowser by remember(install.installId, entries) { mutableStateOf(false) }
@@ -133,7 +137,7 @@ internal fun PlacementSection(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Column(Modifier.weight(1f)) {
-                    Text("Where should this mod go?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.nexus_placement_where_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text(install.modName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -141,10 +145,10 @@ internal fun PlacementSection(
             if (!install.canPlaceFiles()) {
                 Text(
                     text = when (install.status) {
-                        ModInstallStatus.IMPORTING.name -> "This mod is still importing."
-                        ModInstallStatus.PAUSED.name -> install.errorMessage().ifBlank { "This import is paused." }
-                        ModInstallStatus.CANCELED.name -> install.errorMessage().ifBlank { "This import was canceled." }
-                        else -> install.errorMessage().ifBlank { "This mod did not finish importing." }
+                        ModInstallStatus.IMPORTING.name -> stringResource(R.string.nexus_mod_still_importing)
+                        ModInstallStatus.PAUSED.name -> install.errorMessage().ifBlank { stringResource(R.string.nexus_import_paused) }
+                        ModInstallStatus.CANCELED.name -> install.errorMessage().ifBlank { stringResource(R.string.nexus_import_canceled) }
+                        else -> install.errorMessage().ifBlank { stringResource(R.string.nexus_mod_not_finished_importing) }
                     },
                     color = if (install.status == ModInstallStatus.ERROR.name) {
                         MaterialTheme.colorScheme.error
@@ -154,7 +158,7 @@ internal fun PlacementSection(
                 )
             } else {
                 if (entries.isEmpty()) {
-                    Text("This mod did not finish importing.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.nexus_mod_not_finished_importing), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 val firstDraft = drafts.firstOrNull()
@@ -212,9 +216,17 @@ internal fun PlacementSection(
 
                 if (!destinationsValid) {
                     Text(
-                        text = "Choose a destination inside this game or container.",
+                        text = stringResource(R.string.nexus_choose_destination_inside),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
+                    )
+                }
+
+                applyStatusMessage?.let { message ->
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
 
@@ -226,7 +238,7 @@ internal fun PlacementSection(
                                 OutlinedButton(onClick = onAddDraft, modifier = Modifier.fillMaxWidth()) {
                                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.size(8.dp))
-                                    Text("Add location")
+                                    Text(stringResource(R.string.nexus_add_location))
                                 }
                             }
                             Button(
@@ -236,7 +248,7 @@ internal fun PlacementSection(
                             ) {
                                 Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.size(8.dp))
-                                Text("Apply mod")
+                                Text(stringResource(R.string.nexus_apply_mod))
                             }
                         }
                     } else {
@@ -245,13 +257,13 @@ internal fun PlacementSection(
                                 OutlinedButton(onClick = onAddDraft) {
                                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.size(8.dp))
-                                    Text("Add location")
+                                    Text(stringResource(R.string.nexus_add_location))
                                 }
                             }
                             Button(onClick = onSaveAndApply, enabled = roots.isNotEmpty() && destinationsValid) {
                                 Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.size(8.dp))
-                                Text("Apply mod")
+                                Text(stringResource(R.string.nexus_apply_mod))
                             }
                         }
                     }
@@ -262,7 +274,7 @@ internal fun PlacementSection(
 
     if (showArchiveBrowser) {
         ArchiveBrowserDialog(
-            title = "Files in this mod",
+            title = stringResource(R.string.nexus_files_in_mod),
             entries = entries,
             onSelect = null,
             onDismiss = { showArchiveBrowser = false },
@@ -291,7 +303,7 @@ private fun PresetSelectionSection(
     onSelect: (List<RecipeDraft>) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Game presets", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        Text(stringResource(R.string.nexus_game_presets), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         presets.forEach { option ->
             val selected = option.drafts == selectedDrafts
             val content: @Composable () -> Unit = {
@@ -322,14 +334,14 @@ private fun PlacementChoiceSelector(
     onSelect: (PlacementChoice) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Placement", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        Text(stringResource(R.string.nexus_placement_label), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val compact = maxWidth < 420.dp
             val choices = listOf(
-                Triple(PlacementChoice.AUTOMATIC, "Automatic", true),
-                Triple(PlacementChoice.PRESET, "Preset", hasPresets),
-                Triple(PlacementChoice.LAST_USED, "Last used", canUseLastPlacement),
-                Triple(PlacementChoice.CUSTOM, "Custom", true),
+                Triple(PlacementChoice.AUTOMATIC, stringResource(R.string.nexus_placement_automatic), true),
+                Triple(PlacementChoice.PRESET, stringResource(R.string.nexus_placement_preset), hasPresets),
+                Triple(PlacementChoice.LAST_USED, stringResource(R.string.nexus_placement_last_used), canUseLastPlacement),
+                Triple(PlacementChoice.CUSTOM, stringResource(R.string.nexus_placement_custom), true),
             )
             val rows = if (compact) choices.chunked(2) else listOf(choices)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -382,22 +394,23 @@ private fun PlacementSummaryCard(
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 text = when (choice) {
-                    PlacementChoice.AUTOMATIC -> "Automatic placement"
-                    PlacementChoice.PRESET -> "Preset placement"
-                    PlacementChoice.LAST_USED -> "Last used placement"
-                    PlacementChoice.CUSTOM -> "Custom placement"
+                    PlacementChoice.AUTOMATIC -> stringResource(R.string.nexus_automatic_placement)
+                    PlacementChoice.PRESET -> stringResource(R.string.nexus_preset_placement)
+                    PlacementChoice.LAST_USED -> stringResource(R.string.nexus_last_used_placement)
+                    PlacementChoice.CUSTOM -> stringResource(R.string.nexus_custom_placement)
                 },
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(
-                text = "Destination Folder: ${placementSummary(draft, roots)}",
+                    text = stringResource(R.string.nexus_destination_folder_value, placementSummary(draft, roots, stringResource(R.string.nexus_base_folder))),
                 style = MaterialTheme.typography.bodyMedium,
             )
-            val sourceSummary = sourceSelectionSummary(draft.sourceSubpath)
-            if (sourceSummary != "Everything in the mod") {
+            val selectedSources = ModPlacementSources.decode(draft.sourceSubpath).filter { it.isNotBlank() }
+            val sourceSummary = sourceSelectionSummaryText(draft.sourceSubpath)
+            if (selectedSources.isNotEmpty()) {
                 Text(
-                    text = "Folder/file from the mod: $sourceSummary",
+                    text = stringResource(R.string.nexus_source_folder_value, sourceSummary),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -420,24 +433,24 @@ private fun ArchivePreview(
             val compact = maxWidth < 360.dp
             if (compact) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    Text("Files in this mod", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.nexus_files_in_mod), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     if (entries.isNotEmpty()) {
                         OutlinedButton(onClick = onBrowse, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(8.dp))
-                            Text("Browse")
+                            Text(stringResource(R.string.nexus_browse))
                         }
                     }
                 }
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Files in this mod", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.nexus_files_in_mod), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.weight(1f))
                     if (entries.isNotEmpty()) {
                         OutlinedButton(onClick = onBrowse) {
                             Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(8.dp))
-                            Text("Browse")
+                            Text(stringResource(R.string.nexus_browse))
                         }
                     }
                 }
@@ -446,7 +459,7 @@ private fun ArchivePreview(
         val shown = entries.take(30)
         if (shown.isEmpty()) {
             Text(
-                if (importFinished) "No extracted entries found." else "This mod did not finish importing.",
+                if (importFinished) stringResource(R.string.nexus_no_extracted_entries) else stringResource(R.string.nexus_mod_not_finished_importing),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
@@ -461,7 +474,7 @@ private fun ArchivePreview(
             }
             if (entries.size > shown.size) {
                 Text(
-                    "${entries.size - shown.size} more files available in Browse",
+                    stringResource(R.string.nexus_more_files_available_browse, entries.size - shown.size),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -487,33 +500,33 @@ private fun PlacementDraftEditor(
     Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Location ${index + 1}", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.nexus_location_number, index + 1), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
                 if (canRemove) {
                     IconButton(onClick = onRemove) {
-                        Icon(Icons.Default.Delete, contentDescription = "Remove placement row")
+                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.nexus_remove_placement_row))
                     }
                 }
             }
 
             PickerButton(
-                label = "Folder/file from the mod",
-                value = sourceSelectionSummary(draft.sourceSubpath),
+                label = stringResource(R.string.nexus_source_folder_label),
+                value = sourceSelectionSummaryText(draft.sourceSubpath),
                 icon = Icons.Default.FolderOpen,
                 onClick = { showSourcePicker = true },
             )
 
             PickerButton(
-                label = "Destination Folder",
-                value = placementSummary(draft, roots),
+                label = stringResource(R.string.nexus_destination_folder),
+                value = placementSummary(draft, roots, stringResource(R.string.nexus_base_folder)),
                 icon = Icons.Default.Folder,
                 onClick = { showDestinationPicker = true },
             )
             DestinationScopeText(draft, roots)
 
             DropdownField(
-                label = "Install method",
-                value = placementModeLabel(draft.mode),
-                options = ModPlacementMode.entries.map { placementModeLabel(it.name) to it.name },
+                label = stringResource(R.string.nexus_install_method),
+                value = placementModeLabelText(draft.mode),
+                options = ModPlacementMode.entries.map { placementModeLabelText(it.name) to it.name },
                 onSelect = { onUpdate(draft.copy(mode = it)) },
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -524,9 +537,9 @@ private fun PlacementDraftEditor(
                     onCheckedChange = { onUpdate(draft.copy(includeSourceDirectory = it)) },
                 )
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("Create a folder for the selection")
+                    Text(stringResource(R.string.nexus_create_folder_for_selection))
                     Text(
-                        text = "On: The selected folder is installed into the destination. Off: Only its contents are placed there.",
+                        text = stringResource(R.string.nexus_create_folder_for_selection_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -534,7 +547,7 @@ private fun PlacementDraftEditor(
             }
 
             TextButton(onClick = { showManualPaths = !showManualPaths }) {
-                Text(if (showManualPaths) "Hide manual paths" else "Manual paths")
+                Text(if (showManualPaths) stringResource(R.string.nexus_hide_manual_paths) else stringResource(R.string.nexus_manual_paths))
             }
 
             if (showManualPaths) {
@@ -542,8 +555,8 @@ private fun PlacementDraftEditor(
                     value = sourceManualText(draft.sourceSubpath),
                     onValueChange = { onUpdate(draft.copy(sourceSubpath = ModPlacementSources.encode(it.lines()))) },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Folders/files from the mod") },
-                    placeholder = { Text("One path per line. Blank means everything in the mod") },
+                    label = { Text(stringResource(R.string.nexus_source_folders_files_label)) },
+                    placeholder = { Text(stringResource(R.string.nexus_source_paths_placeholder)) },
                     singleLine = false,
                     minLines = 2,
                     maxLines = 4,
@@ -559,8 +572,8 @@ private fun PlacementDraftEditor(
                         onUpdate(draft.copy(targetRelativePath = normalized))
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Destination Folder") },
-                    placeholder = { Text("Blank means the base location") },
+                    label = { Text(stringResource(R.string.nexus_destination_folder)) },
+                    placeholder = { Text(stringResource(R.string.nexus_destination_placeholder)) },
                     singleLine = true,
                 )
             }
@@ -569,7 +582,7 @@ private fun PlacementDraftEditor(
 
     if (showSourcePicker) {
         ArchiveBrowserDialog(
-            title = "Choose from mod",
+            title = stringResource(R.string.nexus_choose_from_mod),
             entries = entries,
             onSelect = null,
             selectedPaths = ModPlacementSources.decode(draft.sourceSubpath)
@@ -617,6 +630,29 @@ private fun PickerButton(
 }
 
 @Composable
+private fun placementModeLabelText(mode: String): String = when (mode) {
+    ModPlacementMode.SYMLINK.name -> stringResource(R.string.nexus_mode_link_files)
+    ModPlacementMode.COPY.name -> stringResource(R.string.nexus_mode_copy_files)
+    ModPlacementMode.OVERWRITE_COPY.name -> stringResource(R.string.nexus_mode_overwrite_backup)
+    else -> mode
+}
+
+@Composable
+private fun sourceSelectionSummaryText(sourceSubpath: String): String {
+    val sources = ModPlacementSources.decode(sourceSubpath).filter { it.isNotBlank() }
+    return when (sources.size) {
+        0 -> stringResource(R.string.nexus_everything_in_mod)
+        1 -> sources.single()
+        else -> stringResource(
+            R.string.nexus_source_selected_summary,
+            sources.size,
+            sources.take(2).joinToString(", "),
+            if (sources.size > 2) ", ..." else "",
+        )
+    }
+}
+
+@Composable
 private fun DestinationScopeText(
     draft: RecipeDraft,
     roots: List<ResolvedModTargetRoot>,
@@ -624,9 +660,9 @@ private fun DestinationScopeText(
     val root = roots.firstOrNull { it.type.name == draft.targetRoot }
     Text(
         text = if (root != null) {
-            "Inside ${root.label}"
+            stringResource(R.string.nexus_inside_root, root.label)
         } else {
-            "Destination is not inside this game or container"
+            stringResource(R.string.nexus_destination_not_inside)
         },
         style = MaterialTheme.typography.bodySmall,
         color = if (root != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
@@ -649,7 +685,8 @@ private fun ArchiveBrowserDialog(
         mutableStateOf(selectedPaths.map(ModPlacementSources::normalize).filter { it.isNotBlank() }.toSet())
     }
     val children = remember(entries, currentPath) { archiveChildren(entries, currentPath) }
-    val breadcrumb = currentPath.ifBlank { "All files" }.replace("/", " / ")
+    val allFilesLabel = stringResource(R.string.nexus_all_files)
+    val breadcrumb = currentPath.ifBlank { allFilesLabel }.replace("/", " / ")
     val multiSelect = onSelectMultiple != null
 
     fun toggleSelection(path: String) {
@@ -690,8 +727,8 @@ private fun ArchiveBrowserDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", modifier = Modifier.size(18.dp))
-                            Text(parentArchivePath(currentPath).ifBlank { "All files" }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), modifier = Modifier.size(18.dp))
+                            Text(parentArchivePath(currentPath).ifBlank { allFilesLabel }, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
@@ -700,7 +737,7 @@ private fun ArchiveBrowserDialog(
 
                 if (entries.isEmpty()) {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("No extracted entries found.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.nexus_no_extracted_entries), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else if (children.isEmpty()) {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -711,7 +748,7 @@ private fun ArchiveBrowserDialog(
                                 modifier = Modifier.size(32.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Text("No files in this folder", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.nexus_no_files_in_folder), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 } else {
@@ -781,7 +818,7 @@ private fun ArchiveBrowserDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                     if (onSelectMultiple != null) {
                         OutlinedButton(
@@ -792,21 +829,21 @@ private fun ArchiveBrowserDialog(
                             },
                             modifier = Modifier.padding(start = 8.dp),
                         ) {
-                            Text(if (currentPath.isBlank()) "Use all files" else "Use this folder")
+                            Text(if (currentPath.isBlank()) stringResource(R.string.nexus_use_all_files) else stringResource(R.string.nexus_use_this_folder))
                         }
                         Button(
                             onClick = { onSelectMultiple(selected) },
                             enabled = selected.isNotEmpty(),
                             modifier = Modifier.padding(start = 8.dp),
                         ) {
-                            Text("Use selected")
+                            Text(stringResource(R.string.nexus_use_selected))
                         }
                     } else if (onSelect != null) {
                         Button(
                             onClick = { onSelect(currentPath) },
                             modifier = Modifier.padding(start = 8.dp),
                         ) {
-                            Text(if (currentPath.isBlank()) "Use all files" else "Use this folder")
+                            Text(if (currentPath.isBlank()) stringResource(R.string.nexus_use_all_files) else stringResource(R.string.nexus_use_this_folder))
                         }
                     }
                 }
@@ -892,9 +929,9 @@ private fun ContainerDestinationPickerDialog(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Destination Folder", style = MaterialTheme.typography.headlineSmall)
+                    Text(stringResource(R.string.nexus_destination_folder), style = MaterialTheme.typography.headlineSmall)
                     Text(
-                        text = if (currentDir == null) "Choose a game/container location" else breadcrumb,
+                        text = if (currentDir == null) stringResource(R.string.nexus_choose_game_container_location) else breadcrumb,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -919,7 +956,7 @@ private fun ContainerDestinationPickerDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", modifier = Modifier.size(18.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), modifier = Modifier.size(18.dp))
                             Text(currentDir?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
@@ -979,7 +1016,7 @@ private fun ContainerDestinationPickerDialog(
                                 modifier = Modifier.size(32.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Text("No subdirectories", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.nexus_no_subdirectories), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 } else {
@@ -1014,7 +1051,7 @@ private fun ContainerDestinationPickerDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                     val selectedRoot = currentRoot
                     val selectedDir = currentDir
@@ -1036,7 +1073,7 @@ private fun ContainerDestinationPickerDialog(
                             },
                             modifier = Modifier.padding(start = 8.dp),
                         ) {
-                            Text("Select")
+                            Text(stringResource(R.string.nexus_select))
                         }
                     }
                 }

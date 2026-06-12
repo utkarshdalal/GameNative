@@ -32,10 +32,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.gamenative.R
 import app.gamenative.data.ModInstall
 import app.gamenative.data.ModInstallStatus
 import app.gamenative.data.ModProfile
@@ -54,20 +56,20 @@ internal fun ProfilesSection(
     Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Mod profile", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.nexus_profile_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 OutlinedButton(onClick = onCreate) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.size(8.dp))
-                    Text("New")
+                    Text(stringResource(R.string.nexus_profile_new))
                 }
             }
             Text(
-                "Profiles save which mods are enabled and their file priority for this game.",
+                stringResource(R.string.nexus_profile_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (profiles.isEmpty()) {
-                Text("Default profile will be created automatically.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.nexus_profile_default_created), color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 profiles.forEach { profile ->
                     Row(
@@ -78,24 +80,24 @@ internal fun ProfilesSection(
                         Column(Modifier.weight(1f)) {
                             Text(profile.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             if (profile.profileId == activeProfile?.profileId) {
-                                Text("Active", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                Text(stringResource(R.string.nexus_profile_active), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                             }
                         }
                         if (profile.profileId != activeProfile?.profileId) {
                             TextButton(onClick = { onActivate(profile) }) {
-                                Text("Use")
+                                Text(stringResource(R.string.nexus_profile_use))
                             }
                         }
                         TextButton(onClick = { onRename(profile) }) {
                             Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.size(6.dp))
-                            Text("Rename")
+                            Text(stringResource(R.string.nexus_profile_rename))
                         }
                         IconButton(
                             onClick = { onDelete(profile) },
                             enabled = profiles.size > 1,
                         ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete profile")
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.nexus_profile_delete))
                         }
                     }
                 }
@@ -121,21 +123,21 @@ internal fun ProfileNameDialog(
                 value = name,
                 onValueChange = { name = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Profile name") },
+                label = { Text(stringResource(R.string.nexus_profile_name)) },
                 singleLine = true,
             )
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(name) },
+                onClick = { onConfirm(name.trim()) },
                 enabled = name.trim().isNotBlank(),
             ) {
-                Text("Save")
+                Text(stringResource(R.string.save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         },
     )
@@ -147,6 +149,7 @@ internal fun InstalledModsSection(
     priorityByInstallId: Map<String, Int>,
     enabledByInstallId: Map<String, Boolean>,
     selectedInstall: ModInstall?,
+    placementNeededInstallIds: Set<String>,
     onSelect: (ModInstall) -> Unit,
     onSetEnabled: (ModInstall, Boolean) -> Unit,
     onDelete: (ModInstall) -> Unit,
@@ -166,69 +169,76 @@ internal fun InstalledModsSection(
             val hasEnabledPlaceableMods = installs.any { it.canPlaceFiles() && isEnabledInProfile(it, enabledByInstallId) }
                 if (compact) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Mods & file priority", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.nexus_mods_file_priority_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         OutlinedButton(
                             onClick = onApplyOrder,
                             enabled = hasEnabledPlaceableMods,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text("Apply order", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(stringResource(R.string.nexus_apply_order), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Mods & file priority", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.nexus_mods_file_priority_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                         OutlinedButton(
                             onClick = onApplyOrder,
                             enabled = hasEnabledPlaceableMods,
                         ) {
-                            Text("Apply order")
+                            Text(stringResource(R.string.nexus_apply_order))
                         }
                     }
                 }
             if (installs.any { it.canPlaceFiles() }) {
                 Text(
-                    "Enable mods for this profile and choose which mod wins when files overlap. Mods higher in this list overwrite lower mods after Apply order.",
+                    stringResource(R.string.nexus_mods_file_priority_description),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             if (installs.isEmpty()) {
-                Text("No Nexus mods imported for this game yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.nexus_no_mods_imported), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             val orderedInstalls = installs
                 .sortedWith(compareByDescending<ModInstall> { priorityByInstallId[it.installId] ?: 0 }.thenBy { it.modName.lowercase() })
             val visibleInstalls = orderedInstalls.filter { install ->
+                val placementStatus = if (install.installId in placementNeededInstallIds) "needs placement" else ""
                 matchesNexusSearch(
                     modSearchQuery,
                     install.modName,
                     install.fileName,
                     install.status,
                     install.errorMessage(),
+                    placementStatus,
                     "priority ${priorityByInstallId[install.installId] ?: 0}",
                 )
             }
             if (installs.isNotEmpty()) {
                 NexusModsSearchField(
                     value = modSearchQuery,
-                    placeholder = "Search mods",
+                    placeholder = stringResource(R.string.nexus_search_mods),
                     onValueChange = { modSearchQuery = it },
                 )
                 if (modSearchQuery.isNotBlank()) {
                     Text(
-                        "${visibleInstalls.size} of ${orderedInstalls.size} mod(s) shown",
+                        stringResource(R.string.nexus_mods_shown, visibleInstalls.size, orderedInstalls.size),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
             if (visibleInstalls.isEmpty() && installs.isNotEmpty()) {
-                Text("No mods match your search.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.nexus_no_mods_match), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             visibleInstalls
                 .forEach { install ->
                     val index = orderedInstalls.indexOfFirst { it.installId == install.installId }
                     val enabledInProfile = isEnabledInProfile(install, enabledByInstallId)
+                    val status = if (install.installId in placementNeededInstallIds) {
+                        "NEEDS_PLACEMENT"
+                    } else {
+                        install.profileStatus(enabledInProfile)
+                    }
                     if (compact) {
                         Column(
                             modifier = Modifier
@@ -248,9 +258,9 @@ internal fun InstalledModsSection(
                                     tint = if (selectedInstall?.installId == install.installId) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(22.dp),
                                 )
-                                InstalledModTitle(install, maxNameLines = 1, modifier = Modifier.weight(1f))
+                                InstalledModTitle(install, maxNameLines = 2, modifier = Modifier.weight(1f))
                                 IconButton(onClick = { onDelete(install) }, modifier = Modifier.size(38.dp)) {
-                                    Icon(Icons.Default.Delete, contentDescription = if (install.canRetryImport()) "Remove" else "Delete")
+                                    Icon(Icons.Default.Delete, contentDescription = if (install.canRetryImport()) stringResource(R.string.nexus_remove) else stringResource(R.string.delete))
                                 }
                             }
                             Row(
@@ -258,7 +268,7 @@ internal fun InstalledModsSection(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                StatusChip(if (install.canPlaceFiles() && !enabledInProfile) "PROFILE_DISABLED" else install.status)
+                                StatusChip(status)
                                 if (install.canPlaceFiles()) {
                                     Text(
                                         text = "P${priorityByInstallId[install.installId] ?: 0}",
@@ -273,7 +283,7 @@ internal fun InstalledModsSection(
                                     }
                                 } else if (install.canPlaceFiles()) {
                                     TextButton(onClick = { onSetEnabled(install, !enabledInProfile) }) {
-                                        Text(if (enabledInProfile) "Disable" else "Enable")
+                                        Text(if (enabledInProfile) stringResource(R.string.nexus_disable) else stringResource(R.string.nexus_enable))
                                     }
                                 }
                                 if (install.canPlaceFiles()) {
@@ -282,14 +292,14 @@ internal fun InstalledModsSection(
                                         enabled = index > 0,
                                         modifier = Modifier.size(36.dp),
                                     ) {
-                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move up")
+                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.nexus_move_up))
                                     }
                                     IconButton(
                                         onClick = { onMovePriority(install.installId, 1) },
                                         enabled = index < orderedInstalls.lastIndex,
                                         modifier = Modifier.size(36.dp),
                                     ) {
-                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move down")
+                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.nexus_move_down))
                                     }
                                 }
                             }
@@ -315,7 +325,7 @@ internal fun InstalledModsSection(
                                 InstalledModTitle(install, maxNameLines = 1)
                                 InstalledModMetadata(install, priorityByInstallId[install.installId] ?: 0, enabledInProfile, errorMaxLines = 1)
                             }
-                            StatusChip(if (install.canPlaceFiles() && !enabledInProfile) "PROFILE_DISABLED" else install.status)
+                            StatusChip(status)
                             if (install.canRetryImport()) {
                                 TextButton(onClick = { onRetry(install) }) {
                                     Text(retryLabel(install), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -323,18 +333,18 @@ internal fun InstalledModsSection(
                             } else if (install.canPlaceFiles()) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                                     IconButton(onClick = { onMovePriority(install.installId, -1) }, enabled = index > 0) {
-                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move up")
+                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.nexus_move_up))
                                     }
                                     IconButton(onClick = { onMovePriority(install.installId, 1) }, enabled = index < orderedInstalls.lastIndex) {
-                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move down")
+                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.nexus_move_down))
                                     }
                                 }
                                 TextButton(onClick = { onSetEnabled(install, !enabledInProfile) }) {
-                                    Text(if (enabledInProfile) "Disable" else "Enable")
+                                    Text(if (enabledInProfile) stringResource(R.string.nexus_disable) else stringResource(R.string.nexus_enable))
                                 }
                             }
                             IconButton(onClick = { onDelete(install) }) {
-                                Icon(Icons.Default.Delete, contentDescription = if (install.canRetryImport()) "Remove" else "Delete")
+                                Icon(Icons.Default.Delete, contentDescription = if (install.canRetryImport()) stringResource(R.string.nexus_remove) else stringResource(R.string.delete))
                             }
                         }
                     }
@@ -344,9 +354,10 @@ internal fun InstalledModsSection(
     }
 }
 
+@Composable
 private fun retryLabel(install: ModInstall): String {
-    if (install.status == ModInstallStatus.PAUSED.name) return "Resume"
-    if (install.status == ModInstallStatus.CANCELED.name) return "Retry"
+    if (install.status == ModInstallStatus.PAUSED.name) return stringResource(R.string.nexus_resume)
+    if (install.status == ModInstallStatus.CANCELED.name) return stringResource(R.string.nexus_retry)
     val error = install.errorMessage().lowercase()
     val archive = install.archivePath.takeIf(String::isNotBlank)?.let(::File)
     val retainedArchive = archive?.isFile == true ||
@@ -360,7 +371,7 @@ private fun retryLabel(install: ModInstall): String {
         "does not exist",
         "unsupported archive type: .part",
     ).any(error::contains)
-    return if (retainedArchive && !downloadError) "Retry unpack" else "Retry download"
+    return if (retainedArchive && !downloadError) stringResource(R.string.nexus_retry_unpack) else stringResource(R.string.nexus_retry_download)
 }
 
 @Composable
@@ -390,14 +401,18 @@ private fun InstalledModMetadata(
 ) {
     if (install.canPlaceFiles()) {
         Text(
-            "Priority $priority - ${if (enabledInProfile) "Enabled in profile" else "Disabled in profile"}",
+            stringResource(
+                R.string.nexus_mod_priority_state,
+                priority,
+                if (enabledInProfile) stringResource(R.string.nexus_enabled_in_profile) else stringResource(R.string.nexus_disabled_in_profile),
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
     if (install.canRetryImport()) {
         Text(
-            install.errorMessage().ifBlank { "This mod did not finish importing." },
+            install.errorMessage().ifBlank { stringResource(R.string.nexus_mod_not_finished_importing) },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
             maxLines = errorMaxLines,
@@ -419,15 +434,15 @@ internal fun ConflictSummarySection(
     Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("File overwrite conflicts", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.nexus_file_conflicts_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 if (groups.size > 8) {
                     TextButton(onClick = { showAllConflicts = !showAllConflicts }) {
-                        Text(if (showAllConflicts) "Show fewer" else "Show all")
+                        Text(if (showAllConflicts) stringResource(R.string.nexus_show_fewer) else stringResource(R.string.nexus_show_all))
                     }
                 }
             }
             Text(
-                text = "These mods install some of the same files. The higher-priority mod wins when you apply order.",
+                text = stringResource(R.string.nexus_file_conflicts_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -437,7 +452,7 @@ internal fun ConflictSummarySection(
                     Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         val visiblePathLimit = if (showAllConflicts) 10 else 4
                         Text(
-                            text = "${group.conflicts.size} file conflict(s)",
+                            text = stringResource(R.string.nexus_file_conflicts_count, group.conflicts.size),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -452,13 +467,17 @@ internal fun ConflictSummarySection(
                         }
                         if (group.conflicts.size > visiblePathLimit) {
                             Text(
-                                text = "${group.conflicts.size - visiblePathLimit} more file(s) in this conflict set",
+                                text = stringResource(R.string.nexus_more_files_in_conflict, group.conflicts.size - visiblePathLimit),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                        val participantNames = group.conflicts.firstOrNull()
+                            ?.participants
+                            ?.joinToString(stringResource(R.string.nexus_conflict_participant_separator)) { it.modName }
+                            .orEmpty()
                         Text(
-                            text = group.participantNames,
+                            text = participantNames,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2,
@@ -467,7 +486,7 @@ internal fun ConflictSummarySection(
                         val winner = conflict.participants.firstOrNull { it.wins }
                         if (winner != null) {
                             Text(
-                                text = "${winner.modName} wins over ${conflict.participants.size - 1} other mod(s)",
+                                text = stringResource(R.string.nexus_conflict_winner_summary, winner.modName, conflict.participants.size - 1),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 maxLines = 2,
@@ -490,7 +509,7 @@ internal fun ConflictSummarySection(
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                     Text(
-                                        text = "Priority ${participant.priority} - ${File(participant.sourcePath).name}",
+                                        text = stringResource(R.string.nexus_participant_priority, participant.priority, File(participant.sourcePath).name),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
@@ -501,23 +520,23 @@ internal fun ConflictSummarySection(
                                     StatusChip("WINS")
                                 } else {
                                     TextButton(onClick = { onMakeWinner(participant.installId) }) {
-                                        Text("Win")
+                                        Text(stringResource(R.string.nexus_win))
                                     }
                                 }
                                 TextButton(onClick = { onSelectInstall(participant.installId) }) {
-                                    Text("Open")
+                                    Text(stringResource(R.string.nexus_open))
                                 }
                                 IconButton(
                                     onClick = { onMovePriority(participant.installId, -1) },
                                     modifier = Modifier.size(36.dp),
                                 ) {
-                                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move up")
+                                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.nexus_move_up))
                                 }
                             }
                         }
                         if (!showAllConflicts && conflict.participants.size > 4) {
                             Text(
-                                "${conflict.participants.size - 4} more conflicting mod(s)",
+                                stringResource(R.string.nexus_more_conflicting_mods, conflict.participants.size - 4),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -527,7 +546,7 @@ internal fun ConflictSummarySection(
             }
             if (!showAllConflicts && groups.size > 8) {
                 Text(
-                    text = "${groups.size - 8} more conflict set(s)",
+                    text = stringResource(R.string.nexus_more_conflict_sets, groups.size - 8),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -538,13 +557,7 @@ internal fun ConflictSummarySection(
 
 private data class ConflictGroup(
     val conflicts: List<ModFileConflictReport>,
-) {
-    val participantNames: String =
-        conflicts.firstOrNull()
-            ?.participants
-            ?.joinToString(" vs ") { it.modName }
-            .orEmpty()
-}
+)
 
 private fun List<ModFileConflictReport>.groupedByParticipants(): List<ConflictGroup> =
     groupBy { conflict ->

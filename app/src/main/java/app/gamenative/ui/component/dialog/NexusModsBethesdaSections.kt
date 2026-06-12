@@ -23,9 +23,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.gamenative.R
 import app.gamenative.mods.BethesdaGame
 import app.gamenative.mods.BethesdaPlugin
 import app.gamenative.mods.BethesdaPluginAssetIssue
@@ -45,15 +47,15 @@ internal fun BethesdaPluginDiagnosticsSection(
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Plugin warnings", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.nexus_plugin_warnings_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             }
             Text(
                 text = if (hasBlockingIssues) {
-                    "These plugin files may be missing, disabled, or loading in the wrong order. Fix these before launching the game."
+                    stringResource(R.string.nexus_plugin_warnings_blocking_description)
                 } else if (assetIssues.isNotEmpty()) {
-                    "Some enabled plugins are missing files in the game folder. Apply order can restore them from the mod cache."
+                    stringResource(R.string.nexus_plugin_warnings_missing_files_description)
                 } else {
-                    "Review these plugin load order warnings before launching the game."
+                    stringResource(R.string.nexus_plugin_warnings_general_description)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = if (hasBlockingIssues) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -64,7 +66,7 @@ internal fun BethesdaPluginDiagnosticsSection(
                         Text(issue.plugin.fileName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                         issue.missingMasters.takeIf { it.isNotEmpty() }?.let { masters ->
                             Text(
-                                text = "Missing masters: ${masters.joinToString(", ")}",
+                                text = stringResource(R.string.nexus_missing_masters, masters.joinToString(", ")),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error,
                                 maxLines = 2,
@@ -73,7 +75,7 @@ internal fun BethesdaPluginDiagnosticsSection(
                         }
                         issue.disabledMasters.takeIf { it.isNotEmpty() }?.let { masters ->
                             Text(
-                                text = "Disabled masters: ${masters.joinToString(", ")}",
+                                text = stringResource(R.string.nexus_disabled_masters, masters.joinToString(", ")),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error,
                                 maxLines = 2,
@@ -82,7 +84,7 @@ internal fun BethesdaPluginDiagnosticsSection(
                         }
                         issue.lateMasters.takeIf { it.isNotEmpty() }?.let { masters ->
                             Text(
-                                text = "Load before this plugin: ${masters.joinToString(", ")}",
+                                text = stringResource(R.string.nexus_load_before_plugin, masters.joinToString(", ")),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 2,
@@ -97,7 +99,7 @@ internal fun BethesdaPluginDiagnosticsSection(
                     Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(issue.plugin.fileName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                         Text(
-                            text = issue.deployedAssetWarning(),
+                            text = issue.deployedAssetWarningText(),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
@@ -106,7 +108,7 @@ internal fun BethesdaPluginDiagnosticsSection(
             }
             if (issues.size > 6 || assetIssues.size > 6) {
                 TextButton(onClick = { showAllWarnings = !showAllWarnings }) {
-                    Text(if (showAllWarnings) "Show fewer warnings" else "Show all warnings")
+                    Text(if (showAllWarnings) stringResource(R.string.nexus_show_fewer_warnings) else stringResource(R.string.nexus_show_all_warnings))
                 }
             }
         }
@@ -139,40 +141,40 @@ internal fun BethesdaPluginsSection(
     Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Plugin load order", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.nexus_plugin_load_order_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 if (pluginSearchQuery.isBlank() && filteredPlugins.size > 24) {
                     TextButton(onClick = { showAllPlugins = !showAllPlugins }) {
-                        Text(if (showAllPlugins) "Show fewer" else "Show all")
+                        Text(if (showAllPlugins) stringResource(R.string.nexus_show_fewer) else stringResource(R.string.nexus_show_all))
                     }
                 }
             }
             Text(
-                text = game?.displayName ?: "Bethesda game",
+                text = game?.displayName ?: stringResource(R.string.nexus_bethesda_game),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "Controls the order Bethesda plugin files load in-game. This is separate from mod file priority. Masters must load before plugins that depend on them.",
+                text = stringResource(R.string.nexus_plugin_load_order_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (plugins.isEmpty()) {
-                Text("No plugin files found in installed mods.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.nexus_no_plugin_files), color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 NexusModsSearchField(
                     value = pluginSearchQuery,
-                    placeholder = "Search plugins",
+                    placeholder = stringResource(R.string.nexus_search_plugins),
                     onValueChange = { pluginSearchQuery = it },
                 )
                 if (pluginSearchQuery.isNotBlank()) {
                     Text(
-                        "${filteredPlugins.size} of ${plugins.size} plugin(s) shown",
+                        stringResource(R.string.nexus_plugins_shown, filteredPlugins.size, plugins.size),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 if (visiblePlugins.isEmpty()) {
-                    Text("No plugins match your search.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.nexus_no_plugins_match), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 visiblePlugins.forEach { plugin ->
                     val index = plugins.indexOfFirst { it.fileName == plugin.fileName }
@@ -186,7 +188,7 @@ internal fun BethesdaPluginsSection(
                             onCheckedChange = { onToggle(plugin) },
                         )
                         Column(Modifier.weight(1f)) {
-                            Text(plugin.fileName, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(plugin.fileName, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Text(
                                 plugin.modName.orEmpty(),
                                 style = MaterialTheme.typography.bodySmall,
@@ -196,9 +198,9 @@ internal fun BethesdaPluginsSection(
                             )
                             issuesByPlugin[plugin.fileName.lowercase()]?.let { issue ->
                                 val warning = when {
-                                    issue.missingMasters.isNotEmpty() -> "Missing: ${issue.missingMasters.joinToString(", ")}"
-                                    issue.disabledMasters.isNotEmpty() -> "Disabled master: ${issue.disabledMasters.joinToString(", ")}"
-                                    issue.lateMasters.isNotEmpty() -> "Load earlier: ${issue.lateMasters.joinToString(", ")}"
+                                    issue.missingMasters.isNotEmpty() -> stringResource(R.string.nexus_missing_short, issue.missingMasters.joinToString(", "))
+                                    issue.disabledMasters.isNotEmpty() -> stringResource(R.string.nexus_disabled_master_short, issue.disabledMasters.joinToString(", "))
+                                    issue.lateMasters.isNotEmpty() -> stringResource(R.string.nexus_load_earlier_short, issue.lateMasters.joinToString(", "))
                                     else -> ""
                                 }
                                 if (warning.isNotBlank()) {
@@ -213,7 +215,7 @@ internal fun BethesdaPluginsSection(
                                         )
                                         if (issue.lateMasters.isNotEmpty()) {
                                             TextButton(onClick = { onFixOrder(plugin, issue.lateMasters) }) {
-                                                Text("Fix order")
+                                                Text(stringResource(R.string.nexus_fix_order))
                                             }
                                         }
                                     }
@@ -221,7 +223,7 @@ internal fun BethesdaPluginsSection(
                             }
                             assetIssuesByPlugin[plugin.fileName.lowercase()]?.let { issue ->
                                 Text(
-                                    text = issue.deployedAssetWarning(),
+                                    text = issue.deployedAssetWarningText(),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.error,
                                 )
@@ -232,20 +234,20 @@ internal fun BethesdaPluginsSection(
                                 onClick = { onMove(plugin, -1) },
                                 enabled = index > 0,
                             ) {
-                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move up")
+                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.nexus_move_up))
                             }
                             IconButton(
                                 onClick = { onMove(plugin, 1) },
                                 enabled = index < plugins.lastIndex,
                             ) {
-                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move down")
+                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.nexus_move_down))
                             }
                         }
                     }
                 }
                 if (pluginSearchQuery.isBlank() && !showAllPlugins && filteredPlugins.size > 24) {
                     Text(
-                        text = "${filteredPlugins.size - 24} more plugin(s)",
+                        text = stringResource(R.string.nexus_more_plugins, filteredPlugins.size - 24),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -255,15 +257,16 @@ internal fun BethesdaPluginsSection(
     }
 }
 
-private fun BethesdaPluginAssetIssue.deployedAssetWarning(): String {
+@Composable
+private fun BethesdaPluginAssetIssue.deployedAssetWarningText(): String {
     val pluginMissing = missingFiles.any { it.equals(plugin.fileName, ignoreCase = true) }
     val sidecars = missingFiles.filterNot { it.equals(plugin.fileName, ignoreCase = true) }
     return when {
         pluginMissing && sidecars.isNotEmpty() ->
-            "This enabled plugin is missing from the game folder. Apply order can restore it. Related archive files are missing: ${sidecars.joinToString(", ")}"
+            stringResource(R.string.nexus_plugin_missing_with_sidecars, sidecars.joinToString(", "))
         pluginMissing ->
-            "This enabled plugin is missing from the game folder. Apply order can restore it."
+            stringResource(R.string.nexus_plugin_missing_file)
         else ->
-            "Related archive files are missing from the game folder: ${sidecars.joinToString(", ")}"
+            stringResource(R.string.nexus_plugin_missing_sidecars, sidecars.joinToString(", "))
     }
 }
