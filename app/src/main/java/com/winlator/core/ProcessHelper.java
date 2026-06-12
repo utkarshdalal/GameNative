@@ -3,9 +3,12 @@ package com.winlator.core;
 import android.os.Process;
 import android.util.Log;
 
+import app.gamenative.BuildConfig;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,8 +16,13 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public abstract class ProcessHelper {
     public static final boolean PRINT_DEBUG = true; // FIXME change to false
@@ -23,6 +31,11 @@ public abstract class ProcessHelper {
     private static final byte SIGSTOP = 19;
     private static final byte SIGTERM = 15;
     private static final byte SIGKILL = 9;
+
+    /** Set true when a pause sweep is in progress; cleared by resumeAllWineProcesses() so the
+     *  background verification thread does not re-stop processes that were already resumed. */
+    private static volatile boolean pauseActive = false;
+    private static final Object pauseSignalLock = new Object();
 
     public static void suspendProcess(int pid) {
         Process.sendSignal(pid, SIGSTOP);
@@ -83,14 +96,79 @@ public abstract class ProcessHelper {
     }
 
     public static void pauseAllWineProcesses() {
-        for (String process : listRunningWineProcesses()) {
-            suspendProcess(Integer.parseInt(process));
+        pauseActive = true;
+        final List<String> pids = listRunningWineProcesses();
+        final Set<String> pidSet = new HashSet<>(pids); // O(1) lookup in second sweep
+
+        // Send SIGSTOP immediately on the calling thread so processes stop as fast as possible.
+        for (String pid : pids) {
+            suspendProcess(Integer.parseInt(pid));
         }
+
+        // Verify + retry on a background thread — never block the caller (may be the main thread).
+        //noinspection resource — shutdown() is called after execute(); try-with-resources not available on Android Java 8
+        ExecutorService verifier = Executors.newSingleThreadExecutor();
+        verifier.execute(() -> {
+            // Give the kernel 50 ms to deliver SIGSTOP before reading /proc status.
+            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+
+            // Bail out if resumeAllWineProcesses() was called before we woke up.
+            if (!pauseActive) return;
+
+            // Retry any process whose signal was silently dropped (e.g. SELinux deny).
+            for (String pid : pids) {
+                synchronized (pauseSignalLock) {
+                    if (!pauseActive) return;
+                    int parsedPid = Integer.parseInt(pid);
+                    if (!isProcessStopped(parsedPid)) {
+                        suspendProcess(parsedPid);
+                    }
+                }
+            }
+
+            // Second sweep: stop any Wine processes that spawned after the first scan.
+            for (String pid : listRunningWineProcesses()) {
+                synchronized (pauseSignalLock) {
+                    if (!pauseActive) return;
+                    if (!pidSet.contains(pid)) {
+                        suspendProcess(Integer.parseInt(pid));
+                    }
+                }
+            }
+        });
+        verifier.shutdown(); // no new tasks; existing task runs to completion
+    }
+
+    private static boolean isProcessStopped(int pid) {
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(new FileInputStream("/proc/" + pid + "/status")))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.startsWith("State:")) {
+                    // Extract the single state character after "State:" and optional whitespace.
+                    // 'T' = stopped (SIGSTOP), 't' = tracing stop — both mean suspended.
+                    String trimmed = line.substring("State:".length()).trim();
+                    char state = trimmed.isEmpty() ? 0 : trimmed.charAt(0);
+                    return state == 'T' || state == 't';
+                }
+            }
+        } catch (FileNotFoundException ignored) {
+            // Process already gone — counts as stopped.
+        } catch (IOException ignored) {
+            // Unreadable status (unlikely for same-UID process) — assume not stopped so retry fires.
+            return false;
+        }
+        return true;
     }
 
     public static void resumeAllWineProcesses() {
-        for (String process : listRunningWineProcesses()) {
-            resumeProcess(Integer.parseInt(process));
+        // Clear the flag and send SIGCONT atomically with the pause-signal lock so the
+        // background verifier thread cannot re-stop a process after we send SIGCONT.
+        synchronized (pauseSignalLock) {
+            pauseActive = false;
+            for (String process : listRunningWineProcesses()) {
+                resumeProcess(Integer.parseInt(process));
+            }
         }
     }
 
@@ -104,6 +182,74 @@ public abstract class ProcessHelper {
 
     public static int exec(String command, String[] envp, File workingDir) {
         return exec(command, envp, workingDir, null);
+    }
+
+    // Execute the command and capture its output.
+    // Use ProcessBuilder to merge stderr into stdout
+    // Deadlock-safe strategy:
+    //   includeStderr=true  - redirectErrorStream(true): stderr merged into stdout at the OS
+    //                         level, single pipe, zero deadlock risk.
+    //   includeStderr=false - streams are kept separate; a daemon thread drains and discards
+    //                         stderr concurrently so the 64 KB pipe buffer never fills while
+    //                         the main thread reads stdout. This keeps stdout clean for callers
+    //                         such as SteamTokenLogin
+    public static String execWithOutput(String command, String[] envp, File workingDir, boolean includeStderr) {
+        StringBuilder output = new StringBuilder();
+        final StringBuilder stdoutBuf = new StringBuilder();
+        final StringBuilder stderrBuf = new StringBuilder();
+        Thread stdoutDrainer = null;
+        Thread stderrDrainer = null;
+        try {
+            Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
+            ProcessBuilder pb = new ProcessBuilder(splitCommand(command));
+            Map<String, String> env = pb.environment();
+            env.clear();
+            if (envp != null) {
+                for (String kv : envp) {
+                    int eq = kv.indexOf('=');
+                    if (eq > 0) env.put(kv.substring(0, eq), kv.substring(eq + 1));
+                }
+            }
+            if (workingDir != null) pb.directory(workingDir);
+
+            java.lang.Process process = pb.start();
+
+            final InputStream stdoutStream = process.getInputStream();
+            stdoutDrainer = new Thread(() -> {
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(stdoutStream))) {
+                    String l;
+                    while ((l = r.readLine()) != null) stdoutBuf.append(l).append("\n");
+                } catch (IOException ignored) {}
+            }, "stdout-drainer");
+            stdoutDrainer.setDaemon(true);
+            stdoutDrainer.start();
+
+            final InputStream stderrStream = process.getErrorStream();
+            stderrDrainer = new Thread(() -> {
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(stderrStream))) {
+                    String l;
+                    while ((l = r.readLine()) != null) {
+                        if (includeStderr) stderrBuf.append(l).append("\n");
+                    }
+                } catch (IOException ignored) {}
+            }, "stderr-drainer");
+            stderrDrainer.setDaemon(true);
+            stderrDrainer.start();
+
+            process.waitFor();
+            try { stdoutStream.close(); } catch (IOException ignored) {}
+            try { stderrStream.close(); } catch (IOException ignored) {}
+            stdoutDrainer.join(5_000);
+            stderrDrainer.join(5_000);
+
+            output.append(stdoutBuf);
+            if (includeStderr) output.append(stderrBuf);
+        } catch (Exception e) {
+            output.append("Error: ").append(e.getMessage());
+        }
+
+        return output.toString().trim();
     }
 
     public static class ProcessInfo {
@@ -128,6 +274,7 @@ public abstract class ProcessHelper {
         int pid = -1;
         java.lang.Process process = null;
         try {
+            if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
             Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
             process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
 
@@ -152,6 +299,23 @@ public abstract class ProcessHelper {
             if (terminationCallback != null) terminationCallback.call(-1);
         }
         return pid;
+    }
+
+    public static java.lang.Process startProcess(String command, String[] envp, File workingDir) {
+        try {
+            Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
+            java.lang.Process process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
+            if (!debugCallbacks.isEmpty()) {
+                createDebugThread(process.getInputStream());
+                createDebugThread(process.getErrorStream());
+            }
+
+            return process;
+        } catch (Exception e) {
+            Log.e("ProcessHelper", "Failed to execute command: " + e);
+            return null;
+        }
     }
 
     public static List<ProcessInfo> listSubProcesses() {
@@ -224,6 +388,9 @@ public abstract class ProcessHelper {
                         }
                     }
                 }
+            }
+            catch (java.io.InterruptedIOException e) {
+                // Expected when process.destroy() is called - silently ignore
             }
             catch (IOException e) {
                 Log.e("ProcessHelper", "Error on debug thread: " + e);
@@ -387,13 +554,15 @@ public abstract class ProcessHelper {
             }
         });
 
+        String procFile = "/cmdline";
         for (int index = 0; index < allPids.length; index++){
             String data = "";
             try (
-                FileInputStream fr = new FileInputStream(proc + "/" + allPids[index] + "/stat");
+                FileInputStream fr = new FileInputStream(proc + "/" + allPids[index] + procFile);
                 BufferedReader br = new BufferedReader(new InputStreamReader(fr));
             ) {
-                data = br.readLine();
+                String line = br.readLine();
+                if (line != null) data = line;
             }
             catch (IOException e) {}
             for (String filter : filterList) {

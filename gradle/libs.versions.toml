@@ -1,7 +1,7 @@
 [versions]
 activityCompose = "1.10.0" # https://mvnrepository.com/artifact/androidx.activity/activity-compose
 agp = "8.8.0" # https://mvnrepository.com/artifact/com.android.application/com.android.application.gradle.plugin
-apache-compress = "1.27.1" # https://mvnrepository.com/artifact/org.apache.commons/commons-compress
+apache-compress = "1.28.0" # https://mvnrepository.com/artifact/org.apache.commons/commons-compress
 apng = "3.0.2" # https://mvnrepository.com/artifact/com.github.penfeizhou.android.animation/apng
 composeBom = "2025.01.01" # https://mvnrepository.com/artifact/androidx.compose/compose-bom
 coreKtx = "1.15.0" # https://mvnrepository.com/artifact/androidx.core/core-ktx
@@ -12,7 +12,7 @@ espressoCore = "3.6.1" # https://mvnrepository.com/artifact/androidx.test.espres
 feature-delivery = "2.1.0" # https://mvnrepository.com/artifact/com.google.android.play/feature-delivery
 play-integrity = "1.6.0" # https://mvnrepository.com/artifact/com.google.android.play/integrity
 hiltNavigationCompose = "1.2.0" # https://mvnrepository.com/artifact/androidx.hilt/hilt-navigation-compose
-javasteam = "1.8.0.1-18-SNAPSHOT" # https://mvnrepository.com/artifact/in.dragonbra/javasteam
+javasteam = "1.8.0.1-19-SNAPSHOT" # https://mvnrepository.com/artifact/in.dragonbra/javasteam
 json = "1.8.0" # https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json
 junit = "4.13.2" # https://mvnrepository.com/artifact/junit/junit
 junitVersion = "1.2.1" # https://mvnrepository.com/artifact/androidx.test.ext/junit

@@ -31,6 +31,11 @@ import app.gamenative.data.TouchGestureConfig.Companion.ACTION_LEFT_CLICK
 import app.gamenative.data.TouchGestureConfig.Companion.ACTION_MIDDLE_CLICK
 import app.gamenative.data.TouchGestureConfig.Companion.ACTION_RIGHT_CLICK
 import app.gamenative.data.TouchGestureConfig.Companion.ACTION_SHOW_KEYBOARD
+import app.gamenative.data.TouchGestureConfig.Companion.MOUSE_BEHAVIOR_CLICK
+import app.gamenative.data.TouchGestureConfig.Companion.MOUSE_BEHAVIOR_HOLD
+import app.gamenative.data.TouchGestureConfig.Companion.MOUSE_DRAG_MOVEMENT_DIRECT
+import app.gamenative.data.TouchGestureConfig.Companion.MOUSE_DRAG_MOVEMENT_MODES
+import app.gamenative.data.TouchGestureConfig.Companion.MOUSE_DRAG_MOVEMENT_RELATIVE
 import app.gamenative.data.TouchGestureConfig.Companion.PAN_ACTIONS
 import app.gamenative.data.TouchGestureConfig.Companion.PAN_ARROW_KEYS
 import app.gamenative.data.TouchGestureConfig.Companion.PAN_LEFT_CLICK_DRAG
@@ -129,6 +134,22 @@ fun TouchGestureSettingsDialog(
                     )
                 }
 
+                GestureRow(
+                    title = stringResource(R.string.gesture_hold_mouse_button_while_touching),
+                    subtitle = tapHoldActionLabel(config.holdMouseButtonWhileTouchingAction),
+                    enabled = config.holdMouseButtonWhileTouchingEnabled,
+                    onEnabledChange = {
+                        config = config.copy(holdMouseButtonWhileTouchingEnabled = it)
+                    },
+                ) {
+                    MouseButtonActionPicker(
+                        currentAction = config.holdMouseButtonWhileTouchingAction,
+                        onActionSelected = {
+                            config = config.copy(holdMouseButtonWhileTouchingAction = it)
+                        },
+                    )
+                }
+
                 // ── Double-Tap (fixed action, customisable delay) ────────
                 GestureRow(
                     title = stringResource(R.string.gesture_double_tap),
@@ -146,13 +167,18 @@ fun TouchGestureSettingsDialog(
                 // ── Long Press (customisable action + delay) ─────────────
                 GestureRow(
                     title = stringResource(R.string.gesture_long_press),
-                    subtitle = tapHoldActionLabel(config.longPressAction),
+                    subtitle = holdGestureSubtitle(config.longPressAction, config.longPressMouseBehavior),
                     enabled = config.longPressEnabled,
                     onEnabledChange = { config = config.copy(longPressEnabled = it) },
                 ) {
                     TapHoldActionPicker(
                         currentAction = config.longPressAction,
                         onActionSelected = { config = config.copy(longPressAction = it) },
+                    )
+                    MouseHoldBehaviorPicker(
+                        action = config.longPressAction,
+                        currentBehavior = config.longPressMouseBehavior,
+                        onBehaviorSelected = { config = config.copy(longPressMouseBehavior = it) },
                     )
                     DelayTextField(
                         label = stringResource(R.string.gesture_long_press_delay),
@@ -201,13 +227,18 @@ fun TouchGestureSettingsDialog(
                 // ── Two-Finger Hold (customisable action + delay) ────────
                 GestureRow(
                     title = stringResource(R.string.gesture_two_finger_hold),
-                    subtitle = tapHoldActionLabel(config.twoFingerHoldAction),
+                    subtitle = holdGestureSubtitle(config.twoFingerHoldAction, config.twoFingerHoldMouseBehavior),
                     enabled = config.twoFingerHoldEnabled,
                     onEnabledChange = { config = config.copy(twoFingerHoldEnabled = it) },
                 ) {
                     TapHoldActionPicker(
                         currentAction = config.twoFingerHoldAction,
                         onActionSelected = { config = config.copy(twoFingerHoldAction = it) },
+                    )
+                    MouseHoldBehaviorPicker(
+                        action = config.twoFingerHoldAction,
+                        currentBehavior = config.twoFingerHoldMouseBehavior,
+                        onBehaviorSelected = { config = config.copy(twoFingerHoldMouseBehavior = it) },
                     )
                     DelayTextField(
                         label = stringResource(R.string.gesture_two_finger_hold_delay),
@@ -274,13 +305,18 @@ fun TouchGestureSettingsDialog(
                 // ── Three-Finger Hold (customisable action + delay) ─────
                 GestureRow(
                     title = stringResource(R.string.gesture_three_finger_hold),
-                    subtitle = tapHoldActionLabel(config.threeFingerHoldAction),
+                    subtitle = holdGestureSubtitle(config.threeFingerHoldAction, config.threeFingerHoldMouseBehavior),
                     enabled = config.threeFingerHoldEnabled,
                     onEnabledChange = { config = config.copy(threeFingerHoldEnabled = it) },
                 ) {
                     TapHoldActionPicker(
                         currentAction = config.threeFingerHoldAction,
                         onActionSelected = { config = config.copy(threeFingerHoldAction = it) },
+                    )
+                    MouseHoldBehaviorPicker(
+                        action = config.threeFingerHoldAction,
+                        currentBehavior = config.threeFingerHoldMouseBehavior,
+                        onBehaviorSelected = { config = config.copy(threeFingerHoldMouseBehavior = it) },
                     )
                     DelayTextField(
                         label = stringResource(R.string.gesture_three_finger_hold_delay),
@@ -320,6 +356,19 @@ fun TouchGestureSettingsDialog(
                     onValueChange = { config = config.copy(gestureThreshold = it) },
                 )
 
+                SettingsListDropdown(
+                    colors = settingsTileColorsAlt(),
+                    title = { Text(stringResource(R.string.gesture_mouse_drag_movement)) },
+                    subtitle = { Text(stringResource(R.string.gesture_mouse_drag_movement_subtitle)) },
+                    value = MOUSE_DRAG_MOVEMENT_MODES
+                        .indexOf(config.mouseDragMovementMode)
+                        .coerceAtLeast(0),
+                    items = MOUSE_DRAG_MOVEMENT_MODES.map { mouseDragMovementModeLabel(it) },
+                    onItemSelected = { index ->
+                        config = config.copy(mouseDragMovementMode = MOUSE_DRAG_MOVEMENT_MODES[index])
+                    },
+                )
+
                 // ── Show Click Highlight ─────────────────────────────────
                 SettingsSwitch(
                     colors = settingsTileColorsAlt(),
@@ -335,6 +384,14 @@ fun TouchGestureSettingsDialog(
                     subtitle = { Text(stringResource(R.string.gesture_show_debug_overlay_subtitle)) },
                     state = config.showGestureDebugOverlay,
                     onCheckedChange = { config = config.copy(showGestureDebugOverlay = it) },
+                )
+
+                SettingsSwitch(
+                    colors = settingsTileColorsAlt(),
+                    title = { Text(stringResource(R.string.gesture_show_cursor_touchscreen_mode)) },
+                    subtitle = { Text(stringResource(R.string.gesture_show_cursor_touchscreen_mode_subtitle)) },
+                    state = config.showCursorInTouchscreenMode,
+                    onCheckedChange = { config = config.copy(showCursorInTouchscreenMode = it) },
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -439,6 +496,63 @@ private fun DelayTextField(
 }
 
 @Composable
+private fun MouseHoldBehaviorPicker(
+    action: String,
+    currentBehavior: String,
+    onBehaviorSelected: (String) -> Unit,
+) {
+    if (!isMouseButtonAction(action)) return
+
+    val behaviors = listOf(MOUSE_BEHAVIOR_CLICK, MOUSE_BEHAVIOR_HOLD)
+    val selectedBehavior = if (currentBehavior == MOUSE_BEHAVIOR_CLICK) {
+        MOUSE_BEHAVIOR_CLICK
+    } else {
+        MOUSE_BEHAVIOR_HOLD
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 1.dp),
+        shape = RoundedCornerShape(10.dp),
+        color = PluviaSurfaceElevated,
+        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaBorder.copy(alpha = 0.5f)),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.gesture_mouse_behavior_label),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                behaviors.forEachIndexed { index, behavior ->
+                    SegmentedButton(
+                        selected = behavior == selectedBehavior,
+                        onClick = { onBehaviorSelected(behavior) },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = behaviors.size,
+                        ),
+                        label = {
+                            Text(
+                                text = mouseBehaviorLabel(behavior),
+                                maxLines = 1,
+                            )
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun tapHoldActionLabel(action: String): String = when (action) {
     ACTION_LEFT_CLICK -> stringResource(R.string.gesture_action_left_click)
     ACTION_RIGHT_CLICK -> stringResource(R.string.gesture_action_right_click)
@@ -451,6 +565,26 @@ private fun tapHoldActionLabel(action: String): String = when (action) {
             action
         }
     }
+}
+
+@Composable
+private fun holdGestureSubtitle(action: String, mouseBehavior: String): String {
+    val actionLabel = tapHoldActionLabel(action)
+    return if (isMouseButtonAction(action)) {
+        "$actionLabel (${mouseBehaviorLabel(mouseBehavior)})"
+    } else {
+        actionLabel
+    }
+}
+
+@Composable
+private fun mouseBehaviorLabel(behavior: String): String = when (behavior) {
+    MOUSE_BEHAVIOR_CLICK -> stringResource(R.string.gesture_mouse_behavior_click)
+    else -> stringResource(R.string.gesture_mouse_behavior_hold)
+}
+
+private fun isMouseButtonAction(action: String): Boolean {
+    return action == ACTION_LEFT_CLICK || action == ACTION_RIGHT_CLICK || action == ACTION_MIDDLE_CLICK
 }
 
 @Composable
@@ -469,6 +603,13 @@ private fun zoomActionLabel(action: String): String = when (action) {
     ZOOM_PLUS_MINUS -> stringResource(R.string.gesture_zoom_plus_minus)
     ZOOM_PAGE_UP_DOWN -> stringResource(R.string.gesture_zoom_page_up_down)
     else -> action
+}
+
+@Composable
+private fun mouseDragMovementModeLabel(mode: String): String = when (mode) {
+    MOUSE_DRAG_MOVEMENT_RELATIVE -> stringResource(R.string.gesture_mouse_drag_movement_relative)
+    MOUSE_DRAG_MOVEMENT_DIRECT -> stringResource(R.string.gesture_mouse_drag_movement_direct)
+    else -> mode
 }
 
 // ── Categorized action picker for tap/hold gestures ─────────────────────
@@ -597,6 +738,23 @@ private fun TapHoldActionPicker(
             },
         )
     }
+}
+
+@Composable
+private fun MouseButtonActionPicker(
+    currentAction: String,
+    onActionSelected: (String) -> Unit,
+) {
+    val actions = listOf(ACTION_LEFT_CLICK, ACTION_RIGHT_CLICK, ACTION_MIDDLE_CLICK)
+    SettingsListDropdown(
+        colors = settingsTileColors(),
+        title = { Text(stringResource(R.string.gesture_mouse_button_label)) },
+        value = actions.indexOf(currentAction).coerceAtLeast(0),
+        items = actions.map { tapHoldActionLabel(it) },
+        onItemSelected = { index ->
+            onActionSelected(actions[index])
+        },
+    )
 }
 
 @Composable

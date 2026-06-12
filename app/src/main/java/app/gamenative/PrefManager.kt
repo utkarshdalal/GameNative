@@ -13,6 +13,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import app.gamenative.data.GameSource
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.HomeDestination
@@ -22,6 +23,7 @@ import com.materialkolor.PaletteStyle
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.container.Container
 import com.winlator.core.DefaultVersion
+import com.winlator.xenvironment.components.PulseAudioComponent
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import java.util.EnumSet
 import kotlinx.coroutines.CoroutineScope
@@ -195,6 +197,20 @@ object PrefManager {
             setPref(GRAPHICS_DRIVER_CONFIG, value)
         }
 
+    private val RENDERER_PRESENT_MODE = stringPreferencesKey("renderer_present_mode")
+    var rendererPresentMode: String
+        get() = getPref(RENDERER_PRESENT_MODE, "fifo")
+        set(value) {
+            setPref(RENDERER_PRESENT_MODE, value)
+        }
+
+    private val USE_LEGACY_RENDERER = booleanPreferencesKey("use_legacy_renderer")
+    var useLegacyRenderer: Boolean
+        get() = getPref(USE_LEGACY_RENDERER, false)
+        set(value) {
+            setPref(USE_LEGACY_RENDERER, value)
+        }
+
     private val SHARPNESS_EFFECT = stringPreferencesKey("sharpness_effect")
     var sharpnessEffect: String
         get() = getPref(SHARPNESS_EFFECT, "None")
@@ -284,6 +300,13 @@ object PrefManager {
         get() = getPref(AUDIO_DRIVER, Container.DEFAULT_AUDIO_DRIVER)
         set(value) {
             setPref(AUDIO_DRIVER, value)
+        }
+
+    private val PULSEAUDIO_LOW_LATENCY = booleanPreferencesKey("pulseaudio_low_latency")
+    var pulseaudioLowLatency: Boolean
+        get() = getPref(PULSEAUDIO_LOW_LATENCY, false)
+        set(value) {
+            setPref(PULSEAUDIO_LOW_LATENCY, value)
         }
 
     private val WIN_COMPONENTS = stringPreferencesKey("wincomponents")
@@ -495,6 +518,14 @@ object PrefManager {
         set(value) {
             setPref(STEAM_OFFLINE_MODE, value)
         }
+
+    private val EPIC_OFFLINE_MODE = booleanPreferencesKey("epic_offline_mode")
+    var epicOfflineMode: Boolean
+        get() = getPref(EPIC_OFFLINE_MODE, false)
+        set(value) {
+            setPref(EPIC_OFFLINE_MODE, value)
+        }
+
 
     private val USE_LEGACY_DRM = booleanPreferencesKey("use_legacy_drm")
     var useLegacyDRM: Boolean
@@ -1132,6 +1163,52 @@ object PrefManager {
             setPref(EXTERNAL_STORAGE_PATH, value)
         }
 
+    private val FRONTEND_SYNC_DIR_STEAM = stringPreferencesKey("frontend_sync_dir_steam")
+    private val FRONTEND_SYNC_DIR_EPIC = stringPreferencesKey("frontend_sync_dir_epic")
+    private val FRONTEND_SYNC_DIR_GOG = stringPreferencesKey("frontend_sync_dir_gog")
+    private val FRONTEND_SYNC_DIR_AMAZON = stringPreferencesKey("frontend_sync_dir_amazon")
+    private val FRONTEND_SYNC_DIR_CUSTOM = stringPreferencesKey("frontend_sync_dir_custom")
+
+    var frontendSyncDirSteam: String
+        get() = getPref(FRONTEND_SYNC_DIR_STEAM, "")
+        set(value) { setPref(FRONTEND_SYNC_DIR_STEAM, value) }
+
+    var frontendSyncDirEpic: String
+        get() = getPref(FRONTEND_SYNC_DIR_EPIC, "")
+        set(value) { setPref(FRONTEND_SYNC_DIR_EPIC, value) }
+
+    var frontendSyncDirGog: String
+        get() = getPref(FRONTEND_SYNC_DIR_GOG, "")
+        set(value) { setPref(FRONTEND_SYNC_DIR_GOG, value) }
+
+    var frontendSyncDirAmazon: String
+        get() = getPref(FRONTEND_SYNC_DIR_AMAZON, "")
+        set(value) { setPref(FRONTEND_SYNC_DIR_AMAZON, value) }
+
+    var frontendSyncDirCustom: String
+        get() = getPref(FRONTEND_SYNC_DIR_CUSTOM, "")
+        set(value) { setPref(FRONTEND_SYNC_DIR_CUSTOM, value) }
+
+    /** Returns the configured export directory for [source], or an empty string if not set. */
+    fun getFrontendSyncDir(source: GameSource): String = when (source) {
+        GameSource.STEAM -> frontendSyncDirSteam
+        GameSource.EPIC -> frontendSyncDirEpic
+        GameSource.GOG -> frontendSyncDirGog
+        GameSource.AMAZON -> frontendSyncDirAmazon
+        GameSource.CUSTOM_GAME -> frontendSyncDirCustom
+    }
+
+    /** Persists [path] as the export directory for [source]. Pass an empty string to clear. */
+    fun setFrontendSyncDir(source: GameSource, path: String) {
+        when (source) {
+            GameSource.STEAM -> frontendSyncDirSteam = path
+            GameSource.EPIC -> frontendSyncDirEpic = path
+            GameSource.GOG -> frontendSyncDirGog = path
+            GameSource.AMAZON -> frontendSyncDirAmazon = path
+            GameSource.CUSTOM_GAME -> frontendSyncDirCustom = path
+        }
+    }
+
     // Custom Games root (additional paths). Default path is provided by the app at runtime and isn't stored here.
     private val CUSTOM_GAME_PATHS = stringPreferencesKey("custom_game_paths")
     var customGamePaths: Set<String>
@@ -1202,6 +1279,22 @@ object PrefManager {
         get() = getPref(GAME_COMPATIBILITY_CACHE, "{}")
         set(value) {
             setPref(GAME_COMPATIBILITY_CACHE, value)
+        }
+
+    // Device-wide game stats cache (JSON string)
+    private val DEVICE_GAME_STATS_CACHE = stringPreferencesKey("device_game_stats_cache")
+    var deviceGameStatsCache: String
+        get() = getPref(DEVICE_GAME_STATS_CACHE, "{}")
+        set(value) {
+            setPref(DEVICE_GAME_STATS_CACHE, value)
+        }
+
+    // GPU-wide game stats cache (JSON string)
+    private val GPU_GAME_STATS_CACHE = stringPreferencesKey("gpu_game_stats_cache")
+    var gpuGameStatsCache: String
+        get() = getPref(GPU_GAME_STATS_CACHE, "{}")
+        set(value) {
+            setPref(GPU_GAME_STATS_CACHE, value)
         }
 
     /* Security / Attestation */

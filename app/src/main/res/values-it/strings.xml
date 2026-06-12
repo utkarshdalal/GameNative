@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Usa l\'app mobile di Steam per confermare l\'accesso…</string>
     <string name="steam_2fa_device">Inserisci il codice di autenticazione a due fattori dalla tua app di autenticazione.</string>
     <string name="steam_2fa_email">Inserisci il codice di autenticazione inviato all\'email %s</string>
+    <string name="steam_2fa_use_guard_totp">Oppure usa il codice di autenticazione a due fattori</string>
     <string name="steam_install_space_prompt">L\'app che stai installando ha i seguenti requisiti di spazio. Vuoi procedere?\n\n\tDimensione Download: %1$s\n\tDimensione su Disco: %2$s\n\tSpazio Disponibile: %3$s</string>
     <string name="steam_install_space">Dimensione Download: %1$s\nSpazio su Disco: %2$s\nSpazio Disponibile: %3$s</string>
     <string name="steam_install_not_enough_space">L\'app che stai installando richiede %1$s di spazio ma sono rimasti solo %2$s su questo dispositivo</string>
@@ -103,6 +104,10 @@
     <string name="downloads_status_failed">Fallito</string>
     <string name="downloads_status_paused">In pausa</string>
     <string name="downloads_summary">Gestisci download attivi e archiviazione in un unico posto</string>
+    <string name="storage_internal">Interno</string>
+    <string name="storage_external">Esterno</string>
+    <string name="storage_free_of_total">%1$s: %2$s liberi su %3$s</string>
+    <string name="storage_calculating">%1$s: Calcolo in corso…</string>
     <string name="container_storage_title">Gestione archiviazione</string>
     <string name="container_storage_subtitle">Sposta le installazioni tra archiviazione interna ed esterna</string>
     <string name="container_storage_summary">%1$d elementi • %2$s</string>
@@ -641,6 +646,10 @@
     <string name="width">Larghezza</string>
     <string name="height">Altezza</string>
     <string name="audio_driver">Driver Audio</string>
+    <string name="pulseaudio_suspend_behavior">Comportamento di sospensione PulseAudio</string>
+    <string name="pulseaudio_suspend_behavior_thread">Sospendi tramite Thread (Predefinito)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Sospendi tramite Pactl (Risparmio energetico)</string>
+    <string name="pulseaudio_low_latency">Modalità a bassa latenza PulseAudio</string>
     <string name="show_fps">Mostra FPS</string>
     <string name="portrait_mode">Modalità verticale</string>
     <string name="portrait_mode_description">Per controller tipo 8BitDo FlipPad/GameSir Pocket Taco</string>
@@ -655,6 +664,8 @@
     <string name="launch_steam_client_beta">Avvia Client Steam (Beta)</string>
     <string name="steam_offline_mode">Modalità Offline Steam</string>
     <string name="steam_offline_mode_description">Avvia i giochi Steam in modalità offline</string>
+    <string name="epic_offline_mode">Modalità Offline Epic</string>
+    <string name="epic_offline_mode_description">Avvia i giochi Epic in modalità offline</string>
     <string name="achievement_unlocked">Obiettivo sbloccato</string>
     <string name="settings_achievement_notification_position">Posizione notifica obiettivo</string>
     <string name="achievement_position_top_left">In alto a sinistra</string>
@@ -679,6 +690,8 @@
     <string name="vkd3d_feature_level">Livello Funzionalità VKD3D</string>
     <string name="use_dri3">Usa DRI3</string>
     <string name="use_dri3_description">Disabilitare può correggere glitch grafici su alcuni dispositivi</string>
+    <string name="use_legacy_renderer">Usa renderer legacy</string>
+    <string name="use_legacy_renderer_description">Usa il GLRenderer legacy invece di VulkanRenderer. VulkanRenderer migliora le prestazioni, ma è in beta e può causare problemi.</string>
     <string name="sync_frame">Sincronizza Ogni Fotogramma</string>
     <string name="disable_present_wait">Disabilita KHR_present_wait</string>
     <string name="present_modes">Modalità Presentazione</string>
@@ -726,6 +739,8 @@
     <string name="gesture_tap_subtitle">Clic sinistro</string>
     <string name="gesture_drag">Trascina dito</string>
     <string name="gesture_drag_subtitle">Trascina clic sinistro (selezione rettangolare)</string>
+    <string name="gesture_hold_mouse_button_while_touching">Tieni premuto il pulsante del mouse durante il tocco</string>
+    <string name="gesture_mouse_button_label">Pulsante mouse</string>
     <string name="gesture_long_press">Pressione lunga</string>
     <string name="gesture_long_press_delay">Ritardo pressione lunga (ms)</string>
     <string name="gesture_double_tap">Doppio tocco</string>
@@ -752,6 +767,9 @@
     <string name="gesture_pan_left_click_drag">Trascina con clic sinistro</string>
     <string name="gesture_pan_right_click_drag">Trascina con clic destro</string>
     <string name="gesture_action_show_keyboard">Mostra tastiera</string>
+    <string name="gesture_mouse_behavior_label">Comportamento mouse</string>
+    <string name="gesture_mouse_behavior_click">Clic</string>
+    <string name="gesture_mouse_behavior_hold">Tieni premuto</string>
     <string name="gesture_header_special">Speciale</string>
     <string name="gesture_header_mouse">Mouse</string>
     <string name="gesture_header_common_game">Tasti di gioco comuni</string>
@@ -766,10 +784,16 @@
     <string name="gesture_three_finger_hold_delay">Ritardo pressione con tre dita (ms)</string>
     <string name="gesture_threshold">Soglia gesto (px)</string>
     <string name="gesture_threshold_subtitle">Movimento necessario per bloccare il tipo di gesto (più basso = più reattivo)</string>
+    <string name="gesture_mouse_drag_movement">Movimento del mouse durante il trascinamento</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Diretto funziona con la maggior parte dei giochi. Usa Relativo se il trascinamento causa problemi alla visuale o al cursore</string>
+    <string name="gesture_mouse_drag_movement_direct">Diretto</string>
+    <string name="gesture_mouse_drag_movement_relative">Relativo</string>
     <string name="gesture_show_click_highlight">Mostra evidenziazione clic</string>
     <string name="gesture_show_click_highlight_subtitle">Mostra un cerchio nella posizione del tocco</string>
     <string name="gesture_show_debug_overlay">Mostra overlay debug gesture</string>
     <string name="gesture_show_debug_overlay_subtitle">Mostra etichette temporanee dei gesti in alto al centro</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Mostra cursore in modalità touchscreen</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Mantieni visibile il cursore del mouse mentre le gesture touchscreen sono attive</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Impostazioni joystick dinamici</string>
@@ -1464,4 +1488,55 @@
     <string name="game_launch_tip_23">Suggerimento: se hai una GPU Mali, utilizza i driver di sistema.</string>
     <string name="game_launch_tip_24">Suggerimento: schermata nera? Prova l\'opzione \"%s\" nel menu per verificare se i tuoi driver funzionano correttamente.</string>
     <string name="launch_bionic_steam_description">Abilita il gioco online e migliora la compatibilità\nNon sempre funziona\nEsegui un backup dei salvataggi prima di provarlo</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Sincronizzazione frontend</string>
+    <string name="settings_interface_frontend_sync_subtitle">Esporta automaticamente i giochi installati per i frontend di libreria</string>
+    <string name="frontend_sync_dialog_title">Sincronizzazione frontend</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Giochi personalizzati</string>
+    <string name="frontend_sync_not_set">Non impostato</string>
+    <string name="frontend_sync_clear_confirm_title">Rimuovere i vecchi file di esportazione?</string>
+    <string name="frontend_sync_clear_confirm_message">Rimuovere i file .%1$s dalla directory precedente?</string>
+    <string name="frontend_sync_confirm_remove">Rimuovi</string>
+    <string name="frontend_sync_confirm_keep">Mantieni</string>
+    <string name="frontend_sync_resync_all">Risincronizza tutto</string>
+    <string name="frontend_sync_resync_complete">Sincronizzazione frontend completata</string>
+    <string name="screen_effects_scaling">Ridimensionamento</string>
+    <string name="screen_effects_upscaling">Super risoluzione</string>
+    <string name="screen_effects_basic_scaling">Ridimensionamento di base</string>
+    <string name="screen_effects_scaling_mode_none">Nessun ridimensionamento</string>
+    <string name="screen_effects_scaling_mode_none_desc">Nessun ridimensionamento.</string>
+    <string name="screen_effects_scaling_mode_nearest">Più vicino</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">Pixel nitidi (retrò).</string>
+    <string name="screen_effects_scaling_mode_linear">Lineare</string>
+    <string name="screen_effects_scaling_mode_linear_desc">Ridimensionamento morbido.</string>
+    <string name="screen_effects_scaling_mode_fill">Riempi</string>
+    <string name="screen_effects_scaling_mode_fill_desc">Riempie lo schermo, ritaglia i bordi.</string>
+    <string name="screen_effects_scaling_mode_stretch">Allunga</string>
+    <string name="screen_effects_scaling_mode_stretch_desc">Riempie lo schermo, ignora le proporzioni.</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_scaling_mode_fsr_desc">Upscaling nitido in super-risoluzione.</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, mantiene le proporzioni.</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_dls_desc">Passaggio di nitidezza / chiarezza.</string>
+    <string name="screen_effects_scaling_mode_natural">Naturale</string>
+    <string name="screen_effects_scaling_mode_natural_desc">Tonalità più calda.</string>
+    <string name="stats_key_runs">Esecuzioni riuscite sulla tua GPU</string>
+    <string name="stats_key_reviews">Recensioni a 5 stelle (la tua GPU / il tuo dispositivo)</string>
+    <string name="stats_key_fps">FPS previsti</string>
+    <string name="stats_key_session">Sessione più lunga sul tuo dispositivo</string>
+    <string name="sort_fps">FPS previsti</string>
+    <string name="sort_runs">Esecuzioni riuscite</string>
+    <string name="sort_reviews">Recensioni a 5 stelle (dispositivo)</string>
+    <string name="sort_reviews_gpu">Recensioni a 5 stelle (GPU)</string>
+    <string name="filter_expired">Scaduto</string>
+    <string name="filter_playable">Giocabile (30+ FPS)</string>
+    <string name="filter_five_star_device">Recensioni a 5 stelle sul dispositivo</string>
+    <string name="filter_five_star_gpu">Recensioni a 5 stelle sulla GPU</string>
+    <string name="filter_proven_gpu">Collaudato sulla tua GPU</string>
 </resources>

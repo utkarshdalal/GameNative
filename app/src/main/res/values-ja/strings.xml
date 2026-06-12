@@ -1,0 +1,1560 @@
+﻿<resources>
+    <string name="app_name">GameNative</string>
+    <string name="login_user">ユーザーログイン</string>
+    <string name="login_2fa">ツーファクター</string>
+    <string name="home">ホーム</string>
+    <string name="settings">設定</string>
+    <string name="login_qr">QRログイン</string>
+    <string name="app_library">ライブラリ</string>
+    <string name="app_downloads">ダウンロードとストレージ</string>
+    <string name="unknown_app">不明なアプリ</string>
+    <string name="steam_2fa_incorrect">前のコードは間違っていました。もう一度試してください。</string>
+    <string name="steam_2fa_confirmation">Steam モバイル アプリを使用してサインインを確認します…</string>
+    <string name="steam_2fa_device">認証アプリから 2 要素認証コードを入力してください。</string>
+    <string name="steam_2fa_email">%s の電子メールに送信された認証コードを入力してください</string>
+    <string name="steam_install_space_prompt">インストールされるアプリには次のスペース要件があります。続行しますか?\n\n\tダウンロード サイズ: %1$s\n\tディスク上のサイズ: %2$s\n\t利用可能なスペース: %3$s</string>
+    <string name="steam_install_space">ダウンロード サイズ: %1$s\nディスク上のサイズ: %2$s\n利用可能なスペース: %3$s</string>
+    <string name="steam_install_not_enough_space">インストールされているアプリには %1$s のスペースが必要ですが、このデバイスには %2$s だけが残っています</string>
+    <string name="steam_cancel_download_message">アプリのダウンロードをキャンセルしてもよろしいですか?</string>
+    <string name="steam_delete_download_message">このゲームのダウンロードデータをすべて削除しますか?</string>
+    <string name="steam_imagefs_download_install_title">&amp; をダウンロード ImageFS をインストール</string>
+    <string name="steam_imagefs_download_install_message">構成を編集するには、事前に Ubuntu イメージをダウンロードしてインストールする必要があります。この操作には数分かかる場合があります。続けますか?</string>
+    <string name="steam_imagefs_install_title">ImageFS をインストールする</string>
+    <string name="steam_imagefs_install_message">構成を編集するには、Ubuntu イメージをインストールする必要があります。この操作には数分かかる場合があります。続けますか?</string>
+    <string name="steam_reset_container_title">コンテナをリセット</string>
+    <string name="steam_reset_container_message">これにより、コンテナーがデフォルトの構成にリセットされます。</string>
+    <string name="base_app_reset_container_title">コンテナをリセットしますか?</string>
+    <string name="base_app_reset_container_confirm">リセット</string>
+    <string name="steam_verify_files_title">ファイルの検証</string>
+    <string name="steam_verify_files_message">確認する前に、保存データがクラウドにアップロードまたはバックアップされていることを確認してください。そうしないと上書きされる可能性があります。</string>
+    <string name="steam_cloud_sync_downloading_save_files">セーブファイル %1$d/%2$d をダウンロードしています</string>
+    <string name="steam_update_title">アップデート</string>
+    <string name="steam_update_message">更新する前に保存データがクラウドにアップロードまたはバックアップされていることを確認してください。そうしないと上書きされる可能性があります。</string>
+    <string name="steam_not_logged_in">この機能を使用するには Steam にログインする必要があります</string>
+    <string name="steam_storage_permission_required">ストレージ権限が必要です</string>
+    <string name="steam_container_reset_success">コンテナをデフォルトにリセット</string>
+    <string name="steam_imagefs_installed">ImageFSがインストールされています。コンテナを再度編集してみてください。</string>
+    <string name="steam_imagefs_install_failed">ImageFS のインストールに失敗しました: %s</string>
+    <string name="steam_uninstall_game_title">ゲームをアンインストールする</string>
+    <string name="steam_uninstall_confirmation_message">%1$s をアンインストールしてもよろしいですか?この操作は元に戻すことができません。</string>
+    <string name="steam_uninstall_success">%1$s はアンインストールされました</string>
+    <string name="steam_uninstall_failed">ゲームのアンインストールに失敗しました</string>
+    <string name="amazon_uninstall_game_title">ゲームをアンインストールする</string>
+    <string name="amazon_uninstall_confirmation_message">%1$s をアンインストールしてもよろしいですか?この操作は元に戻すことができません。</string>
+    <string name="amazon_install_game_title">ゲームをダウンロード</string>
+    <string name="amazon_install_confirmation_message">インストールされるアプリには次のスペース要件があります。続行しますか?\n\n\tダウンロード サイズ: %1$s\n\t利用可能なスペース: %2$s</string>
+    <string name="amazon_verify_files_title">ファイルの検証</string>
+    <string name="amazon_verify_files_message">これにより、インストールされているすべてのファイルがダウンロード マニフェストと照合してチェックされ、欠落または破損したファイルが検出されます。\n\n大規模なゲームの場合、これには時間がかかる場合があります。</string>
+    <string name="amazon_verify_confirm">確認する</string>
+    <string name="amazon_verify_in_progress">ファイルを検証しています…これには時間がかかる場合があります。</string>
+    <string name="amazon_verify_success">すべてのファイルが正常に検証されました。\n\n%1$d / %2$d ファイルは OK。</string>
+    <string name="amazon_verify_failed_detail">検証で問題が見つかりました。\n\n%1$d / %2$d ファイル OK\n%3$d がありません\n%4$d サイズが一致しません\n%5$d ハッシュが一致しません\n\nゲームを再インストールして、破損したファイルを修正してください。</string>
+    <string name="amazon_verify_error">検証に失敗しました: %1$s</string>
+    <string name="gog_uninstall_game_title">ゲームをアンインストールする</string>
+    <string name="gog_uninstall_confirmation_message">%1$s をアンインストールしてもよろしいですか?この操作は元に戻すことができません。</string>
+    <string name="gog_install_game_title">ゲームをダウンロード</string>
+    <string name="gog_install_confirmation_message">インストールされるアプリには次のスペース要件があります。続行しますか?\n\n\tダウンロード サイズ: %1$s\n\t利用可能なスペース: %2$s</string>
+    <string name="epic_uninstall_game_title">ゲームをアンインストールする</string>
+    <string name="epic_uninstall_game_message">%1$s をアンインストールしてもよろしいですか?この操作は元に戻すことができません。</string>
+    <string name="epic_install_game_title">ゲームをダウンロード</string>
+    <string name="epic_install_game_message">インストールされるアプリには次のスペース要件があります。続行しますか?\n\n\tダウンロード サイズ: %1$s\n\tディスク上のサイズ: %2$s\n\t利用可能なスペース: %3$s</string>
+    <string name="epic_game_not_found">ゲームが見つかりません</string>
+    <string name="epic_starting_download">ダウンロードを開始しています: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">ダウンロード開始: %1$s + DLC</string>
+    <string name="epic_download_failed">ダウンロードの開始に失敗しました: %1$s</string>
+    <string name="epic_download_error">ダウンロード エラー: %1$s</string>
+    <string name="epic_cancel_download_message">アプリのダウンロードをキャンセルしてもよろしいですか?</string>
+    <string name="epic_delete_download_message">このゲームのダウンロードデータをすべて削除しますか?</string>
+    <string name="epic_uninstall_failed">アンインストールに失敗しました: %1$s</string>
+    <string name="epic_uninstall_error">アンインストール エラー: %1$s</string>
+    <string name="steam_never">一度もない</string>
+    <string name="steam_continue">続く</string>
+    <string name="header_img_desc">アプリのヘッダー画像</string>
+    <string name="download">ダウンロード</string>
+    <string name="install">インストール</string>
+    <string name="install_app">インストール</string>
+    <string name="delete_app">削除</string>
+    <string name="uninstall">アンインストール</string>
+    <string name="branch">支店</string>
+    <string name="change_branch">ブランチの変更</string>
+    <string name="change_branch_message">開発者が提供するブランチを使用して、Steam から代替ゲーム バージョンをダウンロードします。アクセス コードを入力してプライベート ブランチのロックを解除します。</string>
+    <string name="private_branch_password_hint">アクセスコードを入力してください</string>
+    <string name="private_branch_password_check">チェックコード</string>
+    <string name="private_branch_password_success">ブランチのロックが解除されました！</string>
+    <string name="private_branch_password_invalid">無効なアクセスコードです</string>
+    <string name="run_app">プレイ</string>
+    <string name="download_prompt_title">アプリをインストール</string>
+    <string name="calculating_space_requirements">スペース要件を計算しています...</string>
+    <string name="delete_prompt_title">アプリを削除</string>
+    <string name="cancel_download_prompt_title">ダウンロードのキャンセル</string>
+    <string name="acknowledge">OK</string>
+    <string name="yes">はい</string>
+    <string name="no">いいえ</string>
+    <string name="not_enough_space">十分なスペースがありません</string>
+    <string name="proceed">続行</string>
+    <string name="cancel">キャンセル</string>
+    <string name="delete">削除</string>
+    <string name="untitled">無題</string>
+    <string name="confirm_delete">削除の確認</string>
+    <string name="destination_library">ライブラリ</string>
+    <string name="destination_downloads">ダウンロードとストレージ</string>
+    <string name="downloads_section_title">ダウンロード</string>
+    <string name="downloads_empty">アクティブなダウンロードはありません</string>
+    <string name="downloads_overview_subtitle">アクティブ・一時停止・再開可能なダウンロードを管理</string>
+    <string name="downloads_cancel_confirm">ダウンロードをキャンセルして、%1$s のファイルを削除しますか?</string>
+
+    <!-- Library Tabs -->
+    <string name="tab_all">すべて</string>
+    <string name="tab_steam">Steam</string>
+    <string name="tab_gog">GOG</string>
+    <string name="tab_epic">Epic</string>
+    <string name="tab_amazon">Amazon</string>
+    <string name="tab_installed">インストール済み</string>
+    <string name="tab_local">カスタム</string>
+    <string name="library_tab_with_count">%1$s (%2$d)</string>
+    <string name="library_search_close">検索を閉じる</string>
+    <string name="default_user_name">ユーザー</string>
+
+    <!-- Custom Games -->
+    <string name="custom_games_title">カスタムゲーム</string>
+    <string name="custom_games_no_paths">追加されたパスはありません</string>
+    <string name="custom_games_grant_permission">権限を付与</string>
+    <string name="custom_games_manual_subtitle">ライブラリから追加</string>
+    <string name="custom_games_no_manual_entries">手動で追加されたゲームはまだありません。</string>
+    <string name="custom_games_remove_path_title">パスの削除</string>
+    <string name="custom_games_remove_path_message">このパスをスキャン対象から削除しますか？フォルダーの内容はディスクに残ります。</string>
+    <string name="custom_games_remove_path_content_desc">パスの削除</string>
+    <string name="custom_games_path_removed_toast">パスがリストから削除されました。コンテンツは削除されていません。</string>
+    <string name="custom_games_remove_manual_title">手動追加ゲームを削除</string>
+    <string name="custom_games_remove_manual_message">この手動追加フォルダーをライブラリから削除しますか？ディスク上のファイルは削除されません。</string>
+    <string name="custom_games_remove_manual_content_desc">手動追加フォルダーを削除</string>
+    <string name="custom_games_manual_removed_toast">手動フォルダーがライブラリから削除されました。</string>
+    <string name="custom_games_cannot_access">⚠ アクセスできません（パスが存在するか確認してください）</string>
+    <string name="custom_games_permission_denied">⚠ 権限がありません</string>
+    <string name="custom_games_zero_folders">フォルダーが見つかりません</string>
+    <string name="custom_games_folders_found">%d 個のフォルダーが見つかりました</string>
+    <string name="custom_games_scan_description">これらのパス内のフォルダーから .exe ファイルを検出し、カスタムゲームとして一覧表示します。スキャンによりアプリ起動が遅くなる場合があります。</string>
+    <string name="custom_game_folder_picker_error">フォルダーパスの取得に失敗しました</string>
+    <string name="container_config_drive_letter_missing">ドライブ文字がありません</string>
+    <string name="container_config_invalid_drive_path">無効なドライブパス</string>
+    <string name="custom_game_exe_selection_title">実行可能ファイルの選択が必要です</string>
+    <string name="custom_game_exe_selection_message">このゲームには複数の実行ファイルがあります。カスタムゲーム設定を開いて、起動する実行ファイルを選択してください。</string>
+    <string name="custom_game_settings">カスタムゲーム設定</string>
+    <string name="custom_game_delete_title">ゲームを削除</string>
+    <string name="custom_game_delete_message">%1$s をアンインストールしてもよろしいですか?</string>
+    <string name="custom_game_unknown_developer">未知</string>
+
+    <!--Winlator-->
+    <string name="disabled">無効</string>
+    <string name="copy">コピー</string>
+    <string name="stability">安定性</string>
+    <string name="compatibility">互換性</string>
+    <string name="intermediate">中級</string>
+    <string name="performance">パフォーマンス</string>
+    <string name="denuvo">Denuvo</string>
+    <string name="extreme">過激</string>
+    <string name="unity">Unity</string>
+    <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
+    <string name="title_ubuntufs">Ubuntu FS</string>
+
+    <!-- Winlator: Win Components -->
+    <string name="direct3d">Direct3D</string>
+    <string name="directsound">DirectSound</string>
+    <string name="directmusic">DirectMusic</string>
+    <string name="directplay">DirectPlay</string>
+    <string name="directshow">DirectShow</string>
+    <string name="directx">DirectX</string>
+    <string name="vcrun2010">Visual C++ 2010</string>
+    <string name="wmdecoder">Windows メディア デコーダ</string>
+    <string name="opengl">OpenGL</string>
+    <string name="dxvk_version">DXVKバージョン</string>
+    <string name="run">走る</string>
+    <string name="edit">編集</string>
+    <string name="remove">取り除く</string>
+    <string name="add">追加</string>
+    <string name="copy_from">コピー元</string>
+    <string name="ok">わかりました</string>
+    <string name="container_config_custom_resolution_title">カスタム解像度の設定</string>
+    <string name="container_config_custom_resolution_separator">×</string>
+    <string name="container_config_custom_resolution_error_nonzero">幅と高さは 0 より大きくなければなりません</string>
+    <string name="container_config_custom_resolution_error_aspect">幅は高さより大きくなければなりません</string>
+    <string name="storage_info">ストレージ情報</string>
+    <string name="duplicate">重複</string>
+    <string name="reconfigure">再構成</string>
+    <string name="content_info">コンテンツ情報</string>
+    <string name="game_not_installed_title">ゲームがインストールされていません</string>
+    <string name="game_not_installed_message">%s はインストールされていません。起動する前にゲームをインストールしてください。</string>
+    <string name="intent_launch_failed">ゲームを起動できませんでした: 無効な起動ショートカット</string>
+    <string name="intent_launch_steam_pending">Steam が接続するとゲームが起動します</string>
+    <string name="intent_launch_service_pending">サービスの準備ができたらゲームが起動します</string>
+    <string name="intent_launch_steam_login_failed">Steam ログインに失敗しました — ゲームの起動がキャンセルされました</string>
+    <string name="intent_launch_service_timeout">ゲームサービスの開始に失敗しました — ゲームの起動がキャンセルされました</string>
+    <string name="back_press_exit_warning">戻るボタンをもう一度押すと終了します</string>
+    <string name="game_executable_not_found_title">起動できない</string>
+    <string name="game_executable_not_found">実行ファイルを自動選択できませんでした。コンテナ設定で実行ファイルのパスを指定してください。</string>
+    <string name="save_container_settings_title">コンテナ構成を保存しますか?</string>
+    <string name="save_container_settings_message">今回の起動では一時的なコンテナ設定が適用されました。これらの変更を保存しますか？</string>
+    <string name="sync_error_title">同期エラー</string>
+    <string name="save">保存</string>
+    <string name="discard">破棄</string>
+    <string name="shortcuts">ショートカット</string>
+    <string name="containers">コンテナ</string>
+    <string name="box64_rc_file">Box64 RCファイル</string>
+    <string name="contents">コンテンツ</string>
+    <string name="about">について</string>
+    <string name="open_file">ファイルを開く</string>
+    <string name="download_file">ダウンロードファイル</string>
+    <string name="processor_affinity">プロセッサーのアフィニティ</string>
+    <string name="bring_to_front">前面に移動</string>
+    <string name="end_process">終了プロセス</string>
+    <string name="new_file">新しいファイル</string>
+    <string name="add_to_home_screen">ホーム画面に追加</string>
+    <string name="toggle_fullscreen">全画面表示の切り替え</string>
+    <string name="toggle_orientation">方向の切り替え</string>
+    <string name="task_manager">タスクマネージャー</string>
+    <string name="magnifier">拡大鏡</string>
+    <string name="logs">ログ</string>
+    <string name="exit_game">出口</string>
+    <string name="exit">ゲームを終了する</string>
+    <string name="keyboard">キーボード</string>
+    <string name="resume_game">ゲームを再開する</string>
+    <string name="extra">余分な</string>
+    <string name="clear_search">検索をクリア</string>
+    <string name="buttons">ボタン</string>
+    <string name="face_buttons_category">フェイスボタン</string>
+    <string name="shoulder_buttons_category">肩ボタン</string>
+    <string name="menu_buttons_category">メニューボタン</string>
+    <string name="thumbstick_buttons_category">サムスティックボタン</string>
+    <string name="left_stick">左スティック</string>
+    <string name="right_stick">右スティック</string>
+    <string name="dpad_category">十字キー</string>
+    <string name="dpad_up">十字キー上</string>
+    <string name="dpad_down">十字キー下</string>
+    <string name="dpad_left">十字キー左</string>
+    <string name="dpad_right">十字キー右</string>
+    <string name="input_controls">オンスクリーンコントローラー</string>
+    <string name="edit_controls">オンスクリーンコントローラーの編集</string>
+    <string name="edit_physical_controller">物理コントローラーの編集</string>
+    <string name="controller_disconnected">切断されました</string>
+    <string name="reset_onscreen_controls">オンスクリーンコントロールをリセットする</string>
+    <string name="open_navigation_menu">ナビゲーションメニューを開く</string>
+    <string name="quick_menu_title">クイックメニュー</string>
+    <string name="quick_menu_back">戻る</string>
+    <string name="screen_effects">画面効果</string>
+    <string name="screen_effects_live_preview">変更は現在のゲームに即座に適用されます。</string>
+    <string name="screen_effects_scaling">スケーリング</string>
+    <string name="screen_effects_upscaling">アップスケーリング</string>
+    <string name="screen_effects_basic_scaling">基本スケーリング</string>
+    <string name="screen_effects_scaling_mode_none_desc">スケーリングなし。</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">くっきりしたピクセル（レトロ向け）。</string>
+    <string name="screen_effects_scaling_mode_linear_desc">滑らかなスケーリング。</string>
+    <string name="screen_effects_scaling_mode_fill_desc">画面いっぱいに表示し、端を切り取ります。</string>
+    <string name="screen_effects_scaling_mode_stretch_desc">縦横比を無視して画面いっぱいに引き伸ばします。</string>
+    <string name="screen_effects_scaling_mode_fsr_desc">くっきりした超解像アップスケール。</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR（縦横比を維持）。</string>
+    <string name="screen_effects_scaling_mode_dls_desc">シャープ化／クラリティ処理。</string>
+    <string name="screen_effects_scaling_mode_natural_desc">暖かみのある色合い。</string>
+    <string name="screen_effects_color_adjustments">色の調整</string>
+    <string name="screen_effects_shader_toggles">シェーダーエフェクト</string>
+    <string name="screen_effects_scaling_mode">スケーリングモード</string>
+    <string name="screen_effects_scaling_mode_none">スケーリングなし</string>
+    <string name="screen_effects_scaling_mode_nearest">最寄りの</string>
+    <string name="screen_effects_scaling_mode_linear">リニア</string>
+    <string name="screen_effects_scaling_mode_fill">埋める</string>
+    <string name="screen_effects_scaling_mode_stretch">ストレッチ</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect">FSRフィット</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_natural">自然</string>
+    <string name="screen_effects_fsr">FSR1.0</string>
+    <string name="screen_effects_fsr_description">公式 AMD FidelityFX Super Resolution 1.0 は、EASU + RCAS を使用し、より低い内部レンダリング解像度とフル解像度のアップスケールを使用します。</string>
+    <string name="screen_effects_fsr_quality">FSRの品質</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">超高品質</string>
+    <string name="screen_effects_fsr_quality_quality">品質</string>
+    <string name="screen_effects_fsr_quality_balanced">バランスの取れた</string>
+    <string name="screen_effects_fsr_quality_performance">パフォーマンス</string>
+    <string name="screen_effects_fsr_sharpness">FSRのシャープネス</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">打ち出しの鋭さ</string>
+    <string name="screen_effects_launch_sharpness_note">CAS と DLS は vkBasalt を通じて適用され、次回ゲームを起動したときに有効になります。</string>
+    <string name="screen_effects_brightness">輝度</string>
+    <string name="screen_effects_contrast">対比</string>
+    <string name="screen_effects_gamma">ガンマ</string>
+    <string name="screen_effects_toon">トゥーンアウトライン</string>
+    <string name="screen_effects_toon_description">セルシェーディングの外観に暗い輪郭を追加します。</string>
+    <string name="screen_effects_fxaa">FXAA</string>
+    <string name="screen_effects_fxaa_description">ポストプロセスの軽いアンチエイリアシング パスでギザギザのエッジを滑らかにします。</string>
+    <string name="screen_effects_vivid">鮮やかな</string>
+    <string name="screen_effects_vivid_description">ブルームとコントラストブーストを追加して、パンチのある画像を実現します。</string>
+    <string name="screen_effects_crt">ブラウン管</string>
+    <string name="screen_effects_crt_description">走査線と微妙な色収差を追加します。</string>
+    <string name="screen_effects_ntsc">NTSC</string>
+    <string name="screen_effects_ntsc_description">レトロなコンポジット TV のワーピング、ブリード、スキャンラインを追加します。</string>
+    <string name="screen_effects_reset">リセット</string>
+    <string name="screen_effects_close">近い</string>
+    <string name="quick_menu_tab_general">一般的な</string>
+    <string name="quick_menu_tab_controller">コントローラ</string>
+    <string name="tools_wine_processes_running_hint">%1$d が実行中です。プロセスをタップ/クリックして閉じます</string>
+    <string name="tools_wine_processes_empty">実行中のEXEは検出されませんでした。</string>
+    <string name="performance_hud">パフォーマンス HUD</string>
+    <string name="performance_hud_description">ゲーム内のオーバーレイを表示または非表示にします。</string>
+    <string name="performance_hud_fps_limiter">FPSリミッター</string>
+    <string name="performance_hud_fps_limiter_description">ゲーム内のフレームレートを制限します。最大: %1$d Hz。</string>
+    <string name="performance_hud_fps_limiter_target">ターゲットFPS</string>
+    <string name="performance_hud_fps_limiter_off">無制限</string>
+    <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">LSFG がアクティブな間、リミッターはオーバーライドされます。ソースレートは乗数によって調整されます。</string>
+    <string name="performance_hud_presets">プリセット</string>
+    <string name="performance_hud_presets_description">一般的な HUD レイアウトをすばやく切り替えます。</string>
+    <string name="performance_hud_preset_fps_only">1</string>
+    <string name="performance_hud_preset_essential">2</string>
+    <string name="performance_hud_preset_battery">3</string>
+    <string name="performance_hud_preset_full">4</string>
+    <string name="performance_hud_appearance">外観</string>
+    <string name="performance_hud_appearance_description">HUD サイズと背景の不透明度を調整します。</string>
+    <string name="performance_hud_size">サイズ</string>
+    <string name="performance_hud_size_small">S</string>
+    <string name="performance_hud_size_medium">M</string>
+    <string name="performance_hud_size_large">L</string>
+    <string name="performance_hud_background_opacity">背景の不透明度</string>
+    <string name="performance_hud_color_intensity">色の濃さ</string>
+    <string name="performance_hud_text_outline">テキストのアウトライン</string>
+    <string name="performance_hud_percentage_value">%1$d%%</string>
+    <string name="performance_hud_metrics">表示されるメトリクス</string>
+    <string name="performance_hud_metrics_description">オーバーレイに表示する統計を選択します。</string>
+    <string name="performance_hud_frame_rate">フレームレート</string>
+    <string name="performance_hud_frame_rate_graph">FPSグラフ</string>
+    <string name="performance_hud_cpu_usage">CPU使用率</string>
+    <string name="performance_hud_cpu_usage_graph">CPUグラフ</string>
+    <string name="performance_hud_gpu_usage">GPU使用率</string>
+    <string name="performance_hud_gpu_usage_graph">GPUグラフ</string>
+    <string name="performance_hud_ram_usage">RAMの使用量</string>
+    <string name="performance_hud_battery_level">バッテリー残量</string>
+    <string name="performance_hud_power_draw">消費電力</string>
+    <string name="performance_hud_runtime_left">残りランタイム</string>
+    <string name="performance_hud_battery_temperature">バッテリー温度</string>
+    <string name="performance_hud_clock_time">時計の時間</string>
+    <string name="performance_hud_cpu_temperature">CPU温度</string>
+    <string name="performance_hud_gpu_temperature">GPU温度</string>
+    <string name="touchpad_help">タッチパッドのヘルプ</string>
+    <string name="hide_controls_with_controller">コントローラーを使用して画面上のコントロールを非表示にする</string>
+    <string name="hide_controls_with_controller_description">物理コントローラーが接続されている場合、画面上のコントロールを自動的に非表示にします</string>
+
+    <!-- Controller Binding Dialog -->
+    <string name="select_binding">バインディングの選択</string>
+    <string name="bind_button">バインド: %1$s</string>
+    <string name="current_binding">現在: %1$s</string>
+    <string name="search_bindings">バインディングを検索…</string>
+    <string name="search_placeholder">検索…</string>
+    <string name="search">検索</string>
+    <string name="category">カテゴリ</string>
+    <string name="keyboard_bindings">キーボード</string>
+    <string name="mouse_bindings">ねずみ</string>
+    <string name="gamepad_bindings">ゲームパッド</string>
+    <string name="mouse">ねずみ</string>
+    <string name="gamepad">ゲームパッド</string>
+    <string name="binding_none">なし</string>
+    <string name="clear_binding">クリアバインディング</string>
+    <string name="no_bindings_found">バインディングが見つかりません</string>
+
+    <!-- Element Editor Dialog -->
+    <string name="edit_element">%1$sを編集</string>
+    <string name="element_position_size">位置: (%1$d、%2$d) • サイズ: %3$.2fx</string>
+    <string name="appearance">外観</string>
+    <string name="size_subtitle">%.2fx</string>
+    <string name="label_text">ラベルのテキスト</string>
+    <string name="label_text_subtitle">このボタンのカスタムテキスト</string>
+    <string name="element_type">要素の種類</string>
+    <string name="element_type_subtitle">このコントロールのタイプを変更します</string>
+    <string name="shape">形</string>
+    <string name="shape_subtitle">外観</string>
+    <string name="shape_restricted">%1$s は %2$s 形状に限定されます</string>
+    <string name="bindings">バインディング</string>
+    <string name="bindings_auto_generated">バインディング (自動生成)</string>
+    <string name="bindings_auto_generated_subtitle">範囲ボタンのバインディングは自動的に生成されます</string>
+    <string name="range_button_settings">レンジボタンの設定</string>
+    <string name="range_type">キーレンジ</string>
+    <string name="range_type_subtitle">どのキーのセットを循環させるか</string>
+    <string name="range_orientation">向き</string>
+    <string name="range_orientation_subtitle">レンジボタンの配置方向</string>
+    <string name="range_orientation_horizontal">水平</string>
+    <string name="range_orientation_vertical">垂直</string>
+    <string name="range_visible_segments">可視セグメント</string>
+    <string name="range_visible_segments_subtitle">一度に表示されるキーセグメントの数: %1$d</string>
+    <string name="range_a_to_z">A～Z</string>
+    <string name="range_1_to_0">1 – 0</string>
+    <string name="range_f1_to_f12">F1～F12</string>
+    <string name="range_lock_scrolling">スクロールをロックする</string>
+    <string name="range_lock_scrolling_subtitle">範囲をスクロールできないようにする</string>
+    <string name="button_settings">ボタン設定</string>
+    <string name="button_toggleable">切り替え可能</string>
+    <string name="button_toggleable_subtitle">タップして有効化し、もう一度タップして無効化します</string>
+    <string name="primary_action">主なアクション</string>
+    <string name="secondary_action">二次アクション</string>
+    <string name="direction_up">上</string>
+    <string name="direction_right">右</string>
+    <string name="direction_down">下</string>
+    <string name="direction_left">左</string>
+    <string name="mouse_suffix">（ねずみ）</string>
+    <string name="slot_number">スロット %1$d</string>
+    <string name="button_slots_help">ボタンは最大 2 つのバインディングをサポートします: プライマリ (押す) とセカンダリ (長押し)</string>
+    <string name="properties">プロパティ</string>
+    <string name="position">位置</string>
+    <string name="position_value">X:%1$d、Y:%2$d</string>
+    <string name="unsaved_changes">未保存の変更</string>
+    <string name="unsaved_changes_message">未保存の変更があります。保存しますか、それとも破棄しますか?</string>
+    <string name="adjust_size">サイズを調整する</string>
+    <string name="reset">リセット</string>
+    <string name="done">終わり</string>
+    <string name="copy_size_from_element">要素からサイズをコピー</string>
+    <string name="toast_no_elements_to_copy">サイズをコピーできる要素が他にありません</string>
+    <string name="toast_copied_size">コピーサイズ：%.2fx</string>
+    <string name="on_screen_toast_controls_reset">画面上のコントロールがデフォルトにリセットされる</string>
+    <string name="quick_presets">クイックプリセット</string>
+    <string name="preset_wasd">WASD</string>
+    <string name="preset_arrows">矢</string>
+    <string name="preset_mouse">ねずみ</string>
+    <string name="preset_dpad">十字キー</string>
+    <string name="preset_left_stick">左スティック</string>
+    <string name="preset_right_stick">右スティック</string>
+
+    <!-- Shooter Mode -->
+    <string name="shooter_mode_settings">ダイナミックジョイスティック設定</string>
+    <string name="movement_type">移動タイプ</string>
+    <string name="movement_type_subtitle">左側移動用のジョイスティック出力</string>
+    <string name="look_sensitivity">見た目の感度</string>
+    <string name="look_sensitivity_subtitle">マウスの見た目の感度乗数</string>
+    <string name="joystick_size">ジョイスティックのサイズ</string>
+    <string name="joystick_size_subtitle">動的ジョイスティック サイズ乗数</string>
+    <string name="movement_wasd">WASD</string>
+    <string name="movement_arrow_keys">矢印キー</string>
+    <string name="movement_gamepad_left_stick">ゲームパッドの左スティック</string>
+    <string name="look_type">見た目のタイプ</string>
+    <string name="look_type_subtitle">シューティングモードでの右側の動作</string>
+    <string name="look_type_mouse">ねずみ</string>
+    <string name="look_type_gamepad_right_stick">ゲームパッドの右スティック</string>
+
+    <!-- Physical Controller Config -->
+    <string name="physical_controller_config">物理コントローラー バインディング エディター</string>
+    <string name="physical_controller_config_subtitle">物理コントローラーのボタン マッピングを構成する</string>
+    <string name="face_buttons">フェイスボタン</string>
+    <string name="button_a">ボタン</string>
+    <string name="button_a_subtitle">下面ボタン（決定）</string>
+    <string name="button_b">Bボタン</string>
+    <string name="button_b_subtitle">右フェイスボタン（戻る）</string>
+    <string name="button_x">×ボタン</string>
+    <string name="button_x_subtitle">左フェイスボタン</string>
+    <string name="button_y">Yボタン</string>
+    <string name="button_y_subtitle">天面ボタン</string>
+    <string name="shoulder_buttons">肩ボタン</string>
+    <string name="button_l1">L1/LB</string>
+    <string name="button_l1_subtitle">左バンパー</string>
+    <string name="button_r1">R1/RB</string>
+    <string name="button_r1_subtitle">右バンパー</string>
+    <string name="button_l2">L2/LT</string>
+    <string name="button_l2_subtitle">左トリガー</string>
+    <string name="button_r2">R2/RT</string>
+    <string name="button_r2_subtitle">右トリガー</string>
+    <string name="menu_buttons">メニューボタン</string>
+    <string name="button_start">スタート/オプション</string>
+    <string name="button_select">選択/表示/共有</string>
+    <string name="analog_sticks">アナログスティック</string>
+    <string name="thumbstick_buttons">サムスティックボタン</string>
+    <string name="button_l3">L3 (左スティッククリック)</string>
+    <string name="button_r3">R3 (右スティッククリック)</string>
+    <string name="left_analog_stick">左アナログスティック</string>
+    <string name="left_stick_up">左スティックアップ</string>
+    <string name="left_stick_down">左スティック下</string>
+    <string name="left_stick_left">左スティック左</string>
+    <string name="left_stick_right">左スティック右</string>
+    <string name="right_analog_stick">右アナログスティック</string>
+    <string name="right_stick_up">右スティックアップ</string>
+    <string name="right_stick_down">右スティック下</string>
+    <string name="right_stick_left">右スティック左</string>
+    <string name="right_stick_right">右スティック右</string>
+    <string name="other">他の</string>
+    <string name="button_home">ホーム / ガイド / PS</string>
+    <string name="reset_to_default_bindings">デフォルトのバインドにリセット</string>
+    <string name="not_set">未設定</string>
+
+    <!-- Toast -->
+    <string name="toast_controls_reset">コントロールのリセット</string>
+    <string name="toast_failed_log_save">logcat を宛先に保存できませんでした</string>
+
+    <!-- Settings -->
+    <string name="settings_save_logcat_subtitle">この app\'s PID のみの logcat のスナップショットを保存します</string>
+    <string name="settings_save_logcat_title">ログキャットを保存する</string>
+    <string name="settings_achievement_show_notification">達成通知を表示する</string>
+    <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[CALL/RET オペコードのフラグの処理<br /><br />
+        <b>0</b> : CALL/RET をフラグを必要としなかったかのように扱います (高速、不安定)<br />
+        <b>1</b> : ほとんどの RET にはフラグが必要ですが、ほとんどの CALLS には必要ありません<br />
+        <b>2</b> : すべての CALL/RET にはフラグが必要になります (低速)
+    ]]> </string>
+    <string name="box86_64_env_var_help__dynarec_fastnan">x86のような -NANの生成</string>
+    <string name="box86_64_env_var_help__dynarec_fastround"> 正確な x86 丸めの生成</string>
+    <string name="box86_64_env_var_help__dynarec_x87double">x87エミュレーションでのFloat/Doubleの使用</string>
+    <string name="box86_64_env_var_help__dynarec_bigblock"><![CDATA[ダイナレックビル BigBlock<br /><br />
+        <b>0</b> : 最も大きなブロックを構築しようとしないでください<br />
+        <b>1</b> : 最も大きな Dynarec ブロックを構築します<br />
+        <b>2</b> : Dynarec ブロックをより大きくビルドします (ブロックが重複しても継続しますが、elf メモリ内のブロックのみ)<br />
+        <b>3</b> : Dynarec ブロックをより大きくビルドします (すべてのタイプのメモリに対して、ブロックが重複しても続行します)
+    ]]> </string>
+    <string name="box86_64_env_var_help__dynarec_strongmem"><![CDATA[強力なメモリモデル<br /><br />のシミュレーション
+        <b>0</b> : 特別なことは何も試さないでください<br />
+        <b>1</b> : メモリへの書き込みメモリバリアを有効にする (一部の MOV オペコード上)<br />
+        <b>2</b> : MOV<br /> を使用したメモリへの書き込みごとにオール 1 とメモリバリア
+        <b>3</b> : メモリからの読み取り時および一部の SSE/SSE2 オペコードでのすべて 2 とメモリバリア
+    ]]> </string>
+    <string name="box86_64_env_var_help__dynarec_weakbarrier"><![CDATA[メモリバリアを調整して、強力なメモリエミュレーションによるパフォーマンスへの影響を軽減<br /><br />
+        <b>0</b> : 通常の安全バリアを使用します<br />
+        <b>1</b> : 穏やかなパフォーマンス向上のために弱いバリアを使います<br />
+        <b>2</b> : 弱いバリアを使います、さらに最後の投稿バリアを有効にします]]></string>
+    <string name="box86_64_env_var_help__dynarec_aligned_atomics"><![CDATA[整列されたアトミックのみを生成します (現時点では Arm64 でのみ利用可能)。<br /><br />
+        <b>0</b> : アライメントされていないアトミック処理コードを生成します。<br />
+        <b>1</b> : アライメントされたアトミックのみを生成します。これは高速でコード サイズが小さくなりますが、アライメントされたデータ アドレスで動作する LOCK プレフィックス付きオペコードに対して SIGBUS が発生します。]]></string>
+    <string name="box86_64_env_var_help__dynarec_df"><![CDATA[遅延フラグの使用を有効または無効にします。<br /><br />
+        <b>0</b> : 遅延フラグの使用を無効にします。<br />
+        <b>1</b> : 遅延フラグの使用を有効にします。]]></string>
+    <string name="box86_64_env_var_help__dynarec_dirty"><![CDATA[保護されておらず、ダーティな可能性があるブロックの実行を継続できるようにします。<br /><br />
+        <b>0</b> : 保護されておらず、ダーティな可能性があるブロックの継続実行を許可しません。<br />
+        <b>1</b> : コードと同じページにデータを書き込む dynablock の実行を継続できるようにします。一部のゲームのロード時間は速くなりますが、予期しないクラッシュが発生する可能性もあります。<br />
+        <b>2</b> : また、HotPage を検出すると、そのページに NEVERCLEAN のフラグが立てられるため、書き込み保護はされませんが、そのページからのブロック ビルドは常にテストされます。その方が処理を高速化できます (ただし、一部の SMC ケースはトラップされない可能性があります)。]]></string>
+    <string name="box86_64_env_var_help__dynarec_nativeflags"><![CDATA[ネイティブ フラグの使用を有効または無効にします。<br /><br />
+        <b>0</b> : ネイティブ フラグを使用しません。<br />
+        <b>1</b> : 可能な場合はネイティブ フラグを使用します。]]></string>
+    <string name="box86_64_env_var_help__dynarec_pause"><![CDATA[x86 PAUSE エミュレーションを有効にすると、スピンロックのパフォーマンスが向上する可能性があります。<br /><br />
+        <b>0</b> : x86 PAUSE 命令を無視します。<br />
+        <b>1</b> : YIELD を使用して x86 PAUSE 命令をエミュレートします。<br />
+        <b>2</b> : WFI を使用して x86 PAUSE 命令をエミュレートします。<br />
+        <b>3</b> : SEVL+WFE を使用して x86 PAUSE 命令をエミュレートします。]]></string>
+    <string name="box86_64_env_var_help__avx"><![CDATA[
+        AVX と AVX2 は実装済みで、BMI1、BMI2、ADX、FMA、F16C、RDRAND 拡張にも対応しています!<br /><br />
+        <b>0</b> : AVX 拡張を無効化<br />
+        <b>1</b> : AVX、BMI1、F16C、VAES 拡張を有効化。<br />
+        <b>2</b> : 1 に加えて AVX2、BMI2、FMA、ADX、VPCLMULQDQ、RDRAND を有効化。<br />
+    ]]></string>
+    <string name="box86_64_env_var_help__maxcpu">box64 によってプログラムに提供される CPU の最大数</string>
+    <string name="box86_64_env_var_help__unityplayer">UnityPlayer.dll を検出し、strongmem 設定を適用する</string>
+    <string name="box86_64_env_var_help__mmap32">すべてのメモリ割り当てを 32 ビット アドレス空間に強制します</string>
+    <string name="box86_64_env_var_help__dynarec_forward">ブロックを構築するときに許可される最大転送値を定義します</string>
+    <string name="box86_64_env_var_help__dynarec_callret">CALL/RET オペコードの最適化</string>
+    <string name="box86_64_env_var_help__dynarec_wait">Dynarec が FillBlock の準備ができるまで待機するかどうかを定義します</string>
+    <string name="fexcore_env_var_help__tsoenabled">TSO IR 操作を有効にします (マルチスレッド アプリに必要)。</string>
+    <string name="fexcore_env_var_help__vectortsoenabled">TSO が有効な場合、ベクトルのロード/ストアをアトミックにします。</string>
+    <string name="fexcore_env_var_help__halfbarriertsoenabled">TSO でのアライメントされていないロード/ストアにハーフバリア アトミックを使用します。</string>
+    <string name="fexcore_env_var_help__memcpysettsoenabled">TSO の下で REP MOVS / REP STOS をアトミックにします。</string>
+    <string name="fexcore_env_var_help__multiblock">マルチブロックコードのコンパイルを有効にします。 JIT コンパイルに時間がかかり、途切れが生じる可能性があります。</string>
+    <string name="fexcore_env_var_help__hostfeatures">CPU 機能の強制を制御します。</string>
+    <string name="fexcore_env_var_help__smalltscscale">低周波数システムで TSC をスケールします。</string>
+    <string name="fexcore_env_var_help__smcchecks">自己変更コードのチェック。</string>
+    <string name="fexcore_env_var_help__volatilemetadata">利用可能な場合は、TSO の PE ファイルからの揮発性メタデータを使用します。</string>
+    <string name="fexcore_env_var_help__monohacks">Mono 検出のための特別な SMC + JIT ブロック ハック。</string>
+    <string name="fexcore_env_var_help__hidehypervisorbit">CPUID ハイパーバイザー ビットを非表示にします (これによりクラッシュするアプリに役立ちます)。</string>
+    <string name="fexcore_env_var_help__disablel2cache">FEXCore JIT L2 キャッシュ ルックアップを無効にし、メモリを節約しますが、途切れが発生します。</string>
+    <string name="fexcore_env_var_help__dynamicl1cache">FEXCore JIT L1 キャッシュを動的にサイズ変更するように切り替え、メモリを節約しますが、スタッターが発生します。</string>
+    <string name="fexcore_env_var_help__x87reducedprecision">64 ビット精度を使用して X87 浮動小数点をエミュレートします。これによりエミュレーションの精度が低下し、レンダリングのバグが発生する可能性があります。</string>
+    <string name="fexcore_env_var_help__maxinst">変換ブロックごとの最大命令バジェット。値を大きくするとパフォーマンスが向上しますが、安定性が低下する可能性があります。</string>
+
+    <string name="resume_download">再開する</string>
+    <string name="pause_download">一時停止</string>
+
+    <!-- Library & Game Management -->
+    <string name="create_shortcut">ショートカットを作成する</string>
+    <string name="label">ラベル</string>
+    <string name="icon">アイコン</string>
+    <string name="create">作成する</string>
+    <string name="update_now">今すぐアップデート</string>
+    <string name="moving_files">ファイルの移動</string>
+    <string name="need_internet_to_install">インストールするにはインターネットが必要です</string>
+    <string name="install_wifi_only_enabled">WiFi 経由でのみインストール可能</string>
+    <string name="installation_progress">インストールの進行状況</string>
+    <string name="downloading">ダウンロード中...</string>
+    <string name="calculating_time">計算中...</string>
+    <string name="download_failed_try_again">ダウンロードに失敗しました。もう一度試してください。</string>
+    <string name="update_available">利用可能なアップデート</string>
+    <string name="game_information">ゲーム情報</string>
+    <string name="status">状態</string>
+    <string name="status_online">オンライン</string>
+    <string name="status_away">離れて</string>
+    <string name="status_invisible">見えない</string>
+    <string name="system_menu_title">システム</string>
+    <string name="size">サイズ</string>
+    <string name="location">位置</string>
+    <string name="developer">開発者</string>
+    <string name="release_date">発売日</string>
+    <string name="installed">インストール済み</string>
+    <string name="installing">インストール中</string>
+    <string name="not_installed">インストールされていません</string>
+    <string name="open">開ける</string>
+    <string name="family_shared">家族共有</string>
+    <string name="games">ゲーム</string>
+    <string name="playtime_last_two_weeks">過去 2 週間のプレイ時間: %s 時間</string>
+    <string name="total_playtime">総プレイ時間: %s 時間</string>
+    <string name="last_played">最後にプレイした時間</string>
+    <string name="playtime">遊び時間</string>
+    <string name="add_custom_game_content_desc">カスタムゲームを追加する</string>
+    <string name="add_custom_game_dialog_title">カスタムゲームを追加</string>
+    <string name="add_custom_game_dialog_message">カスタム ゲームとして追加するゲーム ファイルが含まれるフォルダーを選択してください。</string>
+    <string name="add_custom_game_dont_show_again">\'このダイアログを再度表示しないでください</string>
+    <string name="base_app_shortcut_created">ショートカットが作成されました</string>
+    <string name="base_app_shortcut_failed">ショートカットの作成に失敗しました: %s</string>
+    <string name="base_app_images_fetched">画像が正常に取得されました</string>
+    <string name="base_app_game_folder_not_found">ゲームフォルダーが見つかりません</string>
+    <string name="base_app_images_fetch_failed">画像の取得に失敗しました: %s</string>
+    <string name="base_app_exported">輸出済み</string>
+    <string name="base_app_export_failed">エクスポートに失敗しました: %s</string>
+    <string name="base_app_export_cancelled">エクスポートがキャンセルされました</string>
+
+
+    <!-- App Filter -->
+    <string name="app_filter_installed">インストール済み</string>
+    <string name="app_filter_game">ゲーム</string>
+    <string name="app_filter_application">応用</string>
+    <string name="app_filter_tool">道具</string>
+    <string name="app_filter_demo">デモ</string>
+    <string name="app_filter_family">家族</string>
+
+    <!-- Login & Connection -->
+    <string name="connecting_to_steam">Steam に接続中…</string>
+    <string name="no_connection_to_steam">Steam に接続されていません</string>
+    <string name="retry_steam_connection">Steam接続を再試行します</string>
+    <string name="continue_offline">オフラインで続行</string>
+    <string name="connection_reconnecting">Steam に再接続中…</string>
+    <string name="connection_disconnected">Steam から切断されました</string>
+    <string name="connection_disconnected_servers">Steamサーバーから切断されました</string>
+    <string name="connection_logging_in">ログイン中…</string>
+    <string name="connection_login_failed">ログインに失敗しました</string>
+    <string name="connection_session_ended">セッションが終了しました</string>
+    <string name="connection_offline_mode">オフラインモード</string>
+    <string name="connection_retry">リトライ</string>
+
+
+    <!--Game Feedback Dialog -->
+    <string name="game_feedback_game_run">試合はどうやって進んだのですか？</string>
+    <string name="game_feedback_issues_question">発生した問題を選択してください:</string>
+
+
+    <!-- Profile & Menu -->
+    <string name="help_and_support">ヘルプ &amp; サポート</string>
+    <string name="hall_of_fame">殿堂</string>
+    <string name="go_online">オンラインにする</string>
+    <string name="go_offline">オフラインにする</string>
+    <string name="log_out">ログアウト</string>
+    <string name="close">近い</string>
+
+    <!-- System menu platform actions -->
+    <string name="steam_sign_in">Steam にサインインする</string>
+    <string name="steam_go_online">オンラインに接続する (Steam)</string>
+    <string name="steam_go_offline">オフラインにする (Steam)</string>
+    <string name="steam_sign_out">Steam からサインアウトする</string>
+
+    <!-- Container Configuration: General -->
+    <string name="new_environment_variable">新しい環境変数</string>
+    <string name="name">名前</string>
+    <string name="value">価値</string>
+    <string name="no_more_known_variables">既知の変数はもうありません</string>
+    <string name="container_variant">コンテナのバリアント</string>
+    <string name="wine_version">Wineバージョン</string>
+    <string name="exec_arguments">実行引数</string>
+    <string name="exec_arguments_example">例: -dx11</string>
+    <string name="language">言語</string>
+    <string name="screen_size">画面サイズ</string>
+    <string name="width">幅</string>
+    <string name="height">身長</string>
+    <string name="audio_driver">オーディオドライバー</string>
+    <string name="pulseaudio_suspend_behavior">PulseAudio サスペンド動作</string>
+    <string name="pulseaudio_suspend_behavior_thread">スレッド経由でサスペンド（デフォルト）</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Pactl 経由でサスペンド（省電力）</string>
+    <string name="pulseaudio_low_latency">PulseAudio 低レイテンシーモード</string>
+    <string name="show_fps">FPS を表示</string>
+    <string name="portrait_mode">ポートレートモード</string>
+    <string name="portrait_mode_description">8BitDo FlipPad/GameSir Pocket Taco タイプ コントローラー用</string>
+    <string name="remove_driver_confirmation">ドライバー「%s」を削除してもよろしいですか?これは元に戻すことはできません</string>
+
+    <!-- Container Configuration: Steam Integration -->
+    <string name="use_legacy_drm">レガシー DRM を使用する</string>
+    <string name="unpack_files">ファイルを解凍する</string>
+    <string name="unpack_files_description">\'Application Load Error 3:0000065432\' が発生した場合にのみ使用してください。</string>
+    <string name="force_dlc">強制DLC</string>
+    <string name="force_dlc_description">DLC が検出されない場合、または DLC を含む保存が機能しない場合にのみ有効にします</string>
+    <string name="local_saves_only">ローカル保存のみ</string>
+    <string name="local_saves_only_description">このゲームのクラウド セーブ同期を無効にし、セーブをデバイス上にのみ保存します</string>
+    <string name="launch_steam_client_beta">Steam クライアント (ベータ版) を起動する</string>
+    <string name="launch_steam_client_description">パフォーマンスが低下し、起動が遅くなります\nオンライン プレイが可能になり、DRM とコントローラーの問題が修正されます\nすべてのゲームが動作するわけではありません</string>
+    <string name="launch_bionic_steam">実験的な Bionic Steam を有効にする</string>
+    <string name="launch_bionic_steam_description">オンライン プレイが可能になり、互換性が向上します\n常に機能するとは限りません\nこれを試す前にセーブデータをバックアップしてください</string>
+    <string name="steam_offline_mode">Steam オフラインモード</string>
+    <string name="steam_offline_mode_description">Steam ゲームをオフライン モードで起動する</string>
+    <string name="achievement_unlocked">実績のロックが解除されました</string>
+    <string name="settings_achievement_notification_position">達成通知位置</string>
+    <string name="achievement_position_top_left">左上</string>
+    <string name="achievement_position_top_right">右上</string>
+    <string name="achievement_position_bottom_left">左下</string>
+    <string name="achievement_position_bottom_right">右下</string>
+    <string name="allow_steam_updates">Steam アップデートを許可する</string>
+    <string name="allow_steam_updates_description">Steamを最新バージョンにアップデートします。パフォーマンスが大幅に低下します。</string>
+    <string name="steam_type">Steamタイプ</string>
+
+    <!-- Container Configuration: Graphics -->
+    <string name="graphics_driver">グラフィックドライバー</string>
+    <string name="graphics_driver_version">グラフィックスドライバーのバージョン</string>
+    <string name="exposed_vulkan_extensions">公開された Vulkan 拡張機能</string>
+    <string name="max_device_memory">最大デバイスメモリ</string>
+    <string name="frame_synchronization">フレーム同期</string>
+    <string name="use_adrenotools_turnip">Adrenotools Turnipを使用する</string>
+    <string name="vulkan_version">Vulkanバージョン</string>
+    <string name="image_cache_size">画像キャッシュサイズ</string>
+    <string name="dx_wrapper">DXラッパー</string>
+    <string name="vkd3d_feature_level">VKD3D 機能レベル</string>
+    <string name="use_dri3">DRI3 を使用する</string>
+    <string name="use_dri3_description">無効にすると、一部のデバイスでのグラフィックの不具合が修正される場合があります</string>
+    <string name="use_legacy_renderer">レガシーレンダラーを使用する</string>
+    <string name="use_legacy_renderer_description">VulkanRenderer の代わりにレガシーの GLRenderer を使用します。VulkanRenderer はパフォーマンスを向上させますが、ベータ版のため問題が発生する可能性があります。</string>
+    <string name="sync_frame">フレームごとに同期</string>
+    <string name="disable_present_wait">KHR_present_wait を無効にする</string>
+    <string name="present_modes">現在のモード</string>
+    <string name="renderer_present_modes">レンダラ存在モード</string>
+    <string name="resource_type">メモリリソースタイプ</string>
+    <string name="bcn_emulation">BCnエミュレーション</string>
+    <string name="bcn_emulation_type">BCnエミュレーションタイプ</string>
+    <string name="bcn_emulation_cache">BCn エミュレーション キャッシュ</string>
+    <string name="sharpness_effect">シャープネスブースト</string>
+    <string name="sharpness_level">シャープネスレベル</string>
+    <string name="sharpness_denoise">シャープネスノイズ除去</string>
+
+    <!-- Container Configuration: Emulation -->
+    <string name="fexcore_version">FEXコアのバージョン</string>
+    <string name="fexcore_preset">FEXコアプリセット</string>
+    <string name="tso_mode">TSOモード</string>
+    <string name="x87_mode">x87モード</string>
+    <string name="multiblock">マルチブロック</string>
+    <string name="emulator_64bit">64ビットエミュレータ</string>
+    <string name="emulator_32bit">32ビットエミュレータ</string>
+    <string name="box64_version">Box64 バージョン</string>
+    <string name="box64_preset">Box64 プリセット</string>
+    <string name="box64_presets">Box64 プリセット</string>
+    <string name="fexcore_presets">FEXCore プリセット</string>
+    <string name="fexcore_presets_description">FEXCore プリセットの表示、変更、作成</string>
+    <string name="preset_name">プリセット名</string>
+
+    <!-- Container Configuration: Input -->
+    <string name="use_sdl_api">SDL APIを使用する</string>
+    <string name="use_steam_input">Steam Inputを使用する</string>
+    <string name="enable_xinput_api">XInput API を有効にする</string>
+    <string name="enable_directinput_api">DirectInput API を有効にする</string>
+    <string name="directinput_mapper_type">DirectInput マッパーのタイプ</string>
+    <string name="disable_mouse_input">マウス入力を無効にする</string>
+    <string name="touchscreen_mode">タッチスクリーンモード</string>
+    <string name="shooter_mode_toggle">シューターモード</string>
+    <string name="shooter_mode_toggle_description">スティック要素をダイナミックジョイスティックに自動置換</string>
+    <string name="shooter_mode_on">マウスを有効にする</string>
+    <string name="shooter_mode_off">スティックを有効にする</string>
+    <!-- Gesture Settings Dialog -->
+    <string name="gesture_settings_title">タッチジェスチャー設定</string>
+    <string name="gesture_section_single_finger">一本の指</string>
+    <string name="gesture_section_two_finger">ツーフィンガー</string>
+    <string name="gesture_section_three_finger">スリーフィンガー</string>
+    <string name="gesture_section_other">他の</string>
+    <string name="gesture_tap">タップ</string>
+    <string name="gesture_tap_subtitle">左クリック</string>
+    <string name="gesture_drag">指をドラッグ</string>
+    <string name="gesture_drag_subtitle">ドラッグ 左クリック (ボックス選択)</string>
+    <string name="gesture_hold_mouse_button_while_touching">タッチ中にマウスボタンを保持</string>
+    <string name="gesture_mouse_button_label">マウスボタン</string>
+    <string name="gesture_long_press">長押し</string>
+    <string name="gesture_long_press_delay">長押し遅延 (ミリ秒)</string>
+    <string name="gesture_double_tap">ダブルタップ</string>
+    <string name="gesture_double_tap_subtitle">左ダブルクリック</string>
+    <string name="gesture_double_tap_delay">ダブルタップ遅延 (ミリ秒)</string>
+    <string name="gesture_two_finger_drag">2本指でドラッグ</string>
+    <string name="gesture_pinch">ピンチイン/ピンチアウト</string>
+    <string name="gesture_two_finger_tap">2本指タップ</string>
+    <string name="gesture_action_left_click">左クリック</string>
+    <string name="gesture_action_right_click">右クリック</string>
+    <string name="gesture_action_middle_click">中クリック</string>
+    <string name="gesture_pan_middle_mouse">中マウスパン</string>
+    <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_arrow_keys">矢印キー</string>
+    <string name="gesture_pan_left_click_drag">左クリックでドラッグ</string>
+    <string name="gesture_pan_right_click_drag">右クリックしてドラッグ</string>
+    <string name="gesture_zoom_scroll_wheel">スクロールホイール</string>
+    <string name="gesture_zoom_plus_minus">+/- キー</string>
+    <string name="gesture_zoom_page_up_down">ページアップ/ページダウン</string>
+    <string name="gesture_action_label">アクション</string>
+    <string name="gesture_action_show_keyboard">キーボードを表示</string>
+    <string name="gesture_mouse_behavior_label">マウス動作</string>
+    <string name="gesture_mouse_behavior_click">クリック</string>
+    <string name="gesture_mouse_behavior_hold">ホールド</string>
+    <string name="gesture_header_special">特別</string>
+    <string name="gesture_header_mouse">ねずみ</string>
+    <string name="gesture_header_common_game">共通のゲームキー</string>
+    <string name="gesture_header_letters">文字A\u2013Z</string>
+    <string name="gesture_header_numbers">数字0\u20139</string>
+    <string name="gesture_header_function_keys">ファンクションキー</string>
+    <string name="gesture_delay_label">遅れ</string>
+    <string name="gesture_two_finger_hold">2本指ホールド</string>
+    <string name="gesture_two_finger_hold_delay">2 本指ホールド遅延 (ミリ秒)</string>
+    <string name="gesture_three_finger_tap">3本指タップ</string>
+    <string name="gesture_three_finger_drag">3本指でドラッグ</string>
+    <string name="gesture_three_finger_hold">3本指ホールド</string>
+    <string name="gesture_three_finger_hold_delay">3 本指ホールド遅延 (ミリ秒)</string>
+    <string name="gesture_threshold">ジェスチャーのしきい値 (px)</string>
+    <string name="gesture_threshold_subtitle">ジェスチャ タイプをロックするために必要な動作 (低い = 応答性が高い)</string>
+    <string name="gesture_mouse_drag_movement">ドラッグ時のマウス移動</string>
+    <string name="gesture_mouse_drag_movement_subtitle">ほとんどのゲームではダイレクトが動作します。ドラッグでカメラやカーソルに問題が出る場合は相対を使用してください</string>
+    <string name="gesture_mouse_drag_movement_direct">ダイレクト</string>
+    <string name="gesture_mouse_drag_movement_relative">相対</string>
+    <string name="gesture_show_click_highlight">クリックハイライトを表示</string>
+    <string name="gesture_show_click_highlight_subtitle">タップした位置に円を表示</string>
+    <string name="gesture_show_debug_overlay">ジェスチャ デバッグ オーバーレイを表示</string>
+    <string name="gesture_show_debug_overlay_subtitle">上部中央に一時的なジェスチャ ラベルを表示する</string>
+    <string name="gesture_show_cursor_touchscreen_mode">タッチスクリーンモードでカーソルを表示</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">タッチスクリーンジェスチャーが有効な間、マウスカーソルを表示したままにします</string>
+
+    <string name="external_display_input">外部ディスプレイ入力</string>
+    <string name="external_display_input_subtitle">接続されたプレゼンテーション表示の動作を選択する</string>
+    <string name="external_display_mode_off">外部ディスプレイは使用しないでください</string>
+    <string name="external_display_mode_touchpad">タッチパッド表面として使用する</string>
+    <string name="external_display_mode_keyboard">フルキーボードとして使用する</string>
+    <string name="external_display_mode_hybrid">ハイブリッド (タッチパッド + キーボード ボタン)</string>
+    <string name="external_display_swap">外部ディスプレイにゲームを表示</string>
+    <string name="external_display_swap_subtitle">画面を交換して、ゲームが外部ディスプレイにレンダリングされ、このデバイスがコントローラー サーフェスになります</string>
+    <string name="start_with_controls_hidden">オンスクリーンコントロールを非表示にして開始</string>
+    <string name="start_with_controls_hidden_description">ゲームを開始すると、画面上のコントロールが非表示になります。ナビゲーション メニューから切り替えます。</string>
+    <string name="emulate_keyboard_mouse">キーボードとマウスをエミュレートする</string>
+    <string name="emulate_keyboard_mouse_description">左スティック = WASD、右スティック = マウス。 L2 = 左クリック、R2 = 右クリック。</string>
+
+    <!-- Container Configuration: Rendering -->
+    <string name="renderer">レンダラー</string>
+    <string name="gpu_name">GPU名</string>
+    <string name="offscreen_rendering_mode">オフスクリーン レンダリング モード</string>
+    <string name="video_memory_size">ビデオメモリサイズ</string>
+    <string name="enable_csmt">CSMT (コマンド ストリーム マルチスレッド) を有効にする</string>
+    <string name="enable_strict_shader_math">厳密なシェーダ計算を有効にする</string>
+    <string name="mouse_warp_override">マウスワープオーバーライド</string>
+
+    <!-- Container Configuration: Management -->
+    <string name="environment_variables">環境変数</string>
+    <string name="no_environment_variables">環境変数はありません</string>
+    <string name="no_drives">ドライブがありません</string>
+    <string name="add_drive">ドライブの追加</string>
+    <string name="drive_letter">ドライブ文字</string>
+    <string name="no_available_drive_letters">利用可能なドライブ文字がありません</string>
+    <string name="startup_selection">スタートアップの選択</string>
+    <string name="suspend_behavior">一時停止動作</string>
+    <string name="suspend_behavior_auto">一時停止と自動再開</string>
+    <string name="suspend_behavior_never">決して一時停止しないでください</string>
+    <string name="suspend_behavior_manual">[再開]ボタンまで一時停止 (デフォルト)</string>
+    <string name="processor_affinity_32bit">プロセッサ アフィニティ (32 ビット アプリ)</string>
+    <string name="executable_path">実行可能パス</string>
+    <string name="executable_path_placeholder">例: path\\to\\exe</string>
+
+    <!-- Dialogs -->
+    <string name="allowed_orientations">許可される向き</string>
+    <string name="select_wine_debug_channels">Wine デバッグ チャネルの選択</string>
+    <string name="cpu_label">CPU%d</string>
+    <string name="describe_what_happened">何が起こったのか説明してください</string>
+    <string name="get_support_on_discord">Discord でサポートを受ける</string>
+
+    <!-- Driver Manager -->
+    <string name="driver_manager">ドライバーマネージャー</string>
+    <string name="select_a_driver">ドライバーを選択してください</string>
+    <string name="import_zip_from_device">デバイスから ZIP をインポート</string>
+
+    <!-- Contents Manager -->
+    <string name="contents_manager">コンテンツマネージャー</string>
+    <string name="import_wcp_from_device">デバイスから .wcp をインポート</string>
+    <string name="working">働く...</string>
+    <string name="selected">選択済み</string>
+    <string name="selected_content">選択されたコンテンツ</string>
+    <string name="installed_contents">インストール内容</string>
+    <string name="select_type">タイプを選択してください</string>
+    <string name="untrusted_files_detected">信頼できないファイルが検出されました</string>
+    <string name="install_anyway">とにかくインストールする</string>
+    <string name="remove_content">コンテンツを削除しますか?</string>
+    <string name="remove_content_confirmation">%1$s (%2$s) を削除してもよろしいですか?</string>
+
+    <!-- Settings -->
+    <string name="settings_language">言語</string>
+    <string name="settings_select_language">言語の選択</string>
+    <string name="settings_language_restart_title">再起動が必要です</string>
+    <string name="settings_language_restart_message">言語を変更するには、アプリを再起動する必要があります。続けますか?</string>
+    <string name="settings_language_restart_confirm">再起動</string>
+    <string name="settings_language_changing">言語を変更して再起動しています…</string>
+
+    <!-- Settings: Emulation Group -->
+    <string name="settings_emulation_title">エミュレーション</string>
+    <string name="settings_emulation_orientations_title">許可される向き</string>
+    <string name="settings_emulation_orientations_subtitle">ゲーム内でどの方向に回転できるかを選択します</string>
+    <string name="settings_emulation_default_config_title">デフォルト設定の変更</string>
+    <string name="settings_emulation_default_config_subtitle">各ゲームのコンテナの初期設定 (すでにインストールされているゲームには影響しません)</string>
+    <string name="settings_emulation_default_config_dialog_title">デフォルトのコンテナ構成</string>
+    <string name="settings_emulation_auto_apply_known_config_title">既知の構成を自動適用する</string>
+    <string name="settings_emulation_auto_apply_known_config_subtitle">初回起動時に Steam ゲームの推奨設定を自動的に適用する</string>
+    <string name="settings_emulation_box64_presets_title">Box64 プリセット</string>
+    <string name="settings_emulation_box64_presets_subtitle">Box64 プリセットの表示、変更、作成</string>
+    <string name="settings_emulation_driver_manager_title">ドライバーマネージャー</string>
+    <string name="settings_emulation_driver_manager_subtitle">カスタム グラフィックス ドライバー パッケージのインストールまたは削除</string>
+    <string name="settings_emulation_contents_manager_title">コンテンツマネージャー</string>
+    <string name="settings_emulation_contents_manager_subtitle">追加のコンポーネント (.wcp) をインストールする</string>
+    <string name="settings_emulation_wine_proton_manager_title">Wine/Protonマネージャー</string>
+    <string name="settings_emulation_wine_proton_manager_subtitle">カスタム Wine/Proton バージョンをインポートする (Bionic のみ)</string>
+
+    <!-- Settings: Debug Group -->
+    <string name="settings_debug_title">デバッグ</string>
+    <string name="settings_debug_wine_channels_title">Wine デバッグ チャネルの選択</string>
+    <string name="settings_debug_wine_logs_title">Wineのデバッグログを有効にする</string>
+    <string name="settings_debug_wine_logs_subtitle">Wine デバッグ出力をファイルに書き込む</string>
+    <string name="settings_debug_box_logs_title">Box86/64 ログを有効にする</string>
+    <string name="settings_debug_box_logs_subtitle">Box86 &amp; Box64 デバッグ出力をファイルに書き込む</string>
+    <string name="settings_debug_view_crash_title">最新のクラッシュを表示</string>
+    <string name="settings_debug_view_crash_subtitle">最新のクラッシュログを表示します</string>
+    <string name="settings_debug_no_crash_logs">最近のクラッシュ ログは見つかりませんでした</string>
+    <string name="settings_debug_view_log_title">ゲームのデバッグログを表示する</string>
+    <string name="settings_debug_view_log_subtitle">最新の Wine/Box64 デバッグ ログを表示します</string>
+    <string name="settings_debug_no_wine_logs">Wine デバッグ ログが見つかりません</string>
+    <string name="settings_debug_no_channels_selected">チャンネルが選択されていません</string>
+    <string name="settings_debug_clear_prefs_title">設定をクリアする</string>
+    <string name="settings_debug_clear_prefs_subtitle">[アプリを閉じる] クライアントをログアウトし、ローカル設定データを消去します。</string>
+    <string name="settings_debug_clear_db_title">ローカルデータベースのクリア</string>
+    <string name="settings_debug_clear_db_subtitle">[アプリを閉じる] ライブラリ アイテムまたはメッセージに関する問題の解決に役立つ場合があります。</string>
+    <string name="settings_debug_clear_cache_title">画像キャッシュのクリア</string>
+    <string name="settings_debug_clear_cache_subtitle">ロードされたすべてのイメージを削除します。</string>
+
+    <!-- Settings: Info Group -->
+    <string name="settings_info_title">情報</string>
+    <string name="settings_info_send_tip_title">チップを送信する</string>
+    <string name="settings_info_send_tip_subtitle">継続的な開発に貢献する</string>
+    <string name="settings_info_ask_tip_title">起動時にヒントを求める</string>
+    <string name="settings_info_ask_tip_subtitle">ヒントメッセージの表示を停止します</string>
+    <string name="settings_info_source_title">ソースコード</string>
+    <string name="settings_info_source_subtitle">このプロジェクトのソースコードを表示する</string>
+    <string name="settings_info_libraries_title">使用するライブラリ</string>
+    <string name="settings_info_libraries_subtitle">GameNative を可能にするテクノロジーをご覧ください</string>
+    <string name="settings_info_privacy_title">プライバシーポリシー</string>
+    <string name="settings_info_privacy_subtitle">GameNative\'s プライバシー ポリシーへのリンクを開きます</string>
+    <string name="settings_info_usage_analytics_title">使用状況分析</string>
+    <string name="settings_info_usage_analytics_subtitle">当社は個人情報を追跡することはありません。これを無効にすると、重要でない分析は停止されますが、コアとなるゲーム パフォーマンス データは、互換性を向上させるための正当な目的として引き続き収集されます。</string>
+
+    <!-- Settings: Interface Group -->
+    <string name="settings_interface_title">インタフェース</string>
+    <string name="settings_interface_external_links_title">Webリンクを外部で開く</string>
+    <string name="settings_interface_external_links_subtitle">リンクを既定のWebブラウザで開きます</string>
+    <string name="settings_interface_hide_statusbar_title">ゲーム中でないときはステータスバーを非表示にする</string>
+    <string name="settings_interface_hide_statusbar_subtitle">ゲームリストや設定などで Android ステータスバーを非表示にします。変更するとアプリが再起動します。</string>
+    <string name="settings_interface_swap_face_buttons_title">フェイスボタンを入れ替える</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">A↔B と X↔Y のボタン表示を入れ替えます</string>
+    <string name="settings_interface_warn_before_exit_title">終了前に確認する</string>
+    <string name="settings_interface_warn_before_exit_subtitle">終了するには戻るボタンを2回押す必要があります（1回目で警告を表示）</string>
+    <string name="settings_interface_show_gamepad_hints_title">ゲームパッドのヒントを表示</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">画面下部にゲームパッド操作ヒントバーを表示します</string>
+    <string name="settings_interface_icon_style">アイコンのスタイル</string>
+    <string name="settings_interface_wifi_only_title">Wi-Fi/LAN接続時のみダウンロード</string>
+    <string name="settings_interface_wifi_only_subtitle">モバイルデータ通信でのダウンロードを防止します</string>
+    <string name="settings_interface_external_storage_title">外部ストレージに保存</string>
+    <string name="settings_interface_no_external_storage">外部ストレージが見つかりません</string>
+    <string name="settings_interface_external_storage_subtitle">ゲームを外部ストレージに保存します</string>
+    <string name="settings_interface_storage_volume_title">ストレージボリューム</string>
+    <string name="settings_interface_download_server_title">Steamダウンロードサーバー</string>
+    <string name="settings_interface_restart_required_title">再起動が必要です</string>
+
+    <!-- Settings: Downloads Group -->
+    <string name="settings_downloads_title">ダウンロード &amp; ストレージ</string>
+    <string name="downloads_pause_all">すべて一時停止する</string>
+    <string name="downloads_resume_all">すべて再開</string>
+    <string name="downloads_cancel_all">すべてキャンセル</string>
+    <string name="downloads_clear_finished">クリア</string>
+    <string name="downloads_resume_available">再開の準備完了</string>
+    <string name="downloads_status_paused">一時停止中</string>
+    <string name="downloads_status_complete">完了</string>
+    <string name="downloads_status_cancelled">キャンセル</string>
+    <string name="downloads_status_failed">失敗した</string>
+    <string name="downloads_summary">%1$d アクティブ • %2$d 再開可能 • %3$d 終了</string>
+
+    <!-- Settings: Storage Manager -->
+    <string name="settings_storage_title">ストレージ</string>
+    <string name="settings_storage_manage_title">ストレージマネージャー</string>
+    <string name="settings_storage_manage_subtitle">ゲームとコンテナのストレージを 1 か所で確認する</string>
+    <string name="storage_internal">内部</string>
+    <string name="storage_external">外部の</string>
+    <string name="storage_free_of_total">%1$s: %2$s 空き / 合計 %3$s</string>
+    <string name="storage_calculating">%1$s: 計算中…</string>
+    <string name="container_storage_title">コンテナ &amp; ストレージ マネージャー</string>
+    <string name="container_storage_subtitle">コンテナなしでインストールされているゲームを含む、ゲームとコンテナのストレージを確認します。</string>
+    <string name="container_storage_summary">%1$d アイテム • %2$s</string>
+    <string name="container_storage_empty">保管アイテムが見つかりません</string>
+    <string name="container_storage_loading">ストレージをスキャン中…</string>
+    <string name="container_storage_source_unknown">未知</string>
+    <string name="container_storage_unknown_container">不明なコンテナ</string>
+    <string name="container_storage_source_and_status">%1$s・%2$s</string>
+    <string name="container_storage_status_ready">準備ができて</string>
+    <string name="container_storage_status_no_container">容器なし</string>
+    <string name="container_storage_status_game_files_missing">ゲームファイルがありません</string>
+    <string name="container_storage_status_orphaned">孤児</string>
+    <string name="container_storage_status_unreadable">判読不能</string>
+    <string name="container_storage_remove_button">コンテナを削除する</string>
+    <string name="container_storage_remove_title">コンテナを削除しますか?</string>
+    <string name="container_storage_remove_message">これにより、%1$s のコンテナが削除され、内部ストレージが解放されます。ゲーム ファイルはインストールされたままですが、ローカル設定や Windows 環境内に保存されているセーブデータは失われる可能性があります。</string>
+    <string name="container_storage_remove_success">%1$s のコンテナを削除しました</string>
+    <string name="container_storage_remove_failed">コンテナの削除に失敗しました</string>
+    <string name="container_storage_uninstall_button">ゲームをアンインストールする</string>
+    <string name="container_storage_uninstall_title">ゲームとコンテナをアンインストールしますか?</string>
+    <string name="container_storage_uninstall_message">これにより、%1$s がアンインストールされ、ゲーム ファイルが削除され、リンクされたコンテナが削除されます。</string>
+    <string name="container_storage_uninstall_game_only_title">ゲームをアンインストールしますか?</string>
+    <string name="container_storage_uninstall_game_only_message">これにより、%1$s がアンインストールされ、そのゲーム ファイルが削除されます。コンテナは削除されません。</string>
+    <string name="container_storage_uninstall_success">アンインストールされた%1$s</string>
+    <string name="container_storage_uninstall_failed">ゲームのアンインストールに失敗しました: %1$s</string>
+    <string name="container_storage_move_to_external_button">外部に移動</string>
+    <string name="container_storage_move_to_internal_button">社内に移動</string>
+    <string name="container_storage_move_success">%1$s を %2$s ストレージに移動しました</string>
+    <string name="container_storage_move_failed">%1$s の移動に失敗しました: %2$s</string>
+    <string name="container_storage_move_external_disabled">最初に外部ストレージへの書き込みを有効にする</string>
+    <string name="container_storage_location_internal">内部</string>
+    <string name="container_storage_location_external">外部の</string>
+    <string name="container_storage_location_unknown">不明な場所</string>
+    <string name="container_storage_unknown_error">不明なエラー</string>
+
+    <!-- Login Screen -->
+    <string name="login_app_name">GameNative</string>
+    <string name="login_privacy_policy">プライバシーポリシー</string>
+    <string name="login_welcome_back">おかえり</string>
+    <string name="login_subtitle">サインインして Steam ライブラリにアクセスします</string>
+    <string name="login_tab_credentials">資格</string>
+    <string name="login_tab_qr_code">QRコード</string>
+    <string name="login_username">ユーザー名</string>
+    <string name="login_username_hint">Steam ユーザー名を入力してください</string>
+    <string name="login_password">パスワード</string>
+    <string name="login_password_hint">パスワードを入力してください</string>
+    <string name="login_password_show">パスワードを表示</string>
+    <string name="login_password_hide">パスワードを隠す</string>
+    <string name="login_remember_session">セッションを記憶する</string>
+    <string name="login_sign_in">Steam でサインインする</string>
+    <string name="login_qr_failed">QR コードが失敗しました</string>
+    <string name="login_retry_qr">QRコードを再試行してください</string>
+    <string name="login_qr_instructions">Steam モバイル アプリを開いてこの QR コードをスキャンすると、すぐにサインインできます</string>
+    <string name="login_skip_steam">Steam ログインをスキップする</string>
+    <string name="login_or_sign_in_with">または、次の方法でサインインします。</string>
+    <string name="login_skip_login">ログインをスキップする</string>
+
+    <!-- Generic/Reusable strings -->
+    <string name="continue_action">続く</string>
+    <string name="settings_text">設定</string>
+
+
+    <!-- Connecting to Servers Screen -->
+    <string name="connect_to_remote_server">リモートサーバーに接続しています...</string>
+
+    <!-- LibraryAppScreen: Dialogs -->
+    <string name="library_not_enough_space_message">インストールされているアプリには %1$s のスペースが必要ですが、このデバイスには %2$s だけが残っています</string>
+    <string name="library_download_prompt_message">インストールされるアプリには次のスペース要件があります。続行しますか?\n\n\tダウンロード サイズ: %1$s\n\tディスク上のサイズ: %2$s\n\t利用可能なスペース: %3$s</string>
+    <string name="library_cancel_download_message">アプリのダウンロードをキャンセルしてもよろしいですか?</string>
+    <string name="library_delete_download_message">このゲームのダウンロードデータをすべて削除しますか?</string>
+    <string name="library_delete_app_message">このアプリを削除してもよろしいですか?</string>
+    <string name="library_download_install_imagefs_title">&amp; をダウンロード ImageFS をインストール</string>
+    <string name="library_download_install_imagefs_message">構成を編集するには、事前に Ubuntu イメージをダウンロードしてインストールする必要があります。この操作には数分かかる場合があります。続けますか?</string>
+    <string name="library_install_imagefs_title">ImageFS をインストールする</string>
+    <string name="library_install_imagefs_message">構成を編集するには、Ubuntu イメージをインストールする必要があります。この操作には数分かかる場合があります。続けますか?</string>
+    <string name="library_reset_container_title">コンテナをリセット</string>
+    <string name="library_reset_container_message">これにより、コンテナーがデフォルトの構成にリセットされます。</string>
+    <string name="library_verify_files_title">ファイルの検証</string>
+    <string name="library_verify_files_message">確認する前に、保存データがクラウドにアップロードまたはバックアップされていることを確認してください。そうしないと上書きされる可能性があります。</string>
+    <string name="library_update_title">アップデート</string>
+    <string name="library_update_message">更新する前に保存データがクラウドにアップロードまたはバックアップされていることを確認してください。そうしないと上書きされる可能性があります。</string>
+    <string name="library_config_title">%s 構成</string>
+
+    <!-- LibraryAppScreen: Toast Messages -->
+    <string name="library_storage_permission_required">ストレージ権限が必要です</string>
+    <string name="library_exported">輸出済み</string>
+    <string name="library_failed_to_export">エクスポートに失敗しました: %s</string>
+    <string name="library_export_cancelled">エクスポートがキャンセルされました</string>
+    <string name="library_shortcut_created">ショートカットが作成されました</string>
+    <string name="library_failed_to_create_shortcut">ショートカットの作成に失敗しました: %s</string>
+    <string name="library_cloud_sync_starting">クラウド保存同期を開始しています…</string>
+    <string name="library_cloud_sync_success">クラウド同期が正常に完了しました</string>
+    <string name="library_cloud_sync_up_to_date">保存ファイルはすでに最新のものです</string>
+    <string name="library_cloud_sync_failed">クラウド同期に失敗しました</string>
+    <string name="library_cloud_sync_error">クラウド同期エラー: %1$s</string>
+
+    <!-- LibraryAppScreen: UI Labels -->
+    <string name="library_need_internet">インストールするにはインターネットが必要です</string>
+    <string name="library_wifi_only_enabled">Wi-Fi/LAN 経由でのみインストール可能</string>
+    <string name="library_file_count">ファイル %1$d/%2$d</string>
+
+    <!-- SteamService: Download Notifications -->
+    <string name="download_no_wifi">Wi-Fi/LANに接続されていない</string>
+    <string name="download_paused_wifi">ダウンロード一時停止 – Wi-Fi/LAN を待機中</string>
+
+    <!-- PluviaMain: Update & App Info -->
+    <string name="main_update_available_title">利用可能なアップデート</string>
+    <string name="main_update_available_message">新しいバージョン (%1$s) が利用可能になりました!%2$s</string>
+    <string name="main_update_button">アップデート</string>
+    <string name="main_later_button">後で</string>
+    <string name="main_update_failed_title">更新に失敗しました</string>
+    <string name="main_update_failed_message">アップデートのダウンロードまたはインストールに失敗しました。後でもう一度試してください。</string>
+    <string name="launch_dependency_failed_title">起動依存関係のダウンロードに失敗しました</string>
+    <string name="launch_dependency_failed_message">必要なコンポーネントのダウンロードに失敗しました。後でもう一度試してください。</string>
+
+    <!-- PluviaMain: Crash & Support -->
+    <string name="main_recent_crash_title">最近のクラッシュ</string>
+    <string name="main_recent_crash_message">申し訳ありません!\n\' が抱えていた最近の問題について知っていただければ幸いです。\nアプリ\'s の設定で最新のクラッシュ ログを表示およびエクスポートし、プロジェクト ZESC4ZZs リポジトリの Github の問題として添付できます。\nGithub リポジトリへのリンクも設定にあります。</string>
+    <string name="main_thank_you_title">GameNative をご利用いただきありがとうございます。</string>
+    <string name="main_thank_you_message">アプリを友達と共有するか、Ko-fi のメンバーになることで、Android でのオープンソース PC ゲームをサポートします。</string>
+    <string name="main_join_kofi">Ko-fi に参加する</string>
+    <string name="main_share">共有</string>
+    <string name="main_share_text">GameNative をチェックしてください - クラウド セーブを完全にサポートし、Android で PC Steam ゲームをプレイしましょう!\nhttps://gamenative.app\nコミュニティに参加してください: https://discord.gg/2hKv4VfZfE</string>
+    <string name="main_discord_support_title">ゲームはうまくいきましたか？</string>
+    <string name="main_discord_support_message">Discord に参加して、ゲームを修正したりパフォーマンスを向上させるためのサポートを受けてください。</string>
+    <string name="main_open_discord">Discordを開く</string>
+
+    <!-- PluviaMain: Game Launch -->
+    <string name="main_downloading_entry">%sをダウンロード中</string>
+    <string name="main_downloading_steam">Steam をダウンロード中...</string>
+
+    <string name="main_installing_glibc">glibc コンポーネントをインストールしています...</string>
+    <string name="main_installing_bionic">Bionic コンポーネントをインストールしています...</string>
+    <string name="main_loading">読み込み中...</string>
+    <string name="download_failed_title">ダウンロードに失敗しました</string>
+    <string name="download_failed_message">必要なファイルをダウンロードできませんでした。ネットワーク接続を確認して、もう一度試してください。</string>
+    <string name="install_failed_title">インストールに失敗しました</string>
+    <string name="install_failed_message">システムファイルをインストールできませんでした。もう一度試してください。問題が解決しない場合は、別のネットワークを試すか、VPN を使用してください。</string>
+
+    <!-- PluviaMain: Session Conflicts -->
+    <string name="main_app_running_title">アプリの実行中</string>
+    <string name="main_app_running_message">すでに %s をプレイしている別のデバイスにログインしています。 \nこのゲームは引き続きプレイできますが、Steam から他のセッションが切断されます。</string>
+    <string name="main_app_running_other_device">別のデバイス (%1$s) にログインしており、すでに %2$s (%3$s) をプレイしていますが、そのセーブはまだクラウドにありません。 \nこのゲームは引き続きプレイできますが、他のセッションが Steam から切断され、そのセッションの進行状況が同期されるときに保存の競合が発生する可能性があります。</string>
+    <string name="main_play_anyway">とにかく遊ぶ</string>
+    <string name="main_app_running_unknown_game">ゲーム</string>
+
+    <!-- PluviaMain: Save Conflicts -->
+    <string name="main_save_conflict_title">競合の保存</string>
+    <string name="main_save_conflict_message">新しいリモート セーブと新しいローカル セーブがあります。どちらを保持しますか?\n\nローカル セーブ:\n\t%1$s\nリモート セーブ:\n\t%2$s</string>
+    <string name="main_keep_local">ローカルに保つ</string>
+    <string name="main_keep_remote">リモートを保つ</string>
+    <string name="main_save_conflict_upgrade_v1_title">保存バージョンを選択</string>
+    <string name="main_save_conflict_upgrade_v1_message">このゲームのクラウド セーブ パスの処理を修正し、ローカル セーブとクラウド セーブが異なることがわかりました。保持するバージョンを 1 つ選択してください。\n\nローカル:\n\t%1$s\nクラウド:\n\t%2$s</string>
+
+    <!-- PluviaMain: Sync Errors -->
+    <string name="main_sync_in_progress_retry">同期操作に時間がかかりすぎます。しばらくしてからもう一度ゲームを起動してみてください。</string>
+    <string name="main_sync_in_progress">現在同期が進行中です。しばらくしてからもう一度お試しください。</string>
+    <string name="main_sync_in_progress_launch_anyway_message">このゲームのクラウド保存同期はすでに実行されています。待ってから再試行することも、同期せずに起動することもできます (保存の競合が発生する可能性があります)。</string>
+    <string name="main_launch_anyway">とにかく起動する</string>
+    <string name="main_wait">待って</string>
+    <string name="main_sync_failed">保存ファイルの同期に失敗しました: %s。</string>
+
+    <!-- PluviaMain: Pending Operations -->
+    <string name="main_upload_in_progress_title">アップロード中です</string>
+    <string name="main_upload_in_progress_message">%1$s をデバイス %2$s (%3$s) でプレイしましたが、そのセッションのセーブデータはまだアップロード中です。\n後でもう一度お試しください。</string>
+    <string name="main_pending_upload_title">アップロード保留中</string>
+    <string name="main_pending_upload_message">%1$s をデバイス %2$s (%3$s) でプレイしましたが、そのセーブデータはまだクラウドにありません。 (アップロード未開始)\nこのゲームは引き続きプレイできますが、以前の進行状況が正常にアップロードされた際に競合が発生する可能性があります。</string>
+    <string name="main_app_session_suspended">アプリのセッションが一時停止されました。アプリを再起動してください。</string>
+    <string name="main_pending_operation_none">操作が \'none\' である保留中のリモート操作を受信しました。アプリを再起動してください。</string>
+    <string name="main_multiple_pending_operations">保留中のリモート操作が複数あります。後でもう一度試してください。アプリを再起動してください。</string>
+
+    <!-- Container Config Dialog -->
+    <string name="container_config_title">コンテナの構成</string>
+    <string name="container_config_unsaved_changes_title">未保存の変更</string>
+    <string name="container_config_unsaved_changes_message">\'d は変更を破棄してもよろしいですか?</string>
+    <string name="container_config_tab_general">一般的な</string>
+    <string name="container_config_tab_graphics">グラフィックス</string>
+    <string name="container_config_tab_emulation">エミュレーション</string>
+    <string name="container_config_tab_controller">コントローラ</string>
+    <string name="container_config_tab_wine">Wine</string>
+    <string name="container_config_tab_win_components">勝利コンポーネント</string>
+    <string name="container_config_tab_environment">環境</string>
+    <string name="container_config_tab_drives">ドライブ</string>
+    <string name="container_config_tab_advanced">高度な</string>
+    <string name="container_config_vkd3d_version">VKD3Dバージョン</string>
+    <string name="container_config_executable_path">実行可能パス</string>
+    <string name="container_config_executable_path_placeholder">例: path\\to\\exe</string>
+
+    <!-- Libraries Dialog -->
+    <string name="libraries_title">使用するライブラリ</string>
+    <string name="libraries_message">Pluvia - github.com/oxters168/Pluvia\nJavaSteam - github.com/Longi94/JavaSteam\nWinlator &amp; Vortek - github.com/brunodev85/winlator\nWinlator Cmod - github.com/coffincolors/winlator\nWrapper - https://github.com/leegao/bionic-vulkan-wrapper &amp; https://github.com/pipetto-crypto/\nUbuntu RootFs - releases.ubuntu.com/focal</string>
+
+    <!-- Supporters Dialog -->
+    <string name="supporters_art_credits">アートクレジット</string>
+    <string name="supporters_app_icon">アプリアイコン：ハチ</string>
+    <string name="supporters_alt_icon">代替アプリアイコン: rhapsody_mdr</string>
+    <string name="supporters_loading">サポーターを読み込み中…</string>
+    <string name="supporters_error">サポーターをロードできません</string>
+    <string name="supporters_members">メンバー</string>
+    <string name="supporters_supporters">サポーター</string>
+    <string name="supporters_none">まだサポーターはいません。</string>
+    <string name="supporters_anonymous">匿名</string>
+
+    <!-- Chat Screen -->
+    <string name="chat_preview_warning">チャットはまだ初期の機能です。\n問題があればプロジェクト リポジトリで報告してください。</string>
+    <string name="chat_no_history">チャット履歴がありません</string>
+    <string name="chat_send_message">メッセージを送信する</string>
+    <string name="chat_send">送信</string>
+    <string name="chat_emoticons">絵文字</string>
+    <string name="chat_stickers">ステッカー</string>
+
+    <!-- Library Components -->
+    <string name="library_open">開ける</string>
+    <string name="library_installed">インストール済み</string>
+    <string name="library_installing">インストール中</string>
+    <string name="library_not_installed">インストールされていません</string>
+    <string name="library_family_shared">家族共有</string>
+    <string name="library_shared_short">共有</string>
+    <string name="library_compatible">互換性がある</string>
+    <string name="library_gpu_compatible">GPU互換性</string>
+    <string name="library_compatibility_unknown">未知</string>
+    <string name="library_not_compatible">互換性がありません</string>
+
+    <!-- Best Config Compatibility Messages -->
+    <string name="best_config_exact_gpu_match">既知の構成が GPU で動作する</string>
+    <string name="best_config_gpu_family_match">既知の構成は GPU で動作するはずです</string>
+    <string name="best_config_fallback_match">既知の構成は GPU で動作する可能性があります</string>
+    <string name="best_config_compatibility_unknown">既知の構成はありません</string>
+
+    <!-- Best Config Toast Messages -->
+    <string name="best_config_applied_successfully">構成が正常に適用されました</string>
+    <string name="best_config_known_config_invalid">既知の構成が無効です</string>
+    <string name="best_config_no_config_available">このゲームに最適な設定はありません</string>
+    <string name="best_config_fetch_failed">構成の取得に失敗しました。ネットワーク接続を確認してください。</string>
+    <string name="best_config_apply_failed">構成の適用に失敗しました: %s</string>
+    <string name="best_config_missing_components_title">設定が適用されていません</string>
+    <string name="best_config_missing_components_message">次の必須コンポーネントは使用できません:\n\n%1$s</string>
+    <string name="best_config_apply_anyway">とにかく応募してください</string>
+    <string name="best_config_applied_with_defaults">欠落しているコンポーネントがデフォルトで置き換えられて適用される構成</string>
+    <string name="import_config">構成をインポートする</string>
+    <string name="export_config">設定のエクスポート</string>
+    <string name="steam_save_export_success">エクスポートされた保存</string>
+    <string name="steam_save_export_no_saves_found">保存ファイルが見つかりません</string>
+    <string name="steam_save_export_failed">保存のエクスポートに失敗しました: %s</string>
+    <string name="steam_save_import_success">インポートされたセーブ</string>
+    <string name="steam_save_import_failed">セーブデータのインポートに失敗しました: %s</string>
+    <string name="library_app_type">アプリの種類</string>
+    <string name="library_app_status">アプリのステータス</string>
+    <string name="library_layout">レイアウト</string>
+    <string name="library_layout_list">リスト</string>
+    <string name="library_layout_capsule">カプセル</string>
+    <string name="library_layout_hero">ヒーロー</string>
+    <string name="library_layout_carousel">カルーセル</string>
+    <string name="library_search_placeholder">ゲームを検索してください…</string>
+    <string name="library_search_description">検索</string>
+    <string name="library_search_clear">検索をクリア</string>
+    <string name="library_no_items">選択項目がリストされていません</string>
+    <string name="library_filters">フィルター</string>
+    <string name="library_game_count">%1$d ゲーム • %2$d がインストールされています</string>
+    <string name="library_source_steam">Steam</string>
+    <string name="library_source_custom">カスタム ゲーム</string>
+    <string name="library_source_title">ソース</string>
+    <string name="library_source_not_logged_in_steam">Steam にサインインしてライブラリを表示します</string>
+    <string name="library_source_not_logged_in_gog">GOG にサインインしてライブラリを表示します</string>
+    <string name="library_source_not_logged_in_epic">Epic にサインインしてライブラリを表示します</string>
+    <string name="library_source_not_logged_in_amazon">Amazonにサインインしてライブラリを表示します</string>
+    <string name="library_source_no_custom_games">カスタム ゲームはまだ追加されていません</string>
+    <string name="library_layout_title">レイアウト</string>
+    <string name="library_options">オプション</string>
+    <string name="back">戻る</string>
+    <string name="cloud">雲</string>
+    <string name="options">オプション</string>
+    <string name="play_time">プレイタイム</string>
+
+    <!-- Options Panel -->
+    <string name="options_panel_title">オプション</string>
+    <string name="options_panel_close">オプションを閉じる</string>
+    <string name="options_sort_by">並べ替え</string>
+    <string name="sort_installed_first">最初にインストール</string>
+    <string name="sort_name_asc">名前 (A ～ Z)</string>
+    <string name="sort_name_desc">名前 (Z-A)</string>
+    <string name="sort_recently_played">最近プレイした曲</string>
+    <string name="sort_size_smallest">サイズ（最小）</string>
+    <string name="sort_size_largest">サイズ（最大）</string>
+
+    <!-- Game Options Panel -->
+    <string name="game_options_title">オプション</string>
+    <string name="game_options_quick_actions">クイックアクション</string>
+    <string name="game_options_game_management">ゲーム管理</string>
+    <string name="game_options_container">容器</string>
+    <string name="game_options_cloud_saves">クラウド保存</string>
+    <string name="game_options_help_info">ヘルプ &amp; 情報</string>
+
+    <!-- System Menu -->
+    <string name="press_b_to_close">Bを押して閉じます</string>
+    <string name="menu">メニュー</string>
+
+    <!-- Gamepad Actions -->
+    <string name="action_select">選択</string>
+    <string name="action_refresh">リフレッシュ</string>
+    <string name="action_details">詳細</string>
+    <string name="action_add_game">ゲームを追加</string>
+    <string name="action_system">システム</string>
+
+    <!-- Search -->
+    <string name="search_results_one">%d 結果</string>
+    <string name="search_results_many">%dの結果</string>
+
+    <!-- Two Factor Auth -->
+    <string name="two_factor_login">ログイン</string>
+    <string name="two_factor_verification_code">検証コード</string>
+    <string name="two_factor_enter_code">5文字のコードを入力してください</string>
+
+    <!-- Contents Manager -->
+    <string name="contents_validating">コンテンツを検証中…</string>
+    <string name="contents_error_badtar">ファイルを認識できません</string>
+    <string name="contents_error_noprofile">コンテンツ内にプロフィールが見つかりません</string>
+    <string name="contents_error_badprofile">プロファイルが認識できません</string>
+    <string name="contents_error_exist">コンテンツはすでに存在します</string>
+    <string name="contents_error_missingfiles">内容が不完全です</string>
+    <string name="contents_error_untrustprofile">内容が信用できない</string>
+    <string name="contents_error_nospace">十分なスペースがありません</string>
+    <string name="contents_error_generic">コンテンツをインストールできません</string>
+    <string name="contents_untrusted_files">このコンテンツには、信頼できるセット外のファイルが含まれています。</string>
+    <string name="contents_install_components">追加コンポーネントのインストール (.wcp: tar.xz/zst)</string>
+    <string name="contents_type">タイプ</string>
+    <string name="contents_version">バージョン</string>
+    <string name="contents_code">コード</string>
+    <string name="contents_description">説明</string>
+    <string name="contents_all_trusted">すべてのファイルは信頼されます。インストールする準備ができました。</string>
+    <string name="contents_no_installed">このタイプにはインストールされたコンテンツがありません。</string>
+    <string name="contents_delete">消去</string>
+    <string name="contents_review_confirm">このコンテンツには、信頼できるセット外のファイルが含まれています。確認して続行します。</string>
+    <string name="contents_removed">%1$s を削除しました</string>
+
+    <!-- Driver Manager -->
+    <string name="driver_error_manifest">ドライバーマニフェストのロードに失敗しました: %1$d</string>
+    <string name="driver_error_loading">ドライバー マニフェストの読み込みエラー: %1$s</string>
+    <string name="driver_timeout">接続がタイムアウトしました。ネットワークを確認して、もう一度試してください。</string>
+    <string name="driver_network_error">ネットワークエラー: %1$s</string>
+
+    <!-- Settings Interface -->
+    <string name="settings_theme_default">デフォルト</string>
+    <string name="settings_theme_alternate">代替</string>
+    <string name="settings_download_slow">遅い</string>
+    <string name="settings_download_medium">中くらい</string>
+    <string name="settings_download_fast">速い</string>
+    <string name="settings_download_blazing">燃える</string>
+    <string name="settings_download_speed">ダウンロード速度</string>
+    <string name="settings_download_heat_warning">速度が速いと、ダウンロード中にデバイスの熱が増加する可能性があります</string>
+    <string name="settings_region_default">デフォルト</string>
+    <string name="settings_saving_restarting">設定を保存して再起動しています…</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">設定</string>
+    <string name="settings_subtitle">エクスペリエンスをカスタマイズする</string>
+
+    <!-- Contents Install Finish -->
+    <string name="contents_install_success">コンテンツが正常にインストールされました</string>
+    <string name="contents_install_failed">コンテンツのインストールに失敗しました</string>
+    <string name="contents_install_error">インストールエラー: %1$s</string>
+
+    <!-- Library Status -->
+    <string name="library_status_ready">準備ができて</string>
+    <!-- Wine/Proton Manager -->
+    <string name="wine_proton_manager">Wine/Protonマネージャー</string>
+    <string name="wine_proton_bionic_notice_header">Bionicイメージのみ</string>
+    <string name="wine_proton_info_description">Bionic コンテナーのカスタム Wine または Proton バージョンをインポートします。ファイル名は \'wine\' または \'proton\' で始まる必要があります (大文字と小文字は区別されません)。パッケージには、bin/、lib/、prefixPack.txz が含まれている必要があります。すべてのインポートはバイオニック互換のみです。</string>
+    <string name="win_proton_example">例: 「proton-10.0-ARM64ec.wcp」</string>
+    <string name="wine_proton_import_package">Wine/Protonパッケージをインポート</string>
+    <string name="wine_proton_select_file_description">.wcp ファイルを選択します (ファイル名が \'wine\' または \'proton\' で始まる)</string>
+    <string name="wine_proton_import_wcp_button">.wcp パッケージをインポートする</string>
+    <string name="wine_proton_processing">処理...</string>
+    <string name="wine_proton_package_details">パッケージの詳細</string>
+    <string name="wine_proton_type">タイプ</string>
+    <string name="wine_proton_version">バージョン</string>
+    <string name="wine_proton_version_code">バージョンコード</string>
+    <string name="wine_proton_bin_path">ビンのパス</string>
+    <string name="wine_proton_lib_path">リブパス</string>
+    <string name="wine_proton_description">説明</string>
+    <string name="wine_proton_all_files_trusted">✓ すべてのファイルは信頼されます。インストールする準備ができました。</string>
+    <string name="wine_proton_install_package">パッケージのインストール</string>
+    <string name="wine_proton_installed_versions">インストールされている Wine/Proton のバージョン</string>
+    <string name="wine_proton_no_versions_found">インストールされている Wine または Proton のバージョンが見つかりません。</string>
+    <string name="wine_proton_delete_content_desc">消去</string>
+    <string name="wine_proton_untrusted_files_message">このパッケージには、信頼できるセット外のファイルが含まれています。確認してインストールを続行します。</string>
+    <string name="wine_proton_untrusted_files_label">信頼できないファイル:</string>
+    <string name="wine_proton_remove_title">Wine/Proton バージョンの削除</string>
+    <string name="wine_proton_remove_message">%1$s %2$s (%3$d) を削除してもよろしいですか?このバージョンを使用するコンテナは動作しなくなります。</string>
+    <string name="wine_proton_removed_toast">%s を削除しました</string>
+    <string name="wine_proton_remove_failed">削除に失敗しました: %s</string>
+    <string name="cancel_import_title">インポートをキャンセルしますか?</string>
+    <string name="cancel_import_message">現在インポートが進行中です。キャンセルすると、抽出されたファイルはすべて破棄され、インポートを再度開始する必要があります。\n\nキャンセルしてもよろしいですか?</string>
+    <string name="cancel_import_confirm">はい、インポートをキャンセルします</string>
+    <string name="cancel_import_keep">いいえ、インポートを続けます</string>
+
+    <!-- Wine/Proton Manager - Status Messages -->
+    <string name="wine_proton_extracting">パッケージを抽出して検証しています (大きなファイルの場合、これには 2 ～ 3 分かかる場合があります)...</string>
+    <string name="wine_proton_filename_error">ファイル名は \'wine\' または \'proton\' で始まる必要があります (大文字と小文字は区別されません)</string>
+    <string name="wine_proton_file_empty">ファイルが空であるか、読み取れません</string>
+    <string name="wine_proton_cannot_open">ファイルを開けません</string>
+    <string name="wine_proton_failed_file_picker">ファイル ピッカーを開けませんでした: %s</string>
+    <string name="wine_proton_error_badtar">ファイルが有効なアーカイブとして認識されません</string>
+    <string name="wine_proton_error_noprofile">profile.json がパッケージに見つかりません</string>
+    <string name="wine_proton_error_badprofile">プロフィール.json が無効です</string>
+    <string name="wine_proton_error_exist">この Wine/Proton バージョンはすでに存在します</string>
+    <string name="wine_proton_error_missingfiles">パッケージに必要なファイル (bin/、lib/、または prefixPack.txz) がありません</string>
+    <string name="wine_proton_error_untrustprofile">パッケージは信頼できません</string>
+    <string name="wine_proton_error_nospace">十分な収納スペースがない</string>
+    <string name="wine_proton_error_unknown">不明なエラーが発生しました</string>
+    <string name="wine_proton_error_unable_install">Wine/Proton パッケージをインストールできない</string>
+    <string name="wine_proton_not_wine_or_proton">パッケージは Wine または Proton ではありません (タイプ: %s)</string>
+    <string name="wine_proton_type_mismatch">ファイル名は %1$s ですが、パッケージには %2$s が含まれています</string>
+    <string name="wine_proton_untrusted_files_detected">このパッケージには、信頼できるセット外のファイルが含まれています。</string>
+    <string name="wine_proton_version_already_exists">Wine/Proton バージョンはすでに存在します</string>
+    <string name="wine_proton_install_failed">インストールに失敗しました: %s</string>
+    <string name="wine_proton_install_error">インストールエラー: %s</string>
+    <string name="wine_proton_install_success">%1$s %2$s は正常にインストールされました</string>
+    <string name="wine_proton_glibc_incompatible">この Wine/Proton ビルドには GLIBC コンテナが必要であり、GameNative とは互換性がありません。 ARM64/bionic ビルドのみを使用してください。</string>
+    <string name="wine_proton_containers_in_use">このバージョンを使用するコンテナ:</string>
+    <string name="wine_proton_no_containers_warning">現在、このバージョンを使用しているコンテナはありません。</string>
+    <string name="wine_proton_containers_will_break">続行すると、これらのコンテナは機能しなくなります。</string>
+    <string name="auth_webview_title">認可</string>
+
+    <!-- GOG Integration -->
+    <string name="gog_integration_title">GOG 統合 (アルファ版)</string>
+    <string name="gog_settings_login_title">GOGにサインインする</string>
+    <string name="gog_settings_login_subtitle">GOG アカウントにサインインする</string>
+    <string name="gog_login_success_title">ログイン成功</string>
+    <string name="gog_login_cancel">キャンセル</string>
+    <string name="gog_settings_logout_title">GOGからサインアウトする</string>
+    <string name="gog_settings_logout_subtitle">GOG アカウントからサインアウトする</string>
+    <string name="gog_logout_confirm_title">GOGからログアウトしますか？</string>
+    <string name="gog_logout_confirm_message">これにより、GOG 認証情報が削除され、GOG ライブラリがこのデバイスからクリアされます。いつでも再度サインインできます。</string>
+    <string name="gog_logout_confirm">ログアウト</string>
+    <string name="gog_logout_success">GOGから正常にログアウトされました</string>
+    <string name="gog_logout_failed">ログアウトに失敗しました: %s</string>
+    <string name="gog_logout_in_progress">GOGからログアウトしています…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Epic Games連携</string>
+    <string name="epic_settings_login_title">Epicにサインイン</string>
+    <string name="epic_settings_login_subtitle">Epic Games アカウントにサインインします</string>
+    <string name="epic_login_success_title">ログイン成功</string>
+    <string name="epic_login_cancel">キャンセル</string>
+    <string name="epic_settings_logout_title">Epicからサインアウト</string>
+    <string name="epic_settings_logout_subtitle">Epic Games アカウントからサインアウトする</string>
+    <string name="epic_logout_confirm_title">Epic Games からログアウトしますか?</string>
+    <string name="epic_logout_confirm_message">これにより、Epic Games の認証情報が削除され、このデバイスから Epic Games ライブラリが消去されます。いつでも再度サインインできます。</string>
+    <string name="epic_logout_confirm">ログアウト</string>
+    <string name="epic_logout_success">Epic Games から正常にログアウトされました</string>
+    <string name="epic_logout_failed">ログアウトに失敗しました: %s</string>
+    <string name="epic_logout_in_progress">Epic Games からログアウトしています…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Amazon ゲームの統合 (アルファ版)</string>
+    <string name="amazon_settings_login_title">Amazon ゲームにサインインする</string>
+    <string name="amazon_settings_login_subtitle">Amazon ゲームアカウントにサインインする</string>
+    <string name="amazon_login_success_title">ログイン成功</string>
+    <string name="amazon_login_cancel">キャンセル</string>
+    <string name="amazon_settings_logout_title">Amazon ゲームからサインアウトする</string>
+    <string name="amazon_settings_logout_subtitle">Amazon ゲームアカウントからサインアウトする</string>
+    <string name="amazon_logout_confirm_title">Amazon ゲームからログアウトしますか?</string>
+    <string name="amazon_logout_confirm_message">これにより、Amazon ゲームの認証情報が削除され、このデバイスから Amazon ライブラリが消去されます。いつでも再度サインインできます。</string>
+    <string name="amazon_logout_confirm">ログアウト</string>
+    <string name="amazon_logout_success">Amazon ゲームから正常にログアウトしました</string>
+    <string name="amazon_logout_failed">ログアウトに失敗しました: %s</string>
+    <string name="amazon_logout_in_progress">Amazon ゲームからログアウトしています…</string>
+    <string name="manifest_downloading_item">%1$s をダウンロード中...</string>
+    <string name="manifest_download_failed">ダウンロードに失敗しました: %1$s</string>
+    <string name="manifest_install_failed">%1$sのインストールに失敗しました</string>
+    <string name="manifest_install_success">%1$sがインストールされました</string>
+    <string name="manifest_content_untrusted">コンテンツは信頼できないため、インストールされませんでした。</string>
+    <string name="manifest_type_mismatch">ダウンロードされたコンテンツが予期されたタイプと一致しません。</string>
+    <string name="manifest_glibc_not_supported">GLIBC ビルドはサポートされていません。</string>
+
+    <!-- Workshop -->
+    <string name="workshop_checking_mods">ワークショップの MOD を確認しています…</string>
+    <string name="workshop_update_title">ワークショップMODのアップデート</string>
+    <string name="workshop_update_prompt">%1$s MB の MOD アップデートが利用可能です。今すぐダウンロードしますか、それともスキップしますか?</string>
+    <string name="workshop_download_btn">ダウンロード</string>
+    <string name="workshop_skip_btn">スキップ</string>
+    <string name="workshop_downloading">ワークショップ Mod のダウンロード (%1$d/%2$d)</string>
+    <string name="workshop_processing">MODを処理中…</string>
+    <string name="workshop_failed_count">%1$d ワークショップ MOD の更新に失敗しました</string>
+    <string name="workshop_download_failed">ダウンロードに失敗しました</string>
+
+    <!-- App option menu labels -->
+    <string name="option_open_store_page">ストアページを開く</string>
+    <string name="option_export_for_frontend">フロントエンド用にエクスポート</string>
+    <string name="option_open_container">オープンコンテナ</string>
+    <string name="option_edit_container">コンテナの編集</string>
+    <string name="option_reset_to_defaults">コンテナをリセットする</string>
+    <string name="option_get_support">サポートを受ける</string>
+    <string name="option_submit_feedback">フィードバックを送信する</string>
+    <string name="option_reset_drm">DRMをリセットする</string>
+    <string name="option_use_known_config">既知の構成を使用する</string>
+    <string name="option_import_saves">インポート保存</string>
+    <string name="option_export_saves">保存のエクスポート</string>
+    <string name="option_verify_files">ファイルの検証</string>
+    <string name="option_update">アップデート</string>
+    <string name="option_move_to_external_storage">外部ストレージに移動する</string>
+    <string name="option_move_to_internal_storage">内部ストレージに移動</string>
+    <string name="option_force_cloud_sync">クラウド同期を強制する</string>
+    <string name="option_browse_online_saves">オンライン保存を参照する</string>
+    <string name="option_force_download_remote">リモート保存を強制的にダウンロードする</string>
+    <string name="option_force_upload_local">ローカル保存を強制的にアップロードする</string>
+    <string name="option_fetch_game_images">ゲーム画像を取得する</string>
+    <string name="option_test_graphics">テストグラフィックス</string>
+    <string name="option_manage_dlc">DLCの管理</string>
+    <string name="option_manage_workshop">ワークショップの管理</string>
+    <!-- Recommendations -->
+    <string name="recommended_badge">推奨</string>
+    <string name="recommended_buy_button">それをチェックしてください</string>
+    <string name="recommended_support_message">このリンクから購入すると、GameNative の開発をサポートできます。</string>
+    <string name="recommended_about_heading">このゲームについて</string>
+    <string name="recommended_review_count">%1$s のレビューに基づく</string>
+    <string name="review_overwhelmingly_positive">圧倒的にポジティブ</string>
+    <string name="review_very_positive">とてもポジティブ</string>
+    <string name="review_mostly_positive">ほとんどがポジティブ</string>
+    <string name="review_mixed">混合</string>
+    <string name="review_mostly_negative">ほとんどが否定的</string>
+    <string name="review_overwhelmingly_negative">圧倒的にネガティブ</string>
+    <!-- LSFG Frame Generation -->
+    <string name="lsfg_tab_title">LSFG-VK</string>
+    <string name="lsfg_description">Lossless Scaling\'s Vulkan レイヤーを使用して中間フレームを生成します。 Adreno 6xx 以降でのみ動作することが知られています。</string>
+    <string name="lsfg_enable">LSFG-VK フレーム生成を有効にする</string>
+    <string name="lsfg_multiplier">フレーム乗数</string>
+    <string name="lsfg_flow_scale">流量スケール</string>
+    <string name="lsfg_flow_scale_desc">低いほど安定します。高いほどスムーズになりますが、アーティファクトが発生する可能性があります。</string>
+    <string name="lsfg_performance_mode">パフォーマンスモード</string>
+    <string name="lsfg_not_supported">フレーム生成には Bionic コンテナが必要です</string>
+    <string name="lsfg_install_prompt">Lossless Scaling がインストールされていません。タップしてインストールしてください。Adreno 6xx 以降でのみ動作確認されています。</string>
+    <string name="lsfg_not_in_library">Lossless Scaling が Steam ライブラリにありません</string>
+    <string name="lsfg_install_title">Lossless Scaling をインストールしますか？</string>
+    <string name="lsfg_install_message">これにより、Steam から Lossless Scaling がダウンロードされ、フレーム生成が有効になります。</string>
+    <string name="lsfg_installing">Lossless Scaling をダウンロード中…</string>
+    <string name="lsfg_performance_mode_desc">スループットを上げるために品質を下げる</string>
+    <string name="settings_interface_show_recommendations_title">ゲームのおすすめを表示</string>
+    <string name="settings_interface_show_recommendations_subtitle">厳選されたインディー ゲームのおすすめをライブラリに表示します。これをオンにしておくと、インディー開発者と GameNative のサポートに役立ちます。</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">初回起動時は起動に数分かかる場合があります</string>
+    <string name="game_launch_tip_2">ヒント: ゲーム設定で \"%s\" を押すと、ゲーム ファイルを表示できます。</string>
+    <string name="game_launch_tip_3">ヒント: メイン設定メニューに移動し、Bionic で使用するデバイスのカスタム ドライバーをダウンロードできます。</string>
+    <string name="game_launch_tip_4">ヒント: DirectX エラーが発生する場合は、Bionic で DXVK 1.10.3-async および leegao-wrapper を使用していることを確認してください。</string>
+    <string name="game_launch_tip_5">ヒント: \"%s\" をクリックした後、スタート メニューで Direct3D テストを試し、デバイスが正しく動作しているかどうかを確認してください。</string>
+    <string name="game_launch_tip_6">ヒント: DirectX 8/9/10/11 ゲームには DXVK、DirectX 12 ゲームには VKD3D、OpenGL ゲームには VirGL + WineD3D を使用してください。</string>
+    <string name="game_launch_tip_7">ヒント: DirectX 12 ゲームをプレイするには、glibc または bionic で Turnip を使用します。 Turnip をサポートしていないデバイスに対する DirectX 12 のサポートは現在制限されています。</string>
+    <string name="game_launch_tip_8">ヒント: 互換性のあるデバイスを使用している場合は、glibc で Adreno または Snapdragon 8 Elite ドライバーを試してください。</string>
+    <string name="game_launch_tip_9">ヒント: ゲームの起動時に黒い画面が表示される場合は、\"%s\" を試し、A: ドライブからゲームを起動してください。</string>
+    <string name="game_launch_tip_10">ヒント: 設定でカスタム ゲームのさまざまな場所を追加できます。</string>
+    <string name="game_launch_tip_11">ヒント: ゲーム内で FPS 統計が必要な場合は、クイック メニュー パフォーマンス HUD を使用してください。</string>
+    <string name="game_launch_tip_12">ヒント: ゲームが\' 起動しない場合は、A:\\_CommonRedist にパッケージをインストールします。</string>
+    <string name="game_launch_tip_13">ヒント: device\' の戻るキーを使用して、オンスクリーン コントローラーを有効または無効にできます。</string>
+    <string name="game_launch_tip_14">ヒント: device\' の戻るキーを使用してキーボードを呼び出すことができます。</string>
+    <string name="game_launch_tip_15">ヒント: コンテナ内を 2 本の指でタップして右クリックできます。</string>
+    <string name="game_launch_tip_16">ヒント: オンスクリーン コントローラーを使用している場合は、マウスを無効にして誤ってタッチすることを防ぐことができます。</string>
+    <string name="game_launch_tip_17">ヒント: Discord で問題を報告してください。問題を解決できるようになります。</string>
+    <string name="game_launch_tip_18">ヒント: Adreno 以外の GPU を使用している場合は、glibc で Vortek ドライバーを使用するか、Bionic で Wrapper-leegao を使用してください。</string>
+    <string name="game_launch_tip_19">ヒント: FPS を向上させるには、解像度を下げ、パフォーマンス モードで box64 を使用します。</string>
+    <string name="game_launch_tip_20">ヒント: ロード後にゲームがクラッシュする場合は、ビデオ メモリを増やしてください。</string>
+    <string name="game_launch_tip_21">ヒント: 視覚的な不具合が発生する場合は、DRI3 を無効にします。</string>
+    <string name="game_launch_tip_22">ヒント: タッチスクリーン モードを有効にすることができます。</string>
+    <string name="game_launch_tip_23">ヒント: Mali GPU をお持ちの場合は、システム ドライバーを使用してください。</string>
+    <string name="game_launch_tip_24">ヒント: 空白の画面が表示されますか?メニューの \"%s\" オプションを使用して、ドライバーが正しく動作しているかどうかを確認してください。</string>
+    <string name="stats_key_runs">お使いのGPUでの成功した実行回数</string>
+    <string name="stats_key_reviews">5つ星レビュー（GPU / お使いのデバイス）</string>
+    <string name="stats_key_fps">予想FPS</string>
+    <string name="stats_key_session">お使いのデバイスでの最長セッション</string>
+    <string name="sort_fps">予想FPS</string>
+    <string name="sort_runs">成功した実行回数</string>
+    <string name="sort_reviews">5つ星レビュー（デバイス）</string>
+    <string name="sort_reviews_gpu">5つ星レビュー（GPU）</string>
+    <string name="filter_expired">期限切れ</string>
+    <string name="filter_playable">プレイ可能（30+ FPS）</string>
+    <string name="filter_five_star_device">5つ星レビュー（デバイス）</string>
+    <string name="filter_five_star_gpu">5つ星レビュー（GPU）</string>
+    <string name="filter_proven_gpu">お使いのGPUで実証済み</string>
+</resources>

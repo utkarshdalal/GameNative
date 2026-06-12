@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Folosește aplicația Steam Mobile pentru a confirma autentificarea…</string>
     <string name="steam_2fa_device">Introdu codul de autentificare din aplicația ta de autentificare.</string>
     <string name="steam_2fa_email">Introdu codul trimis la adresa de email %s</string>
+    <string name="steam_2fa_use_guard_totp">Sau folosește codul de autentificare în doi pași</string>
     <string name="steam_install_space_prompt">Aplicația ce urmează să fie instalată are următoarele cerințe de spațiu. Vrei să continui?\n\n\tDimensiune descărcare: %1$s\n\tSpațiu pe disc: %2$s\n\tSpațiu disponibil: %3$s</string>
     <string name="steam_install_space">Dimensiune descărcare: %1$s\nSpațiu pe disc: %2$s\nSpațiu disponibil: %3$s</string>
     <string name="steam_install_not_enough_space">Aplicația necesită %1$s spațiu, dar pe dispozitiv sunt disponibile doar %2$s</string>
@@ -103,6 +104,10 @@
     <string name="downloads_status_failed">Eșuat</string>
     <string name="downloads_status_paused">În pauză</string>
     <string name="downloads_summary">Gestionează descărcările active și stocarea într-un singur loc</string>
+    <string name="storage_internal">Intern</string>
+    <string name="storage_external">Extern</string>
+    <string name="storage_free_of_total">%1$s: %2$s liber din %3$s</string>
+    <string name="storage_calculating">%1$s: Se calculează…</string>
     <string name="container_storage_title">Manager stocare</string>
     <string name="container_storage_subtitle">Mută instalările între stocarea internă și externă</string>
     <string name="container_storage_summary">%1$d elemente • %2$s</string>
@@ -642,6 +647,10 @@
 	<string name="width">Lățime</string>
 	<string name="height">Înălțime</string>
 	<string name="audio_driver">Driver audio</string>
+	<string name="pulseaudio_suspend_behavior">Comportament suspendare PulseAudio</string>
+	<string name="pulseaudio_suspend_behavior_thread">Suspendare prin Thread (Implicit)</string>
+	<string name="pulseaudio_suspend_behavior_pactl">Suspendare prin Pactl (Economisire energie)</string>
+	<string name="pulseaudio_low_latency">Mod latență redusă PulseAudio</string>
 	<string name="show_fps">Afișează FPS</string>
 	<string name="portrait_mode">Mod portret</string>
 	<string name="portrait_mode_description">Pentru controlere de tip 8BitDo FlipPad/GameSir Pocket Taco</string>
@@ -656,6 +665,8 @@
 	<string name="launch_steam_client_beta">Pornește Steam Client (Beta)</string>
 	<string name="steam_offline_mode">Mod Offline Steam</string>
 	<string name="steam_offline_mode_description">Pornește jocurile Steam în mod offline</string>
+	<string name="epic_offline_mode">Mod Offline Epic</string>
+	<string name="epic_offline_mode_description">Pornește jocurile Epic în mod offline</string>
 	<string name="achievement_unlocked">Realizare deblocată</string>
 	<string name="settings_achievement_notification_position">Poziția notificării realizării</string>
 	<string name="achievement_position_top_left">Stânga sus</string>
@@ -680,6 +691,8 @@
 	<string name="vkd3d_feature_level">Nivel funcțional VKD3D</string>
 	<string name="use_dri3">Folosește DRI3</string>
 	<string name="use_dri3_description">Dezactivarea poate rezolva artefacte grafice pe unele dispozitive</string>
+	<string name="use_legacy_renderer">Folosește redarea veche</string>
+	<string name="use_legacy_renderer_description">Folosește vechiul GLRenderer în loc de VulkanRenderer. VulkanRenderer îmbunătățește performanța, dar este în beta și poate cauza probleme.</string>
 	<string name="sync_frame">Sincronizează fiecare cadru</string>
 	<string name="disable_present_wait">Dezactivează KHR_present_wait</string>
 	<string name="present_modes">Moduri de prezentare</string>
@@ -727,6 +740,8 @@
 	<string name="gesture_tap_subtitle">Clic stânga</string>
 	<string name="gesture_drag">Trage cu degetul</string>
 	<string name="gesture_drag_subtitle">Trage clic stânga (selecție dreptunghiulară)</string>
+	<string name="gesture_hold_mouse_button_while_touching">Menține butonul mouse-ului apăsat în timpul atingerii</string>
+	<string name="gesture_mouse_button_label">Buton mouse</string>
 	<string name="gesture_long_press">Apăsare lungă</string>
 	<string name="gesture_long_press_delay">Întârziere apăsare lungă (ms)</string>
 	<string name="gesture_double_tap">Atingere dublă</string>
@@ -753,6 +768,9 @@
     <string name="gesture_pan_left_click_drag">Tragere cu clic stânga</string>
     <string name="gesture_pan_right_click_drag">Tragere cu clic dreapta</string>
     <string name="gesture_action_show_keyboard">Afișează tastatura</string>
+    <string name="gesture_mouse_behavior_label">Comportament mouse</string>
+    <string name="gesture_mouse_behavior_click">Clic</string>
+    <string name="gesture_mouse_behavior_hold">Menținere</string>
     <string name="gesture_header_special">Special</string>
     <string name="gesture_header_mouse">Mouse</string>
     <string name="gesture_header_common_game">Taste comune de joc</string>
@@ -767,10 +785,16 @@
     <string name="gesture_three_finger_hold_delay">Întârziere menținere cu trei degete (ms)</string>
     <string name="gesture_threshold">Prag gest (px)</string>
     <string name="gesture_threshold_subtitle">Mișcare necesară pentru a bloca tipul de gest (mai mic = mai receptiv)</string>
+    <string name="gesture_mouse_drag_movement">Mișcarea mouse-ului la glisare</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Direct funcționează în majoritatea jocurilor. Folosește Relativ dacă glisarea provoacă probleme cu camera sau cursorul</string>
+    <string name="gesture_mouse_drag_movement_direct">Direct</string>
+    <string name="gesture_mouse_drag_movement_relative">Relativ</string>
     <string name="gesture_show_click_highlight">Afișează evidențierea clicului</string>
     <string name="gesture_show_click_highlight_subtitle">Afișează un cerc la locația atingerii</string>
     <string name="gesture_show_debug_overlay">Afișează suprapunerea de depanare a gesturilor</string>
     <string name="gesture_show_debug_overlay_subtitle">Afișează etichete temporare de gesturi în partea de sus, centru</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Afișează cursorul în modul touchscreen</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Menține cursorul mouse-ului vizibil cât timp gesturile touchscreen sunt active</string>
 
 	<!-- Shooter Mode -->
 	<string name="shooter_mode_settings">Setări joystick-uri dinamice</string>
@@ -1473,4 +1497,55 @@
 	<string name="game_launch_tip_23">Sfat: Dacă aveți un GPU Mali, vă rugăm să utilizați driverele de sistem.</string>
 	<string name="game_launch_tip_24">Sfat: Ecran negru? Încercați opțiunea \"%s\" din meniu pentru a verifica dacă driverele dvs. funcționează corect.</string>
     <string name="launch_bionic_steam_description">Activează jocul online și îmbunătățește compatibilitatea\nNu funcționează întotdeauna\nFă backup salvărilor înainte să încerci</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Sincronizare frontend</string>
+    <string name="settings_interface_frontend_sync_subtitle">Exportați automat jocurile instalate pentru frontend-uri de bibliotecă</string>
+    <string name="frontend_sync_dialog_title">Sincronizare frontend</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Jocuri personalizate</string>
+    <string name="frontend_sync_not_set">Nesetat</string>
+    <string name="frontend_sync_clear_confirm_title">Eliminați fișierele de export vechi?</string>
+    <string name="frontend_sync_clear_confirm_message">Eliminați fișierele .%1$s din directorul anterior?</string>
+    <string name="frontend_sync_confirm_remove">Eliminați</string>
+    <string name="frontend_sync_confirm_keep">Păstrați</string>
+    <string name="frontend_sync_resync_all">Resincronizare completă</string>
+    <string name="frontend_sync_resync_complete">Sincronizare frontend finalizată</string>
+    <string name="screen_effects_scaling">Scalare</string>
+    <string name="screen_effects_upscaling">Scalare superioară</string>
+    <string name="screen_effects_basic_scaling">Scalare de bază</string>
+    <string name="screen_effects_scaling_mode_none">Fără scalare</string>
+    <string name="screen_effects_scaling_mode_none_desc">Fără scalare.</string>
+    <string name="screen_effects_scaling_mode_nearest">Cel mai apropiat</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">Pixeli clari (retro).</string>
+    <string name="screen_effects_scaling_mode_linear">Liniară</string>
+    <string name="screen_effects_scaling_mode_linear_desc">Scalare lină.</string>
+    <string name="screen_effects_scaling_mode_fill">Umplere</string>
+    <string name="screen_effects_scaling_mode_fill_desc">Umple ecranul, decupează marginile.</string>
+    <string name="screen_effects_scaling_mode_stretch">Întindere</string>
+    <string name="screen_effects_scaling_mode_stretch_desc">Umple ecranul, ignoră raportul de aspect.</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_scaling_mode_fsr_desc">Scalare clară la super-rezoluție.</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, păstrează raportul de aspect.</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_dls_desc">Trecere de claritate.</string>
+    <string name="screen_effects_scaling_mode_natural">Natural</string>
+    <string name="screen_effects_scaling_mode_natural_desc">Ton de culoare mai cald.</string>
+    <string name="stats_key_runs">Rulări reușite pe GPU-ul tău</string>
+    <string name="stats_key_reviews">Recenzii de 5 stele (GPU-ul tău / dispozitivul tău)</string>
+    <string name="stats_key_fps">FPS estimat</string>
+    <string name="stats_key_session">Cea mai lungă sesiune pe dispozitivul tău</string>
+    <string name="sort_fps">FPS estimat</string>
+    <string name="sort_runs">Rulări reușite</string>
+    <string name="sort_reviews">Recenzii de 5 stele (dispozitiv)</string>
+    <string name="sort_reviews_gpu">Recenzii de 5 stele (GPU)</string>
+    <string name="filter_expired">Expirat</string>
+    <string name="filter_playable">Jucabil (30+ FPS)</string>
+    <string name="filter_five_star_device">Recenzii de 5 stele pe dispozitiv</string>
+    <string name="filter_five_star_gpu">Recenzii de 5 stele pe GPU</string>
+    <string name="filter_proven_gpu">Testat pe GPU-ul tău</string>
 </resources>

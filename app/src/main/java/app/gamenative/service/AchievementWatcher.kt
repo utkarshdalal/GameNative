@@ -120,6 +120,7 @@ class AchievementWatcher(
 
         if (!SteamService.isConnected) {
             Timber.tag("achievements").w("Not connected to Steam, skipping real-time achievement upload for appId=$appId")
+            SteamService.instance?.addPendingSyncApp(appId)
             return
         }
 

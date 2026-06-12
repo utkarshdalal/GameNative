@@ -89,6 +89,10 @@
     <string name="appbar_scrolling_view_behavior">com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior</string>
     <string name="appearance">Внешний вид</string>
     <string name="audio_driver">Аудиодрайвер</string>
+    <string name="pulseaudio_suspend_behavior">Поведение приостановки PulseAudio</string>
+    <string name="pulseaudio_suspend_behavior_thread">Приостановка через поток (По умолчанию)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Приостановка через Pactl (Энергосбережение)</string>
+    <string name="pulseaudio_low_latency">Режим низкой задержки PulseAudio</string>
     <string name="auth_webview_title">Авторизация</string>
     <string name="autofill">Автозаполнение</string>
     <string name="back">Назад</string>
@@ -457,6 +461,9 @@
     <string name="gesture_pan_left_click_drag">Перетаскивание левой кнопкой мыши</string>
     <string name="gesture_pan_right_click_drag">Перетаскивание правой кнопкой мыши</string>
     <string name="gesture_action_show_keyboard">Показать клавиатуру</string>
+    <string name="gesture_mouse_behavior_label">Поведение мыши</string>
+    <string name="gesture_mouse_behavior_click">Клик</string>
+    <string name="gesture_mouse_behavior_hold">Удержание</string>
     <string name="gesture_header_special">Специальные</string>
     <string name="gesture_header_mouse">Мышь</string>
     <string name="gesture_header_common_game">Частые игровые клавиши</string>
@@ -471,15 +478,23 @@
     <string name="gesture_three_finger_hold_delay">Задержка удержания тремя пальцами (мс)</string>
     <string name="gesture_threshold">Порог жеста (px)</string>
     <string name="gesture_threshold_subtitle">Движение, необходимое для фиксации типа жеста (меньше = быстрее отклик)</string>
+    <string name="gesture_mouse_drag_movement">Движение мыши при перетаскивании</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Прямой режим подходит для большинства игр. Используйте относительный, если перетаскивание вызывает проблемы с камерой или курсором</string>
+    <string name="gesture_mouse_drag_movement_direct">Прямой</string>
+    <string name="gesture_mouse_drag_movement_relative">Относительный</string>
     <string name="gesture_show_click_highlight">Показывать подсветку клика</string>
     <string name="gesture_show_click_highlight_subtitle">Показывать круг в месте касания</string>
     <string name="gesture_show_debug_overlay">Показывать отладочный оверлей жестов</string>
     <string name="gesture_show_debug_overlay_subtitle">Показывать временные подписи жестов вверху по центру</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Показывать курсор в режиме сенсорного экрана</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Оставлять курсор мыши видимым, пока жесты сенсорного экрана активны</string>
     <string name="gesture_double_tap">Двойной тап</string>
     <string name="gesture_double_tap_delay">Задержка двойного тапа (мс)</string>
     <string name="gesture_double_tap_subtitle">Двойной левый клик</string>
     <string name="gesture_drag">Перетаскивание пальца</string>
     <string name="gesture_drag_subtitle">Перетаскивание левого клика (выделение области)</string>
+    <string name="gesture_hold_mouse_button_while_touching">Удерживать кнопку мыши при касании</string>
+    <string name="gesture_mouse_button_label">Кнопка мыши</string>
     <string name="gesture_long_press">Долгое нажатие</string>
     <string name="gesture_long_press_delay">Задержка долгого нажатия (мс)</string>
     <string name="gesture_pan_arrow_keys">Клавиши со стрелками</string>
@@ -675,9 +690,9 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="m3c_dropdown_menu_toggle">Переключить выпадающее меню</string>
     <string name="m3c_snackbar_dismiss">Закрыть</string>
     <string name="magnifier">Лупа</string>
-    <string name="main_app_running_message">Вы уже вошли на другом устройстве и играете в %s. 
+    <string name="main_app_running_message">Вы уже вошли на другом устройстве и играете в %s.
 Вы всё ещё можете играть в эту игру, но это отключит другой сеанс от Steam.</string>
-    <string name="main_app_running_other_device">Вы уже вошли на другом устройстве (%1$s) и играете в %2$s (%3$s), и это сохранение ещё не в облаке. 
+    <string name="main_app_running_other_device">Вы уже вошли на другом устройстве (%1$s) и играете в %2$s (%3$s), и это сохранение ещё не в облаке.
 Вы всё ещё можете играть в эту игру, но это отключит другой сеанс от Steam и может создать конфликт сохранений, когда прогресс того сеанса синхронизируется</string>
     <string name="main_app_running_title">Приложение запущено</string>
     <string name="main_app_session_suspended">Сеанс приложения приостановлен. Пожалуйста, перезапустите приложение.</string>
@@ -1110,6 +1125,7 @@ https://gamenative.app
     <string name="steam_install_space">Размер загрузки: %1$s
 Размер на диске: %2$s
 Доступное место: %3$s</string>
+    <string name="steam_2fa_use_guard_totp">Или введите код двухфакторной аутентификации</string>
     <string name="steam_install_space_prompt">Устанавливаемое приложение имеет следующие требования к пространству. Вы хотите продолжить?
 
 	Размер загрузки: %1$s
@@ -1119,6 +1135,8 @@ https://gamenative.app
     <string name="steam_not_logged_in">Вы должны войти в Steam, чтобы использовать эту функцию</string>
     <string name="steam_offline_mode">Автономный режим Steam</string>
     <string name="steam_offline_mode_description">Запускать игры Steam в автономном режиме</string>
+    <string name="epic_offline_mode">Автономный режим Epic</string>
+    <string name="epic_offline_mode_description">Запускать игры Epic в автономном режиме</string>
     <string name="steam_reset_container_message">Это восстановит ваш контейнер к конфигурации по умолчанию.</string>
     <string name="steam_reset_container_title">Сбросить контейнер</string>
     <string name="steam_sign_in">Войти в Steam</string>
@@ -1162,6 +1180,10 @@ https://gamenative.app
     <string name="downloads_status_failed">Ошибка</string>
     <string name="downloads_status_paused">Приостановлено</string>
     <string name="downloads_summary">Управляйте активными загрузками и хранилищем в одном месте</string>
+    <string name="storage_internal">Внутренняя</string>
+    <string name="storage_external">Внешняя</string>
+    <string name="storage_free_of_total">%1$s: %2$s свободно из %3$s</string>
+    <string name="storage_calculating">%1$s: Вычисление…</string>
     <string name="container_storage_title">Менеджер хранилища</string>
     <string name="container_storage_subtitle">Перемещайте установки между внутренним и внешним хранилищем</string>
     <string name="container_storage_summary">%1$d элементов • %2$s</string>
@@ -1248,6 +1270,8 @@ https://gamenative.app
     <string name="use_adrenotools_turnip">Использовать Adrenotools Turnip</string>
     <string name="use_dri3">Использовать DRI3</string>
     <string name="use_dri3_description">Отключение может исправить графические глюки на некоторых устройствах</string>
+    <string name="use_legacy_renderer">Использовать устаревший рендерер</string>
+    <string name="use_legacy_renderer_description">Использовать устаревший GLRenderer вместо VulkanRenderer. VulkanRenderer повышает производительность, но находится в бета-версии и может вызывать проблемы.</string>
     <string name="use_legacy_drm">Использовать Legacy DRM</string>
     <string name="use_sdl_api">Использовать SDL API</string>
     <string name="use_steam_input">Использовать Steam Input</string>
@@ -1401,4 +1425,55 @@ https://gamenative.app
     <string name="game_launch_tip_23">Совет: Если у вас GPU Mali, используйте системные драйверы.</string>
     <string name="game_launch_tip_24">Совет: Черный экран? Попробуйте использовать опцию \"%s\" в меню, чтобы проверить, правильно ли работают ваши драйверы.</string>
     <string name="launch_bionic_steam_description">Включает онлайн-игру и улучшает совместимость\nРаботает не всегда\nСделайте резервную копию сохранений перед использованием</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Синхронизация frontend</string>
+    <string name="settings_interface_frontend_sync_subtitle">Автоматически экспортировать установленные игры для фронтендов библиотеки</string>
+    <string name="frontend_sync_dialog_title">Синхронизация frontend</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Пользовательские игры</string>
+    <string name="frontend_sync_not_set">Не задано</string>
+    <string name="frontend_sync_clear_confirm_title">Удалить старые файлы экспорта?</string>
+    <string name="frontend_sync_clear_confirm_message">Удалить файлы .%1$s из предыдущего каталога?</string>
+    <string name="frontend_sync_confirm_remove">Удалить</string>
+    <string name="frontend_sync_confirm_keep">Сохранить</string>
+    <string name="frontend_sync_resync_all">Повторная синхронизация всего</string>
+    <string name="frontend_sync_resync_complete">Синхронизация frontend завершена</string>
+    <string name="screen_effects_scaling">Масштабирование</string>
+    <string name="screen_effects_upscaling">Апскейлинг</string>
+    <string name="screen_effects_basic_scaling">Базовое масштабирование</string>
+    <string name="screen_effects_scaling_mode_none">Без масштабирования</string>
+    <string name="screen_effects_scaling_mode_none_desc">Без масштабирования.</string>
+    <string name="screen_effects_scaling_mode_nearest">Ближайший</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">Чёткие пиксели (ретро).</string>
+    <string name="screen_effects_scaling_mode_linear">Линейное</string>
+    <string name="screen_effects_scaling_mode_linear_desc">Плавное масштабирование.</string>
+    <string name="screen_effects_scaling_mode_fill">Заполнить</string>
+    <string name="screen_effects_scaling_mode_fill_desc">Заполняет экран, обрезая края.</string>
+    <string name="screen_effects_scaling_mode_stretch">Растянуть</string>
+    <string name="screen_effects_scaling_mode_stretch_desc">Заполняет экран, игнорируя соотношение сторон.</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_scaling_mode_fsr_desc">Чёткое масштабирование сверхвысокого разрешения.</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, сохраняет соотношение сторон.</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_dls_desc">Повышение резкости / чёткости.</string>
+    <string name="screen_effects_scaling_mode_natural">Естественный</string>
+    <string name="screen_effects_scaling_mode_natural_desc">Более тёплый оттенок.</string>
+    <string name="stats_key_runs">Успешные запуски на вашем GPU</string>
+    <string name="stats_key_reviews">5-звёздочные отзывы (ваш GPU / ваше устройство)</string>
+    <string name="stats_key_fps">Ожидаемый FPS</string>
+    <string name="stats_key_session">Самая длинная сессия на вашем устройстве</string>
+    <string name="sort_fps">Ожидаемый FPS</string>
+    <string name="sort_runs">Успешные запуски</string>
+    <string name="sort_reviews">5-звёздочные отзывы (устройство)</string>
+    <string name="sort_reviews_gpu">5-звёздочные отзывы (GPU)</string>
+    <string name="filter_expired">Истекшие</string>
+    <string name="filter_playable">Играбельно (30+ FPS)</string>
+    <string name="filter_five_star_device">5-звёздочные отзывы на устройстве</string>
+    <string name="filter_five_star_gpu">5-звёздочные отзывы на GPU</string>
+    <string name="filter_proven_gpu">Проверено на вашем GPU</string>
 </resources>

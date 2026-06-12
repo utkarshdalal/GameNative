@@ -13,6 +13,7 @@ import com.winlator.core.WineThemeManager;
 import com.winlator.fexcore.FEXCorePreset;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xenvironment.ImageFs;
+import com.winlator.xenvironment.components.PulseAudioComponent;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -34,7 +35,7 @@ public class Container {
     public static final String EXTERNAL_DISPLAY_MODE_HYBRID = "hybrid";
     public static final String DEFAULT_EXTERNAL_DISPLAY_MODE = EXTERNAL_DISPLAY_MODE_OFF;
 
-    public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact,deck_emu MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform,deck_emu VKD3D_SHADER_MODEL=6_0 PULSE_LATENCY_MSEC=144";
+    public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact,deck_emu MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform VKD3D_SHADER_MODEL=6_0 PULSE_LATENCY_MSEC=144";
     public static final String DEFAULT_SCREEN_SIZE = "1280x720";
     public static final String DEFAULT_GRAPHICS_DRIVER = DefaultVersion.DEFAULT_GRAPHICS_DRIVER;
     public static final String DEFAULT_AUDIO_DRIVER = "pulseaudio";
@@ -79,8 +80,11 @@ public class Container {
     private String dxwrapper = DEFAULT_DXWRAPPER;
     private String dxwrapperConfig = DEFAULT_DXWRAPPERCONFIG;
     private String graphicsDriverConfig = DEFAULT_GRAPHICSDRIVERCONFIG;
+    private String rendererPresentMode = "fifo";
+    private boolean useLegacyRenderer = false;
     private String wincomponents = DEFAULT_WINCOMPONENTS;
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
+    private boolean pulseaudioLowLatency = false;
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
@@ -147,6 +151,8 @@ public class Container {
     private boolean localSavesOnly = false;
 
     private boolean steamOfflineMode = false;
+
+    private boolean epicOfflineMode = false;
 
     private boolean useLegacyDRM = false;
 
@@ -254,6 +260,14 @@ public class Container {
         this.graphicsDriverConfig = graphicsDriverConfig != null ? graphicsDriverConfig : "";
     }
 
+    public String getRendererPresentMode() { return rendererPresentMode; }
+
+    public void setRendererPresentMode(String v) { this.rendererPresentMode = v != null ? v : "fifo"; }
+
+    public boolean isUseLegacyRenderer() { return useLegacyRenderer; }
+
+    public void setUseLegacyRenderer(boolean v) { this.useLegacyRenderer = v; }
+
     public String getDXWrapperConfig() {
         return dxwrapperConfig;
     }
@@ -268,6 +282,14 @@ public class Container {
 
     public void setAudioDriver(String audioDriver) {
         this.audioDriver = audioDriver;
+    }
+
+    public boolean getPulseaudioLowLatency() {
+        return pulseaudioLowLatency;
+    }
+
+    public void setPulseaudioLowLatency(boolean pulseaudioLowLatency) {
+        this.pulseaudioLowLatency = pulseaudioLowLatency;
     }
 
     public String getWinComponents() {
@@ -654,9 +676,12 @@ public class Container {
             data.put("graphicsDriver", graphicsDriver);
             data.put("graphicsDriverVersion", graphicsDriverVersion); // Ensure this is added
             if (!graphicsDriverConfig.isEmpty()) data.put("graphicsDriverConfig", graphicsDriverConfig);
+            data.put("rendererPresentMode", rendererPresentMode);
+            data.put("useLegacyRenderer", useLegacyRenderer);
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
             data.put("audioDriver", audioDriver);
+            data.put("pulseaudioLowLatency", pulseaudioLowLatency);
             data.put("wincomponents", wincomponents);
             data.put("drives", drives);
             data.put("showFPS", showFPS);
@@ -713,6 +738,9 @@ public class Container {
             // Steam offline mode setting
             data.put("steamOfflineMode", steamOfflineMode);
 
+            // Steam offline mode setting
+            data.put("epicOfflineMode", epicOfflineMode);
+
             // Use Legacy DRM setting
             data.put("useLegacyDRM", useLegacyDRM);
 
@@ -762,6 +790,12 @@ public class Container {
                     break;
                 case "graphicsDriverConfig" :
                     setGraphicsDriverConfig(data.getString(key));
+                    break;
+                case "rendererPresentMode" :
+                    setRendererPresentMode(data.getString(key));
+                    break;
+                case "useLegacyRenderer" :
+                    setUseLegacyRenderer(data.getBoolean(key));
                     break;
                 case "wincomponents" :
                     setWinComponents(data.getString(key));
@@ -846,6 +880,9 @@ public class Container {
                 case "audioDriver" :
                     setAudioDriver(data.getString(key));
                     break;
+                case "pulseaudioLowLatency" :
+                    setPulseaudioLowLatency(data.getBoolean(key));
+                    break;
                 case "desktopTheme" :
                     setDesktopTheme(data.getString(key));
                     break;
@@ -912,6 +949,9 @@ public class Container {
                 case "steamOfflineMode":
                     this.steamOfflineMode = data.getBoolean(key);
                     break;
+                case "epicOfflineMode":
+                    this.epicOfflineMode = data.getBoolean(key);
+                    break;
                 case "useLegacyDRM":
                     this.useLegacyDRM = data.getBoolean(key);
                     break;
@@ -954,6 +994,10 @@ public class Container {
                 else if (graphicsDriver.equals("llvmpipe")) {
                     data.put("graphicsDriver", "virgl");
                 }
+            }
+
+            if (!data.has("wincomponents")) {
+                data.put("wincomponents", DEFAULT_WINCOMPONENTS);
             }
 
             KeyValueSet wincomponents1 = new KeyValueSet(DEFAULT_WINCOMPONENTS);
@@ -1000,8 +1044,16 @@ public class Container {
         return steamOfflineMode;
     }
 
+    public boolean isEpicOfflineMode() {
+        return epicOfflineMode;
+    }
+
     public void setSteamOfflineMode(boolean steamOfflineMode) {
         this.steamOfflineMode = steamOfflineMode;
+    }
+
+    public void setEpicOfflineMode(boolean epicOfflineMode) {
+        this.epicOfflineMode = epicOfflineMode;
     }
 
     public boolean isUseLegacyDRM() {

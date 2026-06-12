@@ -4,6 +4,18 @@
   "items": {
     "driver": [
       {
+        "id": "Turnip v26.2.0 R4",
+        "name": "Turnip_v26.2.0_R4",
+        "url": "https://downloads.gamenative.app/drivers/Turnio_v26.2.0_R4.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip v26.2.0_R4_OneUI",
+        "name": "Turnip_v26.2.0_R4_OneUI",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_v26.2.0_R4_OneUI.zip",
+        "variant": "bionic"
+      },
+      {
         "id": "Turnip Gen8 V30",
         "name": "Turnip_Gen8_V30",
         "url": "https://downloads.gamenative.app/drivers/Turnip_Gen8_V30.zip",

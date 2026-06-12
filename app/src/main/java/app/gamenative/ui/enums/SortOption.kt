@@ -16,6 +16,10 @@ enum class SortOption(
     RECENTLY_PLAYED(displayTextRes = R.string.sort_recently_played, key = "recently_played"),
     SIZE_SMALLEST(displayTextRes = R.string.sort_size_smallest, key = "size_smallest"),
     SIZE_LARGEST(displayTextRes = R.string.sort_size_largest, key = "size_largest"),
+    FPS_HIGH(displayTextRes = R.string.sort_fps, key = "fps_high"),
+    RUNS_HIGH(displayTextRes = R.string.sort_runs, key = "runs_high"),
+    REVIEWS_HIGH(displayTextRes = R.string.sort_reviews, key = "reviews_high"),
+    REVIEWS_GPU_HIGH(displayTextRes = R.string.sort_reviews_gpu, key = "reviews_gpu_high"),
     ;
 
     companion object {

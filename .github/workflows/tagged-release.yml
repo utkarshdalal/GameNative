@@ -73,22 +73,32 @@ jobs:
           yes | "$SDKMANAGER" --install "build-tools;34.0.0"
 
       - name: Build with Gradle
-        run: ./gradlew :app:bundleRelease
+        run: ./gradlew :app:bundleLegacyRelease :app:bundleModernRelease
 
-      - name: Extract APK from Bundle
+      - name: Stage bundles
+        run: |
+          cp app/build/outputs/bundle/legacyRelease/app-legacy-release.aab app-release.aab
+          cp app/build/outputs/bundle/modernRelease/app-modern-release.aab app-modern-release.aab
+
+      - name: Extract APKs from Bundles
         run: |
           java -jar tools/bundletool-all-1.17.2.jar build-apks \
-            --bundle=app/build/outputs/bundle/release/app-release.aab \
+            --bundle=app-release.aab \
             --output=app-release.apks \
             --mode=universal
           unzip -o app-release.apks universal.apk
+          java -jar tools/bundletool-all-1.17.2.jar build-apks \
+            --bundle=app-modern-release.aab \
+            --output=app-modern-release.apks \
+            --mode=universal
+          unzip -p app-modern-release.apks universal.apk > universal-modern.apk
 
       - name: Copy lineage file
         run: |
           mkdir -p app/keystores
           cp prod-debug.lineage app/keystores/prod-debug.lineage
 
-      - name: Dual sign universal APK
+      - name: Dual sign universal APKs
         env:
           DEBUG_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
           DEBUG_KEY_PASS: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
@@ -101,25 +111,29 @@ jobs:
           if [ ! -d "$BUILD_TOOLS_DIR" ]; then
             BUILD_TOOLS_DIR="${ANDROID_SDK_ROOT}/build-tools/34.0.0"
           fi
-          "${BUILD_TOOLS_DIR}/apksigner" sign \
-            --lineage app/keystores/prod-debug.lineage \
-            --ks app/keystores/keystore \
-            --ks-key-alias "$DEBUG_ALIAS" \
-            --ks-pass pass:$DEBUG_STORE_PASS \
-            --key-pass pass:$DEBUG_KEY_PASS \
-            --next-signer --ks app/keystores/prod.keystore \
-            --ks-key-alias "$PROD_ALIAS" \
-            --ks-pass pass:$PROD_STORE_PASS \
-            --key-pass pass:$PROD_KEY_PASS \
-            --out universal-signed.apk \
-            universal.apk
-          mv universal-signed.apk universal.apk
+          for apk in universal.apk universal-modern.apk; do
+            "${BUILD_TOOLS_DIR}/apksigner" sign \
+              --lineage app/keystores/prod-debug.lineage \
+              --ks app/keystores/keystore \
+              --ks-key-alias "$DEBUG_ALIAS" \
+              --ks-pass pass:$DEBUG_STORE_PASS \
+              --key-pass pass:$DEBUG_KEY_PASS \
+              --next-signer --ks app/keystores/prod.keystore \
+              --ks-key-alias "$PROD_ALIAS" \
+              --ks-pass pass:$PROD_STORE_PASS \
+              --key-pass pass:$PROD_KEY_PASS \
+              --out "${apk%.apk}-signed.apk" \
+              "$apk"
+            mv "${apk%.apk}-signed.apk" "$apk"
+          done
 
-      - name: Upload APK for next job
+      - name: Upload APKs for next job
         uses: actions/upload-artifact@v4
         with:
           name: universal-apk
-          path: universal.apk
+          path: |
+            universal.apk
+            universal-modern.apk
 
   release:
     needs: build
@@ -132,10 +146,11 @@ jobs:
           name: universal-apk
           path: ./
 
-      - name: Rename APK
+      - name: Rename APKs
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           mv universal.apk "gamenative-$TAG.apk"
+          mv universal-modern.apk "gamenative-$TAG-modern.apk"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -144,6 +159,13 @@ jobs:
           name: ${{ github.ref_name }}
           prerelease: true
           generate_release_notes: true
-          files: gamenative-${{ github.ref_name }}.apk
+          append_body: true
+          body: |
+            ## Downloads
+            - **`gamenative-${{ github.ref_name }}.apk`** — Standard build (Android 8–14). Recommended for most users.
+            - **`gamenative-${{ github.ref_name }}-modern.apk`** — Play Store build (Android 11+). Built for the latest Android, so **no security warning** about an outdated target. No D drive access and no custom game support; glibc not supported, external storage location moved.
+          files: |
+            gamenative-${{ github.ref_name }}.apk
+            gamenative-${{ github.ref_name }}-modern.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

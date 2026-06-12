@@ -9,11 +9,22 @@ target_compile_options(steambootstrap PRIVATE
     -fno-asynchronous-unwind-tables
     -fno-unwind-tables
     -ffunction-sections
-    -fdata-sections)
+    -fdata-sections
+    -fomit-frame-pointer
+    -fno-stack-protector
+    -fno-ident
+    -fmerge-all-constants
+    -O3
+    -flto)
 
 target_link_options(steambootstrap PRIVATE
     -Wl,--gc-sections
     -Wl,--exclude-libs,ALL
-    "$<$<NOT:$<CONFIG:Debug>>:-Wl,--strip-all>")
+    -Wl,--strip-all
+    -Wl,--discard-all
+    -flto
+    "$<$<NOT:$<CONFIG:Debug>>:-Wl,-s>"
+    "-Wl,-z,max-page-size=16384"
+    "-Wl,-z,common-page-size=16384")
 
 target_link_libraries(steambootstrap log dl)

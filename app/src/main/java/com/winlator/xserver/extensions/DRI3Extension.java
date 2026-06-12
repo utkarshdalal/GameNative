@@ -8,7 +8,6 @@ import com.winlator.core.Callback;
 import com.winlator.renderer.GPUImage;
 import com.winlator.renderer.Texture;
 import com.winlator.sysvshm.SysVSharedMemory;
-import com.winlator.widget.XServerView;
 import com.winlator.xconnector.XConnectorEpoll;
 import com.winlator.xconnector.XInputStream;
 import com.winlator.xconnector.XOutputStream;
@@ -160,6 +159,7 @@ public class DRI3Extension implements Extension {
             GPUImage gpuImage = new GPUImage(fd);
             Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, gpuImage.getStride(), height, depth);
             drawable.setTexture(gpuImage);
+            drawable.setDirectScanout(true);
             client.xServer.pixmapManager.createPixmap(drawable);
         }
         finally {

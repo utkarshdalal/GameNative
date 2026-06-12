@@ -43,6 +43,10 @@ class DatabaseModule {
 
     @Provides
     @Singleton
+    fun provideSteamFileHashCacheDao(db: PluviaDatabase) = db.steamFileHashCacheDao()
+
+    @Provides
+    @Singleton
     fun provideAppChangeNumbersDao(db: PluviaDatabase) = db.appChangeNumbersDao()
 
     @Provides

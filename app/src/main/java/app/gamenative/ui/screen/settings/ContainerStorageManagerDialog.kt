@@ -90,6 +90,12 @@ class ContainerStorageManagerUiState internal constructor(
     var entries by mutableStateOf<List<ContainerStorageManager.Entry>>(emptyList())
         private set
 
+    var volumeInfo by mutableStateOf<List<ContainerStorageManager.VolumeInfo>>(emptyList())
+        private set
+
+    var isLoadingExternalVolume by mutableStateOf(false)
+        private set
+
     var isLoading by mutableStateOf(false)
         private set
 
@@ -131,18 +137,37 @@ class ContainerStorageManagerUiState internal constructor(
 
         scope.launch {
             isLoading = true
-            runCatching {
-                ContainerStorageManager.loadEntries(appContext)
-            }.onSuccess {
-                entries = it
+
+            val internal = ContainerStorageManager.getInternalVolumeInfo(appContext)
+            volumeInfo = listOfNotNull(internal)
+
+            val externalConfigured = ContainerStorageManager.isExternalStorageConfigured()
+            isLoadingExternalVolume = externalConfigured
+            val externalJob = launch {
+                try {
+                    val external = ContainerStorageManager.getExternalVolumeInfo(appContext)
+                    if (external != null) {
+                        volumeInfo = volumeInfo + external
+                    }
+                } finally {
+                    isLoadingExternalVolume = false
+                }
+            }
+
+            try {
+                entries = ContainerStorageManager.loadEntries(appContext)
                 hasLoaded = true
-            }.onFailure { error ->
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 hasLoaded = false
-                Timber.e(error, "Failed to load storage inventory")
+                Timber.e(e, "Failed to load storage inventory")
                 SnackbarManager.show(
-                    error.message ?: appContext.getString(R.string.container_storage_unknown_error),
+                    e.message ?: appContext.getString(R.string.container_storage_unknown_error),
                 )
             }
+
+            externalJob.join()
             isLoading = false
         }
     }
@@ -396,20 +421,51 @@ fun ContainerStorageManagerContent(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = if (state.isLoading && !state.hasLoaded) {
-                    stringResource(R.string.container_storage_loading)
-                } else {
-                    stringResource(
-                        R.string.container_storage_summary,
-                        state.entries.size,
-                        StorageUtils.formatBinarySize(inventorySummaryBytes(state.entries)),
-                    )
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (state.isLoading && !state.hasLoaded) {
+                        stringResource(R.string.container_storage_loading)
+                    } else {
+                        stringResource(
+                            R.string.container_storage_summary,
+                            state.entries.size,
+                            StorageUtils.formatBinarySize(inventorySummaryBytes(state.entries)),
+                        )
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (state.volumeInfo.isNotEmpty() || state.isLoadingExternalVolume) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        state.volumeInfo.forEach { vol ->
+                            Text(
+                                text = stringResource(
+                                    R.string.storage_free_of_total,
+                                    vol.label,
+                                    StorageUtils.formatBinarySize(vol.freeBytes, decimalPlaces = 1),
+                                    StorageUtils.formatBinarySize(vol.totalBytes, decimalPlaces = 1),
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            )
+                        }
+                        if (state.isLoadingExternalVolume) {
+                            Text(
+                                text = stringResource(
+                                    R.string.storage_calculating,
+                                    stringResource(R.string.storage_external),
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            )
+                        }
+                    }
+                }
+            }
 
             if (onDismissRequest != null) {
                 IconButton(

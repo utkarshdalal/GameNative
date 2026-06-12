@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-27",
+  "components": [
+    {
+      "id": "turnip-24.1.0",
+      "name": "turnip-24.1.0.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/turnip-24.1.0.tzst"
+    },
+    {
+      "id": "turnip-25.0.0",
+      "name": "turnip-25.0.0.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/turnip-25.0.0.tzst"
+    },
+    {
+      "id": "turnip-25.1.0",
+      "name": "turnip-25.1.0.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/turnip-25.1.0.tzst"
+    },
+    {
+      "id": "turnip-25.2.0",
+      "name": "turnip-25.2.0.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/turnip-25.2.0.tzst"
+    },
+    {
+      "id": "turnip-25.3.0",
+      "name": "turnip-25.3.0.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/turnip-25.3.0.tzst"
+    },
+    {
+      "id": "zink-22.2.5",
+      "name": "zink-22.2.5.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/zink-22.2.5.tzst"
+    },
+    {
+      "id": "virgl-23.1.9",
+      "name": "virgl-23.1.9.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/virgl-23.1.9.tzst"
+    },
+    {
+      "id": "vortek-2.0",
+      "name": "vortek-2.0.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/vortek-2.0.tzst"
+    },
+    {
+      "id": "vortek-2.1",
+      "name": "vortek-2.1.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/vortek-2.1.tzst"
+    },
+    {
+      "id": "adrenotools-Turnip_Gen8_V25",
+      "name": "adrenotools-Turnip_Gen8_V25.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/adrenotools-Turnip_Gen8_V25.tzst"
+    },
+    {
+      "id": "adrenotools-turnip25.1.0",
+      "name": "adrenotools-turnip25.1.0.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/adrenotools-turnip25.1.0.tzst"
+    },
+    {
+      "id": "adrenotools-turnip25.3.0_R3_Auto",
+      "name": "adrenotools-turnip25.3.0_R3_Auto.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/adrenotools-turnip25.3.0_R3_Auto.tzst"
+    },
+    {
+      "id": "adrenotools-turnip25.3.0_R3_Gmem",
+      "name": "adrenotools-turnip25.3.0_R3_Gmem.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/adrenotools-turnip25.3.0_R3_Gmem.tzst"
+    },
+    {
+      "id": "adrenotools-turnip25.3.0_R6_Gmem",
+      "name": "adrenotools-turnip25.3.0_R6_Gmem.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/adrenotools-turnip25.3.0_R6_Gmem.tzst"
+    },
+    {
+      "id": "adrenotools-turnip25.3.0_R11",
+      "name": "adrenotools-turnip25.3.0_R11.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/adrenotools-turnip25.3.0_R11.tzst"
+    },
+    {
+      "id": "adrenotools-turnip26.0.0_R4",
+      "name": "adrenotools-turnip26.0.0_R4.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/adrenotools-turnip26.0.0_R4.tzst"
+    },
+    {
+      "id": "adrenotools-turnip26.0.0_R8",
+      "name": "adrenotools-turnip26.0.0_R8.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/adrenotools-turnip26.0.0_R8.tzst"
+    },
+    {
+      "id": "adrenotools-v762",
+      "name": "adrenotools-v762.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/adrenotools-v762.tzst"
+    },
+    {
+      "id": "adrenotools-v805",
+      "name": "adrenotools-v805.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/adrenotools-v805.tzst"
+    },
+    {
+      "id": "wrapper",
+      "name": "wrapper.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/wrapper.tzst"
+    },
+    {
+      "id": "wrapper-v2",
+      "name": "wrapper-v2.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/wrapper-v2.tzst"
+    },
+    {
+      "id": "wrapper-legacy",
+      "name": "wrapper-legacy.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/wrapper-legacy.tzst"
+    },
+    {
+      "id": "wrapper-leegao",
+      "name": "wrapper-leegao.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/wrapper-leegao.tzst"
+    },
+    {
+      "id": "extra_libs",
+      "name": "extra_libs.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/extra_libs.tzst"
+    },
+    {
+      "id": "zink_dlls",
+      "name": "zink_dlls.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/zink_dlls.tzst"
+    },
+    {
+      "id": "libvulkan_wrapper",
+      "name": "libvulkan_wrapper.tar.xz",
+      "url": "https://downloads.gamenative.app/graphics_driver/libvulkan_wrapper.tar.xz"
+    }
+  ]
+}

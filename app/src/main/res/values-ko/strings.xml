@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Steam 모바일 앱을 사용하여 로그인을 확인하세요…</string>
     <string name="steam_2fa_device">인증 앱에서 2단계 인증 코드를 입력하세요.</string>
     <string name="steam_2fa_email">%s 이메일로 전송된 인증 코드를 입력하세요</string>
+    <string name="steam_2fa_use_guard_totp">또는 2단계 인증 코드를 사용하세요</string>
     <string name="steam_install_space_prompt">설치할 앱의 공간 요구사항은 다음과 같습니다. 계속하시겠습니까?\n\n\t다운로드 크기: %1$s\n\t디스크 사용량: %2$s\n\t사용 가능한 공간: %3$s</string>
     <string name="steam_install_space">다운로드 크기: %1$s\n디스크 사용량: %2$s\n사용 가능한 공간: %3$s</string>
     <string name="steam_install_not_enough_space">설치할 앱에 %1$s의 공간이 필요하지만 이 기기에는 %2$s만 남아있습니다</string>
@@ -112,6 +113,10 @@
     <string name="downloads_status_failed">실패</string>
     <string name="downloads_status_paused">일시중지됨</string>
     <string name="downloads_summary">한곳에서 진행 중인 다운로드와 저장소를 관리합니다</string>
+    <string name="storage_internal">내부</string>
+    <string name="storage_external">외부</string>
+    <string name="storage_free_of_total">%1$s: %3$s 중 %2$s 사용 가능</string>
+    <string name="storage_calculating">%1$s: 계산 중…</string>
     <string name="container_storage_title">저장소 관리자</string>
     <string name="container_storage_subtitle">내부 저장소와 외부 저장소 사이에서 설치 항목을 이동합니다</string>
     <string name="container_storage_summary">%1$d개 항목 • %2$s</string>
@@ -651,6 +656,10 @@
     <string name="width">너비</string>
     <string name="height">높이</string>
     <string name="audio_driver">오디오 드라이버</string>
+    <string name="pulseaudio_suspend_behavior">PulseAudio 일시 중단 동작</string>
+    <string name="pulseaudio_suspend_behavior_thread">스레드를 통한 일시 중단 (기본값)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Pactl을 통한 일시 중단 (절전)</string>
+    <string name="pulseaudio_low_latency">PulseAudio 저지연 모드</string>
     <string name="show_fps">FPS 표시</string>
     <string name="portrait_mode">세로 모드</string>
     <string name="portrait_mode_description">8BitDo FlipPad/GameSir Pocket Taco 유형 컨트롤러용</string>
@@ -665,6 +674,8 @@
     <string name="launch_steam_client_beta">Steam 클라이언트 실행(베타)</string>
     <string name="steam_offline_mode">Steam 오프라인 모드</string>
     <string name="steam_offline_mode_description">Steam 게임을 오프라인 모드로 실행</string>
+    <string name="epic_offline_mode">Epic 오프라인 모드</string>
+    <string name="epic_offline_mode_description">Epic 게임을 오프라인 모드로 실행</string>
     <string name="achievement_unlocked">업적 달성</string>
     <string name="settings_achievement_notification_position">업적 알림 위치</string>
     <string name="achievement_position_top_left">좌측 상단</string>
@@ -689,6 +700,8 @@
     <string name="vkd3d_feature_level">VKD3D 기능 수준</string>
     <string name="use_dri3">DRI3 사용</string>
     <string name="use_dri3_description">비활성화하면 일부 장치에서 그래픽 결함이 수정될 수 있습니다</string>
+    <string name="use_legacy_renderer">레거시 렌더러 사용</string>
+    <string name="use_legacy_renderer_description">VulkanRenderer 대신 레거시 GLRenderer를 사용합니다. VulkanRenderer는 성능을 향상시키지만, 베타 버전이므로 문제가 발생할 수 있습니다.</string>
     <string name="sync_frame">모든 프레임 동기화</string>
     <string name="disable_present_wait">KHR_present_wait 비활성화</string>
     <string name="present_modes">프레젠트 모드</string>
@@ -736,6 +749,8 @@
     <string name="gesture_tap_subtitle">왼쪽 클릭</string>
     <string name="gesture_drag">드래그</string>
     <string name="gesture_drag_subtitle">왼쪽 클릭 드래그 (영역 선택)</string>
+    <string name="gesture_hold_mouse_button_while_touching">터치하는 동안 마우스 버튼 누르기 유지</string>
+    <string name="gesture_mouse_button_label">마우스 버튼</string>
     <string name="gesture_long_press">길게 누르기</string>
     <string name="gesture_long_press_delay">길게 누르기 지연 (ms)</string>
     <string name="gesture_double_tap">더블 탭</string>
@@ -762,6 +777,9 @@
     <string name="gesture_pan_left_click_drag">왼쪽 클릭 드래그</string>
     <string name="gesture_pan_right_click_drag">오른쪽 클릭 드래그</string>
     <string name="gesture_action_show_keyboard">키보드 표시</string>
+    <string name="gesture_mouse_behavior_label">마우스 동작</string>
+    <string name="gesture_mouse_behavior_click">클릭</string>
+    <string name="gesture_mouse_behavior_hold">누른 상태 유지</string>
     <string name="gesture_header_special">특수</string>
     <string name="gesture_header_mouse">마우스</string>
     <string name="gesture_header_common_game">일반 게임 키</string>
@@ -776,10 +794,16 @@
     <string name="gesture_three_finger_hold_delay">세 손가락 길게 누르기 지연 (ms)</string>
     <string name="gesture_threshold">제스처 임계값 (px)</string>
     <string name="gesture_threshold_subtitle">제스처 유형을 고정하는 데 필요한 이동 거리 (낮을수록 더 반응이 빠름)</string>
+    <string name="gesture_mouse_drag_movement">드래그 시 마우스 이동</string>
+    <string name="gesture_mouse_drag_movement_subtitle">대부분의 게임에서는 직접 모드가 작동합니다. 드래그 시 카메라나 커서 문제가 있으면 상대 모드를 사용하세요</string>
+    <string name="gesture_mouse_drag_movement_direct">직접</string>
+    <string name="gesture_mouse_drag_movement_relative">상대</string>
     <string name="gesture_show_click_highlight">클릭 강조 표시</string>
     <string name="gesture_show_click_highlight_subtitle">탭 위치에 원 표시</string>
     <string name="gesture_show_debug_overlay">제스처 디버그 오버레이 표시</string>
     <string name="gesture_show_debug_overlay_subtitle">상단 중앙에 임시 제스처 레이블 표시</string>
+    <string name="gesture_show_cursor_touchscreen_mode">터치스크린 모드에서 커서 표시</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">터치스크린 제스처가 활성화된 동안 마우스 커서를 계속 표시</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">동적 조이스틱 설정</string>
@@ -1472,4 +1496,55 @@
     <string name="game_launch_tip_23">팁: Mali GPU를 사용하는 경우 시스템 드라이버를 사용하세요.</string>
     <string name="game_launch_tip_24">팁: 검은 화면이 나타나나요? 메뉴에서 \"%s\" 옵션을 사용하여 드라이버가 올바르게 작동하는지 확인하세요.</string>
     <string name="launch_bionic_steam_description">온라인 플레이 활성화, 호환성 향상\n항상 작동하지 않을 수 있음\n시도하기 전에 저장 파일을 백업하세요</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">프론트엔드 동기화</string>
+    <string name="settings_interface_frontend_sync_subtitle">설치된 게임을 게임 라이브러리 프론트엔드에 자동으로 내보내기</string>
+    <string name="frontend_sync_dialog_title">프론트엔드 동기화</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">커스텀 게임</string>
+    <string name="frontend_sync_not_set">설정되지 않음</string>
+    <string name="frontend_sync_clear_confirm_title">이전 내보내기 파일을 제거하시겠습니까?</string>
+    <string name="frontend_sync_clear_confirm_message">이전 디렉토리에서 .%1$s 파일을 제거하시겠습니까?</string>
+    <string name="frontend_sync_confirm_remove">제거</string>
+    <string name="frontend_sync_confirm_keep">유지</string>
+    <string name="frontend_sync_resync_all">전체 재동기화</string>
+    <string name="frontend_sync_resync_complete">프론트엔드 동기화 완료</string>
+    <string name="screen_effects_scaling">스케일링</string>
+    <string name="screen_effects_upscaling">업스케일링</string>
+    <string name="screen_effects_basic_scaling">기본 스케일링</string>
+    <string name="screen_effects_scaling_mode_none">스케일링 없음</string>
+    <string name="screen_effects_scaling_mode_none_desc">스케일링 없음.</string>
+    <string name="screen_effects_scaling_mode_nearest">최근접</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">선명한 픽셀(레트로).</string>
+    <string name="screen_effects_scaling_mode_linear">선형</string>
+    <string name="screen_effects_scaling_mode_linear_desc">부드러운 스케일링.</string>
+    <string name="screen_effects_scaling_mode_fill">채우기</string>
+    <string name="screen_effects_scaling_mode_fill_desc">화면을 채우고 가장자리를 자릅니다.</string>
+    <string name="screen_effects_scaling_mode_stretch">늘이기</string>
+    <string name="screen_effects_scaling_mode_stretch_desc">화면비를 무시하고 화면을 채웁니다.</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_scaling_mode_fsr_desc">선명한 초해상도 업스케일.</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, 화면비 유지.</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_dls_desc">샤픈/선명도 패스.</string>
+    <string name="screen_effects_scaling_mode_natural">자연</string>
+    <string name="screen_effects_scaling_mode_natural_desc">더 따뜻한 색조.</string>
+    <string name="stats_key_runs">내 GPU에서 성공한 실행</string>
+    <string name="stats_key_reviews">별 5개 리뷰 (내 GPU / 내 기기)</string>
+    <string name="stats_key_fps">예상 FPS</string>
+    <string name="stats_key_session">내 기기에서의 최장 세션</string>
+    <string name="sort_fps">예상 FPS</string>
+    <string name="sort_runs">성공한 실행</string>
+    <string name="sort_reviews">별 5개 리뷰 (기기)</string>
+    <string name="sort_reviews_gpu">별 5개 리뷰 (GPU)</string>
+    <string name="filter_expired">만료됨</string>
+    <string name="filter_playable">플레이 가능 (30+ FPS)</string>
+    <string name="filter_five_star_device">기기에서의 별 5개 리뷰</string>
+    <string name="filter_five_star_gpu">GPU에서의 별 5개 리뷰</string>
+    <string name="filter_proven_gpu">내 GPU에서 검증됨</string>
 </resources>

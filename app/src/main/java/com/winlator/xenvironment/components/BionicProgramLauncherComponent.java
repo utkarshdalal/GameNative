@@ -51,6 +51,7 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 
+import app.gamenative.BuildConfig;
 import app.gamenative.PluviaApp;
 import app.gamenative.events.AndroidEvent;
 import app.gamenative.service.SteamService;
@@ -259,8 +260,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         envVars.put("PATH", winePath + ":" +
                 rootDir.getPath() + "/usr/bin");
+        if (BuildConfig.MODERN_ANDROID) envVars.put("REDIRECT_EXEC__PROC_SELF_EXE", winePath + "/wine");
 
-        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
+        String ldLibraryPath = rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64";
+        if (BuildConfig.MODERN_ANDROID) ldLibraryPath += ":" + imageFs.getWinePath() + "/lib";
+        envVars.put("LD_LIBRARY_PATH", ldLibraryPath);
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", rootDir.getPath() + "/usr/etc/fonts");
 
@@ -297,8 +301,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
-        String evshimPath = imageFs.getLibDir() + "/libevshim.so";
-        String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
+        String evshimPath = context.getApplicationInfo().nativeLibraryDir + "/libevshim.so";
+        String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
@@ -307,7 +311,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         ld_preload += ":" + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
-
+        envVars.put("EVSHIM_WINE", 1);
         envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
 
         // Check for specific shared memory libraries
@@ -672,7 +676,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
-        StringBuilder output = new StringBuilder();
         EnvVars envVars = new EnvVars();
         addBox64EnvVars(envVars, false);
 
@@ -686,8 +689,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         Log.d("BionicProgramLauncherComponent", "WinePath is " + winePath);
 
         envVars.put("PATH", winePath + ":" + rootDir.getPath() + "/usr/bin");
+        if (BuildConfig.MODERN_ANDROID) envVars.put("REDIRECT_EXEC__PROC_SELF_EXE", winePath + "/wine");
 
-        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
+        String ldLibraryPath = rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64";
+        if (BuildConfig.MODERN_ANDROID) ldLibraryPath += ":" + imageFs.getWinePath() + "/lib";
+        envVars.put("LD_LIBRARY_PATH", ldLibraryPath);
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("WINE_NO_DUPLICATE_EXPLORER", "1");
         envVars.put("PREFIX", rootDir.getPath() + "/usr");
@@ -696,7 +702,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
-        String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
+        String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
@@ -714,48 +720,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             FileUtils.chmod(box64File, 0755);
         }
 
-        // Execute the command and capture its output.
-        //
-        // IMPORTANT: stderr MUST be drained concurrently with stdout, even when
-        // includeStderr=false. Wine spits out a flood of fixme:/err: lines on
-        // stderr; if we don't read it, the kernel's pipe buffer (~64 KB) fills,
-        // wine's next write(stderr,...) blocks, and the whole subprocess hangs
-        // forever -- which then deadlocks our stdout read too. SteamTokenLogin
-        // calls this with includeStderr=false, so this used to hang on boot.
-        try {
-            Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
-            java.lang.Process process = Runtime.getRuntime().exec(finalCommand, envVars.toStringArray(), workingDir != null ? workingDir : imageFs.getRootDir());
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-
-            final StringBuilder stderrBuf = new StringBuilder();
-            Thread stderrPump = new Thread(() -> {
-                try {
-                    String l;
-                    while ((l = errorReader.readLine()) != null) {
-                        if (includeStderr) stderrBuf.append(l).append('\n');
-                        // else: discard, but we MUST still consume the stream
-                    }
-                } catch (IOException ignored) {
-                    // Subprocess closed stderr; fine.
-                }
-            }, "execShellCommand-stderr-pump");
-            stderrPump.setDaemon(true);
-            stderrPump.start();
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
-            }
-            process.waitFor();
-            stderrPump.join();
-            if (includeStderr) output.append(stderrBuf);
-        } catch (Exception e) {
-            output.append("Error: ").append(e.getMessage());
-        }
-
-        // Format output: trim trailing whitespace/newlines
-        return output.toString().trim();
+        Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
+        return ProcessHelper.execWithOutput(finalCommand, envVars.toStringArray(),
+                workingDir != null ? workingDir : imageFs.getRootDir(), includeStderr);
     }
 
     public void restartWineServer() {

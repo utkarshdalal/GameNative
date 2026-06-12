@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
+import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.dialog.state.MessageDialogState
@@ -136,6 +137,121 @@ internal fun winComponentsItemTitleRes(string: String): Int {
     }
 }
 
+private data class ContainerConfigDialogStaticData(
+    val screenSizes: List<String>,
+    val baseGraphicsDrivers: List<String>,
+    val dxWrappers: List<String>,
+    val dxvkVersionsBase: List<String>,
+    val vkd3dVersionsBase: List<String>,
+    val audioDrivers: List<String>,
+    val gpuCards: Map<Int, ContainerUtils.GpuInfo>,
+    val presentModes: List<String>,
+    val rendererPresentModes: List<String>,
+    val resourceTypes: List<String>,
+    val bcnEmulationEntries: List<String>,
+    val bcnEmulationTypeEntries: List<String>,
+    val sharpnessEffects: List<String>,
+    val sharpnessDisplayItems: List<String>,
+    val renderingModes: List<String>,
+    val videoMemSizes: List<String>,
+    val mouseWarps: List<String>,
+    val externalDisplayModes: List<String>,
+    val winCompOpts: List<String>,
+    val box64Versions: List<String>,
+    val wowBox64VersionsBase: List<String>,
+    val box64BionicVersionsBase: List<String>,
+    val box64Presets: List<com.winlator.box86_64.Box86_64Preset>,
+    val fexcoreVersionsBase: List<String>,
+    val fexcorePresets: List<com.winlator.fexcore.FEXCorePreset>,
+    val fexcoreTSOPresets: List<String>,
+    val fexcoreX87Presets: List<String>,
+    val fexcoreMultiblockValues: List<String>,
+    val startupSelectionEntries: List<String>,
+    val turnipVersions: List<String>,
+    val virglVersions: List<String>,
+    val zinkVersions: List<String>,
+    val vortekVersions: List<String>,
+    val adrenoVersions: List<String>,
+    val sd8EliteVersions: List<String>,
+    val containerVariants: List<String>,
+    val bionicWineEntriesBase: List<String>,
+    val glibcWineEntriesBase: List<String>,
+    val emulatorEntries: List<String>,
+    val bionicGraphicsDrivers: List<String>,
+    val baseWrapperVersions: List<String>,
+    val languages: List<String>,
+)
+
+@Composable
+private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStaticData {
+    val context = LocalContext.current
+    val sharpnessEffects = stringArrayResource(R.array.vkbasalt_sharpness_entries).toList()
+    val sharpnessEffectLabels = stringArrayResource(R.array.vkbasalt_sharpness_labels).toList()
+    val containerVariants = stringArrayResource(R.array.container_variant_entries).toList()
+        .let { variants ->
+            if (BuildConfig.MODERN_ANDROID) {
+                variants.filterNot { it.equals(Container.GLIBC, ignoreCase = true) }
+            } else {
+                variants
+            }
+        }
+
+    return ContainerConfigDialogStaticData(
+        screenSizes = stringArrayResource(R.array.screen_size_entries).toList(),
+        baseGraphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList(),
+        dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList(),
+        dxvkVersionsBase = stringArrayResource(R.array.dxvk_version_entries).toList(),
+        vkd3dVersionsBase = stringArrayResource(R.array.vkd3d_version_entries).toList(),
+        audioDrivers = stringArrayResource(R.array.audio_driver_entries).toList(),
+        gpuCards = ContainerUtils.getGPUCards(context),
+        presentModes = stringArrayResource(R.array.present_mode_entries).toList(),
+        rendererPresentModes = listOf("fifo", "mailbox"),
+        resourceTypes = stringArrayResource(R.array.resource_type_entries).toList(),
+        bcnEmulationEntries = stringArrayResource(R.array.bcn_emulation_entries).toList(),
+        bcnEmulationTypeEntries = stringArrayResource(R.array.bcn_emulation_type_entries).toList(),
+        sharpnessEffects = sharpnessEffects,
+        sharpnessDisplayItems = if (sharpnessEffectLabels.size == sharpnessEffects.size) sharpnessEffectLabels else sharpnessEffects,
+        renderingModes = stringArrayResource(R.array.offscreen_rendering_modes).toList(),
+        videoMemSizes = stringArrayResource(R.array.video_memory_size_entries).toList(),
+        mouseWarps = stringArrayResource(R.array.mouse_warp_override_entries).toList(),
+        externalDisplayModes = listOf(
+            stringResource(R.string.external_display_mode_off),
+            stringResource(R.string.external_display_mode_touchpad),
+            stringResource(R.string.external_display_mode_keyboard),
+            stringResource(R.string.external_display_mode_hybrid),
+        ),
+        winCompOpts = stringArrayResource(R.array.win_component_entries).toList(),
+        box64Versions = stringArrayResource(R.array.box64_version_entries).toList(),
+        wowBox64VersionsBase = stringArrayResource(R.array.wowbox64_version_entries).toList(),
+        box64BionicVersionsBase = stringArrayResource(R.array.box64_bionic_version_entries).toList(),
+        box64Presets = Box86_64PresetManager.getPresets("box64", context),
+        fexcoreVersionsBase = stringArrayResource(R.array.fexcore_version_entries).toList(),
+        fexcorePresets = FEXCorePresetManager.getPresets(context),
+        fexcoreTSOPresets = stringArrayResource(R.array.fexcore_preset_entries).toList(),
+        fexcoreX87Presets = stringArrayResource(R.array.x87mode_preset_entries).toList(),
+        fexcoreMultiblockValues = stringArrayResource(R.array.multiblock_values).toList(),
+        startupSelectionEntries = stringArrayResource(R.array.startup_selection_entries).toList(),
+        turnipVersions = stringArrayResource(R.array.turnip_version_entries).toList(),
+        virglVersions = stringArrayResource(R.array.virgl_version_entries).toList(),
+        zinkVersions = stringArrayResource(R.array.zink_version_entries).toList(),
+        vortekVersions = stringArrayResource(R.array.vortek_version_entries).toList(),
+        adrenoVersions = stringArrayResource(R.array.adreno_version_entries).toList(),
+        sd8EliteVersions = stringArrayResource(R.array.sd8elite_version_entries).toList(),
+        containerVariants = containerVariants,
+        bionicWineEntriesBase = stringArrayResource(R.array.bionic_wine_entries).toList(),
+        glibcWineEntriesBase = stringArrayResource(R.array.glibc_wine_entries).toList(),
+        emulatorEntries = stringArrayResource(R.array.emulator_entries).toList(),
+        bionicGraphicsDrivers = stringArrayResource(R.array.bionic_graphics_driver_entries).toList(),
+        baseWrapperVersions = stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList(),
+        languages = listOf(
+            "arabic", "bulgarian", "schinese", "tchinese", "czech", "danish", "dutch", "english",
+            "finnish", "french", "german", "greek", "hungarian", "italian", "japanese", "koreana",
+            "norwegian", "polish", "portuguese", "brazilian", "romanian", "russian", "spanish",
+            "latam", "swedish", "thai", "turkish", "ukrainian", "vietnamese",
+        ),
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContainerConfigDialog(
@@ -163,60 +279,55 @@ fun ContainerConfigDialog(
         }
         var config by configState
 
-        val screenSizes = stringArrayResource(R.array.screen_size_entries).toList()
-        val baseGraphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList()
+        val staticData = rememberContainerConfigDialogStaticData()
+        val screenSizes = staticData.screenSizes
+        val baseGraphicsDrivers = staticData.baseGraphicsDrivers
         val graphicsDriversRef = remember { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
         var graphicsDrivers by graphicsDriversRef
-        val dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList()
+        val dxWrappers = staticData.dxWrappers
         // Start with defaults from resources
-        val dxvkVersionsBase = stringArrayResource(R.array.dxvk_version_entries).toList()
-        val vkd3dVersionsBase = stringArrayResource(R.array.vkd3d_version_entries).toList()
-        val audioDrivers = stringArrayResource(R.array.audio_driver_entries).toList()
-        val gpuCards = ContainerUtils.getGPUCards(context)
-        val presentModes = stringArrayResource(R.array.present_mode_entries).toList()
-        val resourceTypes = stringArrayResource(R.array.resource_type_entries).toList()
-        val bcnEmulationEntries = stringArrayResource(R.array.bcn_emulation_entries).toList()
-        val bcnEmulationTypeEntries = stringArrayResource(R.array.bcn_emulation_type_entries).toList()
-        val sharpnessEffects = stringArrayResource(R.array.vkbasalt_sharpness_entries).toList()
-        val sharpnessEffectLabels = stringArrayResource(R.array.vkbasalt_sharpness_labels).toList()
-        val sharpnessDisplayItems =
-            if (sharpnessEffectLabels.size == sharpnessEffects.size) sharpnessEffectLabels else sharpnessEffects
-        val renderingModes = stringArrayResource(R.array.offscreen_rendering_modes).toList()
-        val videoMemSizes = stringArrayResource(R.array.video_memory_size_entries).toList()
-        val mouseWarps = stringArrayResource(R.array.mouse_warp_override_entries).toList()
-        val externalDisplayModes = listOf(
-            stringResource(R.string.external_display_mode_off),
-            stringResource(R.string.external_display_mode_touchpad),
-            stringResource(R.string.external_display_mode_keyboard),
-            stringResource(R.string.external_display_mode_hybrid),
-        )
-        val winCompOpts = stringArrayResource(R.array.win_component_entries).toList()
-        val box64Versions = stringArrayResource(R.array.box64_version_entries).toList()
-        val wowBox64VersionsBase = stringArrayResource(R.array.wowbox64_version_entries).toList()
-        val box64BionicVersionsBase = stringArrayResource(R.array.box64_bionic_version_entries).toList()
-        val box64Presets = Box86_64PresetManager.getPresets("box64", context)
-        val fexcoreVersionsBase = stringArrayResource(R.array.fexcore_version_entries).toList()
-        val fexcorePresets = FEXCorePresetManager.getPresets(context)
-        val fexcoreTSOPresets = stringArrayResource(R.array.fexcore_preset_entries).toList()
-        val fexcoreX87Presets = stringArrayResource(R.array.x87mode_preset_entries).toList()
-        val fexcoreMultiblockValues = stringArrayResource(R.array.multiblock_values).toList()
-        val startupSelectionEntries = stringArrayResource(R.array.startup_selection_entries).toList()
-        val turnipVersions = stringArrayResource(R.array.turnip_version_entries).toList()
-        val virglVersions = stringArrayResource(R.array.virgl_version_entries).toList()
-        val zinkVersions = stringArrayResource(R.array.zink_version_entries).toList()
-        val vortekVersions = stringArrayResource(R.array.vortek_version_entries).toList()
-        val adrenoVersions = stringArrayResource(R.array.adreno_version_entries).toList()
-        val sd8EliteVersions = stringArrayResource(R.array.sd8elite_version_entries).toList()
-        val containerVariants = stringArrayResource(R.array.container_variant_entries).toList()
-        val bionicWineEntriesBase = stringArrayResource(R.array.bionic_wine_entries).toList()
-        val glibcWineEntriesBase = stringArrayResource(R.array.glibc_wine_entries).toList()
+        val dxvkVersionsBase = staticData.dxvkVersionsBase
+        val vkd3dVersionsBase = staticData.vkd3dVersionsBase
+        val audioDrivers = staticData.audioDrivers
+        val gpuCards = staticData.gpuCards
+        val presentModes = staticData.presentModes
+        val rendererPresentModes = staticData.rendererPresentModes
+        val resourceTypes = staticData.resourceTypes
+        val bcnEmulationEntries = staticData.bcnEmulationEntries
+        val bcnEmulationTypeEntries = staticData.bcnEmulationTypeEntries
+        val sharpnessEffects = staticData.sharpnessEffects
+        val sharpnessDisplayItems = staticData.sharpnessDisplayItems
+        val renderingModes = staticData.renderingModes
+        val videoMemSizes = staticData.videoMemSizes
+        val mouseWarps = staticData.mouseWarps
+        val externalDisplayModes = staticData.externalDisplayModes
+        val winCompOpts = staticData.winCompOpts
+        val box64Versions = staticData.box64Versions
+        val wowBox64VersionsBase = staticData.wowBox64VersionsBase
+        val box64BionicVersionsBase = staticData.box64BionicVersionsBase
+        val box64Presets = staticData.box64Presets
+        val fexcoreVersionsBase = staticData.fexcoreVersionsBase
+        val fexcorePresets = staticData.fexcorePresets
+        val fexcoreTSOPresets = staticData.fexcoreTSOPresets
+        val fexcoreX87Presets = staticData.fexcoreX87Presets
+        val fexcoreMultiblockValues = staticData.fexcoreMultiblockValues
+        val startupSelectionEntries = staticData.startupSelectionEntries
+        val turnipVersions = staticData.turnipVersions
+        val virglVersions = staticData.virglVersions
+        val zinkVersions = staticData.zinkVersions
+        val vortekVersions = staticData.vortekVersions
+        val adrenoVersions = staticData.adrenoVersions
+        val sd8EliteVersions = staticData.sd8EliteVersions
+        val containerVariants = staticData.containerVariants
+        val bionicWineEntriesBase = staticData.bionicWineEntriesBase
+        val glibcWineEntriesBase = staticData.glibcWineEntriesBase
         val bionicWineEntriesRef = remember { mutableStateOf(bionicWineEntriesBase) }
         var bionicWineEntries by bionicWineEntriesRef
         val glibcWineEntriesRef = remember { mutableStateOf(glibcWineEntriesBase) }
         var glibcWineEntries by glibcWineEntriesRef
-        val emulatorEntries = stringArrayResource(R.array.emulator_entries).toList()
-        val bionicGraphicsDrivers = stringArrayResource(R.array.bionic_graphics_driver_entries).toList()
-        val baseWrapperVersions = stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList()
+        val emulatorEntries = staticData.emulatorEntries
+        val bionicGraphicsDrivers = staticData.bionicGraphicsDrivers
+        val baseWrapperVersions = staticData.baseWrapperVersions
         val wrapperVersionsRef = remember { mutableStateOf(baseWrapperVersions) }
         var wrapperVersions by wrapperVersionsRef
         val dxvkVersionsAllRef = remember { mutableStateOf(dxvkVersionsBase) }
@@ -240,37 +351,7 @@ fun ContainerConfigDialog(
             }
         }
 
-        val languages = listOf(
-            "arabic",
-            "bulgarian",
-            "schinese",
-            "tchinese",
-            "czech",
-            "danish",
-            "dutch",
-            "english",
-            "finnish",
-            "french",
-            "german",
-            "greek",
-            "hungarian",
-            "italian",
-            "japanese",
-            "koreana",
-            "norwegian",
-            "polish",
-            "portuguese",
-            "brazilian",
-            "romanian",
-            "russian",
-            "spanish",
-            "latam",
-            "swedish",
-            "thai",
-            "turkish",
-            "ukrainian",
-            "vietnamese",
-        )
+        val languages = staticData.languages
         val availability = componentAvailability
         val manifestData = availability?.manifest ?: ManifestData.empty()
         val installedLists = availability?.installed
@@ -566,6 +647,8 @@ fun ContainerConfigDialog(
         var wrapperVersionIndex by wrapperVersionIndexRef
         val presentModeIndexRef = rememberSaveable { mutableIntStateOf(0) }
         var presentModeIndex by presentModeIndexRef
+        val rendererPresentModeIndexRef = rememberSaveable { mutableIntStateOf(0) }
+        var rendererPresentModeIndex by rendererPresentModeIndexRef
         val resourceTypeIndexRef = rememberSaveable { mutableIntStateOf(0) }
         var resourceTypeIndex by resourceTypeIndexRef
         val bcnEmulationIndexRef = rememberSaveable { mutableIntStateOf(0) }
@@ -592,12 +675,17 @@ fun ContainerConfigDialog(
             mutableStateOf(cfg.get("adrenotoolsTurnip", "1") != "0")
         }
         var adrenotoolsTurnipChecked by adrenotoolsTurnipCheckedRef
-        LaunchedEffect(config.graphicsDriverConfig) {
+        LaunchedEffect(config.graphicsDriverConfig, config.rendererPresentMode) {
             val cfg = KeyValueSet(config.graphicsDriverConfig)
             val presentMode = cfg.get("presentMode", "mailbox")
             val defaultPresentIdx = presentModes.indexOfFirst { it.equals("mailbox", true) }.takeIf { it >= 0 } ?: 0
             presentModeIndex =
                 presentModes.indexOfFirst { it.equals(presentMode, true) }.let { if (it >= 0) it else defaultPresentIdx }
+
+            val storedRendererPm = config.rendererPresentMode.ifEmpty { "fifo" }
+            val defaultRendererPresentIdx = rendererPresentModes.indexOfFirst { it.equals("fifo", true) }.takeIf { it >= 0 } ?: 0
+            rendererPresentModeIndex =
+                rendererPresentModes.indexOfFirst { it.equals(storedRendererPm, true) }.let { if (it >= 0) it else defaultRendererPresentIdx }
 
             val resourceType = cfg.get("resourceType", "auto")
             val defaultResourceIdx = resourceTypes.indexOfFirst { it.equals("auto", true) }.takeIf { it >= 0 } ?: 0
@@ -956,6 +1044,7 @@ fun ContainerConfigDialog(
             bionicDriverIndex = bionicDriverIndexRef,
             wrapperVersionIndex = wrapperVersionIndexRef,
             presentModeIndex = presentModeIndexRef,
+            rendererPresentModeIndex = rendererPresentModeIndexRef,
             resourceTypeIndex = resourceTypeIndexRef,
             bcnEmulationIndex = bcnEmulationIndexRef,
             bcnEmulationTypeIndex = bcnEmulationTypeIndexRef,
@@ -994,6 +1083,7 @@ fun ContainerConfigDialog(
             vkd3dVersionsBase = vkd3dVersionsBase,
             audioDrivers = audioDrivers,
             presentModes = presentModes,
+            rendererPresentModes = rendererPresentModes,
             resourceTypes = resourceTypes,
             bcnEmulationEntries = bcnEmulationEntries,
             bcnEmulationTypeEntries = bcnEmulationTypeEntries,

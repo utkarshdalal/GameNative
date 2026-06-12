@@ -76,19 +76,26 @@ jobs:
         yes | "$SDKMANAGER" --install "build-tools;34.0.0"
 
     - name: Build with Gradle
-      run: ./gradlew :app:bundleRelease
+      run: ./gradlew :app:bundleLegacyRelease :app:bundleModernRelease
 
-    - name: Extract APK from Bundle
+    - name: Stage bundles
       run: |
-        java -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app/build/outputs/bundle/release/app-release.aab --output=app-release.apks --mode=universal
+        cp app/build/outputs/bundle/legacyRelease/app-legacy-release.aab app-release.aab
+        cp app/build/outputs/bundle/modernRelease/app-modern-release.aab app-modern-release.aab
+
+    - name: Extract APKs from Bundles
+      run: |
+        java -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app-release.aab --output=app-release.apks --mode=universal
         unzip -o app-release.apks universal.apk
+        java -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app-modern-release.aab --output=app-modern-release.apks --mode=universal
+        unzip -p app-modern-release.apks universal.apk > universal-modern.apk
 
     - name: Copy lineage file
       run: |
         mkdir -p app/keystores
         cp prod-debug.lineage app/keystores/prod-debug.lineage
 
-    - name: Dual sign universal APK
+    - name: Dual sign universal APKs
       env:
         DEBUG_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
         DEBUG_KEY_PASS: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
@@ -101,39 +108,58 @@ jobs:
         if [ ! -d "$BUILD_TOOLS_DIR" ]; then
           BUILD_TOOLS_DIR="${ANDROID_SDK_ROOT}/build-tools/34.0.0"
         fi
-        "${BUILD_TOOLS_DIR}/apksigner" sign \
-          --lineage app/keystores/prod-debug.lineage \
-          --ks app/keystores/keystore \
-          --ks-key-alias "$DEBUG_ALIAS" \
-          --ks-pass pass:$DEBUG_STORE_PASS \
-          --key-pass pass:$DEBUG_KEY_PASS \
-          --next-signer --ks app/keystores/prod.keystore \
-          --ks-key-alias "$PROD_ALIAS" \
-          --ks-pass pass:$PROD_STORE_PASS \
-          --key-pass pass:$PROD_KEY_PASS \
-          --out universal-signed.apk \
-          universal.apk
-        mv universal-signed.apk universal.apk
+        for apk in universal.apk universal-modern.apk; do
+          "${BUILD_TOOLS_DIR}/apksigner" sign \
+            --lineage app/keystores/prod-debug.lineage \
+            --ks app/keystores/keystore \
+            --ks-key-alias "$DEBUG_ALIAS" \
+            --ks-pass pass:$DEBUG_STORE_PASS \
+            --key-pass pass:$DEBUG_KEY_PASS \
+            --next-signer --ks app/keystores/prod.keystore \
+            --ks-key-alias "$PROD_ALIAS" \
+            --ks-pass pass:$PROD_STORE_PASS \
+            --key-pass pass:$PROD_KEY_PASS \
+            --out "${apk%.apk}-signed.apk" \
+            "$apk"
+          mv "${apk%.apk}-signed.apk" "$apk"
+        done
 
-    - name: Upload Artifact
-      id: upload_app
+    - name: Upload Legacy APK
       uses: actions/upload-artifact@v4
       with:
         name: app-release-signed
         path: ${{ github.workspace }}/universal.apk
 
+    - name: Upload Modern APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-signed-modern
+        path: ${{ github.workspace }}/universal-modern.apk
+
     - name: Build changelog text
       id: changelog
       run: |
         text=$(jq -r '.commits[] | "• " + (.message | split("\n")[0]) + " (" + .id[0:7] + ")"' "$GITHUB_EVENT_PATH")
-        echo 'log<<EOF' >>"$GITHUB_OUTPUT"
-        echo "$text" >>"$GITHUB_OUTPUT"
-        echo 'EOF' >>"$GITHUB_OUTPUT"
+        # Stable random delimiter so newlines in $text can't terminate the heredoc.
+        delim="EOF_$(openssl rand -hex 8)"
+        {
+          echo "log<<$delim"
+          echo "$text"
+          echo "$delim"
+        } >>"$GITHUB_OUTPUT"
 
     - name: Post to Discord
       env:
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        # Read via env to avoid shell-quoting traps with multiline changelogs.
+        CHANGELOG: ${{ steps.changelog.outputs.log }}
+        LEGACY_URL: https://nightly.link/utkarshdalal/GameNative/actions/runs/${{ github.run_id }}/app-release-signed.zip
+        MODERN_URL: https://nightly.link/utkarshdalal/GameNative/actions/runs/${{ github.run_id }}/app-release-signed-modern.zip
       run: |
-        artifact_url="https://nightly.link/utkarshdalal/GameNative/actions/runs/${{ github.run_id }}/app-release-signed.zip"
-        payload='{"content":"**New Android build**\nDownload: '"$artifact_url"'\n\nChanges:\n'"${{ steps.changelog.outputs.log }}"'"}'
+        # jq -n handles JSON escaping (newlines, quotes, etc.) for us.
+        payload=$(jq -n \
+          --arg legacy "$LEGACY_URL" \
+          --arg modern "$MODERN_URL" \
+          --arg changes "$CHANGELOG" \
+          '{content: "**New Android build**\nStandard Build (Recommended): \($legacy)\nPlay Store Build (Android 11+ — built for the latest Android, so **no security warning** about an outdated target. No D drive access and no custom game support; glibc not supported, external storage location moved.): \($modern)\n\nChanges:\n\($changes)"}')
         curl -H 'Content-Type: application/json' -d "$payload" "$DISCORD_WEBHOOK_URL"

@@ -30,10 +30,10 @@ room {
 
 android {
     namespace = "app.gamenative"
-    compileSdk = 35
+    compileSdk = 36
 
     // https://developer.android.com/ndk/downloads
-    ndkVersion = "22.1.7171670"
+    ndkVersion = "27.3.13750724"
 
     signingConfigs {
         create("pluvia") {
@@ -50,10 +50,9 @@ android {
         applicationId = "app.gamenative"
 
         minSdk = 26
-        targetSdk = 28
 
         versionCode = 14
-        versionName = "0.9.2"
+        versionName = "1.0.0"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -73,7 +72,7 @@ android {
         )
 
         ndk {
-            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+            //abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
         }
 
         // Localization support - specify which languages to include
@@ -92,6 +91,7 @@ android {
             "pl",      // Polish
             "ru",      // Russian
             "ko",      // Korean
+            "ja",      // Japanese
             // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
         )
 
@@ -105,6 +105,25 @@ android {
             getDefaultProguardFile("proguard-android.txt"),
             "proguard-rules.pro",
         )
+    }
+
+    flavorDimensions += "androidApi"
+    productFlavors {
+        create("legacy") {
+            dimension = "androidApi"
+            targetSdk = 28
+            ndk.abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            buildConfigField("boolean", "MODERN_ANDROID", "false")
+            buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic.so\"")
+        }
+        create("modern") {
+            dimension = "androidApi"
+            minSdk = 29
+            targetSdk = 36
+            ndk.abiFilters += listOf("arm64-v8a")
+            buildConfigField("boolean", "MODERN_ANDROID", "true")
+            buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic-wx.so\"")
+        }
     }
 
     buildTypes {
@@ -175,9 +194,29 @@ android {
     }
     dynamicFeatures += setOf(":ubuntufs")
 
+    // Configure Assets to be used in different variants
+    sourceSets {
+        getByName("legacy") {
+            assets {
+                srcDirs("src/legacy/assets", "src/main/assets")
+            }
+        }
+        getByName("modern") {
+            assets {
+                srcDirs("src/modern/assets", "src/main/assets")
+            }
+        }
+    }
+
     kotlinter {
         ignoreFormatFailures  = false
     }
+
+    // externalNativeBuild {
+    //    cmake {
+    //        path = file("src/main/cpp/evshim/CMakeLists.txt")
+    //    }
+    // }
 
     // xconnectorpatch is shipped as a prebuilt jniLib because our APK packaging flow
     // does not rebuild native libraries during release creation.

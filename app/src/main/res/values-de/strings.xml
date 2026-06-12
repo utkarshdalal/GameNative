@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Bitte bestätige die Anmeldung in der Steam Mobile App…</string>
     <string name="steam_2fa_device">Bitte gib deinen Zwei-Faktor-Code aus deiner Authenticator-App ein.</string>
     <string name="steam_2fa_email">Bitte gib den Authentifizierungscode ein, der an die E-Mail-Adresse %s gesendet wurde</string>
+    <string name="steam_2fa_use_guard_totp">Oder verwende den Code für die Zwei-Faktor-Authentifizierung</string>
     <string name="steam_install_space_prompt">Die App benötigt folgenden Speicherplatz. Möchtest du fortfahren?\n\n\tDownloadgröße: %1$s\n\tBelegter Speicher: %2$s\n\tVerfügbarer Speicher: %3$s</string>
     <string name="steam_install_not_enough_space">Diese App benötigt %1$s Speicherplatz, aber auf diesem Gerät sind nur noch %2$s frei</string>
     <string name="steam_cancel_download_message">Bist du sicher, dass du den Download der App abbrechen möchtest?</string>
@@ -98,6 +99,10 @@
     <string name="downloads_status_failed">Fehlgeschlagen</string>
     <string name="downloads_status_paused">Pausiert</string>
     <string name="downloads_summary">Aktive Downloads und Speicher an einem Ort verwalten</string>
+    <string name="storage_internal">Intern</string>
+    <string name="storage_external">Extern</string>
+    <string name="storage_free_of_total">%1$s: %2$s frei von %3$s</string>
+    <string name="storage_calculating">%1$s: Wird berechnet…</string>
     <string name="container_storage_title">Speicherverwaltung</string>
     <string name="container_storage_subtitle">Installationen zwischen internem und externem Speicher verschieben</string>
     <string name="container_storage_summary">%1$d Einträge • %2$s</string>
@@ -615,6 +620,10 @@
     <string name="width">Breite</string>
     <string name="height">Höhe</string>
     <string name="audio_driver">Audiotreiber</string>
+    <string name="pulseaudio_suspend_behavior">PulseAudio Suspend-Verhalten</string>
+    <string name="pulseaudio_suspend_behavior_thread">Suspend via Thread (Standard)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Suspend via Pactl (Energiesparen)</string>
+    <string name="pulseaudio_low_latency">PulseAudio Niedrige Latenz Modus</string>
     <string name="show_fps">FPS anzeigen</string>
     <string name="portrait_mode">Hochformat-Modus</string>
     <string name="portrait_mode_description">Für 8BitDo FlipPad/GameSir Pocket Taco Controller</string>
@@ -628,6 +637,8 @@
     <string name="launch_steam_client_beta">Steam-Client starten (Beta)</string>
     <string name="steam_offline_mode">Steam Offline-Modus</string>
     <string name="steam_offline_mode_description">Steam-Spiele im Offlinemodus starten</string>
+    <string name="epic_offline_mode">Epic Offline-Modus</string>
+    <string name="epic_offline_mode_description">Epic-Spiele im Offlinemodus starten</string>
     <string name="achievement_unlocked">Erfolg freigeschaltet</string>
     <string name="settings_achievement_notification_position">Position der Erfolgsbenachrichtigung</string>
     <string name="achievement_position_top_left">Oben links</string>
@@ -651,6 +662,8 @@
     <string name="vkd3d_feature_level">VKD3D-Featurelevel</string>
     <string name="use_dri3">DRI3 verwenden</string>
     <string name="use_dri3_description">Deaktivieren kann Grafikprobleme auf manchen Geräten beheben</string>
+    <string name="use_legacy_renderer">Alten Renderer verwenden</string>
+    <string name="use_legacy_renderer_description">Verwendet den alten GLRenderer statt des VulkanRenderers. Der VulkanRenderer verbessert die Leistung, befindet sich aber in der Beta-Phase und kann Probleme verursachen.</string>
     <string name="sync_frame">Jedes Frame synchronisieren</string>
     <string name="disable_present_wait">KHR_present_wait deaktivieren</string>
     <string name="present_modes">Präsentationsmodi</string>
@@ -696,6 +709,8 @@
     <string name="gesture_tap_subtitle">Linksklick</string>
     <string name="gesture_drag">Finger ziehen</string>
     <string name="gesture_drag_subtitle">Linksklick ziehen (Rechteckauswahl)</string>
+    <string name="gesture_hold_mouse_button_while_touching">Maustaste beim Berühren halten</string>
+    <string name="gesture_mouse_button_label">Maustaste</string>
     <string name="gesture_long_press">Langer Druck</string>
     <string name="gesture_long_press_delay">Verzögerung langer Druck (ms)</string>
     <string name="gesture_double_tap">Doppeltippen</string>
@@ -722,6 +737,9 @@
     <string name="gesture_pan_left_click_drag">Linksklick-Ziehen</string>
     <string name="gesture_pan_right_click_drag">Rechtsklick-Ziehen</string>
     <string name="gesture_action_show_keyboard">Tastatur anzeigen</string>
+    <string name="gesture_mouse_behavior_label">Mausverhalten</string>
+    <string name="gesture_mouse_behavior_click">Klick</string>
+    <string name="gesture_mouse_behavior_hold">Halten</string>
     <string name="gesture_header_special">Spezial</string>
     <string name="gesture_header_mouse">Maus</string>
     <string name="gesture_header_common_game">Häufige Spieltasten</string>
@@ -736,10 +754,16 @@
     <string name="gesture_three_finger_hold_delay">Verzögerung für Halten mit drei Fingern (ms)</string>
     <string name="gesture_threshold">Gestenschwelle (px)</string>
     <string name="gesture_threshold_subtitle">Bewegung zum Sperren des Gestentyps (niedriger = reaktionsschneller)</string>
+    <string name="gesture_mouse_drag_movement">Mausbewegung beim Ziehen</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Direkt funktioniert für die meisten Spiele. Verwende Relativ, wenn Ziehen Kamera- oder Cursorprobleme verursacht</string>
+    <string name="gesture_mouse_drag_movement_direct">Direkt</string>
+    <string name="gesture_mouse_drag_movement_relative">Relativ</string>
     <string name="gesture_show_click_highlight">Klickhervorhebung anzeigen</string>
     <string name="gesture_show_click_highlight_subtitle">Kreis an Tipp-Position anzeigen</string>
     <string name="gesture_show_debug_overlay">Gesten-Debug-Overlay anzeigen</string>
     <string name="gesture_show_debug_overlay_subtitle">Temporäre Gestenbeschriftungen oben mittig anzeigen</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Cursor im Touchscreen-Modus anzeigen</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Mauszeiger sichtbar halten, während Touchscreen-Gesten aktiv sind</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Dynamische Joystick-Einstellungen</string>
@@ -1408,4 +1432,55 @@
     <string name="game_launch_tip_23">Tipp: Wenn Sie eine Mali-GPU haben, verwenden Sie bitte die Systemtreiber.</string>
     <string name="game_launch_tip_24">Tipp: Zeigt sich ein schwarzer Bildschirm? Versuchen Sie die \"%s\"-Option im Menü, um zu überprüfen, ob Ihre Treiber korrekt funktionieren.</string>
     <string name="launch_bionic_steam_description">Aktiviert Online-Spiel und verbessert die Kompatibilität\nFunktioniert nicht immer\nSichere deine Spielstände, bevor du es ausprobierst</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Frontend-Synchronisierung</string>
+    <string name="settings_interface_frontend_sync_subtitle">Installierte Spiele automatisch für Frontend-Programme exportieren</string>
+    <string name="frontend_sync_dialog_title">Frontend-Synchronisierung</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Benutzerdefinierte Spiele</string>
+    <string name="frontend_sync_not_set">Nicht festgelegt</string>
+    <string name="frontend_sync_clear_confirm_title">Alte Exportdateien entfernen?</string>
+    <string name="frontend_sync_clear_confirm_message">.%1$s-Dateien aus dem vorherigen Verzeichnis entfernen?</string>
+    <string name="frontend_sync_confirm_remove">Entfernen</string>
+    <string name="frontend_sync_confirm_keep">Behalten</string>
+    <string name="frontend_sync_resync_all">Alle neu synchronisieren</string>
+    <string name="frontend_sync_resync_complete">Frontend-Synchronisierung abgeschlossen</string>
+    <string name="screen_effects_scaling">Skalierung</string>
+    <string name="screen_effects_upscaling">Hochskalierung</string>
+    <string name="screen_effects_basic_scaling">Einfache Skalierung</string>
+    <string name="screen_effects_scaling_mode_none">Keine Skalierung</string>
+    <string name="screen_effects_scaling_mode_none_desc">Keine Skalierung.</string>
+    <string name="screen_effects_scaling_mode_nearest">Nächster</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">Scharfe Pixel (Retro).</string>
+    <string name="screen_effects_scaling_mode_linear">Linear</string>
+    <string name="screen_effects_scaling_mode_linear_desc">Weiche Skalierung.</string>
+    <string name="screen_effects_scaling_mode_fill">Füllen</string>
+    <string name="screen_effects_scaling_mode_fill_desc">Füllt den Bildschirm, schneidet Ränder ab.</string>
+    <string name="screen_effects_scaling_mode_stretch">Strecken</string>
+    <string name="screen_effects_scaling_mode_stretch_desc">Füllt den Bildschirm, ignoriert Seitenverhältnis.</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_scaling_mode_fsr_desc">Scharfe Super-Resolution-Hochskalierung.</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, behält Seitenverhältnis bei.</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_dls_desc">Schärfen / Klarheit.</string>
+    <string name="screen_effects_scaling_mode_natural">Natürlich</string>
+    <string name="screen_effects_scaling_mode_natural_desc">Wärmerer Farbton.</string>
+    <string name="stats_key_runs">Erfolgreiche Starts auf deiner GPU</string>
+    <string name="stats_key_reviews">5-Sterne-Bewertungen (deine GPU / dein Gerät)</string>
+    <string name="stats_key_fps">Erwartete FPS</string>
+    <string name="stats_key_session">Längste Sitzung auf deinem Gerät</string>
+    <string name="sort_fps">Erwartete FPS</string>
+    <string name="sort_runs">Erfolgreiche Starts</string>
+    <string name="sort_reviews">5-Sterne-Bewertungen (Gerät)</string>
+    <string name="sort_reviews_gpu">5-Sterne-Bewertungen (GPU)</string>
+    <string name="filter_expired">Abgelaufen</string>
+    <string name="filter_playable">Spielbar (30+ FPS)</string>
+    <string name="filter_five_star_device">5-Sterne-Bewertungen auf dem Gerät</string>
+    <string name="filter_five_star_gpu">5-Sterne-Bewertungen auf der GPU</string>
+    <string name="filter_proven_gpu">Bewährt auf deiner GPU</string>
 </resources>

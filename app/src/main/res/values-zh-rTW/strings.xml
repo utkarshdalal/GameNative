@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">使用Steam行動應用程式確認登入…</string>
     <string name="steam_2fa_device">請輸入您的驗證器應用程式中的雙重驗證碼</string>
     <string name="steam_2fa_email">請輸入發送至郵件信箱 %s 的驗證碼</string>
+    <string name="steam_2fa_use_guard_totp">或使用雙因素驗證碼</string>
     <string name="steam_install_space_prompt">正在安裝的應用程式有以下空間需求:\n\n\t下載大小: %1$s\n\t磁碟佔用空間: %2$s\n\t可用空間: %3$s</string>
     <string name="steam_install_space">下載大小: %1$s\n磁碟佔用空間: %2$s\n可用空間: %3$s</string>
     <string name="steam_install_not_enough_space">正在安裝的應用程式需要 %1$s 的空間, 但此設備上只剩下 %2$s 的空間</string>
@@ -103,6 +104,10 @@
     <string name="downloads_status_failed">失敗</string>
     <string name="downloads_status_paused">已暫停</string>
     <string name="downloads_summary">在同一處管理進行中的下載與儲存</string>
+    <string name="storage_internal">內部</string>
+    <string name="storage_external">外部</string>
+    <string name="storage_free_of_total">%1$s：%3$s 中有 %2$s 可用</string>
+    <string name="storage_calculating">%1$s：計算中…</string>
     <string name="container_storage_title">儲存管理</string>
     <string name="container_storage_subtitle">在內部儲存與外部儲存之間移動安裝內容</string>
     <string name="container_storage_summary">%1$d 項 • %2$s</string>
@@ -634,6 +639,10 @@
     <string name="width">寬度</string>
     <string name="height">高度</string>
     <string name="audio_driver">音訊驅動程式</string>
+    <string name="pulseaudio_suspend_behavior">PulseAudio 暫停行為</string>
+    <string name="pulseaudio_suspend_behavior_thread">透過執行緒暫停（預設）</string>
+    <string name="pulseaudio_suspend_behavior_pactl">透過 Pactl 暫停（省電）</string>
+    <string name="pulseaudio_low_latency">PulseAudio 低延遲模式</string>
     <string name="show_fps">顯示幀率</string>
     <string name="portrait_mode">直向模式</string>
     <string name="portrait_mode_description">適用於 8BitDo FlipPad/GameSir Pocket Taco 類型控制器</string>
@@ -648,6 +657,8 @@
     <string name="launch_steam_client_beta">啟動 Steam 用戶端 (Beta)</string>
     <string name="steam_offline_mode">Steam 離線模式</string>
     <string name="steam_offline_mode_description">以離線模式啟動 Steam 遊戲</string>
+    <string name="epic_offline_mode">Epic 離線模式</string>
+    <string name="epic_offline_mode_description">以離線模式啟動 Epic 遊戲</string>
     <string name="achievement_unlocked">成就已解鎖</string>
     <string name="settings_achievement_notification_position">成就通知位置</string>
     <string name="achievement_position_top_left">左上</string>
@@ -672,6 +683,8 @@
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">使用 DRI3</string>
     <string name="use_dri3_description">在某些裝置上停用此功能或許能修復圖形故障</string>
+    <string name="use_legacy_renderer">使用舊版渲染器</string>
+    <string name="use_legacy_renderer_description">使用舊版 GLRenderer 而非 VulkanRenderer。VulkanRenderer 可提升效能，但目前為 Beta 版，可能會造成問題。</string>
     <string name="sync_frame">同步每幀影像</string>
     <string name="disable_present_wait">停用 KHR_present_wait</string>
     <string name="present_modes">當前模式</string>
@@ -719,6 +732,8 @@
     <string name="gesture_tap_subtitle">左鍵點擊</string>
     <string name="gesture_drag">拖曳</string>
     <string name="gesture_drag_subtitle">左鍵拖曳（框選）</string>
+    <string name="gesture_hold_mouse_button_while_touching">觸控時按住滑鼠按鈕</string>
+    <string name="gesture_mouse_button_label">滑鼠按鈕</string>
     <string name="gesture_long_press">長按</string>
     <string name="gesture_long_press_delay">長按延遲（毫秒）</string>
     <string name="gesture_double_tap">雙擊</string>
@@ -745,6 +760,9 @@
     <string name="gesture_pan_left_click_drag">左鍵拖曳</string>
     <string name="gesture_pan_right_click_drag">右鍵拖曳</string>
     <string name="gesture_action_show_keyboard">顯示鍵盤</string>
+    <string name="gesture_mouse_behavior_label">滑鼠行為</string>
+    <string name="gesture_mouse_behavior_click">點擊</string>
+    <string name="gesture_mouse_behavior_hold">按住</string>
     <string name="gesture_header_special">特殊</string>
     <string name="gesture_header_mouse">滑鼠</string>
     <string name="gesture_header_common_game">常用遊戲按鍵</string>
@@ -759,10 +777,16 @@
     <string name="gesture_three_finger_hold_delay">三指長按延遲 (ms)</string>
     <string name="gesture_threshold">手勢閾值 (px)</string>
     <string name="gesture_threshold_subtitle">鎖定手勢類型所需的移動距離（越低越靈敏）</string>
+    <string name="gesture_mouse_drag_movement">拖曳時的滑鼠移動</string>
+    <string name="gesture_mouse_drag_movement_subtitle">直接模式適用於大多數遊戲。如果拖曳造成鏡頭或游標問題，請使用相對模式</string>
+    <string name="gesture_mouse_drag_movement_direct">直接</string>
+    <string name="gesture_mouse_drag_movement_relative">相對</string>
     <string name="gesture_show_click_highlight">顯示點擊高亮</string>
     <string name="gesture_show_click_highlight_subtitle">在點擊位置顯示圓圈</string>
     <string name="gesture_show_debug_overlay">顯示手勢除錯疊加層</string>
     <string name="gesture_show_debug_overlay_subtitle">在頂部中央顯示臨時手勢標籤</string>
+    <string name="gesture_show_cursor_touchscreen_mode">在觸屏模式下顯示游標</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">觸屏手勢啟用時保持滑鼠游標可見</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">動態搖桿設定</string>
@@ -1468,14 +1492,27 @@
     <string name="performance_hud_battery_temperature">電池溫度</string>
 
     <string name="screen_effects_scaling">縮放</string>
+    <string name="screen_effects_upscaling">超解析度</string>
+    <string name="screen_effects_basic_scaling">基本縮放</string>
+    <string name="screen_effects_scaling_mode_none_desc">不縮放。</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">清晰像素（復古）。</string>
+    <string name="screen_effects_scaling_mode_linear_desc">平滑縮放。</string>
+    <string name="screen_effects_scaling_mode_fill_desc">填滿螢幕，裁切邊緣。</string>
+    <string name="screen_effects_scaling_mode_stretch_desc">拉伸填滿螢幕，忽略長寬比。</string>
+    <string name="screen_effects_scaling_mode_fsr_desc">清晰的超解析度放大。</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR，維持長寬比。</string>
+    <string name="screen_effects_scaling_mode_dls_desc">銳化／清晰度處理。</string>
+    <string name="screen_effects_scaling_mode_natural_desc">更暖的色調。</string>
     <string name="screen_effects_scaling_mode">縮放模式</string>
-    <string name="screen_effects_scaling_mode_none">無</string>
+    <string name="screen_effects_scaling_mode_none">不縮放</string>
     <string name="screen_effects_scaling_mode_nearest">最近鄰</string>
     <string name="screen_effects_scaling_mode_linear">線性</string>
     <string name="screen_effects_scaling_mode_fill">填充</string>
     <string name="screen_effects_scaling_mode_stretch">拉伸</string>
     <string name="screen_effects_scaling_mode_fsr">FSR</string>
     <string name="screen_effects_scaling_mode_fsr_aspect">FSR 適配</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_natural">自然</string>
     <string name="screen_effects_fsr">FSR 1.0</string>
     <string name="screen_effects_fsr_description">官方 AMD FidelityFX Super Resolution 1.0，使用 EASU + RCAS，以較低的內部分辨率渲染並進行全分辨率放大。</string>
     <string name="screen_effects_fsr_quality">FSR 品質</string>
@@ -1533,4 +1570,34 @@
     <string name="game_launch_tip_23">提示：如果你使用的是 Mali GPU，請使用系統驅動。</string>
     <string name="game_launch_tip_24">提示：出現黑畫面？嘗試使用選單中的「%s」選項檢查驅動是否正常運作。</string>
     <string name="launch_bionic_steam_description">啟用線上遊玩並提升相容性\n不一定總能正常運作\n嘗試前請先備份存檔</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">前端同步</string>
+    <string name="settings_interface_frontend_sync_subtitle">自動將已安裝的遊戲匯出到遊戲庫前端程式</string>
+    <string name="frontend_sync_dialog_title">前端同步</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">自訂遊戲</string>
+    <string name="frontend_sync_not_set">未設定</string>
+    <string name="frontend_sync_clear_confirm_title">刪除舊的匯出檔案？</string>
+    <string name="frontend_sync_clear_confirm_message">從前一個目錄刪除 .%1$s 檔案？</string>
+    <string name="frontend_sync_confirm_remove">刪除</string>
+    <string name="frontend_sync_confirm_keep">保留</string>
+    <string name="frontend_sync_resync_all">重新同步全部</string>
+    <string name="frontend_sync_resync_complete">前端同步完成</string>
+    <string name="stats_key_runs">在您的GPU上成功執行的次數</string>
+    <string name="stats_key_reviews">五星評論（您的GPU / 您的裝置）</string>
+    <string name="stats_key_fps">預計FPS</string>
+    <string name="stats_key_session">在您裝置上的最長遊戲時長</string>
+    <string name="sort_fps">預計FPS</string>
+    <string name="sort_runs">成功執行次數</string>
+    <string name="sort_reviews">五星評論（裝置）</string>
+    <string name="sort_reviews_gpu">五星評論（GPU）</string>
+    <string name="filter_expired">已過期</string>
+    <string name="filter_playable">可流暢執行（30+ FPS）</string>
+    <string name="filter_five_star_device">裝置上的五星評論</string>
+    <string name="filter_five_star_gpu">GPU上的五星評論</string>
+    <string name="filter_proven_gpu">已在您的GPU上驗證</string>
 </resources>
