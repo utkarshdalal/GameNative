@@ -37,7 +37,6 @@ import timber.log.Timber;
  *    - No delay on resume for instant audio restoration
  */
 public class PulseAudioComponent extends EnvironmentComponent {
-    private final String PA_STATE_FAILED = "connection refused";
     private final UnixSocketConfig socketConfig;
     private final String SINK_NAME = "AAudioSink";
 
@@ -45,7 +44,6 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private float volume = 1.0f;
     private byte performanceMode = 1;
     private final AtomicBoolean isPaused = new AtomicBoolean(false);
-    private final AtomicBoolean isModuleLoaded = new AtomicBoolean(true);
     private boolean lowLatency = false;
 
     public PulseAudioComponent(UnixSocketConfig socketConfig, boolean lowLatency) {
@@ -128,17 +126,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
                 if (isServerRunning()) {
                     // Set isPaused immediately
                     isPaused.set(false);
-
-                    if (!isModuleLoaded.get()) {
-                        if (!isSinkAlive()) {
-                            Timber.tag("PulseAudioComponent").d("Sink not alive, reloading module");
-                            loadModule();
-                        } else {
-                            updateSink(false);
-                        }
-                    } else {
-                        updateSink(false);
-                    }
+                    updateSink(false);
 
                     Timber.tag("PulseAudioComponent").d("Audio resumed");
                 } else {
@@ -149,7 +137,8 @@ public class PulseAudioComponent extends EnvironmentComponent {
     }
 
     public boolean isServerRunning() {
-        return !execPactlCommand("info").toLowerCase().contains(PA_STATE_FAILED);
+        final String info = execPactlCommand("info").toLowerCase(java.util.Locale.ROOT);
+        return info.contains("server name:") && !info.contains("connection failure");
     }
 
     public void setVolume(float volume) {
@@ -239,40 +228,4 @@ public class PulseAudioComponent extends EnvironmentComponent {
         }
     }
 
-    private void unloadModule() {
-        execPactlCommand("unload-module module-aaudio-sink");
-        isModuleLoaded.set(false);
-    }
-
-    private void loadModule() {
-        String sinkParams = "volume=" + this.volume + " performance_mode=" + ((int) this.performanceMode);
-        if (lowLatency) {
-            sinkParams += " low_latency=true";
-        }
-        execPactlCommand("load-module module-aaudio-sink " + sinkParams);
-        isModuleLoaded.set(true);
-    }
-
-    private boolean isSinkAlive() {
-        Context context = environment.getContext();
-        String nativeLibraryDir = context.getApplicationInfo().nativeLibraryDir;
-
-        File workingDir = new File(context.getFilesDir(), "/pulseaudio");
-        if (!workingDir.isDirectory()) {
-            workingDir.mkdirs();
-            FileUtils.chmod(workingDir, 0771);
-        }
-
-        File modulesDir = new File(workingDir, "modules");
-        EnvVars envVars = new EnvVars();
-        envVars.put("LD_LIBRARY_PATH", "/system/lib64:" + nativeLibraryDir + ":" + modulesDir);
-        envVars.put("HOME", workingDir);
-        envVars.put("TMPDIR", XEnvironment.getTmpDir(context));
-        envVars.put("PULSE_SERVER", socketConfig.path);
-
-        String checkCommand = workingDir + "/pactl list sinks short";
-        String output = ProcessHelper.execWithOutput(checkCommand, envVars.toStringArray(), workingDir, true);
-        //Log.d("PulseAudioComponent", "isSinkAlive output: " + output);
-        return output.contains(SINK_NAME);
-    }
 }
