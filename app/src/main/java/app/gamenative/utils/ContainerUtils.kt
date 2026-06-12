@@ -109,7 +109,6 @@ object ContainerUtils {
             dxwrapper = PrefManager.dxWrapper,
             dxwrapperConfig = PrefManager.dxWrapperConfig,
             audioDriver = PrefManager.audioDriver,
-            pulseaudioSuspendBehavior = PrefManager.pulseaudioSuspendBehavior,
             pulseaudioLowLatency = PrefManager.pulseaudioLowLatency,
             wincomponents = PrefManager.winComponents,
             drives = PrefManager.drives,
@@ -175,7 +174,6 @@ object ContainerUtils {
         PrefManager.dxWrapper = containerData.dxwrapper
         PrefManager.dxWrapperConfig = containerData.dxwrapperConfig
         PrefManager.audioDriver = containerData.audioDriver
-        PrefManager.pulseaudioSuspendBehavior = containerData.pulseaudioSuspendBehavior
         PrefManager.pulseaudioLowLatency = containerData.pulseaudioLowLatency
         PrefManager.winComponents = containerData.wincomponents
         PrefManager.drives = containerData.drives
@@ -292,7 +290,6 @@ object ContainerUtils {
             dxwrapper = container.dxWrapper,
             dxwrapperConfig = container.dxWrapperConfig,
             audioDriver = container.audioDriver,
-            pulseaudioSuspendBehavior = container.getPulseaudioSuspendBehavior(),
             pulseaudioLowLatency = container.getPulseaudioLowLatency(),
             wincomponents = container.winComponents,
             drives = container.drives,
@@ -472,7 +469,6 @@ object ContainerUtils {
         container.dxWrapper = containerData.dxwrapper
         container.dxWrapperConfig = containerData.dxwrapperConfig
         container.audioDriver = containerData.audioDriver
-        container.setPulseaudioSuspendBehavior(containerData.pulseaudioSuspendBehavior)
         container.setPulseaudioLowLatency(containerData.pulseaudioLowLatency)
         container.winComponents = containerData.wincomponents
         container.drives = containerData.drives
@@ -856,7 +852,6 @@ object ContainerUtils {
                 dxwrapper = initialDxWrapper,
                 dxwrapperConfig = PrefManager.dxWrapperConfig,
                 audioDriver = PrefManager.audioDriver,
-                pulseaudioSuspendBehavior = PrefManager.pulseaudioSuspendBehavior,
                 pulseaudioLowLatency = PrefManager.pulseaudioLowLatency,
                 wincomponents = PrefManager.winComponents,
                 drives = drives,

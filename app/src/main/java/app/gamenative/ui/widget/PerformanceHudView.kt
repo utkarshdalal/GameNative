@@ -792,7 +792,9 @@ class PerformanceHudView(
     }
 
     private fun readCpuTempC(): Int? {
-        val reading = readTemperatureCWithSource(discoverPrioritizedCpuTempPaths())
+        val reading = readTemperatureCWithSource(
+            discoverPrioritizedCpuTempPaths()
+        )
         if (reading != null) {
             Timber.d("[HUD] CPU temp: %d°C from %s", reading.celsius, reading.source)
         }

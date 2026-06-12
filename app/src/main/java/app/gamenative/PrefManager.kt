@@ -302,13 +302,6 @@ object PrefManager {
             setPref(AUDIO_DRIVER, value)
         }
 
-    private val PULSEAUDIO_SUSPEND_BEHAVIOR = stringPreferencesKey("pulseaudio_suspend_behavior")
-    var pulseaudioSuspendBehavior: String
-        get() = getPref(PULSEAUDIO_SUSPEND_BEHAVIOR, PulseAudioComponent.SUSPEND_BEHAVIOR_THREAD)
-        set(value) {
-            setPref(PULSEAUDIO_SUSPEND_BEHAVIOR, value)
-        }
-
     private val PULSEAUDIO_LOW_LATENCY = booleanPreferencesKey("pulseaudio_low_latency")
     var pulseaudioLowLatency: Boolean
         get() = getPref(PULSEAUDIO_LOW_LATENCY, false)
