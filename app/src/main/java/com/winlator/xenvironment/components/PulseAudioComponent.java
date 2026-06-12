@@ -1,11 +1,6 @@
 package com.winlator.xenvironment.components;
 
 import android.content.Context;
-import android.media.AudioAttributes;
-import android.media.AudioFocusRequest;
-import android.media.AudioManager;
-import android.os.Handler;
-import android.os.Looper;
 
 import com.winlator.core.AppUtils;
 import com.winlator.core.FileUtils;
@@ -18,12 +13,8 @@ import com.winlator.xenvironment.XEnvironment;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import app.gamenative.BuildConfig;
 import timber.log.Timber;
 
 /**
@@ -55,7 +46,6 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private byte performanceMode = 1;
     private final AtomicBoolean isPaused = new AtomicBoolean(false);
     private final AtomicBoolean isModuleLoaded = new AtomicBoolean(true);
-    private Timer suspendTimer;
     private boolean lowLatency = false;
 
     public PulseAudioComponent(UnixSocketConfig socketConfig, boolean lowLatency) {
@@ -105,9 +95,6 @@ public class PulseAudioComponent extends EnvironmentComponent {
     public void stop() {
         Timber.tag("PulseAudioComponent").d("Stopping...");
         synchronized (lock) {
-            // Cancel timers if active
-            stopSuspendTimer();
-
             // Stop sink here
             updateSink(true);
 
@@ -124,24 +111,9 @@ public class PulseAudioComponent extends EnvironmentComponent {
             if (!isPaused.get() && isServerRunning()) {
                 Timber.tag("PulseAudioComponent").d("Pausing...");
 
-                // Cancel timers if active
-                stopSuspendTimer();
-
                 // Suspend sink and set isPaused together immediately
                 isPaused.set(true);
                 updateSink(true);
-
-                // Schedule module unload after delay (120s release / 10s debug)
-                final long suspendDelay = BuildConfig.DEBUG ? 10000 : 120000;
-
-                startSuspendTimer(suspendDelay, () -> {
-                    synchronized (lock) {
-                        if (isPaused.get() && isServerRunning()) {
-                            unloadModule();
-                            Timber.tag("PulseAudioComponent").d("Module unloaded after timeout");
-                        }
-                    }
-                });
 
                 Timber.tag("PulseAudioComponent").d("Audio paused");
             }
@@ -152,9 +124,6 @@ public class PulseAudioComponent extends EnvironmentComponent {
         synchronized (lock) {
             if (isPaused.get()) {
                 Timber.tag("PulseAudioComponent").d("Resuming...");
-
-                // Cancel timers if active
-                stopSuspendTimer();
 
                 if (isServerRunning()) {
                     // Set isPaused immediately
@@ -176,26 +145,6 @@ public class PulseAudioComponent extends EnvironmentComponent {
                     start();
                 }
             }
-        }
-    }
-
-    private void startSuspendTimer(long delayMs, Runnable action) {
-        stopSuspendTimer();
-
-        suspendTimer = new Timer();
-        TimerTask suspendTask = new TimerTask() {
-            @Override
-            public void run() {
-                action.run();
-            }
-        };
-        suspendTimer.schedule(suspendTask, delayMs);
-    }
-
-    private void stopSuspendTimer() {
-        if (suspendTimer != null) {
-            suspendTimer.cancel();
-            suspendTimer = null;
         }
     }
 
