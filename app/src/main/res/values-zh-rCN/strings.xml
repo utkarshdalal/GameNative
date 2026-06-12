@@ -730,6 +730,8 @@
     <string name="gesture_tap_subtitle">左键单击</string>
     <string name="gesture_drag">拖动</string>
     <string name="gesture_drag_subtitle">左键拖动（框选）</string>
+    <string name="gesture_hold_mouse_button_while_touching">触摸时按住鼠标按钮</string>
+    <string name="gesture_mouse_button_label">鼠标按钮</string>
     <string name="gesture_long_press">长按</string>
     <string name="gesture_long_press_delay">长按延迟（毫秒）</string>
     <string name="gesture_double_tap">双击</string>
@@ -756,6 +758,9 @@
     <string name="gesture_pan_left_click_drag">左键拖动</string>
     <string name="gesture_pan_right_click_drag">右键拖动</string>
     <string name="gesture_action_show_keyboard">显示键盘</string>
+    <string name="gesture_mouse_behavior_label">鼠标行为</string>
+    <string name="gesture_mouse_behavior_click">单击</string>
+    <string name="gesture_mouse_behavior_hold">按住</string>
     <string name="gesture_header_special">特殊</string>
     <string name="gesture_header_mouse">鼠标</string>
     <string name="gesture_header_common_game">常用游戏按键</string>
@@ -770,10 +775,16 @@
     <string name="gesture_three_finger_hold_delay">三指长按延迟 (ms)</string>
     <string name="gesture_threshold">手势阈值 (px)</string>
     <string name="gesture_threshold_subtitle">锁定手势类型所需的移动距离（越低越灵敏）</string>
+    <string name="gesture_mouse_drag_movement">拖动时的鼠标移动</string>
+    <string name="gesture_mouse_drag_movement_subtitle">直接模式适用于大多数游戏。如果拖动导致镜头或光标问题，请使用相对模式</string>
+    <string name="gesture_mouse_drag_movement_direct">直接</string>
+    <string name="gesture_mouse_drag_movement_relative">相对</string>
     <string name="gesture_show_click_highlight">显示点击高亮</string>
     <string name="gesture_show_click_highlight_subtitle">在点击位置显示圆圈</string>
     <string name="gesture_show_debug_overlay">显示手势调试叠加层</string>
     <string name="gesture_show_debug_overlay_subtitle">在顶部中央显示临时手势标签</string>
+    <string name="gesture_show_cursor_touchscreen_mode">在触屏模式下显示光标</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">触屏手势处于活动状态时保持鼠标光标可见</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">动态摇杆设置</string>
@@ -1487,8 +1498,19 @@
 
     <!-- 屏幕效果 -->
     <string name="screen_effects_scaling">缩放</string>
+    <string name="screen_effects_upscaling">超分辨率</string>
+    <string name="screen_effects_basic_scaling">基础缩放</string>
+    <string name="screen_effects_scaling_mode_none_desc">不缩放。</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">清晰像素（复古）。</string>
+    <string name="screen_effects_scaling_mode_linear_desc">平滑缩放。</string>
+    <string name="screen_effects_scaling_mode_fill_desc">填满屏幕，裁剪边缘。</string>
+    <string name="screen_effects_scaling_mode_stretch_desc">拉伸填满屏幕，忽略宽高比。</string>
+    <string name="screen_effects_scaling_mode_fsr_desc">清晰的超分辨率放大。</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR，保持宽高比。</string>
+    <string name="screen_effects_scaling_mode_dls_desc">锐化／清晰度处理。</string>
+    <string name="screen_effects_scaling_mode_natural_desc">更暖的色调。</string>
     <string name="screen_effects_scaling_mode">缩放模式</string>
-    <string name="screen_effects_scaling_mode_none">无</string>
+    <string name="screen_effects_scaling_mode_none">不缩放</string>
     <string name="screen_effects_scaling_mode_nearest">最近邻</string>
     <string name="screen_effects_scaling_mode_linear">线性</string>
     <string name="screen_effects_scaling_mode_fill">填充</string>
@@ -1573,4 +1595,17 @@
     <string name="frontend_sync_confirm_keep">保留</string>
     <string name="frontend_sync_resync_all">重新同步全部</string>
     <string name="frontend_sync_resync_complete">前端同步完成</string>
+    <string name="stats_key_runs">在您的GPU上成功运行的次数</string>
+    <string name="stats_key_reviews">五星好评（您的GPU / 您的设备）</string>
+    <string name="stats_key_fps">预计FPS</string>
+    <string name="stats_key_session">在您设备上的最长游戏时长</string>
+    <string name="sort_fps">预计FPS</string>
+    <string name="sort_runs">成功运行次数</string>
+    <string name="sort_reviews">五星好评（设备）</string>
+    <string name="sort_reviews_gpu">五星好评（GPU）</string>
+    <string name="filter_expired">已过期</string>
+    <string name="filter_playable">可流畅运行（30+ FPS）</string>
+    <string name="filter_five_star_device">设备上的五星好评</string>
+    <string name="filter_five_star_gpu">GPU上的五星好评</string>
+    <string name="filter_proven_gpu">已在您的GPU上验证</string>
 </resources>

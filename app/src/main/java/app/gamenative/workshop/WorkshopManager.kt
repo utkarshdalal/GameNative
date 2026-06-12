@@ -81,6 +81,13 @@ object WorkshopManager {
      */
     private val SKIP_ZIP_EXTRACTION_APP_IDS = setOf(
         1942280, // Brotato
+        646570,  // Slay the Spire - Workshop items include Java/JAR payloads
+        564310,  // Serious Sam Fusion 2017 - .gro files are ZIP payloads read by the game
+    )
+
+    private val ZIP_PAYLOAD_EXTENSIONS_BY_APP_ID = mapOf(
+        646570 to setOf("jar"),
+        564310 to setOf("gro"),
     )
 
     /**
@@ -514,6 +521,31 @@ object WorkshopManager {
 
         if (extractedCount > 0) {
             Timber.tag(TAG).i("Extracted $extractedCount CKM files into BSA/ESP")
+        }
+    }
+
+    private fun restoreZipPayloadNames(workshopContentDir: File) {
+        val extensions = ZIP_PAYLOAD_EXTENSIONS_BY_APP_ID[workshopContentDir.name.toIntOrNull()] ?: return
+        var restoredCount = 0
+
+        workshopContentDir.listFiles()?.forEach { itemDir ->
+            if (!itemDir.isDirectory) return@forEach
+            itemDir.listFiles()?.forEach { file ->
+                if (!file.isFile || file.name.startsWith(".")) return@forEach
+                val lowerName = file.name.lowercase()
+                if (extensions.none { lowerName.endsWith(".$it.zip") }) return@forEach
+
+                val restored = File(file.parentFile, file.name.dropLast(4))
+                if (restored.exists()) return@forEach
+                if (file.renameTo(restored)) {
+                    restoredCount++
+                    Timber.tag(TAG).i("Restored ZIP payload name: ${file.name} -> ${restored.name} in ${itemDir.name}")
+                }
+            }
+        }
+
+        if (restoredCount > 0) {
+            Timber.tag(TAG).i("Restored $restoredCount ZIP payload filename(s)")
         }
     }
 
@@ -3541,6 +3573,7 @@ object WorkshopManager {
         }
         onStatus?.invoke("Extracting archives…")
         extractCkmFiles(workshopContentDir)
+        restoreZipPayloadNames(workshopContentDir)
         extractZipMods(workshopContentDir)
         decompressLzmaFiles(workshopContentDir) { completed, total ->
             onStatus?.invoke("Decompressing ($completed/$total)…")

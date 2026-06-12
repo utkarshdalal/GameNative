@@ -243,10 +243,21 @@
     <string name="screen_effects">画面効果</string>
     <string name="screen_effects_live_preview">変更は現在のゲームに即座に適用されます。</string>
     <string name="screen_effects_scaling">スケーリング</string>
+    <string name="screen_effects_upscaling">アップスケーリング</string>
+    <string name="screen_effects_basic_scaling">基本スケーリング</string>
+    <string name="screen_effects_scaling_mode_none_desc">スケーリングなし。</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">くっきりしたピクセル（レトロ向け）。</string>
+    <string name="screen_effects_scaling_mode_linear_desc">滑らかなスケーリング。</string>
+    <string name="screen_effects_scaling_mode_fill_desc">画面いっぱいに表示し、端を切り取ります。</string>
+    <string name="screen_effects_scaling_mode_stretch_desc">縦横比を無視して画面いっぱいに引き伸ばします。</string>
+    <string name="screen_effects_scaling_mode_fsr_desc">くっきりした超解像アップスケール。</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR（縦横比を維持）。</string>
+    <string name="screen_effects_scaling_mode_dls_desc">シャープ化／クラリティ処理。</string>
+    <string name="screen_effects_scaling_mode_natural_desc">暖かみのある色合い。</string>
     <string name="screen_effects_color_adjustments">色の調整</string>
     <string name="screen_effects_shader_toggles">シェーダーエフェクト</string>
     <string name="screen_effects_scaling_mode">スケーリングモード</string>
-    <string name="screen_effects_scaling_mode_none">なし</string>
+    <string name="screen_effects_scaling_mode_none">スケーリングなし</string>
     <string name="screen_effects_scaling_mode_nearest">最寄りの</string>
     <string name="screen_effects_scaling_mode_linear">リニア</string>
     <string name="screen_effects_scaling_mode_fill">埋める</string>
@@ -748,6 +759,8 @@
     <string name="gesture_tap_subtitle">左クリック</string>
     <string name="gesture_drag">指をドラッグ</string>
     <string name="gesture_drag_subtitle">ドラッグ 左クリック (ボックス選択)</string>
+    <string name="gesture_hold_mouse_button_while_touching">タッチ中にマウスボタンを保持</string>
+    <string name="gesture_mouse_button_label">マウスボタン</string>
     <string name="gesture_long_press">長押し</string>
     <string name="gesture_long_press_delay">長押し遅延 (ミリ秒)</string>
     <string name="gesture_double_tap">ダブルタップ</string>
@@ -769,6 +782,9 @@
     <string name="gesture_zoom_page_up_down">ページアップ/ページダウン</string>
     <string name="gesture_action_label">アクション</string>
     <string name="gesture_action_show_keyboard">キーボードを表示</string>
+    <string name="gesture_mouse_behavior_label">マウス動作</string>
+    <string name="gesture_mouse_behavior_click">クリック</string>
+    <string name="gesture_mouse_behavior_hold">ホールド</string>
     <string name="gesture_header_special">特別</string>
     <string name="gesture_header_mouse">ねずみ</string>
     <string name="gesture_header_common_game">共通のゲームキー</string>
@@ -784,10 +800,16 @@
     <string name="gesture_three_finger_hold_delay">3 本指ホールド遅延 (ミリ秒)</string>
     <string name="gesture_threshold">ジェスチャーのしきい値 (px)</string>
     <string name="gesture_threshold_subtitle">ジェスチャ タイプをロックするために必要な動作 (低い = 応答性が高い)</string>
+    <string name="gesture_mouse_drag_movement">ドラッグ時のマウス移動</string>
+    <string name="gesture_mouse_drag_movement_subtitle">ほとんどのゲームではダイレクトが動作します。ドラッグでカメラやカーソルに問題が出る場合は相対を使用してください</string>
+    <string name="gesture_mouse_drag_movement_direct">ダイレクト</string>
+    <string name="gesture_mouse_drag_movement_relative">相対</string>
     <string name="gesture_show_click_highlight">クリックハイライトを表示</string>
     <string name="gesture_show_click_highlight_subtitle">タップした位置に円を表示</string>
     <string name="gesture_show_debug_overlay">ジェスチャ デバッグ オーバーレイを表示</string>
     <string name="gesture_show_debug_overlay_subtitle">上部中央に一時的なジェスチャ ラベルを表示する</string>
+    <string name="gesture_show_cursor_touchscreen_mode">タッチスクリーンモードでカーソルを表示</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">タッチスクリーンジェスチャーが有効な間、マウスカーソルを表示したままにします</string>
 
     <string name="external_display_input">外部ディスプレイ入力</string>
     <string name="external_display_input_subtitle">接続されたプレゼンテーション表示の動作を選択する</string>
@@ -1522,4 +1544,17 @@
     <string name="game_launch_tip_22">ヒント: タッチスクリーン モードを有効にすることができます。</string>
     <string name="game_launch_tip_23">ヒント: Mali GPU をお持ちの場合は、システム ドライバーを使用してください。</string>
     <string name="game_launch_tip_24">ヒント: 空白の画面が表示されますか?メニューの \"%s\" オプションを使用して、ドライバーが正しく動作しているかどうかを確認してください。</string>
+    <string name="stats_key_runs">お使いのGPUでの成功した実行回数</string>
+    <string name="stats_key_reviews">5つ星レビュー（GPU / お使いのデバイス）</string>
+    <string name="stats_key_fps">予想FPS</string>
+    <string name="stats_key_session">お使いのデバイスでの最長セッション</string>
+    <string name="sort_fps">予想FPS</string>
+    <string name="sort_runs">成功した実行回数</string>
+    <string name="sort_reviews">5つ星レビュー（デバイス）</string>
+    <string name="sort_reviews_gpu">5つ星レビュー（GPU）</string>
+    <string name="filter_expired">期限切れ</string>
+    <string name="filter_playable">プレイ可能（30+ FPS）</string>
+    <string name="filter_five_star_device">5つ星レビュー（デバイス）</string>
+    <string name="filter_five_star_gpu">5つ星レビュー（GPU）</string>
+    <string name="filter_proven_gpu">お使いのGPUで実証済み</string>
 </resources>

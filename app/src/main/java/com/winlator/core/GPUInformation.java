@@ -161,6 +161,11 @@ public abstract class GPUInformation {
         return r.contains("adreno") && r.matches(".*\\b8(3[0-9]|4[0-9]|5[0-9])\\b.*");
     }
 
+    public static boolean isAdreno8EliteGen5(Context context) {
+        String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
+        return r.contains("adreno") && r.matches(".*\\b8(4[0-9]|5[0-9])\\b.*");
+    }
+
     public static boolean isTurnipCapable(Context context) {
         String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
         // match “adreno 610…699” or “adreno 710…799”
@@ -176,6 +181,11 @@ public abstract class GPUInformation {
     public static boolean isAdreno710_720_732(Context context) {
         String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
         return r.contains("adreno") && r.matches(".*\\b(710|720|732)\\b.*");
+    }
+
+    public static boolean isAdreno740(Context context) {
+        String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
+        return r.contains("adreno") && r.matches(".*\\b740\\b.*");
     }
 
 

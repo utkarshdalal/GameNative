@@ -23,6 +23,8 @@ target_link_options(steambootstrap PRIVATE
     -Wl,--strip-all
     -Wl,--discard-all
     -flto
-    "$<$<NOT:$<CONFIG:Debug>>:-Wl,-s>")
+    "$<$<NOT:$<CONFIG:Debug>>:-Wl,-s>"
+    "-Wl,-z,max-page-size=16384"
+    "-Wl,-z,common-page-size=16384")
 
 target_link_libraries(steambootstrap log dl)

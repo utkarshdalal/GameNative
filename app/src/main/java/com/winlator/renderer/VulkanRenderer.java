@@ -176,7 +176,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                         pendingEffectMask, pendingBrightness, pendingContrast, pendingGamma);
                     updateTransform();
                     nativeSetCursorVisible(nativeHandle, cursorVisible);
-                    if (nativeMode) {
+                    if (nativeMode && !effectsRequireCompositor) {
                         xServerView.post(() -> {
                             releaseScanoutSurfaces();
                             if (android.os.Build.VERSION.SDK_INT >= 29) {
@@ -379,7 +379,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
             ArrayList<RenderableWindow> ns = new ArrayList<>();
             for (int i = start; i < list.size(); i++) {
                 RenderableWindow rw = list.get(i);
-                if (rw.content != null && !rw.content.isDirectScanout()) ns.add(rw);
+                if (rw.content != null && (effectsRequireCompositor || !rw.content.isDirectScanout())) ns.add(rw);
             }
             int n = ns.size();
             long[] ids = new long[n]; int[] xs = new int[n]; int[] ys = new int[n];
@@ -607,55 +607,72 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         this.nativeMode = mode;
         xRenderingPausedForScanout = false;
         if (mode) {
-            xServer.setRenderingEnabled(true);
-            xServerView.post(() -> {
-                if (android.os.Build.VERSION.SDK_INT >= 29) {
-                    try {
-                        android.view.SurfaceControl xsc = xServerView.getSurfaceControl();
-                        scanoutGameSC = new android.view.SurfaceControl.Builder()
-                            .setParent(xsc).setName("winlator_game").setOpaque(true).build();
-                        scanoutGameSurface = new android.view.Surface(scanoutGameSC);
-                        scanoutCursorSC = new android.view.SurfaceControl.Builder()
-                            .setParent(xsc).setName("winlator_cursor").setFormat(1).build();
-                        scanoutCursorSurface = new android.view.Surface(scanoutCursorSC);
-                        android.view.SurfaceControl.Transaction scTxn =
-                            new android.view.SurfaceControl.Transaction()
-                            .setLayer(scanoutGameSC,   1)
-                            .setLayer(scanoutCursorSC, 2)
-                            .setVisibility(scanoutGameSC,   true)
-                            .setVisibility(scanoutCursorSC, true);
-                        scTxn.apply();
-                        applyScanoutFrameRateHint();
-                        applyScanoutSwapTransform();
-                        synchronized (lock) {
-                            if (nativeHandle != 0) {
-                                nativeSetScanoutWindow(nativeHandle,
-                                    scanoutGameSurface, scanoutCursorSurface);
-                                updateTransform();
-                            }
-                        }
-                    } catch (Exception e) {
-                        android.util.Log.w("VulkanRenderer", "Sibling SC failed, using child SC: " + e);
-                        synchronized (lock) {
-                            if (nativeHandle != 0) nativeInitScanout(nativeHandle);
-                        }
-                    }
-                } else {
-                    synchronized (lock) { if (nativeHandle != 0) nativeInitScanout(nativeHandle); }
-                }
-            });
+            // Only stand up the zero-copy scanout path when no compositor-only
+            // effect is active; otherwise keep X rendering through the compositor.
+            if (!effectsRequireCompositor) establishScanout();
+            else xServer.setRenderingEnabled(true);
         } else {
-            synchronized (lock) {
-                if (nativeHandle != 0) nativeDestroyScanout(nativeHandle);
-            }
-            xServerView.post(() -> {
-                xServer.setRenderingEnabled(true);
-                releaseScanoutSurfaces();
-            });
+            tearDownScanout();
         }
         xServerView.queueEvent(this::updateScene);
         final String msg = mode ? "Native Rendering+ Enabled" : "Native Rendering+ Disabled";
         xServerView.post(() -> Toast.makeText(xServerView.getContext(), msg, Toast.LENGTH_SHORT).show());
+    }
+
+    // Stands up the SurfaceControl layers and hands them to native for the
+    // zero-copy scanout fast-path. Safe to call only when nativeMode is on.
+    private void establishScanout() {
+        xRenderingPausedForScanout = false;
+        xServer.setRenderingEnabled(true);
+        xServerView.post(() -> {
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                try {
+                    android.view.SurfaceControl xsc = xServerView.getSurfaceControl();
+                    scanoutGameSC = new android.view.SurfaceControl.Builder()
+                        .setParent(xsc).setName("winlator_game").setOpaque(true).build();
+                    scanoutGameSurface = new android.view.Surface(scanoutGameSC);
+                    scanoutCursorSC = new android.view.SurfaceControl.Builder()
+                        .setParent(xsc).setName("winlator_cursor").setFormat(1).build();
+                    scanoutCursorSurface = new android.view.Surface(scanoutCursorSC);
+                    android.view.SurfaceControl.Transaction scTxn =
+                        new android.view.SurfaceControl.Transaction()
+                        .setLayer(scanoutGameSC,   1)
+                        .setLayer(scanoutCursorSC, 2)
+                        .setVisibility(scanoutGameSC,   true)
+                        .setVisibility(scanoutCursorSC, true);
+                    scTxn.apply();
+                    applyScanoutFrameRateHint();
+                    applyScanoutSwapTransform();
+                    synchronized (lock) {
+                        if (nativeHandle != 0) {
+                            nativeSetScanoutWindow(nativeHandle,
+                                scanoutGameSurface, scanoutCursorSurface);
+                            updateTransform();
+                        }
+                    }
+                } catch (Exception e) {
+                    android.util.Log.w("VulkanRenderer", "Sibling SC failed, using child SC: " + e);
+                    synchronized (lock) {
+                        if (nativeHandle != 0) nativeInitScanout(nativeHandle);
+                    }
+                }
+            } else {
+                synchronized (lock) { if (nativeHandle != 0) nativeInitScanout(nativeHandle); }
+            }
+        });
+    }
+
+    // Tears down the scanout path and resumes compositor (X) rendering so that
+    // window.frag-based effects and scaling take effect again.
+    private void tearDownScanout() {
+        xRenderingPausedForScanout = false;
+        synchronized (lock) {
+            if (nativeHandle != 0) nativeDestroyScanout(nativeHandle);
+        }
+        xServerView.post(() -> {
+            xServer.setRenderingEnabled(true);
+            releaseScanoutSurfaces();
+        });
     }
 
     public boolean isNativeMode() { return nativeMode; }
@@ -709,6 +726,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         pendingContrast = Math.max(-1.0f, Math.min(1.0f, contrast));
         pendingGamma = Math.max(0.1f, Math.min(4.0f, gamma));
         outputScalingMode = Math.max(SCALE_FIT, Math.min(SCALE_FILL, scalingMode));
+        boolean wasRequireCompositor = effectsRequireCompositor;
+        effectsRequireCompositor = computeEffectsRequireCompositor();
         synchronized (lock) {
             if (nativeHandle != 0) {
                 nativeSetEffect(nativeHandle, pendingEffectId, pendingSharpness,
@@ -716,6 +735,24 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                 updateTransform();
             }
         }
+        // If the effect state crossed the compositor/scanout boundary, switch
+        // presentation paths so shader work actually reaches the screen.
+        if (nativeMode && wasRequireCompositor != effectsRequireCompositor) {
+            if (effectsRequireCompositor) tearDownScanout();
+            else establishScanout();
+        }
+    }
+
+    // Returns true if any active effect, filter, or color adjustment needs the
+    // compositor (window.frag). Scanout bypasses the shader, so these can only
+    // take visible effect when content is routed through the textured-quad path.
+    private boolean computeEffectsRequireCompositor() {
+        return pendingEffectId != EFFECT_NONE
+            || pendingEffectMask != 0
+            || pendingBrightness != 0.0f
+            || pendingContrast != 0.0f
+            || Math.abs(pendingGamma - 1.0f) > 1e-3f
+            || pendingFilterMode != 0;
     }
     public int getEffectId() { return pendingEffectId; }
     public float getSharpness() { return pendingSharpness; }
@@ -768,6 +805,10 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private float   pendingBrightness     = 0.0f;
     private float   pendingContrast       = 0.0f;
     private float   pendingGamma          = 1.0f;
+    // When any screen effect / filter / color adjustment is active we must route
+    // fullscreen content through the compositor (window.frag) instead of the
+    // zero-copy scanout fast-path, because scanout bypasses the shader entirely.
+    private volatile boolean effectsRequireCompositor = false;
     public int getFpsLimit() { return fpsLimit; }
     public void setFpsLimit(int limit) {
         this.fpsLimit = limit;

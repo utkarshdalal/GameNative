@@ -1352,7 +1352,7 @@ object SteamAutoCloud {
             // Build VDF structure using KeyValue
             val root = KeyValue(appId.toString())
             root.children.add(KeyValue("ChangeNumber", changeNumber.toString()))
-            root.children.add(KeyValue("OSType", EOSType.WinUnknown.toString())) // 0 = Windows
+            root.children.add(KeyValue("OSType", EOSType.WinUnknown.code().toString())) // 0 = Windows
 
             // Create an entry for each file using the filename as the key
             // Sort files by their cloud path for consistent ordering

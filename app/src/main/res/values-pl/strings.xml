@@ -748,6 +748,8 @@
     <string name="gesture_tap_subtitle">Kliknięcie lewe</string>
     <string name="gesture_drag">Przeciągnij palcem</string>
     <string name="gesture_drag_subtitle">Przeciągnij lewy przycisk (zaznaczenie prostokątne)</string>
+    <string name="gesture_hold_mouse_button_while_touching">Przytrzymaj przycisk myszy podczas dotyku</string>
+    <string name="gesture_mouse_button_label">Przycisk myszy</string>
     <string name="gesture_long_press">Długie naciśnięcie</string>
     <string name="gesture_long_press_delay">Opóźnienie długiego naciśnięcia (ms)</string>
     <string name="gesture_double_tap">Podwójne dotknięcie</string>
@@ -774,6 +776,9 @@
     <string name="gesture_pan_left_click_drag">Przeciąganie lewym kliknięciem</string>
     <string name="gesture_pan_right_click_drag">Przeciąganie prawym kliknięciem</string>
     <string name="gesture_action_show_keyboard">Pokaż klawiaturę</string>
+    <string name="gesture_mouse_behavior_label">Zachowanie myszy</string>
+    <string name="gesture_mouse_behavior_click">Kliknięcie</string>
+    <string name="gesture_mouse_behavior_hold">Przytrzymanie</string>
     <string name="gesture_header_special">Specjalne</string>
     <string name="gesture_header_mouse">Mysz</string>
     <string name="gesture_header_common_game">Popularne klawisze gier</string>
@@ -788,10 +793,16 @@
     <string name="gesture_three_finger_hold_delay">Opóźnienie przytrzymania trzema palcami (ms)</string>
     <string name="gesture_threshold">Próg gestu (px)</string>
     <string name="gesture_threshold_subtitle">Ruch wymagany do zablokowania typu gestu (niższy = większa responsywność)</string>
+    <string name="gesture_mouse_drag_movement">Ruch myszy podczas przeciągania</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Bezpośredni działa w większości gier. Użyj względnego, jeśli przeciąganie powoduje problemy z kamerą lub kursorem</string>
+    <string name="gesture_mouse_drag_movement_direct">Bezpośredni</string>
+    <string name="gesture_mouse_drag_movement_relative">Względny</string>
     <string name="gesture_show_click_highlight">Pokaż podświetlenie kliknięcia</string>
     <string name="gesture_show_click_highlight_subtitle">Pokaż okrąg w miejscu stuknięcia</string>
     <string name="gesture_show_debug_overlay">Pokaż nakładkę debugowania gestów</string>
     <string name="gesture_show_debug_overlay_subtitle">Pokaż tymczasowe etykiety gestów u góry na środku</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Pokaż kursor w trybie ekranu dotykowego</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Utrzymuj widoczny kursor myszy, gdy gesty dotykowe są aktywne</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Ustawienia dynamicznych joysticków</string>
@@ -1501,4 +1512,38 @@
     <string name="frontend_sync_confirm_keep">Zachowaj</string>
     <string name="frontend_sync_resync_all">Ponowna synchronizacja wszystkich</string>
     <string name="frontend_sync_resync_complete">Synchronizacja frontend zakończona</string>
+    <string name="screen_effects_scaling">Skalowanie</string>
+    <string name="screen_effects_upscaling">Skalowanie w górę</string>
+    <string name="screen_effects_basic_scaling">Podstawowe skalowanie</string>
+    <string name="screen_effects_scaling_mode_none">Bez skalowania</string>
+    <string name="screen_effects_scaling_mode_none_desc">Bez skalowania.</string>
+    <string name="screen_effects_scaling_mode_nearest">Najbliższy</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">Ostre piksele (retro).</string>
+    <string name="screen_effects_scaling_mode_linear">Liniowe</string>
+    <string name="screen_effects_scaling_mode_linear_desc">Płynne skalowanie.</string>
+    <string name="screen_effects_scaling_mode_fill">Wypełnij</string>
+    <string name="screen_effects_scaling_mode_fill_desc">Wypełnia ekran, przycina krawędzie.</string>
+    <string name="screen_effects_scaling_mode_stretch">Rozciągnij</string>
+    <string name="screen_effects_scaling_mode_stretch_desc">Wypełnia ekran, ignoruje proporcje.</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_scaling_mode_fsr_desc">Ostre skalowanie super-rozdzielczości.</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, zachowuje proporcje.</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_dls_desc">Wyostrzanie / klarowność.</string>
+    <string name="screen_effects_scaling_mode_natural">Naturalny</string>
+    <string name="screen_effects_scaling_mode_natural_desc">Cieplejszy odcień kolorów.</string>
+    <string name="stats_key_runs">Udane uruchomienia na twoim GPU</string>
+    <string name="stats_key_reviews">Recenzje 5-gwiazdkowe (twój GPU / twoje urządzenie)</string>
+    <string name="stats_key_fps">Oczekiwane FPS</string>
+    <string name="stats_key_session">Najdłuższa sesja na twoim urządzeniu</string>
+    <string name="sort_fps">Oczekiwane FPS</string>
+    <string name="sort_runs">Udane uruchomienia</string>
+    <string name="sort_reviews">Recenzje 5-gwiazdkowe (urządzenie)</string>
+    <string name="sort_reviews_gpu">Recenzje 5-gwiazdkowe (GPU)</string>
+    <string name="filter_expired">Wygasłe</string>
+    <string name="filter_playable">Grywalne (30+ FPS)</string>
+    <string name="filter_five_star_device">Recenzje 5-gwiazdkowe na urządzeniu</string>
+    <string name="filter_five_star_gpu">Recenzje 5-gwiazdkowe na GPU</string>
+    <string name="filter_proven_gpu">Sprawdzone na twoim GPU</string>
 </resources>

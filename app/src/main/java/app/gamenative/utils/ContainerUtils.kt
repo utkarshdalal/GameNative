@@ -46,25 +46,34 @@ object ContainerUtils {
         // Override default driver and DXVK version based on Turnip capability
         if (GPUInformation.isTurnipCapable(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
-            DefaultVersion.WINE_VERSION = "proton-9.0-arm64ec"
+            DefaultVersion.WINE_VERSION = "proton-10.0-arm64ec-2"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = if (GPUInformation.isAdreno6xx(context)) "1.11.1-sarek" else "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
-            DefaultVersion.WRAPPER = "turnip26.0.0_R8"
+            DefaultVersion.WRAPPER = "Turnip_v26.2.0_R4"
+            DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
+            DefaultVersion.ASYNC_CACHE = "1"
+        } else if (GPUInformation.isAdreno8EliteGen5(context)) {
+            DefaultVersion.VARIANT = Container.BIONIC
+            DefaultVersion.WINE_VERSION = "proton-10.0-arm64ec-2"
+            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
+            DefaultVersion.DXVK = "2.4.1-gplasync"
+            DefaultVersion.VKD3D = "2.14.1"
+            DefaultVersion.WRAPPER = "Turnip Adreno Driver T26 (@Mr_Purple_666)"
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdreno8Elite(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
-            DefaultVersion.WINE_VERSION = "proton-9.0-arm64ec"
+            DefaultVersion.WINE_VERSION = "proton-10.0-arm64ec-2"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
-            DefaultVersion.WRAPPER = "Turnip_Gen8_V25"
+            DefaultVersion.WRAPPER = "Turnip_Gen8_V30"
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
             DefaultVersion.ASYNC_CACHE = "1"
         } else {
             DefaultVersion.VARIANT = Container.BIONIC
-            DefaultVersion.WINE_VERSION = "proton-9.0-arm64ec"
+            DefaultVersion.WINE_VERSION = "proton-10.0-arm64ec-2"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "async-1.10.3"
             DefaultVersion.VKD3D = "2.14.1"
@@ -100,6 +109,7 @@ object ContainerUtils {
             dxwrapper = PrefManager.dxWrapper,
             dxwrapperConfig = PrefManager.dxWrapperConfig,
             audioDriver = PrefManager.audioDriver,
+            pulseaudioLowLatency = PrefManager.pulseaudioLowLatency,
             wincomponents = PrefManager.winComponents,
             drives = PrefManager.drives,
             execArgs = PrefManager.execArgs,
@@ -164,6 +174,7 @@ object ContainerUtils {
         PrefManager.dxWrapper = containerData.dxwrapper
         PrefManager.dxWrapperConfig = containerData.dxwrapperConfig
         PrefManager.audioDriver = containerData.audioDriver
+        PrefManager.pulseaudioLowLatency = containerData.pulseaudioLowLatency
         PrefManager.winComponents = containerData.wincomponents
         PrefManager.drives = containerData.drives
         PrefManager.execArgs = containerData.execArgs
@@ -279,7 +290,6 @@ object ContainerUtils {
             dxwrapper = container.dxWrapper,
             dxwrapperConfig = container.dxWrapperConfig,
             audioDriver = container.audioDriver,
-            pulseaudioSuspendBehavior = container.getPulseaudioSuspendBehavior(),
             pulseaudioLowLatency = container.getPulseaudioLowLatency(),
             wincomponents = container.winComponents,
             drives = container.drives,
@@ -459,7 +469,6 @@ object ContainerUtils {
         container.dxWrapper = containerData.dxwrapper
         container.dxWrapperConfig = containerData.dxwrapperConfig
         container.audioDriver = containerData.audioDriver
-        container.setPulseaudioSuspendBehavior(containerData.pulseaudioSuspendBehavior)
         container.setPulseaudioLowLatency(containerData.pulseaudioLowLatency)
         container.winComponents = containerData.wincomponents
         container.drives = containerData.drives
@@ -804,6 +813,7 @@ object ContainerUtils {
                                     bestConfig.matchType,
                                     true,
                                     bestConfig.matchedStore.equals(gameSource.name, ignoreCase = true),
+                                    matchedGpu = bestConfig.matchedGpu,
                                 )
                                 if (parsedConfig != null && parsedConfig.isNotEmpty()) {
                                     bestConfigMap = parsedConfig
@@ -842,6 +852,7 @@ object ContainerUtils {
                 dxwrapper = initialDxWrapper,
                 dxwrapperConfig = PrefManager.dxWrapperConfig,
                 audioDriver = PrefManager.audioDriver,
+                pulseaudioLowLatency = PrefManager.pulseaudioLowLatency,
                 wincomponents = PrefManager.winComponents,
                 drives = drives,
                 execArgs = PrefManager.execArgs,
@@ -895,7 +906,7 @@ object ContainerUtils {
             containerData
         }
 
-        if (Build.MANUFACTURER.equals("samsung", ignoreCase = true)) {
+        if (Build.MANUFACTURER.equals("samsung", ignoreCase = true) && GPUInformation.isAdreno740(context)) {
             val ev = EnvVars(containerData.envVars)
             if (!ev.has("FD_DEV_FEATURES")) {
                 ev.put("FD_DEV_FEATURES", "enable_tp_ubwc_flag_hint=1")

@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "updatedAt": "2026-06-03",
+  "components": [
+    {
+      "id": "extras",
+      "name": "extras.tzst",
+      "url": "https://downloads.gamenative.app/container_files/extras.tzst"
+    },
+    {
+      "id": "container_pattern_common",
+      "name": "container_pattern_common.tzst",
+      "url": "https://downloads.gamenative.app/container_files/container_pattern_common.tzst"
+    },
+    {
+      "id": "container_pattern_gamenative",
+      "name": "container_pattern_gamenative.tzst",
+      "url": "https://downloads.gamenative.app/container_files/container_pattern_gamenative.tzst"
+    },
+    {
+      "id": "proton-9.0-x86_64_container_pattern",
+      "name": "proton-9.0-x86_64_container_pattern.tzst",
+      "url": "https://downloads.gamenative.app/container_files/proton-9.0-x86_64_container_pattern.tzst"
+    },
+    {
+      "id": "proton-9.0-arm64ec_container_pattern",
+      "name": "proton-9.0-arm64ec_container_pattern.tzst",
+      "url": "https://downloads.gamenative.app/container_files/proton-9.0-arm64ec_container_pattern.tzst"
+    }
+  ]
+}

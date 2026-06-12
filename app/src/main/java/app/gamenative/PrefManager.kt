@@ -23,6 +23,7 @@ import com.materialkolor.PaletteStyle
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.container.Container
 import com.winlator.core.DefaultVersion
+import com.winlator.xenvironment.components.PulseAudioComponent
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import java.util.EnumSet
 import kotlinx.coroutines.CoroutineScope
@@ -301,6 +302,13 @@ object PrefManager {
             setPref(AUDIO_DRIVER, value)
         }
 
+    private val PULSEAUDIO_LOW_LATENCY = booleanPreferencesKey("pulseaudio_low_latency")
+    var pulseaudioLowLatency: Boolean
+        get() = getPref(PULSEAUDIO_LOW_LATENCY, false)
+        set(value) {
+            setPref(PULSEAUDIO_LOW_LATENCY, value)
+        }
+
     private val WIN_COMPONENTS = stringPreferencesKey("wincomponents")
     var winComponents: String
         get() = getPref(WIN_COMPONENTS, Container.DEFAULT_WINCOMPONENTS)
@@ -517,7 +525,7 @@ object PrefManager {
         set(value) {
             setPref(EPIC_OFFLINE_MODE, value)
         }
-    
+
 
     private val USE_LEGACY_DRM = booleanPreferencesKey("use_legacy_drm")
     var useLegacyDRM: Boolean
@@ -1271,6 +1279,22 @@ object PrefManager {
         get() = getPref(GAME_COMPATIBILITY_CACHE, "{}")
         set(value) {
             setPref(GAME_COMPATIBILITY_CACHE, value)
+        }
+
+    // Device-wide game stats cache (JSON string)
+    private val DEVICE_GAME_STATS_CACHE = stringPreferencesKey("device_game_stats_cache")
+    var deviceGameStatsCache: String
+        get() = getPref(DEVICE_GAME_STATS_CACHE, "{}")
+        set(value) {
+            setPref(DEVICE_GAME_STATS_CACHE, value)
+        }
+
+    // GPU-wide game stats cache (JSON string)
+    private val GPU_GAME_STATS_CACHE = stringPreferencesKey("gpu_game_stats_cache")
+    var gpuGameStatsCache: String
+        get() = getPref(GPU_GAME_STATS_CACHE, "{}")
+        set(value) {
+            setPref(GPU_GAME_STATS_CACHE, value)
         }
 
     /* Security / Attestation */

@@ -105,6 +105,47 @@ private fun scalingModeLabelRes(mode: Int): Int = when (mode) {
     else -> R.string.screen_effects_scaling_mode_none
 }
 
+private fun scalingModeDescRes(mode: Int): Int = when (mode) {
+    ScreenEffectsConfig.SCALING_MODE_NEAREST -> R.string.screen_effects_scaling_mode_nearest_desc
+    ScreenEffectsConfig.SCALING_MODE_LINEAR -> R.string.screen_effects_scaling_mode_linear_desc
+    ScreenEffectsConfig.SCALING_MODE_FILL -> R.string.screen_effects_scaling_mode_fill_desc
+    ScreenEffectsConfig.SCALING_MODE_STRETCH -> R.string.screen_effects_scaling_mode_stretch_desc
+    ScreenEffectsConfig.SCALING_MODE_FSR -> R.string.screen_effects_scaling_mode_fsr_desc
+    ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> R.string.screen_effects_scaling_mode_fsr_aspect_desc
+    ScreenEffectsConfig.SCALING_MODE_DLS -> R.string.screen_effects_scaling_mode_dls_desc
+    ScreenEffectsConfig.SCALING_MODE_NATURAL -> R.string.screen_effects_scaling_mode_natural_desc
+    else -> R.string.screen_effects_scaling_mode_none_desc
+}
+
+// Scaling modes split into an "Upscaling" group (super-resolution / sharpen) and a
+// "Basic scaling" group, per renderer (GL does not implement DLS/Natural).
+private val VULKAN_UPSCALING_MODES = listOf(
+    ScreenEffectsConfig.SCALING_MODE_FSR,
+    ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT,
+    ScreenEffectsConfig.SCALING_MODE_DLS,
+)
+// "None" is rendered as a standalone first row, so it is omitted from these lists.
+private val VULKAN_BASIC_MODES = listOf(
+    ScreenEffectsConfig.SCALING_MODE_NEAREST,
+    ScreenEffectsConfig.SCALING_MODE_LINEAR,
+    ScreenEffectsConfig.SCALING_MODE_FILL,
+    ScreenEffectsConfig.SCALING_MODE_STRETCH,
+    // TODO: "Natural" is a color/tone filter, not a scaling mode. Kept here so it
+    // stays reachable until it moves to the Effects group (needs an EFFECT_MASK_NATURAL
+    // path in window.frag so it can compose with the upscaler).
+    ScreenEffectsConfig.SCALING_MODE_NATURAL,
+)
+private val GL_UPSCALING_MODES = listOf(
+    ScreenEffectsConfig.SCALING_MODE_FSR,
+    ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT,
+)
+private val GL_BASIC_MODES = listOf(
+    ScreenEffectsConfig.SCALING_MODE_NEAREST,
+    ScreenEffectsConfig.SCALING_MODE_LINEAR,
+    ScreenEffectsConfig.SCALING_MODE_FILL,
+    ScreenEffectsConfig.SCALING_MODE_STRETCH,
+)
+
 @Composable
 fun GLScreenEffectsTabContent(
     renderer: GLRenderer,
@@ -195,25 +236,28 @@ fun GLScreenEffectsTabContent(
             .focusGroup()
             .padding(vertical = 12.dp),
     ) {
-        OptionSectionHeader(text = stringResource(R.string.screen_effects_scaling))
-
-        ScreenEffectAdjustmentRow(
-            title = stringResource(R.string.screen_effects_scaling_mode),
-            valueText = stringResource(scalingModeLabelRes(scalingMode)),
-            progress = normalizedProgress(
-                scalingMode.toFloat(),
-                ScreenEffectsConfig.SCALING_MODE_NONE.toFloat(),
-                ScreenEffectsConfig.SCALING_MODE_FSR.toFloat(),
-            ),
-            onDecrease = {
-                scalingMode = (scalingMode - 1).coerceAtLeast(ScreenEffectsConfig.SCALING_MODE_NONE)
-            },
-            onIncrease = {
-                scalingMode = (scalingMode + 1).coerceAtMost(ScreenEffectsConfig.SCALING_MODE_FSR)
-            },
+        ScreenEffectRadioRow(
+            title = stringResource(scalingModeLabelRes(ScreenEffectsConfig.SCALING_MODE_NONE)),
+            selected = scalingMode == ScreenEffectsConfig.SCALING_MODE_NONE,
+            onSelect = { scalingMode = ScreenEffectsConfig.SCALING_MODE_NONE },
             focusRequester = firstItemFocusRequester,
         )
-        if (scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR) {
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        OptionSectionHeader(text = stringResource(R.string.screen_effects_upscaling))
+        GL_UPSCALING_MODES.forEach { mode ->
+            ScreenEffectRadioRow(
+                title = stringResource(scalingModeLabelRes(mode)),
+                subtitle = stringResource(scalingModeDescRes(mode)),
+                selected = scalingMode == mode,
+                onSelect = { scalingMode = mode },
+            )
+        }
+
+        if (scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR ||
+            scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT
+        ) {
             ScreenEffectAdjustmentRow(
                 title = stringResource(R.string.screen_effects_fsr_sharpness),
                 valueText = stringResource(R.string.screen_effects_fsr_sharpness_value, fsrSharpnessLevel),
@@ -228,6 +272,18 @@ fun GLScreenEffectsTabContent(
                 onIncrease = {
                     fsrSharpnessLevel = (fsrSharpnessLevel + 1).coerceAtMost(ScreenEffectsConfig.FSR_MAX_LEVEL)
                 },
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        OptionSectionHeader(text = stringResource(R.string.screen_effects_basic_scaling))
+        GL_BASIC_MODES.forEach { mode ->
+            ScreenEffectRadioRow(
+                title = stringResource(scalingModeLabelRes(mode)),
+                subtitle = stringResource(scalingModeDescRes(mode)),
+                selected = scalingMode == mode,
+                onSelect = { scalingMode = mode },
             )
         }
 
@@ -415,30 +471,29 @@ fun ScreenEffectsTabContent(
             .focusGroup()
             .padding(vertical = 12.dp),
     ) {
-        OptionSectionHeader(text = stringResource(R.string.screen_effects_scaling))
-
-        val scalingIndex = VULKAN_SUPPORTED_SCALING_MODES.indexOf(scalingMode).coerceAtLeast(0)
-        ScreenEffectAdjustmentRow(
-            title = stringResource(R.string.screen_effects_scaling_mode),
-            valueText = stringResource(scalingModeLabelRes(scalingMode)),
-            progress = if (VULKAN_SUPPORTED_SCALING_MODES.size > 1) {
-                scalingIndex.toFloat() / (VULKAN_SUPPORTED_SCALING_MODES.size - 1).toFloat()
-            } else 0f,
-            onDecrease = {
-                scalingMode = VULKAN_SUPPORTED_SCALING_MODES[
-                    (scalingIndex - 1).coerceAtLeast(0)
-                ]
-            },
-            onIncrease = {
-                scalingMode = VULKAN_SUPPORTED_SCALING_MODES[
-                    (scalingIndex + 1).coerceAtMost(VULKAN_SUPPORTED_SCALING_MODES.size - 1)
-                ]
-            },
+        ScreenEffectRadioRow(
+            title = stringResource(scalingModeLabelRes(ScreenEffectsConfig.SCALING_MODE_NONE)),
+            selected = scalingMode == ScreenEffectsConfig.SCALING_MODE_NONE,
+            onSelect = { scalingMode = ScreenEffectsConfig.SCALING_MODE_NONE },
             focusRequester = firstItemFocusRequester,
         )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        OptionSectionHeader(text = stringResource(R.string.screen_effects_upscaling))
+        VULKAN_UPSCALING_MODES.forEach { mode ->
+            ScreenEffectRadioRow(
+                title = stringResource(scalingModeLabelRes(mode)),
+                subtitle = stringResource(scalingModeDescRes(mode)),
+                selected = scalingMode == mode,
+                onSelect = { scalingMode = mode },
+            )
+        }
+
         if (scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR ||
             scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT ||
-            scalingMode == ScreenEffectsConfig.SCALING_MODE_DLS) {
+            scalingMode == ScreenEffectsConfig.SCALING_MODE_DLS
+        ) {
             ScreenEffectAdjustmentRow(
                 title = stringResource(R.string.screen_effects_fsr_sharpness),
                 valueText = stringResource(R.string.screen_effects_fsr_sharpness_value, fsrSharpnessLevel),
@@ -453,6 +508,18 @@ fun ScreenEffectsTabContent(
                 onIncrease = {
                     fsrSharpnessLevel = (fsrSharpnessLevel + 1).coerceAtMost(ScreenEffectsConfig.FSR_MAX_LEVEL)
                 },
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        OptionSectionHeader(text = stringResource(R.string.screen_effects_basic_scaling))
+        VULKAN_BASIC_MODES.forEach { mode ->
+            ScreenEffectRadioRow(
+                title = stringResource(scalingModeLabelRes(mode)),
+                subtitle = stringResource(scalingModeDescRes(mode)),
+                selected = scalingMode == mode,
+                onSelect = { scalingMode = mode },
             )
         }
 
@@ -1128,6 +1195,105 @@ private fun ScreenEffectToggleRow(
 
         Box(contentAlignment = Alignment.CenterEnd) {
             ScreenEffectSwitch(enabled = enabled, accentColor = accentColor)
+        }
+    }
+}
+
+@Composable
+private fun ScreenEffectRadioRow(
+    title: String,
+    subtitle: String? = null,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    focusRequester: FocusRequester? = null,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val accentColor = PluviaTheme.colors.accentPurple
+    val shape = RoundedCornerShape(14.dp)
+
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .clip(shape)
+            .background(
+                if (isFocused) {
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            accentColor.copy(alpha = 0.16f),
+                            accentColor.copy(alpha = 0.08f),
+                        ),
+                    )
+                } else {
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f),
+                        ),
+                    )
+                },
+            )
+            .then(
+                if (isFocused) {
+                    Modifier.border(width = 2.dp, color = accentColor.copy(alpha = 0.7f), shape = shape)
+                } else {
+                    Modifier
+                },
+            )
+            .then(
+                if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier,
+            )
+            .selectable(
+                selected = selected,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onSelect,
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        ScreenEffectRadioIndicator(selected = selected, accentColor = accentColor)
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = if (selected || isFocused) FontWeight.SemiBold else FontWeight.Medium,
+            )
+            if (!subtitle.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScreenEffectRadioIndicator(selected: Boolean, accentColor: Color) {
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .clip(CircleShape)
+            .border(
+                width = 2.dp,
+                color = if (selected) accentColor else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                shape = CircleShape,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(accentColor),
+            )
         }
     }
 }

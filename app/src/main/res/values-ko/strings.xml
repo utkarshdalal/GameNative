@@ -749,6 +749,8 @@
     <string name="gesture_tap_subtitle">왼쪽 클릭</string>
     <string name="gesture_drag">드래그</string>
     <string name="gesture_drag_subtitle">왼쪽 클릭 드래그 (영역 선택)</string>
+    <string name="gesture_hold_mouse_button_while_touching">터치하는 동안 마우스 버튼 누르기 유지</string>
+    <string name="gesture_mouse_button_label">마우스 버튼</string>
     <string name="gesture_long_press">길게 누르기</string>
     <string name="gesture_long_press_delay">길게 누르기 지연 (ms)</string>
     <string name="gesture_double_tap">더블 탭</string>
@@ -775,6 +777,9 @@
     <string name="gesture_pan_left_click_drag">왼쪽 클릭 드래그</string>
     <string name="gesture_pan_right_click_drag">오른쪽 클릭 드래그</string>
     <string name="gesture_action_show_keyboard">키보드 표시</string>
+    <string name="gesture_mouse_behavior_label">마우스 동작</string>
+    <string name="gesture_mouse_behavior_click">클릭</string>
+    <string name="gesture_mouse_behavior_hold">누른 상태 유지</string>
     <string name="gesture_header_special">특수</string>
     <string name="gesture_header_mouse">마우스</string>
     <string name="gesture_header_common_game">일반 게임 키</string>
@@ -789,10 +794,16 @@
     <string name="gesture_three_finger_hold_delay">세 손가락 길게 누르기 지연 (ms)</string>
     <string name="gesture_threshold">제스처 임계값 (px)</string>
     <string name="gesture_threshold_subtitle">제스처 유형을 고정하는 데 필요한 이동 거리 (낮을수록 더 반응이 빠름)</string>
+    <string name="gesture_mouse_drag_movement">드래그 시 마우스 이동</string>
+    <string name="gesture_mouse_drag_movement_subtitle">대부분의 게임에서는 직접 모드가 작동합니다. 드래그 시 카메라나 커서 문제가 있으면 상대 모드를 사용하세요</string>
+    <string name="gesture_mouse_drag_movement_direct">직접</string>
+    <string name="gesture_mouse_drag_movement_relative">상대</string>
     <string name="gesture_show_click_highlight">클릭 강조 표시</string>
     <string name="gesture_show_click_highlight_subtitle">탭 위치에 원 표시</string>
     <string name="gesture_show_debug_overlay">제스처 디버그 오버레이 표시</string>
     <string name="gesture_show_debug_overlay_subtitle">상단 중앙에 임시 제스처 레이블 표시</string>
+    <string name="gesture_show_cursor_touchscreen_mode">터치스크린 모드에서 커서 표시</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">터치스크린 제스처가 활성화된 동안 마우스 커서를 계속 표시</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">동적 조이스틱 설정</string>
@@ -1502,4 +1513,38 @@
     <string name="frontend_sync_confirm_keep">유지</string>
     <string name="frontend_sync_resync_all">전체 재동기화</string>
     <string name="frontend_sync_resync_complete">프론트엔드 동기화 완료</string>
+    <string name="screen_effects_scaling">스케일링</string>
+    <string name="screen_effects_upscaling">업스케일링</string>
+    <string name="screen_effects_basic_scaling">기본 스케일링</string>
+    <string name="screen_effects_scaling_mode_none">스케일링 없음</string>
+    <string name="screen_effects_scaling_mode_none_desc">스케일링 없음.</string>
+    <string name="screen_effects_scaling_mode_nearest">최근접</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">선명한 픽셀(레트로).</string>
+    <string name="screen_effects_scaling_mode_linear">선형</string>
+    <string name="screen_effects_scaling_mode_linear_desc">부드러운 스케일링.</string>
+    <string name="screen_effects_scaling_mode_fill">채우기</string>
+    <string name="screen_effects_scaling_mode_fill_desc">화면을 채우고 가장자리를 자릅니다.</string>
+    <string name="screen_effects_scaling_mode_stretch">늘이기</string>
+    <string name="screen_effects_scaling_mode_stretch_desc">화면비를 무시하고 화면을 채웁니다.</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_scaling_mode_fsr_desc">선명한 초해상도 업스케일.</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, 화면비 유지.</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_dls_desc">샤픈/선명도 패스.</string>
+    <string name="screen_effects_scaling_mode_natural">자연</string>
+    <string name="screen_effects_scaling_mode_natural_desc">더 따뜻한 색조.</string>
+    <string name="stats_key_runs">내 GPU에서 성공한 실행</string>
+    <string name="stats_key_reviews">별 5개 리뷰 (내 GPU / 내 기기)</string>
+    <string name="stats_key_fps">예상 FPS</string>
+    <string name="stats_key_session">내 기기에서의 최장 세션</string>
+    <string name="sort_fps">예상 FPS</string>
+    <string name="sort_runs">성공한 실행</string>
+    <string name="sort_reviews">별 5개 리뷰 (기기)</string>
+    <string name="sort_reviews_gpu">별 5개 리뷰 (GPU)</string>
+    <string name="filter_expired">만료됨</string>
+    <string name="filter_playable">플레이 가능 (30+ FPS)</string>
+    <string name="filter_five_star_device">기기에서의 별 5개 리뷰</string>
+    <string name="filter_five_star_gpu">GPU에서의 별 5개 리뷰</string>
+    <string name="filter_proven_gpu">내 GPU에서 검증됨</string>
 </resources>

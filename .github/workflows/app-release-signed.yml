@@ -161,5 +161,5 @@ jobs:
           --arg legacy "$LEGACY_URL" \
           --arg modern "$MODERN_URL" \
           --arg changes "$CHANGELOG" \
-          '{content: "**New Android build**\nDownload: \($legacy)\nModern (Android 11+ — built for the latest Android, so **no security warning** about an outdated target. No D drive access and no custom game support; glibc not supported, external storage location moved.): \($modern)\n\nChanges:\n\($changes)"}')
+          '{content: "**New Android build**\nStandard Build (Recommended): \($legacy)\nPlay Store Build (Android 11+ — built for the latest Android, so **no security warning** about an outdated target. No D drive access and no custom game support; glibc not supported, external storage location moved.): \($modern)\n\nChanges:\n\($changes)"}')
         curl -H 'Content-Type: application/json' -d "$payload" "$DISCORD_WEBHOOK_URL"

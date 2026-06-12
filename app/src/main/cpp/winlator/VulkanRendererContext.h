@@ -122,6 +122,8 @@ struct WindowPushConstants {
     float brightness;
     float contrast;
     float gamma;
+    float outW;   // on-screen quad width  in pixels (for FSR/EASU upscale ratio)
+    float outH;   // on-screen quad height in pixels
 };
 
 class VulkanRendererContext {

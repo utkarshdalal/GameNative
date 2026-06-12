@@ -735,6 +735,8 @@
     <string name="gesture_tap_subtitle">Clic gauche</string>
     <string name="gesture_drag">Glisser le doigt</string>
     <string name="gesture_drag_subtitle">Glisser clic gauche (sélection rectangulaire)</string>
+    <string name="gesture_hold_mouse_button_while_touching">Maintenir le bouton de la souris au toucher</string>
+    <string name="gesture_mouse_button_label">Bouton de souris</string>
     <string name="gesture_long_press">Appui long</string>
     <string name="gesture_long_press_delay">Délai appui long (ms)</string>
     <string name="gesture_double_tap">Double appui</string>
@@ -761,6 +763,9 @@
     <string name="gesture_pan_left_click_drag">Glisser avec clic gauche</string>
     <string name="gesture_pan_right_click_drag">Glisser avec clic droit</string>
     <string name="gesture_action_show_keyboard">Afficher le clavier</string>
+    <string name="gesture_mouse_behavior_label">Comportement de la souris</string>
+    <string name="gesture_mouse_behavior_click">Clic</string>
+    <string name="gesture_mouse_behavior_hold">Maintien</string>
     <string name="gesture_header_special">Spécial</string>
     <string name="gesture_header_mouse">Souris</string>
     <string name="gesture_header_common_game">Touches de jeu courantes</string>
@@ -775,10 +780,16 @@
     <string name="gesture_three_finger_hold_delay">Délai du maintien à trois doigts (ms)</string>
     <string name="gesture_threshold">Seuil du geste (px)</string>
     <string name="gesture_threshold_subtitle">Mouvement requis pour verrouiller le type de geste (plus bas = plus réactif)</string>
+    <string name="gesture_mouse_drag_movement">Mouvement de la souris lors du glissement</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Direct fonctionne pour la plupart des jeux. Utilisez Relatif si le glissement provoque des problèmes de caméra ou de curseur</string>
+    <string name="gesture_mouse_drag_movement_direct">Direct</string>
+    <string name="gesture_mouse_drag_movement_relative">Relatif</string>
     <string name="gesture_show_click_highlight">Afficher la mise en évidence du clic</string>
     <string name="gesture_show_click_highlight_subtitle">Afficher un cercle à l\'emplacement du toucher</string>
     <string name="gesture_show_debug_overlay">Afficher la superposition de débogage des gestes</string>
     <string name="gesture_show_debug_overlay_subtitle">Afficher des libellés de geste temporaires en haut au centre</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Afficher le curseur en mode écran tactile</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Garder le curseur de la souris visible lorsque les gestes tactiles sont actifs</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">Paramètres des joysticks dynamiques</string>
@@ -1498,4 +1509,38 @@
     <string name="frontend_sync_confirm_keep">Conserver</string>
     <string name="frontend_sync_resync_all">Tout resynchroniser</string>
     <string name="frontend_sync_resync_complete">Synchronisation frontend terminée</string>
+    <string name="screen_effects_scaling">Mise à l\'échelle</string>
+    <string name="screen_effects_upscaling">Super-résolution</string>
+    <string name="screen_effects_basic_scaling">Mise à l\'échelle de base</string>
+    <string name="screen_effects_scaling_mode_none">Aucune mise à l\'échelle</string>
+    <string name="screen_effects_scaling_mode_none_desc">Aucune mise à l\'échelle.</string>
+    <string name="screen_effects_scaling_mode_nearest">Au plus proche</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">Pixels nets (rétro).</string>
+    <string name="screen_effects_scaling_mode_linear">Linéaire</string>
+    <string name="screen_effects_scaling_mode_linear_desc">Mise à l\'échelle lisse.</string>
+    <string name="screen_effects_scaling_mode_fill">Remplir</string>
+    <string name="screen_effects_scaling_mode_fill_desc">Remplit l\'écran, rogne les bords.</string>
+    <string name="screen_effects_scaling_mode_stretch">Étirer</string>
+    <string name="screen_effects_scaling_mode_stretch_desc">Remplit l\'écran, ignore le format.</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_scaling_mode_fsr_desc">Mise à l\'échelle nette en super-résolution.</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, conserve le format d\'image.</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_dls_desc">Passe de netteté / clarté.</string>
+    <string name="screen_effects_scaling_mode_natural">Naturel</string>
+    <string name="screen_effects_scaling_mode_natural_desc">Teinte plus chaude.</string>
+    <string name="stats_key_runs">Lancements réussis sur votre GPU</string>
+    <string name="stats_key_reviews">Avis 5 étoiles (votre GPU / votre appareil)</string>
+    <string name="stats_key_fps">FPS attendus</string>
+    <string name="stats_key_session">Session la plus longue sur votre appareil</string>
+    <string name="sort_fps">FPS attendus</string>
+    <string name="sort_runs">Lancements réussis</string>
+    <string name="sort_reviews">Avis 5 étoiles (appareil)</string>
+    <string name="sort_reviews_gpu">Avis 5 étoiles (GPU)</string>
+    <string name="filter_expired">Expiré</string>
+    <string name="filter_playable">Jouable (30+ FPS)</string>
+    <string name="filter_five_star_device">Avis 5 étoiles sur l\'appareil</string>
+    <string name="filter_five_star_gpu">Avis 5 étoiles sur le GPU</string>
+    <string name="filter_proven_gpu">Éprouvé sur votre GPU</string>
 </resources>

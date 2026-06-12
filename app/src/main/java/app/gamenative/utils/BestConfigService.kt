@@ -11,6 +11,7 @@ import com.winlator.container.ContainerData
 import com.winlator.core.DefaultVersion
 import com.winlator.contents.ContentProfile
 import com.winlator.core.GPUBlackist
+import com.winlator.core.GPUInformation
 import com.winlator.fexcore.FEXCorePresetManager
 import com.winlator.core.KeyValueSet
 import kotlinx.coroutines.Dispatchers
@@ -214,6 +215,41 @@ object BestConfigService {
 
         // For no_match or unknown, return empty config
         return JsonObject(emptyMap())
+    }
+
+    /**
+     * Applies hard GPU-family constraints that override server-provided versions
+     * when the matched GPU is from a different family than the user's actual GPU.
+     *
+     * - Adreno 6xx requires DXVK 1.11.1-sarek (newer DXVK 2.x is incompatible).
+     * - Adreno 8 Elite Gen 5 (84x/85x) requires the MrPurple T26 driver.
+     */
+    private fun applyGpuFamilyOverrides(
+        context: Context,
+        filteredJson: JSONObject,
+        matchedGpu: String,
+    ): JSONObject {
+        if (matchedGpu.isEmpty()) return filteredJson
+        val matched = matchedGpu.lowercase(Locale.ENGLISH)
+
+        if (GPUInformation.isAdreno6xx(context) && !matched.matches(Regex(".*adreno.*\\b6[0-9]{2}\\b.*"))) {
+            val kvs = KeyValueSet(filteredJson.optString("dxwrapperConfig", ""))
+            kvs.put("version", "1.11.1-sarek")
+            filteredJson.put("dxwrapper", "dxvk")
+            filteredJson.put("dxwrapperConfig", kvs.toString())
+        }
+
+        if (GPUInformation.isAdreno8EliteGen5(context) &&
+            !matched.matches(Regex(".*adreno.*\\b8(4[0-9]|5[0-9])\\b.*")) &&
+            !GPUBlackist.isTurnipBlacklisted()
+        ) {
+            val kvs = KeyValueSet(filteredJson.optString("graphicsDriverConfig", ""))
+            kvs.put("version", "Turnip Adreno Driver T26 (@Mr_Purple_666)")
+            filteredJson.put("graphicsDriverConfig", kvs.toString())
+            filteredJson.put("graphicsDriverVersion", "Turnip Adreno Driver T26 (@Mr_Purple_666)")
+        }
+
+        return filteredJson
     }
 
     /**
@@ -434,10 +470,11 @@ object BestConfigService {
         context: Context,
         configJson: JsonObject,
         matchType: String,
+        matchedGpu: String = "",
     ): List<ManifestInstallRequest> {
         val updatedConfigJson = Json.parseToJsonElement(configJson.toString()).jsonObject
         val filteredConfig = filterConfigByMatchType(updatedConfigJson, matchType)
-        val filteredJson = JSONObject(filteredConfig.toString())
+        val filteredJson = applyGpuFamilyOverrides(context, JSONObject(filteredConfig.toString()), matchedGpu)
         val installed = ManifestComponentHelper.loadInstalledContentLists(context)
         val manifest = ManifestRepository.loadManifest(context)
         val installedContent = installed.installed
@@ -693,6 +730,7 @@ object BestConfigService {
         applyKnownConfig: Boolean,
         storeMatch: Boolean = true,
         forceApply: Boolean = false,
+        matchedGpu: String = "",
     ): Map<String, Any?>? {
         try {
             val originalJson = JSONObject(configJson.toString())
@@ -763,10 +801,10 @@ object BestConfigService {
                     return mapOf()
                 }
 
-                // Step 1: Filter config based on match type
+                // Step 1: Filter config based on match type, then apply GPU-family overrides
                 val updatedConfigJson = Json.parseToJsonElement(originalJson.toString()).jsonObject
                 val filteredConfig = filterConfigByMatchType(updatedConfigJson, matchType, storeMatch)
-                val filteredJson = JSONObject(filteredConfig.toString())
+                val filteredJson = applyGpuFamilyOverrides(context, JSONObject(filteredConfig.toString()), matchedGpu)
 
                 // Step 2: check for unavailable component versions
                 lastMissingComponents = validateComponentVersions(context, filteredJson)

@@ -830,13 +830,11 @@ public class WinHandler {
             return;
         }
         GamepadState state = controller.state;
-        buffer.clear();
 
-        // --- Sticks and Buttons are perfect. No changes here. ---
-        buffer.putShort((short)(state.thumbLX * 32767));
-        buffer.putShort((short)(state.thumbLY * 32767));
-        buffer.putShort((short)(state.thumbRX * 32767));
-        buffer.putShort((short)(state.thumbRY * 32767));
+        buffer.putShort(OFF_LX, (short)(state.thumbLX * 32767));
+        buffer.putShort(OFF_LY, (short)(state.thumbLY * 32767));
+        buffer.putShort(OFF_RX, (short)(state.thumbRX * 32767));
+        buffer.putShort(OFF_RY, (short)(state.thumbRY * 32767));
         // Clamp the raw value first – some firmwares report 1.00–1.02 at the top end
         float rawL = Math.max(0f, Math.min(1f, state.triggerL));
         float rawR = Math.max(0f, Math.min(1f, state.triggerR));
@@ -844,9 +842,9 @@ public class WinHandler {
         float rCurve = (float)Math.sqrt(rawR);
         int lAxis = Math.round(lCurve * 65_534f) - 32_767;  // 0 → -32 767, 1 → 32 767
         int rAxis = Math.round(rCurve * 65_534f) - 32_767;
-        buffer.putShort((short)lAxis);
-        buffer.putShort((short)rAxis);
-        // --- Buttons and D-Pad are perfect. No changes here. ---
+        buffer.putShort(OFF_LT, (short)lAxis);
+        buffer.putShort(OFF_RT, (short)rAxis);
+
         byte[] sdlButtons = new byte[15];
         sdlButtons[0] = state.isPressed(0) ? (byte)1 : (byte)0;  // A
         sdlButtons[1] = state.isPressed(1) ? (byte)1 : (byte)0;  // B
@@ -862,8 +860,12 @@ public class WinHandler {
         sdlButtons[12] = state.dpad[2] ? (byte)1 : (byte)0;      // DPAD_DOWN
         sdlButtons[13] = state.dpad[3] ? (byte)1 : (byte)0;      // DPAD_LEFT
         sdlButtons[14] = state.dpad[1] ? (byte)1 : (byte)0;      // DPAD_RIGHT
-        buffer.put(sdlButtons);
-        buffer.put((byte)0); // Ignored HAT value
+        for (int i = 0; i < 15; i++) {
+            buffer.put(OFF_BTN + i, sdlButtons[i]);
+        }
+        buffer.put(OFF_HAT, (byte)0);
+
+        notifyStateChanged(0);
     }
 
     public void sendVirtualGamepadState(GamepadState state) {

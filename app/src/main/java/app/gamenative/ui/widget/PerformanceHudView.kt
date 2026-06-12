@@ -696,9 +696,6 @@ class PerformanceHudView(
         val reading = readTemperatureCWithSource(
             discoverPrioritizedCpuTempPaths(),
         )
-        if (reading != null) {
-            Timber.d("[HUD] CPU temp: %d°C from %s", reading.celsius, reading.source)
-        }
         return reading?.celsius
     }
 
@@ -708,9 +705,6 @@ class PerformanceHudView(
             "/sys/class/misc/mali0/device/temp",
         ) + discoverPrioritizedGpuTempPaths()
         val reading = readTemperatureCWithSource(paths)
-        if (reading != null) {
-            Timber.d("[HUD] GPU temp: %d°C from %s", reading.celsius, reading.source)
-        }
         return reading?.celsius
     }
 
