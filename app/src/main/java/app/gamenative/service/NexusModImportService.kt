@@ -292,6 +292,8 @@ class NexusModImportService : Service() {
         }
 
         fun resumeInterruptedImports(context: Context) {
+            if (PrefManager.nexusApiKey.isBlank()) return
+
             val appContext = context.applicationContext
             try {
                 ContextCompat.startForegroundService(
