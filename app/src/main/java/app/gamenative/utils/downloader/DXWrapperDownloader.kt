@@ -50,8 +50,8 @@ object DXWrapperDownloader {
     ): File? = withContext(Dispatchers.IO) {
         // Validate component exists in manifest first (for both legacy and modern variants)
         val manifest = loadDXWrapperManifest(context)
-        manifest.components.find { it.id == componentId }
-            ?: throw Exception("DXWrapper $componentId not found in $DXWRAPPER_MANIFEST_FILE")
+        val component = manifest.components.find { it.id == componentId }
+            ?: return@withContext null
 
         // Legacy variant: use bundled assets
         if (!BuildConfig.MODERN_ANDROID) {
@@ -61,7 +61,7 @@ object DXWrapperDownloader {
 
         // Modern variant: download from server
         // Check if already downloaded and cached
-        val destFile = File(context.filesDir, "$DXWRAPPER_CACHE_DIR/$componentId.tzst")
+        val destFile = File(context.filesDir, "$DXWRAPPER_CACHE_DIR/${component.name}")
         if (destFile.exists() && destFile.length() > 0) {
             Timber.d("Using cached dxwrapper: $componentId at ${destFile.absolutePath}")
             return@withContext destFile
@@ -74,7 +74,7 @@ object DXWrapperDownloader {
 
         try {
             SteamService.fetchFileWithFallback(
-                fileName = "dxwrapper/$componentId.tzst",
+                fileName = "dxwrapper/${component.name}",
                 dest = destFile,
                 context = context,
                 onProgress = onProgress

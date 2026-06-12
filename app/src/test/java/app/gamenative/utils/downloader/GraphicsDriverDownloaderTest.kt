@@ -251,9 +251,15 @@ class GraphicsDriverDownloaderTest {
     fun testCachedComponentReuse() = runBlocking {
         val componentId = "vortek-2.1"
 
+        // Load manifest to get component name
+        val manifestJson = context.assets.open(GraphicsDriverDownloader.GRAPHICS_DRIVER_MANIFEST_FILE).bufferedReader().use { it.readText() }
+        val manifest = Json { ignoreUnknownKeys = true }
+            .decodeFromString<GraphicsDriverDownloader.GraphicsDriverManifest>(manifestJson)
+        val component = manifest.components.find { it.id == componentId }!!
+
         // Create a mock cached file
         cacheDir.mkdirs()
-        val cachedFile = File(cacheDir, "$componentId.tzst")
+        val cachedFile = File(cacheDir, component.name)
         cachedFile.writeText("mock cached content")
 
         val retrievedFile = GraphicsDriverDownloader.ensureGraphicsDriverAvailable(
@@ -271,19 +277,16 @@ class GraphicsDriverDownloaderTest {
     }
 
     @Test
-    fun testInvalidComponentThrowsException() = runBlocking {
-        try {
-            GraphicsDriverDownloader.ensureGraphicsDriverAvailable(
-                context,
-                "nonexistent_driver_xyz"
-            )
-            throw AssertionError("Should have thrown exception for invalid component")
-        } catch (e: Exception) {
-            assertTrue(
-                "Exception message should mention component not found",
-                e.message?.contains("not found") == true
-            )
-        }
+    fun testInvalidComponentReturnsNull() = runBlocking {
+        val result = GraphicsDriverDownloader.ensureGraphicsDriverAvailable(
+            context,
+            "nonexistent_driver_xyz"
+        )
+        assertEquals(
+            "Invalid component should return null",
+            null,
+            result
+        )
     }
 
     @Test
