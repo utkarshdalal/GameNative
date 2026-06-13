@@ -1551,14 +1551,14 @@
     <string name="nexus_filter_manual">Manuel</string>
     <string name="nexus_filter_unsupported">Non pris en charge</string>
     <string name="nexus_account_title">Compte Nexus</string>
-    <string name="nexus_account_api_hint">Connecte-toi à Nexus Mods, ouvre le menu de ton profil, puis va dans Site preferences &gt; API Access. Copie ta Personal API Key et colle-la ici.</string>
-    <string name="nexus_account_key_local">Ta clé est enregistrée localement sur cet appareil.</string>
+    <string name="nexus_account_api_hint">Connectez-vous à Nexus Mods, ouvrez le menu de votre profil, puis allez dans Site preferences &gt; API Access. Copiez votre Personal API Key et collez-la ici.</string>
+    <string name="nexus_account_key_local">Votre clé est enregistrée localement sur cet appareil.</string>
     <string name="nexus_personal_api_key">Clé API personnelle</string>
     <string name="nexus_save_check_key">Enregistrer et vérifier la clé</string>
     <string name="nexus_add_from_title">Ajouter depuis Nexus Mods</string>
     <string name="nexus_url_label">URL de mod ou de collection</string>
     <string name="nexus_find_files">Trouver les fichiers</string>
-    <string name="nexus_choose_file_title">Choisis un fichier à télécharger</string>
+    <string name="nexus_choose_file_title">Choisissez un fichier à télécharger</string>
     <string name="nexus_no_current_files">Aucun fichier actuel téléchargeable n’a été trouvé.</string>
     <string name="nexus_show_older_files">Afficher les fichiers anciens ou archivés</string>
     <string name="nexus_collection_title">Collection Nexus</string>
@@ -1576,7 +1576,7 @@
     <string name="nexus_file_conflict_rules_detected">Règles de conflit fichier/mod détectées : %1$d. Elles sont affichées pour vérification ; les gagnants par fichier non pris en charge ne sont pas appliqués automatiquement.</string>
     <string name="nexus_rule_fields">Champs de règle : %1$s%2$s</string>
     <string name="nexus_rule_fields_more">...</string>
-    <string name="nexus_unsupported_collection_rules">Règles de collection non prises en charge : %1$d. Vérifie les étapes manuelles avant d’appliquer l’ordre.</string>
+    <string name="nexus_unsupported_collection_rules">Règles de collection non prises en charge : %1$d. Vérifiez les étapes manuelles avant d’appliquer l’ordre.</string>
     <string name="nexus_class_downloadable">Téléchargeable ; archive pas encore vérifiée</string>
     <string name="nexus_class_needs_placement">Nécessite une vérification du placement</string>
     <string name="nexus_status_needs_placement">Placement requis</string>

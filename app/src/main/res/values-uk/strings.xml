@@ -1561,8 +1561,8 @@
     <string name="nexus_no_current_files">Поточні файли для завантаження не знайдено.</string>
     <string name="nexus_show_older_files">Показати старі або архівні файли</string>
     <string name="nexus_collection_title">Колекція Nexus</string>
-    <string name="nexus_collection_ready">%1$d мод(ів) готово. Вибрано: %2$d.</string>
-    <string name="nexus_collection_ready_with_failed">%1$d мод(ів) готово; %2$d не вдалося визначити. Вибрано: %3$d.</string>
+    <string name="nexus_collection_ready">Готово модів: %1$d. Вибрано: %2$d.</string>
+    <string name="nexus_collection_ready_with_failed">Готово модів: %1$d; не вдалося визначити: %2$d. Вибрано: %3$d.</string>
     <string name="nexus_estimated_temp_space">Оцінка місця, потрібного під час імпорту: %1$s; доступно %2$s.</string>
     <string name="nexus_import_space_cache_note">Містить кеш розпакованих модів, збережений для безпечного повторного застосування/вимкнення.</string>
     <string name="nexus_select_all">Вибрати все</string>
@@ -1571,7 +1571,7 @@
     <string name="nexus_no_collection_items_filter">Немає елементів колекції для цього фільтра.</string>
     <string name="nexus_download_selected">Завантажити вибране</string>
     <string name="nexus_collection_checklist_title">Перевірка колекції</string>
-    <string name="nexus_plugin_load_order_detected">Виявлено порядок завантаження плагінів: %1$d plugin(s). GN використає його під час застосування керованих плагінів із цієї колекції.</string>
+    <string name="nexus_plugin_load_order_detected">Виявлено порядок завантаження плагінів. Кількість плагінів: %1$d. GN використає його під час застосування керованих плагінів із цієї колекції.</string>
     <string name="nexus_file_conflict_rules_detected">Виявлено правила конфліктів файлів/модів: %1$d. Вони показані для перевірки; непідтримувані переможці окремих файлів не застосовуються автоматично.</string>
     <string name="nexus_rule_fields">Поля правил: %1$s%2$s</string>
     <string name="nexus_rule_fields_more">...</string>
@@ -1579,7 +1579,7 @@
     <string name="nexus_class_downloadable">Можна завантажити; архів ще не перевірено</string>
     <string name="nexus_class_needs_placement">Потрібна перевірка розміщення</string>
     <string name="nexus_status_needs_placement">Потрібне розміщення</string>
-    <string name="nexus_apply_needs_placement">%1$d мод(ів) потребують налаштування розміщення: %2$s%3$s</string>
+    <string name="nexus_apply_needs_placement">Потрібне налаштування розміщення для модів: %1$d. %2$s%3$s</string>
     <string name="nexus_class_manual_external">Ручний або зовнішній крок</string>
     <string name="nexus_class_unsupported">Непідтримуване правило</string>
     <string name="nexus_destination">Призначення: %1$s</string>
