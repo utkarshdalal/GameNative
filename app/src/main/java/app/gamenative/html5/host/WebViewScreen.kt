@@ -871,6 +871,10 @@ fun WebViewScreen(
                 pendingFileChooserCallback = pendingFileChooserCallback,
                 pickContentLauncher = pickContentLauncher,
                 onCriticalShaderFailure = { PluviaApp.events.emit(AndroidEvent.BackPressed) },
+                // engine quit (godot) is an in-game quit -- navigateBack directly so we EXIT
+                // to library, not open the QuickMenu (same reason as the Html5RuntimeBridge quit below).
+                onEngineExit = { navigateBack() },
+                isGodotEngine = profile?.engine == EnginePackId.GODOT,
             )
             // per-container fs sandbox bridge. registered FIRST
             // so shim JS (fs.js) sees __gnFsBridge at parse time. universal registration --

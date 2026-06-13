@@ -88,10 +88,15 @@ internal fun buildShaderAwareChromeClient(
     pendingFileChooserCallback: AtomicReference<ValueCallback<Array<Uri>>?>,
     pickContentLauncher: ActivityResultLauncher<String>,
     onCriticalShaderFailure: () -> Unit,
+    onEngineExit: () -> Unit,
+    // only godot wedges its renderer on quit (see onConsoleMessage). gate the "at exit"
+    // detector so no other engine's console output can trip it mid-gameplay.
+    isGodotEngine: Boolean,
 ): WebChromeClient {
     val shaderFailureWindowStart = SystemClock.elapsedRealtime()
     val shaderFailureCount = AtomicInteger(0)
     val shaderFailureFired = AtomicBoolean(false)
+    val engineExitFired = AtomicBoolean(false)
     return object : WebChromeClient() {
         override fun onConsoleMessage(msg: ConsoleMessage): Boolean {
             val tag = "WebViewConsole"
@@ -128,6 +133,33 @@ internal fun buildShaderAwareChromeClient(
                             onCriticalShaderFailure()
                         }
                     }
+                }
+            }
+            // Godot web (Emscripten, single-threaded) runs its quit/teardown synchronously on
+            // the renderer's only thread, then the canvas WEDGES permanently -- the process does
+            // not die, so onRenderProcessGone never fires and the user is stuck on a frozen frame
+            // with no way back. Godot's Main::cleanup() emits a burst of shutdown lines ("RID
+            // allocations ... leaked at exit", "Pages in use exist at exit", "ObjectDB instances
+            // leaked at exit", "N resources still in use at exit") -- but WHICH ones flush to
+            // console before the renderer wedges is nondeterministic (observed: only "Pages in
+            // use exist at exit" made it out one run, "ObjectDB ... leaked at exit" another). so
+            // match on whichever wins the race. route to the normal exit so teardown + save-sync run.
+            //
+            // GUARDED two ways against firing mid-gameplay: (1) only armed for pack:godot --
+            // no other engine has this wedge or this console signature; (2) bare "at exit" is too
+            // generic (a title logging "autosave at exit" would trip it), so also require a
+            // distinctive godot token -- "leaked" covers the RID/ObjectDB lines, "in use" covers
+            // the Pages/resources lines, so {leaked|in use} + "at exit" matches all four shutdown
+            // lines while rejecting incidental game-side "at exit" text.
+            if (isGodotEngine && !engineExitFired.get()) {
+                val m = msg.message()
+                val isEngineExit = m.contains("at exit") &&
+                    (m.contains("leaked") || m.contains("in use"))
+                if (isEngineExit && engineExitFired.compareAndSet(false, true)) {
+                    Timber.tag("Html5RuntimeFailure").w(
+                        "godot shutdown detected in console — renderer will wedge; exiting to library",
+                    )
+                    onEngineExit()
                 }
             }
             return true
