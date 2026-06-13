@@ -626,6 +626,9 @@ fun WebViewScreen(
                 pendingFileChooserCallback = pendingFileChooserCallback,
                 pickContentLauncher = pickContentLauncher,
                 onCriticalShaderFailure = { PluviaApp.events.emit(AndroidEvent.BackPressed) },
+                // exitSession, not back: an in-game quit must EXIT, not open the QuickMenu.
+                onEngineExit = { exitSession() },
+                isGodotEngine = profile?.engine == EnginePackId.GODOT,
             )
             // fs sandbox roots resolve inside the wine prefix so Steam / GOG cloud sync and the Wine runtime
             // see the same files. a bare Container(id) is enough for the resolvers.
