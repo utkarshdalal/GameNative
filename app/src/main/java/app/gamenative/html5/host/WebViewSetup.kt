@@ -76,10 +76,13 @@ internal fun buildShaderAwareChromeClient(
     pendingFileChooserCallback: AtomicReference<ValueCallback<Array<Uri>>?>,
     pickContentLauncher: ActivityResultLauncher<String>,
     onCriticalShaderFailure: () -> Unit,
+    onEngineExit: () -> Unit,
+    isGodotEngine: Boolean,
 ): WebChromeClient {
     val shaderFailureWindowStart = SystemClock.elapsedRealtime()
     val shaderFailureCount = AtomicInteger(0)
     val shaderFailureFired = AtomicBoolean(false)
+    val engineExitFired = AtomicBoolean(false)
     return object : WebChromeClient() {
         override fun onConsoleMessage(msg: ConsoleMessage): Boolean {
             val tag = "WebViewConsole"
@@ -112,6 +115,21 @@ internal fun buildShaderAwareChromeClient(
                             onCriticalShaderFailure()
                         }
                     }
+                }
+            }
+            // godot web wedges the renderer after quitting -- the process doesn't die, so onRenderProcessGone
+            // never fires. detect its Main::cleanup() lines ("... leaked at exit", "... in use ... at exit");
+            // which of them flush before the wedge varies, so match any. godot-only, and bare "at exit" is
+            // too generic to match alone.
+            if (isGodotEngine && !engineExitFired.get()) {
+                val m = msg.message()
+                val isEngineExit = m.contains("at exit") &&
+                    (m.contains("leaked") || m.contains("in use"))
+                if (isEngineExit && engineExitFired.compareAndSet(false, true)) {
+                    Timber.tag("Html5RuntimeFailure").w(
+                        "godot shutdown detected in console — renderer will wedge; exiting to library",
+                    )
+                    onEngineExit()
                 }
             }
             return true
