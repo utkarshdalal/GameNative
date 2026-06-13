@@ -119,6 +119,15 @@ android {
             buildConfigField("boolean", "MODERN_ANDROID", "false")
             buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic.so\"")
         }
+        create("legacyXr") {
+            dimension = "androidApi"
+            targetSdk = 28
+            ndk.abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            buildConfigField("boolean", "MODERN_ANDROID", "false")
+            buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic.so\"")
+            buildConfigField("boolean", "XR_BUILD", "true")
+            manifestPlaceholders["screenOrientation"] = "landscape"
+        }
         create("modern") {
             dimension = "androidApi"
             minSdk = 29
@@ -212,6 +221,15 @@ android {
         getByName("legacy") {
             assets {
                 srcDirs("src/legacy/assets", "src/main/assets")
+            }
+        }
+        getByName("legacyXr") {
+            manifest.srcFile("src/legacy/AndroidManifest.xml")
+            assets {
+                srcDirs("src/legacy/assets", "src/main/assets")
+            }
+            jniLibs {
+                srcDirs("src/legacy/jniLibs")
             }
         }
         getByName("modern") {
