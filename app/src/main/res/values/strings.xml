@@ -1541,14 +1541,14 @@
     <string name="nexus_collection_title">Nexus collection</string>
     <string name="nexus_collection_ready">%1$d mod(s) ready. %2$d selected.</string>
     <string name="nexus_collection_ready_with_failed">%1$d mod(s) ready; %2$d could not be resolved. %3$d selected.</string>
-    <string name="nexus_estimated_temp_space">Estimated temporary space: %1$s; available %2$s.</string>
+    <string name="nexus_estimated_temp_space">Estimated space needed during import: %1$s; available %2$s.</string>
+    <string name="nexus_import_space_cache_note">Includes extracted mod cache kept for reapply/disable safety.</string>
     <string name="nexus_select_all">Select all</string>
     <string name="nexus_clear">Clear</string>
     <string name="nexus_retry_failed">Retry failed</string>
     <string name="nexus_no_collection_items_filter">No collection items match this filter.</string>
     <string name="nexus_download_selected">Download selected</string>
     <string name="nexus_collection_checklist_title">Collection checklist</string>
-    <string name="nexus_collection_checklist_summary">%1$d downloadable with no manifest instructions | %2$d need placement review | %3$d manual/external | %4$d unsupported/unresolved</string>
     <string name="nexus_plugin_load_order_detected">Plugin load order detected: %1$d plugin(s). GN will use it when applying managed plugins from this collection.</string>
     <string name="nexus_file_conflict_rules_detected">File/mod conflict rules detected: %1$d. These are shown for review; unsupported per-file winners are not silently applied.</string>
     <string name="nexus_rule_fields">Rule fields: %1$s%2$s</string>

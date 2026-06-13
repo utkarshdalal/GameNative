@@ -1629,14 +1629,14 @@
     <string name="nexus_collection_title">Nexus 合集</string>
     <string name="nexus_collection_ready">%1$d 个模组已准备好。已选择 %2$d 个。</string>
     <string name="nexus_collection_ready_with_failed">%1$d 个模组已准备好；%2$d 个无法解析。已选择 %3$d 个。</string>
-    <string name="nexus_estimated_temp_space">预计临时空间：%1$s；可用 %2$s。</string>
+    <string name="nexus_estimated_temp_space">导入期间预计需要空间：%1$s；可用 %2$s。</string>
+    <string name="nexus_import_space_cache_note">包含保留的已解压模组缓存，用于安全地重新应用/禁用。</string>
     <string name="nexus_select_all">全选</string>
     <string name="nexus_clear">清除</string>
     <string name="nexus_retry_failed">重试失败项</string>
     <string name="nexus_no_collection_items_filter">没有合集项目匹配此筛选器。</string>
     <string name="nexus_download_selected">下载所选</string>
     <string name="nexus_collection_checklist_title">合集检查清单</string>
-    <string name="nexus_collection_checklist_summary">%1$d 个无需清单说明即可下载 | %2$d 个需要检查放置位置 | %3$d 个手动/外部 | %4$d 个不支持/未解析</string>
     <string name="nexus_plugin_load_order_detected">检测到插件加载顺序：%1$d 个插件。GN 会在应用此合集中的托管插件时使用它。</string>
     <string name="nexus_file_conflict_rules_detected">检测到文件/模组冲突规则：%1$d。它们会显示供检查；不支持的逐文件胜出规则不会自动应用。</string>
     <string name="nexus_rule_fields">规则字段：%1$s%2$s</string>

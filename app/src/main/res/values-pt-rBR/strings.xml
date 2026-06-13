@@ -1434,14 +1434,14 @@
     <string name="nexus_collection_title">Coleção Nexus</string>
     <string name="nexus_collection_ready">%1$d mod(s) prontos. %2$d selecionados.</string>
     <string name="nexus_collection_ready_with_failed">%1$d mod(s) prontos; %2$d não puderam ser resolvidos. %3$d selecionados.</string>
-    <string name="nexus_estimated_temp_space">Espaço temporário estimado: %1$s; disponível %2$s.</string>
+    <string name="nexus_estimated_temp_space">Espaço estimado necessário durante a importação: %1$s; disponível %2$s.</string>
+    <string name="nexus_import_space_cache_note">Inclui o cache de mods extraídos mantido para reaplicar/desativar com segurança.</string>
     <string name="nexus_select_all">Selecionar tudo</string>
     <string name="nexus_clear">Limpar</string>
     <string name="nexus_retry_failed">Tentar falhas novamente</string>
     <string name="nexus_no_collection_items_filter">Nenhum item da coleção corresponde a este filtro.</string>
     <string name="nexus_download_selected">Baixar selecionados</string>
     <string name="nexus_collection_checklist_title">Checklist da coleção</string>
-    <string name="nexus_collection_checklist_summary">%1$d baixáveis sem instruções de manifesto | %2$d precisam revisar local | %3$d manuais/externos | %4$d não compatíveis/não resolvidos</string>
     <string name="nexus_plugin_load_order_detected">Ordem de carregamento de plugins detectada: %1$d plugin(s). GN usará isso ao aplicar plugins gerenciados desta coleção.</string>
     <string name="nexus_file_conflict_rules_detected">Regras de conflito de arquivo/mod detectadas: %1$d. Elas são mostradas para revisão; vencedores por arquivo não compatíveis não são aplicados automaticamente.</string>
     <string name="nexus_rule_fields">Campos de regra: %1$s%2$s</string>

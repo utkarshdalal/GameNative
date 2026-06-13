@@ -1567,14 +1567,14 @@
     <string name="nexus_collection_title">Kolekcja Nexus</string>
     <string name="nexus_collection_ready">%1$d mod(y) gotowe. Wybrano %2$d.</string>
     <string name="nexus_collection_ready_with_failed">%1$d mod(y) gotowe; %2$d nie udało się rozwiązać. Wybrano %3$d.</string>
-    <string name="nexus_estimated_temp_space">Szacowane miejsce tymczasowe: %1$s; dostępne %2$s.</string>
+    <string name="nexus_estimated_temp_space">Szacowane miejsce potrzebne podczas importu: %1$s; dostępne %2$s.</string>
+    <string name="nexus_import_space_cache_note">Obejmuje rozpakowaną pamięć podręczną modów zachowaną do bezpiecznego ponownego zastosowania/wyłączenia.</string>
     <string name="nexus_select_all">Zaznacz wszystko</string>
     <string name="nexus_clear">Wyczyść</string>
     <string name="nexus_retry_failed">Ponów nieudane</string>
     <string name="nexus_no_collection_items_filter">Żaden element kolekcji nie pasuje do tego filtra.</string>
     <string name="nexus_download_selected">Pobierz wybrane</string>
     <string name="nexus_collection_checklist_title">Lista kontrolna kolekcji</string>
-    <string name="nexus_collection_checklist_summary">%1$d do pobrania bez instrukcji manifestu | %2$d wymaga sprawdzenia umieszczenia | %3$d ręczne/zewnętrzne | %4$d nieobsługiwane/nierozwiązane</string>
     <string name="nexus_plugin_load_order_detected">Wykryto kolejność ładowania pluginów: %1$d plugin(ów). GN użyje jej podczas stosowania zarządzanych pluginów z tej kolekcji.</string>
     <string name="nexus_file_conflict_rules_detected">Wykryto reguły konfliktów plików/modów: %1$d. Są pokazane do sprawdzenia; nieobsługiwani zwycięzcy dla pojedynczych plików nie są stosowani automatycznie.</string>
     <string name="nexus_rule_fields">Pola reguł: %1$s%2$s</string>

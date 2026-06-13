@@ -1563,14 +1563,14 @@
     <string name="nexus_collection_title">Колекція Nexus</string>
     <string name="nexus_collection_ready">%1$d мод(ів) готово. Вибрано: %2$d.</string>
     <string name="nexus_collection_ready_with_failed">%1$d мод(ів) готово; %2$d не вдалося визначити. Вибрано: %3$d.</string>
-    <string name="nexus_estimated_temp_space">Оцінка тимчасового місця: %1$s; доступно %2$s.</string>
+    <string name="nexus_estimated_temp_space">Оцінка місця, потрібного під час імпорту: %1$s; доступно %2$s.</string>
+    <string name="nexus_import_space_cache_note">Містить кеш розпакованих модів, збережений для безпечного повторного застосування/вимкнення.</string>
     <string name="nexus_select_all">Вибрати все</string>
     <string name="nexus_clear">Очистити</string>
     <string name="nexus_retry_failed">Повторити невдалі</string>
     <string name="nexus_no_collection_items_filter">Немає елементів колекції для цього фільтра.</string>
     <string name="nexus_download_selected">Завантажити вибране</string>
     <string name="nexus_collection_checklist_title">Перевірка колекції</string>
-    <string name="nexus_collection_checklist_summary">%1$d можна завантажити без інструкцій маніфесту | %2$d потребують перевірки розміщення | %3$d вручну/зовнішні | %4$d не підтримуються/не визначені</string>
     <string name="nexus_plugin_load_order_detected">Виявлено порядок завантаження плагінів: %1$d plugin(s). GN використає його під час застосування керованих плагінів із цієї колекції.</string>
     <string name="nexus_file_conflict_rules_detected">Виявлено правила конфліктів файлів/модів: %1$d. Вони показані для перевірки; непідтримувані переможці окремих файлів не застосовуються автоматично.</string>
     <string name="nexus_rule_fields">Поля правил: %1$s%2$s</string>

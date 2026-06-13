@@ -1569,14 +1569,14 @@
     <string name="nexus_collection_title">Colecție Nexus</string>
     <string name="nexus_collection_ready">%1$d mod(uri) pregătite. %2$d selectate.</string>
     <string name="nexus_collection_ready_with_failed">%1$d mod(uri) pregătite; %2$d nu au putut fi rezolvate. %3$d selectate.</string>
-    <string name="nexus_estimated_temp_space">Spațiu temporar estimat: %1$s; disponibil %2$s.</string>
+    <string name="nexus_estimated_temp_space">Spațiu estimat necesar în timpul importului: %1$s; disponibil %2$s.</string>
+    <string name="nexus_import_space_cache_note">Include memoria cache a modurilor extrase păstrată pentru reaplicare/dezactivare în siguranță.</string>
     <string name="nexus_select_all">Selectează tot</string>
     <string name="nexus_clear">Șterge</string>
     <string name="nexus_retry_failed">Reîncearcă eșuate</string>
     <string name="nexus_no_collection_items_filter">Niciun element din colecție nu corespunde acestui filtru.</string>
     <string name="nexus_download_selected">Descarcă selectate</string>
     <string name="nexus_collection_checklist_title">Listă de verificare colecție</string>
-    <string name="nexus_collection_checklist_summary">%1$d descărcabile fără instrucțiuni de manifest | %2$d necesită verificarea plasării | %3$d manuale/externe | %4$d neacceptate/nerezolvate</string>
     <string name="nexus_plugin_load_order_detected">Ordine de încărcare plugin detectată: %1$d plugin(uri). GN o va folosi la aplicarea pluginurilor gestionate din această colecție.</string>
     <string name="nexus_file_conflict_rules_detected">Reguli de conflict fișier/mod detectate: %1$d. Sunt afișate pentru verificare; câștigătorii pe fișier neacceptați nu sunt aplicați automat.</string>
     <string name="nexus_rule_fields">Câmpuri reguli: %1$s%2$s</string>

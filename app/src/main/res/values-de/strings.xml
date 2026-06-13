@@ -1504,14 +1504,14 @@
     <string name="nexus_collection_title">Nexus-Sammlung</string>
     <string name="nexus_collection_ready">%1$d Mod(s) bereit. %2$d ausgewählt.</string>
     <string name="nexus_collection_ready_with_failed">%1$d Mod(s) bereit; %2$d konnten nicht aufgelöst werden. %3$d ausgewählt.</string>
-    <string name="nexus_estimated_temp_space">Geschätzter temporärer Speicher: %1$s; verfügbar %2$s.</string>
+    <string name="nexus_estimated_temp_space">Geschätzter während des Imports benötigter Speicher: %1$s; verfügbar %2$s.</string>
+    <string name="nexus_import_space_cache_note">Enthält entpackten Mod-Cache, der für erneutes Anwenden/Deaktivieren sicher aufbewahrt wird.</string>
     <string name="nexus_select_all">Alle auswählen</string>
     <string name="nexus_clear">Löschen</string>
     <string name="nexus_retry_failed">Fehlgeschlagene erneut versuchen</string>
     <string name="nexus_no_collection_items_filter">Keine Sammlungseinträge passen zu diesem Filter.</string>
     <string name="nexus_download_selected">Ausgewählte herunterladen</string>
     <string name="nexus_collection_checklist_title">Sammlungs-Checkliste</string>
-    <string name="nexus_collection_checklist_summary">%1$d ohne Manifest-Anweisungen herunterladbar | %2$d benötigen Platzierungsprüfung | %3$d manuell/extern | %4$d nicht unterstützt/ungeklärt</string>
     <string name="nexus_plugin_load_order_detected">Plugin-Ladereihenfolge erkannt: %1$d Plugin(s). GN nutzt sie beim Anwenden verwalteter Plugins aus dieser Sammlung.</string>
     <string name="nexus_file_conflict_rules_detected">Datei-/Mod-Konfliktregeln erkannt: %1$d. Sie werden zur Prüfung angezeigt; nicht unterstützte einzelne Dateigewinner werden nicht automatisch angewendet.</string>
     <string name="nexus_rule_fields">Regelfelder: %1$s%2$s</string>

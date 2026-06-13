@@ -1568,14 +1568,14 @@
     <string name="nexus_collection_title">Nexus 컬렉션</string>
     <string name="nexus_collection_ready">%1$d개 모드 준비됨. %2$d개 선택됨.</string>
     <string name="nexus_collection_ready_with_failed">%1$d개 모드 준비됨; %2$d개를 확인할 수 없음. %3$d개 선택됨.</string>
-    <string name="nexus_estimated_temp_space">예상 임시 공간: %1$s; 사용 가능 %2$s.</string>
+    <string name="nexus_estimated_temp_space">가져오기 중 필요한 예상 공간: %1$s; 사용 가능 %2$s.</string>
+    <string name="nexus_import_space_cache_note">안전하게 다시 적용/비활성화할 수 있도록 보관되는 추출된 모드 캐시를 포함합니다.</string>
     <string name="nexus_select_all">모두 선택</string>
     <string name="nexus_clear">지우기</string>
     <string name="nexus_retry_failed">실패 항목 재시도</string>
     <string name="nexus_no_collection_items_filter">이 필터와 일치하는 컬렉션 항목이 없습니다.</string>
     <string name="nexus_download_selected">선택 항목 다운로드</string>
     <string name="nexus_collection_checklist_title">컬렉션 체크리스트</string>
-    <string name="nexus_collection_checklist_summary">%1$d개는 매니페스트 지침 없이 다운로드 가능 | %2$d개는 배치 검토 필요 | %3$d개는 수동/외부 | %4$d개는 지원 안 됨/미확인</string>
     <string name="nexus_plugin_load_order_detected">플러그인 로드 순서 감지됨: %1$d개. GN은 이 컬렉션의 관리되는 플러그인을 적용할 때 이를 사용합니다.</string>
     <string name="nexus_file_conflict_rules_detected">파일/모드 충돌 규칙 감지됨: %1$d개. 검토용으로 표시되며, 지원되지 않는 파일별 우선 항목은 자동 적용되지 않습니다.</string>
     <string name="nexus_rule_fields">규칙 필드: %1$s%2$s</string>

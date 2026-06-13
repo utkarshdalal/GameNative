@@ -266,6 +266,11 @@ internal fun CollectionSelectionSection(
                 style = MaterialTheme.typography.bodySmall,
                 color = if (availableBytes < estimatedRequiredBytes) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Text(
+                text = stringResource(R.string.nexus_import_space_cache_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             CollectionChecklist(
                 autoCount = autoCount,
                 placementCount = placementCount,
@@ -457,16 +462,24 @@ private fun CollectionChecklist(
     manualCount: Int,
     unsupportedCount: Int,
 ) {
+    val downloadableLabel = stringResource(R.string.nexus_filter_downloadable)
+    val placementLabel = stringResource(R.string.nexus_filter_placement)
+    val manualLabel = stringResource(R.string.nexus_filter_manual)
+    val unsupportedLabel = stringResource(R.string.nexus_filter_unsupported)
+    val summary = remember(autoCount, placementCount, manualCount, unsupportedCount, downloadableLabel, placementLabel, manualLabel, unsupportedLabel) {
+        buildList {
+            if (autoCount > 0) add("$autoCount $downloadableLabel")
+            if (placementCount > 0) add("$placementCount $placementLabel")
+            if (manualCount > 0) add("$manualCount $manualLabel")
+            if (unsupportedCount > 0) add("$unsupportedCount $unsupportedLabel")
+        }.joinToString(" | ")
+    }
+    if (summary.isBlank()) return
+
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(stringResource(R.string.nexus_collection_checklist_title), style = MaterialTheme.typography.labelLarge)
         Text(
-            stringResource(
-                R.string.nexus_collection_checklist_summary,
-                autoCount,
-                placementCount,
-                manualCount,
-                unsupportedCount,
-            ),
+            summary,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

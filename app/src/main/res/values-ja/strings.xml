@@ -1578,14 +1578,14 @@
     <string name="nexus_collection_title">Nexus コレクション</string>
     <string name="nexus_collection_ready">%1$d 個の Mod が準備完了。%2$d 個を選択中。</string>
     <string name="nexus_collection_ready_with_failed">%1$d 個の Mod が準備完了。%2$d 個を解決できませんでした。%3$d 個を選択中。</string>
-    <string name="nexus_estimated_temp_space">推定一時容量: %1$s、利用可能: %2$s。</string>
+    <string name="nexus_estimated_temp_space">インポート中に必要な推定容量: %1$s、利用可能: %2$s。</string>
+    <string name="nexus_import_space_cache_note">再適用や無効化を安全に行うため、展開済みModキャッシュを含みます。</string>
     <string name="nexus_select_all">すべて選択</string>
     <string name="nexus_clear">クリア</string>
     <string name="nexus_retry_failed">失敗分を再試行</string>
     <string name="nexus_no_collection_items_filter">このフィルターに一致するコレクション項目はありません。</string>
     <string name="nexus_download_selected">選択項目をダウンロード</string>
     <string name="nexus_collection_checklist_title">コレクション確認リスト</string>
-    <string name="nexus_collection_checklist_summary">%1$d 個はマニフェスト指示なしでダウンロード可能 | %2$d 個は配置確認が必要 | %3$d 個は手動/外部 | %4$d 個は未対応/未解決</string>
     <string name="nexus_plugin_load_order_detected">プラグイン読み込み順を検出: %1$d 個。GN はこのコレクションの管理対象プラグイン適用時に使用します。</string>
     <string name="nexus_file_conflict_rules_detected">ファイル/Mod の競合ルールを検出: %1$d。確認用に表示されます。未対応のファイル単位の勝者は自動適用されません。</string>
     <string name="nexus_rule_fields">ルール項目: %1$s%2$s</string>

@@ -1560,14 +1560,14 @@
     <string name="nexus_collection_title">Raccolta Nexus</string>
     <string name="nexus_collection_ready">%1$d mod pronti. %2$d selezionati.</string>
     <string name="nexus_collection_ready_with_failed">%1$d mod pronti; %2$d non risolti. %3$d selezionati.</string>
-    <string name="nexus_estimated_temp_space">Spazio temporaneo stimato: %1$s; disponibile %2$s.</string>
+    <string name="nexus_estimated_temp_space">Spazio stimato necessario durante l’importazione: %1$s; disponibile %2$s.</string>
+    <string name="nexus_import_space_cache_note">Include la cache dei mod estratti conservata per riapplicare/disattivare in sicurezza.</string>
     <string name="nexus_select_all">Seleziona tutto</string>
     <string name="nexus_clear">Cancella</string>
     <string name="nexus_retry_failed">Riprova non riusciti</string>
     <string name="nexus_no_collection_items_filter">Nessun elemento della raccolta corrisponde a questo filtro.</string>
     <string name="nexus_download_selected">Scarica selezionati</string>
     <string name="nexus_collection_checklist_title">Lista controllo raccolta</string>
-    <string name="nexus_collection_checklist_summary">%1$d scaricabili senza istruzioni manifest | %2$d richiedono revisione posizionamento | %3$d manuali/esterni | %4$d non supportati/non risolti</string>
     <string name="nexus_plugin_load_order_detected">Ordine di caricamento plugin rilevato: %1$d plugin. GN lo userà applicando i plugin gestiti da questa raccolta.</string>
     <string name="nexus_file_conflict_rules_detected">Regole conflitto file/mod rilevate: %1$d. Sono mostrate per revisione; i vincitori per singolo file non supportati non vengono applicati automaticamente.</string>
     <string name="nexus_rule_fields">Campi regola: %1$s%2$s</string>

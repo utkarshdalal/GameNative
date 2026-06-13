@@ -1621,14 +1621,14 @@
     <string name="nexus_collection_title">Nexus 收藏</string>
     <string name="nexus_collection_ready">%1$d 個模組已就緒。已選取 %2$d 個。</string>
     <string name="nexus_collection_ready_with_failed">%1$d 個模組已就緒；%2$d 個無法解析。已選取 %3$d 個。</string>
-    <string name="nexus_estimated_temp_space">預估暫存空間：%1$s；可用 %2$s。</string>
+    <string name="nexus_estimated_temp_space">匯入期間預估需要空間：%1$s；可用 %2$s。</string>
+    <string name="nexus_import_space_cache_note">包含保留的已解壓縮模組快取，用於安全地重新套用/停用。</string>
     <string name="nexus_select_all">全選</string>
     <string name="nexus_clear">清除</string>
     <string name="nexus_retry_failed">重試失敗項目</string>
     <string name="nexus_no_collection_items_filter">沒有收藏項目符合此篩選器。</string>
     <string name="nexus_download_selected">下載所選</string>
     <string name="nexus_collection_checklist_title">收藏檢查清單</string>
-    <string name="nexus_collection_checklist_summary">%1$d 個無需清單指示即可下載 | %2$d 個需要檢查放置位置 | %3$d 個手動/外部 | %4$d 個不支援/未解析</string>
     <string name="nexus_plugin_load_order_detected">偵測到外掛載入順序：%1$d 個外掛。GN 會在套用此收藏中的受管理外掛時使用它。</string>
     <string name="nexus_file_conflict_rules_detected">偵測到檔案/模組衝突規則：%1$d。這些會顯示供檢查；不支援的逐檔勝出規則不會自動套用。</string>
     <string name="nexus_rule_fields">規則欄位：%1$s%2$s</string>

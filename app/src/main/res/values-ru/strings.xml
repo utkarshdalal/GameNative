@@ -1497,14 +1497,14 @@ https://gamenative.app
     <string name="nexus_collection_title">Коллекция Nexus</string>
     <string name="nexus_collection_ready">%1$d мод(ов) готово. Выбрано: %2$d.</string>
     <string name="nexus_collection_ready_with_failed">%1$d мод(ов) готово; %2$d не удалось определить. Выбрано: %3$d.</string>
-    <string name="nexus_estimated_temp_space">Оценка временного места: %1$s; доступно %2$s.</string>
+    <string name="nexus_estimated_temp_space">Оценка места, нужного при импорте: %1$s; доступно %2$s.</string>
+    <string name="nexus_import_space_cache_note">Включает кэш распакованных модов, сохраненный для безопасного повторного применения/отключения.</string>
     <string name="nexus_select_all">Выбрать все</string>
     <string name="nexus_clear">Очистить</string>
     <string name="nexus_retry_failed">Повторить неудачные</string>
     <string name="nexus_no_collection_items_filter">Нет элементов коллекции для этого фильтра.</string>
     <string name="nexus_download_selected">Скачать выбранное</string>
     <string name="nexus_collection_checklist_title">Проверка коллекции</string>
-    <string name="nexus_collection_checklist_summary">%1$d можно скачать без инструкций манифеста | %2$d требуют проверки размещения | %3$d вручную/внешние | %4$d не поддерживаются/не определены</string>
     <string name="nexus_plugin_load_order_detected">Обнаружен порядок загрузки плагинов: %1$d plugin(s). GN использует его при применении управляемых плагинов из этой коллекции.</string>
     <string name="nexus_file_conflict_rules_detected">Обнаружены правила конфликтов файлов/модов: %1$d. Они показаны для проверки; неподдерживаемые победители отдельных файлов не применяются автоматически.</string>
     <string name="nexus_rule_fields">Поля правил: %1$s%2$s</string>

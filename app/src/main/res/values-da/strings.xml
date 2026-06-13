@@ -1434,14 +1434,14 @@
     <string name="nexus_collection_title">Nexus-samling</string>
     <string name="nexus_collection_ready">%1$d mod(s) klar. %2$d valgt.</string>
     <string name="nexus_collection_ready_with_failed">%1$d mod(s) klar; %2$d kunne ikke løses. %3$d valgt.</string>
-    <string name="nexus_estimated_temp_space">Anslået midlertidig plads: %1$s; tilgængelig %2$s.</string>
+    <string name="nexus_estimated_temp_space">Anslået plads nødvendig under import: %1$s; tilgængelig %2$s.</string>
+    <string name="nexus_import_space_cache_note">Inkluderer udpakket mod-cache, der bevares for sikker genanvendelse/deaktivering.</string>
     <string name="nexus_select_all">Vælg alle</string>
     <string name="nexus_clear">Ryd</string>
     <string name="nexus_retry_failed">Prøv mislykkede igen</string>
     <string name="nexus_no_collection_items_filter">Ingen samlingselementer matcher dette filter.</string>
     <string name="nexus_download_selected">Download valgte</string>
     <string name="nexus_collection_checklist_title">Samlingscheckliste</string>
-    <string name="nexus_collection_checklist_summary">%1$d kan downloades uden manifestinstruktioner | %2$d kræver placeringsgennemgang | %3$d manuel/ekstern | %4$d ikke understøttet/uløst</string>
     <string name="nexus_plugin_load_order_detected">Plugin-indlæsningsrækkefølge fundet: %1$d plugin(s). GN bruger den, når administrerede plugins fra denne samling anvendes.</string>
     <string name="nexus_file_conflict_rules_detected">Fil-/mod-konfliktregler fundet: %1$d. De vises til gennemgang; ikke-understøttede vindere pr. fil anvendes ikke automatisk.</string>
     <string name="nexus_rule_fields">Regelfelter: %1$s%2$s</string>
