@@ -470,4 +470,27 @@ class NexusApiClientTest {
 
         assertEquals(listOf(1L, 2L, 3L), ordered.map { it.fileId })
     }
+
+    @Test
+    fun collectionPlanner_ignoresDependencyModIdsFromOtherGameDomains() {
+        val files = listOf(
+            NexusCollectionFile(
+                gameDomain = "skyrimspecialedition",
+                modId = 200,
+                fileId = 2,
+                position = 0,
+                dependencyModIds = listOf(100),
+            ),
+            NexusCollectionFile(
+                gameDomain = "fallout4",
+                modId = 100,
+                fileId = 1,
+                position = 1,
+            ),
+        )
+
+        val ordered = NexusCollectionPlanner.orderedFiles(files)
+
+        assertEquals(listOf(2L, 1L), ordered.map { it.fileId })
+    }
 }

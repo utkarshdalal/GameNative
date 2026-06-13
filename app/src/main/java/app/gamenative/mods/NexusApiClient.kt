@@ -835,29 +835,6 @@ object NexusFileSelector {
 }
 
 object NexusCollectionPlanner {
-    fun orderedFiles(files: List<NexusCollectionFile>): List<NexusCollectionFile> {
-        val byModId = files.groupBy { it.modId }
-            .mapValues { (_, modFiles) -> modFiles.sortedWith(compareBy<NexusCollectionFile> { it.position }.thenBy { it.fileId }) }
-        val visited = mutableSetOf<String>()
-        val visiting = mutableSetOf<String>()
-        val output = mutableListOf<NexusCollectionFile>()
-
-        fun visit(file: NexusCollectionFile) {
-            val key = collectionFileKey(file)
-            if (key in visited || key in visiting) return
-            visiting += key
-            file.dependencyModIds.forEach { dependencyModId ->
-                byModId[dependencyModId].orEmpty().forEach(::visit)
-            }
-            visiting -= key
-            visited += key
-            output += file
-        }
-
-        files.sortedWith(compareBy<NexusCollectionFile> { it.position }.thenBy { it.modId }.thenBy { it.fileId }).forEach(::visit)
-        return output
-    }
-
-    private fun collectionFileKey(file: NexusCollectionFile): String =
-        "${file.gameDomain}:${file.modId}:${file.fileId}:${file.position}"
+    fun orderedFiles(files: List<NexusCollectionFile>): List<NexusCollectionFile> =
+        NexusCollectionFileOrdering.orderedFiles(files, preferPatches = false)
 }

@@ -1347,14 +1347,24 @@ object PrefManager {
             return if (encryptedBytes.isEmpty()) {
                 ""
             } else {
-                runCatching { String(Crypto.decrypt(encryptedBytes)) }.getOrDefault("")
+                runCatching { String(Crypto.decrypt(encryptedBytes)) }
+                    .onFailure {
+                        Timber.w(it, "Failed to decrypt Nexus API key; clearing saved key")
+                        removePref(NEXUS_API_KEY_ENC)
+                    }
+                    .getOrDefault("")
             }
         }
         set(value) {
             if (value.isBlank()) {
                 removePref(NEXUS_API_KEY_ENC)
             } else {
-                setPref(NEXUS_API_KEY_ENC, Crypto.encrypt(value.toByteArray()))
+                runCatching { Crypto.encrypt(value.toByteArray()) }
+                    .onSuccess { setPref(NEXUS_API_KEY_ENC, it) }
+                    .onFailure {
+                        Timber.w(it, "Failed to encrypt Nexus API key; clearing saved key")
+                        removePref(NEXUS_API_KEY_ENC)
+                    }
             }
         }
 

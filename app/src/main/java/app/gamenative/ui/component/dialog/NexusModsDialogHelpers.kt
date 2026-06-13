@@ -61,7 +61,7 @@ internal fun ModInstall.metadataSummary(): String =
 
 internal fun ModInstall.profileStatus(enabledInProfile: Boolean): String =
     when {
-        canPlaceFiles() && !enabledInProfile -> "PROFILE_DISABLED"
+        canPlaceFiles() && status != ModInstallStatus.DISABLED.name && !enabledInProfile -> "PROFILE_DISABLED"
         else -> status
     }
 

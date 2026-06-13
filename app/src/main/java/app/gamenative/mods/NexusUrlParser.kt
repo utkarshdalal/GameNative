@@ -110,9 +110,10 @@ object NexusCollectionUrlParser {
             .firstOrNull { it.first().equals("revisions", ignoreCase = true) || it.first().equals("revision", ignoreCase = true) }
             ?.getOrNull(1)
             ?.toIntOrNull()
-        val revisionFromQuery = NexusUrlParser.parseQuery(uri.rawQuery)["revision"]?.toIntOrNull()
-            ?: NexusUrlParser.parseQuery(uri.rawQuery)["revision_id"]?.toIntOrNull()
-            ?: NexusUrlParser.parseQuery(uri.rawQuery)["rev"]?.toIntOrNull()
+        val query = NexusUrlParser.parseQuery(uri.rawQuery)
+        val revisionFromQuery = query["revision"]?.toIntOrNull()
+            ?: query["revision_id"]?.toIntOrNull()
+            ?: query["rev"]?.toIntOrNull()
 
         return NexusCollectionReference(
             gameDomain = gameDomain,
