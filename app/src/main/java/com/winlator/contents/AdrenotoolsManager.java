@@ -5,6 +5,7 @@ import android.net.Uri;
 
 import android.content.Context;
 import android.util.Log;
+import app.gamenative.BuildConfig;
 import com.winlator.container.Container;
 import com.winlator.container.Shortcut;
 import com.winlator.container.ContainerManager;
@@ -29,14 +30,19 @@ import org.json.JSONObject;
 
 public class AdrenotoolsManager {
 
+    private static final String GRAPHICS_DRIVER_CACHE_DIR = "assets/graphics_driver";
     private File adrenotoolsContentDir;
+    private File graphicsDriverCacheDir;
     private Context mContext;
 
     public AdrenotoolsManager(Context context) {
         this.mContext = context;
         this.adrenotoolsContentDir = new File(mContext.getFilesDir(), "contents/adrenotools");
+        this.graphicsDriverCacheDir = new File(mContext.getFilesDir(), GRAPHICS_DRIVER_CACHE_DIR);
         if (!adrenotoolsContentDir.exists())
             adrenotoolsContentDir.mkdirs();
+        if (!graphicsDriverCacheDir.exists())
+            graphicsDriverCacheDir.mkdirs();
     }
 
     public String getLibraryName(String adrenoToolsDriverId) {
@@ -102,15 +108,22 @@ public class AdrenotoolsManager {
     public ArrayList<String> enumarateInstalledDrivers() {
         ArrayList<String> driversList = new ArrayList<>();
 
-        for (File f : adrenotoolsContentDir.listFiles()) {
-            boolean fromResources = isFromResources("graphics_driver/adrenotools-" + f.getName() + ".tzst");
-            if (!fromResources && new File(f, "meta.json").exists())
-                driversList.add(f.getName());
+        File[] files = adrenotoolsContentDir.listFiles();
+        if (files != null) {
+            for (File f : files) {
+                boolean fromResources = isFromResources("graphics_driver/adrenotools-" + f.getName() + ".tzst");
+                if (!fromResources && new File(f, "meta.json").exists())
+                    driversList.add(f.getName());
+            }
         }
         return driversList;
     }
 
     private boolean isFromResources(String driver) {
+        if (BuildConfig.MODERN_ANDROID) {
+            return false;
+        }
+
         AssetManager am = mContext.getResources().getAssets();
         InputStream is = null;
         boolean isFromResources = true;
@@ -127,16 +140,28 @@ public class AdrenotoolsManager {
     }
 
     private boolean extractDriverFromResources(String adrenotoolsDriverId) {
-        String src = "graphics_driver/adrenotools-" + adrenotoolsDriverId + ".tzst";
-        boolean hasExtracted;
-
+        String fileName = "adrenotools-" + adrenotoolsDriverId + ".tzst";
         File dst = new File(adrenotoolsContentDir, adrenotoolsDriverId);
+
         if (dst.exists())
             dst.delete();
-
         dst.mkdirs();
-        Log.d("AdrenotoolsManager", "Extracting " + src + " to " + dst.getAbsolutePath());
-        hasExtracted = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, mContext, src, dst);
+
+        boolean hasExtracted = false;
+
+        if (BuildConfig.MODERN_ANDROID) {
+            File cachedDriver = new File(graphicsDriverCacheDir, fileName);
+            if (cachedDriver.exists() && cachedDriver.length() > 0) {
+                Log.d("AdrenotoolsManager", "Extracting from cached driver: " + cachedDriver.getAbsolutePath() + " to " + dst.getAbsolutePath());
+                hasExtracted = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, cachedDriver, dst);
+            } else {
+                Log.w("AdrenotoolsManager", "Cached driver not found: " + fileName + ". Driver needs to be downloaded first.");
+            }
+        } else {
+            String src = "graphics_driver/" + fileName;
+            Log.d("AdrenotoolsManager", "Extracting from bundled assets: " + src + " to " + dst.getAbsolutePath());
+            hasExtracted = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, mContext, src, dst);
+        }
 
         if (!hasExtracted)
             dst.delete();
@@ -186,24 +211,36 @@ public class AdrenotoolsManager {
     }
 
     public void setDriverById(EnvVars envVars, ImageFs imagefs, String adrenotoolsDriverId) {
-        if (extractDriverFromResources(adrenotoolsDriverId) || enumarateInstalledDrivers().contains(adrenotoolsDriverId)) {
-            String driverPath = adrenotoolsContentDir.getAbsolutePath() + "/" + adrenotoolsDriverId + "/";
-            if (!getLibraryName(adrenotoolsDriverId).equals("")) {
-                envVars.put("ADRENOTOOLS_DRIVER_PATH", driverPath);
-                envVars.put("ADRENOTOOLS_HOOKS_PATH", imagefs.getLibDir());
-                envVars.put("ADRENOTOOLS_DRIVER_NAME", getLibraryName(adrenotoolsDriverId));
-                if (adrenotoolsDriverId.contains("v762") && GPUInformation.getVersion(mContext).contains("512.530")) {
-                    Log.d("AdrenotoolsManager", "Patching v762 driver for stock v530");
-                    FileUtils.writeToBinaryFile(driverPath + "notadreno_utils.so", 0x2680, 3);
-                } else if (adrenotoolsDriverId.contains("v762") && GPUInformation.getVersion(mContext).contains("512.502")) {
-                    Log.d("AdrenotoolsManager", "Patching v762 driver for stock v502");
-                    FileUtils.writeToBinaryFile(driverPath + "notadreno_utils.so", 0x2680, 2);
+        File driverDir = new File(adrenotoolsContentDir, adrenotoolsDriverId);
+        boolean driverExists = driverDir.exists() && new File(driverDir, "meta.json").exists();
+
+        if (!driverExists) {
+            boolean extracted = extractDriverFromResources(adrenotoolsDriverId);
+            if (!extracted && !enumarateInstalledDrivers().contains(adrenotoolsDriverId)) {
+                if (adrenotoolsDriverId != null && !adrenotoolsDriverId.isEmpty()
+                        && !adrenotoolsDriverId.equalsIgnoreCase("System")) {
+                    Log.w("AdrenotoolsManager", "Driver not found: " + adrenotoolsDriverId
+                        + " - Falling back to System driver");
                 }
+                return;
             }
-        } else if (adrenotoolsDriverId != null && !adrenotoolsDriverId.isEmpty()
-                && !adrenotoolsDriverId.equalsIgnoreCase("System")) {
-            Log.w("AdrenotoolsManager", "Driver not found: " + adrenotoolsDriverId
-                + " - Falling back to System driver");
+        }
+
+        String driverPath = adrenotoolsContentDir.getAbsolutePath() + "/" + adrenotoolsDriverId + "/";
+        String libraryName = getLibraryName(adrenotoolsDriverId);
+
+        if (!libraryName.equals("")) {
+            envVars.put("ADRENOTOOLS_DRIVER_PATH", driverPath);
+            envVars.put("ADRENOTOOLS_HOOKS_PATH", imagefs.getLibDir());
+            envVars.put("ADRENOTOOLS_DRIVER_NAME", libraryName);
+
+            if (adrenotoolsDriverId.contains("v762") && GPUInformation.getVersion(mContext).contains("512.530")) {
+                Log.d("AdrenotoolsManager", "Patching v762 driver for stock v530");
+                FileUtils.writeToBinaryFile(driverPath + "notadreno_utils.so", 0x2680, 3);
+            } else if (adrenotoolsDriverId.contains("v762") && GPUInformation.getVersion(mContext).contains("512.502")) {
+                Log.d("AdrenotoolsManager", "Patching v762 driver for stock v502");
+                FileUtils.writeToBinaryFile(driverPath + "notadreno_utils.so", 0x2680, 2);
+            }
         }
     }
 }
