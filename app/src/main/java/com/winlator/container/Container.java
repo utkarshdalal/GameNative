@@ -129,8 +129,8 @@ public class Container {
     private byte dinputMapperType = 1;  // 1=standard, 2=XInput mapper
     // Disable external mouse input
     private boolean disableMouseInput = false;
-    // Touchscreen mode
-    private boolean touchscreenMode = false;
+    // Touchscreen mode (defaults on for XR builds)
+    private boolean touchscreenMode = app.gamenative.BuildConfig.XR_BUILD;
     // Shooter mode
     private boolean shooterMode = true;
     // Serialised JSON gesture configuration (used when touchscreenMode is true)

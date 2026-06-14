@@ -334,6 +334,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             envVars.putAll(this.envVars);
         }
 
+        if (BuildConfig.XR_BUILD) {
+            String shimPath = context.getApplicationInfo().nativeLibraryDir + "/libkgslshim.so";
+            if (new File(shimPath).exists()) {
+                String cur = envVars.get("LD_PRELOAD");
+                envVars.put("LD_PRELOAD", cur.isEmpty() ? shimPath : shimPath + ":" + cur);
+            }
+        }
+
         if (LsfgVkManager.isSupported(container)) {
             LsfgVkManager.ensureRuntimeInstalled(environment.getContext(), container);
             LsfgVkManager.writeConfig(container);
