@@ -12,6 +12,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
+import java.io.File
 import org.junit.Assert.*
 import org.junit.Assume.assumeFalse
 import org.junit.Before
@@ -74,6 +75,16 @@ class BestConfigServiceTest {
 
         // Initialize PrefManager
         PrefManager.init(context)
+
+        val workingDir = File(System.getProperty("user.dir"))
+        val manifestFile = listOf(
+            File(workingDir, "manifest.json"),
+            File(workingDir.parentFile, "manifest.json"),
+        ).firstOrNull { it.exists() }
+        if (manifestFile != null) {
+            PrefManager.componentManifestJson = manifestFile.readText()
+            PrefManager.componentManifestFetchedAt = System.currentTimeMillis()
+        }
     }
 
     /**
