@@ -1,0 +1,361 @@
+#include <jni.h>
+#include <android/hardware_buffer.h>
+#include <android/log.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <string.h>
+
+#define EGL_EGLEXT_PROTOTYPES
+#define GL_GLEXT_PROTOTYPES
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+
+#define LOG_TAG "GPUImage"
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,  LOG_TAG, __VA_ARGS__)
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG,  LOG_TAG, __VA_ARGS__)
+
+static inline void close_fence(int fd) {
+    if (fd >= 0) close(fd);
+}
+
+static void dump_ahb_usage(uint64_t usage)
+{
+    LOGD("AHB usage=0x%016" PRIx64 "\n", usage);
+
+    if ((usage & AHARDWAREBUFFER_USAGE_CPU_READ_MASK) ==
+        AHARDWAREBUFFER_USAGE_CPU_READ_RARELY)
+        LOGD("  CPU_READ_RARELY\n");
+
+    if ((usage & AHARDWAREBUFFER_USAGE_CPU_READ_MASK) ==
+        AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN)
+        LOGD("  CPU_READ_OFTEN\n");
+
+    if ((usage & AHARDWAREBUFFER_USAGE_CPU_WRITE_MASK) ==
+        AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY)
+        LOGD("  CPU_WRITE_RARELY\n");
+
+    if ((usage & AHARDWAREBUFFER_USAGE_CPU_WRITE_MASK) ==
+        AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN)
+        LOGD("  CPU_WRITE_OFTEN\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE)
+        LOGD("  GPU_SAMPLED_IMAGE\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER)
+        LOGD("  GPU_FRAMEBUFFER\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_COMPOSER_OVERLAY)
+        LOGD("  COMPOSER_OVERLAY\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_PROTECTED_CONTENT)
+        LOGD("  PROTECTED_CONTENT\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VIDEO_ENCODE)
+        LOGD("  VIDEO_ENCODE\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_SENSOR_DIRECT_DATA)
+        LOGD("  SENSOR_DIRECT_DATA\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER)
+        LOGD("  GPU_DATA_BUFFER\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_GPU_CUBE_MAP)
+        LOGD("  GPU_CUBE_MAP\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_GPU_MIPMAP_COMPLETE)
+        LOGD("  GPU_MIPMAP_COMPLETE\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_FRONT_BUFFER)
+        LOGD("  FRONT_BUFFER\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_0)
+        LOGD("  VENDOR_0\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_1)
+        LOGD("  VENDOR_1\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_2)
+        LOGD("  VENDOR_2\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_3)
+        LOGD("  VENDOR_3\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_4)
+        LOGD("  VENDOR_4\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_5)
+        LOGD("  VENDOR_5\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_6)
+        LOGD("  VENDOR_6\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_7)
+        LOGD("  VENDOR_7\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_8)
+        LOGD("  VENDOR_8\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_9)
+        LOGD("  VENDOR_9\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_10)
+        LOGD("  VENDOR_10\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_11)
+        LOGD("  VENDOR_11\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_12)
+        LOGD("  VENDOR_12\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_13)
+        LOGD("  VENDOR_13\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_14)
+        LOGD("  VENDOR_14\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_15)
+        LOGD("  VENDOR_15\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_16)
+        LOGD("  VENDOR_16\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_17)
+        LOGD("  VENDOR_17\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_18)
+        LOGD("  VENDOR_18\n");
+
+    if (usage & AHARDWAREBUFFER_USAGE_VENDOR_19)
+        LOGD("  VENDOR_19\n");
+
+    LOGD("===");
+}
+
+JNIEXPORT jlong JNICALL
+Java_com_winlator_renderer_GPUImage_nativeHardwareBufferFromSocket(
+        JNIEnv *env, jobject obj, jint fd)
+{
+    uint8_t ready = 1;
+    if (write((int)fd, &ready, 1) != 1) {
+        LOGE("nativeHardwareBufferFromSocket: write handshake failed");
+        return 0;
+    }
+    AHardwareBuffer *ahb = NULL;
+    if (AHardwareBuffer_recvHandleFromUnixSocket((int)fd, &ahb) != 0) {
+        LOGE("nativeHardwareBufferFromSocket: recvHandle failed");
+        return 0;
+    }
+
+    AHardwareBuffer_Desc desc;
+    AHardwareBuffer_describe(ahb, &desc);
+
+    LOGD("RemoteAHB: format=%u width=%u height=%u layers=%u\n",
+         desc.format,
+         desc.width,
+         desc.height,
+         desc.layers);
+
+    dump_ahb_usage(desc.usage);
+
+    return (jlong)(uintptr_t)ahb;
+}
+
+JNIEXPORT jlong JNICALL
+Java_com_winlator_renderer_GPUImage_nativeCreateHardwareBuffer(
+        JNIEnv *env, jobject obj, jshort width, jshort height)
+{
+    AHardwareBuffer_Desc desc;
+    memset(&desc, 0, sizeof(desc));
+    desc.width  = (uint32_t)(uint16_t)width;
+    desc.height = (uint32_t)(uint16_t)height;
+    desc.layers = 1;
+    desc.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+    desc.usage  = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE
+                  | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
+
+#if __ANDROID_API__ >= 29
+    if (AHardwareBuffer_isSupported(&desc) == 0) {
+        desc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE
+                   | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
+        if (AHardwareBuffer_isSupported(&desc) == 0) {
+            LOGE("nativeCreateHardwareBuffer: desc unsupported (%ux%u)", desc.width, desc.height);
+            return 0;
+        }
+    }
+#endif
+
+    AHardwareBuffer *ahb = NULL;
+    if (AHardwareBuffer_allocate(&desc, &ahb) != 0) {
+        LOGE("nativeCreateHardwareBuffer: alloc failed (%u x %u)", desc.width, desc.height);
+        return 0;
+    }
+    LOGD("nativeCreateHardwareBuffer: %u x %u -> %p", desc.width, desc.height, (void*)ahb);
+
+    AHardwareBuffer_Desc rdesc;
+    AHardwareBuffer_describe(ahb, &rdesc);
+
+    LOGD("LocalAHB: format=%u width=%u height=%u layers=%u\n",
+         rdesc.format,
+         rdesc.width,
+         rdesc.height,
+         rdesc.layers);
+
+    dump_ahb_usage(rdesc.usage);
+    return (jlong)(uintptr_t)ahb;
+}
+
+JNIEXPORT void JNICALL
+Java_com_winlator_renderer_GPUImage_nativeDestroyHardwareBuffer(
+        JNIEnv *env, jobject obj, jlong ptr)
+{
+    AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
+    if (ahb) {
+        LOGD("nativeDestroyHardwareBuffer: %p", (void*)ahb);
+        AHardwareBuffer_release(ahb);
+    }
+}
+
+JNIEXPORT jint JNICALL
+Java_com_winlator_renderer_GPUImage_nativeUnlockHardwareBuffer(
+        JNIEnv *env, jobject obj, jlong ptr)
+{
+    AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
+    if (!ahb) return -1;
+
+    int fence_fd = -1;
+    int result = AHardwareBuffer_unlock(ahb, &fence_fd);
+    if (result != 0) {
+        LOGE("nativeUnlockHardwareBuffer: unlock failed: %d", result);
+        return -1;
+    }
+    return (jint)fence_fd;
+}
+
+JNIEXPORT jobject JNICALL
+Java_com_winlator_renderer_GPUImage_nativeLockHardwareBuffer(
+        JNIEnv *env, jobject obj, jlong ptr, jint fence_fd, jobject old_buffer)
+{
+    AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
+    if (!ahb) {
+        LOGE("nativeLockHardwareBuffer: null ptr");
+        close_fence((int)fence_fd);
+        return NULL;
+    }
+
+    void *addr = NULL;
+    int result = AHardwareBuffer_lock(
+            ahb,
+            AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN,
+            (int)fence_fd,
+            NULL,
+            &addr
+    );
+
+    if (result != 0) {
+        LOGE("nativeLockHardwareBuffer: lock failed: %d", result);
+        close_fence((int)fence_fd);
+        return NULL;
+    }
+
+    AHardwareBuffer_Desc desc;
+    AHardwareBuffer_describe(ahb, &desc);
+
+    jlong bufferSize = (jlong)desc.stride * (jlong)desc.height * 4LL;
+
+    jobject buffer = (*env)->NewDirectByteBuffer(env, addr, bufferSize);
+    if (!buffer) {
+        LOGE("nativeLockHardwareBuffer: NewDirectByteBuffer failed");
+        AHardwareBuffer_unlock(ahb, NULL);
+        return NULL;
+    }
+    return buffer;
+}
+
+JNIEXPORT jshort JNICALL
+Java_com_winlator_renderer_GPUImage_nativeGetStride(
+        JNIEnv *env, jobject obj, jlong ptr)
+{
+    AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
+    if (!ahb) return -1;
+
+    AHardwareBuffer_Desc desc;
+    AHardwareBuffer_describe(ahb, &desc);
+    return (jshort)desc.stride;
+}
+
+JNIEXPORT jshort JNICALL
+Java_com_winlator_renderer_GPUImage_nativeGetWidth(
+        JNIEnv *env, jobject obj, jlong ptr)
+{
+    AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
+    if (!ahb) return -1;
+
+    AHardwareBuffer_Desc desc;
+    AHardwareBuffer_describe(ahb, &desc);
+    return (jshort)desc.width;
+}
+
+JNIEXPORT jshort JNICALL
+Java_com_winlator_renderer_GPUImage_nativeGetHeight(
+        JNIEnv *env, jobject obj, jlong ptr)
+{
+    AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
+    if (!ahb) return -1;
+
+    AHardwareBuffer_Desc desc;
+    AHardwareBuffer_describe(ahb, &desc);
+    return (jshort)desc.height;
+}
+
+JNIEXPORT void JNICALL
+Java_com_winlator_renderer_GPUImage_nativeCloseFence(
+        JNIEnv *env, jobject obj, jint fd)
+{
+    close_fence((int)fd);
+}
+
+
+JNIEXPORT jlong JNICALL
+Java_com_winlator_renderer_GPUImage_nativeCreateImageKHR(
+        JNIEnv *env, jobject obj, jlong ptr, jint textureId)
+{
+    AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
+    if (!ahb) return 0;
+
+    const EGLint attribList[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE};
+    AHardwareBuffer_acquire(ahb);
+
+    EGLClientBuffer clientBuffer = eglGetNativeClientBufferANDROID(ahb);
+    if (!clientBuffer) {
+        AHardwareBuffer_release(ahb);
+        return 0;
+    }
+
+    EGLDisplay eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    EGLImageKHR imageKHR = eglCreateImageKHR(eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, attribList);
+
+    if (!imageKHR) {
+        AHardwareBuffer_release(ahb);
+        return 0;
+    }
+
+    // Bind the EGL Image to the GLRenderer's Texture ID
+    glBindTexture(GL_TEXTURE_2D, (GLuint)textureId);
+    glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, imageKHR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    return (jlong)(uintptr_t)imageKHR;
+}
+
+JNIEXPORT void JNICALL
+Java_com_winlator_renderer_GPUImage_nativeDestroyImageKHR(
+        JNIEnv *env, jobject obj, jlong imagePtr)
+{
+    EGLImageKHR imageKHR = (EGLImageKHR)(uintptr_t)imagePtr;
+    if (imageKHR) {
+        EGLDisplay eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+        eglDestroyImageKHR(eglDisplay, imageKHR);
+    }
+}

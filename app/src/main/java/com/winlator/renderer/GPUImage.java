@@ -5,54 +5,47 @@ import com.winlator.xserver.Drawable;
 import java.nio.ByteBuffer;
 
 public class GPUImage extends Texture {
-    private long hardwareBufferPtr;
-    private long imageKHRPtr;
-    private ByteBuffer virtualData;
-    private short stride;
+    private long ahbPtr = 0;
+    private ByteBuffer mapping = null;
+    private int pendingFence = -1;
+    private short stride = 0;
+    private int width = -1;
+    private int height = -1;
+
+    private long imageKHRPtr = 0;
     private static boolean supported = false;
 
-    static {
-        System.loadLibrary("extras");
-    }
+    static { System.loadLibrary("gpuimage"); }
 
     public GPUImage(short width, short height) {
-        hardwareBufferPtr = createHardwareBuffer(width, height);
-        if (hardwareBufferPtr != 0) {
-            virtualData = lockHardwareBuffer(hardwareBufferPtr);
-            if (virtualData == null) {
-                System.err.println("Error: Failed to lock hardware buffer");
-                destroyHardwareBuffer(hardwareBufferPtr);
-                hardwareBufferPtr = 0;
-            }
-        } else {
-            System.err.println("Error: Failed to create hardware buffer");
+        ahbPtr = nativeCreateHardwareBuffer(width, height);
+        if (ahbPtr != 0) {
+            stride = nativeGetStride(ahbPtr);
+            this.width = nativeGetWidth(ahbPtr);
+            this.height = nativeGetHeight(ahbPtr);
+            mapping = nativeLockHardwareBuffer(ahbPtr, -1, null);
         }
     }
 
     public GPUImage(int socketFd) {
-        hardwareBufferPtr = hardwareBufferFromSocket(socketFd);
-        if (hardwareBufferPtr != 0) {
-            virtualData = lockHardwareBuffer(hardwareBufferPtr);
-            if (virtualData == null) {
-                System.err.println("Error: Failed to lock hardware buffer");
-                destroyHardwareBuffer(hardwareBufferPtr);
-                hardwareBufferPtr = 0;
-            }
-        } else {
-            System.err.println("Error: Failed to create hardware buffer");
+        ahbPtr = nativeHardwareBufferFromSocket(socketFd);
+        if (ahbPtr != 0) {
+            stride = nativeGetStride(ahbPtr);
+            width = nativeGetWidth(ahbPtr);
+            height = nativeGetHeight(ahbPtr);
+            mapping = null;
         }
     }
 
     @Override
     public void allocateTexture(short width, short height, ByteBuffer data) {
         if (isAllocated()) return;
+
         super.allocateTexture(width, height, null);
-        if (hardwareBufferPtr != 0) {
-            imageKHRPtr = createImageKHR(hardwareBufferPtr, textureId);
+        if (ahbPtr != 0) {
+            imageKHRPtr = nativeCreateImageKHR(ahbPtr, textureId);
             if (imageKHRPtr == 0) {
-                System.err.println("Error: Failed to create EGL image");
-                destroyHardwareBuffer(hardwareBufferPtr);
-                hardwareBufferPtr = 0;
+                android.util.Log.e("GPUImage", "Failed to create EGL image");
             }
         }
     }
@@ -63,75 +56,71 @@ public class GPUImage extends Texture {
         needsUpdate = false;
     }
 
-    public short getStride() {
-        return stride;
-    }
-
-    @Keep
-    private void setStride(short stride) {
-        this.stride = stride;
-    }
-
+    public long getHardwareBufferPtr() { return ahbPtr; }
     public ByteBuffer getVirtualData() {
-        return virtualData;
+        if (mapping == null && ahbPtr != 0) {
+            mapping = nativeLockHardwareBuffer(ahbPtr, -1, null);
+        }
+        return mapping;
+    }
+
+    public int getHeight() { return height; }
+
+    public int getWidth() { return width; }
+    public short getStride() { return stride; }
+
+    public int unlock() {
+        if (ahbPtr == 0) return -1;
+        int readyFence = nativeUnlockHardwareBuffer(ahbPtr);
+        pendingFence = readyFence;
+        return readyFence;
+    }
+
+    public void lock() {
+        if (ahbPtr == 0) return;
+        int fence = pendingFence;
+        pendingFence = -1;
+        mapping = nativeLockHardwareBuffer(ahbPtr, fence, mapping);
     }
 
     @Override
     public void destroy() {
         if (imageKHRPtr != 0) {
-            destroyImageKHR(imageKHRPtr);
+            nativeDestroyImageKHR(imageKHRPtr);
             imageKHRPtr = 0;
         }
-        if (hardwareBufferPtr != 0) {
-            destroyHardwareBuffer(hardwareBufferPtr);
-            hardwareBufferPtr = 0;
+        if (ahbPtr != 0) {
+            if (mapping != null) {
+                nativeUnlockHardwareBuffer(ahbPtr);
+                mapping = null;
+            }
+            nativeDestroyHardwareBuffer(ahbPtr);
+            ahbPtr = 0;
         }
-        virtualData = null;
+        if (pendingFence >= 0) {
+            nativeCloseFence(pendingFence);
+            pendingFence = -1;
+        }
         super.destroy();
     }
 
-    public static boolean isSupported() {
-        return supported;
-    }
-
+    public static boolean isSupported() { return supported; }
     public static void checkIsSupported() {
-        final short size = 8;
-        GPUImage gpuImage = new GPUImage(size, size);
-        gpuImage.allocateTexture(size, size, null);
-        supported = gpuImage.hardwareBufferPtr != 0 && gpuImage.imageKHRPtr != 0 && gpuImage.virtualData != null;
+        GPUImage gpuImage = new GPUImage((short)8, (short)8);
+        supported = gpuImage.ahbPtr != 0 && gpuImage.mapping != null;
         gpuImage.destroy();
     }
 
-    public long getHardwareBufferPtr() {
-        return this.hardwareBufferPtr;
-    }
+    private native long nativeHardwareBufferFromSocket(int fd);
+    private native long nativeCreateHardwareBuffer(short width, short height);
+    private native void nativeDestroyHardwareBuffer(long ptr);
+    private native int nativeUnlockHardwareBuffer(long ptr);
+    private native ByteBuffer nativeLockHardwareBuffer(long ptr, int fenceFd, ByteBuffer oldBuffer);
+    private native short nativeGetStride(long ptr);
+    private native short nativeGetWidth(long ptr);
+    private native short nativeGetHeight(long ptr);
+    private native void nativeCloseFence(int fenceFd);
 
-    public void lock() {
-        if (hardwareBufferPtr != 0 && virtualData == null) {
-            virtualData = lockHardwareBuffer(hardwareBufferPtr);
-        }
-    }
-
-    public int unlock() {
-        if (hardwareBufferPtr != 0 && virtualData != null) {
-            int fenceFd = unlockHardwareBuffer(hardwareBufferPtr);
-            virtualData = null;
-            return fenceFd;
-        }
-        return -1;
-    }
-
-    private native long hardwareBufferFromSocket(int fd);
-
-    private native long createHardwareBuffer(short width, short height);
-
-    private native void destroyHardwareBuffer(long hardwareBufferPtr);
-
-    private native ByteBuffer lockHardwareBuffer(long hardwareBufferPtr);
-
-    private native int unlockHardwareBuffer(long hardwareBufferPtr);
-
-    private native long createImageKHR(long hardwareBufferPtr, int textureId);
-
-    private native void destroyImageKHR(long imageKHRPtr);
+    private native long nativeCreateImageKHR(long ptr, int textureId);
+    private native void nativeDestroyImageKHR(long imagePtr);
 }

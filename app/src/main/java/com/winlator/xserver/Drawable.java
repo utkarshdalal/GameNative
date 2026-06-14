@@ -10,11 +10,12 @@ import com.winlator.xserver.GraphicsContext;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import timber.log.Timber;
+
 public class Drawable extends XResource {
     private ByteBuffer data;
     public final short height;
     private boolean offscreenStorage;
-    private boolean directScanout = false;
     private Callback<Drawable> onDestroyListener;
     private Runnable onDrawListener;
     public final Object renderLock;
@@ -38,7 +39,7 @@ public class Drawable extends XResource {
     private static native void fromBitmap(Bitmap bitmap, ByteBuffer byteBuffer);
 
     static {
-        System.loadLibrary("winlator_11");
+        System.loadLibrary("drawable");
     }
 
     public Drawable(int id, int width, int height, Visual visual) {
@@ -49,7 +50,11 @@ public class Drawable extends XResource {
         this.width = (short)width;
         this.height = (short)height;
         this.visual = visual;
-        this.data = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.LITTLE_ENDIAN);
+
+        GPUImage g = new GPUImage((short) width, (short) height);
+        this.texture = g;
+        this.data    = g.getVirtualData();
+        // this.data = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.LITTLE_ENDIAN);
     }
 
     public static Drawable fromBitmap(Bitmap bitmap) {
@@ -86,12 +91,8 @@ public class Drawable extends XResource {
         return data;
     }
 
-    public void setDirectScanout(boolean value) {
-        this.directScanout = value;
-    }
-
     public boolean isDirectScanout() {
-        return directScanout;
+        return false;
     }
 
     public void setData(ByteBuffer data) {
