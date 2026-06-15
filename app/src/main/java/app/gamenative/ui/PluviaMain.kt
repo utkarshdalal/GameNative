@@ -1235,6 +1235,7 @@ fun PluviaMain(
                 BootingSplash(
                     visible = state.showBootingSplash,
                     text = state.bootingSplashText,
+                    heroImageUrl = state.bootingSplashHeroImageUrl,
                 )
             }
 
