@@ -4346,6 +4346,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 } else {
                                     null
                                 }
+                            }
 
                             if (steamAppsMap.isNotEmpty()) {
                                 Timber.i("Inserting ${steamAppsMap.size} PICS apps to database")
