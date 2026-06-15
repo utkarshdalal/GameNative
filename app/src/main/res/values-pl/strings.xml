@@ -1533,4 +1533,17 @@
     <string name="screen_effects_scaling_mode_dls_desc">Wyostrzanie / klarowność.</string>
     <string name="screen_effects_scaling_mode_natural">Naturalny</string>
     <string name="screen_effects_scaling_mode_natural_desc">Cieplejszy odcień kolorów.</string>
+    <string name="stats_key_runs">Udane uruchomienia na twoim GPU</string>
+    <string name="stats_key_reviews">Recenzje 5-gwiazdkowe (twój GPU / twoje urządzenie)</string>
+    <string name="stats_key_fps">Oczekiwane FPS</string>
+    <string name="stats_key_session">Najdłuższa sesja na twoim urządzeniu</string>
+    <string name="sort_fps">Oczekiwane FPS</string>
+    <string name="sort_runs">Udane uruchomienia</string>
+    <string name="sort_reviews">Recenzje 5-gwiazdkowe (urządzenie)</string>
+    <string name="sort_reviews_gpu">Recenzje 5-gwiazdkowe (GPU)</string>
+    <string name="filter_expired">Wygasłe</string>
+    <string name="filter_playable">Grywalne (30+ FPS)</string>
+    <string name="filter_five_star_device">Recenzje 5-gwiazdkowe na urządzeniu</string>
+    <string name="filter_five_star_gpu">Recenzje 5-gwiazdkowe na GPU</string>
+    <string name="filter_proven_gpu">Sprawdzone na twoim GPU</string>
 </resources>

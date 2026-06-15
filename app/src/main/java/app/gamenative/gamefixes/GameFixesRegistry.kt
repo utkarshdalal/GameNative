@@ -39,6 +39,7 @@ object GameFixesRegistry {
         STEAM_Fix_413420,
         STEAM_Fix_752580,
         STEAM_Fix_1637320,
+        STEAM_Fix_1962700,
         STEAM_Fix_2868840,
         STEAM_Fix_3373660,
         STEAM_Fix_990080,

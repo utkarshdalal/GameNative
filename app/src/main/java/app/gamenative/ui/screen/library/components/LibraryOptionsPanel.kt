@@ -41,6 +41,10 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.ViewCarousel
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.SportsEsports
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Stars
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -62,6 +66,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.ui.component.GameStatsKey
 import app.gamenative.ui.component.OptionListItem
 import app.gamenative.ui.component.OptionRadioItem
 import app.gamenative.ui.component.OptionSectionHeader
@@ -173,6 +178,10 @@ fun LibraryOptionsPanel(
                             .verticalScroll(rememberScrollState())
                             .padding(vertical = 12.dp)
                     ) {
+                        GameStatsKey(modifier = Modifier.padding(horizontal = 8.dp))
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
                         OptionSectionHeader(text = stringResource(R.string.options_sort_by))
                         Column(
                             modifier = Modifier
@@ -212,7 +221,7 @@ fun LibraryOptionsPanel(
                                     )
                                 ) {
                                     OptionListItem(
-                                        text = appFilter.displayText,
+                                        text = stringResource(appFilter.displayTextRes),
                                         selected = selectedFilters.contains(appFilter),
                                         onClick = { onFilterChanged(appFilter) },
                                         icon = appFilter.icon,
@@ -238,10 +247,14 @@ fun LibraryOptionsPanel(
                                         AppFilter.SHARED,
                                         AppFilter.COMPATIBLE,
                                         AppFilter.EXPIRED,
+                                        AppFilter.PLAYABLE,
+                                        AppFilter.FIVE_STAR,
+                                        AppFilter.FIVE_STAR_GPU,
+                                        AppFilter.PROVEN_GPU,
                                     )
                                 ) {
                                     OptionListItem(
-                                        text = appFilter.displayText,
+                                        text = stringResource(appFilter.displayTextRes),
                                         selected = selectedFilters.contains(appFilter),
                                         onClick = { onFilterChanged(appFilter) },
                                         icon = appFilter.icon,
@@ -357,4 +370,8 @@ private fun SortOption.icon(): ImageVector = when (this) {
     SortOption.RECENTLY_PLAYED -> Icons.Default.Schedule
     SortOption.SIZE_SMALLEST -> Icons.Default.Compress
     SortOption.SIZE_LARGEST -> Icons.Default.Storage
+    SortOption.FPS_HIGH -> Icons.Rounded.Speed
+    SortOption.RUNS_HIGH -> Icons.Rounded.SportsEsports
+    SortOption.REVIEWS_HIGH -> Icons.Rounded.Star
+    SortOption.REVIEWS_GPU_HIGH -> Icons.Rounded.Stars
 }

@@ -302,13 +302,6 @@ object PrefManager {
             setPref(AUDIO_DRIVER, value)
         }
 
-    private val PULSEAUDIO_SUSPEND_BEHAVIOR = stringPreferencesKey("pulseaudio_suspend_behavior")
-    var pulseaudioSuspendBehavior: String
-        get() = getPref(PULSEAUDIO_SUSPEND_BEHAVIOR, PulseAudioComponent.SUSPEND_BEHAVIOR_THREAD)
-        set(value) {
-            setPref(PULSEAUDIO_SUSPEND_BEHAVIOR, value)
-        }
-
     private val PULSEAUDIO_LOW_LATENCY = booleanPreferencesKey("pulseaudio_low_latency")
     var pulseaudioLowLatency: Boolean
         get() = getPref(PULSEAUDIO_LOW_LATENCY, false)
@@ -1286,6 +1279,22 @@ object PrefManager {
         get() = getPref(GAME_COMPATIBILITY_CACHE, "{}")
         set(value) {
             setPref(GAME_COMPATIBILITY_CACHE, value)
+        }
+
+    // Device-wide game stats cache (JSON string)
+    private val DEVICE_GAME_STATS_CACHE = stringPreferencesKey("device_game_stats_cache")
+    var deviceGameStatsCache: String
+        get() = getPref(DEVICE_GAME_STATS_CACHE, "{}")
+        set(value) {
+            setPref(DEVICE_GAME_STATS_CACHE, value)
+        }
+
+    // GPU-wide game stats cache (JSON string)
+    private val GPU_GAME_STATS_CACHE = stringPreferencesKey("gpu_game_stats_cache")
+    var gpuGameStatsCache: String
+        get() = getPref(GPU_GAME_STATS_CACHE, "{}")
+        set(value) {
+            setPref(GPU_GAME_STATS_CACHE, value)
         }
 
     /* Security / Attestation */

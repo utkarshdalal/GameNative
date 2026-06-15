@@ -624,6 +624,11 @@
     <string name="app_filter_tool">Tool</string>
     <string name="app_filter_demo">Demo</string>
     <string name="app_filter_family">Family</string>
+    <string name="filter_expired">Expired</string>
+    <string name="filter_playable">Playable (30+ FPS)</string>
+    <string name="filter_five_star_device">5-star reviews on device</string>
+    <string name="filter_five_star_gpu">5-star reviews on GPU</string>
+    <string name="filter_proven_gpu">Proven on your GPU</string>
 
     <!-- Login & Connection -->
     <string name="connecting_to_steam">Connecting to Steam…</string>
@@ -1217,6 +1222,12 @@
     <string name="library_compatibility_unknown">Unknown</string>
     <string name="library_not_compatible">Not Compatible</string>
 
+    <!-- Device game stats key/legend (for your device) -->
+    <string name="stats_key_runs">Successful runs on your GPU</string>
+    <string name="stats_key_reviews">5-star reviews (your GPU / your device)</string>
+    <string name="stats_key_fps">Expected FPS</string>
+    <string name="stats_key_session">Longest session on your device</string>
+
     <!-- Best Config Compatibility Messages -->
     <string name="best_config_exact_gpu_match">Known config works on your GPU</string>
     <string name="best_config_gpu_family_match">Known config should work on your GPU</string>
@@ -1278,6 +1289,10 @@
     <string name="sort_recently_played">Recently Played</string>
     <string name="sort_size_smallest">Size (Smallest)</string>
     <string name="sort_size_largest">Size (Largest)</string>
+    <string name="sort_fps">Expected FPS</string>
+    <string name="sort_runs">Successful runs</string>
+    <string name="sort_reviews">5-star reviews (device)</string>
+    <string name="sort_reviews_gpu">5-star reviews (GPU)</string>
 
     <!-- Game Options Panel -->
     <string name="game_options_title">Options</string>

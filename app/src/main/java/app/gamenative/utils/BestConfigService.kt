@@ -10,7 +10,6 @@ import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.core.DefaultVersion
 import com.winlator.contents.ContentProfile
-import com.winlator.core.GPUBlackist
 import com.winlator.core.GPUInformation
 import com.winlator.fexcore.FEXCorePresetManager
 import com.winlator.core.KeyValueSet
@@ -189,15 +188,6 @@ object BestConfigService {
             filtered.remove("executablePath")
         }
 
-        if (config.toString().contains("turnip", ignoreCase = true) && GPUBlackist.isTurnipBlacklisted()) {
-            if (matchType == "exact_gpu_match" || matchType == "gpu_family_match" || matchType == "fallback_match") {
-                filtered.remove("graphicsDriver")
-                filtered.remove("graphicsDriverVersion")
-                filtered.remove("graphicsDriverConfig")
-                return JsonObject(filtered)
-            }
-        }
-
         if (matchType == "exact_gpu_match" || matchType == "gpu_family_match") {
             // Apply all fields
             return JsonObject(filtered)
@@ -240,8 +230,7 @@ object BestConfigService {
         }
 
         if (GPUInformation.isAdreno8EliteGen5(context) &&
-            !matched.matches(Regex(".*adreno.*\\b8(4[0-9]|5[0-9])\\b.*")) &&
-            !GPUBlackist.isTurnipBlacklisted()
+            !matched.matches(Regex(".*adreno.*\\b8(4[0-9]|5[0-9])\\b.*"))
         ) {
             val kvs = KeyValueSet(filteredJson.optString("graphicsDriverConfig", ""))
             kvs.put("version", "Turnip Adreno Driver T26 (@Mr_Purple_666)")
@@ -357,7 +346,9 @@ object BestConfigService {
             manifestWine + manifestProton,
         )
         val availableDrivers = ManifestComponentHelper.buildAvailableVersions(
-            context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries).toList(),
+            ManifestComponentHelper.bundledGraphicsDriverBase(
+                context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries).toList(),
+            ),
             installed.installedDrivers,
             manifestDrivers,
         )
@@ -530,7 +521,9 @@ object BestConfigService {
         val baseFexcore = context.resources.getStringArray(R.array.fexcore_version_entries).toList()
         val baseWineBionic = context.resources.getStringArray(R.array.bionic_wine_entries).toList()
         val baseWineGlibc = context.resources.getStringArray(R.array.glibc_wine_entries).toList()
-        val baseDrivers = context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries).toList()
+        val baseDrivers = ManifestComponentHelper.bundledGraphicsDriverBase(
+            context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries).toList(),
+        )
 
         val locallyAvailableDxvk = ManifestComponentHelper.buildAvailableVersions(
             base = baseDxvk,

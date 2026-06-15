@@ -458,6 +458,7 @@ fun XServerScreen(
     var keepPausedForEditor by remember { mutableStateOf(false) }
     var hasPhysicalKeyboard by remember { mutableStateOf(false) }
     var hasPhysicalMouse by remember { mutableStateOf(false) }
+    var usingScreenMirror by remember { mutableStateOf(false) }
     var hasInternalTouchpad by remember { mutableStateOf(false) }
     var hasUpdatedScreenGamepad by remember { mutableStateOf(false) }
     var isPerformanceHudEnabled by remember { mutableStateOf(PrefManager.showFps) }
@@ -825,10 +826,7 @@ fun XServerScreen(
     }
 
     val tryCapturePointer: () -> Boolean = {
-        // Only recapture when we have a physical mouse plugged in (or internal touchpad),
-        // no menus are open and we're not in Touchscreen mode
-        if ((hasPhysicalMouse || hasInternalTouchpad) &&
-            !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
+        if (!showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
             !container.isTouchscreenMode) {
             PluviaApp.touchpadView?.postDelayed({
                 val view = PluviaApp.touchpadView
@@ -861,7 +859,8 @@ fun XServerScreen(
         controllerManager.scanForDevices()
         hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
 
-        if (!hasInternalTouchpad && !hasPhysicalMouse && !hasPhysicalKeyboard && !hasPhysicalController &&
+        if (!usingScreenMirror &&
+            !hasInternalTouchpad && !hasPhysicalMouse && !hasPhysicalKeyboard && !hasPhysicalController &&
             !container.isTouchscreenMode) {
             val manager = PluviaApp.inputControlsManager
             val profiles = manager?.getProfiles(false) ?: listOf()
@@ -1412,6 +1411,11 @@ fun XServerScreen(
                         }
                         tryCapturePointer()
                     }
+                }
+                val event = it.event
+                val device = event?.device
+                if (!usingScreenMirror && device?.name == "scrcpy") {
+                    usingScreenMirror = true
                 }
                 handled
             }
@@ -3288,8 +3292,7 @@ private fun setupXEnvironment(
         envVars.put("PULSE_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.PULSE_SERVER_PATH)
         environment.addComponent(PulseAudioComponent(
             UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.PULSE_SERVER_PATH),
-            container.getPulseaudioSuspendBehavior(),
-            container.getPulseaudioLowLatency()
+            container.pulseaudioLowLatency
         ))
     }
 
@@ -4138,7 +4141,7 @@ private fun unpackExecutableFile(
                         try {
                             val origDll = File("${imageFs.wineprefix}/dosdevices/a:/$relDllPath")
                             if (origDll.exists()) {
-                                val genCmd = "wine z:\\generate_interfaces_file.exe A:\\" + relDllPath.replace('/', '\\')
+                                val genCmd = "wine cmd /c \"z:\\generate_interfaces_file.exe A:\\" + relDllPath.replace('/', '\\') + " & wineserver -k\""
                                 Timber.i("Running generate_interfaces_file $genCmd")
                                 val genOutput = guestProgramLauncherComponent.execShellCommand(genCmd)
 
@@ -4503,7 +4506,7 @@ private suspend fun applyGeneralPatches(
 
 private fun refreshComponentsFiles(context: Context) {
     val extractionPairs = listOf(
-        "pulseaudio-gamenative-20260606.tzst" to File(context.filesDir, "pulseaudio")
+        "pulseaudio-gamenative-20260612.tzst" to File(context.filesDir, "pulseaudio")
     )
 
     AssetUtils.extractComponentsWithVersionCheck(

@@ -51,6 +51,9 @@ android {
 
         minSdk = 26
 
+        manifestPlaceholders["screenOrientation"] = "unspecified"
+        buildConfigField("boolean", "XR_BUILD", "false")
+
         versionCode = 14
         versionName = "1.0.0"
 
@@ -116,6 +119,15 @@ android {
             buildConfigField("boolean", "MODERN_ANDROID", "false")
             buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic.so\"")
         }
+        create("legacyXr") {
+            dimension = "androidApi"
+            targetSdk = 28
+            ndk.abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            buildConfigField("boolean", "MODERN_ANDROID", "false")
+            buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic.so\"")
+            buildConfigField("boolean", "XR_BUILD", "true")
+            manifestPlaceholders["screenOrientation"] = "landscape"
+        }
         create("modern") {
             dimension = "androidApi"
             minSdk = 29
@@ -123,6 +135,16 @@ android {
             ndk.abiFilters += listOf("arm64-v8a")
             buildConfigField("boolean", "MODERN_ANDROID", "true")
             buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic-wx.so\"")
+        }
+        create("modernXr") {
+            dimension = "androidApi"
+            minSdk = 29
+            targetSdk = 36
+            ndk.abiFilters += listOf("arm64-v8a")
+            buildConfigField("boolean", "MODERN_ANDROID", "true")
+            buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic-wx.so\"")
+            buildConfigField("boolean", "XR_BUILD", "true")
+            manifestPlaceholders["screenOrientation"] = "landscape"
         }
     }
 
@@ -201,9 +223,26 @@ android {
                 srcDirs("src/legacy/assets", "src/main/assets")
             }
         }
+        getByName("legacyXr") {
+            manifest.srcFile("src/legacy/AndroidManifest.xml")
+            assets {
+                srcDirs("src/legacy/assets", "src/main/assets")
+            }
+            jniLibs {
+                srcDirs("src/legacy/jniLibs")
+            }
+        }
         getByName("modern") {
             assets {
                 srcDirs("src/modern/assets", "src/main/assets")
+            }
+        }
+        getByName("modernXr") {
+            assets {
+                srcDirs("src/modern/assets", "src/main/assets")
+            }
+            jniLibs {
+                srcDirs("src/modern/jniLibs")
             }
         }
     }

@@ -242,7 +242,9 @@ private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStat
         glibcWineEntriesBase = stringArrayResource(R.array.glibc_wine_entries).toList(),
         emulatorEntries = stringArrayResource(R.array.emulator_entries).toList(),
         bionicGraphicsDrivers = stringArrayResource(R.array.bionic_graphics_driver_entries).toList(),
-        baseWrapperVersions = stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList(),
+        baseWrapperVersions = ManifestComponentHelper.bundledGraphicsDriverBase(
+            stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList(),
+        ),
         languages = listOf(
             "arabic", "bulgarian", "schinese", "tchinese", "czech", "danish", "dutch", "english",
             "finnish", "french", "german", "greek", "hungarian", "italian", "japanese", "koreana",

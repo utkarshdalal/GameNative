@@ -39,6 +39,7 @@ import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.ui.enums.PaneType
+import app.gamenative.ui.data.GameCardStats
 import app.gamenative.ui.icons.Amazon
 import app.gamenative.ui.icons.Steam
 import app.gamenative.ui.internal.fakeAppInfo
@@ -69,6 +70,7 @@ internal fun AppItem(
     isRefreshing: Boolean = false,
     imageRefreshCounter: Long = 0L,
     compatibilityStatus: GameCompatibilityStatus? = null,
+    gameStats: GameCardStats? = null,
     showFocusGlow: Boolean = true,
     enableFocusScale: Boolean = true,
 ) {
@@ -120,6 +122,7 @@ internal fun AppItem(
             onFocusChanged = { isFocused = it },
             isRefreshing = isRefreshing,
             compatibilityStatus = compatibilityStatus,
+            gameStats = gameStats,
             context = context,
         )
 
@@ -140,6 +143,7 @@ internal fun AppItem(
                 alpha = 0.1f
             },
             compatibilityStatus = compatibilityStatus,
+            gameStats = gameStats,
             showFocusGlow = showFocusGlow,
             context = context,
         )

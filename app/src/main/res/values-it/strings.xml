@@ -1526,4 +1526,17 @@
     <string name="screen_effects_scaling_mode_dls_desc">Passaggio di nitidezza / chiarezza.</string>
     <string name="screen_effects_scaling_mode_natural">Naturale</string>
     <string name="screen_effects_scaling_mode_natural_desc">Tonalità più calda.</string>
+    <string name="stats_key_runs">Esecuzioni riuscite sulla tua GPU</string>
+    <string name="stats_key_reviews">Recensioni a 5 stelle (la tua GPU / il tuo dispositivo)</string>
+    <string name="stats_key_fps">FPS previsti</string>
+    <string name="stats_key_session">Sessione più lunga sul tuo dispositivo</string>
+    <string name="sort_fps">FPS previsti</string>
+    <string name="sort_runs">Esecuzioni riuscite</string>
+    <string name="sort_reviews">Recensioni a 5 stelle (dispositivo)</string>
+    <string name="sort_reviews_gpu">Recensioni a 5 stelle (GPU)</string>
+    <string name="filter_expired">Scaduto</string>
+    <string name="filter_playable">Giocabile (30+ FPS)</string>
+    <string name="filter_five_star_device">Recensioni a 5 stelle sul dispositivo</string>
+    <string name="filter_five_star_gpu">Recensioni a 5 stelle sulla GPU</string>
+    <string name="filter_proven_gpu">Collaudato sulla tua GPU</string>
 </resources>
