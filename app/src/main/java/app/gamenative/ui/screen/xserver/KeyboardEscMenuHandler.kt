@@ -16,15 +16,15 @@ internal class KeyboardEscMenuHandler(
     private var menuJob: Job? = null
     private var menuTriggered = false
 
-    fun isEscOrBack(event: KeyEvent): Boolean =
-        event.keyCode == KeyEvent.KEYCODE_ESCAPE || event.keyCode == KeyEvent.KEYCODE_BACK
+    fun isEsc(event: KeyEvent): Boolean =
+        event.keyCode == KeyEvent.KEYCODE_ESCAPE
 
     fun cancel() {
         menuJob?.cancel()
         menuJob = null
     }
 
-    fun handleOverlayEscOrBack(event: KeyEvent, keyboard: Keyboard?) {
+    fun handleOverlayEsc(event: KeyEvent, keyboard: Keyboard?) {
         if (event.action == KeyEvent.ACTION_UP && menuJob != null && !menuTriggered) {
             dispatchEscToGame(event, keyboard)
         }
@@ -32,7 +32,7 @@ internal class KeyboardEscMenuHandler(
         menuTriggered = false
     }
 
-    fun handleGameEscOrBack(
+    fun handleGameEsc(
         event: KeyEvent,
         keyboard: Keyboard?,
         canOpenMenu: () -> Boolean,
@@ -53,23 +53,21 @@ internal class KeyboardEscMenuHandler(
                         }
                     }
                 }
-                dispatchEscToGame(event, keyboard) || event.keyCode == KeyEvent.KEYCODE_BACK
+                dispatchEscToGame(event, keyboard)
             }
             KeyEvent.ACTION_UP -> {
                 val shouldReleaseGameEsc = menuJob != null && !menuTriggered
-                val shouldConsume = menuJob != null ||
-                    menuTriggered ||
-                    event.keyCode == KeyEvent.KEYCODE_BACK
+                val shouldConsume = menuJob != null || menuTriggered
 
                 cancel()
                 if (shouldReleaseGameEsc) {
-                    dispatchEscToGame(event, keyboard) || event.keyCode == KeyEvent.KEYCODE_BACK
+                    dispatchEscToGame(event, keyboard)
                 } else {
                     menuTriggered = false
                     shouldConsume
                 }
             }
-            else -> dispatchEscToGame(event, keyboard) || event.keyCode == KeyEvent.KEYCODE_BACK
+            else -> dispatchEscToGame(event, keyboard)
         }
     }
 

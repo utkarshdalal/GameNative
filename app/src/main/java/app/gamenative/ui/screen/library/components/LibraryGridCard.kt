@@ -448,10 +448,18 @@ internal fun getGridImageUrl(
         GameSource.CUSTOM_GAME -> {
             val primary = when (paneType) {
                 PaneType.GRID_CAPSULE ->
-                    findSteamGridDBImage("grid_capsule") ?: appInfo.capsuleImageUrl
+                    // Capsule (vertical): user "coverv"/"cover" wins over SteamGridDB capsule.
+                    CustomGameScanner.findCapsuleCoverForCustomGame(appInfo.appId)
+                        ?: findSteamGridDBImage("grid_capsule")
+                        ?: appInfo.capsuleImageUrl
                 PaneType.GRID_HERO ->
-                    findSteamGridDBImage("grid_hero") ?: appInfo.headerImageUrl
+                    // Hero (horizontal): user "coverh"/"cover" wins over SteamGridDB hero.
+                    CustomGameScanner.findHeroCoverForCustomGame(appInfo.appId)
+                        ?: findSteamGridDBImage("grid_hero")
+                        ?: appInfo.headerImageUrl
                 else -> {
+                    // Default/carousel banner is also a horizontal hero view.
+                    val heroCover = CustomGameScanner.findHeroCoverForCustomGame(appInfo.appId)
                     val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
                     val heroUrl = gameFolderPath?.let { path ->
                         val folder = File(path)
@@ -466,7 +474,7 @@ internal fun getGridImageUrl(
                         }
                         heroFile?.let { android.net.Uri.fromFile(it).toString() }
                     }
-                    heroUrl ?: appInfo.headerImageUrl
+                    heroCover ?: heroUrl ?: appInfo.headerImageUrl
                 }
             }
             GridImageUrls(primary = primary)

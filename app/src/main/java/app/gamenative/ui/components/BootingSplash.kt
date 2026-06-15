@@ -26,16 +26,23 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.ui.theme.BrandGradient
-import androidx.compose.ui.platform.LocalContext
 import app.gamenative.R
+import app.gamenative.ui.theme.BrandGradient
+import app.gamenative.ui.theme.PluviaTheme
+import com.skydoves.landscapist.ImageOptions
+import com.skydoves.landscapist.coil.CoilImage
 import kotlin.math.sin
 import kotlin.random.Random
 import kotlinx.coroutines.delay
@@ -45,6 +52,7 @@ fun BootingSplash(
     visible: Boolean = true,
     text: String = "Initializing...",
     progress: Float = -1f, // -1 for indeterminate, 0-1 for determinate
+    heroImageUrl: String = "",
 ) {
     // Tips rotation (no animation cost, safe outside visibility check)
     val context = LocalContext.current
@@ -93,6 +101,8 @@ fun BootingSplash(
     ) {
         // Animations only run while visible (inside AnimatedVisibility scope)
         val infiniteTransition = rememberInfiniteTransition(label = "bootSplash")
+        val scrimColor = MaterialTheme.colorScheme.scrim
+        var heroImageFailed by remember(heroImageUrl) { mutableStateOf(false) }
 
         val glowAlpha by infiniteTransition.animateFloat(
             initialValue = 0.4f,
@@ -134,21 +144,71 @@ fun BootingSplash(
             label = "particlePhase",
         )
 
+        val useHeroBackdrop = heroImageUrl.isNotEmpty() && !heroImageFailed
+
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.background,
-                            PluviaTheme.colors.surfacePanel,
-                            MaterialTheme.colorScheme.background,
-                        ),
-                    ),
-                ),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.background,
+                                PluviaTheme.colors.surfacePanel,
+                                MaterialTheme.colorScheme.background,
+                            ),
+                        ),
+                    ),
+            )
+
             AmbientParticles(phase = particlePhase)
+
+            if (useHeroBackdrop) {
+                val desaturate = remember {
+                    ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
+                }
+
+                CoilImage(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = 1.06f
+                            scaleY = 1.06f
+                        }
+                        .alpha(0.38f)
+                        .blur(7.dp),
+                    imageModel = { heroImageUrl },
+                    imageOptions = ImageOptions(
+                        contentScale = ContentScale.Crop,
+                        contentDescription = null,
+                        colorFilter = desaturate,
+                    ),
+                    loading = {},
+                    failure = {
+                        heroImageFailed = true
+                    },
+                    previewPlaceholder = painterResource(R.drawable.ic_logo_color),
+                )
+
+                // Single soft legibility scrim: light at the top, building toward the
+                // bottom where the status/tips text sits. No heavy top/bottom bands.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to scrimColor.copy(alpha = 0.48f),
+                                    0.4f to scrimColor.copy(alpha = 0.48f),
+                                    1.0f to scrimColor.copy(alpha = 0.62f),
+                                ),
+                            ),
+                        ),
+                )
+            }
 
             // Main content
             Column(
@@ -213,8 +273,17 @@ fun BootingSplash(
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 1.sp,
+                        shadow = Shadow(
+                            color = scrimColor.copy(alpha = if (useHeroBackdrop) 0.9f else 0f),
+                            offset = Offset(0f, 1f),
+                            blurRadius = 6f,
+                        ),
                     ),
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = if (useHeroBackdrop) {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
+                    } else {
+                        Color.White.copy(alpha = 0.7f)
+                    },
                     textAlign = TextAlign.Center,
                 )
 
@@ -237,8 +306,17 @@ fun BootingSplash(
                                 text = tips[idx],
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     lineHeight = 20.sp,
+                                    shadow = Shadow(
+                                        color = scrimColor.copy(alpha = if (useHeroBackdrop) 0.9f else 0f),
+                                        offset = Offset(0f, 1f),
+                                        blurRadius = 6f,
+                                    ),
                                 ),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (useHeroBackdrop) {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.76f)
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -251,6 +329,54 @@ fun BootingSplash(
         }
     }
 }
+
+@Composable
+private fun AmbientParticles(
+    phase: Float,
+    modifier: Modifier = Modifier,
+) {
+    val particleColor = PluviaTheme.colors.accentCyan
+
+    val particles = remember {
+        List(12) {
+            ParticleData(
+                baseX = Random.nextFloat(),
+                baseY = Random.nextFloat(),
+                size = Random.nextFloat() * 3f + 1f,
+                speed = Random.nextFloat() * 0.5f + 0.5f,
+                phaseOffset = Random.nextFloat() * 360f,
+            )
+        }
+    }
+
+    Canvas(modifier = modifier.fillMaxSize()) {
+        particles.forEach { particle ->
+            val animatedPhase = (phase + particle.phaseOffset) * particle.speed
+            val radians = Math.toRadians(animatedPhase.toDouble())
+
+            val offsetX = (sin(radians) * 30).toFloat()
+            val offsetY = (sin(radians * 0.7) * 20).toFloat()
+
+            val x = particle.baseX * size.width + offsetX
+            val y = particle.baseY * size.height + offsetY
+            val alpha = (0.15f + 0.15f * sin(radians * 2).toFloat()).coerceIn(0f, 0.3f)
+
+            drawCircle(
+                color = particleColor.copy(alpha = alpha),
+                radius = particle.size.dp.toPx(),
+                center = Offset(x, y),
+            )
+        }
+    }
+}
+
+private data class ParticleData(
+    val baseX: Float,
+    val baseY: Float,
+    val size: Float,
+    val speed: Float,
+    val phaseOffset: Float,
+)
 
 @Composable
 private fun ProgressBar(
@@ -306,55 +432,6 @@ private fun ProgressBar(
     }
 }
 
-@Composable
-private fun AmbientParticles(
-    phase: Float,
-    modifier: Modifier = Modifier,
-) {
-    val particleColor = PluviaTheme.colors.accentCyan
-
-    val particles = remember {
-        List(12) {
-            ParticleData(
-                baseX = Random.nextFloat(),
-                baseY = Random.nextFloat(),
-                size = Random.nextFloat() * 3f + 1f,
-                speed = Random.nextFloat() * 0.5f + 0.5f,
-                phaseOffset = Random.nextFloat() * 360f,
-            )
-        }
-    }
-
-    Canvas(modifier = modifier.fillMaxSize()) {
-        particles.forEach { particle ->
-            val animatedPhase = (phase + particle.phaseOffset) * particle.speed
-            val radians = Math.toRadians(animatedPhase.toDouble())
-
-            val offsetX = (sin(radians) * 30).toFloat()
-            val offsetY = (sin(radians * 0.7) * 20).toFloat()
-
-            val x = particle.baseX * size.width + offsetX
-            val y = particle.baseY * size.height + offsetY
-
-            // Pulsing alpha based on phase
-            val alpha = (0.15f + 0.15f * sin(radians * 2).toFloat()).coerceIn(0f, 0.3f)
-
-            drawCircle(
-                color = particleColor.copy(alpha = alpha),
-                radius = particle.size.dp.toPx(),
-                center = Offset(x, y),
-            )
-        }
-    }
-}
-
-private data class ParticleData(
-    val baseX: Float,
-    val baseY: Float,
-    val size: Float,
-    val speed: Float,
-    val phaseOffset: Float,
-)
 
 @Preview(name = "BootingSplash - Indeterminate")
 @Composable

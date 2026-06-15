@@ -1534,6 +1534,8 @@
 
     <!-- 设置：界面组 -->
     <string name="settings_interface_icon_style">图标样式</string>
+    <string name="settings_interface_custom_games">自定义游戏</string>
+    <string name="settings_interface_custom_game_import_as_steam">将自定义游戏作为 Steam 游戏导入</string>
 
     <!-- 工具：Wine 进程 -->
     <string name="tools_wine_processes_empty">未检测到正在运行的EXE。</string>

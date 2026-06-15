@@ -926,6 +926,8 @@
     <string name="settings_interface_show_gamepad_hints_title">Controller-Hinweise anzeigen</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Zeigt die Leiste mit Controller-Tastenhinweisen am unteren Bildschirmrand an</string>
     <string name="settings_interface_icon_style">Iconstil</string>
+    <string name="settings_interface_custom_games">Benutzerdefinierte Spiele</string>
+    <string name="settings_interface_custom_game_import_as_steam">Benutzerdefinierte Spiele als Steam-Spiel importieren</string>
     <string name="settings_interface_wifi_only_title">Nur über WLAN/LAN herunterladen</string>
     <string name="settings_interface_wifi_only_subtitle">Verhindert Downloads über mobile Daten</string>
     <string name="settings_interface_external_storage_title">Auf externen Speicher schreiben</string>

@@ -975,6 +975,8 @@
     <string name="settings_interface_show_gamepad_hints_title">Pokazuj podpowiedzi kontrolera</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Pokazuje pasek podpowiedzi przycisków kontrolera u dołu ekranu</string>
     <string name="settings_interface_icon_style">Styl ikony</string>
+    <string name="settings_interface_custom_games">Gry niestandardowe</string>
+    <string name="settings_interface_custom_game_import_as_steam">Importuj gry niestandardowe jako gry Steam</string>
     <string name="settings_interface_wifi_only_title">Pobieraj tylko przez Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Zapobiegaj pobieraniu przez dane komórkowe</string>
     <string name="settings_interface_external_storage_title">Zapisuj na pamięci zewnętrznej</string>

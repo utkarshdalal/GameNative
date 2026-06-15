@@ -969,6 +969,8 @@
     <string name="settings_interface_show_gamepad_hints_title">Show controller hints</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Show the controller button hints bar at the bottom of the screen</string>
     <string name="settings_interface_icon_style">Icon style</string>
+    <string name="settings_interface_custom_games">Custom Games</string>
+    <string name="settings_interface_custom_game_import_as_steam">Import custom games as Steam games</string>
     <string name="settings_interface_wifi_only_title">Download only over Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Prevent downloads on cellular data</string>
     <string name="settings_interface_external_storage_title">Write to external storage</string>

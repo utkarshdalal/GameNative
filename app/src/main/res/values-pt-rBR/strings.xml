@@ -785,6 +785,8 @@
     <string name="settings_interface_show_gamepad_hints_title">Mostrar dicas do controle</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Mostra a barra de dicas dos botões do controle na parte inferior da tela</string>
     <string name="settings_interface_icon_style">Estilo de ícone</string>
+    <string name="settings_interface_custom_games">Jogos personalizados</string>
+    <string name="settings_interface_custom_game_import_as_steam">Importar jogos personalizados como jogos Steam</string>
     <string name="settings_interface_wifi_only_title">Baixar apenas por Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Impedir downloads usando dados móveis</string>
     <string name="settings_interface_external_storage_title">Gravar no armazenamento externo</string>

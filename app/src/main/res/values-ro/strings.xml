@@ -967,6 +967,8 @@
 	<string name="settings_interface_show_gamepad_hints_title">Afișează indicii pentru controler</string>
 	<string name="settings_interface_show_gamepad_hints_subtitle">Afișează bara de indicii pentru butoanele controlerului în partea de jos a ecranului</string>
 	<string name="settings_interface_icon_style">Stil iconițe</string>
+	<string name="settings_interface_custom_games">Jocuri personalizate</string>
+	<string name="settings_interface_custom_game_import_as_steam">Importă jocurile personalizate ca jocuri Steam</string>
 	<string name="settings_interface_wifi_only_title">Descarcă doar prin Wi‑Fi/LAN</string>
 	<string name="settings_interface_wifi_only_subtitle">Previne descărcările pe date mobile</string>
 	<string name="settings_interface_external_storage_title">Scrie pe stocare externă</string>

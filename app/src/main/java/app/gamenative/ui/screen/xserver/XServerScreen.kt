@@ -1322,13 +1322,11 @@ fun XServerScreen(
                     else -> false
                 }
             } else if ((showElementEditor || keepPausedForEditor || showQuickMenu || isEditMode) && (isGamepad || isKeyboard)) {
-                val escOrBackPressed = !keepPausedForEditor &&
-                    (
-                        isKeyboard && it.event.keyCode == KeyEvent.KEYCODE_ESCAPE ||
-                            isPhysicalKeyboard && it.event.keyCode == KeyEvent.KEYCODE_BACK
-                        )
-                if (escOrBackPressed) {
-                    keyboardEscMenuHandler.handleOverlayEscOrBack(it.event, keyboard)
+                val escPressed = !keepPausedForEditor &&
+                    isKeyboard &&
+                    it.event.keyCode == KeyEvent.KEYCODE_ESCAPE
+                if (escPressed) {
+                    keyboardEscMenuHandler.handleOverlayEsc(it.event, keyboard)
                     if (it.event.action == KeyEvent.ACTION_DOWN && it.event.repeatCount == 0) {
                         if (BuildConfig.MODERN_ANDROID) {
                             (context as? ComponentActivity)?.onBackPressedDispatcher?.onBackPressed()
@@ -1360,9 +1358,9 @@ fun XServerScreen(
                         keyboardEscMenuHandler.cancel()
                         gameBack()
                         handled = true
-                    } else if (isPhysicalKeyboard && keyboardEscMenuHandler.isEscOrBack(it.event) &&
+                    } else if (isPhysicalKeyboard && keyboardEscMenuHandler.isEsc(it.event) &&
                         !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode) {
-                        handled = keyboardEscMenuHandler.handleGameEscOrBack(
+                        handled = keyboardEscMenuHandler.handleGameEsc(
                             event = it.event,
                             keyboard = keyboard,
                             canOpenMenu = { !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode },

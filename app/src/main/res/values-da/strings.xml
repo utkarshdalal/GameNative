@@ -785,6 +785,8 @@
     <string name="settings_interface_show_gamepad_hints_title">Vis controller-tip</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Viser bjælken med controller-knaptip nederst på skærmen</string>
     <string name="settings_interface_icon_style">Ikonstil</string>
+    <string name="settings_interface_custom_games">Tilpassede spil</string>
+    <string name="settings_interface_custom_game_import_as_steam">Importér tilpassede spil som Steam-spil</string>
     <string name="settings_interface_wifi_only_title">Download kun via Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Forhindrer downloads på mobildata</string>
     <string name="settings_interface_external_storage_title">Skriv til ekstern lager</string>

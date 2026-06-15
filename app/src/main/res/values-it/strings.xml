@@ -958,6 +958,8 @@
     <string name="settings_interface_show_gamepad_hints_title">Mostra suggerimenti del controller</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Mostra la barra dei suggerimenti dei pulsanti del controller nella parte inferiore dello schermo</string>
     <string name="settings_interface_icon_style">Stile icona</string>
+    <string name="settings_interface_custom_games">Giochi personalizzati</string>
+    <string name="settings_interface_custom_game_import_as_steam">Importa giochi personalizzati come giochi Steam</string>
     <string name="settings_interface_wifi_only_title">Scarica solo tramite Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Impedisci download su rete cellulare</string>
     <string name="settings_interface_external_storage_title">Scrivi su memoria esterna</string>

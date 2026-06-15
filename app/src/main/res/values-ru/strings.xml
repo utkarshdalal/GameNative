@@ -1046,6 +1046,8 @@ https://gamenative.app
     <string name="settings_interface_show_gamepad_hints_title">Показывать подсказки геймпада</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Показывает панель подсказок кнопок геймпада в нижней части экрана</string>
     <string name="settings_interface_icon_style">Стиль значка</string>
+    <string name="settings_interface_custom_games">Пользовательские игры</string>
+    <string name="settings_interface_custom_game_import_as_steam">Импортировать пользовательские игры как игры Steam</string>
     <string name="settings_interface_no_external_storage">Внешнее хранилище не обнаружено</string>
     <string name="settings_interface_restart_required_title">Требуется перезагрузка</string>
     <string name="settings_interface_storage_volume_title">Том хранилища</string>

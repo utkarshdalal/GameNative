@@ -1526,6 +1526,8 @@
     <string name="screen_effects_launch_sharpness_note">CAS 與 DLS 透過 vkBasalt 應用，將於下次啟動遊戲時生效。</string>
 
     <string name="settings_interface_icon_style">圖示樣式</string>
+    <string name="settings_interface_custom_games">自訂遊戲</string>
+    <string name="settings_interface_custom_game_import_as_steam">將自訂遊戲作為 Steam 遊戲匯入</string>
 
     <string name="tools_wine_processes_empty">未偵測到正在執行的 EXE。</string>
 

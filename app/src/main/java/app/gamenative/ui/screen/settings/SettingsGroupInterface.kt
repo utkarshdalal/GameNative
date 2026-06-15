@@ -1,7 +1,6 @@
 package app.gamenative.ui.screen.settings
 
 import android.content.res.Configuration
-import android.os.Build
 import android.os.Environment
 import android.os.storage.StorageManager
 import java.io.File
@@ -97,6 +96,7 @@ import app.gamenative.ui.screen.auth.GOGOAuthActivity
 import app.gamenative.ui.screen.auth.AmazonOAuthActivity
 import app.gamenative.service.amazon.AmazonAuthManager
 import app.gamenative.utils.PlatformOAuthHandlers
+import app.gamenative.utils.StorageUtils
 import app.gamenative.data.GameSource
 import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.ui.util.PlatformAuthUiHelpers
@@ -419,6 +419,23 @@ fun SettingsGroupInterface(
         }
     }
 
+    // Custom Game Settings
+    SettingsGroup(
+        modifier = Modifier.background(Color.Transparent),
+        title = { Text(text = stringResource(R.string.settings_interface_custom_games)) },
+    ) {
+        var importCustomGameAsSteamGame by rememberSaveable { mutableStateOf(PrefManager.importCustomGameAsSteamGame) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_custom_game_import_as_steam)) },
+            state = importCustomGameAsSteamGame,
+            onCheckedChange = {
+                importCustomGameAsSteamGame = it
+                PrefManager.importCustomGameAsSteamGame = it
+            },
+        )
+    }
+
     // Platform integrations now live in the System Menu. The detailed
     // integration tiles and logout flows have been removed from Settings
     // to avoid duplication.
@@ -499,36 +516,16 @@ fun SettingsGroupInterface(
         val sm = ctx.getSystemService(StorageManager::class.java)
 
         // All writable non-primary volumes (SD / USB).
-        // getExternalFilesDirs misses USB OTG on most devices, so also enumerate
-        // StorageManager.storageVolumes and synthesize the per-app files dir.
+        // getExternalFilesDirs misses USB OTG on most devices, so StorageUtils also
+        // enumerates StorageManager.storageVolumes and synthesizes the per-app files dir.
         // Runs off the composition thread because synthesizing the USB candidate
         // may need mkdirs() on first plug-in.
         val externalStorageFallbackLabel = stringResource(R.string.storage_external)
         val dirs by produceState(initialValue = emptyList<File>(), ctx) {
             value = withContext(Dispatchers.IO) {
-                val seen = mutableSetOf<String>()
-                val result = mutableListOf<File>()
-
-                fun tryAdd(dir: File?) {
-                    if (dir == null) return
-                    if (Environment.getExternalStorageState(dir) != Environment.MEDIA_MOUNTED) return
-                    if (sm?.getStorageVolume(dir)?.isPrimary == true) return
-                    if (seen.add(dir.absolutePath)) result += dir
-                }
-
-                ctx.getExternalFilesDirs(null)?.forEach { tryAdd(it) }
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    sm?.storageVolumes?.forEach { volume ->
-                        if (volume.isPrimary) return@forEach
-                        val volDir = volume.directory ?: return@forEach
-                        val candidate = File(volDir, "Android/data/${ctx.packageName}/files")
-                        if (!candidate.isDirectory) candidate.mkdirs()
-                        if (candidate.isDirectory) tryAdd(candidate)
-                    }
-                }
-
-                result
+                StorageUtils.getAllExternalFilesDirs(ctx)
+                    .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
+                    .filter { sm?.getStorageVolume(it)?.isPrimary != true }
             }
         }
 

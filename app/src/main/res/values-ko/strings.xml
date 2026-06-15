@@ -976,6 +976,8 @@
     <string name="settings_interface_show_gamepad_hints_title">컨트롤러 힌트 표시</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">화면 하단에 컨트롤러 버튼 힌트 바를 표시합니다</string>
     <string name="settings_interface_icon_style">아이콘 스타일</string>
+    <string name="settings_interface_custom_games">사용자 지정 게임</string>
+    <string name="settings_interface_custom_game_import_as_steam">사용자 지정 게임을 Steam 게임으로 가져오기</string>
     <string name="settings_interface_wifi_only_title">Wi-Fi/LAN으로만 다운로드</string>
     <string name="settings_interface_wifi_only_subtitle">셀룰러 데이터로 다운로드 방지</string>
     <string name="settings_interface_external_storage_title">외부 저장소에 쓰기</string>

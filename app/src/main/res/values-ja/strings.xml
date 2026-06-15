@@ -949,6 +949,8 @@
     <string name="settings_interface_show_gamepad_hints_title">ゲームパッドのヒントを表示</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">画面下部にゲームパッド操作ヒントバーを表示します</string>
     <string name="settings_interface_icon_style">アイコンのスタイル</string>
+    <string name="settings_interface_custom_games">カスタムゲーム</string>
+    <string name="settings_interface_custom_game_import_as_steam">カスタムゲームを Steam ゲームとしてインポート</string>
     <string name="settings_interface_wifi_only_title">Wi-Fi/LAN接続時のみダウンロード</string>
     <string name="settings_interface_wifi_only_subtitle">モバイルデータ通信でのダウンロードを防止します</string>
     <string name="settings_interface_external_storage_title">外部ストレージに保存</string>
