@@ -92,12 +92,17 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
 
     private final java.util.HashMap<Integer, WindowSurface> windowSurfaces = new java.util.HashMap<>();
 
+    private static class WindowGeometry {
+        final Rect src = new Rect();
+        final Rect dst = new Rect();
+    }
+
     private static class WindowSurface {
         int width, height;
-        int srcW, srcH;
         int zOrder;
         boolean visible = false;
-        Rect lastDst = new Rect();
+        final Rect lastSrc = new Rect();
+        final Rect lastDst = new Rect();
     }
 
     private volatile ScanoutFrameListener scanoutFrameListener = null;
@@ -138,11 +143,8 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private native void nativeBeginTransaction();
     private native void nativeApplyTransaction();
     private native void nativeUpdateWindow(long contentId, boolean visible, int zOrder,
-                                           int srcW, int srcH, int dstL, int dstT, int dstR, int dstB);
-
-    private void setupScanoutSurfaces() {
-        nativeInitScanout();
-    }
+            int srcL, int srcT, int srcR, int srcB,
+            int dstL, int dstT, int dstR, int dstB);
 
     private WindowSurface getOrCreateWindowSurface(int contentId, int w, int h)
     {
@@ -189,6 +191,32 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         return false;
     }
 
+    private boolean adjustRectLT(Rect src, Rect dst) {
+        final int originalDstW = dst.width();
+        final int originalDstH = dst.height();
+
+        if (originalDstW <= 0 || originalDstH <= 0) {
+            return false;
+        }
+
+        if (dst.left < 0) {
+            int clip = -dst.left;
+            int srcClip = (int)(((long) clip * src.width()) / originalDstW);
+            src.left += srcClip;
+            dst.left = 0;
+        }
+
+        if (dst.top < 0) {
+            int clip = -dst.top;
+            int srcClip = (int)(((long) clip * src.height()) / originalDstH);
+            src.top += srcClip;
+            dst.top = 0;
+        }
+
+        return src.right > src.left && src.bottom > src.top &&
+                dst.right > dst.left && dst.bottom > dst.top;
+    }
+
     private void computeLetterboxRect(int srcW, int srcH, int dstW, int dstH, Rect outRect) {
         float srcAspect = (float) srcW / srcH;
         float dstAspect = (float) dstW / dstH;
@@ -220,7 +248,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         if (surfaceInitialized) {
             nativeSetSfCallbackTarget(this);
             updateTransform();
-            setupScanoutSurfaces();
+            nativeInitScanout();
             sendCursorToNative(lastCursor);
             updateScene(); // creates WindowSurface SCs
             resubmitAllBuffers(); // pushes buffers into the freshly created SCs
@@ -305,9 +333,16 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             if (rw.content == null) continue;
             int contentId = rw.window.id;
             visibleIds.add(contentId);
+
             WindowSurface ws = getOrCreateWindowSurface(contentId, rw.content.width, rw.content.height);
-            Rect dst = new Rect();
-            computeWindowRect(rw.rootX, rw.rootY, rw.content.width, rw.content.height, rw.isDesktopWindow, rw.isDesktopChild, dst);
+            WindowGeometry geom = new WindowGeometry();
+
+            boolean geometryOk = computeWindowRect(
+                    rw.rootX, rw.rootY,
+                    rw.content.width, rw.content.height,
+                    rw.isDesktopWindow, rw.isDesktopChild,
+                    geom
+            );
 
             int srcW = rw.content.width;
             int srcH = rw.content.height;
@@ -319,18 +354,37 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                     srcH = ahbH;
                 }
             }
-            Timber.d(" contentId=%d srcW=%d srcH=%d dst.left=%d dst.top=%d dst.right=%d dst.bottom=%d",
-                                contentId, srcW, srcH, dst.left, dst.top, dst.right, dst.bottom);
 
-            boolean needsUpdate = !ws.visible || ws.zOrder != i || !dst.equals(ws.lastDst) || ws.srcW != srcW || ws.srcH != srcH;
+            boolean needsUpdate = !ws.visible || ws.zOrder != i
+                    || !geom.dst.equals(ws.lastDst)
+                    || !geom.src.equals(ws.lastSrc);
+
+            Timber.d(" [renderList i=%d] id=%d cls='%s' rootX=%d rootY=%d contentW=%d contentH=%d" +
+                            " srcW=%d srcH=%d" +
+                            " isDesktop=%b isDesktopChild=%b parentId=%d" +
+                            " dst=[%d,%d,%d,%d] src=[%d,%d,%d,%d] needsUpdate=%b geometryOk=%b",
+                    i, rw.window.id,
+                    rw.window.getClassName(),
+                    rw.rootX, rw.rootY,
+                    rw.content.width, rw.content.height,
+                    srcW, srcH,
+                    rw.isDesktopWindow, rw.isDesktopChild,
+                    rw.window.getParent() != null ? rw.window.getParent().id : -1,
+                    geom.dst.left, geom.dst.top, geom.dst.right, geom.dst.bottom,
+                    geom.src.left, geom.src.top, geom.src.right, geom.src.bottom,
+                    needsUpdate, geometryOk);
+
             if (needsUpdate) {
                 ws.visible = true;
                 ws.zOrder = i;
-                ws.lastDst.set(dst);
-                ws.srcW = srcW;
-                ws.srcH = srcH;
-                nativeUpdateWindow(contentId, true, i, srcW, srcH,
-                        dst.left, dst.top, dst.right, dst.bottom);
+                ws.lastDst.set(geom.dst);
+                ws.lastSrc.set(geom.src);
+
+                nativeUpdateWindow(
+                        contentId, true, i,
+                        geom.src.left, geom.src.top, geom.src.right, geom.src.bottom,
+                        geom.dst.left, geom.dst.top, geom.dst.right, geom.dst.bottom
+                );
             }
         }
 
@@ -339,7 +393,9 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 WindowSurface ws = entry.getValue();
                 if (ws.visible) {
                     ws.visible = false;
-                    nativeUpdateWindow(entry.getKey(), false, ws.zOrder, 0, 0, 0, 0, 0, 0);
+                    nativeUpdateWindow(entry.getKey(), false, ws.zOrder,
+                            0, 0, 0, 0,
+                            0, 0, 0, 0);
                 }
             }
         }
@@ -385,25 +441,37 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         }
     }
 
-    private void computeWindowRect(int rootX, int rootY, int w, int h, boolean isDesktopWindow, boolean isDesktopChild, Rect dst) {
-        // maximized x11 window has a few pixels bigger than container resolution
-        boolean isOversized = w > xServer.screenInfo.width && h > xServer.screenInfo.height;
+    private boolean computeWindowRect(int rootX, int rootY, int w, int h,
+                                      boolean isDesktopWindow, boolean isDesktopChild,
+                                      WindowGeometry out) {
+        out.src.set(0, 0, w, h);
 
-        // full-screen mode
-        if ((isDesktopWindow && rootX == 0 && rootY == 0) || isOversized) {
-            computeLetterboxRect(w, h, surfaceWidth, surfaceHeight, dst);
+        if (isDesktopWindow && rootX == 0 && rootY == 0) {
+            Timber.d("  computeWindowRect -> FULLSCREEN branch (isDesktopWindow=%b rootX=%d rootY=%d)",
+                    isDesktopWindow, rootX, rootY);
+
+            computeLetterboxRect(w, h, surfaceWidth, surfaceHeight, out.dst);
             if (cachedDesktopDst == null) cachedDesktopDst = new Rect();
-            cachedDesktopDst.set(dst);
+            cachedDesktopDst.set(out.dst);
             cachedDesktopSrcW = w;
             cachedDesktopSrcH = h;
         } else if (isDesktopChild && cachedDesktopDst != null &&
                 cachedDesktopSrcW > 0 && cachedDesktopSrcH > 0) {
+            Timber.d("  computeWindowRect -> DESKTOP_CHILD branch cachedDst=[%d,%d,%d,%d] srcW=%d srcH=%d",
+                    cachedDesktopDst.left, cachedDesktopDst.top,
+                    cachedDesktopDst.right, cachedDesktopDst.bottom,
+                    cachedDesktopSrcW, cachedDesktopSrcH);
+
             float scaleX = (float) cachedDesktopDst.width()  / cachedDesktopSrcW;
             float scaleY = (float) cachedDesktopDst.height() / cachedDesktopSrcH;
             int dstL = cachedDesktopDst.left + (int)(rootX * scaleX);
             int dstT = cachedDesktopDst.top  + (int)(rootY * scaleY);
-            dst.set(dstL, dstT, dstL + (int)(w * scaleX), dstT + (int)(h * scaleY));
+            int dstR = dstL + (int)(w * scaleX);
+            int dstB = dstT + (int)(h * scaleY);
+            out.dst.set(dstL, dstT, dstR, dstB);
         }
+
+        return adjustRectLT(out.src, out.dst);
     }
 
     @Override
@@ -497,6 +565,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         Timber.d("onUpdateWindowGeometry id=%s resized=%b", window.id, resized);
         if (resized) {
             windowSurfaces.remove(window.id);
+            nativeUnregisterWindowSC(window.id);
             Drawable newContent = window.getContent();
             if (newContent != null && newContent.width > 0 && newContent.height > 0) {
                 newContent.setOnDrawListener(() -> {

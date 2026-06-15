@@ -338,7 +338,10 @@ void ASurfaceRendererContext::scanoutSetCursorVisibility(bool visible) {
     });
 }
 
-void ASurfaceRendererContext::updateWindow(int64_t contentId, bool visible, int zOrder, int srcW, int srcH, int dstL, int dstT, int dstR, int dstB) {
+void ASurfaceRendererContext::updateWindow(int64_t contentId, bool visible, int zOrder,
+        int srcL, int srcT, int srcR, int srcB,
+        int dstL, int dstT, int dstR, int dstB)
+{
     void* sc = nullptr;
     {
         std::lock_guard<std::mutex> lk(windowScMutex);
@@ -347,18 +350,16 @@ void ASurfaceRendererContext::updateWindow(int64_t contentId, bool visible, int 
     }
     if (!sc || !fnSTCreate) return;
 
-    // If we're not inside a batched block, make a fast standalone transaction
     void* tx = currentTx ? currentTx : ST_CREATE();
 
     ST_SETVIS(tx, sc, visible ? 1 : 0);
     if (visible) {
-        ARect local_srcR{0, 0, srcW, srcH};
+        ARect local_srcR{srcL, srcT, srcR, srcB};
         ARect local_dstR{dstL, dstT, dstR, dstB};
         ST_SETGEO(tx, sc, &local_srcR, &local_dstR, 0);
         ST_SETZORDER(tx, sc, zOrder);
     }
 
-    // Apply immediately if not batched
     if (!currentTx) {
         ST_APPLY(tx);
         ST_DELETE(tx);
@@ -397,12 +398,9 @@ void ASurfaceRendererContext::unregisterWindowSC(int64_t contentId) {
     }
 
     if (sc) {
-        if (fnSTCreate && fnSTSetVisibility) {
-            void* tx = ST_CREATE();
+        oneShot([&](void* tx) {
             ST_SETVIS(tx, sc, 0);
-            ST_APPLY(tx);
-            ST_DELETE(tx);
-        }
+        });
         SC_RELEASE(sc);
     }
 }

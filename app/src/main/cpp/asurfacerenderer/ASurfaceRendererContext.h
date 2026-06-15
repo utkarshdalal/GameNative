@@ -55,7 +55,9 @@ public:
     // Surface Transactions
     void beginTransaction();
     void applyTransaction();
-    void updateWindow(int64_t contentId, bool visible, int zOrder, int srcW, int srcH, int dstL, int dstT, int dstR, int dstB);
+    void updateWindow(int64_t contentId, bool visible, int zOrder,
+          int srcL, int srcT, int srcR, int srcB,
+          int dstL, int dstT, int dstR, int dstB);
 
     void setSfCallbackTarget(JNIEnv* env, jobject rendererObj);
 

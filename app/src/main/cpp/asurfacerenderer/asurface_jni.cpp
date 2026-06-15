@@ -150,9 +150,10 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeApplyTransaction(JNIEnv*, jobj
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeUpdateWindow(
         JNIEnv*, jobject, jlong contentId, jboolean visible, jint zOrder,
-        jint srcW, jint srcH, jint dstL, jint dstT, jint dstR, jint dstB)
+        jint srcL, jint srcT, jint srcR, jint srcB,
+        jint dstL, jint dstT, jint dstR, jint dstB)
 {
     if (auto* r = g_ctx.load(std::memory_order_acquire)) {
-        r->updateWindow((int64_t)contentId, visible, zOrder, srcW, srcH, dstL, dstT, dstR, dstB);
+        r->updateWindow((int64_t)contentId, visible, zOrder, srcL, srcT, srcR, srcB, dstL, dstT, dstR, dstB);
     }
 }
