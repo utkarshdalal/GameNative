@@ -723,8 +723,11 @@
     <string name="gesture_action_right_click">Rechtsklick</string>
     <string name="gesture_action_middle_click">Mittelklick</string>
     <string name="gesture_pan_middle_mouse">Maus mittlere Taste ziehen</string>
+    <string name="gesture_pan_inverted_middle_mouse">Invertiertes Schwenken mit mittlerer Maustaste</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">Invertiertes WASD</string>
     <string name="gesture_pan_arrow_keys">Pfeiltasten</string>
+    <string name="gesture_pan_inverted_arrow_keys">Invertierte Pfeiltasten</string>
     <string name="gesture_zoom_scroll_wheel">Scrollrad</string>
     <string name="gesture_zoom_plus_minus">+/- Tasten</string>
     <string name="gesture_zoom_page_up_down">Bild auf/ab</string>
@@ -743,9 +746,13 @@
     <string name="gesture_header_special">Spezial</string>
     <string name="gesture_header_mouse">Maus</string>
     <string name="gesture_header_common_game">Häufige Spieltasten</string>
+    <string name="gesture_header_navigation_editing">Navigation / Bearbeitung</string>
+    <string name="gesture_header_symbols">Symbole</string>
     <string name="gesture_header_letters">Buchstaben A-Z</string>
     <string name="gesture_header_numbers">Zahlen 0-9</string>
+    <string name="gesture_header_numpad">Ziffernblock</string>
     <string name="gesture_header_function_keys">Funktionstasten</string>
+    <string name="gesture_header_modifiers_locks">Modifikatoren / Sperrtasten</string>
     <string name="gesture_two_finger_hold">Halten mit zwei Fingern</string>
     <string name="gesture_two_finger_hold_delay">Verzögerung für Halten mit zwei Fingern (ms)</string>
     <string name="gesture_three_finger_tap">Tippen mit drei Fingern</string>

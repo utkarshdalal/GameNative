@@ -754,8 +754,11 @@
 	<string name="gesture_action_right_click">Clic dreapta</string>
 	<string name="gesture_action_middle_click">Clic mijloc</string>
 	<string name="gesture_pan_middle_mouse">Pan mouse mijloc</string>
+	<string name="gesture_pan_inverted_middle_mouse">Pan inversat cu butonul din mijloc</string>
 	<string name="gesture_pan_wasd">WASD</string>
+	<string name="gesture_pan_inverted_wasd">WASD inversat</string>
 	<string name="gesture_pan_arrow_keys">Taste săgeți</string>
+	<string name="gesture_pan_inverted_arrow_keys">Taste săgeți inversate</string>
 	<string name="gesture_zoom_scroll_wheel">Roată scroll</string>
 	<string name="gesture_zoom_plus_minus">Taste +/-</string>
 	<string name="gesture_zoom_page_up_down">PgSus/PgJos</string>
@@ -774,9 +777,13 @@
     <string name="gesture_header_special">Special</string>
     <string name="gesture_header_mouse">Mouse</string>
     <string name="gesture_header_common_game">Taste comune de joc</string>
+    <string name="gesture_header_navigation_editing">Navigare / editare</string>
+    <string name="gesture_header_symbols">Simboluri</string>
     <string name="gesture_header_letters">Litere A-Z</string>
     <string name="gesture_header_numbers">Numere 0-9</string>
+    <string name="gesture_header_numpad">Tastatură numerică</string>
     <string name="gesture_header_function_keys">Taste funcționale</string>
+    <string name="gesture_header_modifiers_locks">Modificatori / blocări</string>
     <string name="gesture_two_finger_hold">Menținere cu două degete</string>
     <string name="gesture_two_finger_hold_delay">Întârziere menținere cu două degete (ms)</string>
     <string name="gesture_three_finger_tap">Atingere cu trei degete</string>

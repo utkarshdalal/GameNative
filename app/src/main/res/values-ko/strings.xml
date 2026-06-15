@@ -761,8 +761,11 @@
     <string name="gesture_action_right_click">오른쪽 클릭</string>
     <string name="gesture_action_middle_click">가운데 클릭</string>
     <string name="gesture_pan_middle_mouse">가운데 버튼 패닝</string>
+    <string name="gesture_pan_inverted_middle_mouse">반전 가운데 버튼 패닝</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">반전 WASD</string>
     <string name="gesture_pan_arrow_keys">화살표 키</string>
+    <string name="gesture_pan_inverted_arrow_keys">반전 화살표 키</string>
     <string name="gesture_zoom_scroll_wheel">스크롤 휠</string>
     <string name="gesture_zoom_plus_minus">+/- 키</string>
     <string name="gesture_zoom_page_up_down">페이지 위/아래</string>
@@ -781,9 +784,13 @@
     <string name="gesture_header_special">특수</string>
     <string name="gesture_header_mouse">마우스</string>
     <string name="gesture_header_common_game">일반 게임 키</string>
+    <string name="gesture_header_navigation_editing">탐색 / 편집</string>
+    <string name="gesture_header_symbols">기호</string>
     <string name="gesture_header_letters">문자 A-Z</string>
     <string name="gesture_header_numbers">숫자 0-9</string>
+    <string name="gesture_header_numpad">숫자 키패드</string>
     <string name="gesture_header_function_keys">기능 키</string>
+    <string name="gesture_header_modifiers_locks">보조키 / 잠금</string>
     <string name="gesture_two_finger_hold">두 손가락 길게 누르기</string>
     <string name="gesture_two_finger_hold_delay">두 손가락 길게 누르기 지연 (ms)</string>
     <string name="gesture_three_finger_tap">세 손가락 탭</string>

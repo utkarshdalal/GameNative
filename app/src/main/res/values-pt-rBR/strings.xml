@@ -574,8 +574,11 @@
     <string name="gesture_action_right_click">Clique direito</string>
     <string name="gesture_action_middle_click">Clique central</string>
     <string name="gesture_pan_middle_mouse">Pan botão central</string>
+    <string name="gesture_pan_inverted_middle_mouse">Pan invertido com botão central</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">WASD invertido</string>
     <string name="gesture_pan_arrow_keys">Teclas de seta</string>
+    <string name="gesture_pan_inverted_arrow_keys">Teclas de seta invertidas</string>
     <string name="gesture_zoom_scroll_wheel">Roda de rolagem</string>
     <string name="gesture_zoom_plus_minus">Teclas +/-</string>
     <string name="gesture_zoom_page_up_down">PgUp/PgDn</string>
@@ -594,9 +597,13 @@
     <string name="gesture_header_special">Especial</string>
     <string name="gesture_header_mouse">Mouse</string>
     <string name="gesture_header_common_game">Teclas comuns de jogo</string>
+    <string name="gesture_header_navigation_editing">Navegação / edição</string>
+    <string name="gesture_header_symbols">Símbolos</string>
     <string name="gesture_header_letters">Letras A-Z</string>
     <string name="gesture_header_numbers">Números 0-9</string>
+    <string name="gesture_header_numpad">Teclado numérico</string>
     <string name="gesture_header_function_keys">Teclas de função</string>
+    <string name="gesture_header_modifiers_locks">Modificadores / bloqueios</string>
     <string name="gesture_two_finger_hold">Segurar com dois dedos</string>
     <string name="gesture_two_finger_hold_delay">Atraso ao segurar com dois dedos (ms)</string>
     <string name="gesture_three_finger_tap">Toque com três dedos</string>

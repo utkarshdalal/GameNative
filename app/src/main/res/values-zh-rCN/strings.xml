@@ -744,8 +744,11 @@
     <string name="gesture_action_right_click">右键单击</string>
     <string name="gesture_action_middle_click">中键单击</string>
     <string name="gesture_pan_middle_mouse">中键平移</string>
+    <string name="gesture_pan_inverted_middle_mouse">反向中键平移</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">反向 WASD</string>
     <string name="gesture_pan_arrow_keys">方向键</string>
+    <string name="gesture_pan_inverted_arrow_keys">反向方向键</string>
     <string name="gesture_zoom_scroll_wheel">滚轮</string>
     <string name="gesture_zoom_plus_minus">+/- 键</string>
     <string name="gesture_zoom_page_up_down">Page Up/Down</string>
@@ -764,9 +767,13 @@
     <string name="gesture_header_special">特殊</string>
     <string name="gesture_header_mouse">鼠标</string>
     <string name="gesture_header_common_game">常用游戏按键</string>
+    <string name="gesture_header_navigation_editing">导航 / 编辑</string>
+    <string name="gesture_header_symbols">符号</string>
     <string name="gesture_header_letters">字母 A-Z</string>
     <string name="gesture_header_numbers">数字 0-9</string>
+    <string name="gesture_header_numpad">数字键盘</string>
     <string name="gesture_header_function_keys">功能键</string>
+    <string name="gesture_header_modifiers_locks">修饰键 / 锁定键</string>
     <string name="gesture_two_finger_hold">双指长按</string>
     <string name="gesture_two_finger_hold_delay">双指长按延迟 (ms)</string>
     <string name="gesture_three_finger_tap">三指点按</string>

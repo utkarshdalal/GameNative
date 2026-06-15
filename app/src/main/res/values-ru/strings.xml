@@ -467,9 +467,13 @@
     <string name="gesture_header_special">Специальные</string>
     <string name="gesture_header_mouse">Мышь</string>
     <string name="gesture_header_common_game">Частые игровые клавиши</string>
+    <string name="gesture_header_navigation_editing">Навигация / редактирование</string>
+    <string name="gesture_header_symbols">Символы</string>
     <string name="gesture_header_letters">Буквы A-Z</string>
     <string name="gesture_header_numbers">Цифры 0-9</string>
+    <string name="gesture_header_numpad">Цифровая клавиатура</string>
     <string name="gesture_header_function_keys">Функциональные клавиши</string>
+    <string name="gesture_header_modifiers_locks">Модификаторы / блокировки</string>
     <string name="gesture_two_finger_hold">Удержание двумя пальцами</string>
     <string name="gesture_two_finger_hold_delay">Задержка удержания двумя пальцами (мс)</string>
     <string name="gesture_three_finger_tap">Касание тремя пальцами</string>
@@ -498,8 +502,11 @@
     <string name="gesture_long_press">Долгое нажатие</string>
     <string name="gesture_long_press_delay">Задержка долгого нажатия (мс)</string>
     <string name="gesture_pan_arrow_keys">Клавиши со стрелками</string>
+    <string name="gesture_pan_inverted_arrow_keys">Инвертированные стрелки</string>
     <string name="gesture_pan_middle_mouse">Панорамирование средней кнопки мыши</string>
+    <string name="gesture_pan_inverted_middle_mouse">Инвертированное панорамирование средней кнопкой мыши</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">Инвертированное WASD</string>
     <string name="gesture_pinch">Щипок внутрь/наружу</string>
     <string name="gesture_settings">Настройки жестов</string>
     <string name="gesture_settings_title">Настройки жестов касания</string>
