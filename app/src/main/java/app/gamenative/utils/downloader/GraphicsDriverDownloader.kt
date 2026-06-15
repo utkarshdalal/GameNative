@@ -51,7 +51,7 @@ object GraphicsDriverDownloader {
         // Validate component exists in manifest first (for both legacy and modern variants)
         val manifest = loadGraphicsDriverManifest(context)
         val component = manifest.components.find { it.id == componentId }
-            ?: throw Exception("Graphics driver $componentId not found in $GRAPHICS_DRIVER_MANIFEST_FILE")
+            ?: return@withContext null
 
         // Legacy variant: use bundled assets
         if (!BuildConfig.MODERN_ANDROID) {

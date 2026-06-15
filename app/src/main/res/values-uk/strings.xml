@@ -1529,4 +1529,17 @@
     <string name="screen_effects_scaling_mode_dls_desc">Прохід різкості / чіткості.</string>
     <string name="screen_effects_scaling_mode_natural">Природний</string>
     <string name="screen_effects_scaling_mode_natural_desc">Тепліший відтінок.</string>
+    <string name="stats_key_runs">Успішні запуски на вашому GPU</string>
+    <string name="stats_key_reviews">5-зіркові відгуки (ваш GPU / ваш пристрій)</string>
+    <string name="stats_key_fps">Очікуваний FPS</string>
+    <string name="stats_key_session">Найдовша сесія на вашому пристрої</string>
+    <string name="sort_fps">Очікуваний FPS</string>
+    <string name="sort_runs">Успішні запуски</string>
+    <string name="sort_reviews">5-зіркові відгуки (пристрій)</string>
+    <string name="sort_reviews_gpu">5-зіркові відгуки (GPU)</string>
+    <string name="filter_expired">Прострочено</string>
+    <string name="filter_playable">Придатна (30+ FPS)</string>
+    <string name="filter_five_star_device">5-зіркові відгуки на пристрої</string>
+    <string name="filter_five_star_gpu">5-зіркові відгуки на GPU</string>
+    <string name="filter_proven_gpu">Перевірено на вашому GPU</string>
 </resources>

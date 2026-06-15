@@ -1544,4 +1544,17 @@
     <string name="game_launch_tip_22">ヒント: タッチスクリーン モードを有効にすることができます。</string>
     <string name="game_launch_tip_23">ヒント: Mali GPU をお持ちの場合は、システム ドライバーを使用してください。</string>
     <string name="game_launch_tip_24">ヒント: 空白の画面が表示されますか?メニューの \"%s\" オプションを使用して、ドライバーが正しく動作しているかどうかを確認してください。</string>
+    <string name="stats_key_runs">お使いのGPUでの成功した実行回数</string>
+    <string name="stats_key_reviews">5つ星レビュー（GPU / お使いのデバイス）</string>
+    <string name="stats_key_fps">予想FPS</string>
+    <string name="stats_key_session">お使いのデバイスでの最長セッション</string>
+    <string name="sort_fps">予想FPS</string>
+    <string name="sort_runs">成功した実行回数</string>
+    <string name="sort_reviews">5つ星レビュー（デバイス）</string>
+    <string name="sort_reviews_gpu">5つ星レビュー（GPU）</string>
+    <string name="filter_expired">期限切れ</string>
+    <string name="filter_playable">プレイ可能（30+ FPS）</string>
+    <string name="filter_five_star_device">5つ星レビュー（デバイス）</string>
+    <string name="filter_five_star_gpu">5つ星レビュー（GPU）</string>
+    <string name="filter_proven_gpu">お使いのGPUで実証済み</string>
 </resources>

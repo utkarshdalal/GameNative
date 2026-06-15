@@ -1530,4 +1530,17 @@
     <string name="screen_effects_scaling_mode_dls_desc">Passe de netteté / clarté.</string>
     <string name="screen_effects_scaling_mode_natural">Naturel</string>
     <string name="screen_effects_scaling_mode_natural_desc">Teinte plus chaude.</string>
+    <string name="stats_key_runs">Lancements réussis sur votre GPU</string>
+    <string name="stats_key_reviews">Avis 5 étoiles (votre GPU / votre appareil)</string>
+    <string name="stats_key_fps">FPS attendus</string>
+    <string name="stats_key_session">Session la plus longue sur votre appareil</string>
+    <string name="sort_fps">FPS attendus</string>
+    <string name="sort_runs">Lancements réussis</string>
+    <string name="sort_reviews">Avis 5 étoiles (appareil)</string>
+    <string name="sort_reviews_gpu">Avis 5 étoiles (GPU)</string>
+    <string name="filter_expired">Expiré</string>
+    <string name="filter_playable">Jouable (30+ FPS)</string>
+    <string name="filter_five_star_device">Avis 5 étoiles sur l\'appareil</string>
+    <string name="filter_five_star_gpu">Avis 5 étoiles sur le GPU</string>
+    <string name="filter_proven_gpu">Éprouvé sur votre GPU</string>
 </resources>

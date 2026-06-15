@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
+import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.PrefManager
 import app.gamenative.enums.AppTheme
@@ -360,16 +361,18 @@ fun SettingsGroupInterface(
             },
         )
 
-        val anyFrontendSyncConfigured by FrontendSyncManager.anyConfigured.collectAsState()
-        SettingsMenuLink(
-            colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.settings_interface_frontend_sync_title)) },
-            subtitle = { Text(text = stringResource(R.string.settings_interface_frontend_sync_subtitle)) },
-            action = if (anyFrontendSyncConfigured) {
-                { FrontendSyncResyncButton() }
-            } else null,
-            onClick = { showFrontendSyncDialog = true },
-        )
+        if (!BuildConfig.MODERN_ANDROID) {
+            val anyFrontendSyncConfigured by FrontendSyncManager.anyConfigured.collectAsState()
+            SettingsMenuLink(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.settings_interface_frontend_sync_title)) },
+                subtitle = { Text(text = stringResource(R.string.settings_interface_frontend_sync_subtitle)) },
+                action = if (anyFrontendSyncConfigured) {
+                    { FrontendSyncResyncButton() }
+                } else null,
+                onClick = { showFrontendSyncDialog = true },
+            )
+        }
 
         // Language selection
         SettingsMenuLink(

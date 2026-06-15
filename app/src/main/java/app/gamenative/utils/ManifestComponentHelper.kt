@@ -1,6 +1,7 @@
 package app.gamenative.utils
 
 import android.content.Context
+import app.gamenative.BuildConfig
 import com.winlator.contents.AdrenotoolsManager
 import com.winlator.contents.ContentProfile
 import com.winlator.contents.ContentsManager
@@ -135,6 +136,14 @@ object ManifestComponentHelper {
             installed = installed.installed,
             installedDrivers = installed.installedDrivers,
         )
+    }
+
+    fun bundledGraphicsDriverBase(resourceEntries: List<String>): List<String> {
+        return if (BuildConfig.MODERN_ANDROID) {
+            resourceEntries.filter { it.equals("System", ignoreCase = true) }
+        } else {
+            resourceEntries
+        }
     }
 
     fun buildAvailableVersions(base: List<String>, installed: List<String>, manifest: List<ManifestEntry>, ): List<String> {

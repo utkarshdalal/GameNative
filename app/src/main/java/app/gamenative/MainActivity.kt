@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Color.TRANSPARENT
 import android.os.Build
@@ -64,6 +65,12 @@ class MainActivity : ComponentActivity() {
 
         private var currentOrientationChangeValue: Int = 0
         private var availableOrientations: EnumSet<Orientation> = EnumSet.of(Orientation.UNSPECIFIED)
+
+        fun isHeadset(context: Context): Boolean =
+            context.packageManager.hasSystemFeature("android.hardware.vr.headtracking") ||
+                Build.MANUFACTURER.equals("Oculus", true) ||
+                Build.MANUFACTURER.equals("Meta", true) ||
+                Build.MANUFACTURER.equals("Pico", true)
 
         // Store pending launch request to be processed after UI is ready
         @Volatile
@@ -145,6 +152,18 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+
+        if (isHeadset(this)) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            android.view.InputDevice.getDeviceIds().forEach { id ->
+                val d = android.view.InputDevice.getDevice(id) ?: return@forEach
+                val axes = d.motionRanges.joinToString(",") { mr -> "axis=${mr.axis}(min=${mr.min},max=${mr.max})" }
+                Timber.tag("HeadsetInput").i(
+                    "id=$id name='${d.name}' sources=0x%08x vendor=0x%04x product=0x%04x isGamepad=%b axes=[$axes]",
+                    d.sources, d.vendorId, d.productId, d.sources and android.view.InputDevice.SOURCE_GAMEPAD == android.view.InputDevice.SOURCE_GAMEPAD
+                )
+            }
+        }
 
         // stale keepAlive from a prior crash/swipe — no container is actually running
         if (SteamService.keepAlive && PluviaApp.xEnvironment == null) {
@@ -580,6 +599,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun setOrientationTo(orientation: Int, conformTo: EnumSet<Orientation>) {
+        if (isHeadset(this)) {
+            if (requestedOrientation != ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE) {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            }
+            return
+        }
         // Log.d("MainActivity$index", "Setting orientation to conform")
 
         // reverse direction of orientation
