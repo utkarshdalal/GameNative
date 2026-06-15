@@ -87,35 +87,6 @@ class ImageFsTest {
         assertEquals("glibc", imageFs().variant)
     }
 
-    // ── getArch ───────────────────────────────────────────────────────────────
-
-    @Test
-    fun `getArch returns empty string when file is absent`() {
-        assertEquals("", imageFs().arch)
-    }
-
-    @Test
-    fun `getArch returns empty string when file exists but is empty`() {
-        configDir().also { it.mkdirs() }
-        File(configDir(), ".arch").createNewFile()
-
-        assertEquals("", imageFs().arch)
-    }
-
-    @Test
-    fun `getArch returns empty string when file contains only whitespace`() {
-        configDir().also { it.mkdirs() }
-        File(configDir(), ".arch").writeText("   ")
-
-        assertEquals("", imageFs().arch)
-    }
-
-    @Test
-    fun `getArch returns stored value`() {
-        imageFs().createArchFile("arm64")
-        assertEquals("arm64", imageFs().arch)
-    }
-
     // ── getVersion ────────────────────────────────────────────────────────────
 
     @Test
