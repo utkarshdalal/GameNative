@@ -4,35 +4,15 @@
 // canvas.style.width/height (CSS layout). browsers render the canvas at its attribute
 // resolution in CSS px → overflows handheld viewports. fix: CSS cap with object-fit:contain.
 //
-// (2) sub-frame tap normalization. modern GMS HTML5 builds bind input via
-//   canvas.addEventListener('pointerdown'|'pointerup'|'pointerout'|'pointerleave'|
-//                           'pointercancel', _je)
-//   plus window.onmouseup = _Y81 (legacy mouse path the engine also keeps)
+// (2) sub-frame tap normalization. the engine's mouse-button state (_de) is polled at
+// room_speed and press is detected by XOR against the previous poll. a sub-frame tap sets
+// _de 0→1 (pointerdown) then back to 0 (pointerup/out/leave/cancel or the legacy window
+// mouseup path) within a SINGLE task, so no poll ever observes the press → no advance.
+// long-presses work only because _de stays 1 across poll intervals.
 //
-// the engine's _je pointer handler treats pointerup AND pointerout AND pointerleave AND
-// pointercancel all as "end" → sets _de=0 and _4e[i]._mc=0. _Y81 also clears _de via
-// _de &= ~1. the IO poll (_3Z2, paced at room_speed in _4p3 → _M1._Dd → _ae._oZ2 → _3Z2)
-// snapshots _de and XOR-compares against the previous snapshot to detect the 0→1 press
-// transition that triggers mouse_check_button_pressed (= this._hc[0]).
-//
-// THE BUG (verified live in DevTools):
-// for a sub-frame quick tap, ALL of these end-paths fire in the same task as pointerdown.
-// _de transitions 0→1 (pointerdown) → 0 (any of pointerup/out/leave/cancel/_Y81) within a
-// SINGLE task. The next IO poll observes _de=0 with _1Z2=0 -- no transition, no _hc[0]=1,
-// no advance. long-presses work because _de stays at 1 across multiple poll intervals.
-//
-// fix:
-//   (a) swallow native pointerup + pointerout + pointerleave + pointercancel at canvas
-//       capture phase so the engine never sees them clear _de
-//   (b) swallow mouseup at window capture phase so _Y81 doesn't clear _de via touch.js's
-//       synthetic mouseup (touch.js dispatches one on touchend; it bubbles to window)
-//   (c) on touchend, dispatch a SYNTHETIC pointerup tagged with __gnGmsSynth after DEFER_MS
-//       (constant + derivation below). the synth bypasses our own swallow (tag check) and
-//       reaches _je as the only path that releases _de back to 0. the delay spans one IO poll
-//       interval so the engine's poll is guaranteed to observe _de=1 at least once.
-//
-// derived from engine architecture (poll cadence + XOR press-detection), not a magic
-// latency. verified live with quick taps reliably advancing.
+// fix: swallow native end-events (pointerup/out/leave/cancel at canvas, mouseup at window)
+// so the engine can't clear _de early, then dispatch ONE synthetic pointerup tagged
+// __gnGmsSynth (bypasses the swallow) after DEFER_MS so a poll is guaranteed to see _de=1.
 (function () {
     'use strict';
     if (window.__gnGmsInstalled) return;
