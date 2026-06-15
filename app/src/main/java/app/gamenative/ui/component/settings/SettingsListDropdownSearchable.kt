@@ -114,7 +114,6 @@ fun SettingsListDropdownSearchable(
             onDismissRequest = { isDropdownExpanded = false },
         ) {
 
-            // 🔥 SEARCH FIELD
             TextField(
                 value = query,
                 onValueChange = { query = it },
@@ -125,7 +124,6 @@ fun SettingsListDropdownSearchable(
                 singleLine = true,
             )
 
-            // 🔥 FILTERED ITEMS
             filteredItems.forEach { (index, text) ->
                 val isMuted = itemMuted?.getOrNull(index) == true
                 val textColor = if (isMuted) {
