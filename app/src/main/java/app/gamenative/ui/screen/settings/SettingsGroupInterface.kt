@@ -101,6 +101,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.ui.util.PlatformAuthUiHelpers
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.StorageUtils
 
 /** Icon button that triggers [FrontendSyncManager.resyncAll] and shows a spinner while syncing. */
 @Composable
@@ -515,46 +516,37 @@ fun SettingsGroupInterface(
         val ctx = LocalContext.current
         val sm = ctx.getSystemService(StorageManager::class.java)
 
-        // All writable non-primary volumes (SD / USB).
-        // getExternalFilesDirs misses USB OTG on most devices, so also enumerate
-        // StorageManager.storageVolumes and synthesize the per-app files dir.
-        // Runs off the composition thread because synthesizing the USB candidate
-        // may need mkdirs() on first plug-in.
-        val externalStorageFallbackLabel = stringResource(R.string.storage_external)
-        val dirs by produceState(initialValue = emptyList<File>(), ctx) {
-            value = withContext(Dispatchers.IO) {
-                val seen = mutableSetOf<String>()
-                val result = mutableListOf<File>()
+        // All writable volumes: Filter for Removable (SD Card/USB) only
+        val dirs = remember {
+            // ContextCompat.getExternalFilesDirs returns ALL app-specific dirs.
+            // It returns NULL for volumes that are not mounted, so we just filterNotNull().
+            val allVolumes = StorageUtils.getAllExternalFilesDirs(ctx)
 
-                fun tryAdd(dir: File?) {
-                    if (dir == null) return
-                    if (Environment.getExternalStorageState(dir) != Environment.MEDIA_MOUNTED) return
-                    if (sm?.getStorageVolume(dir)?.isPrimary == true) return
-                    if (seen.add(dir.absolutePath)) result += dir
+            // Filter 1: Identify SD Cards/USB by checking if they are "Removable"
+            // This replaces the complex StorageManager/isPrimary logic
+            allVolumes.filter { dir ->
+                try {
+                    Environment.isExternalStorageRemovable(dir)
+                } catch (e: Exception) {
+                    // Fallback: If the check fails, assume it's secondary if it's NOT the primary data dir
+                    dir.absolutePath != ctx.getExternalFilesDir(null)?.absolutePath
                 }
-
-                ctx.getExternalFilesDirs(null)?.forEach { tryAdd(it) }
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    sm?.storageVolumes?.forEach { volume ->
-                        if (volume.isPrimary) return@forEach
-                        val volDir = volume.directory ?: return@forEach
-                        val candidate = File(volDir, "Android/data/${ctx.packageName}/files")
-                        if (!candidate.isDirectory) candidate.mkdirs()
-                        if (candidate.isDirectory) tryAdd(candidate)
-                    }
-                }
-
-                result
             }
+            // Optional: If you strictly want to hide the volume if the system reports it "Unknown" (rare)
+            // .filter { Environment.getExternalStorageState(it) != Environment.MEDIA_UNKNOWN }
         }
 
         // Labels the user sees
         val labels = remember(dirs) {
             dirs.map { dir ->
-                sm?.getStorageVolume(dir)?.getDescription(ctx) ?: externalStorageFallbackLabel
+                // Try to get a user-friendly name, fallback to the folder name (e.g., "1234-5678")
+                val volume = sm?.getStorageVolume(dir)
+                volume?.getDescription(ctx)
+                    ?: volume?.uuid?.let { "SD Card ($it)" }
+                    ?: "SD Card (${dir.parentFile?.parentFile?.parentFile?.parentFile?.name ?: dir.name})"
             }
         }
+        
         var useExternalStorage by rememberSaveable { mutableStateOf(PrefManager.useExternalStorage) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
@@ -812,4 +804,3 @@ private fun Preview_SettingsScreen() {
         )
     }
 }
-

@@ -1,6 +1,10 @@
 package app.gamenative.utils
 
+import android.content.Context
+import android.os.Build
+import android.os.Environment
 import android.os.StatFs
+import android.os.storage.StorageManager
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -74,6 +78,63 @@ object StorageUtils {
         )
 
         return result
+    }
+
+    /**
+     * Gets all app-specific external files directories, using StorageManager as a fallback
+     * for cases where context.getExternalFilesDirs(null) might return null or incomplete results.
+     */
+    fun getAllExternalFilesDirs(context: Context): List<File> {
+        val result = mutableSetOf<File>()
+
+        // 1. Primary source: Standard Android API
+        try {
+            context.getExternalFilesDirs(null)?.filterNotNull()?.let {
+                result.addAll(it)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error calling getExternalFilesDirs")
+        }
+
+        // 2. Fallback: Iterate through all storage volumes using StorageManager
+        val sm = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
+        if (sm != null) {
+            try {
+                for (volume in sm.storageVolumes) {
+                    val state = volume.state
+                    if (state == Environment.MEDIA_MOUNTED) {
+                        val volumeDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            volume.directory
+                        } else {
+                            // Use reflection as a last resort for older APIs (26-29) if getExternalFilesDirs failed
+                            try {
+                                val getPath = volume.javaClass.getMethod("getPath")
+                                val path = getPath.invoke(volume) as? String
+                                if (path != null) File(path) else null
+                            } catch (re: Exception) {
+                                null
+                            }
+                        }
+
+                        if (volumeDir != null) {
+                            // The app-specific dedicated directory is: /Android/data/<package_name>/files
+                            val appFilesDir = File(volumeDir, "Android/data/${context.packageName}/files")
+
+                            // If it's not already in our set, try to ensure it exists or at least add it if reachable
+                            if (!result.contains(appFilesDir)) {
+                                if (appFilesDir.exists() || appFilesDir.mkdirs()) {
+                                    result.add(appFilesDir)
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error iterating storage volumes in fallback")
+            }
+        }
+
+        return result.toList()
     }
 
     suspend fun moveDirectory(

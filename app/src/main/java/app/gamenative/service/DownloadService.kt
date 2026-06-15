@@ -2,6 +2,7 @@ package app.gamenative.service
 
 import android.content.Context
 import android.os.Environment
+import android.os.storage.StorageManager
 import app.gamenative.utils.StorageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -32,15 +33,20 @@ object DownloadService {
     fun populateDownloadService(context: Context) {
         baseDataDirPath = context.dataDir.path
         baseCacheDirPath = context.cacheDir.path
-        // Prefer the parent of external files dir (Android/data/<package>) so we can create siblings of /files
-        val extFiles = context.getExternalFilesDir(null)
-        baseExternalAppDirPath = extFiles?.parentFile?.path ?: ""
 
-        val sm = context.getSystemService(android.os.storage.StorageManager::class.java)
-        externalVolumePaths = context.getExternalFilesDirs(null)
-            .filterNotNull()
+        val sm = context.getSystemService(StorageManager::class.java)
+        val allExtDirs = StorageUtils.getAllExternalFilesDirs(context)
+
+        // Prefer the parent of external files dir (Android/data/<package>) so we can create siblings of /files
+        val primaryExtFiles = allExtDirs.find { sm?.getStorageVolume(it)?.isPrimary == true }
+            ?: context.getExternalFilesDir(null)
+            ?: allExtDirs.firstOrNull()
+
+        baseExternalAppDirPath = primaryExtFiles?.parentFile?.path ?: ""
+
+        externalVolumePaths = allExtDirs
             .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
-            .filter { sm.getStorageVolume(it)?.isPrimary != true }
+            .filter { sm?.getStorageVolume(it)?.isPrimary != true }
             .map { it.absolutePath }
     }
 

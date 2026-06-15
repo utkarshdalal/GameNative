@@ -39,6 +39,7 @@ import java.io.File
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import app.gamenative.ui.component.dialog.WineDebugChannelsDialog
+import app.gamenative.utils.StorageUtils
 
 @Suppress("UnnecessaryOptInAnnotation") // ExperimentalFoundationApi
 @OptIn(ExperimentalCoilApi::class, ExperimentalFoundationApi::class)
@@ -89,7 +90,8 @@ fun SettingsGroupDebug() {
     ) }
     var latestCrashFile: File? by rememberSaveable { mutableStateOf(null) }
     LaunchedEffect(Unit) {
-        val crashDir = File(context.getExternalFilesDir(null), "crash_logs")
+        val baseExtDir = StorageUtils.getAllExternalFilesDirs(context).firstOrNull() ?: context.getExternalFilesDir(null)
+        val crashDir = File(baseExtDir, "crash_logs")
         latestCrashFile = crashDir.listFiles()
             ?.filter { it.name.startsWith("pluvia_crash_") }
             ?.maxByOrNull { it.lastModified() }
@@ -145,7 +147,8 @@ fun SettingsGroupDebug() {
     var showWineLogDialog by rememberSaveable { mutableStateOf(false) }
     var latestWineLogFile: File? by rememberSaveable { mutableStateOf(null) }
     LaunchedEffect(Unit) {
-        val wineLogDir = File(context.getExternalFilesDir(null), "wine_logs")
+        val baseExtDir = StorageUtils.getAllExternalFilesDirs(context).firstOrNull() ?: context.getExternalFilesDir(null)
+        val wineLogDir = File(baseExtDir, "wine_logs")
         wineLogDir.mkdirs()
         val wineLogFile = File(wineLogDir, "wine_debug.log")
         latestWineLogFile = if (wineLogFile.exists()) wineLogFile else null

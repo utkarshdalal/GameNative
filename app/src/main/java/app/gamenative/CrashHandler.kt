@@ -1,6 +1,7 @@
 package app.gamenative
 
 import android.content.Context
+import app.gamenative.utils.StorageUtils
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -67,7 +68,8 @@ class CrashHandler(
     }
 
     private val crashFileDir by lazy {
-        File(context.getExternalFilesDir(null), "crash_logs").apply {
+        val baseExtDir = StorageUtils.getAllExternalFilesDirs(context).firstOrNull() ?: context.getExternalFilesDir(null)
+        File(baseExtDir, "crash_logs").apply {
             if (!exists()) mkdirs()
         }
     }
