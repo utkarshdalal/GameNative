@@ -5,6 +5,7 @@ import android.os.Process
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.gamenative.R
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameProcessInfo
