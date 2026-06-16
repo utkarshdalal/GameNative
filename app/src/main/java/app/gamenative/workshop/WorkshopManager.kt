@@ -2331,13 +2331,15 @@ object WorkshopManager {
         compatibilityOverride: WorkshopCompatibilityOverride? = null,
     ) {
         val appId = workshopContentDir.name.toIntOrNull() ?: -1
+        val isSlayTheSpire = appId == SlayTheSpireModTheSpireCompatibility.APP_ID
+
+        if (isSlayTheSpire) {
+            SlayTheSpireModTheSpireCompatibility.cleanupManagedWorkshopFiles(gameRootDir)
+        }
 
         if (!workshopContentDir.exists()) {
             Timber.tag(TAG).d("Workshop content dir doesn't exist yet, skipping symlink config")
             return
-        }
-        if (appId == SlayTheSpireModTheSpireCompatibility.APP_ID) {
-            SlayTheSpireModTheSpireCompatibility.cleanupManagedWorkshopFiles(gameRootDir)
         }
         cleanupGeneratedSteamSettingsInWorkshopContent(workshopContentDir)
         // Only include mod directories that have actual content
@@ -2374,19 +2376,24 @@ object WorkshopManager {
         }
 
         if (modDirs.isNullOrEmpty()) {
-            if (appId == SlayTheSpireModTheSpireCompatibility.APP_ID && enabledIdSet != null) {
+            if (isSlayTheSpire && enabledIdSet != null) {
                 cleanupInstalledModEntries(gameRootDir, workshopContentDir, winePrefix, gameName)
                 clearGlobalWorkshopMetadata(workshopContentDir)
             }
             Timber.tag(TAG).d("No mod directories with content in ${workshopContentDir.absolutePath}")
             return
         }
-        if (appId == SlayTheSpireModTheSpireCompatibility.APP_ID) {
-            SlayTheSpireModTheSpireCompatibility.configureModTheSpireLayout(
-                gameRootDir = gameRootDir,
-                modDirs = modDirs,
-                headlessLauncherJarBase64 = SLAY_THE_SPIRE_HEADLESS_LAUNCHER_JAR_BASE64,
-            )
+        if (isSlayTheSpire) {
+            try {
+                SlayTheSpireModTheSpireCompatibility.configureModTheSpireLayout(
+                    gameRootDir = gameRootDir,
+                    modDirs = modDirs,
+                    headlessLauncherJarBase64 = SLAY_THE_SPIRE_HEADLESS_LAUNCHER_JAR_BASE64,
+                )
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Failed to configure Slay the Spire ModTheSpire layout")
+                SlayTheSpireModTheSpireCompatibility.cleanupManagedWorkshopFiles(gameRootDir)
+            }
         }
 
         val isInsurgency = appId == 222880
@@ -3674,13 +3681,22 @@ object WorkshopManager {
         appId: Int,
         enabledIds: Set<Long>,
     ): Boolean {
-        if (enabledIds.isEmpty()) return false
+        val isSlayTheSpire = appId == SlayTheSpireModTheSpireCompatibility.APP_ID
+        if (enabledIds.isEmpty()) {
+            if (isSlayTheSpire) {
+                cleanupDisabledWorkshopArtifactsForApp(context, appId)
+            }
+            return false
+        }
 
         val winePrefix = getContainerWinePrefix(context, appId)
         val workshopContentDir = getWorkshopContentDir(winePrefix, appId)
         val items = localWorkshopItemsForEnabledIds(appId, enabledIds, workshopContentDir)
         if (items.isEmpty()) {
             Timber.tag(TAG).w("No local Workshop payloads found for appId=$appId")
+            if (isSlayTheSpire) {
+                cleanupDisabledWorkshopArtifactsForApp(context, appId)
+            }
             return false
         }
 

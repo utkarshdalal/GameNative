@@ -2,8 +2,11 @@ package app.gamenative.workshop.compatibility
 
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.nio.file.Path
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.Base64
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
@@ -20,6 +23,7 @@ object SlayTheSpireModTheSpireCompatibility {
     private const val MOD_THE_SPIRE_ARGS = ".gamenative_modthespire_args"
     private const val HEADLESS_LAUNCHER_CLASS =
         "com.evacipated.cardcrawl.modthespire.GameNativeLauncher"
+    private const val MAX_METADATA_ENTRY_BYTES = 64 * 1024
     private val MOD_THE_SPIRE_JVM_ARGS = listOf(
         "-Xmx1G",
         "-Dsun.java2d.dpiaware=true",
@@ -109,8 +113,9 @@ object SlayTheSpireModTheSpireCompatibility {
             .forEach { itemDir ->
                 workshopJarPayloads(itemDir).forEach { jarFile ->
                     val outName = managedJarName(itemDir.name, jarFile.name)
-                    materializeModJar(jarFile, File(modsDir, outName))
-                    managedFiles += outName
+                    if (materializeModJar(jarFile, File(modsDir, outName))) {
+                        managedFiles += outName
+                    }
                 }
             }
 
@@ -165,21 +170,38 @@ object SlayTheSpireModTheSpireCompatibility {
         if (!manifestFile.isFile) return emptyList()
 
         return manifestFile.readText().lineSequence()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .mapNotNull { fileName -> readModId(File(modsDir, fileName)) }
+            .mapNotNull { fileName -> managedManifestFile(modsDir, fileName) }
+            .filter { it.isFile }
+            .mapNotNull { readModId(it) }
             .distinct()
             .toList()
     }
 
     private fun cleanupManagedJarFiles(modsDir: File, manifestFile: File) {
         if (manifestFile.isFile) {
-            manifestFile.readText().lines().filter { it.isNotBlank() }.forEach { fileName ->
-                try {
-                    Files.deleteIfExists(File(modsDir, fileName).toPath())
-                } catch (_: Exception) { }
-            }
+            manifestFile.readText().lineSequence()
+                .mapNotNull { fileName -> managedManifestFile(modsDir, fileName) }
+                .forEach { jarFile ->
+                    try {
+                        Files.deleteIfExists(jarFile.toPath())
+                    } catch (_: Exception) { }
+                }
         }
+    }
+
+    private fun managedManifestFile(modsDir: File, manifestEntry: String): File? {
+        val fileName = manifestEntry.trim()
+        if (fileName.isEmpty()) return null
+
+        val modsPath = modsDir.toPath().toAbsolutePath().normalize()
+        val filePath = modsPath.resolve(fileName).normalize()
+        if (!filePath.startsWith(modsPath) || filePath.parent != modsPath) {
+            Timber.tag("WorkshopManager").w(
+                "Ignoring unsafe Slay the Spire managed mod manifest entry: $fileName"
+            )
+            return null
+        }
+        return filePath.toFile()
     }
 
     private fun cleanupManagedLauncher(gameRootDir: File) {
@@ -248,35 +270,70 @@ object SlayTheSpireModTheSpireCompatibility {
     }.getOrDefault(false)
 
     private fun rewriteJarWithoutMetadataBom(source: File, destination: File): Boolean {
-        destination.parentFile?.mkdirs()
-        try {
-            Files.deleteIfExists(destination.toPath())
-        } catch (_: Exception) { }
+        val destinationPath = destination.toPath()
+        val tempDir = destination.parentFile?.toPath()
+            ?: destinationPath.toAbsolutePath().parent
+            ?: return false
+        Files.createDirectories(tempDir)
+        val tempPath = Files.createTempFile(tempDir, "${destination.name}.", ".tmp")
 
-        ZipInputStream(source.inputStream()).use { input ->
-            ZipOutputStream(destination.outputStream()).use { output ->
-                var entry = input.nextEntry
-                while (entry != null) {
-                    val outEntry = ZipEntry(entry.name).apply {
-                        time = entry.time
-                        comment = entry.comment
-                    }
-                    output.putNextEntry(outEntry)
-                    if (!entry.isDirectory) {
-                        if (isMetadataEntry(entry.name)) {
-                            val bytes = input.readBytes()
-                            output.write(bytes.stripUtf8Bom())
-                        } else {
-                            input.copyTo(output)
+        try {
+            ZipInputStream(source.inputStream()).use { input ->
+                ZipOutputStream(Files.newOutputStream(tempPath)).use { output ->
+                    var entry = input.nextEntry
+                    while (entry != null) {
+                        val outEntry = ZipEntry(entry.name).apply {
+                            time = entry.time
+                            comment = entry.comment
                         }
+                        output.putNextEntry(outEntry)
+                        if (!entry.isDirectory) {
+                            if (isMetadataEntry(entry.name)) {
+                                copyEntryWithoutUtf8Bom(input, output)
+                            } else {
+                                input.copyTo(output)
+                            }
+                        }
+                        output.closeEntry()
+                        input.closeEntry()
+                        entry = input.nextEntry
                     }
-                    output.closeEntry()
-                    input.closeEntry()
-                    entry = input.nextEntry
                 }
             }
+            moveReplacing(tempPath, destinationPath)
+        } catch (e: Exception) {
+            try {
+                Files.deleteIfExists(tempPath)
+            } catch (_: Exception) { }
+            throw e
         }
         return true
+    }
+
+    private fun moveReplacing(source: Path, destination: Path) {
+        try {
+            Files.move(
+                source,
+                destination,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE,
+            )
+        } catch (_: Exception) {
+            Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING)
+        }
+    }
+
+    private fun copyEntryWithoutUtf8Bom(input: ZipInputStream, output: ZipOutputStream) {
+        val header = ByteArray(3)
+        val read = input.read(header)
+        val hasUtf8Bom = read == 3 &&
+            header[0] == 0xEF.toByte() &&
+            header[1] == 0xBB.toByte() &&
+            header[2] == 0xBF.toByte()
+        if (!hasUtf8Bom && read > 0) {
+            output.write(header, 0, read)
+        }
+        input.copyTo(output)
     }
 
     private fun readModId(jarFile: File): String? = runCatching {
@@ -285,10 +342,9 @@ object SlayTheSpireModTheSpireCompatibility {
                 ?: zip.entries().asSequence()
                     .firstOrNull { !it.isDirectory && it.name.endsWith("/ModTheSpire.json") }
             if (jsonEntry != null) {
-                val jsonText = zip.getInputStream(jsonEntry)
-                    .bufferedReader(Charsets.UTF_8)
-                    .use { it.readText() }
-                    .trimStart('\uFEFF')
+                val jsonText = readZipEntryText(zip, jsonEntry)
+                    ?.trimStart('\uFEFF')
+                    ?: return@use null
                 return@use JSONObject(jsonText)
                     .optString("modid")
                     .takeIf { it.isNotBlank() }
@@ -298,9 +354,8 @@ object SlayTheSpireModTheSpireCompatibility {
                 ?: zip.entries().asSequence()
                     .firstOrNull { !it.isDirectory && it.name.endsWith("/ModTheSpire.config") }
             if (configEntry != null) {
-                val configText = zip.getInputStream(configEntry)
-                    .bufferedReader(Charsets.UTF_8)
-                    .use { it.readText() }
+                val configText = readZipEntryText(zip, configEntry)
+                    ?: return@use null
                 return@use configText.lineSequence()
                     .map { it.trim() }
                     .firstOrNull { it.startsWith("ID=", ignoreCase = true) }
@@ -313,22 +368,39 @@ object SlayTheSpireModTheSpireCompatibility {
         }
     }.getOrNull()
 
+    private fun readZipEntryText(zip: ZipFile, entry: ZipEntry): String? {
+        if (entry.size > MAX_METADATA_ENTRY_BYTES) {
+            Timber.tag("WorkshopManager").w(
+                "Skipping oversized Slay the Spire mod metadata entry: ${entry.name}"
+            )
+            return null
+        }
+
+        return zip.getInputStream(entry).use { input ->
+            val output = ByteArrayOutputStream()
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            var totalBytes = 0
+            while (true) {
+                val read = input.read(buffer)
+                if (read == -1) break
+                totalBytes += read
+                if (totalBytes > MAX_METADATA_ENTRY_BYTES) {
+                    Timber.tag("WorkshopManager").w(
+                        "Skipping oversized Slay the Spire mod metadata entry: ${entry.name}"
+                    )
+                    return@use null
+                }
+                output.write(buffer, 0, read)
+            }
+            output.toString(Charsets.UTF_8.name())
+        }
+    }
+
     private fun isMetadataEntry(name: String): Boolean =
         name == "ModTheSpire.json" ||
             name.endsWith("/ModTheSpire.json") ||
             name == "ModTheSpire.config" ||
             name.endsWith("/ModTheSpire.config")
-
-    private fun ByteArray.stripUtf8Bom(): ByteArray =
-        if (size >= 3 &&
-            this[0] == 0xEF.toByte() &&
-            this[1] == 0xBB.toByte() &&
-            this[2] == 0xBF.toByte()
-        ) {
-            copyOfRange(3, size)
-        } else {
-            this
-        }
 
     private fun workshopJarPayloads(itemDir: File): List<File> =
         itemDir.listFiles()

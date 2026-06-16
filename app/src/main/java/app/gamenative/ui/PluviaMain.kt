@@ -2039,8 +2039,8 @@ fun preLaunchApp(
                 Timber.tag("Workshop").e(e, "Workshop mod sync failed, continuing without mods")
             }
         } else if (
-            SteamService.isAppInstalled(gameId) &&
-            gameId == SlayTheSpireModTheSpireCompatibility.APP_ID
+            gameId == SlayTheSpireModTheSpireCompatibility.APP_ID &&
+            File(SteamService.getAppDirPath(gameId)).isDirectory
         ) {
             withContext(Dispatchers.IO) {
                 WorkshopManager.cleanupDisabledWorkshopArtifactsForApp(context, gameId)

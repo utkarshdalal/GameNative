@@ -423,8 +423,9 @@ object SteamUtils {
     ): String {
         val sanitizedExecutablePath = sanitizeColdClientArgumentText(executablePath)
         val sanitizedExeCommandLine = sanitizeColdClientArgumentText(exeCommandLine)
+        val sanitizedExeRunDirOverride = exeRunDirOverride?.let(::sanitizeColdClientArgumentText)
         val exePath = "steamapps\\common\\$gameName\\${sanitizedExecutablePath.replace("/", "\\")}"
-        val exeRunDir = exeRunDirOverride
+        val exeRunDir = sanitizedExeRunDirOverride
             ?: if (workingDir.isNullOrEmpty()) exePath.substringBeforeLast("\\") else ""
 
         // Only include DllsToInjectFolder if unpackFiles is enabled
@@ -474,9 +475,11 @@ object SteamUtils {
             )?.let { slayLaunchConfig ->
                 Timber.i("Using Slay the Spire ModTheSpire Workshop launch")
                 return ColdClientLaunchConfig(
-                    executablePath = slayLaunchConfig.executablePath,
-                    exeCommandLine = slayLaunchConfig.exeCommandLine,
-                    exeRunDirOverride = slayLaunchConfig.exeRunDirOverride,
+                    executablePath = sanitizeColdClientArgumentText(slayLaunchConfig.executablePath),
+                    exeCommandLine = sanitizeColdClientArgumentText(slayLaunchConfig.exeCommandLine),
+                    exeRunDirOverride = sanitizeColdClientArgumentText(
+                        slayLaunchConfig.exeRunDirOverride
+                    ),
                 )
             }
         }
