@@ -446,14 +446,14 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(testGraphics = value) }
     }
 
-         fun launchApp(context: Context, appId: String) {
+    fun launchApp(context: Context, appId: String) {
         // Show booting splash before launching the app
         viewModelScope.launch {
-                       _state.update {
-                it.copy(
-                    showBootingSplash = true,
-                    bootingSplashText = if (it.bootToContainer) "Opening container..." else "Launching game...",
-                )
+            _state.update {
+                    it.copy(
+                        showBootingSplash = true,
+                        bootingSplashText = if (it.bootToContainer) "Opening container..." else "Launching game...",
+                    )
             }
              PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
