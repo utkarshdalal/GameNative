@@ -169,8 +169,10 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     }
 
     private Window findDesktopWindow() {
-        if (desktopWindow != null) return desktopWindow;
-
+        if (desktopWindow != null && desktopWindow.attributes.isMapped()) {
+            return desktopWindow;
+        }
+        desktopWindow = null;
         for (Window child : xServer.windowManager.rootWindow.getChildren()) {
             if (!child.attributes.isOverrideRedirect() && "explorer.exe".equals(child.getClassName())) {
                 desktopWindow = child;
