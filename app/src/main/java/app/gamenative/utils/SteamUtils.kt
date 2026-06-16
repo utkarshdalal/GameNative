@@ -424,7 +424,8 @@ object SteamUtils {
         val sanitizedExecutablePath = sanitizeColdClientArgumentText(executablePath)
         val sanitizedExeCommandLine = sanitizeColdClientArgumentText(exeCommandLine)
         val sanitizedExeRunDirOverride = exeRunDirOverride?.let(::sanitizeColdClientArgumentText)
-        val exePath = "steamapps\\common\\$gameName\\${sanitizedExecutablePath.replace("/", "\\")}"
+        val exeBaseDir = sanitizedExeRunDirOverride ?: "steamapps\\common\\$gameName"
+        val exePath = "$exeBaseDir\\${sanitizedExecutablePath.replace("/", "\\")}"
         val exeRunDir = sanitizedExeRunDirOverride
             ?: if (workingDir.isNullOrEmpty()) exePath.substringBeforeLast("\\") else ""
 
@@ -460,7 +461,6 @@ object SteamUtils {
 
     internal fun resolveColdClientLaunchConfig(
         steamAppId: Int,
-        gameName: String,
         executablePath: String,
         exeCommandLine: String,
         gameRootDir: File,
@@ -469,7 +469,6 @@ object SteamUtils {
         val sanitizedExeCommandLine = sanitizeColdClientArgumentText(exeCommandLine)
         if (steamAppId == SlayTheSpireModTheSpireCompatibility.APP_ID) {
             SlayTheSpireModTheSpireCompatibility.resolveLaunchConfig(
-                gameName = gameName,
                 gameRootDir = gameRootDir,
                 fallbackCommandLine = sanitizedExeCommandLine,
             )?.let { slayLaunchConfig ->
@@ -504,7 +503,6 @@ object SteamUtils {
             ?: File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam")
         val launchConfig = resolveColdClientLaunchConfig(
             steamAppId = steamAppId,
-            gameName = gameName,
             executablePath = container.executablePath,
             exeCommandLine = container.execArgs,
             gameRootDir = File(SteamService.getAppDirPath(steamAppId)),

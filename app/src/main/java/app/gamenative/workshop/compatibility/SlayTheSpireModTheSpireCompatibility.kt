@@ -51,7 +51,6 @@ object SlayTheSpireModTheSpireCompatibility {
     }
 
     fun resolveLaunchConfig(
-        gameName: String,
         gameRootDir: File,
         fallbackCommandLine: String,
     ): LaunchConfig? {
@@ -62,6 +61,7 @@ object SlayTheSpireModTheSpireCompatibility {
             return null
         }
 
+        val gameRootColdClientPath = "steamapps\\common\\${gameRootDir.name}"
         return LaunchConfig(
             executablePath = "jre/bin/java.exe",
             exeCommandLine = buildCommandLine(
@@ -69,7 +69,7 @@ object SlayTheSpireModTheSpireCompatibility {
                 modIds = managedModIds,
                 fallbackCommandLine = fallbackCommandLine,
             ),
-            exeRunDirOverride = "steamapps\\common\\$gameName",
+            exeRunDirOverride = gameRootColdClientPath,
         )
     }
 
@@ -107,25 +107,35 @@ object SlayTheSpireModTheSpireCompatibility {
 
         val modsDir = File(gameRootDir, "mods")
         val managedFiles = mutableListOf<String>()
-        modDirs
-            .filter { it.name != MOD_THE_SPIRE_WORKSHOP_ID }
-            .sortedBy { it.name.toLongOrNull() ?: Long.MAX_VALUE }
-            .forEach { itemDir ->
-                workshopJarPayloads(itemDir).forEach { jarFile ->
-                    val outName = managedJarName(itemDir.name, jarFile.name)
-                    if (materializeModJar(jarFile, File(modsDir, outName))) {
-                        managedFiles += outName
+        var currentOutFile: File? = null
+        try {
+            modDirs
+                .filter { it.name != MOD_THE_SPIRE_WORKSHOP_ID }
+                .sortedBy { it.name.toLongOrNull() ?: Long.MAX_VALUE }
+                .forEach { itemDir ->
+                    workshopJarPayloads(itemDir).forEach { jarFile ->
+                        val outName = managedJarName(itemDir.name, jarFile.name)
+                        val outFile = File(modsDir, outName)
+                        currentOutFile = outFile
+                        if (materializeModJar(jarFile, outFile)) {
+                            managedFiles += outName
+                            currentOutFile = null
+                        }
                     }
                 }
-            }
 
-        val manifestFile = File(modsDir, MOD_JAR_MANIFEST)
-        if (managedFiles.isNotEmpty()) {
-            manifestFile.writeText(managedFiles.joinToString("\n", postfix = "\n"))
-        } else {
-            try {
-                Files.deleteIfExists(manifestFile.toPath())
-            } catch (_: Exception) { }
+            val manifestFile = File(modsDir, MOD_JAR_MANIFEST)
+            if (managedFiles.isNotEmpty()) {
+                manifestFile.writeText(managedFiles.joinToString("\n", postfix = "\n"))
+            } else {
+                try {
+                    Files.deleteIfExists(manifestFile.toPath())
+                } catch (_: Exception) { }
+            }
+        } catch (e: Exception) {
+            (managedFiles.map { File(modsDir, it) } + listOfNotNull(currentOutFile))
+                .forEach { runCatching { Files.deleteIfExists(it.toPath()) } }
+            throw e
         }
 
         Timber.tag("WorkshopManager").i(
