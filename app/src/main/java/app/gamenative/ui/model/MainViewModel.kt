@@ -453,9 +453,10 @@ class MainViewModel @Inject constructor(
             _state.update {
                     it.copy(
                         showBootingSplash = true,
-                        bootingSplashText = if (it.bootToContainer) "Opening container..." else "Launching game...",
-                    )
-            }
+                        bootingSplashText = if (it.bootToContainer) context.getString(R.string.booting_splash_opening_container) else context.getString(
+                            R.string.booting_splash_launching_game),
+                )
+        }
              PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
             val apiJob = viewModelScope.async(Dispatchers.IO) {
