@@ -374,7 +374,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                     geom.src.left, geom.src.top, geom.src.right, geom.src.bottom,
                     needsUpdate, geometryOk);
 
-            if (needsUpdate) {
+            if (geometryOk && needsUpdate) {
                 ws.visible = true;
                 ws.zOrder = i;
                 ws.lastDst.set(geom.dst);
