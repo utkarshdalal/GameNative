@@ -108,6 +108,7 @@ private:
     void* fnSTSetGeometry    = nullptr;
     void* fnSTSetBufferTransparency = nullptr;
     void* fnSTSetBufferTransform  = nullptr;
+    void* fnSTReparent  = nullptr;
     void oneShot(std::function<void(void*)> fill);
 
     // SurfaceFlinger Callbacks

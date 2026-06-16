@@ -22,6 +22,7 @@ typedef void  (*pfn_STSetBufferTransparency)(void*, void*, int8_t);
 typedef void  (*pfn_STSetBufferTransform)(void*, void*, int32_t);
 typedef void  (*pfn_STSetOnComplete)(void* transaction, void* context,
                                     void (*callback)(void* context, void* stats));
+typedef void  (*pfn_STReparent)(void*, void*, void*);
 
 #define SC_CREATE(win, name)   ((pfn_SCCreateFromWindow)fnSCCreateFromWin)((win),(name))
 #define SC_RELEASE(sc)         ((pfn_SCRelease)fnSCRelease)((sc))
@@ -33,6 +34,7 @@ typedef void  (*pfn_STSetOnComplete)(void* transaction, void* context,
 #define ST_SETVIS(t,sc,v)      ((pfn_STSetVisibility)fnSTSetVisibility)((t),(sc),(v))
 #define ST_SETGEO(t,sc,s,d,r)  ((pfn_STSetGeometry)fnSTSetGeometry)((t),(sc),(s),(d),(r))
 #define ST_SET_TRANSPARENCY(t,sc,tr) if(fnSTSetBufferTransparency) ((pfn_STSetBufferTransparency)fnSTSetBufferTransparency)((t),(sc),(tr))
+#define ST_REPARENT(t,sc,p)    if(fnSTReparent) ((pfn_STReparent)fnSTReparent)((t),(sc),(p))
 
 void ASurfaceRendererContext::oneShot(std::function<void(void*)> fill) {
     void* tx = ST_CREATE();
@@ -63,6 +65,22 @@ ASurfaceRendererContext::ASurfaceRendererContext(ANativeWindow* win, int cWidth,
 }
 
 ASurfaceRendererContext::~ASurfaceRendererContext() {
+    {
+        std::lock_guard<std::mutex> lk(windowScMutex);
+        if (!windowScMap.empty()) {
+            void* tx = ST_CREATE();
+            for (auto& pair : windowScMap) {
+                void* sc = pair.second;
+                ST_SETVIS(tx, sc, 0);
+                ST_REPARENT(tx, sc, nullptr);
+                SC_RELEASE(sc);
+            }
+            ST_APPLY(tx);
+            ST_DELETE(tx);
+            windowScMap.clear();
+        }
+    }
+
     destroyScanout();
     if (window) {
         ANativeWindow_release(window);
@@ -100,8 +118,9 @@ bool ASurfaceRendererContext::loadScanoutApi() {
     fnSTSetOnComplete = dlsym(lib, "ASurfaceTransaction_setOnComplete");
     fnSTSetBufferTransparency = dlsym(lib, "ASurfaceTransaction_setBufferTransparency");
     fnSTSetBufferTransform = dlsym(lib, "ASurfaceTransaction_setBufferTransform");
+    fnSTReparent      = dlsym(lib, "ASurfaceTransaction_reparent");
     sfCallbackSupported = fnSTSetOnComplete != nullptr;
-    bool coreOk = fnSCCreateFromWin && fnSCRelease && fnSTCreate && fnSTDelete && fnSTSetOnComplete &&
+    bool coreOk = fnSCCreateFromWin && fnSCRelease && fnSTCreate && fnSTDelete && fnSTSetOnComplete && fnSTReparent &&
                   fnSTApply && fnSTSetBuffer && fnSTSetVisibility && fnSTSetGeometry && fnSTSetBufferTransparency && fnSTSetBufferTransform;
     if (!coreOk) {
         SCANOUT_LOG("loadScanoutApi: surface symbols missing");
@@ -131,12 +150,16 @@ void ASurfaceRendererContext::initScanout() {
 void ASurfaceRendererContext::destroyScanout() {
     if (!scanoutActive.load()) return;
     scanoutActive.store(false);
+
     if (scanoutCursorSC) {
         oneShot([&](void* tx) {
-            if (scanoutCursorSC) ST_SETVIS(tx, scanoutCursorSC, 0);
+            ST_SETVIS(tx, scanoutCursorSC, 0);
+            ST_REPARENT(tx, scanoutCursorSC, nullptr);
         });
+        SC_RELEASE(scanoutCursorSC);
+        scanoutCursorSC = nullptr;
     }
-    if (scanoutCursorSC) { SC_RELEASE(scanoutCursorSC); scanoutCursorSC = nullptr; }
+
     if (scanoutCursorBuf) {
         if (scanoutCursorFence >= 0) { close(scanoutCursorFence); scanoutCursorFence = -1; }
         AHardwareBuffer_release(scanoutCursorBuf);
@@ -318,7 +341,7 @@ void ASurfaceRendererContext::attachOnCompleteCallback(void* transaction, int64_
 }
 
 void ASurfaceRendererContext::beginTransaction() {
-    if (!currentTx && fnSTCreate) {
+    if (!currentTx) {
         currentTx = ST_CREATE();
     }
 }
@@ -348,7 +371,7 @@ void ASurfaceRendererContext::updateWindow(int64_t contentId, bool visible, int 
         auto it = windowScMap.find(contentId);
         if (it != windowScMap.end()) sc = it->second;
     }
-    if (!sc || !fnSTCreate) return;
+    if (!sc) return;
 
     void* tx = currentTx ? currentTx : ST_CREATE();
 
@@ -381,6 +404,7 @@ void ASurfaceRendererContext::registerWindowSC(int64_t contentId) {
     if (oldSc) {
         oneShot([&](void* tx) {
             ST_SETVIS(tx, oldSc, 0);
+            ST_REPARENT(tx, sc, nullptr);
         });
         SC_RELEASE(oldSc);
     }
@@ -400,6 +424,7 @@ void ASurfaceRendererContext::unregisterWindowSC(int64_t contentId) {
     if (sc) {
         oneShot([&](void* tx) {
             ST_SETVIS(tx, sc, 0);
+            ST_REPARENT(tx, sc, nullptr);
         });
         SC_RELEASE(sc);
     }
