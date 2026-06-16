@@ -44,7 +44,7 @@ public:
     void scanoutSetCursorPos(short x, short y, short hotX, short hotY);
 
     // SC Management
-    void registerWindowSC(int64_t contentId);
+    void registerWindowSC(int64_t contentId, const char* debugName = "(x11_window)");
     void unregisterWindowSC(int64_t contentId);
     void setWindowBuffer(int64_t contentId, AHardwareBuffer* ahb, int fenceFd,
                          int64_t windowId = 0, int64_t serial = 0);

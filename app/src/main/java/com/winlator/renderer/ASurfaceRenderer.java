@@ -134,7 +134,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private native void nativeDestroyScanout();
     private native void nativeSetWindowBuffer(long contentId, long ahbPtr, int fenceFd, long windowId, long serial);
     private native void nativeScanoutSetCursorVisibility(boolean visible);
-    private native void nativeRegisterWindowSC(long contentId);
+    private native void nativeRegisterWindowSC(long contentId, String debugName);
     private native void nativeUnregisterWindowSC(long contentId);
     private native void nativeScanoutSetCursorImage(java.nio.ByteBuffer pixels, short w, short h, short stride);
     private native void nativeScanoutSetCursorPos(short x, short y, short hotX, short hotY);
@@ -146,7 +146,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             int srcL, int srcT, int srcR, int srcB,
             int dstL, int dstT, int dstR, int dstB);
 
-    private WindowSurface getOrCreateWindowSurface(int contentId, int w, int h)
+    private WindowSurface getOrCreateWindowSurface(int contentId, int w, int h, String debugName)
     {
         WindowSurface ws = windowSurfaces.get(contentId);
         if (ws != null && (ws.width != w || ws.height != h)) {
@@ -158,7 +158,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 ws = new WindowSurface();
                 ws.width = w;
                 ws.height = h;
-                nativeRegisterWindowSC(contentId); // handles releasing old SC internally
+                nativeRegisterWindowSC(contentId, debugName);
                 windowSurfaces.put(contentId, ws);
             } catch (Exception e) {
                 Timber.e("getOrCreateWindowSurface failed: %s", e);
@@ -333,10 +333,13 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         for (int i = 0; i < renderListSize; i++) {
             RenderableWindow rw = renderList.get(i);
             if (rw.content == null) continue;
+
             int contentId = rw.window.id;
             visibleIds.add(contentId);
+            String debugName = rw.window.getClassName();
 
-            WindowSurface ws = getOrCreateWindowSurface(contentId, rw.content.width, rw.content.height);
+            if (debugName == null || debugName.isEmpty()) debugName = "(x11_window)";
+            WindowSurface ws = getOrCreateWindowSurface(contentId, rw.content.width, rw.content.height, debugName);
             WindowGeometry geom = new WindowGeometry();
 
             boolean geometryOk = computeWindowRect(

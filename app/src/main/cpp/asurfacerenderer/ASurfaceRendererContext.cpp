@@ -135,7 +135,7 @@ bool ASurfaceRendererContext::loadScanoutApi() {
 void ASurfaceRendererContext::initScanout() {
     if (scanoutActive.load()) return;
     if (!window || !loadScanoutApi()) return;
-    scanoutCursorSC = SC_CREATE(window, "x11_cursor");
+    scanoutCursorSC = SC_CREATE(window, "(x11_cursor)");
     if (!scanoutCursorSC) {
         return;
     }
@@ -389,9 +389,9 @@ void ASurfaceRendererContext::updateWindow(int64_t contentId, bool visible, int 
     }
 }
 
-void ASurfaceRendererContext::registerWindowSC(int64_t contentId) {
+void ASurfaceRendererContext::registerWindowSC(int64_t contentId, const char* debugName) {
     if (!loadScanoutApi() || !this->window) return;
-    void* sc = SC_CREATE(this->window, "x11_window");
+    void* sc = SC_CREATE(this->window, debugName ? debugName : "(x11_window)");
     if (!sc) return;
 
     void* oldSc = nullptr;

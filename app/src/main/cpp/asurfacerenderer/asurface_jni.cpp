@@ -101,9 +101,14 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeReattachSurface(JNIEnv* env, j
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeRegisterWindowSC(
-        JNIEnv* env, jobject, jlong contentId)
+        JNIEnv* env, jobject, jlong contentId, jstring debugName)
 {
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) r->registerWindowSC((int64_t)contentId);
+    if (auto* r = g_ctx.load(std::memory_order_acquire)) {
+        const char* name = nullptr;
+        if (debugName) name = env->GetStringUTFChars(debugName, nullptr);
+        r->registerWindowSC((int64_t)contentId, name ? name : "(x11_window)");
+        if (name) env->ReleaseStringUTFChars(debugName, name);
+    }
 }
 
 extern "C" JNIEXPORT void JNICALL
