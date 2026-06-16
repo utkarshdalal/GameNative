@@ -9,6 +9,7 @@ import com.winlator.core.GPUHelper
 import com.winlator.core.StringUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.Locale
 
 object ManifestComponentHelper {
@@ -122,11 +123,41 @@ object ManifestComponentHelper {
             )
         }
 
+        val mergedContent = installedContent.copy(
+            dxvk = (installedContent.dxvk + dxWrapperOnDiskVersions(context, "dxvk")).distinct(),
+            vkd3d = (installedContent.vkd3d + dxWrapperOnDiskVersions(context, "vkd3d")).distinct(),
+        )
+
         InstalledContentListsAndDrivers(
-            installed = installedContent,
+            installed = mergedContent,
             installedDrivers = installedDrivers,
         )
     }
+
+    /**
+     * dxvk/vkd3d versions present on disk as raw .tzst — either bundled in the APK or downloaded
+     * into the dxwrapper cache. These count as "installed" (un-greyed) without a ContentProfile.
+     */
+    fun dxWrapperOnDiskVersions(context: Context, type: String): List<String> {
+        val prefix = "$type-"
+        val names = linkedSetOf<String>()
+        try {
+            context.assets.list("dxwrapper")?.forEach { name ->
+                if (name.startsWith(prefix) && name.endsWith(".tzst")) names.add(name)
+            }
+        } catch (_: Exception) {}
+        File(context.filesDir, "assets/dxwrapper").listFiles()?.forEach { f ->
+            if (f.name.startsWith(prefix) && f.name.endsWith(".tzst")) names.add(f.name)
+        }
+        return names.map { it.removePrefix(prefix).removeSuffix(".tzst") }
+    }
+
+    /**
+     * On modern builds, dxvk/vkd3d are not bundled wholesale; the un-greyed base comes from what is
+     * actually on disk (see [dxWrapperOnDiskVersions]) plus the manifest. Legacy keeps the full list.
+     */
+    fun bundledDxWrapperBase(entries: List<String>): List<String> =
+        if (BuildConfig.MODERN_ANDROID) emptyList() else entries
 
     suspend fun loadComponentAvailability(context: Context): ComponentAvailability = withContext(Dispatchers.IO) {
         val installed = loadInstalledContentLists(context)

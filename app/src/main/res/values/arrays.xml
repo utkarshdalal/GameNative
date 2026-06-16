@@ -93,7 +93,6 @@
         <item>2.4.1</item>
         <item>2.4.1-gplasync</item>
         <item>2.6.1-gplasync</item>
-        <item>2.6-arm64ec</item>
     </string-array>
     <string-array name="vkd3d_version_entries">
         <item>2.6</item>

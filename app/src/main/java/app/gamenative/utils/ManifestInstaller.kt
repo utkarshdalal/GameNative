@@ -75,12 +75,52 @@ object ManifestInstaller {
         }
     }
 
+    /**
+     * dxvk/vkd3d distributed as raw .tzst archives have no ContentProfile; they are extracted
+     * directly into the wine prefix at launch. "Installing" one just means caching the .tzst in
+     * the DXWrapperDownloader cache dir so the launch path finds it instead of downloading.
+     */
+    private fun isTzstEntry(entry: ManifestEntry): Boolean = entry.url.endsWith(".tzst")
+
+    private suspend fun installTzstToCache(
+        context: Context,
+        entry: ManifestEntry,
+        onProgress: (Float) -> Unit,
+    ): ManifestInstallResult = withContext(Dispatchers.IO) {
+        try {
+            val cacheDir = File(context.filesDir, "assets/dxwrapper")
+            cacheDir.mkdirs()
+            val dest = File(cacheDir, entry.url.substringAfterLast("/"))
+            SteamService.fetchFile(entry.url, dest, onProgress)
+            if (!dest.exists() || dest.length() == 0L) {
+                dest.delete()
+                return@withContext ManifestInstallResult(
+                    success = false,
+                    message = context.getString(R.string.manifest_install_failed, entry.name),
+                )
+            }
+            ManifestInstallResult(
+                success = true,
+                message = context.getString(R.string.manifest_install_success, entry.name),
+            )
+        } catch (e: Exception) {
+            Timber.e(e, "ManifestInstaller: tzst install failed")
+            ManifestInstallResult(
+                success = false,
+                message = context.getString(R.string.manifest_download_failed, e.message ?: e.javaClass.simpleName),
+            )
+        }
+    }
+
     suspend fun downloadAndInstallContent(
         context: Context,
         entry: ManifestEntry,
         expectedType: ContentProfile.ContentType,
         onProgress: (Float) -> Unit = {},
     ): ManifestInstallResult = withContext(Dispatchers.IO) {
+        if (isTzstEntry(entry)) {
+            return@withContext installTzstToCache(context, entry, onProgress)
+        }
         var destFile: File? = null
         try {
             destFile = File(context.cacheDir, entry.url.substringAfterLast("/"))

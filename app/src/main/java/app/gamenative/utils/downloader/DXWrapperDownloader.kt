@@ -59,6 +59,12 @@ object DXWrapperDownloader {
             return@withContext null
         }
 
+        // Modern variant: prefer a bundled asset (the common defaults) over downloading
+        if (assetExists(context, "dxwrapper/$componentId.tzst")) {
+            Timber.d("Using bundled dxwrapper asset: $componentId")
+            return@withContext null
+        }
+
         // Modern variant: download from server
         // Check if already downloaded and cached
         val destFile = File(context.filesDir, "$DXWRAPPER_CACHE_DIR/${component.name}")
@@ -87,6 +93,15 @@ object DXWrapperDownloader {
         }
 
         return@withContext destFile
+    }
+
+    private fun assetExists(context: Context, path: String): Boolean {
+        return try {
+            context.assets.open(path).close()
+            true
+        } catch (e: java.io.IOException) {
+            false
+        }
     }
 
     /**
