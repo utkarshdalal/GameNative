@@ -300,7 +300,7 @@ object SteamUtils {
         val container = ContainerUtils.getContainer(context, appId)
         val steamRootDir = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam")
 
-        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.dll").exists()) {
+        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.exe").exists()) {
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
