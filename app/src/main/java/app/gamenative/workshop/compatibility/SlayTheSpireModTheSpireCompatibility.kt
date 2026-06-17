@@ -37,19 +37,6 @@ object SlayTheSpireModTheSpireCompatibility {
         val exeRunDirOverride: String,
     )
 
-    fun shouldRefreshColdClient(steamRootDir: File, gameRootDir: File): Boolean {
-        val iniFile = File(steamRootDir, "ColdClientLoader.ini")
-        val launcherReady = isLauncherReady(gameRootDir)
-        if (!iniFile.isFile) return launcherReady
-        val text = iniFile.readText()
-        val usesHeadlessLauncher = text.contains(HEADLESS_LAUNCHER_CLASS)
-        val usesStaleDesktopClasspath = usesHeadlessLauncher &&
-            text.contains("desktop-1.0.jar")
-        return usesStaleDesktopClasspath ||
-            (launcherReady && !usesHeadlessLauncher) ||
-            (!launcherReady && usesHeadlessLauncher)
-    }
-
     fun resolveLaunchConfig(
         gameRootDir: File,
         fallbackCommandLine: String,

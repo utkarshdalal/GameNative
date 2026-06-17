@@ -299,13 +299,8 @@ object SteamUtils {
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         val container = ContainerUtils.getContainer(context, appId)
         val steamRootDir = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam")
-        val shouldRefreshColdClient = shouldRefreshColdClient(
-            steamAppId = steamAppId,
-            steamRootDir = steamRootDir,
-            gameRootDir = File(appDirPath),
-        )
 
-        if (!shouldRefreshColdClient && MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.dll").exists()) {
+        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.dll").exists()) {
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
@@ -342,19 +337,6 @@ object SteamUtils {
 
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
     }
-
-    private fun shouldRefreshColdClient(
-        steamAppId: Int,
-        steamRootDir: File,
-        gameRootDir: File,
-    ): Boolean =
-        when {
-            steamAppId == SlayTheSpireModTheSpireCompatibility.APP_ID ->
-                SlayTheSpireModTheSpireCompatibility
-                    .shouldRefreshColdClient(steamRootDir, gameRootDir)
-
-            else -> false
-        }
 
     fun steamClientFiles() : Array<String> {
         return arrayOf(
