@@ -47,9 +47,20 @@
         initAPI: function () { logCall('initAPI', [], 'invoke'); return true; },
         isSteamRunning: function () { return true; },
         getAppId: function () { return 0; },
-        // overlay-to-store opens the Steam store page in chromium UI overlay; under WebView
-        // there's no overlay → silently absorb. games typically show a fallback "View on Steam"
-        // button anyway.
+        // Steam API language NAME ("german"), not a locale code.
+        getCurrentGameLanguage: function () {
+            var v = 'english';
+            try { v = __gnSteamworksBridge.getGameLanguage() || 'english'; } catch (e) {}
+            logCall('getCurrentGameLanguage', [], v);
+            return v;
+        },
+        getCurrentUILanguage: function () {
+            var v = 'english';
+            try { v = __gnSteamworksBridge.getGameLanguage() || 'english'; } catch (e) {}
+            logCall('getCurrentUILanguage', [], v);
+            return v;
+        },
+        // no overlay in WebView.
         activateGameOverlayToStore: function () { logCall('activateGameOverlayToStore', [].slice.call(arguments), 'invoke'); },
         activateGameOverlay: function () { logCall('activateGameOverlay', [].slice.call(arguments), 'invoke'); },
         // real wiring, not the autostub: some titles read getAchievementNames().length at boot.

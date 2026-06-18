@@ -8,6 +8,7 @@ import app.gamenative.html5.savesync.Html5SaveSyncService
 import app.gamenative.html5.shim.Html5DiagnosticBridge
 import app.gamenative.html5.Html5SlugUtil
 import app.gamenative.runtime.WebViewContainer
+import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.DownloadService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -32,7 +33,11 @@ class WebViewScreenViewModel @Inject constructor(
     // null = container missing.
     fun loadByAppId(appId: String): Loaded? {
         val slug = slugFromAppId(appId) ?: return null
-        val container = WebViewContainer.load(slug) ?: return null
+        val base = WebViewContainer.load(slug) ?: return null
+        // language is owned by the wine Container; copy it in once so every consumer can read container.language.
+        val wineLanguage = runCatching { ContainerUtils.getContainer(appContext, appId).language }
+            .getOrDefault(base.language)
+        val container = base.copy(language = wineLanguage)
         val profile = ProfileRegistry.resolveProfile(
             context = appContext,
             appId = appId,
