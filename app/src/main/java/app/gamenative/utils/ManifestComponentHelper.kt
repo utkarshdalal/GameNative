@@ -293,7 +293,7 @@ object ManifestComponentHelper {
         val normalized = version.trim()
         if (normalized.isEmpty()) return null
         return entries.firstOrNull { entry ->
-            normalized.equals(entry.id, ignoreCase=true)
+            normalized.equals(entry.id, ignoreCase = true) || normalized.equals(entry.name, ignoreCase = true)
         }
     }
 }

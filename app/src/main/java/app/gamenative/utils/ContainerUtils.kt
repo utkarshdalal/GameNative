@@ -42,6 +42,13 @@ object ContainerUtils {
         val name: String,
     )
 
+    const val WRAPPER_TURNIP_CAPABLE = "Turnip v26.2.0 R4"
+    const val WRAPPER_ADRENO_8ELITE_GEN5 = "Turnip Adreno Driver T26 (@Mr_Purple_666)"
+    const val WRAPPER_ADRENO_8ELITE = "Turnip Gen8 V30"
+
+    val wrapperDriverDefaults: List<String> =
+        listOf(WRAPPER_TURNIP_CAPABLE, WRAPPER_ADRENO_8ELITE_GEN5, WRAPPER_ADRENO_8ELITE)
+
     fun setContainerDefaults(context: Context) {
         // Override default driver and DXVK version based on Turnip capability
         if (GPUInformation.isTurnipCapable(context)) {
@@ -50,7 +57,7 @@ object ContainerUtils {
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = if (GPUInformation.isAdreno6xx(context)) "1.11.1-sarek" else "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
-            DefaultVersion.WRAPPER = "Turnip_v26.2.0_R4"
+            DefaultVersion.WRAPPER = WRAPPER_TURNIP_CAPABLE
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdreno8EliteGen5(context)) {
@@ -59,7 +66,7 @@ object ContainerUtils {
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
-            DefaultVersion.WRAPPER = "Turnip Adreno Driver T26 (@Mr_Purple_666)"
+            DefaultVersion.WRAPPER = WRAPPER_ADRENO_8ELITE_GEN5
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdreno8Elite(context)) {
@@ -68,7 +75,7 @@ object ContainerUtils {
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
-            DefaultVersion.WRAPPER = "Turnip_Gen8_V30"
+            DefaultVersion.WRAPPER = WRAPPER_ADRENO_8ELITE
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
             DefaultVersion.ASYNC_CACHE = "1"
         } else {
