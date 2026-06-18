@@ -4120,7 +4120,7 @@ private fun unpackExecutableFile(
             Timber.tag("installRedist").e(e, "Error installing redistributables: ${e.message}")
         }
     }
-    if (!needsUnpacking){
+    if (!needsUnpacking || ContainerUtils.extractGameSourceFromContainerId(appId) != GameSource.STEAM){
         return
     }
     try {

@@ -248,9 +248,9 @@ object GOGApiClient {
      * Fetch client secret from GOG build metadata API
      * @param gameId GOG game ID
      * @param installPath Game install path (for platform detection, defaults to "windows")
-     * @return Client secret string, or null if not found
+     * @return Pair of (clientId, clientSecret) from the build metadata, or null if not found
      */
-    suspend fun getClientSecret(context: Context, gameId: String, installPath: String?): String? = withContext(Dispatchers.IO) {
+    suspend fun getClientCredentials(context: Context, gameId: String, installPath: String?): Pair<String, String>? = withContext(Dispatchers.IO) {
         try {
             val platform = "windows" // For now, assume Windows (proton)
             val buildsUrl = "https://content-system.gog.com/products/$gameId/os/$platform/builds?generation=2"
@@ -367,15 +367,17 @@ object GOGApiClient {
                 Timber.tag("GOG").d("[Cloud Saves] Parsing manifest JSON (${manifestStr.take(100)}...)")
                 val manifestJson = JSONObject(manifestStr)
 
-                // Extract clientSecret from manifest
+                // Extract clientId + clientSecret from manifest. Mirrors gogdl, which sources both from
+                // the build metadata — the goggame-*.info clientId is optional and absent for many games.
                 val clientSecret = manifestJson.optString("clientSecret", "")
+                val clientId = manifestJson.optString("clientId", "")
                 if (clientSecret.isEmpty()) {
                     Timber.tag("GOG").w("[Cloud Saves] No clientSecret in manifest for game $gameId")
                     return@withContext null
                 }
 
-                Timber.tag("GOG").d("[Cloud Saves] Successfully retrieved clientSecret for game $gameId")
-                return@withContext clientSecret
+                Timber.tag("GOG").d("[Cloud Saves] Retrieved client credentials for game $gameId")
+                return@withContext clientId to clientSecret
             }
 
         } catch (e: Exception) {
