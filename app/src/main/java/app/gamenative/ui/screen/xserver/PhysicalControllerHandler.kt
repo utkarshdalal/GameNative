@@ -255,6 +255,8 @@ class PhysicalControllerHandler(
     // offset: analog axis value for presses; must be 0f for releases (triggers use offset > 0f
     // to determine pressed state, sticks gate on isActionDown, everything else ignores offset)
     private fun handleInputEvent(binding: Binding, isActionDown: Boolean, offset: Float = 0f) {
+        if (binding == Binding.NONE) return
+
         if (binding.isGamepad) {
             val winHandler = xServer?.winHandler
             val state = profile?.gamepadState

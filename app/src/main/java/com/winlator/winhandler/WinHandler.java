@@ -98,6 +98,8 @@ public class WinHandler {
     private static final int OFF_HAT = 31;
     private static final int OFF_RUMBLE_LOW = 32;
     private static final int OFF_RUMBLE_HIGH = 34;
+    private static final int CONTROLLER_RUMBLE_DURATION_MS = 1000;
+    private static final int PHONE_RUMBLE_FALLBACK_DURATION_MS = 40;
 
     // Add method to set InputControlsView
     public void setInputControlsView(InputControlsView view) {
@@ -644,6 +646,11 @@ public class WinHandler {
         rumblePollerThread.start();
     }
 
+    private InputDevice getCurrentPhysicalControllerDevice() {
+        InputDevice device = InputDevice.getDevice(currentControllerId);
+        return ExternalController.isGameController(device) ? device : null;
+    }
+
     private void startVibration(short lowFreq, short highFreq) {
         // --- Step 1: Calculate the base amplitude once at the top ---
         int unsignedLowFreq = lowFreq & 0xFFFF;
@@ -657,20 +664,21 @@ public class WinHandler {
             stopVibration();
             return;
         }
-        isRumbling = true; // We know we are going to try to rumble.
         boolean controllerVibrated = false;
+        boolean phoneVibrated = false;
         // --- Step 2: Attempt to vibrate the physical controller first ---
-        InputDevice device = InputDevice.getDevice(currentControllerId);
+        InputDevice device = getCurrentPhysicalControllerDevice();
         if (device != null) {
             Vibrator controllerVibrator = device.getVibrator();
             if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
-                controllerVibrator.vibrate(VibrationEffect.createOneShot(1000, amplitude));
+                controllerVibrator.vibrate(VibrationEffect.createOneShot(CONTROLLER_RUMBLE_DURATION_MS, amplitude));
                 controllerVibrated = true;
             }
         }
 
-        // --- Step 3: Fallback to phone vibration if physical controller fails or doesn't exist ---
-        if (!controllerVibrated) {
+        // --- Step 3: Fallback to phone vibration only for a real controller without rumble.
+        // Touch-only virtual gamepad rumble should not start a one-second phone vibration on every button press.
+        if (!controllerVibrated && device != null) {
             Log.w("WinHandler", "No physical controller vibrator found, falling back to device vibration.");
             Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
             if (phoneVibrator != null && phoneVibrator.hasVibrator()) {
@@ -681,15 +689,17 @@ public class WinHandler {
                 if (finalPhoneAmplitude > 255) finalPhoneAmplitude = 255;
                 if (finalPhoneAmplitude <= 1) finalPhoneAmplitude = 0;
                 if (finalPhoneAmplitude > 0) {
-                    phoneVibrator.vibrate(VibrationEffect.createOneShot(1000, finalPhoneAmplitude));
+                    phoneVibrator.vibrate(VibrationEffect.createOneShot(PHONE_RUMBLE_FALLBACK_DURATION_MS, finalPhoneAmplitude));
+                    phoneVibrated = true;
                 }
             }
         }
+        isRumbling = controllerVibrated || phoneVibrated;
     }
     private void stopVibration() {
         if (!isRumbling) return; // Simplified check
         // Attempt to stop the physical controller's vibration if it exists
-        InputDevice device = InputDevice.getDevice(currentControllerId);
+        InputDevice device = getCurrentPhysicalControllerDevice();
         if (device != null) {
             Vibrator vibrator = device.getVibrator();
             if (vibrator != null && vibrator.hasVibrator()) {
