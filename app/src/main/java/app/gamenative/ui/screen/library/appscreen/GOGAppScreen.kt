@@ -31,6 +31,7 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.utils.ContainerUtils.getContainer
+import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -465,7 +466,9 @@ class GOGAppScreen : BaseAppScreen() {
         if (!app.gamenative.utils.ContainerUtils.applyToContainerGated(context, libraryItem.appId, config)) return false
         Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
 
-        if (previousLanguage != config.language) {
+        // html5 has NO per-language depot (language is a runtime setting), so the re-fetch a language
+        // change triggers would select no depots and never complete.
+        if (previousLanguage != config.language && container.runtime != Container.RUNTIME_WEBVIEW) {
             triggerGOGVerifyDownload(context, libraryItem, config.language)
         }
         return true
