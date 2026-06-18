@@ -253,15 +253,27 @@
         // platform=win32 to match the Windows-NWjs posture invariant (saves resolve via the
         // bridge's wine-prefix translation, which assumes process.platform aligns with where
         // Steam UFS / GOG cloud expects the files).
+        // mirror the worker-bootstrap process stub (cwd/execPath/arch/mainModule) so boot
+        // diagnostics that probe several process fields don't trip on the next missing one.
+        // cwd='/' matches the worker and fs.js relative-path normalization (root-relative).
         window.process = {
             versions: { nw: '0.0.0-gamenative-stub', node: '0.0.0-gamenative-stub' },
             platform: 'win32',
+            arch: 'x64',
+            execPath: '/nwjs',
+            mainModule: { filename: '/index.html' },
+            cwd: function () { return '/'; },
             env: {},
         };
     } else if (window.process && !window.process.versions) {
         window.process.versions = { nw: '0.0.0-gamenative-stub', node: '0.0.0-gamenative-stub' };
     } else if (window.process && window.process.versions && !window.process.versions.nw) {
         window.process.versions.nw = '0.0.0-gamenative-stub';
+    }
+    // backfill cwd on a preexisting process (e.g. steamworks.js require stub) -- the branches
+    // above only touch .versions, so a polyfill without cwd would still throw.
+    if (window.process && typeof window.process.cwd !== 'function') {
+        window.process.cwd = function () { return '/'; };
     }
 
     // NW.js convention: `require("nw.gui")` returns the GUI module exposing Window, Tray,

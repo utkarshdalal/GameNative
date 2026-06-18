@@ -135,6 +135,7 @@ object IndexHtmlRewriter {
             try{if(window.process&&typeof window.process.platform==='undefined'){window.process.platform='win32';}}catch(_e){}
             try{if(window.process&&typeof window.process.execPath==='undefined'){window.process.execPath='.\\game.exe';}}catch(_e){}
             try{if(window.process&&typeof window.process.arch==='undefined'){window.process.arch='x64';}}catch(_e){}
+            try{if(window.process&&typeof window.process.cwd!=='function'){window.process.cwd=function(){return '/';};}}catch(_e){}
             try{if(typeof window.__gnPlatform==='undefined'){window.__gnPlatform='win32';}}catch(_e){}
             try{if(typeof window.c2nwjs==='undefined'){window.c2nwjs=true;}}catch(_e){}
             if(typeof window.global==='undefined'){try{window.global=window;}catch(_e){}}
