@@ -111,7 +111,9 @@
                         s.src = PLUGIN_STUBS[name];
                         document.head.appendChild(s);
                     } else {
-                        console.warn('gamenative pack:rmmv — plugin detected but no stub: ' + name);
+                        // we ship a stub for `name` but this game doesn't import it -- expected,
+                        // not an error. nothing to inject.
+                        console.log('gamenative pack:rmmv — stub available for ' + name + ', game does not use it; skipping');
                     }
                 });
                 // re-install canvas fit/center AFTER plugin IIFEs have run (YEP_CoreEngine
