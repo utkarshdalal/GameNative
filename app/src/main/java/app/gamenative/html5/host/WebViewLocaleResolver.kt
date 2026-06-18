@@ -33,6 +33,34 @@ object WebViewLocaleResolver {
     fun goldbergToBcp47(goldberg: String): String? =
         goldbergMap[goldberg.trim().lowercase(Locale.ROOT)]
 
+    private val bcp47ToGoldbergExact: Map<String, String> =
+        goldbergMap.entries.associate { (g, b) -> b.lowercase(Locale.ROOT) to g }
+
+    // region-less tags ("de") can come straight from appLanguage. ambiguous primaries pick the
+    // unsuffixed Steam default (spanish, portuguese, schinese).
+    private val primaryToGoldberg: Map<String, String> = mapOf(
+        "en" to "english", "zh" to "schinese", "ko" to "koreana", "ja" to "japanese",
+        "es" to "spanish", "fr" to "french", "de" to "german", "it" to "italian",
+        "pt" to "portuguese", "pl" to "polish", "ru" to "russian", "uk" to "ukrainian",
+        "nl" to "dutch", "tr" to "turkish", "cs" to "czech", "hu" to "hungarian",
+        "ro" to "romanian", "da" to "danish",
+    )
+
+    // BCP-47 -> Steam/Goldberg language name. null = not a Steam-supported language.
+    fun bcp47ToGoldberg(tag: String): String? {
+        val t = tag.trim().lowercase(Locale.ROOT)
+        if (t.isEmpty()) return null
+        bcp47ToGoldbergExact[t]?.let { return it }
+        return primaryToGoldberg[t.substringBefore('-')]
+    }
+
+    // Steam API language name for steamworks/greenworks; same precedence as navigator.language so they agree.
+    fun resolveSteamLanguage(
+        containerLanguage: String?,
+        appLanguage: String,
+        systemLocale: Locale = Locale.getDefault(),
+    ): String = bcp47ToGoldberg(resolve(containerLanguage, appLanguage, systemLocale)) ?: "english"
+
     fun resolve(
         containerLanguage: String?,
         appLanguage: String,
