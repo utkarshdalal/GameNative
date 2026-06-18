@@ -162,6 +162,35 @@ Java_com_winlator_renderer_GPUImage_nativeHardwareBufferFromSocket(
     return (jlong)(uintptr_t)ahb;
 }
 
+JNIEXPORT void JNICALL
+Java_com_winlator_renderer_GPUImage_nativeCopyHardwareBuffer(
+        JNIEnv *env, jobject obj, jobject srcBuffer, jlong dstPtr, jshort width, jshort height, jshort srcStride)
+{
+    uint32_t* srcAddr = (uint32_t*)(*env)->GetDirectBufferAddress(env, srcBuffer);
+    AHardwareBuffer *dstAhb = (AHardwareBuffer *)(uintptr_t)dstPtr;
+    if (!srcAddr || !dstAhb) return;
+
+    void *dstAddrVoid = NULL;
+    if (AHardwareBuffer_lock(dstAhb, AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, -1, NULL, &dstAddrVoid) == 0) {
+        uint32_t* dstAddr = (uint32_t*)dstAddrVoid;
+        AHardwareBuffer_Desc desc;
+        AHardwareBuffer_describe(dstAhb, &desc);
+        uint32_t dstStride = desc.stride;
+
+        if (dstStride == (uint32_t)srcStride) {
+            memcpy(dstAddr, srcAddr, (size_t)dstStride * height * 4);
+        } else {
+            for (int y = 0; y < height; y++) {
+                memcpy(dstAddr + y * dstStride, srcAddr + y * srcStride, width * 4);
+            }
+        }
+
+        AHardwareBuffer_unlock(dstAhb, NULL);
+    } else {
+        LOGE("nativeCopyHardwareBuffer: lock failed");
+    }
+}
+
 JNIEXPORT jlong JNICALL
 Java_com_winlator_renderer_GPUImage_nativeCreateHardwareBuffer(
         JNIEnv *env, jobject obj, jshort width, jshort height)
@@ -257,6 +286,13 @@ Java_com_winlator_renderer_GPUImage_nativeLockHardwareBuffer(
         LOGE("nativeLockHardwareBuffer: lock failed: %d", result);
         close_fence((int)fence_fd);
         return NULL;
+    }
+
+    if (old_buffer != NULL) {
+        void* old_addr = (*env)->GetDirectBufferAddress(env, old_buffer);
+        if (old_addr == addr) {
+            return old_buffer;
+        }
     }
 
     AHardwareBuffer_Desc desc;

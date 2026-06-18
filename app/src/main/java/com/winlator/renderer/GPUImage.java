@@ -14,6 +14,8 @@ public class GPUImage extends Texture {
 
     private long imageKHRPtr = 0;
     private static boolean supported = false;
+    private long[] swapchainAhbs = new long[3];
+    private int swapchainIndex = 0;
 
     static { System.loadLibrary("gpuimage"); }
 
@@ -24,6 +26,9 @@ public class GPUImage extends Texture {
             this.width = nativeGetWidth(ahbPtr);
             this.height = nativeGetHeight(ahbPtr);
             mapping = nativeLockHardwareBuffer(ahbPtr, -1, null);
+            for (int i = 0; i < 3; i++) {
+                swapchainAhbs[i] = nativeCreateHardwareBuffer(width, height);
+            }
         }
     }
 
@@ -57,6 +62,17 @@ public class GPUImage extends Texture {
     }
 
     public long getHardwareBufferPtr() { return ahbPtr; }
+
+    public long getScanoutHardwareBufferPtr() {
+        if (swapchainAhbs[0] != 0 && mapping != null) {
+            long targetAhb = swapchainAhbs[swapchainIndex];
+            nativeCopyHardwareBuffer(mapping, targetAhb, (short)width, (short)height, stride);
+            swapchainIndex = (swapchainIndex + 1) % 3;
+            return targetAhb;
+        }
+        return ahbPtr;
+    }
+
     public ByteBuffer getVirtualData() {
         if (mapping == null && ahbPtr != 0) {
             mapping = nativeLockHardwareBuffer(ahbPtr, -1, null);
@@ -71,16 +87,12 @@ public class GPUImage extends Texture {
 
     public int unlock() {
         if (ahbPtr == 0) return -1;
-        int readyFence = nativeUnlockHardwareBuffer(ahbPtr);
-        pendingFence = readyFence;
-        return readyFence;
+        return nativeUnlockHardwareBuffer(ahbPtr);
     }
 
     public void lock() {
         if (ahbPtr == 0) return;
-        int fence = pendingFence;
-        pendingFence = -1;
-        mapping = nativeLockHardwareBuffer(ahbPtr, fence, mapping);
+        mapping = nativeLockHardwareBuffer(ahbPtr, -1, mapping);
     }
 
     @Override
@@ -88,6 +100,12 @@ public class GPUImage extends Texture {
         if (imageKHRPtr != 0) {
             nativeDestroyImageKHR(imageKHRPtr);
             imageKHRPtr = 0;
+        }
+        for (int i = 0; i < 3; i++) {
+            if (swapchainAhbs[i] != 0) {
+                nativeDestroyHardwareBuffer(swapchainAhbs[i]);
+                swapchainAhbs[i] = 0;
+            }
         }
         if (ahbPtr != 0) {
             if (mapping != null) {
@@ -120,6 +138,7 @@ public class GPUImage extends Texture {
     private native short nativeGetWidth(long ptr);
     private native short nativeGetHeight(long ptr);
     private native void nativeCloseFence(int fenceFd);
+    private native void nativeCopyHardwareBuffer(ByteBuffer srcBuffer, long dstPtr, short width, short height, short srcStride);
 
     private native long nativeCreateImageKHR(long ptr, int textureId);
     private native void nativeDestroyImageKHR(long imagePtr);

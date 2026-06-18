@@ -404,7 +404,7 @@ void ASurfaceRendererContext::registerWindowSC(int64_t contentId, const char* de
     if (oldSc) {
         oneShot([&](void* tx) {
             ST_SETVIS(tx, oldSc, 0);
-            ST_REPARENT(tx, sc, nullptr);
+            ST_REPARENT(tx, oldSc, nullptr);
         });
         SC_RELEASE(oldSc);
     }

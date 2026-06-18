@@ -339,7 +339,6 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             String debugName = rw.window.getClassName();
 
             if (debugName == null || debugName.isEmpty()) debugName = "(x11_window)";
-            WindowSurface ws = getOrCreateWindowSurface(contentId, rw.content.width, rw.content.height, debugName);
             WindowGeometry geom = new WindowGeometry();
 
             boolean geometryOk = computeWindowRect(
@@ -349,6 +348,19 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                     geom
             );
 
+            if (unviewableWMClasses != null) {
+                String wc = rw.window.getClassName();
+                boolean skip = false;
+                for (String cls : unviewableWMClasses) {
+                    if (wc.contains(cls)) {
+                        skip = true;
+                        break;
+                    }
+                }
+                if (skip) continue;
+            }
+
+            WindowSurface ws = getOrCreateWindowSurface(contentId, rw.content.width, rw.content.height, debugName);
             int srcW = rw.content.width;
             int srcH = rw.content.height;
             if (rw.content.getTexture() instanceof GPUImage g) {
@@ -424,11 +436,20 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         if (drawable == null) return;
         synchronized (drawable.renderLock) {
             if (drawable.getTexture() instanceof GPUImage g) {
-                long ahbPtr = g.getHardwareBufferPtr();
+                long ahbPtr = g.getScanoutHardwareBufferPtr();
                 if (ahbPtr != 0) {
-                    int fence = g.unlock();
-                    nativeSetWindowBuffer(windowId, ahbPtr, fence, windowId, 0);
-                    g.lock();
+                    int fence = -1;
+                    boolean isFallback = (ahbPtr == g.getHardwareBufferPtr());
+
+                    if (isFallback) {
+                        fence = g.unlock();
+                    }
+
+                    nativeSetWindowBuffer(windowId, ahbPtr, fence, 0, 0);
+
+                    if (isFallback) {
+                        g.lock();
+                    }
                 }
             }
         }
@@ -514,6 +535,10 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     @Override
     public void onMapWindow(Window window) {
         Timber.d("onMapWindow id=%s", window.id);
+        if (unviewableWMClasses != null) {
+            String wc = window.getClassName();
+            for (String cls : unviewableWMClasses) if (wc.contains(cls)) return;
+        }
         Drawable content = window.getContent();
         if (content != null && content.width > 0 && content.height > 0) {
             if (!(content.getTexture() instanceof GPUImage)) {
@@ -522,17 +547,9 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                     content.setTexture(g);
                 }
             }
-            if (content.getTexture() instanceof GPUImage g) {
+            if (content.getTexture() instanceof GPUImage) {
                 content.setOnDrawListener(() -> {
-                    WindowSurface ws = windowSurfaces.get(window.id);
-                    if (ws == null) return;
-                    synchronized (content.renderLock) {
-                        long ahbPtr = g.getHardwareBufferPtr();
-                        if (ahbPtr == 0) return;
-                        int fence = g.unlock();
-                        nativeSetWindowBuffer(window.id, ahbPtr, fence, 0, 0);
-                        g.lock();
-                    }
+                    if (windowSurfaces.containsKey(window.id)) { pushCpuImageToNative(window.id, content); }
                 });
             }
         }
@@ -568,6 +585,10 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     @Override
     public void onUpdateWindowGeometry(Window window, boolean resized) {
         Timber.d("onUpdateWindowGeometry id=%s resized=%b", window.id, resized);
+        if (unviewableWMClasses != null) {
+            String wc = window.getClassName();
+            for (String cls : unviewableWMClasses) if (wc.contains(cls)) return;
+        }
         if (resized) {
             windowSurfaces.remove(window.id);
             nativeUnregisterWindowSC(window.id);
