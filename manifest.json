@@ -672,6 +672,42 @@
     ],
     "dxvk": [
       {
+        "id": "2.7.1",
+        "name": "DXVK 2.7.1",
+        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-2.7.1.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "1.10.3",
+        "name": "DXVK 1.10.3",
+        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.10.3.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "1.10.1",
+        "name": "DXVK 1.10.1",
+        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.10.1.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "1.10.9-sarek",
+        "name": "DXVK 1.10.9-sarek",
+        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.10.9-sarek.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "1.9.2",
+        "name": "DXVK 1.9.2",
+        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.9.2.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.4.1",
+        "name": "DXVK 2.4.1",
+        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-2.4.1.tzst",
+        "variant": "bionic"
+      },
+      {
         "id": "1.12.0-sarek-0",
         "name": "DXVK 1.12.0-sarek",
         "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.12.0-sarek.wcp",
@@ -754,42 +790,6 @@
         "name": "DXVK 1.10.3",
         "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK/dxvk-1.10.3.wcp",
         "variant": "bionic"
-      },
-      {
-        "id": "2.7.1",
-        "name": "DXVK 2.7.1",
-        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-2.7.1.tzst",
-        "variant": "bionic"
-      },
-      {
-        "id": "1.10.3",
-        "name": "DXVK 1.10.3",
-        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.10.3.tzst",
-        "variant": "bionic"
-      },
-      {
-        "id": "1.10.1",
-        "name": "DXVK 1.10.1",
-        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.10.1.tzst",
-        "variant": "bionic"
-      },
-      {
-        "id": "1.10.9-sarek",
-        "name": "DXVK 1.10.9-sarek",
-        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.10.9-sarek.tzst",
-        "variant": "bionic"
-      },
-      {
-        "id": "1.9.2",
-        "name": "DXVK 1.9.2",
-        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.9.2.tzst",
-        "variant": "bionic"
-      },
-      {
-        "id": "2.4.1",
-        "name": "DXVK 2.4.1",
-        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-2.4.1.tzst",
-        "variant": "bionic"
       }
     ],
     "proton": [
@@ -842,12 +842,6 @@
     ],
     "vkd3d": [
       {
-        "id": "3.0.1-0",
-        "name": "VKD3D 3.0.1-0",
-        "url": "https://downloads.gamenative.app/drivers/vkd3d-proton-3.0.1.wcp",
-        "variant": "bionic"
-      },
-      {
         "id": "2.6",
         "name": "VKD3D 2.6",
         "url": "https://downloads.gamenative.app/dxwrapper/vkd3d-2.6.tzst",
@@ -869,6 +863,12 @@
         "id": "3.0b",
         "name": "VKD3D 3.0b",
         "url": "https://downloads.gamenative.app/dxwrapper/vkd3d-3.0b.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "3.0.1-0",
+        "name": "VKD3D 3.0.1-0",
+        "url": "https://downloads.gamenative.app/drivers/vkd3d-proton-3.0.1.wcp",
         "variant": "bionic"
       }
     ]

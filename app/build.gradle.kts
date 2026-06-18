@@ -28,6 +28,12 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
+// Debug-only: package the repo's manifest.json so debug builds read it locally (never in release).
+val copyDebugManifest by tasks.registering(Copy::class) {
+    from(rootProject.file("manifest.json"))
+    into(layout.buildDirectory.dir("generated/debugManifest"))
+}
+
 android {
     namespace = "app.gamenative"
     compileSdk = 36
@@ -244,6 +250,9 @@ android {
             jniLibs {
                 srcDirs("src/modern/jniLibs")
             }
+        }
+        getByName("debug") {
+            assets.srcDir(copyDebugManifest)
         }
     }
 
