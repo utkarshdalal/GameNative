@@ -979,7 +979,12 @@ class SteamAppScreen : BaseAppScreen() {
     override suspend fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData): Boolean {
         val container = getContainer(context, libraryItem.appId)
         if (!ContainerUtils.applyToContainerGated(context, libraryItem.appId, config)) return false
-        if (container.language != config.language) {
+        // a language change triggers a depot re-fetch -- language-specific Wine depots + Goldberg
+        // settings regen. HTML5 titles have NO per-language depot: language is a pure runtime setting
+        // (navigator.language / Steam API), so the re-download is not just pointless but WEDGES --
+        // depot selection filters to the new language, finds nothing (selectedDepots empty), and the
+        // download never completes. skip it for webview containers.
+        if (container.language != config.language && container.runtime != Container.RUNTIME_WEBVIEW) {
             CoroutineScope(Dispatchers.IO).launch {
                 SteamService.downloadApp(libraryItem.gameId)
             }
