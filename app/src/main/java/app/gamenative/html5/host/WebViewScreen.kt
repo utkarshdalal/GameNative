@@ -194,11 +194,19 @@ fun WebViewScreen(
             ?: File(context.filesDir, "html5-gse-fallback/${container.id}")
     }
 
-    val steamworksBridge = remember(container.id, steamAppIdInt) {
+    // Steam API language NAME -- same precedence as navigator.language (container goldberg ->
+    // appLanguage -> system -> en-US), reverse-mapped to the Goldberg name Steam expects.
+    // container.language is the wine Container value (populated in loadByAppId), NOT the sidecar.
+    val steamLanguage = remember(container.language, PrefManager.appLanguage) {
+        WebViewLocaleResolver.resolveSteamLanguage(container.language, PrefManager.appLanguage)
+    }
+
+    val steamworksBridge = remember(container.id, steamAppIdInt, steamLanguage) {
         SteamworksJsBridge(
             containerId = container.id,
             appId = steamAppIdInt ?: 0,
             gseDir = gseDir,
+            gameLanguage = steamLanguage,
         )
     }
 

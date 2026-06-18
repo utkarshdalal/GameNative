@@ -29,6 +29,9 @@ class SteamworksJsBridge(
     private val containerId: String,
     private val appId: Int,
     private val gseDir: File,
+    // resolved Steam/Goldberg language NAME (e.g. "german"), already run through the same
+    // precedence as navigator.language so the two channels agree. "english" = unset/unmappable.
+    private val gameLanguage: String = "english",
 ) {
     // diagnostic JSONL sink.
     private val logFile: File by lazy {
@@ -105,6 +108,12 @@ class SteamworksJsBridge(
             .onFailure { Timber.tag(TAG).e(it, "achievements.json write failed (clear)") }
         return true
     }
+
+    // Steam ISteamApps::GetCurrentGameLanguage / ISteamUtils::GetSteamUILanguage both return
+    // the API language NAME ("english"/"german"/...) -- NOT BCP-47. we surface one value for
+    // both (single language setting). steamworks.js + greenworks.js route here.
+    @JavascriptInterface
+    fun getGameLanguage(): String = gameLanguage.ifBlank { "english" }
 
     @JavascriptInterface
     fun getAchievement(name: String): Boolean = achievementsCache[name] == true

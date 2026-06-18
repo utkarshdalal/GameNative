@@ -161,8 +161,18 @@
         // user identity (4)
         getSteamId: function () { logCall('getSteamId', [], 'steamIdStub'); return steamIdStub; },
         getPersonaName: function () { logCall('getPersonaName', [], realPersonaName); return realPersonaName; },
-        getCurrentGameLanguage: function () { logCall('getCurrentGameLanguage', [], 'english'); return 'english'; },
-        getCurrentUILanguage: function () { logCall('getCurrentUILanguage', [], 'english'); return 'english'; },
+        getCurrentGameLanguage: function () {
+            var v = 'english';
+            try { v = __gnSteamworksBridge.getGameLanguage() || 'english'; } catch (e) {}
+            logCall('getCurrentGameLanguage', [], v);
+            return v;
+        },
+        getCurrentUILanguage: function () {
+            var v = 'english';
+            try { v = __gnSteamworksBridge.getGameLanguage() || 'english'; } catch (e) {}
+            logCall('getCurrentUILanguage', [], v);
+            return v;
+        },
 
         // achievements (6) -- bridge-routed per logCall preserved for diagnostic continuity.
         activateAchievement: function (name, cb) {

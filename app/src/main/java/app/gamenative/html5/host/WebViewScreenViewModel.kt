@@ -7,6 +7,7 @@ import app.gamenative.html5.profile.ProfileRegistry
 import app.gamenative.html5.savesync.Html5SaveSyncService
 import app.gamenative.html5.shim.Html5DiagnosticBridge
 import app.gamenative.runtime.WebViewContainer
+import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.DownloadService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -39,7 +40,15 @@ class WebViewScreenViewModel @Inject constructor(
     // null -> container missing; profile null -> fall back to engine-default url set.
     fun loadByAppId(appId: String): Loaded? {
         val slug = slugFromAppId(appId) ?: return null
-        val container = WebViewContainer.load(slug) ?: return null
+        val base = WebViewContainer.load(slug) ?: return null
+        // language is owned by the wine Container (the container-config dialog's source of truth);
+        // the WebViewContainer sidecar never carried it (defaulted to "english"). populate it here
+        // ONCE so every consumer reads the correct value from container.language: navigator.language
+        // (IndexHtmlRewriter), Steam getCurrentGameLanguage (SteamworksJsBridge), and achievement
+        // display-name localization (Html5AchievementWatcher).
+        val wineLanguage = runCatching { ContainerUtils.getContainer(appContext, appId).language }
+            .getOrDefault(base.language)
+        val container = base.copy(language = wineLanguage)
         val profile = ProfileRegistry.resolveProfile(
             context = appContext,
             appId = appId,

@@ -101,4 +101,68 @@ class WebViewLocaleResolverTest {
         val got = WebViewLocaleResolver.resolve("SCHINESE", "", Locale.forLanguageTag("ja-JP"))
         assertEquals("zh-CN", got)
     }
+
+    // ---- bcp47ToGoldberg (inverse map) ----
+
+    @Test fun bcp47_exact_de_de() = assertEquals("german", WebViewLocaleResolver.bcp47ToGoldberg("de-DE"))
+    @Test fun bcp47_exact_pt_br() = assertEquals("brazilian", WebViewLocaleResolver.bcp47ToGoldberg("pt-BR"))
+    @Test fun bcp47_exact_es_419() = assertEquals("latam", WebViewLocaleResolver.bcp47ToGoldberg("es-419"))
+    @Test fun bcp47_exact_zh_tw() = assertEquals("tchinese", WebViewLocaleResolver.bcp47ToGoldberg("zh-TW"))
+    @Test fun bcp47_case_insensitive() = assertEquals("french", WebViewLocaleResolver.bcp47ToGoldberg("FR-fr"))
+
+    // region-less primary subtag (appLanguage can be "de") falls back to the unsuffixed default.
+    @Test fun bcp47_primary_de() = assertEquals("german", WebViewLocaleResolver.bcp47ToGoldberg("de"))
+    @Test fun bcp47_primary_en() = assertEquals("english", WebViewLocaleResolver.bcp47ToGoldberg("en"))
+    @Test fun bcp47_en_us_to_english() = assertEquals("english", WebViewLocaleResolver.bcp47ToGoldberg("en-US"))
+    // ambiguous primaries pick the unsuffixed Steam default, not the regional variant.
+    @Test fun bcp47_es_primary_is_spanish() = assertEquals("spanish", WebViewLocaleResolver.bcp47ToGoldberg("es"))
+    @Test fun bcp47_pt_primary_is_portuguese() = assertEquals("portuguese", WebViewLocaleResolver.bcp47ToGoldberg("pt"))
+    @Test fun bcp47_zh_primary_is_schinese() = assertEquals("schinese", WebViewLocaleResolver.bcp47ToGoldberg("zh"))
+    // unsupported language → null (caller falls back to english).
+    @Test fun bcp47_unsupported_returns_null() = assertEquals(null, WebViewLocaleResolver.bcp47ToGoldberg("th-TH"))
+    @Test fun bcp47_blank_returns_null() = assertEquals(null, WebViewLocaleResolver.bcp47ToGoldberg("  "))
+
+    // ---- resolveSteamLanguage (Goldberg name via shared precedence) ----
+
+    // container goldberg wins → round-trips back to the same Steam name.
+    @Test
+    fun steamlang_container_goldberg_wins() {
+        val got = WebViewLocaleResolver.resolveSteamLanguage("german", "en", Locale.forLanguageTag("ja-JP"))
+        assertEquals("german", got)
+    }
+
+    // english sentinel falls through to appLanguage, mapped to a Steam name.
+    @Test
+    fun steamlang_falls_through_to_appLanguage() {
+        val got = WebViewLocaleResolver.resolveSteamLanguage("english", "fr-FR", Locale.forLanguageTag("ja-JP"))
+        assertEquals("french", got)
+    }
+
+    // appLanguage as region-less primary still maps.
+    @Test
+    fun steamlang_appLanguage_primary_subtag() {
+        val got = WebViewLocaleResolver.resolveSteamLanguage(null, "de", Locale.forLanguageTag("ja-JP"))
+        assertEquals("german", got)
+    }
+
+    // empty appLanguage → system locale, mapped.
+    @Test
+    fun steamlang_falls_through_to_system_locale() {
+        val got = WebViewLocaleResolver.resolveSteamLanguage(null, "", Locale.forLanguageTag("pt-BR"))
+        assertEquals("brazilian", got)
+    }
+
+    // unsupported resolved tag → english (never fails launch).
+    @Test
+    fun steamlang_unsupported_falls_back_to_english() {
+        val got = WebViewLocaleResolver.resolveSteamLanguage(null, "th-TH", Locale.forLanguageTag("th-TH"))
+        assertEquals("english", got)
+    }
+
+    // full chain exhausted → en-US → english.
+    @Test
+    fun steamlang_final_fallback_english() {
+        val got = WebViewLocaleResolver.resolveSteamLanguage(null, "", Locale.forLanguageTag("und"))
+        assertEquals("english", got)
+    }
 }

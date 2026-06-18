@@ -57,6 +57,21 @@
         initAPI: function () { logCall('initAPI', [], 'invoke'); return true; },
         isSteamRunning: function () { return true; },
         getAppId: function () { return 0; },
+        // language -- bridge-routed (same __gnSteamworksBridge). real greenworks returns the
+        // Steam API NAME ("german"). absent here previously → Proxy-undefined fallback, so
+        // localized titles fell back to english regardless of the container language setting.
+        getCurrentGameLanguage: function () {
+            var v = 'english';
+            try { v = __gnSteamworksBridge.getGameLanguage() || 'english'; } catch (e) {}
+            logCall('getCurrentGameLanguage', [], v);
+            return v;
+        },
+        getCurrentUILanguage: function () {
+            var v = 'english';
+            try { v = __gnSteamworksBridge.getGameLanguage() || 'english'; } catch (e) {}
+            logCall('getCurrentUILanguage', [], v);
+            return v;
+        },
         // overlay-to-store opens the Steam store page in chromium UI overlay; under WebView
         // there's no overlay → silently absorb. games typically show a fallback "View on Steam"
         // button anyway.
