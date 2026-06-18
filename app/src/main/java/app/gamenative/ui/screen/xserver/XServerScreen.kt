@@ -4132,7 +4132,7 @@ private fun unpackExecutableFile(
         val rootDir: File = imageFs.getRootDir()
 
         try {
-            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
+            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.booting_splash_handling_drm)))
             // a:/.../GameDir/orig_dll_path.txt  (same dir as the EXE inside A:)
             val origTxtFile  = File("${imageFs.wineprefix}/dosdevices/a:/orig_dll_path.txt")
 
@@ -4196,10 +4196,18 @@ private fun unpackExecutableFile(
             if (exePaths.isEmpty()) {
                 Timber.w("No executable path set, skipping Steamless")
             } else {
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
+               PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.booting_splash_handling_drm)))
                 for ((index, executablePath) in exePaths.withIndex()) {
                     if (exePaths.size > 1) {
-                        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM (${index + 1}/${exePaths.size})"))
+                        PluviaApp.events.emit(
+                            AndroidEvent.SetBootingSplashText(
+                                context.getString(
+                                    R.string.booting_splash_handling_drm_progress,
+                                    index + 1,
+                                    exePaths.size
+                                )
+                            )
+                        )
                     }
                     var batchFile: File? = null
                     try {
