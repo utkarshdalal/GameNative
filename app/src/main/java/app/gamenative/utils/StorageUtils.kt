@@ -33,6 +33,24 @@ object StorageUtils {
         return stat.blockSizeLong * stat.availableBlocksLong
     }
 
+    /**
+     * Free space on the volume that would contain [path], even if [path] doesn't exist yet
+     * (e.g. a game's install directory before the first download has created it). Walks up to
+     * the nearest existing ancestor, which is on the same volume, since [StatFs] needs an
+     * existing path. Throws only if no ancestor exists (e.g. a blank/invalid path).
+     */
+    fun getAvailableSpaceForUncreatedPath(path: String): Long {
+        var file: File? = File(path)
+        while (file != null && !file.exists()) {
+            file = file.parentFile
+        }
+        if (file == null) {
+            throw IllegalArgumentException("Invalid path: $path")
+        }
+        val stat = StatFs(file.path)
+        return stat.blockSizeLong * stat.availableBlocksLong
+    }
+
     fun getTotalSpace(path: String): Long {
         val file = File(path)
         if (!file.exists()) {

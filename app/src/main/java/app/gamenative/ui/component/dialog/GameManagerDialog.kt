@@ -201,7 +201,7 @@ fun GameManagerDialog(
     }
 
     fun getInstallSizeInfo(): InstallSizeInfo {
-        val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
+        val availableBytes = StorageUtils.getAvailableSpaceForUncreatedPath(SteamService.getAppDirPath(gameId))
 
         val baseGameInstallBytes = if (!isBaseGameInstalled) {
             downloadableDepots
