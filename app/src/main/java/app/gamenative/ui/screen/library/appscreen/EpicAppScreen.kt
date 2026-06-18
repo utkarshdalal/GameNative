@@ -33,6 +33,7 @@ import app.gamenative.enums.Marker
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId
 import app.gamenative.utils.MarkerUtils
+import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import com.winlator.core.StringUtils
@@ -624,12 +625,15 @@ class EpicAppScreen : BaseAppScreen() {
     override suspend fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData): Boolean {
         Timber.tag(TAG).i("saveContainerConfig: appId=${libraryItem.appId}")
         // Save Epic-specific container configuration using ContainerUtils
-        val previousLanguage = ContainerUtils.getContainer(context, libraryItem.appId).language
+        val container = ContainerUtils.getContainer(context, libraryItem.appId)
+        val previousLanguage = container.language
         return app.gamenative.utils.ContainerUtils.applyToContainerGated(context, libraryItem.appId, config).also {
             if (it) {
                 Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
-                // gated write refused -> container language unchanged, so nothing to re-download
-                if (previousLanguage != config.language) {
+                // gated write refused -> container language unchanged, so nothing to re-download.
+                // html5 has NO per-language depot (language is a runtime setting), so the re-fetch a
+                // language change triggers would select no depots and never complete.
+                if (previousLanguage != config.language && container.runtime != Container.RUNTIME_WEBVIEW) {
                     triggerEpicUpdateDownload(context, libraryItem, config.language, clearPrerequisiteMarkers = false)
                 }
             }
