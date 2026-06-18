@@ -1078,7 +1078,9 @@ class SteamAppScreen : BaseAppScreen() {
     override suspend fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData): Boolean {
         val container = getContainer(context, libraryItem.appId)
         if (!ContainerUtils.applyToContainerGated(context, libraryItem.appId, config)) return false
-        if (container.language != config.language) {
+        // html5 has NO per-language depot (language is a runtime setting), so the re-fetch a language
+        // change triggers would select no depots and never complete.
+        if (container.language != config.language && container.runtime != Container.RUNTIME_WEBVIEW) {
             CoroutineScope(Dispatchers.IO).launch {
                 SteamService.downloadApp(libraryItem.gameId)
             }
