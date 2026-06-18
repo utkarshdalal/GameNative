@@ -1,6 +1,7 @@
 package app.gamenative.ui.screen.xserver
 
 import android.content.Context
+import app.gamenative.R
 import app.gamenative.PluviaApp
 import app.gamenative.data.GameSource
 import app.gamenative.events.AndroidEvent
@@ -24,7 +25,11 @@ object XAudioUtils {
     /**
      * Replace DLLs from DirectX Redistributable
      */
-    fun replaceXAudioDllsFromRedistributable(context: Context, guestProgramLauncherComponent: GuestProgramLauncherComponent, appId: String) {
+    fun replaceXAudioDllsFromRedistributable(
+        context: Context,
+        guestProgramLauncherComponent: GuestProgramLauncherComponent,
+        appId: String
+    ) {
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
         val appDirPath = try {
             when (gameSource) {
@@ -134,7 +139,7 @@ object XAudioUtils {
                 return
             }
 
-            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Extracting XAudio DLLs..."))
+            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.booting_splash_extracting_xaudio_dlls)))
 
             val batFile = File(tempDir, "extract_dx_audio_dlls.bat")
             val batContent = buildCabarcBatchScript(
