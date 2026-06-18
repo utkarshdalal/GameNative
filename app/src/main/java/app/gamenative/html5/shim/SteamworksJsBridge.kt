@@ -23,6 +23,9 @@ class SteamworksJsBridge(
     private val containerId: String,
     private val appId: Int,
     private val gseDir: File,
+    // Steam language NAME (e.g. "german"), resolved with the same precedence as navigator.language
+    // so the two agree.
+    private val gameLanguage: String = "english",
 ) {
     private val logFile: File by lazy {
         val root = File(DownloadService.baseExternalAppDirPath, "html5-logs/$containerId")
@@ -87,6 +90,10 @@ class SteamworksJsBridge(
             .onFailure { Timber.tag(TAG).e(it, "achievements.json write failed (clear)") }
         return true
     }
+
+    // serves both GetCurrentGameLanguage and GetSteamUILanguage: a language NAME, NOT BCP-47.
+    @JavascriptInterface
+    fun getGameLanguage(): String = gameLanguage.ifBlank { "english" }
 
     @JavascriptInterface
     fun getAchievement(name: String): Boolean = achievementsCache[name] == true

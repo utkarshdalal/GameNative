@@ -153,11 +153,16 @@ fun WebViewScreen(
             ?: File(context.filesDir, "html5-gse-fallback/${container.id}")
     }
 
-    val steamworksBridge = remember(container.id, steamAppIdInt) {
+    val steamLanguage = remember(container.language, PrefManager.appLanguage) {
+        WebViewLocaleResolver.resolveSteamLanguage(container.language, PrefManager.appLanguage)
+    }
+
+    val steamworksBridge = remember(container.id, steamAppIdInt, steamLanguage) {
         SteamworksJsBridge(
             containerId = container.id,
             appId = steamAppIdInt ?: 0,
             gseDir = gseDir,
+            gameLanguage = steamLanguage,
         )
     }
 
