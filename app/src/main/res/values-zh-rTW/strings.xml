@@ -1609,4 +1609,5 @@
     <string name="filter_five_star_device">裝置上的五星評論</string>
     <string name="filter_five_star_gpu">GPU上的五星評論</string>
     <string name="filter_proven_gpu">已在您的GPU上驗證</string>
+    <string name="vibration_intensity">震動強度</string>
 </resources>

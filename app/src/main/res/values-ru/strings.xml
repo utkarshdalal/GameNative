@@ -1485,4 +1485,5 @@ https://gamenative.app
     <string name="filter_five_star_device">5-звёздочные отзывы на устройстве</string>
     <string name="filter_five_star_gpu">5-звёздочные отзывы на GPU</string>
     <string name="filter_proven_gpu">Проверено на вашем GPU</string>
+    <string name="vibration_intensity">Интенсивность вибрации</string>
 </resources>

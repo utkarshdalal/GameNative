@@ -769,6 +769,7 @@
     <string name="shooter_mode_toggle_description">Auto-replace stick elements with dynamic joysticks</string>
     <string name="shooter_mode_on">Enable Mouse</string>
     <string name="shooter_mode_off">Enable Sticks</string>
+    <string name="vibration_intensity">Vibration Intensity</string>
     <!-- Gesture Settings Dialog -->
     <string name="gesture_settings_title">Touch Gesture Settings</string>
     <string name="gesture_section_single_finger">Single Finger</string>

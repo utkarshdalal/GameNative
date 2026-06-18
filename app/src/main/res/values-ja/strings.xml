@@ -1559,4 +1559,5 @@
     <string name="filter_five_star_device">5つ星レビュー（デバイス）</string>
     <string name="filter_five_star_gpu">5つ星レビュー（GPU）</string>
     <string name="filter_proven_gpu">お使いのGPUで実証済み</string>
+    <string name="vibration_intensity">振動の強さ</string>
 </resources>

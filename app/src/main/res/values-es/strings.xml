@@ -1558,4 +1558,5 @@
     <string name="filter_five_star_device">Reseñas de 5 estrellas en el dispositivo</string>
     <string name="filter_five_star_gpu">Reseñas de 5 estrellas en la GPU</string>
     <string name="filter_proven_gpu">Probado en tu GPU</string>
+    <string name="vibration_intensity">Intensidad de vibración</string>
 </resources>

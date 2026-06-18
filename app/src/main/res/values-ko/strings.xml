@@ -1600,4 +1600,5 @@
     <string name="filter_five_star_device">기기에서의 별 5개 리뷰</string>
     <string name="filter_five_star_gpu">GPU에서의 별 5개 리뷰</string>
     <string name="filter_proven_gpu">내 GPU에서 검증됨</string>
+    <string name="vibration_intensity">진동 강도</string>
 </resources>

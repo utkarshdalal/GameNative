@@ -1,8 +1,13 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.settingsTileColors
@@ -10,6 +15,7 @@ import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.container.Container
+import kotlin.math.roundToInt
 
 @Composable
 fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
@@ -58,6 +64,19 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
             state = config.shooterMode,
             onCheckedChange = { state.config.value = config.copy(shooterMode = it) },
         )
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(text = stringResource(R.string.vibration_intensity))
+            Slider(
+                value = state.vibrationIntensity.value.toFloat(),
+                onValueChange = { newValue ->
+                    val clamped = newValue.roundToInt().coerceIn(0, 100)
+                    state.vibrationIntensity.value = clamped
+                    state.config.value = config.copy(vibrationIntensity = clamped)
+                },
+                valueRange = 0f..100f,
+            )
+            Text(text = "${state.vibrationIntensity.value}%")
+        }
         SettingsListDropdown(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.external_display_input)) },

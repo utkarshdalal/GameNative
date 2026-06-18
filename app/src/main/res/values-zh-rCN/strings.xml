@@ -1617,4 +1617,5 @@
     <string name="filter_five_star_device">设备上的五星好评</string>
     <string name="filter_five_star_gpu">GPU上的五星好评</string>
     <string name="filter_proven_gpu">已在您的GPU上验证</string>
+    <string name="vibration_intensity">振动强度</string>
 </resources>
