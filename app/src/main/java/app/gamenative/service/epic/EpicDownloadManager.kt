@@ -67,7 +67,6 @@ class EpicDownloadManager @Inject constructor(
         private const val STREAM_PROGRESS_TIME_INTERVAL_MS = 200L
         private const val EPIC_MAX_PARALLEL_DOWNLOADS = 6
         private const val EPIC_MAX_PARALLEL_ASSEMBLY = 2
-        private const val EPIC_FLOW_BUFFER_MULTIPLIER = 2
         private const val PROGRESS_UPDATE_GRANULARITY_BYTES = 256 * 1024L
     }
 
@@ -879,8 +878,12 @@ class EpicDownloadManager @Inject constructor(
         try {
             val scope = CoroutineScope(Dispatchers.IO)
             val speedConfig = DownloadSpeedConfig()
-            val parallelDownloads = speedConfig.maxDownloads.coerceAtMost(EPIC_MAX_PARALLEL_DOWNLOADS)
-            val parallelAssemble = speedConfig.maxDecompress.coerceAtMost(EPIC_MAX_PARALLEL_ASSEMBLY)
+            val parallelDownloads = speedConfig.maxDownloads
+                .coerceAtLeast(1)
+                .coerceAtMost(EPIC_MAX_PARALLEL_DOWNLOADS)
+            val parallelAssemble = speedConfig.maxDecompress
+                .coerceAtLeast(1)
+                .coerceAtMost(EPIC_MAX_PARALLEL_ASSEMBLY)
             val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 
             val totalChunks = chunkQueue.size
@@ -910,11 +913,9 @@ class EpicDownloadManager @Inject constructor(
                 chunkUsageCounts.putIfAbsent(chunkInfo.guidStr, AtomicInteger(0))
             }
 
-            val boundedFlowCapacity = parallelDownloads * EPIC_FLOW_BUFFER_MULTIPLIER
-            val networkChunkFlow =
-                MutableSharedFlow<app.gamenative.service.epic.manifest.ChunkInfo>(extraBufferCapacity = boundedFlowCapacity)
+            val networkChunkFlow = MutableSharedFlow<app.gamenative.service.epic.manifest.ChunkInfo>(extraBufferCapacity = Int.MAX_VALUE)
             val assembleFlow =
-                MutableSharedFlow<Pair<app.gamenative.service.epic.manifest.ChunkInfo, Result<File>>>(extraBufferCapacity = boundedFlowCapacity)
+                MutableSharedFlow<Pair<app.gamenative.service.epic.manifest.ChunkInfo, Result<File>>>(extraBufferCapacity = Int.MAX_VALUE)
 
             var assemblyFailure: Throwable? = null
 
@@ -965,7 +966,7 @@ class EpicDownloadManager @Inject constructor(
                             )
 
                             // Always emit result to assembleFlow for processing (success or failure)
-                            assembleFlow.emit(chunk to result)
+                            assembleFlow.tryEmit(chunk to result)
                             emit(Unit)
                         }
                     }
@@ -993,7 +994,7 @@ class EpicDownloadManager @Inject constructor(
 
                                     // Requeue the chunk for retry
                                     downloadedChunkIds.remove(chunk.guidStr)
-                                    networkChunkFlow.emit(chunk)
+                                    networkChunkFlow.tryEmit(chunk)
                                     return@flow
                                 }
 
@@ -1016,7 +1017,7 @@ class EpicDownloadManager @Inject constructor(
                                     // TODO: Check error status
                                     if (exception.statusCode in listOf(401, 403, 404, 500)) {
                                         Timber.tag("EPIC").w("Chunk ${chunk.guidStr} urls expired, refreshing")
-                                        networkChunkFlow.emit(chunk)
+                                        networkChunkFlow.tryEmit(chunk)
                                         return@flow
                                     }
                                 }
@@ -1099,7 +1100,7 @@ class EpicDownloadManager @Inject constructor(
                             "Pending chunks stuck at $currentPendingChunks for $samePendingChunksAttempts checks; " +
                                     "re-emitting ${missingChunks.size} missing chunk(s) for retry",
                         )
-                        missingChunks.forEach { networkChunkFlow.emit(it) }
+                        missingChunks.forEach { networkChunkFlow.tryEmit(it) }
                     }
 
                     samePendingChunksAttempts = 0
