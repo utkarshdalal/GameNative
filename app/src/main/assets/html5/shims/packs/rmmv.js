@@ -116,92 +116,67 @@
                         console.log('gamenative pack:rmmv — stub available for ' + name + ', game does not use it; skipping');
                     }
                 });
-                // re-install canvas fit/center AFTER plugin IIFEs have run (YEP_CoreEngine
-                // assigns its own Graphics._updateRealScale at load time and would otherwise
-                // win the assignment race). see (j) below for the implementation.
-                applyCanvasFitAndCenter();
+                // belt: re-assert stretch-fit on the live Graphics post-plugins, covering the edge
+                // where initialize already ran on a subclass before our wrapper caught it. see (j).
+                reassertStretchFit(window.Graphics);
             }
         };
         return true;
     }, 100);
 
-    // --- (j) Canvas fit-to-window + explicit-pixel centering ---
-    // two distinct WebView regressions vs desktop NW.js this addresses:
+    // --- (j) Canvas fit-to-window ---
+    // ROOT CAUSE (stack-trapped on OMORI): RPG Maker (MV+MZ) scales the canvas to fit the window
+    // only when Graphics._stretchEnabled is true. Graphics.initialize sets it to
+    // Utils.isMobileDevice() -- FALSE, because we present as desktop NW.js -- so the engine renders
+    // at native resolution and overflows our short landscape viewport. that ONE write (from the
+    // stock initialize) is the only thing that disables it; nothing re-asserts it afterward.
     //
-    // 1. SIZING: stock RMMV scales to min(innerW/_width, innerH/_height) when _stretchEnabled
-    //    (true by default on Utils.isMobileDevice()). YEP_CoreEngine OVERRIDES _updateRealScale
-    //    to snap to discrete tiers (3, 2, 1.5, 1, 0.5). On small viewports where computed
-    //    scale < 1, YEP falls into the 0.5 bucket → canvas at half native size in a corner.
-    //    Pre-YEP fix was per-game patches.json regex (OMORI). Pack-level: override
-    //    _updateRealScale to a clean fit-min, no tiers -- applies uniformly across all RMMV
-    //    titles regardless of YEP version / config.
+    // FIX: wrap Graphics.initialize and re-assert stretch RIGHT AFTER it returns, then let the
+    // engine's OWN _updateRealScale + _centerElement scale-to-fit and center whatever canvases it
+    // owns (we never touch canvas elements -- robust across MV/MZ, multi-canvas, element naming).
+    // a one-shot re-assert (vs a permanent property lock) is deterministic and leaves any genuine
+    // later write -- e.g. an in-game scaling option -- free to take effect.
     //
-    // 2. CENTERING: stock RMMV._centerElement uses `inset:0; margin:auto`. Chromium WebView
-    //    inside our Compose AndroidView resolves this to negative top → canvas centered on
-    //    y=0 instead of y=mid → top half clipped. IndexHtmlRewriter pre-injects a stylesheet
-    //    forcing `top:0 !important; bottom:auto !important` so canvas pins to top instead.
-    //    That fixed clipping but lost vertical centering (Look Outside symptom: bottom strip).
-    //    Earlier attempt to re-center via `transform: translateY(-50%)` reverted to broken
-    //    state, unexplained. Approach here: replace _centerElement entirely with explicit
-    //    pixel left/top, using setProperty(..., 'important') so inline-style-with-important
-    //    beats the stylesheet's !important. Robust against RMMV inline-style writes.
+    // YEP_CoreEngine is the one engine whose _updateRealScale snaps to discrete tiers (buckets a
+    // sub-1.0 fit to 0.5 -- half size in a corner); for YEP titles we also install a clean min-fit
+    // in the same post-initialize step. YEP assigns its version at plugin-load (before initialize
+    // runs), so ours wins. stock / other plugins (e.g. int-scaling) min-fit correctly when
+    // stretched, so we leave their _updateRealScale alone.
     //
-    // install timing: applyCanvasFitAndCenter is called twice -- once in patchWhenReady (early,
-    // before plugins load, so very-first frames are sane) and again in the loadDataFile hook
-    // above (post-plugins, to overwrite any plugin assignments).
-    function setProp(el, prop, val) {
-        try { el.style.setProperty(prop, val, 'important'); } catch (_) {}
+    // wrapping the ORIGINAL Graphics.initialize survives OMORI reassigning window.Graphics to a
+    // SUBCLASS (`Graphics = class extends Graphics`): the subclass inherits our wrapped initialize
+    // and `this` flows to the live object, so the re-assert lands where the engine reads it.
+    function minFitRealScale() {
+        var w = this._width || 0, h = this._height || 0;
+        var sw = window.innerWidth || document.documentElement.clientWidth || 0;
+        var sh = window.innerHeight || document.documentElement.clientHeight || 0;
+        this._realScale = (w > 0 && h > 0 && sw > 0 && sh > 0) ? Math.min(sw / w, sh / h) : 1;
     }
-    function applyCanvasFitAndCenter() {
-        if (!window.Graphics) return;
-        // 1. fit-min scaling, no tiers.
-        if (Graphics._updateRealScale) {
-            Graphics._updateRealScale = function () {
-                var w = this._width || 0, h = this._height || 0;
-                var sw = window.innerWidth || document.documentElement.clientWidth || 0;
-                var sh = window.innerHeight || document.documentElement.clientHeight || 0;
-                if (w > 0 && h > 0 && sw > 0 && sh > 0) {
-                    this._realScale = Math.min(sw / w, sh / h);
-                } else {
-                    this._realScale = 1;
-                }
-            };
-        }
-        // belt-and-suspenders for paths that read _stretchEnabled directly (some plugins
-        // gate their own scale logic on this).
-        try { Graphics._stretchEnabled = true; } catch (_) {}
-        // 2. explicit-pixel centering via setProperty('important'). beats both the
-        // IndexHtmlRewriter stylesheet's !important AND any non-important inline writes
-        // RMMV/plugin code may attempt later.
-        if (Graphics._centerElement) {
-            Graphics._centerElement = function (element) {
-                var scale = this._realScale || 1;
-                var dispW = (element.width || 0) * scale;
-                var dispH = (element.height || 0) * scale;
-                var sw = window.innerWidth || 0;
-                var sh = window.innerHeight || 0;
-                setProp(element, 'position', 'absolute');
-                setProp(element, 'margin', '0');
-                setProp(element, 'left', Math.floor((sw - dispW) / 2) + 'px');
-                setProp(element, 'top', Math.floor((sh - dispH) / 2) + 'px');
-                setProp(element, 'right', 'auto');
-                setProp(element, 'bottom', 'auto');
-                setProp(element, 'width', dispW + 'px');
-                setProp(element, 'height', dispH + 'px');
-            };
-        }
-        // re-layout immediately if Graphics is far enough along.
-        try { Graphics._updateAllElements && Graphics._updateAllElements(); } catch (_) {}
+    function reassertStretchFit(G) {
+        if (!G) return;
+        G._stretchEnabled = true;
+        if (window.Imported && Imported.YEP_CoreEngine) G._updateRealScale = minFitRealScale;
+        try { G._updateAllElements && G._updateAllElements(); } catch (_) {}
     }
     patchWhenReady(function () {
-        if (!window.Graphics || !Graphics._updateRealScale || !Graphics._centerElement) return false;
-        applyCanvasFitAndCenter();
-        // re-fit on viewport change (rotation, IME show/hide, immersive toggle).
+        if (!window.Graphics || typeof Graphics.initialize !== 'function') return false;
+        if (!Graphics.__gnInitWrapped) {
+            Graphics.__gnInitWrapped = true;
+            var origInit = Graphics.initialize;
+            Graphics.initialize = function () {
+                var r = origInit.apply(this, arguments);
+                reassertStretchFit(this);   // `this` is the live (possibly subclassed) Graphics
+                return r;
+            };
+            // if initialize already ran before we wrapped (fast-boot poll race), re-assert now.
+            if (Graphics._canvas) reassertStretchFit(Graphics);
+        }
+        // re-fit on viewport change (rotation / immersive / IME) via the engine's own layout.
         window.addEventListener('resize', function () {
-            try { Graphics._updateAllElements && Graphics._updateAllElements(); } catch (_) {}
+            try { window.Graphics && Graphics._updateAllElements && Graphics._updateAllElements(); } catch (_) {}
         });
         return true;
-    }, 200);
+    }, 600);
 
     // --- (e2) Input._pollGamepads defensive wrap ---
     // some title plugins (e.g. master2015hp_InStarTimeSnippet) override _updateGamepadState and
