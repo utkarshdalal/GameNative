@@ -137,7 +137,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private native void nativeRegisterWindowSC(long contentId, String debugName);
     private native void nativeUnregisterWindowSC(long contentId);
     private native void nativeScanoutSetCursorImage(java.nio.ByteBuffer pixels, short w, short h, short stride);
-    private native void nativeScanoutSetCursorPos(short x, short y, short hotX, short hotY);
+    private native void nativeScanoutSetCursorPos(short x, short y, short hotX, short hotY, boolean cursorVisible);
     private native void nativeScanoutSetDst(int x, int y, int w, int h);
     private native void nativeSetSfCallbackTarget(Object rendererRef);
     private native void nativeBeginTransaction();
@@ -434,6 +434,12 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
 
     private void pushCpuImageToNative(int windowId, Drawable drawable) {
         if (drawable == null) return;
+        Window pw = xServer.inputDeviceManager.getPointWindow();
+        Cursor cursor = pw != null ? pw.attributes.getCursor() : null;
+        if (cursor != null && cursorVisible != cursor.isVisible()) {
+            cursorVisible = cursor.isVisible();
+            nativeScanoutSetCursorVisibility(cursorVisible);
+        }
         synchronized (drawable.renderLock) {
             if (drawable.getTexture() instanceof GPUImage g) {
                 long ahbPtr = g.getScanoutHardwareBufferPtr();
@@ -457,6 +463,12 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
 
     private void pushGpuImageToNative(int windowId, Drawable drawable, int xSerial) {
         if (drawable == null) return;
+        Window pw = xServer.inputDeviceManager.getPointWindow();
+        Cursor cursor = pw != null ? pw.attributes.getCursor() : null;
+        if (cursor != null && cursorVisible != cursor.isVisible()) {
+            cursorVisible = cursor.isVisible();
+            nativeScanoutSetCursorVisibility(cursorVisible);
+        }
         synchronized (drawable.renderLock) {
             if (drawable.getTexture() instanceof GPUImage g) {
                 long ahbPtr = g.getHardwareBufferPtr();
@@ -519,17 +531,17 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         Window pw = xServer.inputDeviceManager.getPointWindow();
         Cursor cursor = pw != null ? pw.attributes.getCursor() : null;
 
-        if (cursor != lastCursor) {
-            lastCursor = cursor;
-            sendCursorToNative(cursor);
-        }
-
-        short hotX = 0, hotY = 0;
         if (cursor != null) {
-            hotX = (short)cursor.hotSpotX; hotY = (short)cursor.hotSpotY;
-        }
+            if (cursor != lastCursor) {
+                lastCursor = cursor;
+                sendCursorToNative(cursor);
+            }
 
-        nativeScanoutSetCursorPos(x, y, hotX, hotY);
+            short hotX = (short) cursor.hotSpotX;
+            short hotY = (short) cursor.hotSpotY;
+
+            nativeScanoutSetCursorPos(x, y, hotX, hotY, cursor.isVisible());
+        }
     }
 
     @Override
@@ -617,7 +629,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     public void setCursorVisible(boolean visible) {
         cursorVisible = visible;
         if (visible) {
-            sendCursorToNative(lastCursor); // re-pushes buffer + sets SC visible=1
+            sendCursorToNative(lastCursor);
         } else {
             nativeScanoutSetCursorVisibility(false);
         }

@@ -72,9 +72,9 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeScanoutSetCursorImage(
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeScanoutSetCursorPos(
-        JNIEnv*, jobject, jshort x, jshort y, jshort hotX, jshort hotY)
+        JNIEnv*, jobject, jshort x, jshort y, jshort hotX, jshort hotY, jboolean cursorVisible)
 {
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) r->scanoutSetCursorPos(x, y, hotX, hotY);
+    if (auto* r = g_ctx.load(std::memory_order_acquire)) r->scanoutSetCursorPos(x, y, hotX, hotY, cursorVisible);
 }
 
 extern "C" JNIEXPORT void JNICALL

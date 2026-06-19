@@ -41,7 +41,7 @@ public:
 
     void scanoutSetDst(int x, int y, int w, int h);
     void scanoutSetCursorImage(void* pixels, short w, short h, short stride);
-    void scanoutSetCursorPos(short x, short y, short hotX, short hotY);
+    void scanoutSetCursorPos(short x, short y, short hotX, short hotY, bool cursorVisible);
 
     // SC Management
     void registerWindowSC(int64_t contentId, const char* debugName = "(x11_window)");
@@ -50,7 +50,7 @@ public:
                          int64_t windowId = 0, int64_t serial = 0);
 
     void scanoutSetCursorVisibility(bool visible);
-    void applyCursorGeometry(short x, short y, short hotX, short hotY);
+    void applyCursorGeometry(short x, short y, short hotX, short hotY, bool cursorVisible);
 
     // Surface Transactions
     void beginTransaction();

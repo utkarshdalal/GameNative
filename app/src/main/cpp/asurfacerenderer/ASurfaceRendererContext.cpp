@@ -217,10 +217,10 @@ void ASurfaceRendererContext::scanoutSetCursorImage(void* pixels, short w, short
     ST_APPLY(tx);
     ST_DELETE(tx);
 
-    applyCursorGeometry(lastRawCursorX, lastRawCursorY, lastRawHotX, lastRawHotY);
+    applyCursorGeometry(lastRawCursorX, lastRawCursorY, lastRawHotX, lastRawHotY, true);
 }
 
-void ASurfaceRendererContext::applyCursorGeometry(short x, short y, short hotX, short hotY) {
+void ASurfaceRendererContext::applyCursorGeometry(short x, short y, short hotX, short hotY, bool cursorVisible) {
     if (!scanoutActive.load() || !scanoutCursorSC || scanoutCursorBufW <= 0 || scanoutCursorBufH <= 0) return;
     int64_t xy = scanoutDstXY.load(std::memory_order_acquire);
     int64_t wh = scanoutDstWH.load(std::memory_order_acquire);
@@ -244,17 +244,18 @@ void ASurfaceRendererContext::applyCursorGeometry(short x, short y, short hotX, 
     ARect dstR{ px, py, px + curW, py + curH };
     void* tx = ST_CREATE();
     ST_SETGEO(tx, scanoutCursorSC, &srcR, &dstR, 0);
+    ST_SETVIS(tx, scanoutCursorSC, cursorVisible);
     ST_APPLY(tx);
     ST_DELETE(tx);
 }
 
-void ASurfaceRendererContext::scanoutSetCursorPos(short x, short y, short hotX, short hotY) {
+void ASurfaceRendererContext::scanoutSetCursorPos(short x, short y, short hotX, short hotY, bool cursorVisible) {
     if (!scanoutActive.load() || !scanoutCursorSC || scanoutCursorBufW <= 0 || scanoutCursorBufH <= 0) return;
     if (x == lastRawCursorX && y == lastRawCursorY &&
         hotX == lastRawHotX  && hotY == lastRawHotY) return;
     lastRawCursorX = x; lastRawCursorY = y;
     lastRawHotX = hotX; lastRawHotY = hotY;
-    applyCursorGeometry(x, y, hotX, hotY);
+    applyCursorGeometry(x, y, hotX, hotY, cursorVisible);
 }
 
 void ASurfaceRendererContext::setWindowBuffer(int64_t contentId, AHardwareBuffer* ahb, int fenceFd, int64_t windowId, int64_t serial) {
