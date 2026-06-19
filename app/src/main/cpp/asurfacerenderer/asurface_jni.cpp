@@ -105,7 +105,7 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeReattachSurface(JNIEnv* env, j
         if (ok && r->scanoutActive.load()) {
             r->destroyScanout();
         }
-    }
+    } else ANativeWindow_release(win);
     return (jboolean)ok;
 }
 

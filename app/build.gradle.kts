@@ -260,11 +260,11 @@ android {
         ignoreFormatFailures  = false
     }
 
-    externalNativeBuild {
-       cmake {
-           path = file("src/main/cpp/asurfacerenderer/CMakeLists.txt")
-       }
-    }
+    // externalNativeBuild {
+    //   cmake {
+    //       path = file("src/main/cpp/asurfacerenderer/CMakeLists.txt")
+    //   }
+    // }
 
     // externalNativeBuild {
     //    cmake {
