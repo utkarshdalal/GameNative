@@ -1025,6 +1025,7 @@ class EpicDownloadManager @Inject constructor(
                     return@launch
                 }
 
+                val chunkMap = chunkQueue.associateBy { it.guidStr }
                 val chunksAdded = mutableListOf<String>()
 
                 files.forEach { file ->
@@ -1049,7 +1050,8 @@ class EpicDownloadManager @Inject constructor(
                         file.chunkParts.forEach { part ->
                             if (!chunksAdded.contains(part.guidStr)) {
                                 chunksAdded.add(part.guidStr)
-                                val chunkInfo = chunkQueue.first { it.guidStr == part.guidStr }
+                                val chunkInfo = chunkMap[part.guidStr]
+                                    ?: throw IllegalStateException("Chunk ${part.guidStr} referenced by file but not found in chunkQueue")
                                 networkChunkFlow.emit(chunkInfo)
                                 Timber.tag("EPIC").v("Emitted chunk ${chunkInfo.guidStr} to download flow")
                             }
