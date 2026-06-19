@@ -3239,14 +3239,20 @@ private fun setupXEnvironment(
                 containerVariantChanged = containerVariantChanged,
                 onError = onGameLaunchError
             )
-    if (preInstallCommands.isNotEmpty()) {
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
-            } else if (bootToContainer) {
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Opening container..."))
-            } else {
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
-            }
-        }
+        guestProgramLauncherComponent.setPreUnpack {
+            unpackExecutableFile(
+            context = context,
+            needsUnpacking = container.isNeedsUnpacking,
+            container = container,
+            appId = appId,
+            appLaunchInfo = appLaunchInfo,
+            guestProgramLauncherComponent = guestProgramLauncherComponent,
+            containerVariantChanged = containerVariantChanged,
+            onError = onGameLaunchError
+        )
+    
+}
+
 
         val enableGstreamer = container.isGstreamerWorkaround()
 
