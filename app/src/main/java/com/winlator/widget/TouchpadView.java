@@ -58,6 +58,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private boolean touchscreenMouseDisabled = false;
     private boolean isTouchscreenMode = false;
     private Runnable delayedPress;
+    private String delayedPressAction;
     private Runnable pendingHoldClickRelease;
     private String pendingHoldClickReleaseAction;
 
@@ -1182,14 +1183,18 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 // If there's a new single tap within 'CLICK_DELAYED_TIME' ms
                 // Immediately release the previous down click
                 removeCallbacks(delayedPress);
-                injectRelease(gestureConfig.getTapAction());
+                injectRelease(delayedPressAction);
+                delayedPressAction = null;
             }
+            String tapAction = gestureConfig.getTapAction();
             moveCursorTo((int) pt[0], (int) pt[1]);
-            injectClick(gestureConfig.getTapAction());
+            injectClick(tapAction);
             notifyHighlight(event.getX(actionIndex), event.getY(actionIndex));
             notifyGesture("Tap");
+            delayedPressAction = tapAction;
             delayedPress = () -> {
-                injectRelease(gestureConfig.getTapAction());
+                injectRelease(tapAction);
+                delayedPressAction = null;
                 delayedPress = null;
             };
             postDelayed(delayedPress, CLICK_DELAYED_TIME);
@@ -1414,7 +1419,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             // If there's a new single tap within 'CLICK_DELAYED_TIME' ms
             // Immediately release the previous down click
             removeCallbacks(delayedPress);
-            injectRelease(gestureConfig.getTapAction());
+            injectRelease(delayedPressAction);
+            delayedPressAction = null;
             delayedPress = null;
         }
     }
@@ -1502,7 +1508,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         }
         if (TouchGestureConfig.ACTION_KEY_TILDE.equals(action)) {
             Binding.KEY_TILDE.inject(xServer, true);
-            return;
+            return true;
         }
         XKeycode keycode = actionToKeycode(action);
         if (keycode != null) {

@@ -132,6 +132,9 @@ public enum Binding {
         if (this == KEY_TILDE) {
             injectTilde(xServer, isActionDown);
         }
+        else if (this == ALT_ENTER) {
+            injectAltEnter(xServer, isActionDown);
+        }
         else if (isActionDown) {
             xServer.injectKeyPress(keycode);
         }
@@ -144,7 +147,7 @@ public enum Binding {
         int holdCount = tildeShiftHolds.getOrDefault(xServer, 0);
         if (isActionDown) {
             if (holdCount > 0) {
-                tildeShiftHolds.put(xServer, holdCount + 1);
+                return;
             }
             else if (!xServer.keyboard.getModifiersMask().isSet(1)) {
                 xServer.injectKeyPress(XKeycode.KEY_SHIFT_L);
@@ -163,6 +166,17 @@ public enum Binding {
                     tildeShiftHolds.put(xServer, holdCount - 1);
                 }
             }
+        }
+    }
+
+    private static void injectAltEnter(XServer xServer, boolean isActionDown) {
+        if (isActionDown) {
+            xServer.injectKeyPress(KEY_ALT_L.keycode);
+            xServer.injectKeyPress(KEY_ENTER.keycode);
+        }
+        else {
+            xServer.injectKeyRelease(KEY_ENTER.keycode);
+            xServer.injectKeyRelease(KEY_ALT_L.keycode);
         }
     }
 
