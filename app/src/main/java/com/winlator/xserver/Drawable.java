@@ -39,7 +39,7 @@ public class Drawable extends XResource {
     private static native void fromBitmap(Bitmap bitmap, ByteBuffer byteBuffer);
 
     static {
-        System.loadLibrary("drawable");
+        System.loadLibrary("winlator_11");
     }
 
     public Drawable(int id, int width, int height, Visual visual) {

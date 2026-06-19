@@ -16,6 +16,8 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,  LOG_TAG, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG,  LOG_TAG, __VA_ARGS__)
 
+#define AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM 5
+
 static inline void close_fence(int fd) {
     if (fd >= 0) close(fd);
 }
@@ -200,7 +202,7 @@ Java_com_winlator_renderer_GPUImage_nativeCreateHardwareBuffer(
     desc.width  = (uint32_t)(uint16_t)width;
     desc.height = (uint32_t)(uint16_t)height;
     desc.layers = 1;
-    desc.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+    desc.format = AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM;
     desc.usage  = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE
                   | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
 
