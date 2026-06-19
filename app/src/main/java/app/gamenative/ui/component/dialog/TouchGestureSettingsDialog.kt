@@ -701,6 +701,7 @@ private fun buildActionCategories(): List<ActionCategory> {
             Binding.KEY_PERIOD,
             Binding.KEY_APOSTROPHE,
             Binding.KEY_GRAVE,
+            Binding.KEY_TILDE,
             Binding.KEY_MINUS,
             Binding.KEY_EQUAL,
         )

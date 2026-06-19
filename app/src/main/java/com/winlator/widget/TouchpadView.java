@@ -14,6 +14,7 @@ import app.gamenative.data.TouchGestureConfig;
 import timber.log.Timber;
 
 import com.winlator.core.AppUtils;
+import com.winlator.inputcontrols.Binding;
 import com.winlator.math.Mathf;
 import com.winlator.math.XForm;
 import com.winlator.renderer.ViewTransformation;
@@ -1499,6 +1500,10 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             notifyGesture("Keyboard");
             return false;
         }
+        if (TouchGestureConfig.ACTION_KEY_TILDE.equals(action)) {
+            Binding.KEY_TILDE.inject(xServer, true);
+            return;
+        }
         XKeycode keycode = actionToKeycode(action);
         if (keycode != null) {
             xServer.injectKeyPress(keycode);
@@ -1523,6 +1528,10 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         if (action == null) return;
         if (TouchGestureConfig.ACTION_SHOW_KEYBOARD.equals(action)) {
             return; // One-shot action, no release needed
+        }
+        if (TouchGestureConfig.ACTION_KEY_TILDE.equals(action)) {
+            Binding.KEY_TILDE.inject(xServer, false);
+            return;
         }
         XKeycode keycode = actionToKeycode(action);
         if (keycode != null) {

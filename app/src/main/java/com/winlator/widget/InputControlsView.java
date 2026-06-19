@@ -1043,13 +1043,13 @@ public class InputControlsView extends View {
                     if (pointerButton != null) {
                         xServer.injectPointerButtonPress(pointerButton);
                     }
-                    else xServer.injectKeyPress(binding.keycode);
+                    else binding.inject(xServer, true);
                 }
                 else {
                     if (pointerButton != null) {
                         xServer.injectPointerButtonRelease(pointerButton);
                     }
-                    else xServer.injectKeyRelease(binding.keycode);
+                    else binding.inject(xServer, false);
                 }
             }
         }

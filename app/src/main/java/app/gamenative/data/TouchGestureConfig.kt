@@ -143,6 +143,7 @@ data class TouchGestureConfig(
         // ── Special actions ──────────────────────────────────────────────
         const val ACTION_SHOW_KEYBOARD = "show_keyboard"
         const val ACTION_KEY_ESC = "key_ESC"
+        const val ACTION_KEY_TILDE = "key_TILDE"
 
         // ── Action identifiers: two-finger drag (pan) ───────────────────
         const val PAN_WASD = "wasd"

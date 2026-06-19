@@ -365,13 +365,13 @@ class PhysicalControllerHandler(
                     if (pointerButton != null) {
                         xServer?.injectPointerButtonPress(pointerButton)
                     } else {
-                        xServer?.injectKeyPress(binding.keycode)
+                        xServer?.let { binding.inject(it, true) }
                     }
                 } else {
                     if (pointerButton != null) {
                         xServer?.injectPointerButtonRelease(pointerButton)
                     } else {
-                        xServer?.injectKeyRelease(binding.keycode)
+                        xServer?.let { binding.inject(it, false) }
                     }
                 }
             }
