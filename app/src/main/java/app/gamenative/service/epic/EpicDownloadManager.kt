@@ -1,7 +1,6 @@
 package app.gamenative.service.epic
 
 import android.content.Context
-import android.util.Log
 import app.gamenative.PrefManager
 import app.gamenative.data.DownloadInfo
 import app.gamenative.enums.Marker
@@ -66,6 +65,10 @@ class EpicDownloadManager @Inject constructor(
         private const val MAX_CHUNK_RETRIES = 3 // Maximum retries per chunk
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
         private const val STREAM_PROGRESS_TIME_INTERVAL_MS = 200L
+        private const val EPIC_MAX_PARALLEL_DOWNLOADS = 6
+        private const val EPIC_MAX_PARALLEL_ASSEMBLY = 2
+        private const val EPIC_FLOW_BUFFER_MULTIPLIER = 2
+        private const val PROGRESS_UPDATE_GRANULARITY_BYTES = 256 * 1024L
     }
 
     /**
@@ -458,7 +461,9 @@ class EpicDownloadManager @Inject constructor(
                 downloadingAppIds = java.util.concurrent.CopyOnWriteArrayList(),
             )
 
-            val parallelDownloads = PrefManager.downloadSpeed.coerceAtLeast(1)
+            val parallelDownloads = PrefManager.downloadSpeed
+                .coerceAtLeast(1)
+                .coerceAtMost(EPIC_MAX_PARALLEL_DOWNLOADS)
             val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 
             var downloadedChunks = 0
@@ -647,6 +652,23 @@ class EpicDownloadManager @Inject constructor(
         val digest = MessageDigest.getInstance("SHA-1")
         var totalBytesWritten = 0L
         var lastProgressEmitAt = System.currentTimeMillis()
+        var pendingProgressBytes = 0L
+
+        fun reportDownloadedBytes(bytes: Long) {
+            if (bytes <= 0L) return
+
+            pendingProgressBytes += bytes
+            if (pendingProgressBytes < PROGRESS_UPDATE_GRANULARITY_BYTES) return
+
+            downloadInfo.updateBytesDownloaded(pendingProgressBytes)
+            pendingProgressBytes = 0L
+
+            val now = System.currentTimeMillis()
+            if (now - lastProgressEmitAt >= STREAM_PROGRESS_TIME_INTERVAL_MS) {
+                downloadInfo.emitProgressChange()
+                lastProgressEmitAt = now
+            }
+        }
 
         inputStream.buffered().use { input ->
             // Read the entire header - determine size dynamically
@@ -723,8 +745,6 @@ class EpicDownloadManager @Inject constructor(
                 expectedSize.toInt()
             }
 
-            Timber.tag("Epic").d("Chunk header: magic=0x${magic.toString(16)}, headerVersion=$headerVersion, headerSize=$headerSize, compressedSize=$compressedSize, uncompressedSize=$uncompressedSize, storedAs=0x${storedAs.toString(16)}, isCompressed=$isCompressed, expectedSize=$expectedSize")
-
             outputFile.outputStream().buffered().use { output ->
                 if (isCompressed) {
                     // Streaming decompression
@@ -733,7 +753,6 @@ class EpicDownloadManager @Inject constructor(
                         val inputBuffer = ByteArray(65536) // 64KB compressed read buffer
                         val outputBuffer = ByteArray(65536) // 64KB decompressed write buffer
                         var endOfStream = false
-                        var firstRead = true
 
                         while (totalBytesWritten < uncompressedSize && !endOfStream) {
                             // Feed more input if needed
@@ -743,16 +762,7 @@ class EpicDownloadManager @Inject constructor(
                                     endOfStream = true
                                     Timber.tag("Epic").d("Unexpected end of stream: read=$totalBytesWritten, expected=$uncompressedSize")
                                 } else {
-                                    downloadInfo.updateBytesDownloaded(bytesRead.toLong())
-                                    val now = System.currentTimeMillis()
-                                    if (now - lastProgressEmitAt >= STREAM_PROGRESS_TIME_INTERVAL_MS) {
-                                        downloadInfo.emitProgressChange()
-                                        lastProgressEmitAt = now
-                                    }
-                                    if (firstRead) {
-                                        Log.d("Epic", "First compressed data bytes: ${inputBuffer.take(16).joinToString(" ") { "%02x".format(it) }}")
-                                        firstRead = false
-                                    }
+                                    reportDownloadedBytes(bytesRead.toLong())
                                     inflater.setInput(inputBuffer, 0, bytesRead)
                                 }
                             }
@@ -786,12 +796,7 @@ class EpicDownloadManager @Inject constructor(
                         val toRead = minOf(remaining, buffer.size)
                         val bytesRead = input.read(buffer, 0, toRead)
                         if (bytesRead == -1) break
-                        downloadInfo.updateBytesDownloaded(bytesRead.toLong())
-                        val now = System.currentTimeMillis()
-                        if (now - lastProgressEmitAt >= STREAM_PROGRESS_TIME_INTERVAL_MS) {
-                            downloadInfo.emitProgressChange()
-                            lastProgressEmitAt = now
-                        }
+                        reportDownloadedBytes(bytesRead.toLong())
                         output.write(buffer, 0, bytesRead)
                         digest.update(buffer, 0, bytesRead)
                         totalBytesWritten += bytesRead
@@ -815,6 +820,10 @@ class EpicDownloadManager @Inject constructor(
             val actualHex = actualHash.joinToString("") { "%02x".format(it) }
             outputFile.delete()
             throw Exception("Chunk hash verification failed: expected $expectedHex, got $actualHex")
+        }
+
+        if (pendingProgressBytes > 0L) {
+            downloadInfo.updateBytesDownloaded(pendingProgressBytes)
         }
 
         // Ensure UI receives a final progress update after this chunk's bytes.
@@ -870,8 +879,8 @@ class EpicDownloadManager @Inject constructor(
         try {
             val scope = CoroutineScope(Dispatchers.IO)
             val speedConfig = DownloadSpeedConfig()
-            val parallelDownloads = speedConfig.maxDownloads
-            val parallelAssemble = speedConfig.maxDecompress
+            val parallelDownloads = speedConfig.maxDownloads.coerceAtMost(EPIC_MAX_PARALLEL_DOWNLOADS)
+            val parallelAssemble = speedConfig.maxDecompress.coerceAtMost(EPIC_MAX_PARALLEL_ASSEMBLY)
             val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 
             val totalChunks = chunkQueue.size
@@ -886,9 +895,11 @@ class EpicDownloadManager @Inject constructor(
                 )
             }
 
-            val networkChunkFlow = MutableSharedFlow<app.gamenative.service.epic.manifest.ChunkInfo>(extraBufferCapacity = Int.MAX_VALUE)
+            val boundedFlowCapacity = parallelDownloads * EPIC_FLOW_BUFFER_MULTIPLIER
+            val networkChunkFlow =
+                MutableSharedFlow<app.gamenative.service.epic.manifest.ChunkInfo>(extraBufferCapacity = boundedFlowCapacity)
             val assembleFlow =
-                MutableSharedFlow<Pair<app.gamenative.service.epic.manifest.ChunkInfo, Result<File>>>(extraBufferCapacity = Int.MAX_VALUE)
+                MutableSharedFlow<Pair<app.gamenative.service.epic.manifest.ChunkInfo, Result<File>>>(extraBufferCapacity = boundedFlowCapacity)
 
             var assemblyFailure: Throwable? = null
 
@@ -951,7 +962,7 @@ class EpicDownloadManager @Inject constructor(
                             )
 
                             // Always emit result to assembleFlow for processing (success or failure)
-                            assembleFlow.tryEmit(chunk to result)
+                            assembleFlow.emit(chunk to result)
                             emit(Unit)
                         }
                     }
@@ -979,7 +990,7 @@ class EpicDownloadManager @Inject constructor(
 
                                     // Requeue the chunk for retry
                                     downloadedChunkIds.remove(chunk.guidStr)
-                                    networkChunkFlow.tryEmit(chunk)
+                                    networkChunkFlow.emit(chunk)
                                     return@flow
                                 }
 
@@ -1002,7 +1013,7 @@ class EpicDownloadManager @Inject constructor(
                                     // TODO: Check error status
                                     if (exception.statusCode in listOf(401, 403, 404, 500)) {
                                         Timber.tag("EPIC").w("Chunk ${chunk.guidStr} urls expired, refreshing")
-                                        networkChunkFlow.tryEmit(chunk)
+                                        networkChunkFlow.emit(chunk)
                                         return@flow
                                     }
                                 }
@@ -1032,8 +1043,6 @@ class EpicDownloadManager @Inject constructor(
                         Timber.tag("EPIC").w("Download cancelled during file iteration")
                         return@launch
                     }
-                    Timber.tag("EPIC").v("Pre-allocating ${file.filename}")
-
                     // Allocating file before download
                     val outputFile = File(installDir, file.filename)
                     outputFile.parentFile?.mkdirs()
@@ -1053,7 +1062,6 @@ class EpicDownloadManager @Inject constructor(
                 chunkQueue.forEach { chunkInfo ->
                     chunksAdded.add(chunkInfo.guidStr)
                     networkChunkFlow.emit(chunkInfo)
-                    Timber.tag("EPIC").v("Emitted chunk ${chunkInfo.guidStr} to download flow")
                 }
             }
 
@@ -1091,7 +1099,7 @@ class EpicDownloadManager @Inject constructor(
                             "Pending chunks stuck at $currentPendingChunks for $samePendingChunksAttempts checks; " +
                                     "re-emitting ${missingChunks.size} missing chunk(s) for retry",
                         )
-                        missingChunks.forEach { networkChunkFlow.tryEmit(it) }
+                        missingChunks.forEach { networkChunkFlow.emit(it) }
                     }
 
                     samePendingChunksAttempts = 0
