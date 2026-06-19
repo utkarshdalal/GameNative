@@ -889,10 +889,25 @@ class EpicDownloadManager @Inject constructor(
             val downloadedChunkIds = newKeySet<String>()
             val pendingChunks = AtomicInteger(chunkQueue.size)
 
+            data class ChunkAssemblyPart(
+                val file: app.gamenative.service.epic.manifest.FileManifest,
+                val chunk: ChunkPart,
+            )
+
+            val mutableChunkPartsByGuid = HashMap<String, MutableList<ChunkAssemblyPart>>(totalChunks)
+            files.forEach { file ->
+                file.chunkParts.forEach { chunk ->
+                    mutableChunkPartsByGuid.getOrPut(chunk.guidStr) { mutableListOf() }
+                        .add(ChunkAssemblyPart(file, chunk))
+                }
+            }
+
+            val chunkPartsByGuid = mutableChunkPartsByGuid.mapValues { it.value.toList() }
+            chunkPartsByGuid.forEach { (guidStr, assemblyParts) ->
+                chunkUsageCounts[guidStr] = AtomicInteger(assemblyParts.size)
+            }
             chunkQueue.forEach { chunkInfo ->
-                chunkUsageCounts[chunkInfo.guidStr] = AtomicInteger(
-                    files.sumOf { file -> file.chunkParts.count { chunk -> chunk.guidStr == chunkInfo.guidStr } }
-                )
+                chunkUsageCounts.putIfAbsent(chunkInfo.guidStr, AtomicInteger(0))
             }
 
             val boundedFlowCapacity = parallelDownloads * EPIC_FLOW_BUFFER_MULTIPLIER
@@ -910,29 +925,17 @@ class EpicDownloadManager @Inject constructor(
                     return Result.failure(Exception("Download cancelled"))
                 }
 
-                // 1. Find all files that contain this chunk
-                val matchedFiles = files.filter { file ->
-                    file.chunkParts.any { chunk -> chunk.guidStr == guidStr }
-                }
-
-                // 2. For each file found, try to assemble if all chunks are ready
                 var assemblySuccessCount = 0
 
-                matchedFiles.forEach { file ->
-                    file.chunkParts.withIndex()
-                        .filter { (_, chunk) -> chunk.guidStr == guidStr }
-                        .forEach { (chunkIndex, chunk) ->
-                            val result = assembleFileParallel(file, chunk, chunkCacheDir, installDir)
-                            if (result.isSuccess) {
-                                // 3. If assembly is successful and all chunks in downloadedChunkIds, increment file counter
-                                assemblySuccessCount++
-                            } else {
-                                Timber.tag("EPIC").d(result.exceptionOrNull()?.message ?: "Failed to assemble ${file.filename}")
-                            }
-                        }
+                chunkPartsByGuid[guidStr].orEmpty().forEach { assemblyPart ->
+                    val result = assembleFileParallel(assemblyPart.file, assemblyPart.chunk, chunkCacheDir, installDir)
+                    if (result.isSuccess) {
+                        assemblySuccessCount++
+                    } else {
+                        Timber.tag("EPIC").d(result.exceptionOrNull()?.message ?: "Failed to assemble ${assemblyPart.file.filename}")
+                    }
                 }
 
-                // 4. Decrement usage count only when assembly is successful
                 if (assemblySuccessCount > 0) {
                     val usageCount = chunkUsageCounts[guidStr]?.addAndGet(-assemblySuccessCount)
                     if (usageCount != null && usageCount <= 0) {
@@ -1036,8 +1039,6 @@ class EpicDownloadManager @Inject constructor(
                     return@launch
                 }
 
-                val chunksAdded = mutableListOf<String>()
-
                 files.forEach { file ->
                     if (!downloadInfo.isActive()) {
                         Timber.tag("EPIC").w("Download cancelled during file iteration")
@@ -1060,7 +1061,6 @@ class EpicDownloadManager @Inject constructor(
                 }
 
                 chunkQueue.forEach { chunkInfo ->
-                    chunksAdded.add(chunkInfo.guidStr)
                     networkChunkFlow.emit(chunkInfo)
                 }
             }
