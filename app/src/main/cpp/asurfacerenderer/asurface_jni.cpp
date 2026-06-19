@@ -7,15 +7,11 @@
 #include <cstring>
 #include "ASurfaceRendererContext.h"
 #include <unordered_map>
+#include <shared_mutex>
 
 static JavaVM* g_javaVm = nullptr;
-struct PresentedCallback {
-    JavaVM*  jvm;
-    jobject  rendererObj; // global ref to ASurfaceRenderer instance
-    jlong    contentId;
-    jlong    serial;
-};
-static std::atomic<ASurfaceRendererContext*> g_ctx{nullptr};
+static ASurfaceRendererContext* g_ctx = nullptr;
+static std::shared_mutex g_ctxMutex;
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
     g_javaVm = vm;
@@ -29,35 +25,44 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeInit(
     ANativeWindow* win = ANativeWindow_fromSurface(env, surface);
     if (!win) return false;
 
-    auto* ctx = new ASurfaceRendererContext(win, w, h);
-    ctx->javaVm = g_javaVm;
-    auto* old = g_ctx.exchange(ctx, std::memory_order_acq_rel);
+    ASurfaceRendererContext* old;
+    {
+        std::unique_lock lk(g_ctxMutex);
+        auto* ctx = new ASurfaceRendererContext(win, w, h);
+        ctx->javaVm = g_javaVm;
+        old = g_ctx;
+        g_ctx = ctx;
+    }
     delete old;
-    g_ctx.store(ctx, std::memory_order_release);
 
     return true;
 }
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeDestroy(JNIEnv*, jobject) {
-    auto* ctx = g_ctx.exchange(nullptr, std::memory_order_acq_rel);
+    std::unique_lock lk(g_ctxMutex);
+    auto* ctx = g_ctx;
+    g_ctx = nullptr;
     delete ctx;
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeInitScanout(JNIEnv*, jobject) {
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) r->initScanout();
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx) r->initScanout();
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeDestroyScanout(JNIEnv*, jobject) {
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) r->destroyScanout();
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx) r->destroyScanout();
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeSetSfCallbackTarget(
         JNIEnv* env, jobject, jobject rendererRef)
 {
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) r->setSfCallbackTarget(env, rendererRef);
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx) r->setSfCallbackTarget(env, rendererRef);
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -66,22 +71,26 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeScanoutSetCursorImage(
 {
     if (!buf) return;
     void* px = env->GetDirectBufferAddress(buf);
-    if (px && env->GetDirectBufferCapacity(buf) >= (jlong)w*h*4)
-        if (auto* r = g_ctx.load(std::memory_order_acquire)) r->scanoutSetCursorImage(px, w, h, stride);
+    if (px && env->GetDirectBufferCapacity(buf) >= (jlong)w*h*4) {
+        std::shared_lock lk(g_ctxMutex);
+        if (auto* r = g_ctx) r->scanoutSetCursorImage(px, w, h, stride);
+    }
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeScanoutSetCursorPos(
         JNIEnv*, jobject, jshort x, jshort y, jshort hotX, jshort hotY, jboolean cursorVisible)
 {
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) r->scanoutSetCursorPos(x, y, hotX, hotY, cursorVisible);
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx) r->scanoutSetCursorPos(x, y, hotX, hotY, cursorVisible);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeScanoutSetDst(
         JNIEnv*, jobject, jint x, jint y, jint w, jint h)
 {
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) r->scanoutSetDst(x, y, w, h);
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx) r->scanoutSetDst(x, y, w, h);
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
@@ -90,7 +99,8 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeReattachSurface(JNIEnv* env, j
     ANativeWindow* win = ANativeWindow_fromSurface(env, surface);
     if (!win) return JNI_FALSE;
     bool ok = false;
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) {
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx) {
         ok = r->reattachSurface(win);
         if (ok && r->scanoutActive.load()) {
             r->destroyScanout();
@@ -103,7 +113,8 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeRegisterWindowSC(
         JNIEnv* env, jobject, jlong contentId, jstring debugName)
 {
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) {
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx) {
         const char* name = nullptr;
         if (debugName) name = env->GetStringUTFChars(debugName, nullptr);
         r->registerWindowSC((int64_t)contentId, name ? name : "(x11_window)");
@@ -115,14 +126,16 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeUnregisterWindowSC(
         JNIEnv*, jobject, jlong contentId)
 {
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) r->unregisterWindowSC((int64_t)contentId);
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx) r->unregisterWindowSC((int64_t)contentId);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeScanoutSetCursorVisibility(
         JNIEnv*, jobject, jboolean visible)
 {
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) r->scanoutSetCursorVisibility(visible);
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx) r->scanoutSetCursorVisibility(visible);
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -130,7 +143,8 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeSetWindowBuffer(
         JNIEnv*, jobject, jlong contentId,
         jlong ahbPtr, jint fenceFd, jlong windowId, jlong serial)
 {
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) {
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx) {
         if (ahbPtr) {
             r->setWindowBuffer(
                     (int64_t) contentId,
@@ -144,12 +158,14 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeSetWindowBuffer(
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeBeginTransaction(JNIEnv*, jobject) {
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) r->beginTransaction();
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx) r->beginTransaction();
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeApplyTransaction(JNIEnv*, jobject) {
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) r->applyTransaction();
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx) r->applyTransaction();
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -158,7 +174,8 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeUpdateWindow(
         jint srcL, jint srcT, jint srcR, jint srcB,
         jint dstL, jint dstT, jint dstR, jint dstB)
 {
-    if (auto* r = g_ctx.load(std::memory_order_acquire)) {
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx) {
         r->updateWindow((int64_t)contentId, visible, zOrder, srcL, srcT, srcR, srcB, dstL, dstT, dstR, dstB);
     }
 }
