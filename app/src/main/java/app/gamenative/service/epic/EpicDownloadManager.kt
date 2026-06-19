@@ -1045,15 +1045,18 @@ class EpicDownloadManager @Inject constructor(
                         RandomAccessFile(outputFile.path, "rw").use {
                             it.setLength(totalSize)
                         }
+
+                        file.chunkParts.forEach { part ->
+                            if (!chunksAdded.contains(part.guidStr)) {
+                                chunksAdded.add(part.guidStr)
+                                val chunkInfo = chunkQueue.first { it.guidStr == part.guidStr }
+                                networkChunkFlow.emit(chunkInfo)
+                                Timber.tag("EPIC").v("Emitted chunk ${chunkInfo.guidStr} to download flow")
+                            }
+                        }
                     } catch (e: IOException) {
                         throw IOException("Failed to allocate file ${outputFile.path}: ${e.message}")
                     }
-                }
-
-                chunkQueue.forEach { chunkInfo ->
-                    chunksAdded.add(chunkInfo.guidStr)
-                    networkChunkFlow.emit(chunkInfo)
-                    Timber.tag("EPIC").v("Emitted chunk ${chunkInfo.guidStr} to download flow")
                 }
             }
 
