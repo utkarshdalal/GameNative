@@ -349,38 +349,38 @@ fun PluviaMain(
             if (navController.currentDestination?.route != PluviaScreen.XServer.route) {
                 navController.navigate(PluviaScreen.XServer.route)
             }
-            return@launchIntentApp
-        }
-        MainActivity.wasLaunchedViaExternalIntent = true
-        trackGameLaunched(resolvedAppId)
-        viewModel.setLaunchedAppId(resolvedAppId)
-        viewModel.setBootToContainer(false)
-        scope.launch(Dispatchers.IO) {
-            val gameSource = ContainerUtils.extractGameSourceFromContainerId(resolvedAppId)
-            val isOffline = when {
-                gameSource != GameSource.STEAM -> false
-                SteamService.isLoggedIn -> false
-                !NetworkMonitor.hasInternet.value -> true
-                else -> {
-                    viewModel.setLoadingDialogVisible(true)
-                    viewModel.setLoadingDialogMessage(context.getString(R.string.connecting_to_steam))
-                    viewModel.setLoadingDialogProgress(-1f)
-                    !SteamUtils.awaitSteamLogin()
+        } else {
+            MainActivity.wasLaunchedViaExternalIntent = true
+            trackGameLaunched(resolvedAppId)
+            viewModel.setLaunchedAppId(resolvedAppId)
+            viewModel.setBootToContainer(false)
+            scope.launch(Dispatchers.IO) {
+                val gameSource = ContainerUtils.extractGameSourceFromContainerId(resolvedAppId)
+                val isOffline = when {
+                    gameSource != GameSource.STEAM -> false
+                    SteamService.isLoggedIn -> false
+                    !NetworkMonitor.hasInternet.value -> true
+                    else -> {
+                        viewModel.setLoadingDialogVisible(true)
+                        viewModel.setLoadingDialogMessage(context.getString(R.string.connecting_to_steam))
+                        viewModel.setLoadingDialogProgress(-1f)
+                        !SteamUtils.awaitSteamLogin()
+                    }
                 }
+                // sync viewModel — dialog retries + replaceSteamApi read isOffline.value
+                viewModel.setOffline(isOffline)
+                preLaunchApp(
+                    context = context,
+                    appId = resolvedAppId,
+                    useTemporaryOverride = hasTemporaryOverride,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = isOffline,
+                )
             }
-            // sync viewModel — dialog retries + replaceSteamApi read isOffline.value
-            viewModel.setOffline(isOffline)
-            preLaunchApp(
-                context = context,
-                appId = resolvedAppId,
-                useTemporaryOverride = hasTemporaryOverride,
-                setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                setLoadingProgress = viewModel::setLoadingDialogProgress,
-                setLoadingMessage = viewModel::setLoadingDialogMessage,
-                setMessageDialogState = setMessageDialogState,
-                onSuccess = viewModel::launchApp,
-                isOffline = isOffline,
-            )
         }
     }
 
