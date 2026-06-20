@@ -63,6 +63,7 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
+import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import com.posthog.PostHog
@@ -342,6 +343,14 @@ fun PluviaMain(
     // shared intent-launch path. resolves isOffline at the call site because intent launches can
     // arrive pre-login (cold-boot via stored creds) and downstream cloud-sync needs a settled answer.
     val launchIntentApp: (resolvedAppId: String, hasTemporaryOverride: Boolean) -> Unit = { resolvedAppId, hasTemporaryOverride ->
+        val requestedGameId = runCatching { ContainerUtils.extractGameIdFromContainerId(resolvedAppId) }.getOrNull()
+        if (SteamService.keepAlive && requestedGameId != null && ActiveGameRegistry.get()?.appId == requestedGameId) {
+            Timber.i("[PluviaMain]: Game $resolvedAppId already running; bringing XServer screen forward")
+            if (navController.currentDestination?.route != PluviaScreen.XServer.route) {
+                navController.navigate(PluviaScreen.XServer.route)
+            }
+            return@launchIntentApp
+        }
         MainActivity.wasLaunchedViaExternalIntent = true
         trackGameLaunched(resolvedAppId)
         viewModel.setLaunchedAppId(resolvedAppId)
