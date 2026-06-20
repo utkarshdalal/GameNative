@@ -28,6 +28,12 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
+// Debug-only: package the repo's manifest.json so debug builds read it locally (never in release).
+val copyDebugManifest by tasks.registering(Copy::class) {
+    from(rootProject.file("manifest.json"))
+    into(layout.buildDirectory.dir("generated/debugManifest"))
+}
+
 android {
     namespace = "app.gamenative"
     compileSdk = 36
@@ -245,6 +251,9 @@ android {
                 srcDirs("src/modern/jniLibs")
             }
         }
+        getByName("debug") {
+            assets.srcDir(copyDebugManifest)
+        }
     }
 
     kotlinter {
@@ -299,8 +308,8 @@ dependencies {
     // JavaSteam
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
-        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0.1-18-SNAPSHOT.jar"))
-        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0.1-18-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0.1-20-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0.1-20-SNAPSHOT.jar"))
         implementation(libs.bundles.javasteam.dev)
     } else {
         implementation(libs.javasteam) {

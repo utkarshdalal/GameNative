@@ -540,27 +540,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (steamAppId != null && !steamAppId.isEmpty()) {
             envVars.put("SteamGameId", steamAppId);
             envVars.put("SteamAppId", steamAppId);
-
-            try {
-                int appIdInt = Integer.parseInt(steamAppId);
-                int[] dlcs = app.gamenative.service.SteamService.getOwnedDlcAppIdsOf(appIdInt);
-                if (dlcs != null && dlcs.length > 0) {
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 0; i < dlcs.length; i++) {
-                        if (i > 0) sb.append(',');
-                        sb.append(dlcs[i]);
-                    }
-                    envVars.put("OWNED_DLCS", sb.toString());
-                    Log.i("BionicProgramLauncherComponent",
-                          "OWNED_DLCS=" + sb + " (count=" + dlcs.length + ")");
-                }
-            } catch (NumberFormatException nfe) {
-                // steamAppId not numeric; the SteamBootstrap.prepareApp block
-                // below will log the same condition and skip its own work.
-            } catch (Throwable t) {
-                Log.w("BionicProgramLauncherComponent",
-                      "Failed to resolve owned DLCs for OWNED_DLCS env var", t);
-            }
         }
         envVars.put("STEAM_LOG_LEVEL", "10");
         envVars.put("STEAM_DEBUG", "1");
@@ -647,19 +626,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             if (rc == 0 && steamAppId != null && !steamAppId.isEmpty()) {
                 try {
                     int appIdInt = Integer.parseInt(steamAppId);
-                    int[] dlcAppIds;
-                    try {
-                        dlcAppIds = app.gamenative.service.SteamService.getOwnedDlcAppIdsOf(appIdInt);
-                    } catch (Throwable t) {
-                        Log.w("BionicProgramLauncherComponent",
-                              "getOwnedDlcAppIdsOf threw for appId=" + appIdInt
-                              + "; proceeding with no DLCs", t);
-                        dlcAppIds = new int[0];
-                    }
                     Log.i("BionicProgramLauncherComponent",
-                          "SteamBootstrap.prepareApp(" + appIdInt + ") with "
-                          + dlcAppIds.length + " owned DLC(s)");
-                    app.gamenative.SteamBootstrap.INSTANCE.prepareApp(appIdInt, dlcAppIds);
+                          "SteamBootstrap.prepareApp(" + appIdInt + ")");
+                    app.gamenative.SteamBootstrap.INSTANCE.prepareApp(appIdInt, new int[0]);
                 } catch (NumberFormatException nfe) {
                     Log.w("BionicProgramLauncherComponent",
                           "steamAppId=" + steamAppId + " is not numeric; "

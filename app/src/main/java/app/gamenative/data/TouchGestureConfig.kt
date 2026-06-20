@@ -143,11 +143,15 @@ data class TouchGestureConfig(
         // ── Special actions ──────────────────────────────────────────────
         const val ACTION_SHOW_KEYBOARD = "show_keyboard"
         const val ACTION_KEY_ESC = "key_ESC"
+        const val ACTION_KEY_TILDE = "key_TILDE"
 
         // ── Action identifiers: two-finger drag (pan) ───────────────────
         const val PAN_WASD = "wasd"
+        const val PAN_INVERTED_WASD = "inverted_wasd"
         const val PAN_ARROW_KEYS = "arrow_keys"
+        const val PAN_INVERTED_ARROW_KEYS = "inverted_arrow_keys"
         const val PAN_MIDDLE_MOUSE = "middle_mouse_pan"
+        const val PAN_INVERTED_MIDDLE_MOUSE = "inverted_middle_mouse_pan"
         const val PAN_LEFT_CLICK_DRAG = "left_click_drag"
         const val PAN_RIGHT_CLICK_DRAG = "right_click_drag"
 
@@ -292,8 +296,11 @@ data class TouchGestureConfig(
         /** Ordered list of pan/camera-drag actions. */
         val PAN_ACTIONS = listOf(
             PAN_ARROW_KEYS,
+            PAN_INVERTED_ARROW_KEYS,
             PAN_WASD,
+            PAN_INVERTED_WASD,
             PAN_MIDDLE_MOUSE,
+            PAN_INVERTED_MIDDLE_MOUSE,
             PAN_LEFT_CLICK_DRAG,
             PAN_RIGHT_CLICK_DRAG,
         )

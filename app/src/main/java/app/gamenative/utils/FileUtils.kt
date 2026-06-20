@@ -226,15 +226,9 @@ object FileUtils {
     fun resolveCaseInsensitive(baseDir: File, relativePath: String): File {
         val segments = relativePath.replace('\\', '/').split('/').filter { it.isNotEmpty() }
         var current = baseDir
-        for ((i, segment) in segments.withIndex()) {
+        for (segment in segments) {
             val match = current.listFiles()?.firstOrNull { it.name.equals(segment, ignoreCase = true) }
-            if (match != null) {
-                current = match
-            } else {
-                // append remaining segments verbatim
-                for (j in i until segments.size) current = File(current, segments[j])
-                return current
-            }
+            current = match ?: File(current, segment)
         }
         return current
     }

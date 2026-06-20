@@ -139,6 +139,7 @@ class GOGManager @Inject constructor(
             if (result.isSuccess) {
                 val count = result.getOrNull() ?: 0
                 Timber.tag("GOG").i("Background sync completed: $count games synced")
+                backfillVerticalCovers()
                 return@withContext Result.success(Unit)
             } else {
                 val error = result.exceptionOrNull()
@@ -217,8 +218,15 @@ class GOGManager @Inject constructor(
                         val gameDetails = result.getOrNull()
                         if (gameDetails != null) {
                             Timber.tag("GOG").d("Got Game Details for ID: $id")
-                            val game = parseGameObject(gameDetails)
-                            if (game != null) {
+                            val parsedGame = parseGameObject(gameDetails)
+                            if (parsedGame != null) {
+                                // Only real (non-excluded) games are shown, so only fetch
+                                // their portrait cover to avoid wasting GamesDB requests.
+                                val game = if (parsedGame.exclude) {
+                                    parsedGame
+                                } else {
+                                    parsedGame.copy(verticalCoverUrl = GOGApiClient.getVerticalCoverUrl(id))
+                                }
                                 games.add(game)
                                 Timber.tag("GOG").d("Refreshed Game: ${game.title}")
                                 totalProcessed++
@@ -248,6 +256,31 @@ class GOGManager @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Failed to refresh GOG library")
             return@withContext Result.failure(e)
+        }
+    }
+
+    /**
+     * Backfill portrait covers for games already in the database that predate the
+     * vertical_cover_url column (or whose fetch previously failed). New games already
+     * get their cover during [refreshLibrary], so this only touches existing rows.
+     */
+    private suspend fun backfillVerticalCovers() = withContext(Dispatchers.IO) {
+        try {
+            val gameIds = gogGameDao.getGameIdsMissingVerticalCover()
+            if (gameIds.isEmpty()) return@withContext
+
+            Timber.tag("GOG").d("Backfilling vertical covers for ${gameIds.size} games")
+            var filled = 0
+            for (id in gameIds) {
+                val coverUrl = GOGApiClient.getVerticalCoverUrl(id)
+                if (coverUrl.isNotEmpty()) {
+                    gogGameDao.updateVerticalCoverUrl(id, coverUrl)
+                    filled++
+                }
+            }
+            Timber.tag("GOG").i("Backfilled $filled vertical covers")
+        } catch (e: Exception) {
+            Timber.tag("GOG").w(e, "Failed to backfill vertical covers")
         }
     }
 
@@ -914,13 +947,13 @@ class GOGManager @Inject constructor(
      * @param context Android context
      * @param appId Game app ID
      * @param installPath Game install path
-     * @return Pair of (clientSecret, List of save location templates), or null if cloud saves not enabled or API call fails
+     * @return Triple of (clientId, clientSecret, List of save location templates), or null if cloud saves not enabled or API call fails
      */
     suspend fun getSaveSyncLocation(
         context: Context,
         appId: String,
         installPath: String,
-    ): Pair<String, List<GOGCloudSavesLocationTemplate>>? = withContext(Dispatchers.IO) {
+    ): Triple<String, String, List<GOGCloudSavesLocationTemplate>>? = withContext(Dispatchers.IO) {
         try {
             Timber.tag("GOG").d("[Cloud Saves] Getting save sync location for $appId")
             val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
@@ -931,16 +964,18 @@ class GOGManager @Inject constructor(
                 return@withContext null
             }
 
-            // Extract clientId from info file
-            val clientId = infoJson.optString("clientId", "")
+            // Get clientId + clientSecret from the build metadata, like gogdl/Heroic. The goggame-*.info
+            // clientId is optional and missing for many games (e.g. Dead Cells), so prefer the .info value
+            // only as a hint and fall back to the build metadata, which always carries both.
+            val buildCredentials = GOGApiClient.getClientCredentials(context, gameId.toString(), installPath)
+            val clientId = infoJson.optString("clientId", "").ifEmpty { buildCredentials?.first ?: "" }
             if (clientId.isEmpty()) {
-                Timber.tag("GOG").w("[Cloud Saves] No clientId found in info file for game $gameId")
+                Timber.tag("GOG").w("[Cloud Saves] No clientId in info file or build metadata for game $gameId")
                 return@withContext null
             }
             Timber.tag("GOG").d("[Cloud Saves] Client ID: $clientId")
 
-            // Get clientSecret from build metadata
-            val clientSecret = GOGApiClient.getClientSecret(context, gameId.toString(), installPath) ?: ""
+            val clientSecret = buildCredentials?.second ?: ""
             if (clientSecret.isEmpty()) {
                 Timber.tag("GOG").w("[Cloud Saves] No clientSecret available for game $gameId")
             } else {
@@ -951,7 +986,7 @@ class GOGManager @Inject constructor(
             remoteConfigCache[clientId]?.let { cachedLocations ->
                 Timber.tag("GOG").d("[Cloud Saves] Using cached save locations for clientId $clientId (${cachedLocations.size} locations)")
                 // Cache only contains locations, we still need to fetch clientSecret fresh
-                return@withContext Pair(clientSecret, cachedLocations)
+                return@withContext Triple(clientId, clientSecret, cachedLocations)
             }
 
             // Android runs games through Wine, so always use Windows platform
@@ -1033,7 +1068,7 @@ class GOGManager @Inject constructor(
                 }
 
                 Timber.tag("GOG").i("[Cloud Saves] Found ${locations.size} save location(s) for game $gameId")
-                return@withContext Pair(clientSecret, locations)
+                return@withContext Triple(clientId, clientSecret, locations)
             }
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "[Cloud Saves] Failed to get save sync location for appId $appId")
@@ -1070,20 +1105,12 @@ class GOGManager @Inject constructor(
             }
             Timber.tag("GOG").d("[Cloud Saves] Game install path: $installPath")
 
-            // Get clientId from info file
-            val infoJson = readInfoFile(appId, installPath)
-            val clientId = infoJson?.optString("clientId", "") ?: ""
-            if (clientId.isEmpty()) {
-                Timber.tag("GOG").w("[Cloud Saves] No clientId found in info file for game $gameId")
-                return@withContext null
-            }
-            Timber.tag("GOG").d("[Cloud Saves] Client ID: $clientId")
-
-            // Fetch save locations from API (Android runs games through Wine, so always Windows)
+            // Fetch clientId + clientSecret + save locations from API (Android runs games through Wine,
+            // so always Windows). clientId comes from build metadata when the goggame-*.info omits it.
             Timber.tag("GOG").d("[Cloud Saves] Fetching save locations from API")
             val result = getSaveSyncLocation(context, appId, installPath)
 
-            if (result == null || result.second.isEmpty()) {
+            if (result == null || result.third.isEmpty()) {
                 // The remote config API returned no locations, meaning this game either has cloud
                 // saves disabled or no save paths configured. We don't fall back to the default
                 // GOG Galaxy path (%LOCALAPPDATA%/GOG.com/Galaxy/Applications/<clientId>/Storage/…)
@@ -1093,8 +1120,10 @@ class GOGManager @Inject constructor(
                 return@withContext null
             }
 
-            val clientSecret = result.first
-            val locations = result.second
+            val clientId = result.first
+            val clientSecret = result.second
+            val locations = result.third
+            Timber.tag("GOG").d("[Cloud Saves] Client ID: $clientId")
             Timber.tag("GOG").i("[Cloud Saves] Retrieved ${locations.size} save location(s) from API")
 
             // Resolve each location
@@ -1105,9 +1134,15 @@ class GOGManager @Inject constructor(
                 var resolvedPath = PathType.resolveGOGPathVariables(locationTemplate.location, installPath)
                 Timber.tag("GOG").d("[Cloud Saves] After GOG variable resolution: $resolvedPath")
 
-                // Map GOG Windows path to device path using PathType
-                // Pass appId to ensure we use the correct container-specific wine prefix
-                resolvedPath = PathType.toAbsPathForGOG(context, resolvedPath, appId)
+                // Install-relative locations (<?INSTALL?>) resolve to the real on-disk install dir, which
+                // is already an absolute host path — use it directly, like Heroic does. Only Windows-style
+                // locations (%LOCALAPPDATA% etc.) need mapping into the Wine prefix; running toAbsPathForGOG
+                // on an absolute host path wrongly re-roots it under .wine/drive_c.
+                resolvedPath = resolvedPath.replace("\\", "/")
+                if (!resolvedPath.startsWith(installPath.replace("\\", "/"))) {
+                    // Pass appId to ensure we use the correct container-specific wine prefix
+                    resolvedPath = PathType.toAbsPathForGOG(context, resolvedPath, appId)
+                }
                 Timber.tag("GOG").d("[Cloud Saves] After path mapping to Wine prefix: $resolvedPath")
 
                 // Normalize path to resolve any '..' or '.' components

@@ -967,6 +967,8 @@ public class InputControlsView extends View {
     }
 
     public void handleInputEvent(Binding binding, boolean isActionDown, float offset) {
+        if (binding == null || binding == Binding.NONE) return;
+
         if (binding.isGamepad()) {
             WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
             GamepadState state = profile.getGamepadState();
@@ -1041,13 +1043,13 @@ public class InputControlsView extends View {
                     if (pointerButton != null) {
                         xServer.injectPointerButtonPress(pointerButton);
                     }
-                    else xServer.injectKeyPress(binding.keycode);
+                    else binding.inject(xServer, true);
                 }
                 else {
                     if (pointerButton != null) {
                         xServer.injectPointerButtonRelease(pointerButton);
                     }
-                    else xServer.injectKeyRelease(binding.keycode);
+                    else binding.inject(xServer, false);
                 }
             }
         }

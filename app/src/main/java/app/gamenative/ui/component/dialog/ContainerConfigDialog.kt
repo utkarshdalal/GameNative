@@ -287,9 +287,9 @@ fun ContainerConfigDialog(
         val graphicsDriversRef = remember { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
         var graphicsDrivers by graphicsDriversRef
         val dxWrappers = staticData.dxWrappers
-        // Start with defaults from resources
-        val dxvkVersionsBase = staticData.dxvkVersionsBase
-        val vkd3dVersionsBase = staticData.vkd3dVersionsBase
+        // Start with defaults from resources (modern: un-greyed comes from on-disk + manifest)
+        val dxvkVersionsBase = ManifestComponentHelper.bundledDxWrapperBase(staticData.dxvkVersionsBase)
+        val vkd3dVersionsBase = ManifestComponentHelper.bundledDxWrapperBase(staticData.vkd3dVersionsBase)
         val audioDrivers = staticData.audioDrivers
         val gpuCards = staticData.gpuCards
         val presentModes = staticData.presentModes

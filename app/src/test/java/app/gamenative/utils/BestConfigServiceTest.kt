@@ -1035,5 +1035,41 @@ class BestConfigServiceTest {
 
         assertTrue("Result should be empty map when wineVersion is missing from bestConfig", result == null || result.isEmpty())
     }
+
+    @Test
+    fun findManifestEntryForVersion_matchesByIdOrName() {
+        val entry = ManifestEntry(
+            id = "Turnip v26.2.0 R4",
+            name = "Turnip_v26.2.0_R4",
+            url = "https://downloads.gamenative.app/drivers/Turnio_v26.2.0_R4.zip",
+            variant = "bionic",
+        )
+        assertEquals(entry, ManifestComponentHelper.findManifestEntryForVersion("Turnip_v26.2.0_R4", listOf(entry)))
+        assertEquals(entry, ManifestComponentHelper.findManifestEntryForVersion("Turnip v26.2.0 R4", listOf(entry)))
+        assertNull(ManifestComponentHelper.findManifestEntryForVersion("nope", listOf(entry)))
+    }
+
+    /**
+     * Fresh-install guard: the wrapper drivers that ContainerUtils.setContainerDefaults assigns must
+     * each resolve to a manifest entry AND equal that entry's id. On a fresh install the driver is
+     * downloaded and installed under its manifest id (== meta.json profile name), so if the default
+     * doesn't equal the id, the installed driver never matches the config and nothing loads.
+     */
+    @Test
+    fun defaultWrapperDriversMatchManifestId() {
+        val manifest = runBlocking { ManifestRepository.loadManifest(context) }
+        val drivers = manifest.items[ManifestContentTypes.DRIVER].orEmpty()
+        assumeFalse("Manifest drivers unavailable in test env", drivers.isEmpty())
+
+        for (def in ContainerUtils.wrapperDriverDefaults) {
+            val entry = ManifestComponentHelper.findManifestEntryForVersion(def, drivers)
+            assertNotNull("Default wrapper '$def' has no manifest entry — fresh installs can't install it", entry)
+            assertEquals(
+                "Default wrapper '$def' must equal the manifest id (the folder it installs as)",
+                def,
+                entry!!.id,
+            )
+        }
+    }
 }
 

@@ -419,19 +419,24 @@ object BestConfigService {
             }
         }
 
-        // Validate graphics driver version (from graphicsDriverConfig)
+        // Validate graphics driver version (from graphicsDriverConfig). When the value references a
+        // manifest entry by its `name`, rewrite it to the canonical `id` (== meta.json name ==
+        // installed folder) so the runtime resolver finds it.
         if (containerVariant.equals(Container.BIONIC, ignoreCase = true) && graphicsDriverConfig.isNotEmpty()) {
-            val firstSplit = graphicsDriverConfig.split(";")
-            val parts = if (firstSplit.size > 1) firstSplit else graphicsDriverConfig.split(",")
-            val configMap = parts.associate { part ->
-                val kv = part.split("=", limit = 2)
-                if (kv.size == 2) kv[0] to kv[1] else part to ""
-            }
-            val driverVersion = configMap["version"] ?: ""
-            if (driverVersion.isNotEmpty() && !ManifestComponentHelper.versionExists(driverVersion, availableDrivers)) {
-                Timber.tag("BestConfigService")
-                    .w("Graphics driver version $driverVersion not found for $containerVariant variant")
-                missing.add("Graphics driver $driverVersion")
+            val sep = if (graphicsDriverConfig.contains(";")) ";" else ","
+            val parts = graphicsDriverConfig.split(sep).toMutableList()
+            val versionIdx = parts.indexOfFirst { it.substringBefore("=", "") == "version" }
+            val driverVersion = if (versionIdx >= 0) parts[versionIdx].substringAfter("=", "") else ""
+            if (driverVersion.isNotEmpty()) {
+                val entry = ManifestComponentHelper.findManifestEntryForVersion(driverVersion, manifestDrivers)
+                if (entry == null && !ManifestComponentHelper.versionExists(driverVersion, availableDrivers)) {
+                    Timber.tag("BestConfigService")
+                        .w("Graphics driver version $driverVersion not found for $containerVariant variant")
+                    missing.add("Graphics driver $driverVersion")
+                } else if (entry != null && entry.id != driverVersion) {
+                    parts[versionIdx] = "version=${entry.id}"
+                    filteredJson.put("graphicsDriverConfig", parts.joinToString(sep))
+                }
             }
         }
 
@@ -653,16 +658,17 @@ object BestConfigService {
         }
 
         if (containerVariant.equals(Container.BIONIC, ignoreCase = true) && graphicsDriverConfig.isNotEmpty()) {
-            val firstSplit = graphicsDriverConfig.split(";")
-            val parts = if (firstSplit.size > 1) firstSplit else graphicsDriverConfig.split(",")
-            val configMap = parts.associate { part ->
-                val kv = part.split("=", limit = 2)
-                if (kv.size == 2) kv[0] to kv[1] else part to ""
-            }
-            val driverVersion = configMap["version"] ?: ""
-            if (driverVersion.isNotEmpty() && !ManifestComponentHelper.versionExists(driverVersion, locallyAvailableDrivers)) {
+            val sep = if (graphicsDriverConfig.contains(";")) ";" else ","
+            val driverVersion = graphicsDriverConfig.split(sep)
+                .firstOrNull { it.substringBefore("=", "") == "version" }
+                ?.substringAfter("=", "")
+                .orEmpty()
+            if (driverVersion.isNotEmpty()) {
                 val entry = ManifestComponentHelper.findManifestEntryForVersion(driverVersion, manifestDrivers)
-                if (entry != null) {
+                if (entry != null &&
+                    !ManifestComponentHelper.versionExists(driverVersion, locallyAvailableDrivers) &&
+                    !ManifestComponentHelper.versionExists(entry.id, locallyAvailableDrivers)
+                ) {
                     addRequest(entry, isDriver = true)
                 }
             }

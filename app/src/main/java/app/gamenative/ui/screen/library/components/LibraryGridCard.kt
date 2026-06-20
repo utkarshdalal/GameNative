@@ -409,10 +409,12 @@ private fun GridStatusIcons(appInfo: LibraryItem) {
 internal data class GridImageUrls(val primary: String, val fallback: String = "")
 
 private fun getGridContentScale(paneType: PaneType): ContentScale {
-    return if (paneType == PaneType.GRID_HERO) {
-        ContentScale.Crop
-    } else {
-        ContentScale.Fit
+    return when (paneType) {
+        // Hero and capsule both show cover art that should fill the slot. Capsule art is
+        // close to but not always exactly 2:3 (e.g. GOG covers are ~0.71), so cropping the
+        // overflow looks better than letterboxing it against the blurred backdrop.
+        PaneType.GRID_HERO, PaneType.GRID_CAPSULE -> ContentScale.Crop
+        else -> ContentScale.Fit
     }
 }
 

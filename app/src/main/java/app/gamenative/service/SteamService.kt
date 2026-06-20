@@ -840,8 +840,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 depot.sharedInstall
             if (!hasContent)
                 return false
-            if (depot.manifests.isNotEmpty() && depot.manifests.values.all { it.size == 0L && it.download == 0L })
-                return false
             // 2. Supported OS
             if (!depot.isWindowsCompatible)
                 return false

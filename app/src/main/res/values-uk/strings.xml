@@ -748,8 +748,11 @@
     <string name="gesture_action_right_click">Правий клік</string>
     <string name="gesture_action_middle_click">Середній клік</string>
     <string name="gesture_pan_middle_mouse">Панорамування середньою кнопкою</string>
+    <string name="gesture_pan_inverted_middle_mouse">Інвертоване панорамування середньою кнопкою</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">Інвертоване WASD</string>
     <string name="gesture_pan_arrow_keys">Стрілки</string>
+    <string name="gesture_pan_inverted_arrow_keys">Інвертовані стрілки</string>
     <string name="gesture_zoom_scroll_wheel">Коліщатко прокрутки</string>
     <string name="gesture_zoom_plus_minus">Клавіші +/-</string>
     <string name="gesture_zoom_page_up_down">PgUp/PgDn</string>
@@ -768,9 +771,13 @@
     <string name="gesture_header_special">Спеціальні</string>
     <string name="gesture_header_mouse">Миша</string>
     <string name="gesture_header_common_game">Поширені ігрові клавіші</string>
+    <string name="gesture_header_navigation_editing">Навігація / редагування</string>
+    <string name="gesture_header_symbols">Символи</string>
     <string name="gesture_header_letters">Літери A-Z</string>
     <string name="gesture_header_numbers">Числа 0-9</string>
+    <string name="gesture_header_numpad">Цифрова клавіатура</string>
     <string name="gesture_header_function_keys">Функціональні клавіші</string>
+    <string name="gesture_header_modifiers_locks">Модифікатори / блокування</string>
     <string name="gesture_two_finger_hold">Утримання двома пальцями</string>
     <string name="gesture_two_finger_hold_delay">Затримка утримання двома пальцями (мс)</string>
     <string name="gesture_three_finger_tap">Торкання трьома пальцями</string>
@@ -1451,6 +1458,13 @@
      <string name="steam_save_import_failed">Не вдалося імпортувати збереження: %s</string>
     <string name="option_import_saves">Імпортувати збереження</string>
     <string name="option_export_saves">Експортувати збереження</string>
+    <!-- HLTB (How Long To Beat) -->
+    <string name="hltb_main_story">Основний сюжет</string>
+    <string name="hltb_main_plus_extras">Основне + Доповнення</string>
+    <string name="hltb_completionist">Перфекціоніст</string>
+    <string name="hltb_all_styles">Усі стилі</string>
+    <string name="hltb_hours_value">%sh</string>
+    <string name="hltb_section_title">HLTB</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>

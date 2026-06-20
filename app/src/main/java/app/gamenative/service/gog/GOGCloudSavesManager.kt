@@ -476,7 +476,14 @@ class GOGCloudSavesManager(
 
             val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$dirname/${file.relativePath}"
 
-            val requestBody = localFile.readBytes().toRequestBody("application/octet-stream".toMediaType())
+            // GOG stores saves gzip-compressed. Match the Galaxy/gogdl protocol: send the gzipped
+            // bytes with Content-Encoding: gzip and an Etag of the compressed MD5, otherwise other
+            // clients (and GOG's own validation) can't read what we upload.
+            val compressedData = gzip(localFile.readBytes())
+            val etag = MessageDigest.getInstance("MD5").digest(compressedData)
+                .joinToString("") { "%02x".format(it) }
+
+            val requestBody = compressedData.toRequestBody("application/octet-stream".toMediaType())
 
             val requestBuilder = Request.Builder()
                 .url(url)
@@ -485,6 +492,8 @@ class GOGCloudSavesManager(
                 .header("User-Agent", USER_AGENT)
                 .header("X-Object-Meta-User-Agent", USER_AGENT)
                 .header("Content-Type", "application/octet-stream")
+                .header("Content-Encoding", "gzip")
+                .header("Etag", etag)
 
             // Add last modified timestamp header if available
             file.updateTime?.let { timestamp ->
@@ -611,5 +620,15 @@ class GOGCloudSavesManager(
      */
     private fun currentTimestamp(): Long {
         return System.currentTimeMillis() / 1000
+    }
+
+    /**
+     * Gzip [data] for cloud upload. Uses a fixed mtime (GZIPOutputStream writes 0) so the output
+     * is deterministic, matching gogdl's gzip.compress(data, 6, mtime=0).
+     */
+    private fun gzip(data: ByteArray): ByteArray {
+        val buffer = java.io.ByteArrayOutputStream()
+        GZIPOutputStream(buffer).use { it.write(data) }
+        return buffer.toByteArray()
     }
 }

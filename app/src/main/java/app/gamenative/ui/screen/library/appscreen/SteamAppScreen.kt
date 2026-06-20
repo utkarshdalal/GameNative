@@ -1011,7 +1011,7 @@ class SteamAppScreen : BaseAppScreen() {
                     val depots = SteamService.getDownloadableDepots(gameId, language)
                     Timber.i("There are ${depots.size} depots belonging to ${libraryItem.appId}")
                     val branch = SteamService.getInstalledApp(gameId)?.branch ?: "public"
-                    val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
+                    val availableBytes = StorageUtils.getAvailableSpaceForUncreatedPath(SteamService.getAppDirPath(gameId))
                     val downloadBytes = depots.values.sumOf {
                         SteamUtils.getDownloadBytes(it.manifests[branch])
                     }

@@ -62,6 +62,12 @@ interface GOGGameDao {
     @Query("SELECT id FROM gog_games")
     suspend fun getAllGameIdsIncludingExcluded(): List<String>
 
+    @Query("SELECT id FROM gog_games WHERE exclude = 0 AND vertical_cover_url = ''")
+    suspend fun getGameIdsMissingVerticalCover(): List<String>
+
+    @Query("UPDATE gog_games SET vertical_cover_url = :url WHERE id = :gameId")
+    suspend fun updateVerticalCoverUrl(gameId: String, url: String)
+
     /**
      * Upsert GOG games while preserving install status and paths
      * This is useful when refreshing the library from GOG API

@@ -1290,6 +1290,14 @@ object PrefManager {
             setPref(GAME_COMPATIBILITY_CACHE, value)
         }
 
+    // HLTB cache (JSON string)
+    private val HLTB_CACHE = stringPreferencesKey("hltb_cache")
+    var hltbCache: String
+        get() = getPref(HLTB_CACHE, "{}")
+        set(value) {
+            setPref(HLTB_CACHE, value)
+        }
+
     // Device-wide game stats cache (JSON string)
     private val DEVICE_GAME_STATS_CACHE = stringPreferencesKey("device_game_stats_cache")
     var deviceGameStatsCache: String
