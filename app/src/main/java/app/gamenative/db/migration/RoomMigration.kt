@@ -30,6 +30,10 @@ private fun migrateNexusModSupportToV23(connection: SQLiteConnection) {
         connection.execSQL("ALTER TABLE `app_info` ADD COLUMN `custom_install_path` TEXT NOT NULL DEFAULT ''")
     }
 
+    if (!connection.hasColumn("gog_games", "vertical_cover_url")) {
+        connection.execSQL("ALTER TABLE `gog_games` ADD COLUMN `vertical_cover_url` TEXT NOT NULL DEFAULT ''")
+    }
+
     connection.execSQL(
         """
         CREATE TABLE IF NOT EXISTS `steam_file_hash_cache` (
