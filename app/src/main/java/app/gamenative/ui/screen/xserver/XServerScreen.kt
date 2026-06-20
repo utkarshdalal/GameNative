@@ -3349,12 +3349,12 @@ private fun setupXEnvironment(
             val nextRemaining = remaining.drop(1)
             if (nextRemaining.isEmpty()) {
                 if (bootToContainer) {
-                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Opening container..."))
+                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.booting_splash_opening_container)))
                 } else {
-                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
+                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.booting_splash_launching_game)))
                 }
             } else {
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
+               PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.booting_splash_installing_prerequisites)))
             }
             chainPreInstallSteps(nextRemaining)
             guestProgramLauncherComponent.start()
