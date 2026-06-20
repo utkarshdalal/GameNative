@@ -605,33 +605,27 @@ private fun LibraryScreenContent(
 
     // Global key/motion bootstrap path for cases where Compose focus was lost by touch mode.
     // This runs at the app event bus layer, independent of current Compose focus target.
-    DisposableEffect(
-        selectedAppId,
-        isSystemMenuOpen,
-        state.isOptionsPanelOpen,
-        state.isSearching,
-        state.appInfoList.size,
-        state.currentTab,
-    ) {
-        val canBootstrapContentFocus: () -> Boolean = {
-            val now = SystemClock.uptimeMillis()
-            selectedAppId == null &&
-                !isSystemMenuOpen &&
-                !state.isOptionsPanelOpen &&
-                !state.isSearching &&
-                state.appInfoList.isNotEmpty() &&
-                controllerBootstrapNeeded &&
-                !rootHasFocus &&
-                (now - lastBootstrapAtMs) > 250L
-        }
-        val canNavigateTabsWithoutFocus: () -> Boolean = {
-            selectedAppId == null &&
-                !isSystemMenuOpen &&
-                !state.isOptionsPanelOpen &&
-                !state.isSearching &&
-                !rootHasFocus
-        }
+    // Helper functions defined in composable scope to capture latest state on each recomposition.
+    val canBootstrapContentFocus: () -> Boolean = {
+        val now = SystemClock.uptimeMillis()
+        selectedAppId == null &&
+            !isSystemMenuOpen &&
+            !state.isOptionsPanelOpen &&
+            !state.isSearching &&
+            state.appInfoList.isNotEmpty() &&
+            controllerBootstrapNeeded &&
+            !rootHasFocus &&
+            (now - lastBootstrapAtMs) > 250L
+    }
+    val canNavigateTabsWithoutFocus: () -> Boolean = {
+        selectedAppId == null &&
+            !isSystemMenuOpen &&
+            !state.isOptionsPanelOpen &&
+            !state.isSearching &&
+            !rootHasFocus
+    }
 
+    DisposableEffect(Unit) {
         val onGlobalKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = { androidEvent ->
             val event = androidEvent.event
             if (event.action != KeyEvent.ACTION_DOWN) {
