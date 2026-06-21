@@ -35,7 +35,13 @@
         var result = out.join('/');
         if (trailing && result.length > 0) result += '/';
         if (isAbs) return '/' + result;
-        return result || '.';
+        // node keeps the trailing slash even when the path collapses to the current dir:
+        // `path.normalize('./')` === './'. plugins build a base via
+        // `path.join(path.dirname(process.mainModule.filename), '/')` then string-concat asset
+        // paths onto it -- without the slash the concat FUSES ('.' + 'media/x' = '.media/x') and
+        // fs.existsSync misses. (CGMZ Music Player radio in Welcome To Elderfield, RMMZ.)
+        if (result.length === 0) return trailing ? './' : '.';
+        return result;
     }
 
     function join(/* ...parts */) {

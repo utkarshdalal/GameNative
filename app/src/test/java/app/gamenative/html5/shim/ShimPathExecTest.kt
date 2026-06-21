@@ -55,6 +55,24 @@ class ShimPathExecTest {
     }
 
     @Test
+    fun normalize_current_dir_keeps_trailing_slash() {
+        // node parity: normalize('./') === './'. plugins build a game-root base via
+        // `join(dirname(process.mainModule.filename), '/')` and string-concat asset paths onto
+        // it. collapsing to '.' fuses the concat ('.' + 'media/x' = '.media/x') -> fs miss
+        // (CGMZ Music Player radio, Welcome To Elderfield).
+        assertEquals("./", path("normalize('./')"))
+        assertEquals(".", path("normalize('.')"))
+    }
+
+    @Test
+    fun join_dirname_root_yields_relative_base() {
+        // the radio repro: dirname('index.html') === '.', then join('.', '/') MUST be './'
+        // so 'media/player/7.ogg' concatenated onto it resolves as a relative asset path.
+        assertEquals(".", path("dirname('index.html')"))
+        assertEquals("./", path("join('.', '/')"))
+    }
+
+    @Test
     fun dirname_nested_and_flat() {
         assertEquals("www", path("dirname('www/index.html')"))
         assertEquals(".", path("dirname('index.html')"))
