@@ -26,6 +26,7 @@ import app.gamenative.utils.SteamGridDB
 import app.gamenative.utils.StorageUtils
 import com.winlator.container.ContainerData
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -537,7 +538,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                                         SnackbarManager.show("Failed to delete game: ${e.message}")
                                     }
                                 } finally {
-                                    withContext(Dispatchers.Main) {
+                                    withContext(NonCancellable + Dispatchers.Main) {
                                         showDeletingDialog = false
                                     }
                                 }

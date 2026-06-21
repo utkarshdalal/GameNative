@@ -41,6 +41,7 @@ import com.winlator.container.ContainerData
 import com.winlator.core.StringUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -362,7 +363,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                     }
                 }
             } finally {
-                withContext(Dispatchers.Main) {
+                withContext(NonCancellable + Dispatchers.Main) {
                     showDeletingDialog = false
                 }
             }
@@ -659,7 +660,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                                     PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.AMAZON))
                                 }
                             } finally {
-                                withContext(Dispatchers.Main) {
+                                withContext(NonCancellable + Dispatchers.Main) {
                                     showDeletingDialog = false
                                 }
                             }

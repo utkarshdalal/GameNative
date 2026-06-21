@@ -75,6 +75,7 @@ import java.nio.file.Paths
 import kotlin.io.path.pathString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -1129,7 +1130,7 @@ class SteamAppScreen : BaseAppScreen() {
                                 DownloadService.invalidateCache()
                                 PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.STEAM))
                             } finally {
-                                withContext(Dispatchers.Main) {
+                                withContext(NonCancellable + Dispatchers.Main) {
                                     showDeletingDialog = false
                                 }
                             }
@@ -1285,7 +1286,7 @@ class SteamAppScreen : BaseAppScreen() {
                                         }
                                     }
                                 } finally {
-                                    withContext(Dispatchers.Main) {
+                                    withContext(NonCancellable + Dispatchers.Main) {
                                         showDeletingDialog = false
                                     }
                                 }

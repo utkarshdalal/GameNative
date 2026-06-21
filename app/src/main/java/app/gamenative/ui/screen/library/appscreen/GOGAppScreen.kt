@@ -32,6 +32,7 @@ import com.winlator.container.ContainerData
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -422,7 +423,7 @@ class GOGAppScreen : BaseAppScreen() {
                     SnackbarManager.show("Failed to uninstall game: ${e.message}")
                 }
             } finally {
-                withContext(Dispatchers.Main) {
+                withContext(NonCancellable + Dispatchers.Main) {
                     showDeletingDialog = false
                 }
             }
@@ -727,7 +728,7 @@ class GOGAppScreen : BaseAppScreen() {
                                     }
                                 }
                             } finally {
-                                withContext(Dispatchers.Main) {
+                                withContext(NonCancellable + Dispatchers.Main) {
                                     showDeletingDialog = false
                                 }
                             }

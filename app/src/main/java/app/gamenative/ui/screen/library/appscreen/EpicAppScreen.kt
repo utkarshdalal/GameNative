@@ -39,6 +39,7 @@ import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -504,7 +505,7 @@ class EpicAppScreen : BaseAppScreen() {
                     SnackbarManager.show(context.getString(R.string.epic_uninstall_error, e.message ?: ""))
                 }
             } finally {
-                withContext(Dispatchers.Main) {
+                withContext(NonCancellable + Dispatchers.Main) {
                     showDeletingDialog = false
                 }
             }
@@ -809,18 +810,23 @@ class EpicAppScreen : BaseAppScreen() {
                         showDeletingDialog = true
                         val downloadInfo = EpicService.getDownloadInfo(gameId)
                         downloadInfo?.cancel()
-                        scope.launch {
+                        scope.launch(Dispatchers.IO) {
                             try {
                                 downloadInfo?.awaitCompletion()
                                 EpicService.cleanupDownload(context, gameId)
-                                EpicService.deleteGame(context, gameId)
+                                val result = EpicService.deleteGame(context, gameId)
                                 DownloadService.invalidateCache()
                                 withContext(Dispatchers.Main) {
-                                    app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false))
-                                    app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId, app.gamenative.data.GameSource.EPIC))
+                                    if (result.isSuccess) {
+                                        app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false))
+                                        app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId, app.gamenative.data.GameSource.EPIC))
+                                    } else {
+                                        Timber.tag(TAG).e("Failed to delete Epic game after cancel: $gameId - ${result.exceptionOrNull()?.message}")
+                                        SnackbarManager.show("Failed to delete download: ${result.exceptionOrNull()?.message ?: ""}")
+                                    }
                                 }
                             } finally {
-                                withContext(Dispatchers.Main) {
+                                withContext(NonCancellable + Dispatchers.Main) {
                                     showDeletingDialog = false
                                 }
                             }
