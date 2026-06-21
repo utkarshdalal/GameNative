@@ -1309,7 +1309,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             return container.executablePath.ifEmpty { getInstalledExe(gameId) }
         }
 
-        fun deleteApp(appId: Int): Boolean {
+        suspend fun deleteApp(appId: Int): Boolean = withContext(Dispatchers.IO) {
             // snapshot path before marker removal (removing the marker changes resolution)
             val appInfo = getInstalledApp(appId)
             val result = if (appInfo?.isImported == true) {
@@ -1358,7 +1358,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
             }
 
-            return result
+            return@withContext result
         }
 
         fun downloadApp(appId: Int): DownloadInfo? {
