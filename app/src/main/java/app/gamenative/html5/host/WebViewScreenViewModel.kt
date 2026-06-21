@@ -2,6 +2,7 @@ package app.gamenative.html5.host
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
+import app.gamenative.data.GameSource
 import app.gamenative.html5.profile.EngineProfile
 import app.gamenative.html5.profile.ProfileRegistry
 import app.gamenative.html5.savesync.Html5SaveSyncService
@@ -10,11 +11,13 @@ import app.gamenative.html5.Html5SlugUtil
 import app.gamenative.runtime.WebViewContainer
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.DownloadService
+import app.gamenative.service.SteamService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
+import timber.log.Timber
 
 // no StateFlow: the screen's state lives in the WebView itself.
 @HiltViewModel
@@ -37,7 +40,16 @@ class WebViewScreenViewModel @Inject constructor(
         // language is owned by the wine Container; copy it in once so every consumer can read container.language.
         val wineLanguage = runCatching { ContainerUtils.getContainer(appContext, appId).language }
             .getOrDefault(base.language)
-        val container = base.copy(language = wineLanguage)
+        // persist the live (in-memory-only) launch arg so cold-boot / offline launches still decrypt.
+        // persist from base, NOT with the wine language, which is re-derived every launch.
+        val liveArg = GameSource.STEAM.idOf(appId).toIntOrNull()
+            ?.let { SteamService.getLaunchArgumentsForOs(it) }
+            ?.takeIf { it.isNotEmpty() }
+        if (liveArg != null && liveArg != base.decryptionKey) {
+            runCatching { WebViewContainer.save(slug, base.copy(decryptionKey = liveArg)) }
+                .onFailure { Timber.tag("WebViewScreenVM").e(it, "persist decryptionKey failed for %s", slug) }
+        }
+        val container = base.copy(language = wineLanguage, decryptionKey = liveArg ?: base.decryptionKey)
         val profile = ProfileRegistry.resolveProfile(
             context = appContext,
             appId = appId,
