@@ -41,8 +41,10 @@ data class WebViewContainer(
     val fingerprintedEngineId: String = "",
     // pack:nwjs sub-bucket ("impact"/"terra"/"generic") for AngleOverrideAdvisor; null outside pack:nwjs.
     val subEngine: String? = null,
-    // suspendPolicy is NOT stored here -- it lives on the wine Container as the single source of
-    // truth, read by both runtimes.
+    // OMORI's asset-decrypt key (the Steam `--<32hex>` launch arg), which PICS only caches in memory.
+    // persisted so cold-boot / offline launches still decrypt.
+    val decryptionKey: String = "",
+    // suspendPolicy is NOT stored here -- the wine Container is the single source of truth for both runtimes.
 ) {
     companion object {
         private val json = Json {
