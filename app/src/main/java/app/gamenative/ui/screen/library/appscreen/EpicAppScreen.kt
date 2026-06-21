@@ -491,7 +491,6 @@ class EpicAppScreen : BaseAppScreen() {
                 DownloadService.invalidateCache()
 
                 withContext(Dispatchers.Main) {
-                    showDeletingDialog = false
                     if (result.isSuccess) {
                         Timber.tag(TAG).i("Epic game uninstalled successfully: ${libraryItem.appId}")
                     } else {
@@ -500,11 +499,14 @@ class EpicAppScreen : BaseAppScreen() {
                     }
                 }
             } catch (e: Exception) {
+                Timber.e(e, "Error uninstalling Epic game")
+                withContext(Dispatchers.Main) {
+                    SnackbarManager.show(context.getString(R.string.epic_uninstall_error, e.message ?: ""))
+                }
+            } finally {
                 withContext(Dispatchers.Main) {
                     showDeletingDialog = false
                 }
-                Timber.e(e, "Error uninstalling Epic game")
-                SnackbarManager.show(context.getString(R.string.epic_uninstall_error, e.message ?: ""))
             }
         }
     }
@@ -808,14 +810,19 @@ class EpicAppScreen : BaseAppScreen() {
                         val downloadInfo = EpicService.getDownloadInfo(gameId)
                         downloadInfo?.cancel()
                         scope.launch {
-                            downloadInfo?.awaitCompletion()
-                            EpicService.cleanupDownload(context, gameId)
-                            EpicService.deleteGame(context, gameId)
-                            DownloadService.invalidateCache()
-                            withContext(Dispatchers.Main) {
-                                showDeletingDialog = false
-                                app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false))
-                                app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId, app.gamenative.data.GameSource.EPIC))
+                            try {
+                                downloadInfo?.awaitCompletion()
+                                EpicService.cleanupDownload(context, gameId)
+                                EpicService.deleteGame(context, gameId)
+                                DownloadService.invalidateCache()
+                                withContext(Dispatchers.Main) {
+                                    app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false))
+                                    app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId, app.gamenative.data.GameSource.EPIC))
+                                }
+                            } finally {
+                                withContext(Dispatchers.Main) {
+                                    showDeletingDialog = false
+                                }
                             }
                         }
                     }

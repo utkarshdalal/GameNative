@@ -407,7 +407,6 @@ class GOGAppScreen : BaseAppScreen() {
                 DownloadService.invalidateCache()
 
                 withContext(Dispatchers.Main) {
-                    showDeletingDialog = false
                     if (result.isSuccess) {
                         Timber.i("Successfully uninstalled GOG game: ${libraryItem.appId}")
                         SnackbarManager.show("Game uninstalled successfully")
@@ -418,11 +417,14 @@ class GOGAppScreen : BaseAppScreen() {
                     }
                 }
             } catch (e: Exception) {
+                Timber.e(e, "Error uninstalling GOG game")
+                withContext(Dispatchers.Main) {
+                    SnackbarManager.show("Failed to uninstall game: ${e.message}")
+                }
+            } finally {
                 withContext(Dispatchers.Main) {
                     showDeletingDialog = false
                 }
-                Timber.e(e, "Error uninstalling GOG game")
-                SnackbarManager.show("Failed to uninstall game: ${e.message}")
             }
         }
     }
@@ -699,32 +701,34 @@ class GOGAppScreen : BaseAppScreen() {
                         showDeletingDialog = true
                         val gameId = libraryItem.gameId.toString()
                         CoroutineScope(Dispatchers.IO).launch {
-                            val downloadInfo = GOGService.getDownloadInfo(gameId)
-                            val wasDownloading = downloadInfo != null &&
-                                downloadInfo.isActive() &&
-                                (downloadInfo.getProgress() ?: 0f) < 1f
-                            downloadInfo?.cancel()
-                            downloadInfo?.awaitCompletion()
-                            GOGService.cleanupDownload(gameId)
+                            try {
+                                val downloadInfo = GOGService.getDownloadInfo(gameId)
+                                val wasDownloading = downloadInfo != null &&
+                                    downloadInfo.isActive() &&
+                                    (downloadInfo.getProgress() ?: 0f) < 1f
+                                downloadInfo?.cancel()
+                                downloadInfo?.awaitCompletion()
+                                GOGService.cleanupDownload(gameId)
 
-                            val isInstalledAfterCancel = GOGService.isGameInstalled(gameId)
-                            if (isInstalledAfterCancel) {
-                                // Download completed and game ended up installed; don't show "Download cancelled"
+                                val isInstalledAfterCancel = GOGService.isGameInstalled(gameId)
+                                if (isInstalledAfterCancel) {
+                                    // Download completed and game ended up installed; don't show "Download cancelled"
+                                    return@launch
+                                }
+
+                                val result = GOGService.deleteGame(context, libraryItem)
+                                DownloadService.invalidateCache()
+                                withContext(Dispatchers.Main) {
+                                    if (wasDownloading && !isInstalledAfterCancel) {
+                                        SnackbarManager.show("Download cancelled")
+                                    }
+                                    if (result.isFailure) {
+                                        SnackbarManager.show("Failed to delete download: ${result.exceptionOrNull()?.message}")
+                                    }
+                                }
+                            } finally {
                                 withContext(Dispatchers.Main) {
                                     showDeletingDialog = false
-                                }
-                                return@launch
-                            }
-
-                            val result = GOGService.deleteGame(context, libraryItem)
-                            DownloadService.invalidateCache()
-                            withContext(Dispatchers.Main) {
-                                showDeletingDialog = false
-                                if (wasDownloading && !isInstalledAfterCancel) {
-                                    SnackbarManager.show("Download cancelled")
-                                }
-                                if (result.isFailure) {
-                                    SnackbarManager.show("Failed to delete download: ${result.exceptionOrNull()?.message}")
                                 }
                             }
                         }

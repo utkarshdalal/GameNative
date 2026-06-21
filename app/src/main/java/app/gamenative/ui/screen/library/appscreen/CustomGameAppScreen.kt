@@ -522,7 +522,6 @@ class CustomGameAppScreen : BaseAppScreen() {
                                     }
 
                                     withContext(Dispatchers.Main) {
-                                        showDeletingDialog = false
                                         // Navigate back and show notification
                                         SnackbarManager.show("\"${libraryItem.name}\" has been deleted")
 
@@ -535,9 +534,12 @@ class CustomGameAppScreen : BaseAppScreen() {
                                     }
                                 } catch (e: Exception) {
                                     withContext(Dispatchers.Main) {
+                                        SnackbarManager.show("Failed to delete game: ${e.message}")
+                                    }
+                                } finally {
+                                    withContext(Dispatchers.Main) {
                                         showDeletingDialog = false
                                     }
-                                    SnackbarManager.show("Failed to delete game: ${e.message}")
                                 }
                             }
                         }

@@ -351,14 +351,19 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
         Timber.tag(TAG).i("performUninstall: deleting game $productId")
         showDeletingDialog = true
         CoroutineScope(Dispatchers.IO).launch {
-            val result = AmazonService.deleteGame(context, productId)
-            DownloadService.invalidateCache()
-            withContext(Dispatchers.Main) {
-                showDeletingDialog = false
-                if (result.isSuccess) {
-                    Timber.tag(TAG).i("Uninstall succeeded for $productId")
-                } else {
-                    Timber.tag(TAG).e("Uninstall failed for $productId: ${result.exceptionOrNull()?.message}")
+            try {
+                val result = AmazonService.deleteGame(context, productId)
+                DownloadService.invalidateCache()
+                withContext(Dispatchers.Main) {
+                    if (result.isSuccess) {
+                        Timber.tag(TAG).i("Uninstall succeeded for $productId")
+                    } else {
+                        Timber.tag(TAG).e("Uninstall failed for $productId: ${result.exceptionOrNull()?.message}")
+                    }
+                }
+            } finally {
+                withContext(Dispatchers.Main) {
+                    showDeletingDialog = false
                 }
             }
         }
@@ -644,14 +649,19 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                         val downloadInfo = AmazonService.getDownloadInfo(productId)
                         downloadInfo?.cancel()
                         scope.launch {
-                            downloadInfo?.awaitCompletion()
-                            AmazonService.deleteGame(context, productId)
-                            DownloadService.invalidateCache()
-                            withContext(Dispatchers.Main) {
-                                showDeletingDialog = false
-                                val gameId = libraryItem.gameId
-                                PluviaApp.events.emitJava(AndroidEvent.DownloadStatusChanged(gameId, false))
-                                PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.AMAZON))
+                            try {
+                                downloadInfo?.awaitCompletion()
+                                AmazonService.deleteGame(context, productId)
+                                DownloadService.invalidateCache()
+                                withContext(Dispatchers.Main) {
+                                    val gameId = libraryItem.gameId
+                                    PluviaApp.events.emitJava(AndroidEvent.DownloadStatusChanged(gameId, false))
+                                    PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.AMAZON))
+                                }
+                            } finally {
+                                withContext(Dispatchers.Main) {
+                                    showDeletingDialog = false
+                                }
                             }
                         }
                     }

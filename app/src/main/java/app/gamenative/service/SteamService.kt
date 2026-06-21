@@ -1338,22 +1338,20 @@ class SteamService : Service(), IChallengeUrlChanged {
             // Remove from DB
             workshopPausedApps.remove(appId)
             with(instance!!) {
-                scope.launch {
-                    db.withTransaction {
-                        appInfoDao.deleteApp(appId)
-                        changeNumbersDao.deleteByAppId(appId)
-                        fileChangeListsDao.deleteByAppId(appId)
-                        steamFileHashCacheDao.deleteByAppId(appId)
-                        downloadingAppInfoDao.deleteApp(appId)
-                        appDao.clearWorkshopState(appId)
+                db.withTransaction {
+                    appInfoDao.deleteApp(appId)
+                    changeNumbersDao.deleteByAppId(appId)
+                    fileChangeListsDao.deleteByAppId(appId)
+                    steamFileHashCacheDao.deleteByAppId(appId)
+                    downloadingAppInfoDao.deleteApp(appId)
+                    appDao.clearWorkshopState(appId)
 
-                        val indirectDlcAppIds = getDownloadableDlcAppsOf(appId).orEmpty().map { it.id }
-                        indirectDlcAppIds.forEach { dlcAppId ->
-                            appInfoDao.deleteApp(dlcAppId)
-                            changeNumbersDao.deleteByAppId(dlcAppId)
-                            fileChangeListsDao.deleteByAppId(dlcAppId)
-                            steamFileHashCacheDao.deleteByAppId(dlcAppId)
-                        }
+                    val indirectDlcAppIds = getDownloadableDlcAppsOf(appId).orEmpty().map { it.id }
+                    indirectDlcAppIds.forEach { dlcAppId ->
+                        appInfoDao.deleteApp(dlcAppId)
+                        changeNumbersDao.deleteByAppId(dlcAppId)
+                        fileChangeListsDao.deleteByAppId(dlcAppId)
+                        steamFileHashCacheDao.deleteByAppId(dlcAppId)
                     }
                 }
             }
