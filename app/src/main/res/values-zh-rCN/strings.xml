@@ -39,6 +39,7 @@
     <string name="steam_uninstall_confirmation_message">确定要卸载 %1$s 吗？此操作无法撤销</string>
     <string name="steam_uninstall_success">%1$s 已卸载</string>
     <string name="steam_uninstall_failed">卸载游戏失败</string>
+    <string name="deleting">正在删除…</string>
     <string name="amazon_uninstall_game_title">卸载游戏</string>
     <string name="amazon_uninstall_confirmation_message">确定要卸载 %1$s 吗？此操作无法撤销</string>
     <string name="amazon_install_game_title">下载游戏</string>

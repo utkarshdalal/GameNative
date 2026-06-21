@@ -40,6 +40,7 @@
     <string name="steam_uninstall_confirmation_message">Êtes-vous sûr de vouloir désinstaller %1$s ? Cette action ne peut pas être annulée.</string>
     <string name="steam_uninstall_success">%1$s a été désinstallé</string>
     <string name="steam_uninstall_failed">Échec de la désinstallation du jeu</string>
+    <string name="deleting">Suppression…</string>
     <string name="amazon_uninstall_game_title">Désinstaller le jeu</string>
     <string name="amazon_uninstall_confirmation_message">Êtes-vous sûr de vouloir désinstaller %1$s ? Cette action ne peut pas être annulée.</string>
     <string name="amazon_install_game_title">Télécharger le jeu</string>

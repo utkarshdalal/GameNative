@@ -39,6 +39,7 @@
     <string name="steam_uninstall_confirmation_message">%1$s をアンインストールしてもよろしいですか?この操作は元に戻すことができません。</string>
     <string name="steam_uninstall_success">%1$s はアンインストールされました</string>
     <string name="steam_uninstall_failed">ゲームのアンインストールに失敗しました</string>
+    <string name="deleting">削除中…</string>
     <string name="amazon_uninstall_game_title">ゲームをアンインストールする</string>
     <string name="amazon_uninstall_confirmation_message">%1$s をアンインストールしてもよろしいですか?この操作は元に戻すことができません。</string>
     <string name="amazon_install_game_title">ゲームをダウンロード</string>

@@ -40,6 +40,7 @@
     <string name="steam_uninstall_confirmation_message">Czy na pewno chcesz odinstalować %1$s? Tej akcji nie można cofnąć.</string>
     <string name="steam_uninstall_success">%1$s odinstalowano</string>
     <string name="steam_uninstall_failed">Nie udało się odinstalować gry</string>
+    <string name="deleting">Usuwanie…</string>
     <string name="amazon_uninstall_game_title">Odinstaluj grę</string>
     <string name="amazon_uninstall_confirmation_message">Czy na pewno chcesz odinstalować %1$s? Tej akcji nie można cofnąć.</string>
     <string name="amazon_install_game_title">Pobierz grę</string>

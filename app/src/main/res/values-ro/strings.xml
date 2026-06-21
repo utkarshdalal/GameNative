@@ -40,6 +40,7 @@
     <string name="steam_uninstall_confirmation_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
     <string name="steam_uninstall_success">%1$s a fost dezinstalat</string>
     <string name="steam_uninstall_failed">Dezinstalarea jocului a eșuat</string>
+    <string name="deleting">Ștergere…</string>
     <string name="amazon_uninstall_game_title">Dezinstalare joc</string>
     <string name="amazon_uninstall_confirmation_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
     <string name="amazon_install_game_title">Descărcare joc</string>

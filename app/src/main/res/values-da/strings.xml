@@ -1161,6 +1161,7 @@
     <string name="steam_imagefs_installed">ImageFS installeret. Prøv at redigere container igen.</string>
     <string name="steam_imagefs_install_failed">Kunne ikke installere ImageFS: %s</string>
     <string name="steam_uninstall_game_title">Afinstallér spil</string>
+    <string name="deleting">Sletter…</string>
     <string name="amazon_uninstall_game_title">Afinstallér spil</string>
     <string name="amazon_uninstall_confirmation_message">Er du sikker på, at du vil afinstallere %1$s? Denne handling kan ikke fortrydes.</string>
     <string name="amazon_install_game_title">Download spil</string>

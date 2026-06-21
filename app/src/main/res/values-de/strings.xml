@@ -39,6 +39,7 @@
     <string name="steam_uninstall_confirmation_message">Möchtest du %1$s wirklich deinstallieren? Das kann nicht rückgängig gemacht werden.</string>
     <string name="steam_uninstall_success">%1$s wurde deinstalliert</string>
     <string name="steam_uninstall_failed">Spiel konnte nicht deinstalliert werden</string>
+    <string name="deleting">Löschen…</string>
     <string name="amazon_uninstall_game_title">Spiel deinstallieren</string>
     <string name="amazon_uninstall_confirmation_message">Möchtest du %1$s wirklich deinstallieren? Das kann nicht rückgängig gemacht werden.</string>
     <string name="amazon_install_game_title">Spiel herunterladen</string>

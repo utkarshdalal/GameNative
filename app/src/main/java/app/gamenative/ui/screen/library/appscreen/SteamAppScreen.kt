@@ -224,6 +224,9 @@ class SteamAppScreen : BaseAppScreen() {
         fun getPendingUpdateVerifyOperation(gameId: Int): AppOptionMenuType? {
             return pendingUpdateVerifyOperations[gameId]
         }
+
+        // Shared state for deletion progress dialog
+        var showDeletingDialog by mutableStateOf(false)
     }
 
     @Composable
@@ -1118,12 +1121,14 @@ class SteamAppScreen : BaseAppScreen() {
                         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
                         downloadInfo?.cancel()
                         SteamService.workshopPausedApps.remove(gameId)
+                        hideInstallDialog(gameId)
+                        showDeletingDialog = true
                         CoroutineScope(Dispatchers.IO).launch {
                             SteamService.deleteApp(gameId)
                             DownloadService.invalidateCache()
                             PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.STEAM))
                             withContext(Dispatchers.Main) {
-                                hideInstallDialog(gameId)
+                                showDeletingDialog = false
                             }
                         }
                     }
@@ -1241,6 +1246,7 @@ class SteamAppScreen : BaseAppScreen() {
                     TextButton(
                         onClick = {
                             hideUninstallDialog(libraryItem.appId)
+                            showDeletingDialog = true
 
                             CoroutineScope(Dispatchers.IO).launch {
                                 val installedAppInfo = getInstalledApp(libraryItem.gameId)
@@ -1251,6 +1257,7 @@ class SteamAppScreen : BaseAppScreen() {
                                     ContainerUtils.deleteContainer(context, libraryItem.appId)
                                 }
                                 withContext(Dispatchers.Main) {
+                                    showDeletingDialog = false
                                     if (success) {
                                         PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.STEAM))
                                         SnackbarManager.show(
@@ -1296,6 +1303,15 @@ class SteamAppScreen : BaseAppScreen() {
                 currentFile = current,
                 movedFiles = moved,
                 totalFiles = total,
+            )
+        }
+
+        // Deletion progress dialog
+        if (showDeletingDialog) {
+            LoadingDialog(
+                visible = true,
+                progress = -1f,
+                message = stringResource(R.string.deleting),
             )
         }
 

@@ -1156,6 +1156,7 @@ https://gamenative.app
     <string name="steam_type">Тип Steam</string>
     <string name="steam_uninstall_confirmation_message">Вы уверены, что хотите удалить %1$s? Это действие не может быть отменено.</string>
     <string name="steam_uninstall_failed">Ошибка удаления игры</string>
+    <string name="deleting">Удаление…</string>
     <string name="steam_uninstall_game_title">Удалить игру</string>
     <string name="steam_uninstall_success">%1$s была удалена</string>
     <string name="steam_update_message">Пожалуйста, убедитесь, что ваши сохранения загружены в облако или скопированы, поскольку они могут быть перезаписаны.</string>

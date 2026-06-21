@@ -1161,6 +1161,7 @@
     <string name="steam_imagefs_installed">ImageFS instalado. Por favor, tente editar o contêiner novamente.</string>
     <string name="steam_imagefs_install_failed">Falha ao instalar ImageFS: %s</string>
     <string name="steam_uninstall_game_title">Desinstalar jogo</string>
+    <string name="deleting">Excluindo…</string>
     <string name="amazon_uninstall_game_title">Desinstalar jogo</string>
     <string name="amazon_uninstall_confirmation_message">Tem certeza de que deseja desinstalar %1$s? Esta ação não pode ser desfeita.</string>
     <string name="amazon_install_game_title">Baixar jogo</string>

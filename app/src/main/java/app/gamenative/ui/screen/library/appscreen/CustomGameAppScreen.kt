@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
@@ -54,6 +55,9 @@ class CustomGameAppScreen : BaseAppScreen() {
         fun shouldShowDeleteDialog(appId: String): Boolean {
             return deleteDialogAppIds.contains(appId)
         }
+
+        // Shared state for deletion progress dialog
+        var showDeletingDialog by mutableStateOf(false)
     }
     @Composable
     override fun getGameDisplayInfo(
@@ -463,6 +467,15 @@ class CustomGameAppScreen : BaseAppScreen() {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
 
+        // Track deletion progress dialog state
+        if (showDeletingDialog) {
+            LoadingDialog(
+                visible = true,
+                progress = -1f,
+                message = stringResource(R.string.deleting),
+            )
+        }
+
         // Track delete dialog state
         var showDeleteDialog by remember { mutableStateOf(shouldShowDeleteDialog(libraryItem.appId)) }
 
@@ -487,6 +500,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                     TextButton(
                         onClick = {
                             hideDeleteDialog(libraryItem.appId)
+                            showDeletingDialog = true
 
                             // Delete the game folder and container
                             scope.launch {
@@ -507,10 +521,11 @@ class CustomGameAppScreen : BaseAppScreen() {
                                         CustomGameScanner.invalidateCache()
                                     }
 
-                                    // Navigate back and show notification
-                                    SnackbarManager.show("\"${libraryItem.name}\" has been deleted")
-
                                     withContext(Dispatchers.Main) {
+                                        showDeletingDialog = false
+                                        // Navigate back and show notification
+                                        SnackbarManager.show("\"${libraryItem.name}\" has been deleted")
+
                                         // Small delay to ensure file system updates are complete
                                         // before navigating back (list will auto-refresh when displayed)
                                         delay(100)
@@ -519,6 +534,9 @@ class CustomGameAppScreen : BaseAppScreen() {
                                         onBack()
                                     }
                                 } catch (e: Exception) {
+                                    withContext(Dispatchers.Main) {
+                                        showDeletingDialog = false
+                                    }
                                     SnackbarManager.show("Failed to delete game: ${e.message}")
                                 }
                             }

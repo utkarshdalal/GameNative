@@ -40,6 +40,7 @@
     <string name="steam_uninstall_confirmation_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
     <string name="steam_uninstall_success">%1$s деінстальовано</string>
     <string name="steam_uninstall_failed">Помилка деінсталяції гри</string>
+    <string name="deleting">Видалення…</string>
     <string name="amazon_uninstall_game_title">Деінсталювати гру</string>
     <string name="amazon_uninstall_confirmation_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
     <string name="amazon_install_game_title">Завантажити гру</string>

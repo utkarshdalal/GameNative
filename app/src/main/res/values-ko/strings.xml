@@ -40,6 +40,7 @@
     <string name="steam_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
     <string name="steam_uninstall_success">%1$s이(가) 제거되었습니다</string>
     <string name="steam_uninstall_failed">게임 제거 실패</string>
+    <string name="deleting">삭제 중…</string>
     <string name="amazon_uninstall_game_title">게임 제거</string>
     <string name="amazon_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
     <string name="amazon_install_game_title">게임 다운로드</string>
