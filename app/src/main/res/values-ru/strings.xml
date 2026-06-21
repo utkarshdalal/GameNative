@@ -307,6 +307,8 @@
     <string name="directplay">DirectPlay</string>
     <string name="directshow">DirectShow</string>
     <string name="directsound">DirectSound</string>
+    <string name="directinput8">DirectInput 8</string>
+    <string name="directinput">DirectInput</string>
     <string name="directx">DirectX</string>
     <string name="disable_mouse_input">Отключить ввод мыши</string>
     <string name="disable_present_wait">Отключить KHR_present_wait</string>
@@ -467,9 +469,13 @@
     <string name="gesture_header_special">Специальные</string>
     <string name="gesture_header_mouse">Мышь</string>
     <string name="gesture_header_common_game">Частые игровые клавиши</string>
+    <string name="gesture_header_navigation_editing">Навигация / редактирование</string>
+    <string name="gesture_header_symbols">Символы</string>
     <string name="gesture_header_letters">Буквы A-Z</string>
     <string name="gesture_header_numbers">Цифры 0-9</string>
+    <string name="gesture_header_numpad">Цифровая клавиатура</string>
     <string name="gesture_header_function_keys">Функциональные клавиши</string>
+    <string name="gesture_header_modifiers_locks">Модификаторы / блокировки</string>
     <string name="gesture_two_finger_hold">Удержание двумя пальцами</string>
     <string name="gesture_two_finger_hold_delay">Задержка удержания двумя пальцами (мс)</string>
     <string name="gesture_three_finger_tap">Касание тремя пальцами</string>
@@ -498,8 +504,11 @@
     <string name="gesture_long_press">Долгое нажатие</string>
     <string name="gesture_long_press_delay">Задержка долгого нажатия (мс)</string>
     <string name="gesture_pan_arrow_keys">Клавиши со стрелками</string>
+    <string name="gesture_pan_inverted_arrow_keys">Инвертированные стрелки</string>
     <string name="gesture_pan_middle_mouse">Панорамирование средней кнопки мыши</string>
+    <string name="gesture_pan_inverted_middle_mouse">Инвертированное панорамирование средней кнопкой мыши</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">Инвертированное WASD</string>
     <string name="gesture_pinch">Щипок внутрь/наружу</string>
     <string name="gesture_settings">Настройки жестов</string>
     <string name="gesture_settings_title">Настройки жестов касания</string>
@@ -865,6 +874,7 @@ https://gamenative.app
     <string name="properties">Свойства</string>
     <string name="quick_menu_back">Назад</string>
     <string name="quick_menu_title">Быстрое меню</string>
+    <string name="display_brightness">Яркость дисплея</string>
     <string name="screen_effects">Эффекты экрана</string>
     <string name="screen_effects_live_preview">Изменения мгновенно применяются к текущей игре.</string>
     <string name="screen_effects_color_adjustments">Настройка цвета</string>
@@ -1046,6 +1056,8 @@ https://gamenative.app
     <string name="settings_interface_show_gamepad_hints_title">Показывать подсказки геймпада</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Показывает панель подсказок кнопок геймпада в нижней части экрана</string>
     <string name="settings_interface_icon_style">Стиль значка</string>
+    <string name="settings_interface_custom_games">Пользовательские игры</string>
+    <string name="settings_interface_custom_game_import_as_steam">Импортировать пользовательские игры как игры Steam</string>
     <string name="settings_interface_no_external_storage">Внешнее хранилище не обнаружено</string>
     <string name="settings_interface_restart_required_title">Требуется перезагрузка</string>
     <string name="settings_interface_storage_volume_title">Том хранилища</string>
@@ -1065,6 +1077,7 @@ https://gamenative.app
     <string name="settings_select_language">Выберите язык</string>
     <string name="settings_subtitle">Настройте ваш опыт</string>
     <string name="settings_text">Настройки</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">искать</string>
     <string name="settings_theme_alternate">Альтернативная</string>
     <string name="settings_theme_default">По умолчанию</string>
     <string name="settings_title">Настройки</string>
@@ -1145,6 +1158,7 @@ https://gamenative.app
     <string name="steam_type">Тип Steam</string>
     <string name="steam_uninstall_confirmation_message">Вы уверены, что хотите удалить %1$s? Это действие не может быть отменено.</string>
     <string name="steam_uninstall_failed">Ошибка удаления игры</string>
+    <string name="deleting">Удаление…</string>
     <string name="steam_uninstall_game_title">Удалить игру</string>
     <string name="steam_uninstall_success">%1$s была удалена</string>
     <string name="steam_update_message">Пожалуйста, убедитесь, что ваши сохранения загружены в облако или скопированы, поскольку они могут быть перезаписаны.</string>
@@ -1383,6 +1397,13 @@ https://gamenative.app
      <string name="steam_save_import_failed">Не удалось импортировать сохранения: %s</string>
     <string name="option_import_saves">Импортировать сохранения</string>
     <string name="option_export_saves">Экспортировать сохранения</string>
+    <!-- HLTB (How Long To Beat) -->
+    <string name="hltb_main_story">Основной сюжет</string>
+    <string name="hltb_main_plus_extras">Основное + Дополнения</string>
+    <string name="hltb_completionist">Перфекционист</string>
+    <string name="hltb_all_styles">Все стили</string>
+    <string name="hltb_hours_value">%sh</string>
+    <string name="hltb_section_title">HLTB</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>

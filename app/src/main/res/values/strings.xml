@@ -40,6 +40,7 @@
     <string name="steam_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="steam_uninstall_success">%1$s has been uninstalled</string>
     <string name="steam_uninstall_failed">Failed to uninstall game</string>
+    <string name="deleting">Deleting…</string>
     <string name="amazon_uninstall_game_title">Uninstall Game</string>
     <string name="amazon_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="amazon_install_game_title">Download Game</string>
@@ -161,6 +162,8 @@
     <!-- Winlator: Win Components -->
     <string name="direct3d">Direct3D</string>
     <string name="directsound">DirectSound</string>
+    <string name="directinput8">DirectInput 8</string>
+    <string name="directinput">DirectInput</string>
     <string name="directmusic">DirectMusic</string>
     <string name="directplay">DirectPlay</string>
     <string name="directshow">DirectShow</string>
@@ -241,6 +244,7 @@
     <string name="open_navigation_menu">Open Navigation Menu</string>
     <string name="quick_menu_title">Quick Menu</string>
     <string name="quick_menu_back">Back</string>
+    <string name="display_brightness">Display brightness</string>
     <string name="screen_effects">Screen Effects</string>
     <string name="screen_effects_live_preview">Changes apply instantly to the current game.</string>
     <string name="screen_effects_scaling">Scaling</string>
@@ -793,8 +797,11 @@
     <string name="gesture_action_right_click">Right Click</string>
     <string name="gesture_action_middle_click">Middle Click</string>
     <string name="gesture_pan_middle_mouse">Middle Mouse Pan</string>
+    <string name="gesture_pan_inverted_middle_mouse">Inverted Middle Mouse Pan</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">Inverted WASD</string>
     <string name="gesture_pan_arrow_keys">Arrow Keys</string>
+    <string name="gesture_pan_inverted_arrow_keys">Inverted Arrow Keys</string>
     <string name="gesture_pan_left_click_drag">Left Click Drag</string>
     <string name="gesture_pan_right_click_drag">Right Click Drag</string>
     <string name="gesture_zoom_scroll_wheel">Scroll Wheel</string>
@@ -808,9 +815,13 @@
     <string name="gesture_header_special">Special</string>
     <string name="gesture_header_mouse">Mouse</string>
     <string name="gesture_header_common_game">Common Game Keys</string>
+    <string name="gesture_header_navigation_editing">Navigation / Editing</string>
+    <string name="gesture_header_symbols">Symbols</string>
     <string name="gesture_header_letters">Letters A\u2013Z</string>
     <string name="gesture_header_numbers">Numbers 0\u20139</string>
+    <string name="gesture_header_numpad">Numpad</string>
     <string name="gesture_header_function_keys">Function Keys</string>
+    <string name="gesture_header_modifiers_locks">Modifiers / Locks</string>
     <string name="gesture_delay_label">Delay</string>
     <string name="gesture_two_finger_hold">Two-Finger Hold</string>
     <string name="gesture_two_finger_hold_delay">Two-Finger Hold Delay (ms)</string>
@@ -969,6 +980,8 @@
     <string name="settings_interface_show_gamepad_hints_title">Show controller hints</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Show the controller button hints bar at the bottom of the screen</string>
     <string name="settings_interface_icon_style">Icon style</string>
+    <string name="settings_interface_custom_games">Custom Games</string>
+    <string name="settings_interface_custom_game_import_as_steam">Import custom games as Steam games</string>
     <string name="settings_interface_wifi_only_title">Download only over Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Prevent downloads on cellular data</string>
     <string name="settings_interface_external_storage_title">Write to external storage</string>
@@ -1059,7 +1072,7 @@
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Continue</string>
     <string name="settings_text">Settings</string>
-
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">Search</string>
 
     <!-- Connecting to Servers Screen -->
     <string name="connect_to_remote_server">Connecting to remote servers...</string>
@@ -1886,6 +1899,15 @@
     <string name="lsfg_performance_mode_desc">Reduces quality for higher throughput</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Show curated indie game picks in your library. Keeping this on helps support indie developers and GameNative.</string>
+
+    <!-- HLTB (How Long To Beat) -->
+    <string name="hltb_main_story">Main Story</string>
+    <string name="hltb_main_plus_extras">Main + Extras</string>
+    <string name="hltb_completionist">Completionist</string>
+    <string name="hltb_all_styles">All Styles</string>
+    <string name="hltb_hours_value">%sh</string>
+    <string name="hltb_section_title">How Long to Beat</string>
+
     <!-- Frontend Sync Settings -->
     <string name="settings_interface_frontend_sync_title">Frontend Sync</string>
     <string name="settings_interface_frontend_sync_subtitle">Auto-export installed games for game library frontends</string>
@@ -1929,4 +1951,5 @@
     <string name="game_launch_tip_22">Tip: You can enable touchscreen mode.</string>
     <string name="game_launch_tip_23">Tip: If you have a Mali GPU, please use System Drivers.</string>
     <string name="game_launch_tip_24">Tip: Getting a blank screen? Try using the \"%s\" option in the menu to check if your drivers are working correctly.</string>
+
 </resources>

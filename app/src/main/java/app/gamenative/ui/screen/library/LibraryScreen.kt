@@ -66,6 +66,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
 import app.gamenative.R
@@ -604,33 +605,27 @@ private fun LibraryScreenContent(
 
     // Global key/motion bootstrap path for cases where Compose focus was lost by touch mode.
     // This runs at the app event bus layer, independent of current Compose focus target.
-    DisposableEffect(
-        selectedAppId,
-        isSystemMenuOpen,
-        state.isOptionsPanelOpen,
-        state.isSearching,
-        state.appInfoList.size,
-        state.currentTab,
-    ) {
-        val canBootstrapContentFocus: () -> Boolean = {
-            val now = SystemClock.uptimeMillis()
-            selectedAppId == null &&
-                !isSystemMenuOpen &&
-                !state.isOptionsPanelOpen &&
-                !state.isSearching &&
-                state.appInfoList.isNotEmpty() &&
-                controllerBootstrapNeeded &&
-                !rootHasFocus &&
-                (now - lastBootstrapAtMs) > 250L
-        }
-        val canNavigateTabsWithoutFocus: () -> Boolean = {
-            selectedAppId == null &&
-                !isSystemMenuOpen &&
-                !state.isOptionsPanelOpen &&
-                !state.isSearching &&
-                !rootHasFocus
-        }
+    // Helper functions defined in composable scope to capture latest state on each recomposition.
+    val canBootstrapContentFocus: () -> Boolean = {
+        val now = SystemClock.uptimeMillis()
+        selectedAppId == null &&
+            !isSystemMenuOpen &&
+            !state.isOptionsPanelOpen &&
+            !state.isSearching &&
+            state.appInfoList.isNotEmpty() &&
+            controllerBootstrapNeeded &&
+            !rootHasFocus &&
+            (now - lastBootstrapAtMs) > 250L
+    }
+    val canNavigateTabsWithoutFocus: () -> Boolean = {
+        selectedAppId == null &&
+            !isSystemMenuOpen &&
+            !state.isOptionsPanelOpen &&
+            !state.isSearching &&
+            !rootHasFocus
+    }
 
+    DisposableEffect(Unit) {
         val onGlobalKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = { androidEvent ->
             val event = androidEvent.event
             if (event.action != KeyEvent.ACTION_DOWN) {
@@ -821,7 +816,7 @@ private fun LibraryScreenContent(
 
                         // X button - add custom game
                         KeyEvent.KEYCODE_BUTTON_X -> {
-                            if (selectedAppId == null && !state.isSearching && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
+                            if (!BuildConfig.MODERN_ANDROID && selectedAppId == null && !state.isSearching && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
                                 onAddCustomGameClick()
                                 true
                             } else {
@@ -1049,12 +1044,17 @@ private fun LibraryScreenContent(
                         labelResId = R.string.search,
                         onClick = { onIsSearching(true) },
                     ),
-                    GamepadAction(
-                        button = GamepadButton.X,
-                        labelResId = R.string.action_add_game,
-                        onClick = onAddCustomGameClick,
-                    ),
-                )
+                ) + if (!BuildConfig.MODERN_ANDROID) {
+                    listOf(
+                        GamepadAction(
+                            button = GamepadButton.X,
+                            labelResId = R.string.action_add_game,
+                            onClick = onAddCustomGameClick,
+                        ),
+                    )
+                } else {
+                    emptyList()
+                }
             }
 
             GamepadActionBar(

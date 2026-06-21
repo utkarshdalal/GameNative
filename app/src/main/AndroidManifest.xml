@@ -49,6 +49,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
+            android:screenOrientation="${screenOrientation}"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
             android:theme="@style/Theme.Pluvia">

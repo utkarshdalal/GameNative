@@ -129,7 +129,7 @@ class ContainerConfigDialogContainerUpdateTest {
             .put("vkd3dFeatureLevel", "12_0")
             .toString()
 
-        val winComponents = "direct3d=0,directsound=0,directmusic=1,directshow=1,directplay=1,vcrun2010=0,wmdecoder=0,opengl=1"
+        val winComponents = "direct3d=0,directsound=0,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=0,wmdecoder=0,opengl=1"
 
         val mutated = ContainerData(
             name = "Test Bionic Container",
@@ -272,7 +272,7 @@ class ContainerConfigDialogContainerUpdateTest {
             .put("vkd3dFeatureLevel", "12_1")
             .toString()
 
-        val winComponents = "direct3d=0,directsound=0,directmusic=1,directshow=1,directplay=1,vcrun2010=0,wmdecoder=0,opengl=1"
+        val winComponents = "direct3d=0,directsound=0,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=0,wmdecoder=0,opengl=1"
 
         val mutated = ContainerData(
             name = "Test Glibc Container",
@@ -575,7 +575,7 @@ class ContainerConfigDialogContainerUpdateTest {
 
     @Test
     fun winComponents_areAppliedCorrectly() {
-        val winComponents = "direct3d=0,directsound=0,directmusic=1,directshow=1,directplay=1,vcrun2010=0,wmdecoder=0,opengl=1"
+        val winComponents = "direct3d=0,directsound=0,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=0,wmdecoder=0,opengl=1"
 
         val containerData = ContainerData(
             wincomponents = winComponents

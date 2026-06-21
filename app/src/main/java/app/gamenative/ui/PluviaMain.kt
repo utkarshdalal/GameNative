@@ -63,6 +63,7 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
+import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import com.posthog.PostHog
@@ -102,6 +103,7 @@ import app.gamenative.utils.UpdateInfo
 import app.gamenative.utils.UpdateInstaller
 import app.gamenative.utils.LaunchDependencies
 import app.gamenative.workshop.WorkshopManager
+import app.gamenative.workshop.compatibility.SlayTheSpireModTheSpireCompatibility
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
@@ -341,36 +343,44 @@ fun PluviaMain(
     // shared intent-launch path. resolves isOffline at the call site because intent launches can
     // arrive pre-login (cold-boot via stored creds) and downstream cloud-sync needs a settled answer.
     val launchIntentApp: (resolvedAppId: String, hasTemporaryOverride: Boolean) -> Unit = { resolvedAppId, hasTemporaryOverride ->
-        MainActivity.wasLaunchedViaExternalIntent = true
-        trackGameLaunched(resolvedAppId)
-        viewModel.setLaunchedAppId(resolvedAppId)
-        viewModel.setBootToContainer(false)
-        scope.launch(Dispatchers.IO) {
-            val gameSource = ContainerUtils.extractGameSourceFromContainerId(resolvedAppId)
-            val isOffline = when {
-                gameSource != GameSource.STEAM -> false
-                SteamService.isLoggedIn -> false
-                !NetworkMonitor.hasInternet.value -> true
-                else -> {
-                    viewModel.setLoadingDialogVisible(true)
-                    viewModel.setLoadingDialogMessage(context.getString(R.string.connecting_to_steam))
-                    viewModel.setLoadingDialogProgress(-1f)
-                    !SteamUtils.awaitSteamLogin()
-                }
+        val requestedGameId = runCatching { ContainerUtils.extractGameIdFromContainerId(resolvedAppId) }.getOrNull()
+        if (SteamService.keepAlive && requestedGameId != null && ActiveGameRegistry.get()?.appId == requestedGameId) {
+            Timber.i("[PluviaMain]: Game $resolvedAppId already running; bringing XServer screen forward")
+            if (navController.currentDestination?.route != PluviaScreen.XServer.route) {
+                navController.navigate(PluviaScreen.XServer.route)
             }
-            // sync viewModel — dialog retries + replaceSteamApi read isOffline.value
-            viewModel.setOffline(isOffline)
-            preLaunchApp(
-                context = context,
-                appId = resolvedAppId,
-                useTemporaryOverride = hasTemporaryOverride,
-                setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                setLoadingProgress = viewModel::setLoadingDialogProgress,
-                setLoadingMessage = viewModel::setLoadingDialogMessage,
-                setMessageDialogState = setMessageDialogState,
-                onSuccess = viewModel::launchApp,
-                isOffline = isOffline,
-            )
+        } else {
+            MainActivity.wasLaunchedViaExternalIntent = true
+            trackGameLaunched(resolvedAppId)
+            viewModel.setLaunchedAppId(resolvedAppId)
+            viewModel.setBootToContainer(false)
+            scope.launch(Dispatchers.IO) {
+                val gameSource = ContainerUtils.extractGameSourceFromContainerId(resolvedAppId)
+                val isOffline = when {
+                    gameSource != GameSource.STEAM -> false
+                    SteamService.isLoggedIn -> false
+                    !NetworkMonitor.hasInternet.value -> true
+                    else -> {
+                        viewModel.setLoadingDialogVisible(true)
+                        viewModel.setLoadingDialogMessage(context.getString(R.string.connecting_to_steam))
+                        viewModel.setLoadingDialogProgress(-1f)
+                        !SteamUtils.awaitSteamLogin()
+                    }
+                }
+                // sync viewModel — dialog retries + replaceSteamApi read isOffline.value
+                viewModel.setOffline(isOffline)
+                preLaunchApp(
+                    context = context,
+                    appId = resolvedAppId,
+                    useTemporaryOverride = hasTemporaryOverride,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = isOffline,
+                )
+            }
         }
     }
 
@@ -1235,6 +1245,7 @@ fun PluviaMain(
                 BootingSplash(
                     visible = state.showBootingSplash,
                     text = state.bootingSplashText,
+                    heroImageUrl = state.bootingSplashHeroImageUrl,
                 )
             }
 
@@ -1898,6 +1909,15 @@ fun preLaunchApp(
                     Timber.tag("Workshop").w(
                         "Steam not connected/logged in or offline, skipping workshop sync for appId=$gameId"
                     )
+                    if (gameId == SlayTheSpireModTheSpireCompatibility.APP_ID) {
+                        setLoadingMessage(context.getString(R.string.workshop_processing))
+                        setLoadingProgress(-1f)
+                        WorkshopManager.configureLocalWorkshopContentForEnabledIds(
+                            context = context,
+                            appId = gameId,
+                            enabledIds = enabledWorkshopIds,
+                        )
+                    }
                 } else {
                 // If a background download is still running from the save
                 // handler, wait for it to finish so its markers are on disk
@@ -2026,6 +2046,13 @@ fun preLaunchApp(
                 } // else (isLoggedIn)
             } catch (e: Exception) {
                 Timber.tag("Workshop").e(e, "Workshop mod sync failed, continuing without mods")
+            }
+        } else if (
+            gameId == SlayTheSpireModTheSpireCompatibility.APP_ID &&
+            File(SteamService.getAppDirPath(gameId)).isDirectory
+        ) {
+            withContext(Dispatchers.IO) {
+                WorkshopManager.cleanupDisabledWorkshopArtifactsForApp(context, gameId)
             }
         }
 

@@ -10,7 +10,6 @@ import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.core.DefaultVersion
 import com.winlator.contents.ContentProfile
-import com.winlator.core.GPUBlackist
 import com.winlator.core.GPUInformation
 import com.winlator.fexcore.FEXCorePresetManager
 import com.winlator.core.KeyValueSet
@@ -189,15 +188,6 @@ object BestConfigService {
             filtered.remove("executablePath")
         }
 
-        if (config.toString().contains("turnip", ignoreCase = true) && GPUBlackist.isTurnipBlacklisted()) {
-            if (matchType == "exact_gpu_match" || matchType == "gpu_family_match" || matchType == "fallback_match") {
-                filtered.remove("graphicsDriver")
-                filtered.remove("graphicsDriverVersion")
-                filtered.remove("graphicsDriverConfig")
-                return JsonObject(filtered)
-            }
-        }
-
         if (matchType == "exact_gpu_match" || matchType == "gpu_family_match") {
             // Apply all fields
             return JsonObject(filtered)
@@ -240,8 +230,7 @@ object BestConfigService {
         }
 
         if (GPUInformation.isAdreno8EliteGen5(context) &&
-            !matched.matches(Regex(".*adreno.*\\b8(4[0-9]|5[0-9])\\b.*")) &&
-            !GPUBlackist.isTurnipBlacklisted()
+            !matched.matches(Regex(".*adreno.*\\b8(4[0-9]|5[0-9])\\b.*"))
         ) {
             val kvs = KeyValueSet(filteredJson.optString("graphicsDriverConfig", ""))
             kvs.put("version", "Turnip Adreno Driver T26 (@Mr_Purple_666)")
@@ -357,7 +346,9 @@ object BestConfigService {
             manifestWine + manifestProton,
         )
         val availableDrivers = ManifestComponentHelper.buildAvailableVersions(
-            context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries).toList(),
+            ManifestComponentHelper.bundledGraphicsDriverBase(
+                context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries).toList(),
+            ),
             installed.installedDrivers,
             manifestDrivers,
         )
@@ -428,19 +419,24 @@ object BestConfigService {
             }
         }
 
-        // Validate graphics driver version (from graphicsDriverConfig)
+        // Validate graphics driver version (from graphicsDriverConfig). When the value references a
+        // manifest entry by its `name`, rewrite it to the canonical `id` (== meta.json name ==
+        // installed folder) so the runtime resolver finds it.
         if (containerVariant.equals(Container.BIONIC, ignoreCase = true) && graphicsDriverConfig.isNotEmpty()) {
-            val firstSplit = graphicsDriverConfig.split(";")
-            val parts = if (firstSplit.size > 1) firstSplit else graphicsDriverConfig.split(",")
-            val configMap = parts.associate { part ->
-                val kv = part.split("=", limit = 2)
-                if (kv.size == 2) kv[0] to kv[1] else part to ""
-            }
-            val driverVersion = configMap["version"] ?: ""
-            if (driverVersion.isNotEmpty() && !ManifestComponentHelper.versionExists(driverVersion, availableDrivers)) {
-                Timber.tag("BestConfigService")
-                    .w("Graphics driver version $driverVersion not found for $containerVariant variant")
-                missing.add("Graphics driver $driverVersion")
+            val sep = if (graphicsDriverConfig.contains(";")) ";" else ","
+            val parts = graphicsDriverConfig.split(sep).toMutableList()
+            val versionIdx = parts.indexOfFirst { it.substringBefore("=", "") == "version" }
+            val driverVersion = if (versionIdx >= 0) parts[versionIdx].substringAfter("=", "") else ""
+            if (driverVersion.isNotEmpty()) {
+                val entry = ManifestComponentHelper.findManifestEntryForVersion(driverVersion, manifestDrivers)
+                if (entry == null && !ManifestComponentHelper.versionExists(driverVersion, availableDrivers)) {
+                    Timber.tag("BestConfigService")
+                        .w("Graphics driver version $driverVersion not found for $containerVariant variant")
+                    missing.add("Graphics driver $driverVersion")
+                } else if (entry != null && entry.id != driverVersion) {
+                    parts[versionIdx] = "version=${entry.id}"
+                    filteredJson.put("graphicsDriverConfig", parts.joinToString(sep))
+                }
             }
         }
 
@@ -530,7 +526,9 @@ object BestConfigService {
         val baseFexcore = context.resources.getStringArray(R.array.fexcore_version_entries).toList()
         val baseWineBionic = context.resources.getStringArray(R.array.bionic_wine_entries).toList()
         val baseWineGlibc = context.resources.getStringArray(R.array.glibc_wine_entries).toList()
-        val baseDrivers = context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries).toList()
+        val baseDrivers = ManifestComponentHelper.bundledGraphicsDriverBase(
+            context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries).toList(),
+        )
 
         val locallyAvailableDxvk = ManifestComponentHelper.buildAvailableVersions(
             base = baseDxvk,
@@ -660,16 +658,17 @@ object BestConfigService {
         }
 
         if (containerVariant.equals(Container.BIONIC, ignoreCase = true) && graphicsDriverConfig.isNotEmpty()) {
-            val firstSplit = graphicsDriverConfig.split(";")
-            val parts = if (firstSplit.size > 1) firstSplit else graphicsDriverConfig.split(",")
-            val configMap = parts.associate { part ->
-                val kv = part.split("=", limit = 2)
-                if (kv.size == 2) kv[0] to kv[1] else part to ""
-            }
-            val driverVersion = configMap["version"] ?: ""
-            if (driverVersion.isNotEmpty() && !ManifestComponentHelper.versionExists(driverVersion, locallyAvailableDrivers)) {
+            val sep = if (graphicsDriverConfig.contains(";")) ";" else ","
+            val driverVersion = graphicsDriverConfig.split(sep)
+                .firstOrNull { it.substringBefore("=", "") == "version" }
+                ?.substringAfter("=", "")
+                .orEmpty()
+            if (driverVersion.isNotEmpty()) {
                 val entry = ManifestComponentHelper.findManifestEntryForVersion(driverVersion, manifestDrivers)
-                if (entry != null) {
+                if (entry != null &&
+                    !ManifestComponentHelper.versionExists(driverVersion, locallyAvailableDrivers) &&
+                    !ManifestComponentHelper.versionExists(entry.id, locallyAvailableDrivers)
+                ) {
                     addRequest(entry, isDriver = true)
                 }
             }

@@ -126,6 +126,8 @@ internal fun winComponentsItemTitleRes(string: String): Int {
     return when (string) {
         "direct3d" -> R.string.direct3d
         "directsound" -> R.string.directsound
+        "directinput8" -> R.string.directinput8
+        "directinput" -> R.string.directinput
         "directmusic" -> R.string.directmusic
         "directplay" -> R.string.directplay
         "directshow" -> R.string.directshow
@@ -242,7 +244,9 @@ private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStat
         glibcWineEntriesBase = stringArrayResource(R.array.glibc_wine_entries).toList(),
         emulatorEntries = stringArrayResource(R.array.emulator_entries).toList(),
         bionicGraphicsDrivers = stringArrayResource(R.array.bionic_graphics_driver_entries).toList(),
-        baseWrapperVersions = stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList(),
+        baseWrapperVersions = ManifestComponentHelper.bundledGraphicsDriverBase(
+            stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList(),
+        ),
         languages = listOf(
             "arabic", "bulgarian", "schinese", "tchinese", "czech", "danish", "dutch", "english",
             "finnish", "french", "german", "greek", "hungarian", "italian", "japanese", "koreana",
@@ -285,9 +289,9 @@ fun ContainerConfigDialog(
         val graphicsDriversRef = remember { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
         var graphicsDrivers by graphicsDriversRef
         val dxWrappers = staticData.dxWrappers
-        // Start with defaults from resources
-        val dxvkVersionsBase = staticData.dxvkVersionsBase
-        val vkd3dVersionsBase = staticData.vkd3dVersionsBase
+        // Start with defaults from resources (modern: un-greyed comes from on-disk + manifest)
+        val dxvkVersionsBase = ManifestComponentHelper.bundledDxWrapperBase(staticData.dxvkVersionsBase)
+        val vkd3dVersionsBase = ManifestComponentHelper.bundledDxWrapperBase(staticData.vkd3dVersionsBase)
         val audioDrivers = staticData.audioDrivers
         val gpuCards = staticData.gpuCards
         val presentModes = staticData.presentModes
@@ -1281,7 +1285,7 @@ private fun Preview_ContainerConfigDialog() {
             dxwrapper = "dxvk",
             dxwrapperConfig = "",
             audioDriver = "alsa",
-            wincomponents = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0",
+            wincomponents = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0",
             drives = "",
             execArgs = "",
             executablePath = "",

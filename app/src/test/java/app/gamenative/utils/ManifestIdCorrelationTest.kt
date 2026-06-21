@@ -27,6 +27,8 @@ class ManifestIdCorrelationTest {
             for (entry in entries) {
                 if (typeKey == ManifestContentTypes.DRIVER) {
                     verifyDriverEntry(entry)
+                } else if (entry.url.endsWith(".tzst")) {
+                    verifyTzstEntry(typeKey, entry)
                 } else {
                     verifyContentEntry(typeKey, entry)
                 }
@@ -56,6 +58,7 @@ class ManifestIdCorrelationTest {
 
     private suspend fun verifyDriverEntry(entry: ManifestEntry) {
         val manager = AdrenotoolsManager(context)
+        val driverRoot = File(context.filesDir, "contents/adrenotools")
         var installedId: String? = null
         try {
             println("Driver download/install id=${entry.id} name=${entry.name} url=${entry.url}")
@@ -65,12 +68,15 @@ class ManifestIdCorrelationTest {
                 "Driver install failed for ${entry.id}: ${result.message}",
                 result.success,
             )
-            val installed = manager.enumarateInstalledDrivers()
-            println("Driver installed IDs: $installed")
-            installedId = installed.firstOrNull { it.equals(entry.id, ignoreCase = true) }
+            val installedDirs = driverRoot.listFiles()
+                ?.filter { it.isDirectory && File(it, "meta.json").exists() }
+                ?.map { it.name }
+                .orEmpty()
+            println("Driver installed dirs: $installedDirs")
+            installedId = installedDirs.firstOrNull { it.equals(entry.id, ignoreCase = true) }
             println("Driver match id=${entry.id} matched=${installedId != null}")
             assertTrue(
-                "Driver ID mismatch for ${entry.id}. Installed: $installed",
+                "Driver ID mismatch for ${entry.id}. Installed: $installedDirs",
                 installedId != null,
             )
         } finally {
@@ -114,6 +120,26 @@ class ManifestIdCorrelationTest {
                 println("Content cleanup type=$typeKey verName=${installedProfile.verName} verCode=${installedProfile.verCode}")
                 manager.removeContent(installedProfile)
             }
+        }
+    }
+
+    private suspend fun verifyTzstEntry(typeKey: String, entry: ManifestEntry) {
+        val expectedType = contentTypeForKey(typeKey)
+        val cacheFile = File(File(context.filesDir, "assets/dxwrapper"), entry.url.substringAfterLast("/"))
+        try {
+            println("Tzst download/install type=$typeKey id=${entry.id} name=${entry.name} url=${entry.url}")
+            val result = ManifestInstaller.downloadAndInstallContent(context, entry, expectedType)
+            println("Tzst install result type=$typeKey id=${entry.id} success=${result.success} message=${result.message}")
+            assertTrue(
+                "Tzst install failed for ${entry.id} ($typeKey): ${result.message}",
+                result.success,
+            )
+            assertTrue(
+                "Tzst not cached for ${entry.id} ($typeKey) at ${cacheFile.absolutePath}",
+                cacheFile.exists() && cacheFile.length() > 0,
+            )
+        } finally {
+            cacheFile.delete()
         }
     }
 

@@ -21,7 +21,6 @@ data class ContainerData(
     var dxwrapper: String = Container.DEFAULT_DXWRAPPER,
     val dxwrapperConfig: String = "",
     val audioDriver: String = Container.DEFAULT_AUDIO_DRIVER,
-    val pulseaudioSuspendBehavior: String = PulseAudioComponent.SUSPEND_BEHAVIOR_THREAD,
     val pulseaudioLowLatency: Boolean = false,
     val wincomponents: String = Container.DEFAULT_WINCOMPONENTS,
     val drives: String = Container.DEFAULT_DRIVES,
@@ -78,8 +77,8 @@ data class ContainerData(
     val dinputMapperType: Byte = 1,
     /** Disable external mouse input **/
     val disableMouseInput: Boolean = false,
-    /** Touchscreen mode **/
-    val touchscreenMode: Boolean = false,
+    /** Touchscreen mode (defaults on for XR builds) **/
+    val touchscreenMode: Boolean = app.gamenative.BuildConfig.XR_BUILD,
     /** Shooter mode (auto-replace sticks with dynamic joysticks) **/
     val shooterMode: Boolean = true,
     /** Serialised JSON gesture configuration (used when touchscreenMode is true) **/
@@ -120,7 +119,6 @@ data class ContainerData(
                     "dxwrapper" to state.dxwrapper,
                     "dxwrapperConfig" to state.dxwrapperConfig,
                     "audioDriver" to state.audioDriver,
-                    "pulseaudioSuspendBehavior" to state.pulseaudioSuspendBehavior,
                     "pulseaudioLowLatency" to state.pulseaudioLowLatency,
                     "wincomponents" to state.wincomponents,
                     "drives" to state.drives,
@@ -189,7 +187,6 @@ data class ContainerData(
                     dxwrapper = savedMap["dxwrapper"] as String,
                     dxwrapperConfig = savedMap["dxwrapperConfig"] as String,
                     audioDriver = savedMap["audioDriver"] as String,
-                    pulseaudioSuspendBehavior = (savedMap["pulseaudioSuspendBehavior"] as? String) ?: PulseAudioComponent.SUSPEND_BEHAVIOR_THREAD,
                     pulseaudioLowLatency = (savedMap["pulseaudioLowLatency"] as? Boolean) ?: false,
                     wincomponents = savedMap["wincomponents"] as String,
                     drives = savedMap["drives"] as String,

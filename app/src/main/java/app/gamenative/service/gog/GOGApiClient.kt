@@ -244,13 +244,59 @@ object GOGApiClient {
         }
     }
 
+    /**
+     * Fetch the vertical box-art cover for a game from GOG's public GamesDB.
+     *
+     * The products API used by [getGameById] only exposes a square icon and horizontal
+     * logo/background, so the capsule view has no portrait art to fill its 2:3 slot.
+     * GamesDB returns a resolvable `vertical_cover.url_format` template that we resolve
+     * to the Galaxy vertical cover.
+     *
+     * @return the resolved cover URL, or an empty string if unavailable.
+     */
+    suspend fun getVerticalCoverUrl(gameId: String): String = withContext(Dispatchers.IO) {
+        try {
+            val url = "${GOGConstants.GOG_GAMESDB_URL}/platforms/gog/external_releases/$gameId"
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("User-Agent", "GameNative/1.0")
+                .get()
+                .build()
+
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Timber.tag("GOG").d("No GamesDB entry for $gameId: HTTP ${response.code}")
+                    return@withContext ""
+                }
+
+                val responseBody = response.body?.string()
+                if (responseBody.isNullOrBlank()) return@withContext ""
+
+                val urlFormat = JSONObject(responseBody)
+                    .optJSONObject("game")
+                    ?.optJSONObject("vertical_cover")
+                    ?.optString("url_format")
+                    .orEmpty()
+
+                if (urlFormat.isEmpty()) return@withContext ""
+
+                return@withContext urlFormat
+                    .replace("{formatter}", "_glx_vertical_cover")
+                    .replace("{ext}", "webp")
+            }
+        } catch (e: Exception) {
+            Timber.tag("GOG").d(e, "Failed to fetch vertical cover for $gameId: ${e.message}")
+            return@withContext ""
+        }
+    }
+
         /**
      * Fetch client secret from GOG build metadata API
      * @param gameId GOG game ID
      * @param installPath Game install path (for platform detection, defaults to "windows")
-     * @return Client secret string, or null if not found
+     * @return Pair of (clientId, clientSecret) from the build metadata, or null if not found
      */
-    suspend fun getClientSecret(context: Context, gameId: String, installPath: String?): String? = withContext(Dispatchers.IO) {
+    suspend fun getClientCredentials(context: Context, gameId: String, installPath: String?): Pair<String, String>? = withContext(Dispatchers.IO) {
         try {
             val platform = "windows" // For now, assume Windows (proton)
             val buildsUrl = "https://content-system.gog.com/products/$gameId/os/$platform/builds?generation=2"
@@ -367,15 +413,17 @@ object GOGApiClient {
                 Timber.tag("GOG").d("[Cloud Saves] Parsing manifest JSON (${manifestStr.take(100)}...)")
                 val manifestJson = JSONObject(manifestStr)
 
-                // Extract clientSecret from manifest
+                // Extract clientId + clientSecret from manifest. Mirrors gogdl, which sources both from
+                // the build metadata — the goggame-*.info clientId is optional and absent for many games.
                 val clientSecret = manifestJson.optString("clientSecret", "")
+                val clientId = manifestJson.optString("clientId", "")
                 if (clientSecret.isEmpty()) {
                     Timber.tag("GOG").w("[Cloud Saves] No clientSecret in manifest for game $gameId")
                     return@withContext null
                 }
 
-                Timber.tag("GOG").d("[Cloud Saves] Successfully retrieved clientSecret for game $gameId")
-                return@withContext clientSecret
+                Timber.tag("GOG").d("[Cloud Saves] Retrieved client credentials for game $gameId")
+                return@withContext clientId to clientSecret
             }
 
         } catch (e: Exception) {

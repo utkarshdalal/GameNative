@@ -250,6 +250,23 @@ public abstract class FileUtils {
         }
     }
 
+    /**
+     * Reads and returns the first line of {@code file} as UTF-8 text, or {@code null} if the file
+     * is empty or cannot be read. The caller is responsible for any trimming or blank checks.
+     * @param file The file to read.
+     * @return The first line, or {@code null} if the file is empty or unreadable.
+     */
+    public static String readFirstLine(File file) {
+        if (file == null) return null;
+        try (FileInputStream fis = new FileInputStream(file)) {
+            return new BufferedReader(new InputStreamReader(fis, StandardCharsets.UTF_8)).readLine();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public static ArrayList<String> readLines(File file) {
         ArrayList<String> lines = new ArrayList<>();
         try (FileInputStream fis = new FileInputStream(file)) {

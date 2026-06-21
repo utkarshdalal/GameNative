@@ -17,6 +17,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirName
 import app.gamenative.service.SteamService.Companion.getAppInfoOf
 import app.gamenative.ui.component.TIMEOUT_SHOW_OFFLINE_OPTION_SECONDS
+import app.gamenative.workshop.compatibility.SlayTheSpireModTheSpireCompatibility
 import com.winlator.container.Container
 import com.winlator.core.TarCompressorUtils
 import com.winlator.core.WineRegistryEditor
@@ -48,6 +49,11 @@ import java.util.concurrent.TimeUnit
 import kotlin.io.path.setLastModifiedTime
 
 object SteamUtils {
+    internal data class ColdClientLaunchConfig(
+        val executablePath: String,
+        val exeCommandLine: String,
+        val exeRunDirOverride: String? = null,
+    )
 
     /**
      * True when a stored Steam session exists (offline-launch gate).
@@ -292,8 +298,9 @@ object SteamUtils {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         val container = ContainerUtils.getContainer(context, appId)
+        val steamRootDir = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam")
 
-        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.dll").exists()) {
+        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.exe").exists()) {
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
@@ -321,7 +328,7 @@ object SteamUtils {
 
         // Get ticket and pass to ensureSteamSettings
         val ticketBase64 = SteamService.instance?.getEncryptedAppTicketBase64(steamAppId)
-        val path = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath()
+        val path = File(steamRootDir, "steamclient.dll").toPath()
         ensureSteamSettings(context, path, appId, ticketBase64, isOffline)
         generateAchievementsFile(path, appId)
 
@@ -394,9 +401,15 @@ object SteamUtils {
         steamAppId: Int,
         workingDir: String?,
         isUnpackFiles: Boolean,
+        exeRunDirOverride: String? = null,
     ): String {
-        val exePath = "steamapps\\common\\$gameName\\${executablePath.replace("/", "\\")}"
-        val exeRunDir = if (workingDir.isNullOrEmpty()) exePath.substringBeforeLast("\\") else ""
+        val sanitizedExecutablePath = sanitizeColdClientArgumentText(executablePath)
+        val sanitizedExeCommandLine = sanitizeColdClientArgumentText(exeCommandLine)
+        val sanitizedExeRunDirOverride = exeRunDirOverride?.let(::sanitizeColdClientArgumentText)
+        val exeBaseDir = sanitizedExeRunDirOverride ?: "steamapps\\common\\$gameName"
+        val exePath = "$exeBaseDir\\${sanitizedExecutablePath.replace("/", "\\")}"
+        val exeRunDir = sanitizedExeRunDirOverride
+            ?: if (workingDir.isNullOrEmpty()) exePath.substringBeforeLast("\\") else ""
 
         // Only include DllsToInjectFolder if unpackFiles is enabled
         val injectionSection = if (isUnpackFiles) {
@@ -417,7 +430,7 @@ object SteamUtils {
 
                 Exe=$exePath
                 ExeRunDir=$exeRunDir
-                ExeCommandLine=$exeCommandLine
+                ExeCommandLine=$sanitizedExeCommandLine
                 AppId=$steamAppId
 
                 # path to the steamclient dlls, both must be set, absolute paths or relative to the loader directory
@@ -428,19 +441,64 @@ object SteamUtils {
             """.trimIndent()
     }
 
+    internal fun resolveColdClientLaunchConfig(
+        steamAppId: Int,
+        executablePath: String,
+        exeCommandLine: String,
+        gameRootDir: File,
+    ): ColdClientLaunchConfig {
+        val sanitizedExecutablePath = sanitizeColdClientArgumentText(executablePath)
+        val sanitizedExeCommandLine = sanitizeColdClientArgumentText(exeCommandLine)
+        if (steamAppId == SlayTheSpireModTheSpireCompatibility.APP_ID) {
+            SlayTheSpireModTheSpireCompatibility.resolveLaunchConfig(
+                gameRootDir = gameRootDir,
+                fallbackCommandLine = sanitizedExeCommandLine,
+            )?.let { slayLaunchConfig ->
+                Timber.i("Using Slay the Spire ModTheSpire Workshop launch")
+                return ColdClientLaunchConfig(
+                    executablePath = sanitizeColdClientArgumentText(slayLaunchConfig.executablePath),
+                    exeCommandLine = sanitizeColdClientArgumentText(slayLaunchConfig.exeCommandLine),
+                    exeRunDirOverride = sanitizeColdClientArgumentText(
+                        slayLaunchConfig.exeRunDirOverride
+                    ),
+                )
+            }
+        }
+
+        return ColdClientLaunchConfig(
+            executablePath = sanitizedExecutablePath,
+            exeCommandLine = sanitizedExeCommandLine,
+        )
+    }
+
+    private fun sanitizeColdClientArgumentText(value: String): String =
+        value.filter { char ->
+            !Character.isISOControl(char) &&
+                Character.getType(char) != Character.FORMAT.toInt()
+        }.trim()
+
     internal fun writeColdClientIni(steamAppId: Int, container: Container, launchInfo: LaunchInfo? = null) {
         val gameName = getAppDirName(getAppInfoOf(steamAppId))
         val workingDir = launchInfo?.workingDir
         val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
+        val steamRootDir = iniFile.parentFile
+            ?: File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam")
+        val launchConfig = resolveColdClientLaunchConfig(
+            steamAppId = steamAppId,
+            executablePath = container.executablePath,
+            exeCommandLine = container.execArgs,
+            gameRootDir = File(SteamService.getAppDirPath(steamAppId)),
+        )
         iniFile.parentFile?.mkdirs()
         iniFile.writeText(
             generateColdClientIni(
                 gameName = gameName,
-                executablePath = container.executablePath,
-                exeCommandLine = container.execArgs,
+                executablePath = launchConfig.executablePath,
+                exeCommandLine = launchConfig.exeCommandLine,
                 steamAppId = steamAppId,
                 workingDir = workingDir,
                 isUnpackFiles = container.isUnpackFiles,
+                exeRunDirOverride = launchConfig.exeRunDirOverride,
             )
         )
     }
@@ -802,10 +860,8 @@ object SteamUtils {
 
         Timber.i("Finished restoreSteamApi for appId: ${appId}")
 
-        // Restore original executable if it exists (for real Steam mode)
-        if (!container.isLaunchBionicSteam) {
-            restoreOriginalExecutable(context, steamAppId)
-        }
+        // Restore original executable if it exists (real Steam + bionic Steam)
+        restoreOriginalExecutable(context, steamAppId)
 
         // Restore original steamclient.dll files if they exist
         restoreSteamclientFiles(context, steamAppId)

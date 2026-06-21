@@ -28,6 +28,12 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
+// Debug-only: package the repo's manifest.json so debug builds read it locally (never in release).
+val copyDebugManifest by tasks.registering(Copy::class) {
+    from(rootProject.file("manifest.json"))
+    into(layout.buildDirectory.dir("generated/debugManifest"))
+}
+
 android {
     namespace = "app.gamenative"
     compileSdk = 36
@@ -50,6 +56,9 @@ android {
         applicationId = "app.gamenative"
 
         minSdk = 26
+
+        manifestPlaceholders["screenOrientation"] = "unspecified"
+        buildConfigField("boolean", "XR_BUILD", "false")
 
         versionCode = 14
         versionName = "1.0.0"
@@ -116,6 +125,15 @@ android {
             buildConfigField("boolean", "MODERN_ANDROID", "false")
             buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic.so\"")
         }
+        create("legacyXr") {
+            dimension = "androidApi"
+            targetSdk = 28
+            ndk.abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            buildConfigField("boolean", "MODERN_ANDROID", "false")
+            buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic.so\"")
+            buildConfigField("boolean", "XR_BUILD", "true")
+            manifestPlaceholders["screenOrientation"] = "landscape"
+        }
         create("modern") {
             dimension = "androidApi"
             minSdk = 29
@@ -123,6 +141,16 @@ android {
             ndk.abiFilters += listOf("arm64-v8a")
             buildConfigField("boolean", "MODERN_ANDROID", "true")
             buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic-wx.so\"")
+        }
+        create("modernXr") {
+            dimension = "androidApi"
+            minSdk = 29
+            targetSdk = 36
+            ndk.abiFilters += listOf("arm64-v8a")
+            buildConfigField("boolean", "MODERN_ANDROID", "true")
+            buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic-wx.so\"")
+            buildConfigField("boolean", "XR_BUILD", "true")
+            manifestPlaceholders["screenOrientation"] = "landscape"
         }
     }
 
@@ -201,10 +229,30 @@ android {
                 srcDirs("src/legacy/assets", "src/main/assets")
             }
         }
+        getByName("legacyXr") {
+            manifest.srcFile("src/legacy/AndroidManifest.xml")
+            assets {
+                srcDirs("src/legacy/assets", "src/main/assets")
+            }
+            jniLibs {
+                srcDirs("src/legacy/jniLibs")
+            }
+        }
         getByName("modern") {
             assets {
                 srcDirs("src/modern/assets", "src/main/assets")
             }
+        }
+        getByName("modernXr") {
+            assets {
+                srcDirs("src/modern/assets", "src/main/assets")
+            }
+            jniLibs {
+                srcDirs("src/modern/jniLibs")
+            }
+        }
+        getByName("debug") {
+            assets.srcDir(copyDebugManifest)
         }
     }
 
@@ -260,8 +308,8 @@ dependencies {
     // JavaSteam
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
-        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0.1-18-SNAPSHOT.jar"))
-        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0.1-18-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0.1-20-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0.1-20-SNAPSHOT.jar"))
         implementation(libs.bundles.javasteam.dev)
     } else {
         implementation(libs.javasteam) {

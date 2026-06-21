@@ -39,6 +39,7 @@
     <string name="steam_uninstall_confirmation_message">您確定要卸載 %1$s 嗎? 此操作無法撤回</string>
     <string name="steam_uninstall_success">%1$s 已卸載</string>
     <string name="steam_uninstall_failed">卸載遊戲失敗</string>
+    <string name="deleting">正在刪除…</string>
     <string name="amazon_uninstall_game_title">卸載遊戲</string>
     <string name="amazon_uninstall_confirmation_message">您確定要卸載 %1$s 嗎? 此操作無法撤回</string>
     <string name="amazon_install_game_title">下載遊戲</string>
@@ -199,6 +200,8 @@
     <!-- Winlator: Win Components -->
     <string name="direct3d">Direct3D</string>
     <string name="directsound">DirectSound</string>
+    <string name="directinput8">DirectInput 8</string>
+    <string name="directinput">DirectInput</string>
     <string name="directmusic">DirectMusic</string>
     <string name="directplay">DirectPlay</string>
     <string name="directshow">DirectShow</string>
@@ -277,6 +280,7 @@
     <string name="open_navigation_menu">開啟導航選單</string>
     <string name="quick_menu_title">快捷選單</string>
     <string name="quick_menu_back">返回</string>
+    <string name="display_brightness">顯示亮度</string>
     <string name="screen_effects">螢幕效果</string>
     <string name="screen_effects_live_preview">變更會立即套用到目前遊戲。</string>
     <string name="screen_effects_color_adjustments">色彩調整</string>
@@ -746,8 +750,11 @@
     <string name="gesture_action_right_click">右鍵點擊</string>
     <string name="gesture_action_middle_click">中鍵點擊</string>
     <string name="gesture_pan_middle_mouse">中鍵平移</string>
+    <string name="gesture_pan_inverted_middle_mouse">反向中鍵平移</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">反向 WASD</string>
     <string name="gesture_pan_arrow_keys">方向鍵</string>
+    <string name="gesture_pan_inverted_arrow_keys">反向方向鍵</string>
     <string name="gesture_zoom_scroll_wheel">滾輪</string>
     <string name="gesture_zoom_plus_minus">+/- 鍵</string>
     <string name="gesture_zoom_page_up_down">Page Up/Down</string>
@@ -766,9 +773,13 @@
     <string name="gesture_header_special">特殊</string>
     <string name="gesture_header_mouse">滑鼠</string>
     <string name="gesture_header_common_game">常用遊戲按鍵</string>
+    <string name="gesture_header_navigation_editing">導覽 / 編輯</string>
+    <string name="gesture_header_symbols">符號</string>
     <string name="gesture_header_letters">字母 A-Z</string>
     <string name="gesture_header_numbers">數字 0-9</string>
+    <string name="gesture_header_numpad">數字鍵盤</string>
     <string name="gesture_header_function_keys">功能鍵</string>
+    <string name="gesture_header_modifiers_locks">修飾鍵 / 鎖定鍵</string>
     <string name="gesture_two_finger_hold">雙指長按</string>
     <string name="gesture_two_finger_hold_delay">雙指長按延遲 (ms)</string>
     <string name="gesture_three_finger_tap">三指點按</string>
@@ -997,7 +1008,7 @@
     <!-- Generic/Reusable strings -->
     <string name="continue_action">繼續</string>
     <string name="settings_text">設定</string>
-
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">搜尋</string>
 
     <!-- Connecting to Servers Screen -->
     <string name="connect_to_remote_server">正在連接至遠端伺服器...</string>
@@ -1526,8 +1537,17 @@
     <string name="screen_effects_launch_sharpness_note">CAS 與 DLS 透過 vkBasalt 應用，將於下次啟動遊戲時生效。</string>
 
     <string name="settings_interface_icon_style">圖示樣式</string>
+    <string name="settings_interface_custom_games">自訂遊戲</string>
+    <string name="settings_interface_custom_game_import_as_steam">將自訂遊戲作為 Steam 遊戲匯入</string>
 
     <string name="tools_wine_processes_empty">未偵測到正在執行的 EXE。</string>
+    <!-- HLTB (How Long To Beat) -->
+    <string name="hltb_main_story">主線劇情</string>
+    <string name="hltb_main_plus_extras">主線 + 支線</string>
+    <string name="hltb_completionist">完美主義者</string>
+    <string name="hltb_all_styles">所有風格</string>
+    <string name="hltb_hours_value">%sh</string>
+    <string name="hltb_section_title">HLTB</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>

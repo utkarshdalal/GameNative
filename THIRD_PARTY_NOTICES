@@ -190,6 +190,54 @@ No part of the GPL-3.0 application needs to be modified to do this.
 
 ---
 
+## KGSL Allocation Shim (Source Withheld)
+
+**Component:** `libkgslshim.so`
+**Binary location:** `app/src/main/jniLibs/<abi>/libkgslshim.so`
+**Source location in repo:** intentionally absent (maintained in a separate
+  private repository, not committed here)
+**Authorship:** Written from scratch by the GameNative maintainers. Not derived
+from Mesa/turnip, the Qualcomm KGSL kernel driver, or any third-party project.
+**License of the binary as distributed in this APK:** Proprietary —
+all rights reserved by the GameNative maintainers.
+
+`libkgslshim.so` is a small native shim loaded **only into the Wine / box64
+guest subprocesses** at runtime via `LD_PRELOAD`; it is not linked with, and
+does not run inside the address space of, the Kotlin/Java Android application.
+It adapts low-level GPU driver interactions so that the turnip Vulkan driver can
+initialize on certain locked-down mobile GPU kernels (notably Meta Quest 3);
+without it, turnip cannot start on those devices.
+
+It is kept closed-source for the same reason as `libredirect.so`: it is specific
+to this application (the fix only activates inside the `app.gamenative` package)
+rather than a generic tool, so publishing its source would reduce rebranding
+GameNative into a working fork to a near-trivial operation. Every other
+component in this repository remains fully open under GPL-3.0.
+
+### Relationship to the GPL-3.0 application
+
+GameNative's Kotlin/Java application is distributed under GPL-3.0 and remains so.
+`libkgslshim.so` runs inside separate subprocesses (the box64/Wine guest) and
+communicates only through standard operating-system interfaces. It is not
+compiled or linked into the Android application, does not share its address
+space, and exposes no library interface to it. Under the FSF's and SFLC's
+longstanding interpretation of the GPL's "mere aggregation" language
+(GPL-3.0 §5, GPL-2.0 §2), this makes `libkgslshim.so` a separate program
+aggregated with GameNative on the same distribution medium rather than a
+derivative work of the application.
+
+### Separability
+
+The GameNative application can be rebuilt without `libkgslshim.so` by deleting
+`app/src/main/jniLibs/<abi>/libkgslshim.so` before building the APK. The
+resulting GPL-3.0 application builds, installs, and runs as a standalone program.
+The only reduced capability is that the turnip Vulkan driver will not work on
+locked-down KGSL devices such as the Quest 3; every other GameNative feature
+continues to function. No part of the GPL-3.0 application needs to be modified
+to do this.
+
+---
+
 ## Kenney Input Prompts
 
 **Asset Pack:** Input Prompts

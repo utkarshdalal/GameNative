@@ -87,6 +87,7 @@ const val DATABASE_NAME = "pluvia.db"
         AutoMigration(from = 18, to = 19), // Added recovered_install_size_bytes to app_info
         AutoMigration(from = 19, to = 20), // Added custom_install_path to app_info
         AutoMigration(from = 20, to = 21), // Added steam_file_hash_cache table
+        AutoMigration(from = 21, to = 22), // Added GOG vertical_cover_url column
     ]
 )
 @TypeConverters(

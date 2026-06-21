@@ -40,6 +40,7 @@
     <string name="steam_uninstall_confirmation_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
     <string name="steam_uninstall_success">%1$s деінстальовано</string>
     <string name="steam_uninstall_failed">Помилка деінсталяції гри</string>
+    <string name="deleting">Видалення…</string>
     <string name="amazon_uninstall_game_title">Деінсталювати гру</string>
     <string name="amazon_uninstall_confirmation_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
     <string name="amazon_install_game_title">Завантажити гру</string>
@@ -196,6 +197,8 @@
     <!-- Winlator: Win Components -->
     <string name="direct3d">Direct3D</string>
     <string name="directsound">DirectSound</string>
+    <string name="directinput8">DirectInput 8</string>
+    <string name="directinput">DirectInput</string>
     <string name="directmusic">DirectMusic</string>
     <string name="directplay">DirectPlay</string>
     <string name="directshow">DirectShow</string>
@@ -278,6 +281,7 @@
     <string name="open_navigation_menu">Відкрити меню навігації</string>
     <string name="quick_menu_title">Швидке меню</string>
     <string name="quick_menu_back">Назад</string>
+    <string name="display_brightness">Яскравість дисплея</string>
     <string name="screen_effects">Ефекти екрана</string>
     <string name="screen_effects_live_preview">Зміни миттєво застосовуються до поточної гри.</string>
     <string name="screen_effects_color_adjustments">Налаштування кольору</string>
@@ -748,8 +752,11 @@
     <string name="gesture_action_right_click">Правий клік</string>
     <string name="gesture_action_middle_click">Середній клік</string>
     <string name="gesture_pan_middle_mouse">Панорамування середньою кнопкою</string>
+    <string name="gesture_pan_inverted_middle_mouse">Інвертоване панорамування середньою кнопкою</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">Інвертоване WASD</string>
     <string name="gesture_pan_arrow_keys">Стрілки</string>
+    <string name="gesture_pan_inverted_arrow_keys">Інвертовані стрілки</string>
     <string name="gesture_zoom_scroll_wheel">Коліщатко прокрутки</string>
     <string name="gesture_zoom_plus_minus">Клавіші +/-</string>
     <string name="gesture_zoom_page_up_down">PgUp/PgDn</string>
@@ -768,9 +775,13 @@
     <string name="gesture_header_special">Спеціальні</string>
     <string name="gesture_header_mouse">Миша</string>
     <string name="gesture_header_common_game">Поширені ігрові клавіші</string>
+    <string name="gesture_header_navigation_editing">Навігація / редагування</string>
+    <string name="gesture_header_symbols">Символи</string>
     <string name="gesture_header_letters">Літери A-Z</string>
     <string name="gesture_header_numbers">Числа 0-9</string>
+    <string name="gesture_header_numpad">Цифрова клавіатура</string>
     <string name="gesture_header_function_keys">Функціональні клавіші</string>
+    <string name="gesture_header_modifiers_locks">Модифікатори / блокування</string>
     <string name="gesture_two_finger_hold">Утримання двома пальцями</string>
     <string name="gesture_two_finger_hold_delay">Затримка утримання двома пальцями (мс)</string>
     <string name="gesture_three_finger_tap">Торкання трьома пальцями</string>
@@ -961,6 +972,8 @@
     <string name="settings_interface_show_gamepad_hints_title">Показувати підказки геймпада</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Показує панель підказок кнопок геймпада внизу екрана</string>
     <string name="settings_interface_icon_style">Стиль значку</string>
+    <string name="settings_interface_custom_games">Користувацькі ігри</string>
+    <string name="settings_interface_custom_game_import_as_steam">Імпортувати користувацькі ігри як ігри Steam</string>
     <string name="settings_interface_wifi_only_title">Завантаження тільки через Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Запобігає завантаженню через мобільні дані</string>
     <string name="settings_interface_external_storage_title">Записувати на зовнішнє сховище</string>
@@ -998,7 +1011,7 @@
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Продовжити</string>
     <string name="settings_text">Налаштування</string>
-
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">шукати</string>
 
     <!-- Connecting to Servers Screen -->
     <string name="connect_to_remote_server">Підключення до віддалених серверів...</string>
@@ -1449,6 +1462,13 @@
      <string name="steam_save_import_failed">Не вдалося імпортувати збереження: %s</string>
     <string name="option_import_saves">Імпортувати збереження</string>
     <string name="option_export_saves">Експортувати збереження</string>
+    <!-- HLTB (How Long To Beat) -->
+    <string name="hltb_main_story">Основний сюжет</string>
+    <string name="hltb_main_plus_extras">Основне + Доповнення</string>
+    <string name="hltb_completionist">Перфекціоніст</string>
+    <string name="hltb_all_styles">Усі стилі</string>
+    <string name="hltb_hours_value">%sh</string>
+    <string name="hltb_section_title">HLTB</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>

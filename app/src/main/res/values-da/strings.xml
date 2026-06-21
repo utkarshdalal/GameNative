@@ -131,6 +131,8 @@
     <!-- Winlator: Win Components -->
     <string name="direct3d">Direct3D</string>
     <string name="directsound">DirectSound</string>
+    <string name="directinput8">DirectInput 8</string>
+    <string name="directinput">DirectInput</string>
     <string name="directmusic">DirectMusic</string>
     <string name="directplay">DirectPlay</string>
     <string name="directshow">DirectShow</string>
@@ -209,6 +211,7 @@
     <string name="open_navigation_menu">Åbn navigationsmenu</string>
     <string name="quick_menu_title">Hurtig menu</string>
     <string name="quick_menu_back">Tilbage</string>
+    <string name="display_brightness">Skærmens lysstyrke</string>
     <string name="screen_effects">Skærmeffekter</string>
     <string name="screen_effects_live_preview">Ændringer anvendes straks på det aktuelle spil.</string>
     <string name="screen_effects_color_adjustments">Farvejusteringer</string>
@@ -574,8 +577,11 @@
     <string name="gesture_action_right_click">Højreklik</string>
     <string name="gesture_action_middle_click">Mellemklik</string>
     <string name="gesture_pan_middle_mouse">Pan med midterknap</string>
+    <string name="gesture_pan_inverted_middle_mouse">Omvendt pan med midterknap</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">Omvendt WASD</string>
     <string name="gesture_pan_arrow_keys">Piletaster</string>
+    <string name="gesture_pan_inverted_arrow_keys">Omvendte piletaster</string>
     <string name="gesture_zoom_scroll_wheel">Rullehjul</string>
     <string name="gesture_zoom_plus_minus">+/- taster</string>
     <string name="gesture_zoom_page_up_down">Side op/ned</string>
@@ -594,9 +600,13 @@
     <string name="gesture_header_special">Særlige</string>
     <string name="gesture_header_mouse">Mus</string>
     <string name="gesture_header_common_game">Almindelige spiltaster</string>
+    <string name="gesture_header_navigation_editing">Navigation / redigering</string>
+    <string name="gesture_header_symbols">Symboler</string>
     <string name="gesture_header_letters">Bogstaver A-Z</string>
     <string name="gesture_header_numbers">Tal 0-9</string>
+    <string name="gesture_header_numpad">Numerisk tastatur</string>
     <string name="gesture_header_function_keys">Funktionstaster</string>
+    <string name="gesture_header_modifiers_locks">Modifikatortaster / låsetaster</string>
     <string name="gesture_two_finger_hold">Hold med to fingre</string>
     <string name="gesture_two_finger_hold_delay">Forsinkelse for hold med to fingre (ms)</string>
     <string name="gesture_three_finger_tap">Tryk med tre fingre</string>
@@ -785,6 +795,8 @@
     <string name="settings_interface_show_gamepad_hints_title">Vis controller-tip</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Viser bjælken med controller-knaptip nederst på skærmen</string>
     <string name="settings_interface_icon_style">Ikonstil</string>
+    <string name="settings_interface_custom_games">Tilpassede spil</string>
+    <string name="settings_interface_custom_game_import_as_steam">Importér tilpassede spil som Steam-spil</string>
     <string name="settings_interface_wifi_only_title">Download kun via Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Forhindrer downloads på mobildata</string>
     <string name="settings_interface_external_storage_title">Skriv til ekstern lager</string>
@@ -824,6 +836,7 @@
     <string name="settings_text">Indstillinger</string>
     <string name="download">Download</string>
     <string name="install">Installér</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">Søg</string>
 
     <!-- TODO: Manual review - Connecting to Servers Screen -->
     <string name="connect_to_remote_server">Forbinder til fjernservere...</string>
@@ -1150,6 +1163,7 @@
     <string name="steam_imagefs_installed">ImageFS installeret. Prøv at redigere container igen.</string>
     <string name="steam_imagefs_install_failed">Kunne ikke installere ImageFS: %s</string>
     <string name="steam_uninstall_game_title">Afinstallér spil</string>
+    <string name="deleting">Sletter…</string>
     <string name="amazon_uninstall_game_title">Afinstallér spil</string>
     <string name="amazon_uninstall_confirmation_message">Er du sikker på, at du vil afinstallere %1$s? Denne handling kan ikke fortrydes.</string>
     <string name="amazon_install_game_title">Download spil</string>
@@ -1320,6 +1334,13 @@
      <string name="steam_save_import_failed">Kunne ikke importere gemte filer: %s</string>
     <string name="option_import_saves">Importér gemte spil</string>
     <string name="option_export_saves">Eksportér gemte spil</string>
+    <!-- HLTB (How Long To Beat) -->
+    <string name="hltb_main_story">Hovedhistorie</string>
+    <string name="hltb_main_plus_extras">Hoved + Ekstra</string>
+    <string name="hltb_completionist">Perfektionist</string>
+    <string name="hltb_all_styles">Alle stilarter</string>
+    <string name="hltb_hours_value">%sh</string>
+    <string name="hltb_section_title">HLTB</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>

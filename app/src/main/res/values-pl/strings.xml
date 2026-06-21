@@ -40,6 +40,7 @@
     <string name="steam_uninstall_confirmation_message">Czy na pewno chcesz odinstalować %1$s? Tej akcji nie można cofnąć.</string>
     <string name="steam_uninstall_success">%1$s odinstalowano</string>
     <string name="steam_uninstall_failed">Nie udało się odinstalować gry</string>
+    <string name="deleting">Usuwanie…</string>
     <string name="amazon_uninstall_game_title">Odinstaluj grę</string>
     <string name="amazon_uninstall_confirmation_message">Czy na pewno chcesz odinstalować %1$s? Tej akcji nie można cofnąć.</string>
     <string name="amazon_install_game_title">Pobierz grę</string>
@@ -209,6 +210,8 @@
     <!-- Winlator: Win Components -->
     <string name="direct3d">Direct3D</string>
     <string name="directsound">DirectSound</string>
+    <string name="directinput8">DirectInput 8</string>
+    <string name="directinput">DirectInput</string>
     <string name="directmusic">DirectMusic</string>
     <string name="directplay">DirectPlay</string>
     <string name="directshow">DirectShow</string>
@@ -291,6 +294,7 @@
     <string name="open_navigation_menu">Otwórz menu nawigacji</string>
     <string name="quick_menu_title">Menu szybkie</string>
     <string name="quick_menu_back">Wstecz</string>
+    <string name="display_brightness">Jasność ekranu</string>
     <string name="screen_effects">Efekty ekranu</string>
     <string name="screen_effects_live_preview">Zmiany są natychmiast stosowane do bieżącej gry.</string>
     <string name="screen_effects_color_adjustments">Regulacja kolorów</string>
@@ -762,8 +766,11 @@
     <string name="gesture_action_right_click">Kliknięcie prawe</string>
     <string name="gesture_action_middle_click">Kliknięcie środkowe</string>
     <string name="gesture_pan_middle_mouse">Przesuwanie środkowym przyciskiem</string>
+    <string name="gesture_pan_inverted_middle_mouse">Odwrócone przesuwanie środkowym przyciskiem</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">Odwrócone WASD</string>
     <string name="gesture_pan_arrow_keys">Strzałki</string>
+    <string name="gesture_pan_inverted_arrow_keys">Odwrócone strzałki</string>
     <string name="gesture_zoom_scroll_wheel">Kółko przewijania</string>
     <string name="gesture_zoom_plus_minus">Klawisze +/-</string>
     <string name="gesture_zoom_page_up_down">PgUp/PgDn</string>
@@ -782,9 +789,13 @@
     <string name="gesture_header_special">Specjalne</string>
     <string name="gesture_header_mouse">Mysz</string>
     <string name="gesture_header_common_game">Popularne klawisze gier</string>
+    <string name="gesture_header_navigation_editing">Nawigacja / edycja</string>
+    <string name="gesture_header_symbols">Symbole</string>
     <string name="gesture_header_letters">Litery A-Z</string>
     <string name="gesture_header_numbers">Liczby 0-9</string>
+    <string name="gesture_header_numpad">Klawiatura numeryczna</string>
     <string name="gesture_header_function_keys">Klawisze funkcyjne</string>
+    <string name="gesture_header_modifiers_locks">Modyfikatory / blokady</string>
     <string name="gesture_two_finger_hold">Przytrzymanie dwoma palcami</string>
     <string name="gesture_two_finger_hold_delay">Opóźnienie przytrzymania dwoma palcami (ms)</string>
     <string name="gesture_three_finger_tap">Stuknięcie trzema palcami</string>
@@ -975,6 +986,8 @@
     <string name="settings_interface_show_gamepad_hints_title">Pokazuj podpowiedzi kontrolera</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Pokazuje pasek podpowiedzi przycisków kontrolera u dołu ekranu</string>
     <string name="settings_interface_icon_style">Styl ikony</string>
+    <string name="settings_interface_custom_games">Gry niestandardowe</string>
+    <string name="settings_interface_custom_game_import_as_steam">Importuj gry niestandardowe jako gry Steam</string>
     <string name="settings_interface_wifi_only_title">Pobieraj tylko przez Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Zapobiegaj pobieraniu przez dane komórkowe</string>
     <string name="settings_interface_external_storage_title">Zapisuj na pamięci zewnętrznej</string>
@@ -1012,7 +1025,7 @@
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Kontynuuj</string>
     <string name="settings_text">Ustawienia</string>
-
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">szukać</string>
 
     <!-- Connecting to Servers Screen -->
     <string name="connect_to_remote_server">Łączenie z serwerami zdalnymi...</string>
@@ -1453,6 +1466,13 @@
      <string name="steam_save_import_failed">Nie udało się zaimportować zapisów: %s</string>
     <string name="option_import_saves">Importuj zapisy</string>
     <string name="option_export_saves">Eksportuj zapisy</string>
+    <!-- HLTB (How Long To Beat) -->
+    <string name="hltb_main_story">Główna fabuła</string>
+    <string name="hltb_main_plus_extras">Główna + Dodatki</string>
+    <string name="hltb_completionist">Perfekcjonista</string>
+    <string name="hltb_all_styles">Wszystkie style</string>
+    <string name="hltb_hours_value">%sh</string>
+    <string name="hltb_section_title">HLTB</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>

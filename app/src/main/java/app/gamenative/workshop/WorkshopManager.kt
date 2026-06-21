@@ -40,6 +40,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import app.gamenative.utils.Net
+import app.gamenative.workshop.compatibility.SlayTheSpireModTheSpireCompatibility
 import app.gamenative.workshop.compatibility.WorkshopCompatibilityOverride
 import app.gamenative.workshop.compatibility.WorkshopCompatibilityRegistry
 import app.gamenative.workshop.compatibility.WorkshopExposureMode
@@ -79,14 +80,15 @@ object WorkshopManager {
      * item directories. Our extractZipMods skips these to avoid deleting
      * the archive before the game can process it.
      */
+    private const val SLAY_THE_SPIRE_HEADLESS_LAUNCHER_JAR_BASE64 = "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"
     private val SKIP_ZIP_EXTRACTION_APP_IDS = setOf(
         1942280, // Brotato
-        646570,  // Slay the Spire - Workshop items include Java/JAR payloads
+        SlayTheSpireModTheSpireCompatibility.APP_ID,  // Slay the Spire - Workshop items include Java/JAR payloads
         564310,  // Serious Sam Fusion 2017 - .gro files are ZIP payloads read by the game
     )
 
     private val ZIP_PAYLOAD_EXTENSIONS_BY_APP_ID = mapOf(
-        646570 to setOf("jar"),
+        SlayTheSpireModTheSpireCompatibility.APP_ID to setOf("jar"),
         564310 to setOf("gro"),
     )
 
@@ -1334,23 +1336,76 @@ object WorkshopManager {
         // configureModSymlinks populates this for ColdClient games,
         // but cleanupInstalledModEntries only walks gameRootDir and
         // misses the global Steam root.
-        val globalModsJson = workshopDir.parentFile  // content/
-            ?.parentFile  // workshop/
-            ?.parentFile  // steamapps/
-            ?.parentFile  // Steam/
-            ?.let { File(it, "steam_settings/mods.json") }
-        if (globalModsJson != null && globalModsJson.isFile) {
-            globalModsJson.writeText("{}")
-            Timber.tag(TAG).d("Cleared global mods.json at ${globalModsJson.absolutePath}")
-        }
-        val globalModImages = globalModsJson?.parentFile?.let { File(it, "mod_images") }
-        if (globalModImages != null && globalModImages.isDirectory) {
-            globalModImages.deleteRecursively()
-            Timber.tag(TAG).d("Cleared global mod_images at ${globalModImages.absolutePath}")
-        }
+        clearGlobalWorkshopMetadata(workshopDir)
 
         if (workshopDir.exists()) {
             workshopDir.deleteRecursively()
+        }
+    }
+
+    fun cleanupDisabledWorkshopArtifactsForApp(context: Context, appId: Int) {
+        val winePrefix = getContainerWinePrefix(context, appId)
+        val workshopDir = getWorkshopContentDir(winePrefix, appId)
+        val gameRootDir = File(SteamService.getAppDirPath(appId))
+        val gameName = SteamService.getAppInfoOf(appId)?.name ?: ""
+
+        cleanupInstalledModEntries(gameRootDir, workshopDir, winePrefix, gameName)
+        cleanupGameTreeWorkshopSymlinks(gameRootDir, appId)
+        if (appId == SlayTheSpireModTheSpireCompatibility.APP_ID) {
+            SlayTheSpireModTheSpireCompatibility.cleanupManagedWorkshopFiles(gameRootDir)
+        }
+        clearGlobalWorkshopMetadata(workshopDir)
+        Timber.tag(TAG).i("Cleaned disabled Workshop artifacts for appId=$appId")
+    }
+
+    private fun cleanupGameTreeWorkshopSymlinks(gameRootDir: File, appId: Int) {
+        if (!gameRootDir.isDirectory) return
+        val marker = "/workshop/content/$appId/"
+        var removed = 0
+        gameRootDir.walkTopDown().maxDepth(8).forEach { entry ->
+            if (!Files.isSymbolicLink(entry.toPath())) return@forEach
+
+            val rawTarget = runCatching { Files.readSymbolicLink(entry.toPath()) }
+                .getOrNull()
+            val resolvedTarget = rawTarget?.let { target ->
+                val resolved = if (target.isAbsolute) target else entry.toPath().parent.resolve(target)
+                runCatching { resolved.toRealPath() }
+                    .getOrElse { resolved.normalize().toAbsolutePath() }
+            }
+
+            val targetText = listOfNotNull(rawTarget, resolvedTarget)
+                .joinToString("\n") { it.toString().replace('\\', '/') }
+            if (!targetText.contains(marker)) return@forEach
+
+            try {
+                Files.deleteIfExists(entry.toPath())
+                removed++
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Failed to remove stale Workshop symlink ${entry.absolutePath}")
+            }
+        }
+        if (removed > 0) {
+            Timber.tag(TAG).i("Removed $removed stale game-tree Workshop symlink(s) for appId=$appId")
+        }
+    }
+
+    private fun clearGlobalWorkshopMetadata(workshopContentDir: File) {
+        val globalSettingsDir = workshopContentDir.parentFile  // content/
+            ?.parentFile  // workshop/
+            ?.parentFile  // steamapps/
+            ?.parentFile  // Steam/
+            ?.let { File(it, "steam_settings") }
+            ?: return
+
+        val globalModsJson = File(globalSettingsDir, "mods.json")
+        if (globalModsJson.isFile) {
+            globalModsJson.writeText("{}")
+            Timber.tag(TAG).d("Cleared global mods.json at ${globalModsJson.absolutePath}")
+        }
+        val globalModImages = File(globalSettingsDir, "mod_images")
+        if (globalModImages.isDirectory) {
+            globalModImages.deleteRecursively()
+            Timber.tag(TAG).d("Cleared global mod_images at ${globalModImages.absolutePath}")
         }
     }
 
@@ -1709,7 +1764,10 @@ object WorkshopManager {
      * (under C: drive) so gbe_fork returns it directly to games, bypassing
      * any symlink resolution issues.
      */
-    private fun buildModsJson(modDirs: List<File>, items: List<WorkshopItem>): JSONObject {
+    private fun buildModsJson(
+        modDirs: List<File>,
+        items: List<WorkshopItem>,
+    ): JSONObject {
         val itemsById = items.associateBy { it.publishedFileId }
         val modsObj = JSONObject()
         modDirs.forEach { itemDir ->
@@ -2271,7 +2329,15 @@ object WorkshopManager {
         gameName: String = "",
         workshopModPath: String = "",
         compatibilityOverride: WorkshopCompatibilityOverride? = null,
+        bionicSteam: Boolean = PrefManager.launchBionicSteam,
     ) {
+        val appId = workshopContentDir.name.toIntOrNull() ?: -1
+        val isSlayTheSpire = appId == SlayTheSpireModTheSpireCompatibility.APP_ID
+
+        if (isSlayTheSpire) {
+            SlayTheSpireModTheSpireCompatibility.cleanupManagedWorkshopFiles(gameRootDir)
+        }
+
         if (!workshopContentDir.exists()) {
             Timber.tag(TAG).d("Workshop content dir doesn't exist yet, skipping symlink config")
             return
@@ -2311,11 +2377,26 @@ object WorkshopManager {
         }
 
         if (modDirs.isNullOrEmpty()) {
+            if (isSlayTheSpire && enabledIdSet != null) {
+                cleanupInstalledModEntries(gameRootDir, workshopContentDir, winePrefix, gameName)
+                clearGlobalWorkshopMetadata(workshopContentDir)
+            }
             Timber.tag(TAG).d("No mod directories with content in ${workshopContentDir.absolutePath}")
             return
         }
+        if (isSlayTheSpire) {
+            try {
+                SlayTheSpireModTheSpireCompatibility.configureModTheSpireLayout(
+                    gameRootDir = gameRootDir,
+                    modDirs = modDirs,
+                    headlessLauncherJarBase64 = SLAY_THE_SPIRE_HEADLESS_LAUNCHER_JAR_BASE64,
+                )
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Failed to configure Slay the Spire ModTheSpire layout")
+                SlayTheSpireModTheSpireCompatibility.cleanupManagedWorkshopFiles(gameRootDir)
+            }
+        }
 
-        val appId = workshopContentDir.name.toIntOrNull() ?: -1
         val isInsurgency = appId == 222880
         val isLeft4Dead2 = appId == 550
         val isSkyrim = appId == 72850 || gameName.contains("skyrim", ignoreCase = true)
@@ -2465,7 +2546,12 @@ object WorkshopManager {
         // Source engine games are excluded because they have their own
         // VPK/GMA/BSP handler and need ISteamUGC populated for mod discovery.
         val unityModTargets by lazy { detectUnityModTargets(gameRootDir, winePrefix) }
-        val modsJsonText by lazy { buildModsJson(modDirs, items).toString(2) }
+        val modsJsonText by lazy {
+            buildModsJson(
+                modDirs,
+                items,
+            ).toString(2)
+        }
 
         // When the game's binary contains ISteamUGC / GetItemInstallInfo
         // strings AND there's a HIGH-confidence mod directory, the game
@@ -2489,6 +2575,9 @@ object WorkshopManager {
                 "Workshop compatibility override for $gameName: using Steam metadata only"
             )
             false
+        } else if (appId == SlayTheSpireModTheSpireCompatibility.APP_ID) {
+            Timber.tag(TAG).i("Slay the Spire uses ModTheSpire local jars plus Steam metadata")
+            false
         } else if (appId in WorkshopOverrideIds.forceStandardAppIds) {
             stdSeenWithHighDir = true // treat like stdSeen so Phase 6 + cleanup runs
             Timber.tag(TAG).i("Force-Standard override for appId $appId ($gameName)")
@@ -2503,13 +2592,19 @@ object WorkshopManager {
                 val isHighConfSymlink = detection.strategy is WorkshopModPathStrategy.SymlinkIntoDir &&
                     detection.confidence == WorkshopModPathDetector.Confidence.HIGH
 
-                if (isHighConfSymlink && detection.stdSeen) {
+                if (isHighConfSymlink && detection.stdSeen && !bionicSteam) {
                     stdSeenWithHighDir = true
                     Timber.tag(TAG).i(
                         "ISteamUGC binary signals + HIGH-confidence mod dir for $gameName — " +
                             "preferring ISteamUGC path (mods.json), suppressing filesystem symlinks"
                     )
-                    false  // use ISteamUGC, not filesystem
+                    false  // use ISteamUGC (gbe_fork mods.json), not filesystem
+                } else if (isHighConfSymlink && detection.stdSeen) {
+                    Timber.tag(TAG).i(
+                        "Bionic Steam enabled for $gameName — gbe_fork mods.json is ignored; " +
+                            "using filesystem symlinks into the game's mod dir instead"
+                    )
+                    true
                 } else {
                     (isHighConfSymlink || unityModTargets.isNotEmpty())
                 }
@@ -3560,6 +3655,66 @@ object WorkshopManager {
     fun parseEnabledIds(idsString: String?): Set<Long> =
         (idsString ?: "").split(",").mapNotNull { it.trim().toLongOrNull() }.toSet()
 
+    internal fun localWorkshopItemsForEnabledIds(
+        appId: Int,
+        enabledIds: Set<Long>,
+        workshopContentDir: File,
+    ): List<WorkshopItem> =
+        enabledIds
+            .mapNotNull { itemId ->
+                val itemDir = File(workshopContentDir, itemId.toString())
+                if (!itemDir.isDirectory) return@mapNotNull null
+
+                val payloads = workshopPayloadFiles(itemDir).toList()
+                if (payloads.isEmpty()) return@mapNotNull null
+
+                val markerTimestamp = runCatching {
+                    File(itemDir, COMPLETE_MARKER).readText().trim().toLongOrNull()
+                }.getOrNull()
+
+                WorkshopItem(
+                    publishedFileId = itemId,
+                    appId = appId,
+                    title = itemId.toString(),
+                    fileSizeBytes = payloads.sumOf { it.length() },
+                    manifestId = 0L,
+                    timeUpdated = markerTimestamp ?: 0L,
+                    fileName = payloads.firstOrNull()?.name ?: "",
+                )
+            }
+
+    suspend fun configureLocalWorkshopContentForEnabledIds(
+        context: Context,
+        appId: Int,
+        enabledIds: Set<Long>,
+    ): Boolean {
+        val isSlayTheSpire = appId == SlayTheSpireModTheSpireCompatibility.APP_ID
+        if (enabledIds.isEmpty()) {
+            if (isSlayTheSpire) {
+                cleanupDisabledWorkshopArtifactsForApp(context, appId)
+            }
+            return false
+        }
+
+        val winePrefix = getContainerWinePrefix(context, appId)
+        val workshopContentDir = getWorkshopContentDir(winePrefix, appId)
+        val items = localWorkshopItemsForEnabledIds(appId, enabledIds, workshopContentDir)
+        if (items.isEmpty()) {
+            Timber.tag(TAG).w("No local Workshop payloads found for appId=$appId")
+            if (isSlayTheSpire) {
+                cleanupDisabledWorkshopArtifactsForApp(context, appId)
+            }
+            return false
+        }
+
+        runPostProcessing(null, items, workshopContentDir)
+        configureSymlinksForApp(context, appId, items, winePrefix, workshopContentDir)
+        Timber.tag(TAG).i(
+            "Configured ${items.size} local Workshop item(s) for appId=$appId without remote fetch"
+        )
+        return true
+    }
+
     /** Runs the full post-processing pipeline on downloaded workshop content. */
     suspend fun runPostProcessing(
         downloadedItems: List<WorkshopItem>?,
@@ -3598,14 +3753,15 @@ object WorkshopManager {
             appId.toString(),
         )
 
-        // Read the user's manual mod path override from the container
         val containerId = "STEAM_$appId"
-        val modPathOverride = try {
+        var modPathOverride = ""
+        var bionicSteam = PrefManager.launchBionicSteam
+        try {
             val container = ContainerUtils.getContainer(context, containerId)
-            container.getExtra("workshopModPath", "")
+            modPathOverride = container.getExtra("workshopModPath", "")
+            bionicSteam = container.isLaunchBionicSteam
         } catch (e: Exception) {
-            Timber.tag(TAG).w(e, "Failed to read workshopModPath for appId $appId")
-            ""
+            Timber.tag(TAG).w(e, "Failed to read container settings for appId $appId")
         }
 
         configureModSymlinks(
@@ -3616,6 +3772,7 @@ object WorkshopManager {
             gameName = gameName,
             workshopModPath = modPathOverride,
             compatibilityOverride = compatibilityOverride,
+            bionicSteam = bionicSteam,
         )
     }
 
@@ -3830,13 +3987,22 @@ object WorkshopManager {
         enabledIds: Set<Long>,
         context: Context,
     ): WorkshopUpdateCheck? {
-        val steamClient = SteamService.instance?.steamClient ?: return null
-        val steamId = SteamService.userSteamId ?: return null
+        val steamClient = SteamService.instance?.steamClient
+        val steamId = SteamService.userSteamId
+        if (steamClient == null || steamId == null) {
+            if (appId == SlayTheSpireModTheSpireCompatibility.APP_ID) {
+                configureLocalWorkshopContentForEnabledIds(context, appId, enabledIds)
+            }
+            return null
+        }
 
         val fetchResult = getSubscribedItems(appId, steamClient, steamId)
 
         if (!fetchResult.succeeded || !fetchResult.isComplete) {
             Timber.tag(TAG).w("Workshop fetch incomplete/failed for appId=$appId; skipping update check")
+            if (appId == SlayTheSpireModTheSpireCompatibility.APP_ID) {
+                configureLocalWorkshopContentForEnabledIds(context, appId, enabledIds)
+            }
             return null
         }
 
@@ -3844,11 +4010,13 @@ object WorkshopManager {
 
         val winePrefix = getContainerWinePrefix(context, appId)
 
-        // Even if no enabled items remain, configure symlinks so stale
-        // symlinks from previously-enabled mods are cleaned up.
         if (items.isEmpty()) {
             val workshopContentDir = getWorkshopContentDir(winePrefix, appId)
-            configureSymlinksForApp(context, appId, emptyList(), winePrefix, workshopContentDir)
+            if (appId == SlayTheSpireModTheSpireCompatibility.APP_ID) {
+                cleanupDisabledWorkshopArtifactsForApp(context, appId)
+            } else {
+                configureSymlinksForApp(context, appId, emptyList(), winePrefix, workshopContentDir)
+            }
             return null
         }
 
