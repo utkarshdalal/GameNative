@@ -4,12 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import app.gamenative.R
-import app.gamenative.data.GameSource
 import app.gamenative.html5.profile.EnginePackId
 import app.gamenative.html5.profile.EngineProfile
 import app.gamenative.html5.profile.Patch
 import app.gamenative.runtime.WebViewContainer
-import app.gamenative.service.SteamService
 import app.gamenative.ui.util.SnackbarManager
 import java.io.File
 import org.apache.commons.compress.archivers.zip.ZipFile
@@ -36,7 +34,6 @@ internal fun rememberHtml5PackSetup(
     context: android.content.Context,
     container: WebViewContainer,
     profile: EngineProfile?,
-    appId: String,
 ): Html5PackSetup {
     // webRoot pins the asset folder: "" for flat packs (RMMZ/C3), "www" for RMMV.
     // AssetInterceptor reads index.html from here; WebViewAssetLoader serves sub-resources
@@ -54,19 +51,15 @@ internal fun rememberHtml5PackSetup(
     // wraps .rpgmvp/.rpgmvo streams when AssetDecrypt patches apply.
     // constructed once per (installDir, profile) -- key reads occur lazily inside.
     // OMORI AES-256-CTR decrypt context. only built when the resolved profile carries an
-    // asset-decrypt patch with kind="omori-aes-ctr" (rmmv-patches.json byAppId override).
-    // the key comes from Steam's PICS launch arguments -- `--<32-hex>` for OMORI.exe -- which
-    // SteamService caches in-memory at PICS sync. null when the arg is absent (game won't
-    // decrypt; .OMORI requests pass through as ciphertext, surfacing JS syntax errors).
-    // registry: TitleQuirks.OMORI.
-    val omoriContext = remember(appId, profile) {
+    // asset-decrypt patch with kind="omori-aes-ctr" (rmmv-patches.json byAppId override). key =
+    // container.decryptionKey; blank -> no decrypt, .OMORI passes through as ciphertext (JS syntax
+    // errors). registry: TitleQuirks.OMORI.
+    val omoriContext = remember(profile, container.decryptionKey) {
         val needsOmoriDecrypt = profile?.patches?.any {
             it is Patch.AssetDecrypt && it.kind == "omori-aes-ctr"
         } == true
         if (!needsOmoriDecrypt) return@remember null
-        val gameId = GameSource.STEAM.idOf(appId).toIntOrNull() ?: return@remember null
-        val launchArg = SteamService.getLaunchArgumentsForOs(gameId)
-        OmoriDecryptContext.fromSteamLaunchArg(launchArg)
+        OmoriDecryptContext.fromSteamLaunchArg(container.decryptionKey.takeIf { it.isNotEmpty() })
     }
 
     val decryptContext = remember(installDir, profile, omoriContext) {
@@ -84,10 +77,9 @@ internal fun rememberHtml5PackSetup(
     // when a Steam launch arg is configured for this app, mirror it into window.__gnNwArgv so
     // OMORI's `String(window.nw.App.argv).replace("--", "")` resolves to the real key for
     // plugins re-decrypting `.KEL`/`.PLUTO` data files via Encryption.init(). generic to all
-    // html5 containers -- only emits when launch args exist for this Steam appid.
-    val nwArgvJson = remember(appId) {
-        val gameId = GameSource.STEAM.idOf(appId).toIntOrNull() ?: return@remember null
-        val launchArg = SteamService.getLaunchArgumentsForOs(gameId) ?: return@remember null
+    // html5 containers -- only emits when a launch arg is cached on the container.
+    val nwArgvJson = remember(container.decryptionKey) {
+        val launchArg = container.decryptionKey.takeIf { it.isNotEmpty() } ?: return@remember null
         org.json.JSONArray().apply { put(launchArg) }.toString()
     }
 

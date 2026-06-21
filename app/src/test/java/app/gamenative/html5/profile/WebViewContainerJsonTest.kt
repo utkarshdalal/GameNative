@@ -61,6 +61,19 @@ class WebViewContainerJsonTest {
     }
 
     @Test
+    fun decryption_key_defaults_blank_and_roundtrips() {
+        // back-compat: pre-existing saved containers have no decryptionKey key -> "" (no decrypt).
+        val pre = json.decodeFromString<WebViewContainer>(
+            """{"id":"o","installPath":"/tmp/o","engineProfile":"pack:rmmv"}""",
+        )
+        assertEquals("", pre.decryptionKey)
+        // once seeded, the 32-hex arg survives the JSON round-trip.
+        val key = "0123456789abcdef0123456789abcdef"
+        val seeded = json.decodeFromString<WebViewContainer>(json.encodeToString(pre.copy(decryptionKey = key)))
+        assertEquals(key, seeded.decryptionKey)
+    }
+
+    @Test
     fun save_then_load_via_tempdir_roundtrips() {
         val slug = "termina-abcd"
         val dir = tempFolder.newFolder(slug)

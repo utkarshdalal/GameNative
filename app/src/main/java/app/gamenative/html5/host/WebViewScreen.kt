@@ -324,7 +324,7 @@ fun WebViewScreen(
     // per-launch pack/asset resolution (installDir, decrypt contexts, zip/asar handles,
     // electron ctx). derivation grouped into rememberHtml5PackSetup; re-bound to locals here so
     // downstream interceptor/webView code is unchanged. handles closed in onDispose below.
-    val packSetup = rememberHtml5PackSetup(context, container, profile, appId)
+    val packSetup = rememberHtml5PackSetup(context, container, profile)
     val installDir: File = packSetup.installDir
     val omoriContext = packSetup.omoriContext
     val decryptContext = packSetup.decryptContext

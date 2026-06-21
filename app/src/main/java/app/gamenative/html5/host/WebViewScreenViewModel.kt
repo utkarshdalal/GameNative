@@ -2,6 +2,7 @@ package app.gamenative.html5.host
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
+import app.gamenative.data.GameSource
 import app.gamenative.html5.profile.EngineProfile
 import app.gamenative.html5.profile.ProfileRegistry
 import app.gamenative.html5.savesync.Html5SaveSyncService
@@ -9,11 +10,13 @@ import app.gamenative.html5.shim.Html5DiagnosticBridge
 import app.gamenative.runtime.WebViewContainer
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.DownloadService
+import app.gamenative.service.SteamService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
+import timber.log.Timber
 
 // minimal VM (mirrors XServerViewModel's 65-line shape). loads container + profile + slug.
 // no StateFlow needed -- screen is mostly lifecycle + webview; state lives in
@@ -48,7 +51,17 @@ class WebViewScreenViewModel @Inject constructor(
         // display-name localization (Html5AchievementWatcher).
         val wineLanguage = runCatching { ContainerUtils.getContainer(appContext, appId).language }
             .getOrDefault(base.language)
-        val container = base.copy(language = wineLanguage)
+        // seed WebViewContainer.decryptionKey from the live (in-memory-only) PICS launch arg so
+        // cold-boot / offline launches still decrypt. persist base.copy WITHOUT the transient
+        // language above -- it's re-derived from wine each launch, not persisted here.
+        val liveArg = GameSource.STEAM.idOf(appId).toIntOrNull()
+            ?.let { SteamService.getLaunchArgumentsForOs(it) }
+            ?.takeIf { it.isNotEmpty() }
+        if (liveArg != null && liveArg != base.decryptionKey) {
+            runCatching { WebViewContainer.save(slug, base.copy(decryptionKey = liveArg)) }
+                .onFailure { Timber.tag("WebViewScreenVM").e(it, "persist decryptionKey failed for %s", slug) }
+        }
+        val container = base.copy(language = wineLanguage, decryptionKey = liveArg ?: base.decryptionKey)
         val profile = ProfileRegistry.resolveProfile(
             context = appContext,
             appId = appId,

@@ -59,6 +59,10 @@ data class WebViewContainer(
     // (terra = ANGLE-override advisory); not consumed by ProfileRegistry. null when no
     // sub-bucket applies (RMMV/C3/electron).
     val subEngine: String? = null,
+    // OMORI's asset-decrypt key -- the Steam `--<32hex>` launch arg, which PICS only caches in
+    // memory. persisted here so cold-boot / offline launches still decrypt. seeded in loadByAppId,
+    // read in Html5PackSetup. private field (no config UI) so the blob can't be cleared as junk.
+    val decryptionKey: String = "",
     // suspendPolicy is NOT stored here -- it lives on the wine Container as the single source of
     // truth, read by both runtimes.
 ) {
