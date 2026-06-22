@@ -13,6 +13,7 @@ import java.nio.ByteOrder;
 import timber.log.Timber;
 
 public class Drawable extends XResource {
+    private static boolean DRAWABLE_FOR_ASR = false;
     private ByteBuffer data;
     public final short height;
     private boolean offscreenStorage;
@@ -38,6 +39,10 @@ public class Drawable extends XResource {
 
     private static native void fromBitmap(Bitmap bitmap, ByteBuffer byteBuffer);
 
+    public static void DRAWABLE_ASR_MODE(boolean value) {
+        DRAWABLE_FOR_ASR = value;
+    }
+
     static {
         System.loadLibrary("winlator_11");
     }
@@ -51,10 +56,13 @@ public class Drawable extends XResource {
         this.height = (short)height;
         this.visual = visual;
 
-        GPUImage g = new GPUImage((short) width, (short) height);
-        this.texture = g;
-        this.data    = g.getVirtualData();
-        // this.data = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.LITTLE_ENDIAN);
+        if (Drawable.DRAWABLE_FOR_ASR) {
+            GPUImage g = new GPUImage((short) width, (short) height);
+            this.texture = g;
+            this.data = g.getVirtualData();
+        } else {
+            this.data = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.LITTLE_ENDIAN);
+        }
     }
 
     public static Drawable fromBitmap(Bitmap bitmap) {

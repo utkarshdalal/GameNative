@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import com.winlator.renderer.ASurfaceRenderer;
 import com.winlator.renderer.VulkanRenderer;
 import com.winlator.renderer.XServerRenderer;
+import com.winlator.xserver.Drawable;
 import com.winlator.xserver.XServer;
 
 import java.util.concurrent.ExecutorService;
@@ -29,8 +30,10 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
         getHolder().addCallback(this);
         this.xServer = xServer;
         if (selectedRenderer.equalsIgnoreCase("vulkan")) {
+            Drawable.DRAWABLE_ASR_MODE(false);
             renderer = new VulkanRenderer(this, xServer);
         } else if (selectedRenderer.equalsIgnoreCase("surfaceflinger")) {
+            Drawable.DRAWABLE_ASR_MODE(true);
             renderer = new ASurfaceRenderer(this, xServer);
         }
     }
