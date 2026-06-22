@@ -5,6 +5,13 @@ project(asurface_renderer)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+function(enable_16kb_pages target_name)
+    target_link_options(${target_name} PRIVATE
+            "-Wl,-z,max-page-size=16384"
+            "-Wl,-z,common-page-size=16384"
+    )
+endfunction()
+
 # =========================================================
 # Global compiler settings
 # =========================================================
@@ -32,6 +39,8 @@ target_link_libraries(asurface_renderer
         dl
         atomic
 )
+
+enable_16kb_pages(asurface_renderer)
 
 # =========================================================
 # Drawable library
@@ -69,6 +78,8 @@ target_link_libraries(drawable
         m
 )
 
+enable_16kb_pages(drawable)
+
 # =========================================================
 # GPUImage library
 # =========================================================
@@ -94,3 +105,4 @@ target_link_libraries(gpuimage
         GLESv2
 )
 
+enable_16kb_pages(gpuimage)
