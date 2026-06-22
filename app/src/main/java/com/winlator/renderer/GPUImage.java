@@ -25,6 +25,8 @@ public class GPUImage extends Texture {
             virtualData = lockHardwareBuffer(hardwareBufferPtr);
             width = nativeGetWidth(hardwareBufferPtr);
             height = nativeGetHeight(hardwareBufferPtr);
+            for (int i = 0; i < 3; i++)
+                swapchainAhbs[i] = createHardwareBuffer(width, height);
             if (virtualData == null) {
                 System.err.println("Error: Failed to lock hardware buffer");
                 destroyHardwareBuffer(hardwareBufferPtr);
@@ -103,6 +105,12 @@ public class GPUImage extends Texture {
         if (imageKHRPtr != 0) {
             destroyImageKHR(imageKHRPtr);
             imageKHRPtr = 0;
+        }
+        for (int i = 0; i < 3; i++) {
+            if (swapchainAhbs[i] != 0) {
+                destroyHardwareBuffer(swapchainAhbs[i]);
+                swapchainAhbs[i] = 0;
+            }
         }
         if (hardwareBufferPtr != 0) {
             destroyHardwareBuffer(hardwareBufferPtr);
