@@ -972,6 +972,12 @@ public class Container {
 
     public static void checkObsoleteOrMissingProperties(JSONObject data) {
         try {
+            if (!data.has("displayRendererMode") && data.has("useLegacyRenderer")) {
+                boolean legacy = data.optBoolean("useLegacyRenderer", false);
+                data.put("displayRendererMode", legacy ? "gl" : DEFAULT_DISPLAY_RENDERER);
+            }
+            data.remove("useLegacyRenderer");
+
             if (data.has("dxcomponents")) {
                 data.put("wincomponents", data.getString("dxcomponents"));
                 data.remove("dxcomponents");
