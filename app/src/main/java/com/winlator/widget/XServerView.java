@@ -92,6 +92,18 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
         if (renderer instanceof VulkanRenderer vkRenderer) {
             vkRenderer.setFpsLimit(this.frameRateLimit);
         }
+        if (renderer instanceof ASurfaceRenderer aRenderer) {
+            // ANativeWindow_FrameRateCompatibility {
+            //  ANATIVEWINDOW_FRAME_RATE_COMPATIBILITY_DEFAULT = 0,
+            //  ANATIVEWINDOW_FRAME_RATE_COMPATIBILITY_FIXED_SOURCE = 1,
+            //  ANATIVEWINDOW_FRAME_RATE_COMPATIBILITY_AT_LEAST = 2
+            // }
+            // ANativeWindow_ChangeFrameRateStrategy {
+            //  ANATIVEWINDOW_CHANGE_FRAME_RATE_ONLY_IF_SEAMLESS = 0,
+            //  ANATIVEWINDOW_CHANGE_FRAME_RATE_ALWAYS = 1
+            // }
+            aRenderer.setFrameRate(this.frameRateLimit, 0, 1);
+        }
     }
 
     public void requestRender() {

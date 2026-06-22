@@ -146,6 +146,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private native void nativeUpdateWindow(long contentId, boolean visible, int zOrder,
             int srcL, int srcT, int srcR, int srcB,
             int dstL, int dstT, int dstR, int dstB);
+    private native void nativeSetFrameRate(float frameRate, byte compatibility, byte changeStrategy);
 
     private WindowSurface getOrCreateWindowSurface(int contentId, int w, int h, String debugName)
     {
@@ -643,6 +644,13 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             return wc != null && wc.contains(forceFullscreenWMClass);
         }
         return false;
+    }
+
+    public void setFrameRate(float frameRate, int compatibility, int changeStrategy) {
+        Timber.d("setFrameRate frameRate=%f compatibility=%d changeStrategy=%d", frameRate, compatibility, changeStrategy);
+        if (surfaceInitialized) {
+            nativeSetFrameRate(frameRate, (byte)compatibility, (byte)changeStrategy);
+        }
     }
 
     private FrameRating hudRef = null;

@@ -179,3 +179,12 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeUpdateWindow(
         r->updateWindow((int64_t)contentId, visible, zOrder, srcL, srcT, srcR, srcB, dstL, dstT, dstR, dstB);
     }
 }
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_renderer_ASurfaceRenderer_nativeSetFrameRate(
+        JNIEnv*, jobject, jfloat frameRate, jbyte compatibility, jbyte changeStrategy)
+{
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx)
+        r->setFrameRate(frameRate, (int8_t)compatibility, (int8_t)changeStrategy);
+}
