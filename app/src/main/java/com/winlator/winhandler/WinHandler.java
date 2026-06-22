@@ -70,7 +70,7 @@ public class WinHandler {
     private PreferredInputApi preferredInputApi;
     private final ByteBuffer receiveData;
     private final DatagramPacket receivePacket;
-    private boolean running;
+    private volatile boolean running;
     private final ByteBuffer sendData;
     private final DatagramPacket sendPacket;
     private DatagramSocket socket;
@@ -623,6 +623,7 @@ public class WinHandler {
             while (running) {
                 try {
                     curSeq = WinHandler.waitForRumble(0, lastSeq);
+                    if (!running) break;
                     if (curSeq == lastSeq) {
                         continue;
                     }
