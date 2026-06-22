@@ -322,5 +322,81 @@
         return true;
     }, 200);
 
+    // --- (k) oversized-texture compat ---
+    // Android WebView caps WebGL MAX_TEXTURE_SIZE at 4096. RPG Maker uploads each spritesheet as one
+    // BaseTexture and animates by moving the UV window, so the WHOLE sheet must fit in a single GPU
+    // texture. VisuStella inject animations ship sheets wider than that (a 1x15 row of large cells =
+    // 6912px); texImage2D rejects the upload, leaving an incomplete texture that samples opaque black.
+    var maxTexSize = 0;
+    function getMaxTexSize() {
+        if (maxTexSize) return maxTexSize;
+        var gl = null;
+        try { gl = window.Graphics && Graphics.app && Graphics.app.renderer && Graphics.app.renderer.gl; } catch (_) {}
+        if (!gl) { try { var c = document.createElement('canvas'); gl = c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'); } catch (_) {} }
+        maxTexSize = gl ? gl.getParameter(gl.MAX_TEXTURE_SIZE) : 4096;
+        return maxTexSize;
+    }
+
+    // (k1) general fallback: upload oversized bitmaps DOWNSCALED to fit, but keep the BaseTexture's
+    // logical size at the original (resolution compensates) so frame/UV coords are unchanged. renders
+    // softer instead of black; covers static giants (battlebacks, parallaxes, big pictures).
+    patchWhenReady(function () {
+        if (!window.Bitmap || !Bitmap.prototype._createBaseTexture || !window.PIXI) return false;
+        if (Bitmap.prototype.__gnOversizeWrapped) return true;
+        Bitmap.prototype.__gnOversizeWrapped = true;
+        var orig = Bitmap.prototype._createBaseTexture;
+        Bitmap.prototype._createBaseTexture = function (source) {
+            var max = getMaxTexSize(), w = source.width, h = source.height;
+            if (w <= max && h <= max) return orig.call(this, source);
+            var scale = Math.min(max / w, max / h);
+            var dw = Math.max(1, Math.floor(w * scale)), dh = Math.max(1, Math.floor(h * scale));
+            var canvas = document.createElement('canvas');
+            canvas.width = dw;
+            canvas.height = dh;
+            canvas.getContext('2d').drawImage(source, 0, 0, dw, dh);
+            this._baseTexture = new PIXI.BaseTexture(canvas);
+            this._baseTexture.mipmap = false;
+            this._baseTexture.resolution = dw / w;  // logical size stays w x h; only the GPU copy shrinks
+            this._baseTexture.width = w;
+            this._baseTexture.height = h;
+            this._updateScaleMode();
+        };
+        return true;
+    }, 100);
+
+    // (k2) full-res path for cell-based inject animations: the sheet stays a full-res 2D source (2D
+    // canvases aren't bound by MAX_TEXTURE_SIZE). after the engine's updateFrame sets this._frame to
+    // the current cell, blit just that cell into a reused bitmap and re-point the sprite at it -- one
+    // small per-frame upload at full sharpness. engages only when the sheet exceeds the cap.
+    patchWhenReady(function () {
+        if (!window.Sprite_InjectAnimation || !Sprite_InjectAnimation.prototype.updateFrame || !window.Rectangle) return false;
+        if (Sprite_InjectAnimation.prototype.__gnPerCell) return true;
+        Sprite_InjectAnimation.prototype.__gnPerCell = true;
+        var origUpdateFrame = Sprite_InjectAnimation.prototype.updateFrame;
+        Sprite_InjectAnimation.prototype.updateFrame = function () {
+            origUpdateFrame.call(this);
+            var sheet = this._bitmap;
+            var src = sheet && (sheet._canvas || sheet._image);
+            var max = getMaxTexSize();
+            if (!src || (src.width <= max && src.height <= max)) return;
+            var f = this._frame;
+            var w = Math.max(1, Math.floor(f.width)), h = Math.max(1, Math.floor(f.height));
+            if (!this.__gnCell || this.__gnCell.width !== w || this.__gnCell.height !== h) {
+                this.__gnCell = new Bitmap(w, h);
+                this.__gnCell.smooth = sheet.smooth;
+            }
+            var ctx = this.__gnCell._context;
+            ctx.clearRect(0, 0, w, h);
+            ctx.drawImage(src, Math.floor(f.x), Math.floor(f.y), w, h, 0, 0, w, h);
+            this.__gnCell.baseTexture.update();
+            // re-point the texture at the cell each frame (the engine left it on the oversized sheet).
+            // relies on PIXI 5's texture.baseTexture being a plain field -- revisit on a PIXI bump.
+            this.texture.baseTexture = this.__gnCell.baseTexture;
+            this.texture.frame = new Rectangle(0, 0, w, h);
+            this.pivot.set(0, 0);
+        };
+        return true;
+    }, 300);
+
     if (self.__gnShimVerbose) try { console.log('gamenative pack:rmmv shim loaded'); } catch (e) {}
 })();
