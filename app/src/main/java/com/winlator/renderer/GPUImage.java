@@ -23,8 +23,8 @@ public class GPUImage extends Texture {
         hardwareBufferPtr = createHardwareBuffer(width, height);
         if (hardwareBufferPtr != 0) {
             virtualData = lockHardwareBuffer(hardwareBufferPtr);
-            width = nativeGetWidth(hardwareBufferPtr);
-            height = nativeGetHeight(hardwareBufferPtr);
+            this.width = nativeGetWidth(hardwareBufferPtr);
+            this.height = nativeGetHeight(hardwareBufferPtr);
             for (int i = 0; i < 3; i++)
                 swapchainAhbs[i] = createHardwareBuffer(width, height);
             if (virtualData == null) {
