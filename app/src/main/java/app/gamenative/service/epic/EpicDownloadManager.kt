@@ -1,7 +1,6 @@
 package app.gamenative.service.epic
 
 import android.content.Context
-import app.gamenative.PrefManager
 import app.gamenative.data.DownloadInfo
 import app.gamenative.enums.Marker
 import app.gamenative.utils.CdnRankingUtils
@@ -65,8 +64,6 @@ class EpicDownloadManager @Inject constructor(
         private const val MAX_CHUNK_RETRIES = 3 // Maximum retries per chunk
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
         private const val STREAM_PROGRESS_TIME_INTERVAL_MS = 200L
-        private const val EPIC_MAX_PARALLEL_DOWNLOADS = 6
-        private const val EPIC_MAX_PARALLEL_ASSEMBLY = 2
         private const val PROGRESS_UPDATE_GRANULARITY_BYTES = 256 * 1024L
     }
 
@@ -460,9 +457,8 @@ class EpicDownloadManager @Inject constructor(
                 downloadingAppIds = java.util.concurrent.CopyOnWriteArrayList(),
             )
 
-            val parallelDownloads = PrefManager.downloadSpeed
+            val parallelDownloads = DownloadSpeedConfig().maxDownloads
                 .coerceAtLeast(1)
-                .coerceAtMost(EPIC_MAX_PARALLEL_DOWNLOADS)
             val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 
             var downloadedChunks = 0
@@ -880,10 +876,8 @@ class EpicDownloadManager @Inject constructor(
             val speedConfig = DownloadSpeedConfig()
             val parallelDownloads = speedConfig.maxDownloads
                 .coerceAtLeast(1)
-                .coerceAtMost(EPIC_MAX_PARALLEL_DOWNLOADS)
             val parallelAssemble = speedConfig.maxDecompress
                 .coerceAtLeast(1)
-                .coerceAtMost(EPIC_MAX_PARALLEL_ASSEMBLY)
             val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 
             val totalChunks = chunkQueue.size
