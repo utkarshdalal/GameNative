@@ -70,22 +70,29 @@ object SteamBootstrap {
 
     private fun stopHost() {
         val p = hostProcess ?: return
-        hostProcess = null
         val pid = pidOf(p)
         if (pid != null) {
             runCatching { android.os.Process.sendSignal(pid, OsConstants.SIGTERM) }
-            val deadline = System.currentTimeMillis() + 6000
-            while (p.isAlive && System.currentTimeMillis() < deadline) {
-                try { Thread.sleep(50) } catch (_: InterruptedException) { break }
-            }
+            waitExit(p, 6000)
         }
-        if (p.isAlive) runCatching { p.destroy() }
+        if (p.isAlive) {
+            runCatching { p.destroy() }
+            waitExit(p, 2000)
+        }
+        if (!p.isAlive) hostProcess = null
+    }
+
+    private fun waitExit(p: Process, timeoutMs: Int) {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (p.isAlive && System.currentTimeMillis() < deadline) {
+            try { Thread.sleep(50) } catch (_: InterruptedException) { return }
+        }
     }
 
     private fun pidOf(p: Process): Int? =
         runCatching { p.javaClass.getDeclaredField("pid").apply { isAccessible = true }.getInt(p) }.getOrNull()
 
-    fun prepareApp(appId: Int, dlcAppIds: IntArray = IntArray(0)) {
+    fun prepareApp(appId: Int) {
         val cfg = hostCfg
         if (!initialized || cfg == null || appId <= 0) return
         stopHost()
