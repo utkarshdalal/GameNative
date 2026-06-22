@@ -40,7 +40,8 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     public int surfaceHeight;
     private String[] unviewableWMClasses = null;
     private String forceFullscreenWMClass = null;
-    private boolean cursorVisible = true;
+    private boolean containerCursorVisible = true;
+    private boolean gameCursorVisible = true;
     private final Drawable rootCursorDrawable;
     private Cursor lastCursor = null;
     private boolean surfaceInitialized = false;
@@ -421,7 +422,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     }
 
     private void sendCursorToNative(Cursor cursor) {
-        if (!cursorVisible) return;
+        if (!containerCursorVisible) return;
         Drawable cd = cursor != null ? cursor.cursorImage : rootCursorDrawable;
         if (cursor != null && !cursor.isVisible()) return;
         if (cd == null || cd.getBuffer() == null) return;
@@ -436,9 +437,9 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         if (drawable == null) return;
         Window pw = xServer.inputDeviceManager.getPointWindow();
         Cursor cursor = pw != null ? pw.attributes.getCursor() : null;
-        if (cursor != null && cursorVisible != cursor.isVisible()) {
-            cursorVisible = cursor.isVisible();
-            nativeScanoutSetCursorVisibility(cursorVisible);
+        if (cursor != null && gameCursorVisible != cursor.isVisible()) {
+            gameCursorVisible = cursor.isVisible();
+            nativeScanoutSetCursorVisibility(containerCursorVisible && gameCursorVisible);
         }
         synchronized (drawable.renderLock) {
             if (drawable.getTexture() instanceof GPUImage g) {
@@ -452,6 +453,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                     }
 
                     nativeSetWindowBuffer(windowId, ahbPtr, fence, 0, 0);
+                    if (hudRef != null) hudRef.update();
 
                     if (isFallback) {
                         g.lock();
@@ -465,15 +467,16 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         if (drawable == null) return;
         Window pw = xServer.inputDeviceManager.getPointWindow();
         Cursor cursor = pw != null ? pw.attributes.getCursor() : null;
-        if (cursor != null && cursorVisible != cursor.isVisible()) {
-            cursorVisible = cursor.isVisible();
-            nativeScanoutSetCursorVisibility(cursorVisible);
+        if (cursor != null && gameCursorVisible != cursor.isVisible()) {
+            gameCursorVisible = cursor.isVisible();
+            nativeScanoutSetCursorVisibility(containerCursorVisible && gameCursorVisible);
         }
         synchronized (drawable.renderLock) {
             if (drawable.getTexture() instanceof GPUImage g) {
                 long ahbPtr = g.getHardwareBufferPtr();
                 if (ahbPtr != 0) {
                     nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, xSerial);
+                    if (hudRef != null) hudRef.update();
                 }
             }
         }
@@ -515,7 +518,6 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     @Override
     public void onUpdateWindowContent(Window window) {
         // Timber.d("onUpdateWindowContent id=%s", window.id);
-        if (hudRef != null) hudRef.update();
         Drawable drawable = window.getContent();
         if (drawable == null || !window.attributes.isMapped()) return;
         if (unviewableWMClasses != null) {
@@ -540,7 +542,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             short hotX = (short) cursor.hotSpotX;
             short hotY = (short) cursor.hotSpotY;
 
-            nativeScanoutSetCursorPos(x, y, hotX, hotY, cursor.isVisible());
+            nativeScanoutSetCursorPos(x, y, hotX, hotY, containerCursorVisible && gameCursorVisible);
         }
     }
 
@@ -627,7 +629,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     }
 
     public void setCursorVisible(boolean visible) {
-        cursorVisible = visible;
+        containerCursorVisible = visible;
         if (visible) {
             sendCursorToNative(lastCursor);
         } else {
