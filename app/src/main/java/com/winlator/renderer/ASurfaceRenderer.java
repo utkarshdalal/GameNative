@@ -655,6 +655,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
 
     public void setFrameRate(float frameRate, int compatibility, int changeStrategy) {
         Timber.d("setFrameRate frameRate=%f compatibility=%d changeStrategy=%d", frameRate, compatibility, changeStrategy);
+        if (frameRate > 0 && frameRate < 30) frameRate = 30;
         pendingFrameRate = frameRate;
         pendingFrameRateCompatibility = (byte) compatibility;
         pendingFrameRateChangeStrategy = (byte) changeStrategy;
