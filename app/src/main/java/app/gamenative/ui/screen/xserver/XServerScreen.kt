@@ -1674,11 +1674,11 @@ fun XServerScreen(
             // VirGL passthrough). Default to the legacy GL renderer for all
             // other containers as well. Uncheck the per-container useLegacyRenderer
             // setting to switch to the Vulkan renderer.
-            val useGLRenderer = container.graphicsDriver == "virgl" || container.isUseLegacyRenderer
+            val useGLRenderer = container.graphicsDriver == "virgl" || container.displayRenderer.equals("gl", true)
             val xServerViewInstance: XServerRendererView = if (useGLRenderer) {
                 XServerViewGL(context, xServerToUse)
             } else {
-                XServerView(context, xServerToUse)
+                XServerView(context, xServerToUse, container.displayRenderer)
             }
             val xServerView = xServerViewInstance.apply {
                 xServerView = this
@@ -1694,7 +1694,7 @@ fun XServerScreen(
                     }
                     renderer.setVkPresentMode(vkMode)
                 }
-                renderer.setCursorVisible(false)
+                applyMouseCursorVisibility()
                 renderer.setOnFrameRenderedListener {
                     if (shouldTrackDisplayedFrames.get()) {
                         (context as? Activity)?.runOnUiThread {

@@ -663,6 +663,7 @@
     <string name="vulkan_version">Vulkan-Version</string>
     <string name="image_cache_size">Bildcache-Größe</string>
     <string name="dx_wrapper">DX-Wrapper</string>
+    <string name="display_renderer">Display-Renderer</string>
     <string name="vkd3d_feature_level">VKD3D-Featurelevel</string>
     <string name="use_dri3">DRI3 verwenden</string>
     <string name="use_dri3_description">Deaktivieren kann Grafikprobleme auf manchen Geräten beheben</string>

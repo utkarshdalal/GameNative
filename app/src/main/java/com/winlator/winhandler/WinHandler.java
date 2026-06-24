@@ -70,7 +70,7 @@ public class WinHandler {
     private PreferredInputApi preferredInputApi;
     private final ByteBuffer receiveData;
     private final DatagramPacket receivePacket;
-    private boolean running;
+    private volatile boolean running;
     private final ByteBuffer sendData;
     private final DatagramPacket sendPacket;
     private DatagramSocket socket;
@@ -123,7 +123,7 @@ public class WinHandler {
 
     private static native void notifyStateChanged(int playerIndex);
     public static native int waitForRumble(int idx, int lastSeq);
-    public static native int rumbleTeardown(int idx);
+    public static native void rumbleTeardown(int idx);
 
     public WinHandler(XServer xServer, XServerRendererView xServerView) {
         ByteBuffer allocate = ByteBuffer.allocate(64);
@@ -623,6 +623,7 @@ public class WinHandler {
             while (running) {
                 try {
                     curSeq = WinHandler.waitForRumble(0, lastSeq);
+                    if (!running) break;
                     if (curSeq == lastSeq) {
                         continue;
                     }

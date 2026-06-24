@@ -333,6 +333,7 @@
     <string name="driver_timeout">Время ожидания соединения истекло. Пожалуйста, проверьте сеть и попробуйте снова.</string>
     <string name="duplicate">Дублировать</string>
     <string name="dx_wrapper">DX обёртка</string>
+    <string name="display_renderer">Рендерер отображения</string>
     <string name="dxvk_version">Версия DXVK</string>
     <string name="edit">Редактировать</string>
     <string name="edit_controls">Редактировать экранный контроллер</string>

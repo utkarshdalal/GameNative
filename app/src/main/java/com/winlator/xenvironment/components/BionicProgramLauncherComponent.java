@@ -628,7 +628,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                     int appIdInt = Integer.parseInt(steamAppId);
                     Log.i("BionicProgramLauncherComponent",
                           "SteamBootstrap.prepareApp(" + appIdInt + ")");
-                    app.gamenative.SteamBootstrap.INSTANCE.prepareApp(appIdInt, new int[0]);
+                    app.gamenative.SteamBootstrap.INSTANCE.prepareApp(appIdInt);
                 } catch (NumberFormatException nfe) {
                     Log.w("BionicProgramLauncherComponent",
                           "steamAppId=" + steamAppId + " is not numeric; "

@@ -41,6 +41,7 @@ public class Container {
     public static final String DEFAULT_AUDIO_DRIVER = "pulseaudio";
     public static final String DEFAULT_EMULATOR = "FEXCore";
     public static final String DEFAULT_DXWRAPPER = "dxvk";
+    public static final String DEFAULT_DISPLAY_RENDERER = "vulkan";
     public static final String DEFAULT_DDRAWRAPPER = "none";
     public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.DXVK + ",framerate=0,maxDeviceMemory=0,async=" + DefaultVersion.ASYNC + ",asyncCache=" + DefaultVersion.ASYNC_CACHE + ",vkd3dVersion=" + DefaultVersion.VKD3D + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";;
     public static final String DEFAULT_GRAPHICSDRIVERCONFIG = "vulkanVersion=1.3" + ",version=" + DefaultVersion.WRAPPER + ",blacklistedExtensions=" + ",maxDeviceMemory=0" + ",presentMode=mailbox" + ",syncFrame=0" + ",disablePresentWait=0" + ",resourceType=auto" + ",bcnEmulation=auto" + ",bcnEmulationType=compute" + ",bcnEmulationCache=0" + ",gpuName=Device";
@@ -81,7 +82,7 @@ public class Container {
     private String dxwrapperConfig = DEFAULT_DXWRAPPERCONFIG;
     private String graphicsDriverConfig = DEFAULT_GRAPHICSDRIVERCONFIG;
     private String rendererPresentMode = "fifo";
-    private boolean useLegacyRenderer = false;
+    private String displayRenderer = Container.DEFAULT_DISPLAY_RENDERER;
     private String wincomponents = DEFAULT_WINCOMPONENTS;
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
     private boolean pulseaudioLowLatency = false;
@@ -264,9 +265,9 @@ public class Container {
 
     public void setRendererPresentMode(String v) { this.rendererPresentMode = v != null ? v : "fifo"; }
 
-    public boolean isUseLegacyRenderer() { return useLegacyRenderer; }
+    public String getDisplayRenderer() { return displayRenderer; }
 
-    public void setUseLegacyRenderer(boolean v) { this.useLegacyRenderer = v; }
+    public void setDisplayRenderer(String v) { this.displayRenderer = v; }
 
     public String getDXWrapperConfig() {
         return dxwrapperConfig;
@@ -677,7 +678,7 @@ public class Container {
             data.put("graphicsDriverVersion", graphicsDriverVersion); // Ensure this is added
             if (!graphicsDriverConfig.isEmpty()) data.put("graphicsDriverConfig", graphicsDriverConfig);
             data.put("rendererPresentMode", rendererPresentMode);
-            data.put("useLegacyRenderer", useLegacyRenderer);
+            data.put("displayRendererMode", displayRenderer);
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
             data.put("audioDriver", audioDriver);
@@ -794,8 +795,8 @@ public class Container {
                 case "rendererPresentMode" :
                     setRendererPresentMode(data.getString(key));
                     break;
-                case "useLegacyRenderer" :
-                    setUseLegacyRenderer(data.getBoolean(key));
+                case "displayRendererMode" :
+                    setDisplayRenderer(data.getString(key));
                     break;
                 case "wincomponents" :
                     setWinComponents(data.getString(key));
@@ -971,6 +972,12 @@ public class Container {
 
     public static void checkObsoleteOrMissingProperties(JSONObject data) {
         try {
+            if (!data.has("displayRendererMode") && data.has("useLegacyRenderer")) {
+                boolean legacy = data.optBoolean("useLegacyRenderer", false);
+                data.put("displayRendererMode", legacy ? "gl" : DEFAULT_DISPLAY_RENDERER);
+            }
+            data.remove("useLegacyRenderer");
+
             if (data.has("dxcomponents")) {
                 data.put("wincomponents", data.getString("dxcomponents"));
                 data.remove("dxcomponents");

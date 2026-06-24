@@ -701,6 +701,7 @@
     <string name="vulkan_version">Vulkan 버전</string>
     <string name="image_cache_size">이미지 캐시 크기</string>
     <string name="dx_wrapper">DX Wrapper</string>
+    <string name="display_renderer">디스플레이 렌더러</string>
     <string name="vkd3d_feature_level">VKD3D 기능 수준</string>
     <string name="use_dri3">DRI3 사용</string>
     <string name="use_dri3_description">비활성화하면 일부 장치에서 그래픽 결함이 수정될 수 있습니다</string>

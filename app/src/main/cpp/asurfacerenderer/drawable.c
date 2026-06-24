@@ -109,8 +109,8 @@ Java_com_winlator_xserver_Drawable_copyArea(JNIEnv *env, jclass obj, jshort srcX
     if (width == srcStride && width == dstStride) {
         size_t bytes = (size_t)height * dstStride * 4;
         memcpy(dstDataAddr + (dstX + dstY * dstStride) * 4,
-        srcDataAddr + (srcX + srcY * srcStride) * 4,
-        bytes);
+               srcDataAddr + (srcX + srcY * srcStride) * 4,
+               bytes);
         return;
     }
 
@@ -118,8 +118,8 @@ Java_com_winlator_xserver_Drawable_copyArea(JNIEnv *env, jclass obj, jshort srcX
     size_t rowBytes = (size_t)width * 4;
     for (int16_t y = 0; y < height; y++) {
         memcpy(dstDataAddr + (dstX + (y + dstY) * dstStride) * 4,
-        srcDataAddr + (srcX + (y + srcY) * srcStride) * 4,
-        rowBytes);
+               srcDataAddr + (srcX + (y + srcY) * srcStride) * 4,
+               rowBytes);
     }
 }
 
@@ -261,7 +261,7 @@ Java_com_winlator_xserver_Drawable_drawAlphaMaskedBitmap(JNIEnv *env, jclass obj
 /* replace the whole JNI body */
 JNIEXPORT void JNICALL
 Java_com_winlator_xserver_Drawable_fromBitmap(JNIEnv *env, jclass obj,
-        jobject bitmap, jobject data) {
+                                              jobject bitmap, jobject data) {
     uint8_t *dst = (*env)->GetDirectBufferAddress(env, data);
     if (!dst) {
         printf("Error: NULL buffer address in fromBitmap\n");

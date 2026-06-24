@@ -61,7 +61,7 @@ android {
         buildConfigField("boolean", "XR_BUILD", "false")
 
         versionCode = 14
-        versionName = "1.0.0"
+        versionName = "1.1.0"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -259,6 +259,12 @@ android {
     kotlinter {
         ignoreFormatFailures  = false
     }
+
+    // externalNativeBuild {
+    //   cmake {
+    //       path = file("src/main/cpp/asurfacerenderer/CMakeLists.txt")
+    //   }
+    // }
 
     // externalNativeBuild {
     //    cmake {

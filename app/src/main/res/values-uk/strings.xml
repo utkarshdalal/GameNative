@@ -686,6 +686,7 @@
     <string name="vulkan_version">Версія Vulkan</string>
     <string name="image_cache_size">Розмір кешу</string>
     <string name="dx_wrapper">DX Wrapper</string>
+    <string name="display_renderer">Рендерер відображення</string>
     <string name="vkd3d_feature_level">Рівень функцій VKD3D</string>
     <string name="use_dri3">Використовувати DRI3</string>
     <string name="use_dri3_description">Вимкнення параметра може виправити графічні проблеми на деяких пристроях</string>

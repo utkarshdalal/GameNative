@@ -692,6 +692,7 @@
 	<string name="vulkan_version">Versiune Vulkan</string>
 	<string name="image_cache_size">Dimensiune cache imagini</string>
 	<string name="dx_wrapper">Wrapper DX</string>
+    <string name="display_renderer">Renderer de afișaj</string>
 	<string name="vkd3d_feature_level">Nivel funcțional VKD3D</string>
 	<string name="use_dri3">Folosește DRI3</string>
 	<string name="use_dri3_description">Dezactivarea poate rezolva artefacte grafice pe unele dispozitive</string>

@@ -524,6 +524,7 @@
     <string name="vulkan_version">Versão do Vulkan</string>
     <string name="image_cache_size">Tamanho do Cache de Imagens</string>
     <string name="dx_wrapper">DX Wrapper</string>
+    <string name="display_renderer">Renderizador da Tela</string>
     <string name="vkd3d_feature_level">Nível de recurso do VKD3D</string>
     <string name="use_dri3">Usar DRI3</string>
     <string name="use_dri3_description">Desabilitar pode corrigir glitches gráficos em alguns dispositivos</string>

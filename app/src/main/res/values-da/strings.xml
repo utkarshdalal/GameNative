@@ -524,6 +524,7 @@
     <string name="vulkan_version">Vulkan-version</string>
     <string name="image_cache_size">Billedcache-størrelse</string>
     <string name="dx_wrapper">DX-wrapper</string>
+    <string name="display_renderer">Display-renderer</string>
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">Brug DRI3</string>
     <string name="use_dri3_description">Deaktivering kan løse grafiske fejl på nogle enheder</string>

@@ -44,6 +44,8 @@ import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -93,10 +95,12 @@ import app.gamenative.utils.ManifestInstaller
 import app.gamenative.service.SteamService
 import app.gamenative.utils.ManifestComponentHelper.VersionOptionList
 import app.gamenative.utils.ManifestRepository
+import app.gamenative.utils.PaddingUtils
 import com.winlator.contents.ContentProfile
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
+import com.winlator.box86_64.Box86_64Preset
 import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
@@ -107,7 +111,9 @@ import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUHelper
 import com.winlator.core.WineInfo
 import com.winlator.core.WineInfo.MAIN_WINE_VERSION
+import com.winlator.core.WineThemeManager
 import com.winlator.fexcore.FEXCoreManager
+import com.winlator.fexcore.FEXCorePreset
 import com.winlator.fexcore.FEXCorePresetManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
@@ -143,6 +149,7 @@ private data class ContainerConfigDialogStaticData(
     val screenSizes: List<String>,
     val baseGraphicsDrivers: List<String>,
     val dxWrappers: List<String>,
+    val displayRenderers: List<String>,
     val dxvkVersionsBase: List<String>,
     val vkd3dVersionsBase: List<String>,
     val audioDrivers: List<String>,
@@ -162,9 +169,9 @@ private data class ContainerConfigDialogStaticData(
     val box64Versions: List<String>,
     val wowBox64VersionsBase: List<String>,
     val box64BionicVersionsBase: List<String>,
-    val box64Presets: List<com.winlator.box86_64.Box86_64Preset>,
+    val box64Presets: List<Box86_64Preset>,
     val fexcoreVersionsBase: List<String>,
-    val fexcorePresets: List<com.winlator.fexcore.FEXCorePreset>,
+    val fexcorePresets: List<FEXCorePreset>,
     val fexcoreTSOPresets: List<String>,
     val fexcoreX87Presets: List<String>,
     val fexcoreMultiblockValues: List<String>,
@@ -202,6 +209,7 @@ private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStat
         screenSizes = stringArrayResource(R.array.screen_size_entries).toList(),
         baseGraphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList(),
         dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList(),
+        displayRenderers = stringArrayResource(R.array.displayrenderers_entries).toList(),
         dxvkVersionsBase = stringArrayResource(R.array.dxvk_version_entries).toList(),
         vkd3dVersionsBase = stringArrayResource(R.array.vkd3d_version_entries).toList(),
         audioDrivers = stringArrayResource(R.array.audio_driver_entries).toList(),
@@ -289,6 +297,7 @@ fun ContainerConfigDialog(
         val graphicsDriversRef = remember { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
         var graphicsDrivers by graphicsDriversRef
         val dxWrappers = staticData.dxWrappers
+        val displayRenderers = staticData.displayRenderers
         // Start with defaults from resources (modern: un-greyed comes from on-disk + manifest)
         val dxvkVersionsBase = ManifestComponentHelper.bundledDxWrapperBase(staticData.dxvkVersionsBase)
         val vkd3dVersionsBase = ManifestComponentHelper.bundledDxWrapperBase(staticData.vkd3dVersionsBase)
@@ -789,6 +798,10 @@ fun ContainerConfigDialog(
             val driverIndex = dxWrappers.indexOfFirst { StringUtils.parseIdentifier(it) == config.dxwrapper }
             mutableIntStateOf(if (driverIndex >= 0) driverIndex else 0)
         }
+        val displayRendererIndexRef = rememberSaveable {
+            val driverIndex = displayRenderers.indexOfFirst { StringUtils.parseIdentifier(it) == config.displayRenderer }
+            mutableIntStateOf(if (driverIndex >= 0) driverIndex else 0)
+        }
         var dxWrapperIndex by dxWrapperIndexRef
 
         val dxvkVersionIndexRef = rememberSaveable { mutableIntStateOf(0) }
@@ -1066,6 +1079,7 @@ fun ContainerConfigDialog(
             customScreenHeight = customScreenHeightRef,
             graphicsDriverIndex = graphicsDriverIndexRef,
             dxWrapperIndex = dxWrapperIndexRef,
+            displayRendererIndex = displayRendererIndexRef,
             dxvkVersionIndex = dxvkVersionIndexRef,
             graphicsDriverVersionIndex = graphicsDriverVersionIndexRef,
             audioDriverIndex = audioDriverIndexRef,
@@ -1083,6 +1097,7 @@ fun ContainerConfigDialog(
             screenSizes = screenSizes,
             baseGraphicsDrivers = baseGraphicsDrivers,
             dxWrappers = dxWrappers,
+            displayRenderers = displayRenderers,
             dxvkVersionsBase = dxvkVersionsBase,
             vkd3dVersionsBase = vkd3dVersionsBase,
             audioDrivers = audioDrivers,
@@ -1233,16 +1248,16 @@ fun ContainerConfigDialog(
                     Column(
                         modifier = Modifier
                             .padding(
-                                top = app.gamenative.utils.PaddingUtils.statusBarAwarePadding().calculateTopPadding() + paddingValues.calculateTopPadding(),
+                                top = PaddingUtils.statusBarAwarePadding().calculateTopPadding() + paddingValues.calculateTopPadding(),
                                 bottom = 32.dp + paddingValues.calculateBottomPadding(),
                                 start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
                                 end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
                             )
                             .fillMaxSize(),
                     ) {
-                        androidx.compose.material3.ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 0.dp) {
+                        ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 0.dp) {
                             tabs.forEachIndexed { index, label ->
-                                androidx.compose.material3.Tab(
+                                Tab(
                                     selected = selectedTab == index,
                                     onClick = { selectedTab = index },
                                     text = { Text(text = label) },
@@ -1299,15 +1314,15 @@ private fun Preview_ContainerConfigDialog() {
             cpuListWoW64 = "0,1,2,3",
             wow64Mode = true,
             startupSelection = 1,
-            box86Version = com.winlator.core.DefaultVersion.BOX86,
-            box64Version = com.winlator.core.DefaultVersion.BOX64,
-            box86Preset = com.winlator.box86_64.Box86_64Preset.COMPATIBILITY,
-            box64Preset = com.winlator.box86_64.Box86_64Preset.COMPATIBILITY,
-            desktopTheme = com.winlator.core.WineThemeManager.DEFAULT_DESKTOP_THEME,
+            box86Version = DefaultVersion.BOX86,
+            box64Version = DefaultVersion.BOX64,
+            box86Preset = Box86_64Preset.COMPATIBILITY,
+            box64Preset = Box86_64Preset.COMPATIBILITY,
+            desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME,
             containerVariant = "glibc",
-            wineVersion = com.winlator.core.WineInfo.MAIN_WINE_VERSION.identifier(),
+            wineVersion = MAIN_WINE_VERSION.identifier(),
             emulator = "FEXCore",
-            fexcoreVersion = com.winlator.core.DefaultVersion.FEXCORE,
+            fexcoreVersion = DefaultVersion.FEXCORE,
             fexcoreTSOMode = "Fast",
             fexcoreX87Mode = "Fast",
             fexcoreMultiBlock = "Disabled",

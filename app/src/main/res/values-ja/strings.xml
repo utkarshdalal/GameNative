@@ -707,6 +707,7 @@
     <string name="vulkan_version">Vulkanバージョン</string>
     <string name="image_cache_size">画像キャッシュサイズ</string>
     <string name="dx_wrapper">DXラッパー</string>
+    <string name="display_renderer">ディスプレイレンダラー</string>
     <string name="vkd3d_feature_level">VKD3D 機能レベル</string>
     <string name="use_dri3">DRI3 を使用する</string>
     <string name="use_dri3_description">無効にすると、一部のデバイスでのグラフィックの不具合が修正される場合があります</string>

@@ -729,6 +729,7 @@
     <string name="vulkan_version">Vulkan Version</string>
     <string name="image_cache_size">Image Cache Size</string>
     <string name="dx_wrapper">DX Wrapper</string>
+    <string name="display_renderer">Display Renderer</string>
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">Use DRI3</string>
     <string name="use_dri3_description">Disabling may fix graphical glitches on some devices</string>
