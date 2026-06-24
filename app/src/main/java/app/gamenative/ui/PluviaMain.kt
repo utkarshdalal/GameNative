@@ -949,7 +949,6 @@ fun PluviaMain(
                         onSuccess = viewModel::launchApp,
                         isOffline = viewModel.isOffline.value,
                         bootToContainer = state.bootToContainer,
-                )
                     )
                 }
             }
