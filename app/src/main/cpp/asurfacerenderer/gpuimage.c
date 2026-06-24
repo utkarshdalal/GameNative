@@ -211,16 +211,20 @@ Java_com_winlator_renderer_GPUImage_hardwareBufferFromSocket(
     return (jlong)(uintptr_t)ahb;
 }
 
-JNIEXPORT void JNICALL
+JNIEXPORT jint JNICALL
 Java_com_winlator_renderer_GPUImage_copyHardwareBuffer(
-        JNIEnv *env, jobject obj, jobject srcBuffer, jlong dstPtr, jshort width, jshort height, jshort srcStride)
+        JNIEnv *env, jobject obj, jobject srcBuffer, jlong dstPtr, jshort width, jshort height, jshort srcStride, jint waitFence)
 {
     uint32_t* srcAddr = (uint32_t*)(*env)->GetDirectBufferAddress(env, srcBuffer);
     AHardwareBuffer *dstAhb = (AHardwareBuffer *)(uintptr_t)dstPtr;
-    if (!srcAddr || !dstAhb) return;
+    if (!srcAddr || !dstAhb) {
+        if (waitFence >= 0) close(waitFence);
+        return -1;
+    }
+    int32_t unlockFence = -1;
 
     void *dstAddrVoid = NULL;
-    if (AHardwareBuffer_lock(dstAhb, AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, -1, NULL, &dstAddrVoid) == 0) {
+    if (AHardwareBuffer_lock(dstAhb, AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, waitFence, NULL, &dstAddrVoid) == 0) {
         uint32_t* dstAddr = (uint32_t*)dstAddrVoid;
         AHardwareBuffer_Desc desc;
         AHardwareBuffer_describe(dstAhb, &desc);
@@ -234,10 +238,15 @@ Java_com_winlator_renderer_GPUImage_copyHardwareBuffer(
             }
         }
 
-        AHardwareBuffer_unlock(dstAhb, NULL);
+        if (AHardwareBuffer_unlock(dstAhb, &unlockFence) != 0) {
+            LOGE("nativeCopyHardwareBuffer: unlock failed");
+        }
     } else {
+        if (waitFence >= 0) close(waitFence);
         LOGE("nativeCopyHardwareBuffer: lock failed");
     }
+
+    return unlockFence;
 }
 
 JNIEXPORT jlong JNICALL
@@ -251,7 +260,8 @@ Java_com_winlator_renderer_GPUImage_createHardwareBuffer(
     desc.layers = 1;
     desc.format = AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM;
     desc.usage  = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE
-                  | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
+                  | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN
+                  | AHARDWAREBUFFER_USAGE_COMPOSER_OVERLAY;
 
     AHardwareBuffer *ahb = NULL;
     if (AHardwareBuffer_allocate(&desc, &ahb) != 0) {
@@ -398,4 +408,9 @@ Java_com_winlator_renderer_GPUImage_createImageKHR(JNIEnv *env, jclass obj, jlon
         return 0;
     }
     return (jlong)createImageKHR(hardwareBuffer, textureId);
+}
+
+JNIEXPORT void JNICALL
+Java_com_winlator_renderer_GPUImage_nativeCloseFd(JNIEnv *env, jclass clazz, jint fd) {
+    if (fd >= 0) close(fd);
 }

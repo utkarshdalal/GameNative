@@ -133,7 +133,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private native void nativeInitScanout();
     private native boolean nativeReattachSurface(Surface surface);
     private native void nativeDestroyScanout();
-    private native void nativeSetWindowBuffer(long contentId, long ahbPtr, int fenceFd, long windowId, long serial);
+    private native void nativeSetWindowBuffer(long contentId, long ahbPtr, int fenceFd, long windowId, long serial, GPUImage gpuimage, int slot);
     private native void nativeScanoutSetCursorVisibility(boolean visible);
     private native void nativeRegisterWindowSC(long contentId, String debugName);
     private native void nativeUnregisterWindowSC(long contentId);
@@ -445,19 +445,9 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             if (drawable.getTexture() instanceof GPUImage g) {
                 long ahbPtr = g.getScanoutHardwareBufferPtr();
                 if (ahbPtr != 0) {
-                    int fence = -1;
-                    boolean isFallback = (ahbPtr == g.getHardwareBufferPtr());
-
-                    if (isFallback) {
-                        fence = g.unlock();
-                    }
-
-                    nativeSetWindowBuffer(windowId, ahbPtr, fence, 0, 0);
+                    int acquireFence = g.consumeAcquireFence();
+                    nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot());
                     if (hudRef != null) hudRef.update();
-
-                    if (isFallback) {
-                        g.lock();
-                    }
                 }
             }
         }
@@ -475,7 +465,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             if (drawable.getTexture() instanceof GPUImage g) {
                 long ahbPtr = g.getHardwareBufferPtr();
                 if (ahbPtr != 0) {
-                    nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, xSerial);
+                    nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, xSerial, null, -1);
                     if (hudRef != null) hudRef.update();
                 }
             }

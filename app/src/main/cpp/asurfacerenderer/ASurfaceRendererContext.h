@@ -26,6 +26,13 @@ struct CallbackTarget {
     ~CallbackTarget();
 };
 
+struct BufferReleaseCtx {
+    JavaVM* vm;
+    jobject gpuImageRef;
+    jmethodID setSwapchainFenceId;
+    int slot;
+};
+
 class ASurfaceRendererContext {
 public:
     ASurfaceRendererContext(ANativeWindow* window, int cWidth, int cHeight);
@@ -46,8 +53,8 @@ public:
     // SC Management
     void registerWindowSC(int64_t contentId, const char* debugName = "(x11_window)");
     void unregisterWindowSC(int64_t contentId);
-    void setWindowBuffer(int64_t contentId, AHardwareBuffer* ahb, int fenceFd,
-                         int64_t windowId = 0, int64_t serial = 0);
+    void setWindowBuffer(JNIEnv* env, int64_t contentId, AHardwareBuffer* ahb, int fenceFd,
+                         int64_t windowId = 0, int64_t serial = 0, jobject gpuImage = nullptr, int slot = -1);
 
     void scanoutSetCursorVisibility(bool visible);
     void applyCursorGeometry(short x, short y, short hotX, short hotY, bool cursorVisible);
@@ -108,6 +115,7 @@ private:
     void* fnSTSetGeometry    = nullptr;
     void* fnSTSetBufferTransparency = nullptr;
     void* fnSTSetBufferTransform  = nullptr;
+    void* fnSTSetBufferWithRelease = nullptr;
     void* fnSTReparent  = nullptr;
     void oneShot(std::function<void(void*)> fill);
 

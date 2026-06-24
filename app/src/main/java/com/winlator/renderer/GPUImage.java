@@ -11,12 +11,16 @@ public class GPUImage extends Texture {
     private short stride;
     private int width = -1;
     private int height = -1;
+    private final Object fenceLock = new Object();
+    private int[] swapchainFences = new int[]{-1, -1, -1};
+    private int lastUsedSlot = 0;
+    private int lastAcquireFence = -1;
     private long[] swapchainAhbs = new long[3];
     private int swapchainIndex = 0;
     private static boolean supported = false;
 
     static {
-        System.loadLibrary("gpuimage");
+        System.loadLibrary("ahbimage");
     }
 
     public GPUImage(short width, short height) {
@@ -80,11 +84,44 @@ public class GPUImage extends Texture {
     public long getScanoutHardwareBufferPtr() {
         if (swapchainAhbs[0] != 0 && virtualData != null) {
             long targetAhb = swapchainAhbs[swapchainIndex];
-            copyHardwareBuffer(virtualData, targetAhb, (short)width, (short)height, stride);
+
+            int waitFence = -1;
+            synchronized (fenceLock) {
+                waitFence = swapchainFences[swapchainIndex];
+                swapchainFences[swapchainIndex] = -1;
+            }
+
+            if (lastAcquireFence >= 0) {
+                nativeCloseFd(lastAcquireFence);
+            }
+
+            lastAcquireFence = copyHardwareBuffer(virtualData, targetAhb, (short)width, (short)height, stride, waitFence);
+
+            lastUsedSlot = swapchainIndex;
             swapchainIndex = (swapchainIndex + 1) % 3;
             return targetAhb;
         }
         return hardwareBufferPtr;
+    }
+
+    public int getLastUsedSlot() {
+        return lastUsedSlot;
+    }
+
+    public int consumeAcquireFence() {
+        int fence = lastAcquireFence;
+        lastAcquireFence = -1;
+        return fence;
+    }
+
+    @Keep
+    public void setSwapchainFence(int slot, int fence) {
+        synchronized (fenceLock) {
+            if (swapchainFences[slot] >= 0) {
+                nativeCloseFd(swapchainFences[slot]);
+            }
+            swapchainFences[slot] = fence;
+        }
     }
 
     public int getHeight() { return height; }
@@ -102,6 +139,18 @@ public class GPUImage extends Texture {
 
     @Override
     public void destroy() {
+        if (lastAcquireFence >= 0) {
+            nativeCloseFd(lastAcquireFence);
+            lastAcquireFence = -1;
+        }
+        synchronized (fenceLock) {
+            for (int i = 0; i < 3; i++) {
+                if (swapchainFences[i] >= 0) {
+                    nativeCloseFd(swapchainFences[i]);
+                    swapchainFences[i] = -1;
+                }
+            }
+        }
         if (imageKHRPtr != 0) {
             destroyImageKHR(imageKHRPtr);
             imageKHRPtr = 0;
@@ -165,9 +214,11 @@ public class GPUImage extends Texture {
 
     private native void destroyImageKHR(long imageKHRPtr);
 
-    private native void copyHardwareBuffer(ByteBuffer srcBuffer, long dstPtr, short width, short height, short srcStride);
+    private native int copyHardwareBuffer(ByteBuffer srcBuffer, long dstPtr, short width, short height, short srcStride, int waitFence);
 
     public static native short nativeGetWidth(long ptr);
 
     public static native short nativeGetHeight(long ptr);
+
+    private static native void nativeCloseFd(int fd);
 }

@@ -84,25 +84,25 @@ enable_16kb_pages(drawable)
 # GPUImage library
 # =========================================================
 
-add_library(gpuimage SHARED
+add_library(ahbimage SHARED
         gpuimage.c
 )
 
-target_compile_definitions(gpuimage PRIVATE
+target_compile_definitions(ahbimage PRIVATE
         EGL_EGLEXT_PROTOTYPES
         GL_GLEXT_PROTOTYPES
 )
 
-target_compile_options(gpuimage PRIVATE
+target_compile_options(ahbimage PRIVATE
         -Wall
         -Wextra
 )
 
-target_link_libraries(gpuimage
+target_link_libraries(ahbimage
         log
         android
         EGL
         GLESv2
 )
 
-enable_16kb_pages(gpuimage)
+enable_16kb_pages(ahbimage)

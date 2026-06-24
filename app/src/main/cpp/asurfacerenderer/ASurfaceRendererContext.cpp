@@ -9,6 +9,8 @@
 #include <mutex>
 #include <functional>
 
+typedef void (*ASurfaceTransaction_OnBufferRelease)(void* context, int release_fence_fd);
+
 typedef void* (*pfn_SCCreateFromWindow)(ANativeWindow*, const char*);
 typedef void  (*pfn_SCRelease)(void*);
 typedef void* (*pfn_STCreate)();
@@ -23,6 +25,9 @@ typedef void  (*pfn_STSetBufferTransform)(void*, void*, int32_t);
 typedef void  (*pfn_STSetOnComplete)(void* transaction, void* context,
                                     void (*callback)(void* context, void* stats));
 typedef void  (*pfn_STReparent)(void*, void*, void*);
+typedef void (*pfn_STSetBufferWithRelease)(void* transaction, void* surface_control,
+                                           AHardwareBuffer* buffer, int acquire_fence_fd,
+                                           void* context, ASurfaceTransaction_OnBufferRelease func);
 
 #define SC_CREATE(win, name)   ((pfn_SCCreateFromWindow)fnSCCreateFromWin)((win),(name))
 #define SC_RELEASE(sc)         ((pfn_SCRelease)fnSCRelease)((sc))
@@ -30,11 +35,42 @@ typedef void  (*pfn_STReparent)(void*, void*, void*);
 #define ST_DELETE(t)           ((pfn_STDelete)fnSTDelete)((t))
 #define ST_APPLY(t)            ((pfn_STApply)fnSTApply)((t))
 #define ST_SETBUF(t,sc,b,f)    ((pfn_STSetBuffer)fnSTSetBuffer)((t),(sc),(b),(f))
+#define ST_SETBUF_WITH_RELEASE(t, sc, b, f, ctx, cb) if(fnSTSetBufferWithRelease) ((pfn_STSetBufferWithRelease)fnSTSetBufferWithRelease)((t),(sc),(b),(f),(ctx),(cb))
 #define ST_SETZORDER(t,sc,z)   if(fnSTSetZOrder) ((pfn_STSetZOrder)fnSTSetZOrder)((t),(sc),(z))
 #define ST_SETVIS(t,sc,v)      ((pfn_STSetVisibility)fnSTSetVisibility)((t),(sc),(v))
 #define ST_SETGEO(t,sc,s,d,r)  ((pfn_STSetGeometry)fnSTSetGeometry)((t),(sc),(s),(d),(r))
 #define ST_SET_TRANSPARENCY(t,sc,tr) if(fnSTSetBufferTransparency) ((pfn_STSetBufferTransparency)fnSTSetBufferTransparency)((t),(sc),(tr))
 #define ST_REPARENT(t,sc,p)    if(fnSTReparent) ((pfn_STReparent)fnSTReparent)((t),(sc),(p))
+
+static void bufferReleaseCallback(void* context, int release_fence_fd) {
+    auto* ctx = static_cast<BufferReleaseCtx*>(context);
+    if (!ctx) {
+        if (release_fence_fd >= 0) close(release_fence_fd);
+        return;
+    }
+
+    if (ctx->gpuImageRef && ctx->setSwapchainFenceId) {
+        JNIEnv* env = nullptr;
+        bool attached = false;
+        if (ctx->vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_EDETACHED) {
+            ctx->vm->AttachCurrentThreadAsDaemon(reinterpret_cast<JNIEnv**>(&env), nullptr);
+            attached = true;
+        }
+
+        if (env) {
+            env->CallVoidMethod(ctx->gpuImageRef, ctx->setSwapchainFenceId, ctx->slot, release_fence_fd);
+            if (env->ExceptionCheck()) {
+                env->ExceptionClear();
+            }
+            env->DeleteGlobalRef(ctx->gpuImageRef);
+        } else if (release_fence_fd >= 0) {
+            close(release_fence_fd);
+        }
+    } else if (release_fence_fd >= 0) {
+        close(release_fence_fd);
+    }
+    delete ctx;
+}
 
 void ASurfaceRendererContext::oneShot(std::function<void(void*)> fill) {
     void* tx = ST_CREATE();
@@ -119,6 +155,7 @@ bool ASurfaceRendererContext::loadScanoutApi() {
     fnSTSetBufferTransparency = dlsym(lib, "ASurfaceTransaction_setBufferTransparency");
     fnSTSetBufferTransform = dlsym(lib, "ASurfaceTransaction_setBufferTransform");
     fnSTReparent      = dlsym(lib, "ASurfaceTransaction_reparent");
+    fnSTSetBufferWithRelease = dlsym(lib, "ASurfaceTransaction_setBufferWithRelease");
     sfCallbackSupported = fnSTSetOnComplete != nullptr;
     bool coreOk = fnSCCreateFromWin && fnSCRelease && fnSTCreate && fnSTDelete && fnSTSetOnComplete && fnSTReparent &&
                   fnSTApply && fnSTSetBuffer && fnSTSetVisibility && fnSTSetGeometry && fnSTSetBufferTransparency && fnSTSetBufferTransform;
@@ -258,12 +295,8 @@ void ASurfaceRendererContext::scanoutSetCursorPos(short x, short y, short hotX, 
     applyCursorGeometry(x, y, hotX, hotY, cursorVisible);
 }
 
-void ASurfaceRendererContext::setWindowBuffer(int64_t contentId, AHardwareBuffer* ahb, int fenceFd, int64_t windowId, int64_t serial) {
-    if (!ahb) {
-        if (fenceFd >= 0)
-            close(fenceFd);
-        return;
-    }
+void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AHardwareBuffer* ahb, int fenceFd, int64_t windowId, int64_t serial, jobject gpuImage, int slot) {
+    if (!ahb) { if (fenceFd >= 0) close(fenceFd); return; }
 
     void* sc = nullptr;
     {
@@ -276,7 +309,19 @@ void ASurfaceRendererContext::setWindowBuffer(int64_t contentId, AHardwareBuffer
         sc = it->second;
     }
     void* tx = ST_CREATE();
-    ST_SETBUF(tx, sc, ahb, fenceFd);
+    BufferReleaseCtx* relCtx = nullptr;
+    if (fnSTSetBufferWithRelease && gpuImage && slot >= 0) {
+        relCtx = new BufferReleaseCtx();
+        relCtx->vm = javaVm;
+        relCtx->gpuImageRef = env->NewGlobalRef(gpuImage);
+        jclass cls = env->GetObjectClass(gpuImage);
+        relCtx->setSwapchainFenceId = env->GetMethodID(cls, "setSwapchainFence", "(II)V");
+        env->DeleteLocalRef(cls);
+        relCtx->slot = slot;
+        ST_SETBUF_WITH_RELEASE(tx, sc, ahb, fenceFd, relCtx, bufferReleaseCallback);
+    } else {
+        ST_SETBUF(tx, sc, ahb, fenceFd);
+    }
     ST_SET_TRANSPARENCY(tx, sc, 2);
     if (windowId != 0 || serial != 0) {
         attachOnCompleteCallback(tx, windowId, serial);

@@ -140,18 +140,21 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeScanoutSetCursorVisibility(
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeSetWindowBuffer(
-        JNIEnv*, jobject, jlong contentId,
-        jlong ahbPtr, jint fenceFd, jlong windowId, jlong serial)
+        JNIEnv* env, jobject, jlong contentId,
+        jlong ahbPtr, jint fenceFd, jlong windowId, jlong serial, jobject gpuImage, jint slot)
 {
     std::shared_lock lk(g_ctxMutex);
     if (auto* r = g_ctx) {
         if (ahbPtr) {
             r->setWindowBuffer(
+                    env,
                     (int64_t) contentId,
                     reinterpret_cast<AHardwareBuffer *>(ahbPtr),
                     (int) fenceFd,
                     (int64_t) windowId,
-                    (int64_t) serial);
+                    (int64_t) serial,
+                    gpuImage,
+                    (int) slot);
         }
     }
 }
