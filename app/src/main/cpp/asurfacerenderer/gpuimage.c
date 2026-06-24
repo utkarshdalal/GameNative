@@ -261,6 +261,8 @@ Java_com_winlator_renderer_GPUImage_createHardwareBuffer(
     desc.format = AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM;
     desc.usage  = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE
                   | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN
+                  | AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER
+                  | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN
                   | AHARDWAREBUFFER_USAGE_COMPOSER_OVERLAY;
 
     AHardwareBuffer *ahb = NULL;
