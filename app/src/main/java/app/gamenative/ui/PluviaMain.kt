@@ -1,6 +1,7 @@
 package app.gamenative.ui
 
 import android.content.Context
+import android.app.Activity
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -80,6 +81,7 @@ import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.components.BootingSplash
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.ConnectionState
+import app.gamenative.launch.LaunchReadiness
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
@@ -328,6 +330,7 @@ fun PluviaMain(
 
     // Check for updates on app start
     LaunchedEffect(Unit) {
+        if (BuildConfig.MODERN_XR) return@LaunchedEffect
         val checkedUpdateInfo = UpdateChecker.checkForUpdate(context)
         if (checkedUpdateInfo != null) {
             val appVersionCode = BuildConfig.VERSION_CODE
@@ -847,6 +850,7 @@ fun PluviaMain(
                 setMessageDialogState(MessageDialogState(false))
             }
         }
+
 
         DialogType.EXECUTABLE_NOT_FOUND -> {
             onConfirmClick = null
@@ -1554,6 +1558,12 @@ fun preLaunchApp(
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
     CoroutineScope(Dispatchers.IO).launch {
+        if (LaunchReadiness.pending) {
+            setLoadingDialogVisible(false)
+            (context as? Activity)?.let { LaunchReadiness.resolve(it) }
+            return@launch
+        }
+
         // create container if it does not already exist
         // TODO: combine somehow with container creation in HomeLibraryAppScreen
         val containerManager = ContainerManager(context)
