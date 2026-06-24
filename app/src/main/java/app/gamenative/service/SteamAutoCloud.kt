@@ -73,6 +73,9 @@ object SteamAutoCloud {
 
     private const val MAX_USER_FILE_RETRIES = 3
 
+    // a leading "%Root%" token Steam sometimes inlines into an otherwise-prefixless filename.
+    private val EMBEDDED_ROOT_TOKEN = Regex("^%[^%]+%")
+
     internal data class HashLookupResult(
         val sha: ByteArray,
         val wasCacheHit: Boolean,
@@ -317,19 +320,18 @@ object SteamAutoCloud {
         val hashCacheDao = steamInstance.db.steamFileHashCacheDao()
 
         val getFullFilePath: (AppFileInfo, AppFileChangeList) -> Path = getFullFilePath@{ file, fileList ->
-            val gameInstallPrefix = "%${PathType.GameInstall.name}%"
-            if (file.filename.startsWith(gameInstallPrefix)) {
-                // Steam API sometimes returns prefix="" and filename="%GameInstall%save0.dat" instead of splitting correctly.
-                // Strip the embedded prefix (and any leading slash) to get the bare filename.
-                val stripped = file.filename.removePrefix(gameInstallPrefix).trimStart('/')
-                // If a Windows rootoverride remaps GameInstall → another directory (e.g.
-                // Danganronpa 2: WinMyDocuments/My Games/Danganronpa2/), download there instead
-                // of the raw game-install folder so the game can find its saves.
-                val remapped = cloudPrefixToLocalPath[gameInstallPrefix]
-                return@getFullFilePath if (remapped != null) {
-                    Paths.get(remapped, stripped)
-                } else {
-                    Paths.get(prefixToPath(PathType.GameInstall.name), stripped)
+            // Steam sometimes returns prefix="" with the root token inlined in the filename
+            // ("%GameInstall%save0.dat", "%WinAppDataLocal%cc.save"). decode any leading %Root%
+            // token to its real local dir, else it lands as a literal-named file under
+            // userdata/remote and the game can't find its save (see #508, %GameInstall%-only).
+            // resolve via the game's rootoverride map (encodes path + remap), else the raw root.
+            val embeddedToken = EMBEDDED_ROOT_TOKEN.find(file.filename)?.value
+            if (embeddedToken != null) {
+                val localRoot = cloudPrefixToLocalPath[embeddedToken]
+                    ?: runCatching { PathType.valueOf(embeddedToken.trim('%')) }.getOrNull()?.let { prefixToPath(it.name) }
+                if (localRoot != null) {
+                    val stripped = file.filename.removePrefix(embeddedToken).trimStart('/')
+                    return@getFullFilePath Paths.get(localRoot, stripped)
                 }
             }
 
