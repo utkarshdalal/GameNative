@@ -218,8 +218,13 @@
 
     // OMORI step-3: when WebViewScreen knows the Steam launch arg for this title, the
     // IndexHtmlRewriter emits `window.__gnNwArgv = ["--<key>"]` BEFORE this shim runs.
-    // wrap nwRoot in an outer Proxy so `nw.App.argv` returns the real array; everything
-    // else (nw.App.quit, nw.Window.get(), etc.) falls through to the deep proxy.
+    // wrap nwRoot in an outer Proxy so `nw.App.argv` returns the real array.
+    // everything else MUST delegate to the concrete appStub -- Impact-engine titles
+    // (CrossCode) read nw.App.dataPath to build their save-file path, and appStub is the
+    // only surface that carries dataPath/getDataPath/quit/manifest. deep-proxying here
+    // (the old behavior) shadowed appStub entirely whenever __gnNwArgv was set, so Steam
+    // launches -- which DO emit an argv -- got a marker string for dataPath and wrote saves
+    // to a garbage path, while GOG (no argv, branch skipped) kept the working appStub.
     if (Array.isArray(window.__gnNwArgv)) {
         var argvOverride = window.__gnNwArgv.slice();
         var appProxy = new Proxy(function () {}, {
@@ -227,7 +232,7 @@
                 if (prop === 'argv') return argvOverride;
                 if (prop === 'then') return undefined;
                 if (typeof prop === 'symbol') return undefined;
-                return makeDeepProxy('nw.App.' + String(prop));
+                return appStub[prop];
             },
             apply: function () { return makeDeepProxy('nw.App()'); },
         });
