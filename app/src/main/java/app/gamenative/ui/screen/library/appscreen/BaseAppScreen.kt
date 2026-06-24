@@ -1201,6 +1201,9 @@ abstract class BaseAppScreen {
             }
         }
 
+        val launchActivity = context as? android.app.Activity
+        var showReadiness by remember { mutableStateOf(false) }
+
         // Render the common UI
         app.gamenative.ui.screen.library.AppScreenContent(
             displayInfo = displayInfo,
@@ -1212,10 +1215,14 @@ abstract class BaseAppScreen {
             isUpdatePending = isUpdatePendingState,
             downloadInfo = downloadInfo,
             onDownloadInstallClick = {
-                onDownloadInstallClick(context, libraryItem, onClickPlay)
-                uiScope.launch {
-                    delay(100)
-                    performStateRefresh(true)
+                if (app.gamenative.launch.LaunchReadiness.pending) {
+                    showReadiness = true
+                } else {
+                    onDownloadInstallClick(context, libraryItem, onClickPlay)
+                    uiScope.launch {
+                        delay(100)
+                        performStateRefresh(true)
+                    }
                 }
             },
             onPauseResumeClick = {
@@ -1234,6 +1241,19 @@ abstract class BaseAppScreen {
             onBack = onBack,
             optionsMenu = optionsMenu.toTypedArray(),
         )
+
+        if (showReadiness && launchActivity != null) {
+            app.gamenative.launch.LaunchReadiness.Prompt(launchActivity) {
+                showReadiness = false
+                if (!app.gamenative.launch.LaunchReadiness.pending) {
+                    onDownloadInstallClick(context, libraryItem, onClickPlay)
+                    uiScope.launch {
+                        delay(100)
+                        performStateRefresh(true)
+                    }
+                }
+            }
+        }
 
         // Show container config dialog if needed
         if (showConfigDialog) {

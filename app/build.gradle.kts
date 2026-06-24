@@ -24,6 +24,9 @@ val keystoreProperties: Properties? = if (keystorePropertiesFile.exists()) {
 val posthogApiKey: String = project.findProperty("POSTHOG_API_KEY") as String? ?: System.getenv("POSTHOG_API_KEY") ?: ""
 val posthogHost: String = project.findProperty("POSTHOG_HOST") as String? ?: System.getenv("POSTHOG_HOST") ?: "https://us.i.posthog.com"
 
+val metaAppId: String = project.findProperty("META_APP_ID") as String? ?: System.getenv("META_APP_ID") ?: ""
+val productSku: String = project.findProperty("PRODUCT_SKU") as String? ?: System.getenv("PRODUCT_SKU") ?: ""
+
 room {
     schemaDirectory("$projectDir/schemas")
 }
@@ -59,6 +62,7 @@ android {
 
         manifestPlaceholders["screenOrientation"] = "unspecified"
         buildConfigField("boolean", "XR_BUILD", "false")
+        buildConfigField("boolean", "MODERN_XR", "false")
 
         versionCode = 14
         versionName = "1.1.0"
@@ -150,6 +154,9 @@ android {
             buildConfigField("boolean", "MODERN_ANDROID", "true")
             buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic-wx.so\"")
             buildConfigField("boolean", "XR_BUILD", "true")
+            buildConfigField("boolean", "MODERN_XR", "true")
+            buildConfigField("String", "META_APP_ID", "\"$metaAppId\"")
+            buildConfigField("String", "PRODUCT_SKU", "\"$productSku\"")
             manifestPlaceholders["screenOrientation"] = "landscape"
         }
     }
@@ -220,16 +227,25 @@ android {
             isIncludeAndroidResources = true
         }
     }
+
+    lint {
+        // Locale files ship full AndroidX appcompat (abc_*) translations that aren't in the
+        // default locale. These extra translations are harmless and pre-existing; without this
+        // the release-only lintVital pass fails on 150+ ExtraTranslation errors.
+        disable += "ExtraTranslation"
+    }
     dynamicFeatures += setOf(":ubuntufs")
 
     // Configure Assets to be used in different variants
     sourceSets {
         getByName("legacy") {
+            java.srcDir("src/nonXr/java")
             assets {
                 srcDirs("src/legacy/assets", "src/main/assets")
             }
         }
         getByName("legacyXr") {
+            java.srcDir("src/nonXr/java")
             manifest.srcFile("src/legacy/AndroidManifest.xml")
             assets {
                 srcDirs("src/legacy/assets", "src/main/assets")
@@ -239,6 +255,7 @@ android {
             }
         }
         getByName("modern") {
+            java.srcDir("src/nonXr/java")
             assets {
                 srcDirs("src/modern/assets", "src/main/assets")
             }
@@ -391,4 +408,7 @@ dependencies {
     implementation("com.posthog:posthog-android:3.8.0")
 
     implementation("com.auth0.android:jwtdecode:2.0.2")
+
+    "modernXrImplementation"("com.meta.horizon.platform.sdk:core-kotlin:0.2.2")
+    "modernXrImplementation"("com.meta.horizon.platform.sdk:iap-kotlin:0.2.2")
 }
