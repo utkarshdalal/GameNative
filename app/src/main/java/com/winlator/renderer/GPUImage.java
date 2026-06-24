@@ -16,7 +16,7 @@ public class GPUImage extends Texture {
     private static boolean supported = false;
 
     static {
-        System.loadLibrary("gpuimage");
+        System.loadLibrary("ahbimage");
     }
 
     public GPUImage(short width, short height) {
