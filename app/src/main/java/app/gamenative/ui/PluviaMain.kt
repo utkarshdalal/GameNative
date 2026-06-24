@@ -807,6 +807,7 @@ fun PluviaMain(
                     setLoadingMessage = viewModel::setLoadingDialogMessage,
                     setMessageDialogState = setMessageDialogState,
                     onSuccess = viewModel::launchApp,
+                    bootToContainer = state.bootToContainer,
                 )
                 msgDialogState = MessageDialogState(false)
             }
@@ -820,6 +821,7 @@ fun PluviaMain(
                     setLoadingMessage = viewModel::setLoadingDialogMessage,
                     setMessageDialogState = setMessageDialogState,
                     onSuccess = viewModel::launchApp,
+                    bootToContainer = state.bootToContainer,
                 )
                 msgDialogState = MessageDialogState(false)
             }
@@ -900,6 +902,8 @@ fun PluviaMain(
                     isOffline = viewModel.isOffline.value,
                     bootToContainer = state.bootToContainer,
                 )
+                    bootToContainer = state.bootToContainer,
+                )
             }
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
@@ -946,6 +950,8 @@ fun PluviaMain(
                         setMessageDialogState = setMessageDialogState,
                         onSuccess = viewModel::launchApp,
                         isOffline = viewModel.isOffline.value,
+                        bootToContainer = state.bootToContainer,
+                )
                     )
                 }
             }
@@ -1437,12 +1443,13 @@ fun PluviaMain(
                 } */
 
                 /** Game Screen **/
-                composable(route = PluviaScreen.XServer.route) {
+                    composable(route = PluviaScreen.XServer.route) {
                     val xServerIsOffline by viewModel.isOffline.collectAsStateWithLifecycle()
+                    val currentState = viewModel.state.value
                     XServerScreen(
-                        appId = state.launchedAppId,
-                        bootToContainer = state.bootToContainer,
-                        testGraphics = state.testGraphics,
+                        appId = currentState.launchedAppId,
+                        bootToContainer = currentState.bootToContainer,
+                        testGraphics = currentState.testGraphics,
                         isOffline = xServerIsOffline,
                         registerBackAction = { cb ->
                             Timber.d("registerBackAction called: $cb")
