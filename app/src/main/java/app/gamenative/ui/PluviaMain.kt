@@ -902,8 +902,6 @@ fun PluviaMain(
                     isOffline = viewModel.isOffline.value,
                     bootToContainer = state.bootToContainer,
                 )
-                    bootToContainer = state.bootToContainer,
-                )
             }
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
