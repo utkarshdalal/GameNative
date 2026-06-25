@@ -651,6 +651,13 @@ class Html5SaveSyncService @Inject constructor(
                 "sync rerouting to fsbridge (fs-authoritative) direction=%s appId=%s originalMechanism=%s",
                 dirLabel, appId, setup.strategy.mechanism,
             )
+            // fs-authoritative: the chromium leveldb is runtime scratch, not saves. on outbound,
+            // evict the wine-side leveldb staging so it isn't re-uploaded or re-pulled locally
+            // (cloud cleanup is then provider-dependent -- GOG mirror-deletes, Steam doesn't). live
+            // WebView store + on-disk .rpgsave untouched (different dirs; FsBridge IO is a no-op).
+            if (direction == Direction.OUTBOUND) {
+                scrubWineLevelDbStaging(appId, setup.paths)
+            }
             SaveSyncStrategy.FsBridge
         } else {
             setup.strategy
@@ -673,6 +680,22 @@ class Html5SaveSyncService @Inject constructor(
             setup.paths.syncMode,
             effectiveStrategy.mechanism,
         )
+    }
+
+    // delete ONLY the chromium leveldb/blob leaf dirs under the wine prefix (Local Storage/leveldb,
+    // IndexedDB/<origin>.indexeddb.{leveldb,blob}). SaveDirectoryResolver always resolves these as
+    // leaf dirs distinct from userDataRoot (where .rpgsave lives), so this never touches game saves.
+    // idempotent: once gone, exists() filters them out and nothing re-stages wine-side chromium.
+    internal fun scrubWineLevelDbStaging(appId: String, paths: SaveDirectoryResolver.SavePathPair) {
+        listOfNotNull(
+            paths.wine.localStorageLevelDb,
+            paths.wine.indexedDbLevelDb,
+            paths.wine.indexedDbBlob,
+        ).filter { it.exists() }.forEach { dir ->
+            runCatching { dir.deleteRecursively() }
+                .onSuccess { ok -> Timber.tag(TAG).i("scrubbed wine leveldb staging appId=%s dir=%s ok=%s", appId, dir.absolutePath, ok) }
+                .onFailure { Timber.tag(TAG).w(it, "scrub wine leveldb staging failed appId=%s dir=%s", appId, dir.absolutePath) }
+        }
     }
 
     private fun newestFileMtime(dir: File?): Long {

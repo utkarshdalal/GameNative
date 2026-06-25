@@ -19,8 +19,11 @@ import io.mockk.mockkConstructor
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.mockk.verify
+import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -90,7 +93,7 @@ class Html5SaveSyncServiceFsBridgeTest {
 
     @Test
     fun syncInbound_fsbridgeProfileWithStrippedSavesBlock_skipsResolver() {
-        // profile has saves=null — forProfile returns FsBridge per the universal default.
+        // profile has saves=null — forProfile returns FsBridge (the explicit-null branch).
         // would blow up in SaveDirectoryResolver.resolve if the short-circuit were missing.
         val profile = EngineProfile(engine = "pack:rmmv", saves = null)
         every {
@@ -132,6 +135,39 @@ class Html5SaveSyncServiceFsBridgeTest {
 
         runBlocking { service.mirrorOnFlip("STEAM_3373660", Html5SaveSyncService.FlipDirection.WEBVIEW_TO_WINE) }
         verify(exactly = 0) { SnackbarManager.show(any()) }
+    }
+
+    // ---------------- scrub safety invariant ----------------
+
+    // scrub must delete ONLY the chromium leveldb/blob leaf dirs and NEVER userDataRoot or the
+    // sibling .rpgsave files (for rmmv userDataRoot == www/save, where real saves live). a wrong
+    // delete here would propagate to a cloud save wipe on the next UFS pass.
+    @Test
+    fun scrubWineLevelDbStaging_deletesChromiumLeafDirs_preservesSaveFiles() {
+        val root = tempFolder.newFolder("wine-save") // userDataRoot, e.g. <install>/www/save
+        val rpgsave = File(root, "file1.rpgsave").apply { writeText("save") }
+        val ls = File(root, "Local Storage/leveldb").apply { mkdirs(); File(this, "CURRENT").writeText("x") }
+        val idbLeveldb = File(root, "IndexedDB/file__0.indexeddb.leveldb").apply { mkdirs(); File(this, "CURRENT").writeText("x") }
+        val idbBlob = File(root, "IndexedDB/file__0.indexeddb.blob").apply { mkdirs(); File(this, "1").writeText("x") }
+
+        val paths = SaveDirectoryResolver.SavePathPair(
+            webView = SaveDirectoryResolver.WebViewPaths(localStorageLevelDb = root, indexedDbLevelDb = null, indexedDbBlob = null),
+            wine = SaveDirectoryResolver.WinePaths(
+                userDataRoot = root,
+                localStorageLevelDb = ls,
+                indexedDbLevelDb = idbLeveldb,
+                indexedDbBlob = idbBlob,
+            ),
+            syncMode = SyncMode.LOCAL_ONLY,
+        )
+
+        service.scrubWineLevelDbStaging("STEAM_3373660", paths)
+
+        assertFalse("LS leveldb must be scrubbed", ls.exists())
+        assertFalse("IDB leveldb must be scrubbed", idbLeveldb.exists())
+        assertFalse("IDB blob must be scrubbed", idbBlob.exists())
+        assertTrue("userDataRoot must be preserved", root.exists())
+        assertTrue(".rpgsave must be preserved", rpgsave.exists())
     }
 
     // ---------------- helpers ----------------

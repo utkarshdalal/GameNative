@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.AssetManager
 import androidx.test.core.app.ApplicationProvider
 import app.gamenative.html5.host.resolveShimUrls
+import app.gamenative.html5.savesync.SaveSyncStrategy
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
@@ -14,6 +15,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -140,6 +142,20 @@ class ProfileSchemaTest {
         assertNotNull("expected rmmv pack to load", result)
         assertEquals("pack:rmmv", result!!.engine)
         assertEquals("index.html", result.entryPoint)
+    }
+
+    // rmmv ships no static save mechanism -- it defaults to leveldb-origin-rewrite, the safe
+    // fallback for an rmmv build that saves to chromium. fs-save rmmv titles flip to FsBridge at
+    // runtime, so pinning "fsbridge" here would strand leveldb-saving builds. guards that regression.
+    @Test
+    fun loadPackDefaults_rmmv_defaultsToLevelDbForRuntimeRouting() {
+        val result = ProfileRegistry.loadPackDefaults(context, "pack:rmmv")
+        assertNotNull("rmmv pack must load", result)
+        assertEquals("leveldb-origin-rewrite", result!!.saves?.sync?.mechanism)
+        assertSame(
+            SaveSyncStrategy.LevelDbOriginRewrite,
+            SaveSyncStrategy.forProfile(result),
+        )
     }
 
     @Test

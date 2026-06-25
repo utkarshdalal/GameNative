@@ -32,8 +32,8 @@ data class SaveSyncSpec(
     // posture for unknown nwjs titles. typically configured per-title via
     // <pack>-patches.json byAppId override, not at pack level.
     val bypassFsBridgeReroute: Boolean = false,
-    // dispatched by SaveSyncStrategy.forProfile. unknown values throw. default
-    // "leveldb-origin-rewrite" matches every html5 pack we ship -- packs only override
-    // when the title genuinely uses a different sync strategy (e.g. "opfs-mirror").
+    // dispatched by SaveSyncStrategy.forProfile (which owns the routing rules). default
+    // "leveldb-origin-rewrite" is the chromium web-storage sync used by every shipped pack; set
+    // explicitly only for a strategy a title always uses (e.g. c3+worker → "opfs-mirror").
     val mechanism: String = "leveldb-origin-rewrite",
 )

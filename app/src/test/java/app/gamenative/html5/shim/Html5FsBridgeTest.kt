@@ -399,6 +399,36 @@ class Html5FsBridgeTest {
         )
     }
 
+    // ---------------- fs-save-mode signalling ----------------
+
+    // markFsSaveMode is the eager fs-authoritative signal (fs.js fires it the moment RMMV save
+    // routing switches to require('fs'), before any write). it must invoke onFsUsage so the host
+    // marks the container fs-authoritative at boot rather than waiting for the first .rpgsave.
+    @Test
+    fun markFsSaveMode_invokesOnFsUsage() {
+        var count = 0
+        val b = Html5FsBridge(
+            containerId = "STEAM_test",
+            sandboxRoot = tempFolder.root,
+            onFsUsage = { count++ },
+        )
+        b.markFsSaveMode()
+        assertEquals(1, count)
+    }
+
+    // a mutating write also signals fs usage (the general fallback path).
+    @Test
+    fun writeFile_invokesOnFsUsage() {
+        var count = 0
+        val b = Html5FsBridge(
+            containerId = "STEAM_test",
+            sandboxRoot = tempFolder.root,
+            onFsUsage = { count++ },
+        )
+        b.writeFile("save/file1.rpgsave", "data", "utf8")
+        assertTrue("write must signal fs usage", count >= 1)
+    }
+
     // ---------------- fixture reader (mirrors SteamworksStubTest idiom) ----------------
 
     private fun readFixtureBytes(relPath: String): ByteArray {

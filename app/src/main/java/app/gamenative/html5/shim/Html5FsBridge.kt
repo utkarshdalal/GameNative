@@ -202,6 +202,15 @@ class Html5FsBridge(
         }.getOrDefault(false)
     }
 
+    // eager fs-save-mode signal. fs.js calls this the moment it forces StorageManager.isLocalMode
+    // =true (rmmv save routing switches to require('fs')), before any write -- front-running
+    // onFsUsage so the container is marked fs-authoritative at boot. without it, a session that
+    // writes chromium scratch and exits before the first .rpgsave would sync that scratch. idempotent.
+    @JavascriptInterface
+    fun markFsSaveMode() {
+        onFsUsage()
+    }
+
     // ---------------- encoding ----------------
 
     // decode JS string content per node-style encoding for write/append. utf8 maps to the raw

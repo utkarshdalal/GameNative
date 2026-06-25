@@ -188,7 +188,8 @@ sealed class SaveSyncStrategy {
         }
     }
 
-    // strategy C -- fsbridge. the new universal default.
+    // strategy C -- fsbridge. not the shipped default; reached at runtime when a container is
+    // fs-authoritative (Html5SaveSyncService.runSync reroute), or via explicit "fsbridge".
     // bytes already sit on disk at <container.installPath>/<game-relative-path> via Html5FsBridge
     // boundaries are no-ops: no KV translation, no format rewrite. Steam
     // Cloud UFS + Wine-side NW.js read the same bytes the WebView fsBridge wrote. confirms
@@ -226,10 +227,11 @@ sealed class SaveSyncStrategy {
     }
 
     companion object {
-        // profile dispatch. universal default is FsBridge (null, empty,
-        // missing saves block, or explicit "fsbridge" all resolve to it). explicit LevelDb or
-        // Rmmv values still route to their dormant strategies as an escape hatch. ONLY
-        // truly unrecognized non-empty values throw -- those indicate a typo in a profile.
+        // dispatch on saves.sync.mechanism. shipped default is LevelDbOriginRewrite (the SaveSpec
+        // default). fs-only-save titles aren't pinned here; they're rerouted to FsBridge at runtime
+        // by Html5FsAuthoritative when fs writes are detected (see runSync), so each title
+        // self-selects its substrate without per-title config. null/empty also map to FsBridge;
+        // unknown values throw.
         fun forProfile(profile: EngineProfile): SaveSyncStrategy {
             val m = profile.saves?.sync?.mechanism
             return when {
