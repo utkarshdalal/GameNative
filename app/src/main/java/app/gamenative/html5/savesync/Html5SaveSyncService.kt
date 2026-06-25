@@ -644,6 +644,11 @@ class Html5SaveSyncService @Inject constructor(
                 "sync rerouting to fsbridge (fs-authoritative) direction=%s appId=%s originalMechanism=%s",
                 dirLabel, appId, setup.strategy.mechanism,
             )
+            // evict the Wine-side leveldb copy so it isn't re-uploaded or re-pulled (whether the cloud
+            // copy goes too is provider-dependent: GOG mirror-deletes, Steam doesn't).
+            if (direction == Direction.OUTBOUND) {
+                scrubWineLevelDbStaging(appId, setup.paths)
+            }
             SaveSyncStrategy.FsBridge
         } else {
             setup.strategy
@@ -672,6 +677,20 @@ class Html5SaveSyncService @Inject constructor(
             effectiveStrategy.mechanism,
         )
         return effectiveStrategy
+    }
+
+    // ONLY the chromium leaf dirs; the resolver keeps them distinct from userDataRoot, so game saves
+    // are never touched.
+    internal fun scrubWineLevelDbStaging(appId: String, paths: SaveDirectoryResolver.SavePathPair) {
+        listOfNotNull(
+            paths.wine.localStorageLevelDb,
+            paths.wine.indexedDbLevelDb,
+            paths.wine.indexedDbBlob,
+        ).filter { it.exists() }.forEach { dir ->
+            runCatching { dir.deleteRecursively() }
+                .onSuccess { ok -> Timber.tag(TAG).i("scrubbed wine leveldb staging appId=%s dir=%s ok=%s", appId, dir.absolutePath, ok) }
+                .onFailure { Timber.tag(TAG).w(it, "scrub wine leveldb staging failed appId=%s dir=%s", appId, dir.absolutePath) }
+        }
     }
 
     private fun newestFileMtime(dir: File?): Long {
