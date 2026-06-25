@@ -20,15 +20,10 @@ data class SaveSyncSpec(
     // hop between userDataRoot and `Local Storage/`/`IndexedDB/`: NW.js titles write under
     // `<root>/User Data/Default/`. null = no hop (Electron / sideloaded).
     val chromiumProfileSubdir: String? = null,
-    // bypass the FsAuthoritative→FsBridge reroute for this title even when fs writes
-    // are detected. set true for Impact-class NW.js titles (CrossCode) where Galaxy
-    // desktop's cross-device sync requires BOTH the fs save and the chromium-LS
-    // leveldb to be present on cloud. default false preserves the safe fsbridge-only
-    // posture for unknown nwjs titles. typically configured per-title via
-    // <pack>-patches.json byAppId override, not at pack level.
-    val bypassFsBridgeReroute: Boolean = false,
-    // dispatched by SaveSyncStrategy.forProfile (which owns the routing rules). default
-    // "leveldb-origin-rewrite" is the chromium web-storage sync used by every shipped pack; set
-    // explicitly only for a strategy a title always uses (e.g. c3+worker → "opfs-mirror").
+    // keep syncing the chromium profile instead of letting the fs reroute scrub it. needed when the
+    // store mirrors the whole profile to cloud (GOG CrossCode) -- scrubbing would churn against the PC.
+    val syncChromiumProfile: Boolean = false,
+    // routed by SaveSyncStrategy.forProfile. set explicitly only for a strategy a title always
+    // uses (e.g. c3+worker -> "opfs-mirror").
     val mechanism: String = "leveldb-origin-rewrite",
 )
