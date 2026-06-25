@@ -4,19 +4,8 @@
       "saves": {
         "sync": {
           "mechanism": "leveldb-origin-rewrite",
-          "pcOrigin": "file://",
           "chromiumProfileSubdir": "User Data/Default",
-          "bypassFsBridgeReroute": true
-        }
-      }
-    },
-    "STEAM_368340": {
-      "saves": {
-        "sync": {
-          "mechanism": "leveldb-origin-rewrite",
-          "pcOrigin": "file://",
-          "chromiumProfileSubdir": "User Data/Default",
-          "bypassFsBridgeReroute": true
+          "syncChromiumProfile": true
         }
       }
     }
