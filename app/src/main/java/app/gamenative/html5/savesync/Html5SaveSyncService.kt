@@ -636,15 +636,12 @@ class Html5SaveSyncService @Inject constructor(
         // FsBridge no-op so we don't burn the 10s CURRENT-poll on empty shells or upload
         // scratch bytes to cloud. gated by Html5FsAuthoritative.ROUTING_ENABLED so we can force
         // leveldb-rewrite for regression testing if this masks a real bug.
-        // SaveSyncSpec.bypassFsBridgeReroute opts a title OUT of the reroute. Impact-class NW.js
-        // titles write BOTH fs files (cc.save) AND chromium-profile leveldb on real desktop;
-        // Galaxy's cross-device sync cross-validates the pair, so the dual-write must mirror
-        // that shape. Default false keeps the safe FsBridge no-op posture for any other
-        // fs-using title. Configured per-title via <pack>-patches.json byAppId override.
-        val bypassFsBridgeReroute = setup.profile.saves?.sync?.bypassFsBridgeReroute == true
+        // syncChromiumProfile opts a title OUT of this reroute (keeps its chromium profile
+        // syncing); see SaveSyncSpec.syncChromiumProfile for why. default false = titles reroute.
+        val syncChromiumProfile = setup.profile.saves?.sync?.syncChromiumProfile == true
         val effectiveStrategy = if (
             setup.strategy is SaveSyncStrategy.LevelDbOriginRewrite &&
-            !bypassFsBridgeReroute &&
+            !syncChromiumProfile &&
             Html5FsAuthoritative.isFsAuthoritative(context, appId)
         ) {
             Timber.tag(TAG).i(
