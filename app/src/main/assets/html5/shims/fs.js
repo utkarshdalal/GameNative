@@ -821,6 +821,13 @@
                 try {
                     sm.isLocalMode = function () { return true; };
                     sm.__gnIsLocalModeForced = true;
+                    // mark the container fs-authoritative before the first save write so save-sync
+                    // reads from the fs bridge (see Html5FsBridge.markFsSaveMode).
+                    try {
+                        if (window.__gnFsBridge && typeof window.__gnFsBridge.markFsSaveMode === 'function') {
+                            window.__gnFsBridge.markFsSaveMode();
+                        }
+                    } catch (_) {}
                     if (self.__gnShimVerbose) try { console.log('gamenative storage-route isLocalMode forced=true attempts=' + attempts); } catch (e) {}
                 } catch (e) {
                     try { console.warn('gamenative storage-route failed to override isLocalMode: ' + e.message); } catch (_) {}

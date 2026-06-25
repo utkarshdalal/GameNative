@@ -165,11 +165,13 @@ class Html5FsBridge(
         }.getOrDefault(false)
     }
 
-    // ---------------- encoding ----------------
+    // called by fs.js when it switches rmmv saves to fs, before any write: a session that exits
+    // before its first save would otherwise sync chromium scratch.
+    @JavascriptInterface
+    fun markFsSaveMode() {
+        onFsUsage()
+    }
 
-    // decode JS string content per node-style encoding for write/append. utf8 maps to the raw
-    // UTF-8 bytes (matches File.writeText/appendText default charset); base64 decodes. unknown
-    // encoding logs + returns null so callers short-circuit to false (the prior `else` branch).
     private fun decode(content: String, encoding: String, relPath: String): ByteArray? = when (encoding) {
         "utf8" -> content.toByteArray(Charsets.UTF_8)
         "base64" -> Base64.decode(content, Base64.DEFAULT)
