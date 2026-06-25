@@ -1,6 +1,7 @@
 package app.gamenative.utils
 
 import okhttp3.Dns
+import okhttp3.Dispatcher
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
@@ -44,6 +45,20 @@ object Net {
             .callTimeout(5, TimeUnit.MINUTES)
             .pingInterval(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
+            .build()
+    }
+
+    fun httpForParallelDownloads(parallelDownloads: Int): OkHttpClient {
+        val hostConcurrency = parallelDownloads.coerceIn(4, 32)
+        val dispatcher = Dispatcher().apply {
+            maxRequestsPerHost = hostConcurrency
+            maxRequests = maxOf(64, hostConcurrency * 2)
+        }
+        return http.newBuilder()
+            .dispatcher(dispatcher)
+            .readTimeout(5, TimeUnit.MINUTES)
+            .callTimeout(0, TimeUnit.MILLISECONDS)
+            .protocols(listOf(Protocol.HTTP_1_1))
             .build()
     }
 }

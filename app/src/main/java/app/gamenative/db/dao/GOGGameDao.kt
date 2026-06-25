@@ -43,6 +43,10 @@ interface GOGGameDao {
     @Query("SELECT * FROM gog_games WHERE is_installed = :isInstalled AND exclude = 0 ORDER BY title ASC")
     fun getByInstallStatus(isInstalled: Boolean): Flow<List<GOGGame>>
 
+    /** Returns all installed GOG games, excluding excluded entries, sorted by title. */
+    @Query("SELECT * FROM gog_games WHERE is_installed = 1 AND exclude = 0 ORDER BY title ASC")
+    suspend fun getInstalledGames(): List<GOGGame>
+
     @Query("SELECT * FROM gog_games WHERE is_installed = 0 AND exclude = 0")
     suspend fun getNonInstalledGames(): List<GOGGame>
 
@@ -57,6 +61,12 @@ interface GOGGameDao {
 
     @Query("SELECT id FROM gog_games")
     suspend fun getAllGameIdsIncludingExcluded(): List<String>
+
+    @Query("SELECT id FROM gog_games WHERE exclude = 0 AND vertical_cover_url = ''")
+    suspend fun getGameIdsMissingVerticalCover(): List<String>
+
+    @Query("UPDATE gog_games SET vertical_cover_url = :url WHERE id = :gameId")
+    suspend fun updateVerticalCoverUrl(gameId: String, url: String)
 
     /**
      * Upsert GOG games while preserving install status and paths

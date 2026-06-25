@@ -75,6 +75,14 @@ public class RenderTarget extends Texture {
         return framebuffer;
     }
 
+    public int getWidth() {
+        return width;
+    }
+
+    public int getHeight() {
+        return height;
+    }
+
     @Override
     public void destroy() {
         super.destroy();

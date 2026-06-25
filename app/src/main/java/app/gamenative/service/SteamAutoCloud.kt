@@ -1,12 +1,16 @@
 package app.gamenative.service
 
 import androidx.room.withTransaction
+import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
+import app.gamenative.data.SteamFileHashCache
 import app.gamenative.data.UserFileInfo
 import app.gamenative.data.UserFilesDownloadResult
 import app.gamenative.data.UserFilesUploadResult
+import app.gamenative.db.dao.SteamFileHashCacheDao
 import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
@@ -14,20 +18,25 @@ import app.gamenative.service.SteamService.Companion.FileChanges
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import app.gamenative.utils.FileUtils
+import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
+import `in`.dragonbra.javasteam.enums.EOSType
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileChangeList
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileInfo
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
+import `in`.dragonbra.javasteam.types.KeyValue
 import java.io.BufferedInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.RandomAccessFile
 import java.security.MessageDigest
 import java.nio.file.Files
+import java.nio.file.FileSystemException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Date
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Collectors
 import java.util.zip.ZipInputStream
 import kotlin.io.path.name
@@ -37,15 +46,23 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
+import java.io.IOException
 import java.io.OutputStream
 import java.net.SocketTimeoutException
+import java.nio.file.attribute.FileTime
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * [Steam Auto Cloud](https://partner.steamgames.com/doc/features/cloud#steam_auto-cloud)
@@ -53,6 +70,11 @@ import java.net.SocketTimeoutException
 object SteamAutoCloud {
 
     private const val MAX_USER_FILE_RETRIES = 3
+
+    internal data class HashLookupResult(
+        val sha: ByteArray,
+        val wasCacheHit: Boolean,
+    )
 
     /** Computes SHA-1 hash by streaming the file in chunks to avoid OOM on large files. */
     private fun streamingShaHash(path: Path): ByteArray {
@@ -73,8 +95,8 @@ object SteamAutoCloud {
     private inline fun InputStream.copyTo(
         out: OutputStream,
         bufferSize: Int = 8 * 1024,
-        progress: (Long) -> Unit,
-    ) {
+        progress: (chunkBytes: Long, totalBytes: Long) -> Unit,
+    ): Long {
         val buf = ByteArray(bufferSize)
         var bytesRead: Int
         var total = 0L
@@ -82,8 +104,42 @@ object SteamAutoCloud {
             if (bytesRead == 0) continue
             out.write(buf, 0, bytesRead)
             total += bytesRead
-            progress(total)
+            progress(bytesRead.toLong(), total)
         }
+        return total
+    }
+
+    internal suspend fun getCachedShaOrHash(
+        appId: Int,
+        path: Path,
+        hashCacheDao: SteamFileHashCacheDao,
+    ): HashLookupResult {
+        val absPath = path.pathString
+        val sizeBytes = Files.size(path)
+        val mtimeMillis = Files.getLastModifiedTime(path).toMillis()
+        val cached = hashCacheDao.getByAppIdAndPath(appId, absPath)
+
+        if (cached != null && cached.sizeBytes == sizeBytes && cached.mtimeMillis == mtimeMillis) {
+            return HashLookupResult(
+                sha = cached.sha,
+                wasCacheHit = true,
+            )
+        }
+
+        val sha = streamingShaHash(path)
+        hashCacheDao.insert(
+            SteamFileHashCache(
+                appId = appId,
+                absPath = absPath,
+                sizeBytes = sizeBytes,
+                mtimeMillis = mtimeMillis,
+                sha = sha,
+            ),
+        )
+        return HashLookupResult(
+            sha = sha,
+            wasCacheHit = false,
+        )
     }
 
     fun syncUserFiles(
@@ -113,12 +169,27 @@ object SteamAutoCloud {
         // not "<WinAppDataRoaming>/saves" — root-only replacement can't express this.
         val cloudPrefixToLocalPath: Map<String, String> = appInfo.ufs.saveFilePatterns
             .filter { it.uploadPath != it.path }
-            .associate { p ->
-                val cloudKey = "%${p.uploadRoot.name}%${p.uploadPath}"
+            .flatMap { p ->
+                val localPath = Paths.get(prefixToPath(p.root.name), p.substitutedPath).pathString
+                val cloudPath = p.uploadPath
+                    .replace("\\", "/")
                     .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
                     .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
-                cloudKey to Paths.get(prefixToPath(p.root.name), p.substitutedPath).pathString
+                    .trim('/')
+                val cloudRoot = "%${p.uploadRoot.name}%"
+                val cloudPrefixes = if (cloudPath.isBlank()) {
+                    listOf(cloudRoot)
+                } else {
+                    listOf(
+                        "$cloudRoot$cloudPath",
+                        "$cloudRoot/$cloudPath",
+                    )
+                }
+                cloudPrefixes.map { cloudKey ->
+                    cloudKey to localPath
+                }
             }
+            .toMap()
 
         val getPathTypePairs: (AppFileChangeList) -> List<Pair<String, String>> = { fileList ->
             fileList.pathPrefixes
@@ -150,7 +221,13 @@ object SteamAutoCloud {
                 // subfolder that the local path includes. Root-only replacement can't express this.
                 // Cloud prefixes sometimes include a trailing slash (e.g. "%WinAppDataLocalLow%76561198035529760/save1/")
                 // but the map keys are built without one — trim before lookup so they match.
-                cloudPrefixToLocalPath[prefix.trimEnd('/')]
+                val cloudPrefix = prefix.trimEnd('/')
+                cloudPrefixToLocalPath.entries
+                    .filter { (cloudKey, _) -> cloudPrefix == cloudKey || cloudPrefix.startsWith("$cloudKey/") }
+                    .maxByOrNull { (cloudKey, _) -> cloudKey.length }
+                    ?.let { (cloudKey, localPath) ->
+                        Paths.get(localPath, cloudPrefix.removePrefix(cloudKey).trimStart('/')).pathString
+                    }
                     ?: run {
                         var modified = prefix
 
@@ -187,14 +264,25 @@ object SteamAutoCloud {
             Paths.get(getFilePrefix(file, fileList), file.filename).pathString
         }
 
+        val hashCacheHits = AtomicInteger(0)
+        val hashCacheMisses = AtomicInteger(0)
+        val hashCacheDao = steamInstance.db.steamFileHashCacheDao()
+
         val getFullFilePath: (AppFileInfo, AppFileChangeList) -> Path = getFullFilePath@{ file, fileList ->
             val gameInstallPrefix = "%${PathType.GameInstall.name}%"
             if (file.filename.startsWith(gameInstallPrefix)) {
                 // Steam API sometimes returns prefix="" and filename="%GameInstall%save0.dat" instead of splitting correctly.
-                return@getFullFilePath Paths.get(
-                    prefixToPath(PathType.GameInstall.name),
-                    file.filename.removePrefix(gameInstallPrefix)
-                )
+                // Strip the embedded prefix (and any leading slash) to get the bare filename.
+                val stripped = file.filename.removePrefix(gameInstallPrefix).trimStart('/')
+                // If a Windows rootoverride remaps GameInstall → another directory (e.g.
+                // Danganronpa 2: WinMyDocuments/My Games/Danganronpa2/), download there instead
+                // of the raw game-install folder so the game can find its saves.
+                val remapped = cloudPrefixToLocalPath[gameInstallPrefix]
+                return@getFullFilePath if (remapped != null) {
+                    Paths.get(remapped, stripped)
+                } else {
+                    Paths.get(prefixToPath(PathType.GameInstall.name), stripped)
+                }
             }
 
             val convertedPrefixes = convertPrefixes(fileList)
@@ -256,64 +344,121 @@ object SteamAutoCloud {
                 }
             }
 
-        val getLocalUserFilesAsPrefixMap: () -> Map<String, List<UserFileInfo>> = {
+        val getLocalUserFilesAsPrefixMap: suspend () -> Map<String, List<UserFileInfo>> = {
             val savePatterns = appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
 
-            if (savePatterns.isNotEmpty()) {
-                val result = mutableMapOf<String, MutableList<UserFileInfo>>()
+            val result = mutableMapOf<String, MutableList<UserFileInfo>>()
 
+            if (savePatterns.isNotEmpty()) {
                 savePatterns.forEach { userFile ->
+                    if (userFile.root == PathType.SteamUserData) {
+                        // skip handling, use the logic below to scan SteamUserData
+                        return@forEach
+                    }
+
                     val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
 
                     Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
 
-                    val files = FileUtils.findFilesRecursive(
+                    val filePaths = FileUtils.findFilesRecursive(
                         rootPath = basePath,
                         pattern = userFile.pattern,
                         maxDepth = 5,
-                    ).map {
-                        val sha = streamingShaHash(it)
+                    ).collect(Collectors.toList())
+                    val files = buildList {
+                        for (path in filePaths) {
+                            val hashLookup = getCachedShaOrHash(
+                                appId = appInfo.id,
+                                path = path,
+                                hashCacheDao = hashCacheDao,
+                            )
+                            if (hashLookup.wasCacheHit) {
+                                hashCacheHits.incrementAndGet()
+                            } else {
+                                hashCacheMisses.incrementAndGet()
+                            }
+                            val sha = hashLookup.sha
 
-                        Timber.i("Found ${it.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
+                            Timber.i("Found ${path.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
 
-                        val relativePath = basePath.relativize(it).pathString
+                            val relativePath = basePath.relativize(path).pathString
 
-                        UserFileInfo(userFile.root, userFile.substitutedPath, relativePath, Files.getLastModifiedTime(it).toMillis(), sha, cloudRoot = userFile.uploadRoot, cloudPath = userFile.uploadPath)
-                    }.collect(Collectors.toList())
+                            add(UserFileInfo(
+                                root = userFile.root,
+                                path = userFile.substitutedPath,
+                                filename = relativePath,
+                                timestamp = Files.getLastModifiedTime(path).toMillis(),
+                                sha = sha,
+                                cloudRoot = userFile.uploadRoot,
+                                cloudPath = userFile.uploadPath
+                            ))
+                        }
+                    }
 
                     Timber.i("Found ${files.size} file(s) in $basePath for pattern ${userFile.pattern}")
 
                     val prefixKey = Paths.get(userFile.prefix).pathString
                     result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
                 }
+            }
 
-                result
-            } else {
-                // Fallback: no UFS patterns; scan SteamUserData root recursively (depth 5)
-                val rootType = PathType.SteamUserData
-                val basePath = Paths.get(prefixToPath(rootType.toString()))
+            // Scan SteamUserData root recursively (depth 5)
+            val rootType = PathType.SteamUserData
+            val basePath = Paths.get(prefixToPath(rootType.toString()))
 
-                Timber.i("No UFS patterns; scanning $basePath recursively (depth 5) under ${rootType.name}")
+            Timber.i("Scanning $basePath recursively (depth 5) under ${rootType.name}")
 
-                val files = FileUtils.findFilesRecursive(
-                    rootPath = basePath,
-                    pattern = "*",
-                    maxDepth = 5,
-                ).map {
-                    val sha = streamingShaHash(it)
+            val steamUserDataPaths = FileUtils.findFilesRecursive(
+                rootPath = basePath,
+                pattern = "*",
+                maxDepth = 5,
+            ).collect(Collectors.toList())
+            val files = buildList {
+                for (path in steamUserDataPaths) {
+                    val hashLookup = getCachedShaOrHash(
+                        appId = appInfo.id,
+                        path = path,
+                        hashCacheDao = hashCacheDao,
+                    )
+                    if (hashLookup.wasCacheHit) {
+                        hashCacheHits.incrementAndGet()
+                    } else {
+                        hashCacheMisses.incrementAndGet()
+                    }
+                    val sha = hashLookup.sha
 
-                    val relativePath = basePath.relativize(it).pathString
+                    val relativePath = basePath.relativize(path).pathString
 
-                    Timber.i("Found ${it.pathString}\n\tin %${rootType.name}%\n\twith sha [${sha.joinToString(", ")}]")
+                    Timber.i("Found ${path.pathString}\n\tin %${rootType.name}%\n\twith sha [${sha.joinToString(", ")}]")
 
                     // Store relative path in filename; empty path component
-                    UserFileInfo(rootType, "", relativePath, Files.getLastModifiedTime(it).toMillis(), sha)
-                }.collect(Collectors.toList())
-
-                Timber.i("Found ${files.size} file(s) in $basePath for fallback recursive scan")
-
-                mapOf(Paths.get("%${rootType.name}%").pathString to files)
+                    add(UserFileInfo(
+                        root = rootType,
+                        path = "",
+                        filename = relativePath,
+                        timestamp = Files.getLastModifiedTime(path).toMillis(),
+                        sha = sha,
+                        cloudRoot = rootType,
+                        cloudPath = ""
+                    ))
+                }
             }
+
+            Timber.i("Found ${files.size} file(s) in $basePath")
+
+            mapOf(Paths.get("%${rootType.name}%").pathString to files)
+
+            if (files.isNotEmpty()) {
+                val prefixKey = "%${rootType.name}%"
+                result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
+            }
+
+            Timber.i(
+                "Local save hash cache stats for ${appInfo.id} (${appInfo.name}): " +
+                    "hits=${hashCacheHits.get()}, misses=${hashCacheMisses.get()}, files=${hashCacheHits.get() + hashCacheMisses.get()}",
+            )
+
+            result
         }
 
         val fileChangeListToUserFiles: (AppFileChangeList) -> List<UserFileInfo> = { appFileListChange ->
@@ -345,122 +490,73 @@ object SteamAutoCloud {
 
         val downloadFiles: (AppFileChangeList, CoroutineScope) -> Deferred<UserFilesDownloadResult> = { fileList, parentScope ->
             parentScope.async {
-                var filesDownloaded = 0
-                var bytesDownloaded = 0L
+                val filesDownloaded = AtomicInteger(0)
+                val bytesDownloaded = AtomicLong(0L)
                 val totalFiles = fileList.files.size
+                val parallelism = PrefManager.downloadSpeed.coerceAtLeast(1)
+                // A new client (and its Dispatcher thread pool) is created intentionally per sync,
+                // since cloud saves are downloaded at most once per game launch.
+                val downloadHttpClient = Net.httpForParallelDownloads(parallelism)
+                val semaphore = Semaphore(parallelism)
+                val completedFiles = AtomicInteger(0)
+                val totalRawBytes = fileList.files.sumOf { it.rawFileSize.toLong() }
+                // downloadedRawBytes tracks bytes as they stream in (per-chunk) for live progress.
+                // bytesDownloaded accumulates rawFileSize per completed file for final accounting.
+                val downloadedRawBytes = AtomicLong(0L)
+                val lastReportedPercent = AtomicInteger(-1)
+                val progressMessage: (Int) -> String = { finishedFiles ->
+                    steamInstance.getString(
+                        R.string.steam_cloud_sync_downloading_save_files,
+                        finishedFiles,
+                        totalFiles,
+                    )
+                }
 
-                fileList.files.forEachIndexed { index, file ->
-                    val prefixedPath = getFilePrefixPath(file, fileList)
-                    val actualFilePath = getFullFilePath(file, fileList)
-
-                    Timber.i("$prefixedPath -> $actualFilePath")
-
-                    val fileDownloadInfo = steamCloud.clientFileDownload(appInfo.id, prefixedPath).await()
-
-                    if (fileDownloadInfo.urlHost.isNotEmpty()) {
-                        onProgress?.invoke("Downloading ${file.filename}", -1f)
-                        val httpUrl = with(fileDownloadInfo) {
-                            buildUrl(useHttps, urlHost, urlPath)
-                        }
-
-                        Timber.i("Downloading $httpUrl")
-
-                        val headers = Headers.headersOf(
-                            *fileDownloadInfo.requestHeaders
-                                .map { listOf(it.name, it.value) }
-                                .flatten()
-                                .toTypedArray(),
-                        )
-
-                        val request = Request.Builder()
-                            .url(httpUrl)
-                            .headers(headers)
-                            .build()
-
-                        val httpClient = steamInstance.steamClient!!.configuration.httpClient
-
-                        val response = withTimeout(SteamService.requestTimeout) {
-                            httpClient.newCall(request).execute()
-                        }
-
-                        if (!response.isSuccessful) {
-                            Timber.w("File download of $prefixedPath was unsuccessful")
-                            response.close()
-                            return@forEachIndexed
-                        }
-
-                        try {
-                            val totalFileSize = fileDownloadInfo.rawFileSize.toLong()
-                            var totalBytesRead = 0L
-                            var lastReportedProgress = -1f
-                            val progressThreshold = 0.01f // Update every 1%
-
-                            val copyToFile: (InputStream) -> Unit = { input ->
-                                Files.createDirectories(actualFilePath.parent)
-
-                                FileOutputStream(actualFilePath.toString()).use { fs ->
-                                    input.copyTo(fs, 8 * 1024) { bytesRead ->
-                                        totalBytesRead = bytesRead
-                                        if (totalFileSize > 0) {
-                                            val currentProgress = (totalBytesRead.toFloat() / totalFileSize).coerceIn(0f, 1f)
-                                            if (currentProgress - lastReportedProgress >= progressThreshold || currentProgress >= 1f) {
-                                                onProgress?.invoke("Downloading ${file.filename}", currentProgress)
-                                                lastReportedProgress = currentProgress
-                                            }
-                                        }
-                                    }
-
-                                    if (totalBytesRead != totalFileSize) {
-                                        Timber.w("Bytes read from stream of $prefixedPath does not match expected size")
+                try {
+                    coroutineScope {
+                        fileList.files.map { file ->
+                            async {
+                                semaphore.withPermit {
+                                    val result = downloadSingleFile(
+                                        appInfo = appInfo,
+                                        steamCloud = steamCloud,
+                                        hashCacheDao = hashCacheDao,
+                                        file = file,
+                                        fileList = fileList,
+                                        getFilePrefixPath = getFilePrefixPath,
+                                        getFullFilePath = getFullFilePath,
+                                        buildUrl = buildUrl,
+                                        httpClient = downloadHttpClient,
+                                        totalRawBytes = totalRawBytes,
+                                        downloadedRawBytes = downloadedRawBytes,
+                                        lastReportedPercent = lastReportedPercent,
+                                        completedFiles = completedFiles,
+                                        totalFiles = totalFiles,
+                                        progressMessage = progressMessage,
+                                        onProgress = onProgress,
+                                    )
+                                    if (result != null) {
+                                        filesDownloaded.addAndGet(result.filesDownloaded)
+                                        bytesDownloaded.addAndGet(result.bytesDownloaded)
                                     }
                                 }
                             }
-
-                            withTimeout(SteamService.responseTimeout) {
-                                if (fileDownloadInfo.fileSize != fileDownloadInfo.rawFileSize) {
-                                    response.body?.byteStream()?.use { inputStream ->
-                                        ZipInputStream(inputStream).use { zipInput ->
-                                            val entry = zipInput.nextEntry
-
-                                            if (entry == null) {
-                                                Timber.w("Downloaded user file $prefixedPath has no zip entries")
-                                                return@withTimeout
-                                            }
-
-                                            copyToFile(zipInput)
-
-                                            if (zipInput.nextEntry != null) {
-                                                Timber.e("Downloaded user file $prefixedPath has more than one zip entry")
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    response.body?.byteStream()?.use { inputStream ->
-                                        copyToFile(inputStream)
-                                    }
-                                }
-
-                                filesDownloaded++
-
-                                bytesDownloaded += fileDownloadInfo.fileSize
-                            }
-                        } catch (e: FileSystemException) {
-                            Timber.w("Could not download $actualFilePath: %s", e.message);
-                        } catch (e: SocketTimeoutException) {
-                            Timber.w("Could not download $actualFilePath: %s", e.message);
-                        }
-
-                        response.close()
-                    } else {
-                        Timber.w("URL host of $prefixedPath was empty")
+                        }.awaitAll()
+                    }
+                } finally {
+                    runCatching {
+                        downloadHttpClient.dispatcher.executorService.shutdown()
+                    }
+                    runCatching {
+                        downloadHttpClient.connectionPool.evictAll()
                     }
                 }
 
-                if (totalFiles > 0) {
+                if (totalFiles > 0 && filesDownloaded.get() == totalFiles) {
                     onProgress?.invoke("Download complete", 1.0f)
                 }
 
-                UserFilesDownloadResult(filesDownloaded, bytesDownloaded)
+                UserFilesDownloadResult(filesDownloaded.get(), bytesDownloaded.get())
             }
         }
 
@@ -514,9 +610,19 @@ object SteamAutoCloud {
                     val uploadInfo = steamCloud.beginFileUpload(
                         appId = appInfo.id,
                         filename = if (appInfo.ufs.saveFilePatterns.isEmpty()) {
-                            file.path + file.filename
+                            // For SteamUserData files, use just the filename without folder prefix
+                            if (file.root == PathType.SteamUserData) {
+                                file.filename
+                            } else {
+                                file.path + file.filename
+                            }
                         } else {
-                            file.prefixPath
+                            // For SteamUserData files, use just the filename to avoid folder prefix
+                            if (file.root == PathType.SteamUserData) {
+                                file.filename
+                            } else {
+                                file.prefixPath
+                            }
                         },
                         fileSize = fileSize,
                         rawFileSize = fileSize,
@@ -633,9 +739,19 @@ object SteamAutoCloud {
                         appId = appInfo.id,
                         fileSha = file.sha,
                         filename = if (appInfo.ufs.saveFilePatterns.isEmpty()) {
-                            file.path + file.filename
+                            // For SteamUserData files, use just the filename without folder prefix
+                            if (file.root == PathType.SteamUserData) {
+                                file.filename
+                            } else {
+                                file.path + file.filename
+                            }
                         } else {
-                            file.prefixPath
+                            // For SteamUserData files, use just the filename to avoid folder prefix
+                            if (file.root == PathType.SteamUserData) {
+                                file.filename
+                            } else {
+                                file.prefixPath
+                            }
                         },
                     ).await()
 
@@ -680,6 +796,7 @@ object SteamAutoCloud {
         var microsecDeleteFiles = 0L
         var microsecDownloadFiles = 0L
         var microsecUploadFiles = 0L
+        var lastCloudAppChangeNumber = -1L
 
         microsecTotal = measureTime {
             val localAppChangeNumber = overrideLocalChangeNumber ?: steamInstance.changeNumbersDao.getByAppId(appInfo.id)?.changeNumber ?: -1
@@ -690,6 +807,7 @@ object SteamAutoCloud {
             val appFileListChange = steamCloud.getAppFileListChange(appInfo.id, changeNumber).await()
 
             val cloudAppChangeNumber = appFileListChange.currentChangeNumber
+            lastCloudAppChangeNumber = cloudAppChangeNumber
 
             Timber.i("AppChangeNumber: $localAppChangeNumber -> $cloudAppChangeNumber")
 
@@ -795,6 +913,7 @@ object SteamAutoCloud {
                     filesManaged = allLocalUserFiles.size
 
                     if (uploadResult.uploadBatchSuccess) {
+                        lastCloudAppChangeNumber = uploadResult.appChangeNumber
                         with(steamInstance) {
                             db.withTransaction {
                                 fileChangeListsDao.insert(appInfo.id, allLocalUserFiles)
@@ -822,19 +941,53 @@ object SteamAutoCloud {
                         } == true
                     }.inWholeMicroseconds
 
-                    /*TODO: hasLocalChanges should be true if the user plays offline for the first time without ever pulling cloud saves
-                       If that happens, the next time they go online, their change number is -1, and saves are always overwritten by cloud*/
+                    val hasUncachedLocalFiles = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty()
+                    var rehydratedSilently = false
+                    if (hasUncachedLocalFiles) {
+                        // no cache but local files exist. before declaring conflict,
+                        // check if local state is byte-identical to remote — this is
+                        // the "cache-wiped by destructive migration, nothing actually
+                        // changed" case and should be silent. key by absolute filesystem
+                        // path: cloud stores files as (pathPrefixIndex, basename) while
+                        // local scan stores filename as subdir-relative path with a
+                        // single pattern prefix, so basename-only keys won't match for
+                        // nested files.
+                        // windows paths are case-insensitive; steam cloud and wine may
+                        // disagree on case. lowercase the keys so content-identical
+                        // files compare equal regardless.
+                        val localByPath = allLocalUserFiles.associate {
+                            it.getAbsPath(prefixToPath).toString().lowercase() to it.sha
+                        }
+                        val remoteByPath = appFileListChange.files.associate {
+                            getFullFilePath(it, appFileListChange).toString().lowercase() to it.shaFile
+                        }
+                        val localMatchesRemote = localByPath.keys == remoteByPath.keys &&
+                            localByPath.all { (path, sha) ->
+                                sha.contentEquals(remoteByPath[path])
+                            }
 
-                    // If cache is absent but local files exist and a prior sync was recorded,
-                    // the cache was cleared on upgrade due to a UFS path fix — treat as conflict
-                    // so the user can choose which save to keep rather than silently overwriting.
-                    val isUpgradeConflict = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty() && localAppChangeNumber >= 0
-                    if (isUpgradeConflict) {
-                        hasLocalChanges = true
-                        conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                        if (localMatchesRemote) {
+                            Timber.i("Cache absent but local matches remote — rehydrating cache silently")
+                            with(steamInstance) {
+                                db.withTransaction {
+                                    fileChangeListsDao.insert(appInfo.id, allLocalUserFiles)
+                                    changeNumbersDao.insert(appInfo.id, cloudAppChangeNumber)
+                                }
+                            }
+                            syncResult = SyncResult.UpToDate
+                            filesManaged = allLocalUserFiles.size
+                            rehydratedSilently = true
+                        } else {
+                            hasLocalChanges = true
+                            conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                            remoteTimestamp = appFileListChange.files.map { it.timestamp.time }.maxOrNull() ?: 0L
+                            localTimestamp = allLocalUserFiles.map { it.timestamp }.maxOrNull() ?: 0L
+                        }
                     }
 
-                    if (!hasLocalChanges) {
+                    if (rehydratedSilently) {
+                        // nothing to do — cache is now consistent with cloud
+                    } else if (!hasLocalChanges) {
                         // we can safely download the new changes since no changes have been
                         // made locally
 
@@ -914,6 +1067,8 @@ object SteamAutoCloud {
             filesDownloaded = filesDownloaded,
             filesDeleted = filesDeleted,
             filesManaged = filesManaged,
+            hashCacheHits = hashCacheHits.get(),
+            hashCacheMisses = hashCacheMisses.get(),
             bytesUploaded = bytesUploaded,
             bytesDownloaded = bytesDownloaded,
             microsecTotal = microsecTotal,
@@ -928,7 +1083,222 @@ object SteamAutoCloud {
             microsecUploadFiles = microsecUploadFiles,
         )
 
+        // Write remotecache.vdf after successful sync
+        if (syncResult == SyncResult.Success || syncResult == SyncResult.UpToDate) {
+            try {
+                val allFiles = getLocalUserFilesAsPrefixMap().values.flatten()
+
+                writeRemoteCacheVdf(
+                    appId = appInfo.id,
+                    userdataPath = Paths.get(prefixToPath(PathType.SteamUserData.name)).parent,
+                    changeNumber = lastCloudAppChangeNumber,
+                    files = allFiles,
+                    prefixToPath = prefixToPath,
+                    syncState = 1, // 1 = syncing (matches Windows behavior)
+                )
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to write remotecache.vdf for app ${appInfo.id}")
+            }
+        }
+
         postSyncInfo
+    }
+
+    private suspend fun downloadSingleFile(
+        appInfo: SteamApp,
+        steamCloud: SteamCloud,
+        hashCacheDao: SteamFileHashCacheDao,
+        file: AppFileInfo,
+        fileList: AppFileChangeList,
+        getFilePrefixPath: (AppFileInfo, AppFileChangeList) -> String,
+        getFullFilePath: (AppFileInfo, AppFileChangeList) -> Path,
+        buildUrl: (Boolean, String, String) -> String,
+        httpClient: okhttp3.OkHttpClient,
+        totalRawBytes: Long,
+        downloadedRawBytes: AtomicLong,
+        lastReportedPercent: AtomicInteger,
+        completedFiles: AtomicInteger,
+        totalFiles: Int,
+        progressMessage: (Int) -> String,
+        onProgress: ((message: String, progress: Float) -> Unit)?, // invoked from IO thread
+    ): UserFilesDownloadResult? {
+        val prefixedPath = getFilePrefixPath(file, fileList)
+        val actualFilePath = getFullFilePath(file, fileList)
+
+        Timber.i("$prefixedPath -> $actualFilePath")
+
+        val fileDownloadInfo = try {
+            steamCloud.clientFileDownload(appInfo.id, prefixedPath).await()
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to fetch download info for %s", prefixedPath)
+            return null
+        }
+
+        if (fileDownloadInfo.urlHost.isEmpty()) {
+            Timber.w("URL host of $prefixedPath was empty")
+            return null
+        }
+
+        val httpUrl = with(fileDownloadInfo) {
+            buildUrl(useHttps, urlHost, urlPath)
+        }
+
+        Timber.i("Downloading $httpUrl")
+
+        val headers = Headers.headersOf(
+            *fileDownloadInfo.requestHeaders
+                .map { listOf(it.name, it.value) }
+                .flatten()
+                .toTypedArray(),
+        )
+
+        val request = Request.Builder()
+            .url(httpUrl)
+            .headers(headers)
+            .build()
+
+        val response = try {
+            withTimeout(SteamService.requestTimeout) {
+                httpClient.newCall(request).execute()
+            }
+        } catch (e: TimeoutCancellationException) {
+            Timber.w(e, "Timed out downloading %s", actualFilePath)
+            null
+        } catch (e: SocketTimeoutException) {
+            Timber.w("Could not download $actualFilePath: %s", e.message)
+            null
+        } catch (e: IOException) {
+            Timber.w("Could not download $actualFilePath: %s", e.message)
+            null
+        }
+
+        if (response == null) {
+            return null
+        }
+
+        if (!response.isSuccessful) {
+            Timber.w("File download of $prefixedPath was unsuccessful")
+            response.close()
+            return null
+        }
+
+        try {
+            val totalFileSize = fileDownloadInfo.rawFileSize.toLong()
+
+            val copyToFile: (InputStream) -> Boolean = { input ->
+                Files.createDirectories(actualFilePath.parent)
+
+                FileOutputStream(actualFilePath.toString()).use { fs ->
+                    val totalBytesRead = input.copyTo(fs, 8 * 1024) { chunkBytes, _ ->
+                        if (totalRawBytes > 0L) {
+                            val currentPercent = (
+                                downloadedRawBytes.addAndGet(chunkBytes) * 100 / totalRawBytes
+                                ).toInt().coerceIn(0, 100)
+                            while (true) {
+                                val previousPercent = lastReportedPercent.get()
+                                if (currentPercent <= previousPercent) break
+                                if (lastReportedPercent.compareAndSet(previousPercent, currentPercent)) {
+                                    onProgress?.invoke(
+                                        progressMessage(completedFiles.get()),
+                                        currentPercent / 100f,
+                                    )
+                                    break
+                                }
+                            }
+                        }
+                    }
+
+                    // Preserve file timestamp from steamcloud, could fix game save loading, tested Skyrim
+                    try {
+                        fileDownloadInfo.timestamp.let { timestamp ->
+                            val fileTime = FileTime.fromMillis(timestamp.time)
+                            Files.setLastModifiedTime(actualFilePath, fileTime)
+                        }
+                    } catch (e: Exception) {
+                        Timber.w("Failed to set lastModified for $actualFilePath: ${e.message}")
+                    }
+
+                    if (totalBytesRead != totalFileSize) {
+                        Timber.w("Bytes read from stream of $prefixedPath does not match expected size")
+                        return@use false
+                    }
+                    true
+                }
+            }
+
+            val downloaded = withTimeout(SteamService.responseTimeout) {
+                if (fileDownloadInfo.fileSize != fileDownloadInfo.rawFileSize) {
+                    response.body?.byteStream()?.use { inputStream ->
+                        ZipInputStream(inputStream).use { zipInput ->
+                            val entry = zipInput.nextEntry
+
+                            if (entry == null) {
+                                Timber.w("Downloaded user file $prefixedPath has no zip entries")
+                                return@withTimeout false
+                            }
+
+                            if (!copyToFile(zipInput)) return@withTimeout false
+
+                            if (zipInput.nextEntry != null) {
+                                Timber.e("Downloaded user file $prefixedPath has more than one zip entry")
+                            }
+                        }
+                    } ?: return@withTimeout false
+                } else {
+                    response.body?.byteStream()?.use { inputStream ->
+                        if (!copyToFile(inputStream)) return@withTimeout false
+                    } ?: return@withTimeout false
+                }
+                true
+            }
+
+            if (!downloaded) {
+                return null
+            }
+
+            val actualSize = Files.size(actualFilePath)
+            if (actualSize != totalFileSize) {
+                Timber.w("Downloaded size for $prefixedPath was $actualSize, expected $totalFileSize - skipping cache seed")
+            } else {
+                hashCacheDao.insert(
+                    SteamFileHashCache(
+                        appId = appInfo.id,
+                        absPath = actualFilePath.pathString,
+                        sizeBytes = actualSize,
+                        mtimeMillis = Files.getLastModifiedTime(actualFilePath).toMillis(),
+                        sha = streamingShaHash(actualFilePath),
+                    ),
+                )
+            }
+
+            val finishedFiles = completedFiles.incrementAndGet()
+            val finalProgress = if (totalRawBytes > 0L) {
+                (downloadedRawBytes.get().toFloat() / totalRawBytes).coerceIn(0f, 1f)
+            } else {
+                finishedFiles.toFloat() / totalFiles
+            }
+            onProgress?.invoke(progressMessage(finishedFiles), finalProgress)
+
+            return UserFilesDownloadResult(1, fileDownloadInfo.rawFileSize.toLong())
+        } catch (e: TimeoutCancellationException) {
+            Timber.w(e, "Timed out downloading %s", actualFilePath)
+            return null
+        } catch (e: FileSystemException) {
+            Timber.w("Could not download $actualFilePath: %s", e.message)
+            return null
+        } catch (e: SocketTimeoutException) {
+            // Distinct from the outer SocketTimeoutException catch above: that one covers the
+            // connection/response phase; this one covers a timeout during the streaming read.
+            Timber.w("Could not download $actualFilePath: %s", e.message)
+            return null
+        } catch (e: IOException) {
+            Timber.w("Could not download $actualFilePath: %s", e.message)
+            return null
+        } finally {
+            response.close()
+        }
     }
 
     private fun AppFileChangeList.printFileChangeList(appInfo: SteamApp) {
@@ -952,6 +1322,85 @@ object SteamAutoCloud {
                             "\n\t\tmachineNameIndex: ${it.machineNameIndex}"
                     },
             )
+        }
+    }
+
+    /**
+     * Writes a remotecache.vdf file for the given app in the Steam userdata directory.
+     * This file tracks Steam Cloud sync metadata for save files.
+     *
+     * @param appId The Steam app ID
+     * @param userdataPath Path to the app-specific userdata directory (e.g., "userdata/steamid/appid/")
+     * @param changeNumber Cloud change number (0 if not synced)
+     * @param files List of UserFileInfo representing the synced files
+     * @param prefixToPath Function to convert path prefix to absolute path
+     * @param syncState Sync state: 0=unknown, 1=syncing, 2=pending, 3=synced
+     */
+    fun writeRemoteCacheVdf(
+        appId: Int,
+        userdataPath: Path,
+        changeNumber: Long = 0,
+        files: List<UserFileInfo>,
+        prefixToPath: (String) -> String,
+        syncState: Int = 1,
+    ) {
+        try {
+            Files.createDirectories(userdataPath)
+
+            val remoteCacheFile = userdataPath.resolve("remotecache.vdf")
+
+            // Build VDF structure using KeyValue
+            val root = KeyValue(appId.toString())
+            root.children.add(KeyValue("ChangeNumber", changeNumber.toString()))
+            root.children.add(KeyValue("OSType", EOSType.WinUnknown.code().toString())) // 0 = Windows
+
+            // Create an entry for each file using the filename as the key
+            // Sort files by their cloud path for consistent ordering
+            files.sortedBy { fileInfo ->
+                if (fileInfo.cloudPath.isBlank() || fileInfo.cloudPath == ".") {
+                    fileInfo.filename
+                } else {
+                    "${fileInfo.cloudPath}/${fileInfo.filename}".replace("\\", "/")
+                }.replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
+                    .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+            }.forEach { fileInfo ->
+                val fileSize = try {
+                    Files.size(fileInfo.getAbsPath(prefixToPath))
+                } catch (e: Exception) {
+                    0L
+                }
+
+                val fileSha = fileInfo.sha.joinToString("") { "%02x".format(it) }
+                val fileTimestamp = fileInfo.timestamp / 1000 // Convert to seconds
+
+                // Use the cloud path (cloudPath + filename) as the key
+                val cloudFilePath = if (fileInfo.cloudPath.isBlank() || fileInfo.cloudPath == ".") {
+                    fileInfo.filename
+                } else {
+                    "${fileInfo.cloudPath}/${fileInfo.filename}".replace("\\", "/")
+                }.replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
+                    .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+
+                val fileEntry = KeyValue(cloudFilePath)
+                fileEntry.children.add(KeyValue("root", "0"))
+                fileEntry.children.add(KeyValue("size", fileSize.toString()))
+                fileEntry.children.add(KeyValue("localtime", fileTimestamp.toString()))
+                fileEntry.children.add(KeyValue("time", fileTimestamp.toString()))
+                fileEntry.children.add(KeyValue("remotetime", fileTimestamp.toString()))
+                fileEntry.children.add(KeyValue("sha", fileSha))
+                fileEntry.children.add(KeyValue("syncstate", syncState.toString()))
+                fileEntry.children.add(KeyValue("persiststate", "0"))
+                fileEntry.children.add(KeyValue("platformstosync2", "-1"))
+
+                root.children.add(fileEntry)
+            }
+
+            // Write to file
+            root.saveToFile(remoteCacheFile.toFile(), false)
+
+            Timber.i("Wrote remotecache.vdf for app $appId to ${remoteCacheFile.toAbsolutePath()}")
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to write remotecache.vdf for app $appId")
         }
     }
 }

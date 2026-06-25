@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
@@ -25,6 +26,7 @@ import app.gamenative.utils.SteamGridDB
 import app.gamenative.utils.StorageUtils
 import com.winlator.container.ContainerData
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -54,6 +56,9 @@ class CustomGameAppScreen : BaseAppScreen() {
         fun shouldShowDeleteDialog(appId: String): Boolean {
             return deleteDialogAppIds.contains(appId)
         }
+
+        // Shared state for deletion progress dialog
+        var showDeletingDialog by mutableStateOf(false)
     }
     @Composable
     override fun getGameDisplayInfo(
@@ -76,33 +81,40 @@ class CustomGameAppScreen : BaseAppScreen() {
 
         // Check for all SteamGridDB images in the game folder
         // Hero view uses horizontal grid (grid_hero)
+        // A user-supplied "coverh"/"cover" image takes priority over SteamGridDB.
+        // coverh = horizontal cover
         val heroImageUrl = remember(gameFolderPath) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
-                findSteamGridDBImage(folder, "grid_hero")
+                CustomGameScanner.findHeroCoverInFolder(folder)
+                    ?: findSteamGridDBImage(folder, "grid_hero")
             }
         }
 
         // Capsule view uses vertical grid (grid_capsule)
+        // A user-supplied "coverv"/"cover" image takes priority over SteamGridDB.
+        // coverv = vertical cover
         val capsuleUrl = remember(gameFolderPath) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
-                findSteamGridDBImage(folder, "grid_capsule")
+                CustomGameScanner.findCapsuleCoverInFolder(folder)
+                    ?: findSteamGridDBImage(folder, "grid_capsule")
             }
         }
 
         // Header view uses heroes endpoint (hero, but not grid_hero)
+        // This is also a horizontal banner, so the user "coverh"/"cover" applies here too.
         val headerUrl = remember(gameFolderPath) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
-                // Find hero image but exclude grid_hero
-                folder.listFiles()?.firstOrNull { file ->
-                    file.name.startsWith("steamgriddb_hero") &&
-                    !file.name.contains("grid") &&
-                    (file.name.endsWith(".png", ignoreCase = true) ||
-                     file.name.endsWith(".jpg", ignoreCase = true) ||
-                     file.name.endsWith(".webp", ignoreCase = true))
-                }?.let { Uri.fromFile(it).toString() }
+                CustomGameScanner.findHeroCoverInFolder(folder)
+                    ?: folder.listFiles()?.firstOrNull { file ->
+                        file.name.startsWith("steamgriddb_hero") &&
+                        !file.name.contains("grid") &&
+                        (file.name.endsWith(".png", ignoreCase = true) ||
+                         file.name.endsWith(".jpg", ignoreCase = true) ||
+                         file.name.endsWith(".webp", ignoreCase = true))
+                    }?.let { Uri.fromFile(it).toString() }
             }
         }
 
@@ -456,6 +468,15 @@ class CustomGameAppScreen : BaseAppScreen() {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
 
+        // Track deletion progress dialog state
+        if (showDeletingDialog) {
+            LoadingDialog(
+                visible = true,
+                progress = -1f,
+                message = stringResource(R.string.deleting),
+            )
+        }
+
         // Track delete dialog state
         var showDeleteDialog by remember { mutableStateOf(shouldShowDeleteDialog(libraryItem.appId)) }
 
@@ -480,6 +501,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                     TextButton(
                         onClick = {
                             hideDeleteDialog(libraryItem.appId)
+                            showDeletingDialog = true
 
                             // Delete the game folder and container
                             scope.launch {
@@ -500,10 +522,10 @@ class CustomGameAppScreen : BaseAppScreen() {
                                         CustomGameScanner.invalidateCache()
                                     }
 
-                                    // Navigate back and show notification
-                                    SnackbarManager.show("\"${libraryItem.name}\" has been deleted")
-
                                     withContext(Dispatchers.Main) {
+                                        // Navigate back and show notification
+                                        SnackbarManager.show("\"${libraryItem.name}\" has been deleted")
+
                                         // Small delay to ensure file system updates are complete
                                         // before navigating back (list will auto-refresh when displayed)
                                         delay(100)
@@ -512,7 +534,13 @@ class CustomGameAppScreen : BaseAppScreen() {
                                         onBack()
                                     }
                                 } catch (e: Exception) {
-                                    SnackbarManager.show("Failed to delete game: ${e.message}")
+                                    withContext(Dispatchers.Main) {
+                                        SnackbarManager.show("Failed to delete game: ${e.message}")
+                                    }
+                                } finally {
+                                    withContext(NonCancellable + Dispatchers.Main) {
+                                        showDeletingDialog = false
+                                    }
                                 }
                             }
                         }

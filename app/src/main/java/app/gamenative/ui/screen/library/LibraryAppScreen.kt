@@ -5,12 +5,15 @@ package app.gamenative.ui.screen.library
 import android.content.Intent
 import android.content.res.Configuration
 import app.gamenative.ui.screen.library.components.ambient.AmbientDownloadOverlay
+import android.content.ActivityNotFoundException
+import android.net.Uri
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,16 +23,26 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
@@ -39,6 +52,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -110,6 +124,7 @@ import app.gamenative.ui.screen.library.appscreen.EpicAppScreen
 import app.gamenative.ui.screen.library.appscreen.GOGAppScreen
 import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
 import app.gamenative.ui.screen.library.components.GameOptionsPanel
+import app.gamenative.utils.HltbService
 import app.gamenative.ui.theme.PluviaTheme
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
@@ -118,6 +133,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -260,6 +276,8 @@ private fun PrimaryActionButton(
                             fontFeatureSettings = "tnum",
                         ),
                         color = Color.White,
+                        maxLines = 1,
+                        softWrap = false,
                     )
                 }
             }
@@ -440,6 +458,98 @@ private fun InfoCard(
     }
 }
 
+@Composable
+private fun HltbInfoBar(
+    stats: HltbService.Stats,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val items = listOf(
+        stringResource(R.string.hltb_main_story) to stats.mainHours,
+        stringResource(R.string.hltb_main_plus_extras) to stats.mainPlusHours,
+        stringResource(R.string.hltb_completionist) to stats.completeHours,
+        stringResource(R.string.hltb_all_styles) to stats.allStylesHours,
+    )
+    val canOpenHltb = stats.gameId > 0
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clickable(enabled = canOpenHltb) {
+                try {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse("${HltbService.GAME_URL}${stats.gameId}")),
+                    )
+                } catch (e: ActivityNotFoundException) {
+                    Timber.tag("HLTB").w(e, "No handler for HLTB game URL")
+                }
+            }
+            .padding(14.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.hltb_section_title),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+            )
+            if (canOpenHltb) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .widthIn(min = maxWidth),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                items.forEach { (label, hours) ->
+                    Column(
+                        modifier = Modifier
+                            .widthIn(min = 48.dp)
+                            .padding(horizontal = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = if (hours == HltbService.UNKNOWN_HOURS) {
+                                HltbService.UNKNOWN_HOURS
+                            } else {
+                                stringResource(R.string.hltb_hours_value, hours)
+                            },
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppScreen(
@@ -567,7 +677,7 @@ internal fun AppScreenContent(
             val secondsPart = totalSeconds % 60
             "${minutesLeft}m ${secondsPart}s left"
         } else if (isDownloading && downloadProgress >= 1f) {
-            "Unpacking..."
+            downloadStatusMessage?.takeUnless { it.isBlank() } ?: "Unpacking..."
         } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
             downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
         } else {
@@ -737,12 +847,23 @@ internal fun AppScreenContent(
                         ),
                 )
 
-                // Back button (top left)
+                // Back button (top left).
+                // The hero image is intentionally drawn full-bleed through the status bar
+                // and any display cutout (notch / hole-punch / side cutout). The button
+                // itself, however, has to stay tappable, so it's pushed inwards by whichever
+                // is larger of the status bar inset or the cutout inset on each affected
+                // edge before the visual 16dp padding is applied.
                 ActionIconButton(
                     icon = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.back),
                     onClick = onBack,
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier
+                        .windowInsetsPadding(
+                            WindowInsets.statusBars
+                                .union(WindowInsets.displayCutout)
+                                .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                        )
+                        .padding(16.dp),
                 )
 
                 // Bottom overlay with title and action bar
@@ -1006,6 +1127,11 @@ internal fun AppScreenContent(
                     )
                 }
 
+                displayInfo.hltbStats?.let { hltb ->
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HltbInfoBar(hltb)
+                }
+
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Row(
@@ -1074,6 +1200,7 @@ internal fun AppScreenContent(
                         }
                     }
                 }
+
             }
         }
 

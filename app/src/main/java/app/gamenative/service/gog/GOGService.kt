@@ -3,6 +3,7 @@ package app.gamenative.service.gog
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GOGCredentials
@@ -167,11 +168,13 @@ class GOGService : Service() {
         // ==========================================================================
 
         fun hasActiveOperations(): Boolean {
-            return syncInProgress || backgroundSyncJob?.isActive == true
+            return syncInProgress || backgroundSyncJob?.isActive == true || hasActiveDownload()
         }
 
         private fun setSyncInProgress(inProgress: Boolean) {
             syncInProgress = inProgress
+            if (inProgress) getInstance()?.notifierOrNull?.showSyncing(NotificationHelper.NOTIFICATION_ID_GOG)
+            else getInstance()?.notifierOrNull?.showIdle(NotificationHelper.NOTIFICATION_ID_GOG)
         }
 
         fun isSyncInProgress(): Boolean = syncInProgress
@@ -349,6 +352,7 @@ class GOGService : Service() {
 
             // Track in activeDownloads first
             instance.activeDownloads[gameId] = downloadInfo
+            instance.notifierOrNull?.trackDownload(downloadInfo, "", NotificationHelper.NOTIFICATION_ID_GOG)
 
             // Launch download in service scope so it runs independently
             val job = instance.scope.launch {
@@ -371,13 +375,50 @@ class GOGService : Service() {
                         SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     } else {
                         Timber.i("[Download] Completed successfully for game $gameId")
-                        downloadInfo.setProgress(1.0f)
-                        downloadInfo.setActive(false)
+
+                        // Download cloud saves so they're ready before first launch.
+                        // Status message keeps isDownloading() true so Play stays hidden during sync.
+                        val appId = "GOG_$gameId"
+                        val numericGameId = gameId.toIntOrNull()
+                        try {
+                            val gogGame = instance.gogManager.getGameFromDbById(gameId)
+                            val locations = if (gogGame != null) instance.gogManager.getSaveDirectoryPath(context, appId, gogGame.title) else null
+                            if (numericGameId != null && !locations.isNullOrEmpty() && !ContainerUtils.isLocalSavesOnly(context, appId)) {
+                                try {
+                                    downloadInfo.setPostInstallSyncing(true)
+                                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(numericGameId, true))
+                                    downloadInfo.updateStatusMessage("Syncing saves...")
+                                    syncCloudSaves(context, appId, preferredAction = "download")
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    Timber.e(e, "[PostInstallSync] Cloud save sync failed for game $gameId")
+                                } finally {
+                                    downloadInfo.setPostInstallSyncing(false)
+                                    downloadInfo.updateStatusMessage(null)
+                                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(numericGameId, false))
+                                }
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.e(e, "[PostInstallSync] Cloud save sync failed for game $gameId")
+                        }
 
                         SnackbarManager.show("Download completed successfully!")
+                        downloadInfo.setProgress(1.0f)
+                        downloadInfo.setActive(false)
                     }
+                } catch (e: CancellationException) {
+                    downloadInfo.setPostInstallSyncing(false)
+                    downloadInfo.updateStatusMessage(null)
+                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId.toIntOrNull() ?: -1, false))
+                    throw e
                 } catch (e: Exception) {
                     Timber.e(e, "[Download] Exception for game $gameId")
+                    downloadInfo.setPostInstallSyncing(false)
+                    downloadInfo.updateStatusMessage(null)
+                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId.toIntOrNull() ?: -1, false))
                     downloadInfo.setProgress(-1.0f)
                     downloadInfo.setActive(false)
 
@@ -557,6 +598,8 @@ class GOGService : Service() {
                                 Timber.tag("GOG").e("[Cloud Saves] Failed to sync save location '${location.name}' for game $gameId (timestamp: $newTimestamp)")
                                 allSucceeded = false
                             }
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             Timber.tag("GOG").e(e, "[Cloud Saves] Exception syncing save location '${location.name}' for game $gameId")
                             allSucceeded = false
@@ -575,6 +618,8 @@ class GOGService : Service() {
                     getInstance()?.gogManager?.endSync(appId)
                     Timber.tag("GOG").d("[Cloud Saves] Sync completed and lock released for $appId")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "[Cloud Saves] Failed to sync cloud saves for App ID: $appId")
                 return@withContext false
@@ -583,6 +628,8 @@ class GOGService : Service() {
     }
 
     private lateinit var notificationHelper: NotificationHelper
+
+    private val notifierOrNull: NotificationHelper? get() = if (::notificationHelper.isInitialized) notificationHelper else null
 
     @Inject
     lateinit var gogManager: GOGManager
@@ -612,8 +659,13 @@ class GOGService : Service() {
         Timber.d("[GOGService] onStartCommand() - action: ${intent?.action}")
 
         // Start as foreground service
-        val notification = notificationHelper.createForegroundNotification("Connected")
-        startForeground(1, notification)
+        val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_GOG, "Connected")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            startForeground(NotificationHelper.NOTIFICATION_ID_GOG, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(NotificationHelper.NOTIFICATION_ID_GOG, notification)
+        }
+        notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_GOG)
 
         // Determine if we should sync based on the action
         val shouldSync = when (intent?.action) {
@@ -681,6 +733,12 @@ class GOGService : Service() {
         return START_STICKY
     }
 
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        super.onTimeout(startId, fgsType)
+        Timber.w("[GOGService] Foreground service timeout reached, restarting...")
+        stopSelf()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         PluviaApp.events.off<AndroidEvent.EndProcess, Unit>(onEndProcess)
@@ -691,8 +749,18 @@ class GOGService : Service() {
 
         scope.cancel() // Cancel any ongoing operations
         stopForeground(STOP_FOREGROUND_REMOVE)
-        notificationHelper.cancel()
+        notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_GOG)
         instance = null
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (!hasActiveOperations()) {
+            Timber.tag("GOG").i("Task removed and no active work — stopping service")
+            stopSelf()
+        } else {
+            Timber.tag("GOG").i("Task removed but active work exists — keeping service alive")
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

@@ -20,23 +20,37 @@ object GameFixesRegistry {
         GOG_Fix_1129934535,
         GOG_Fix_1141086411,
         GOG_Fix_1177610018,
+        GOG_Fix_1453375253,
         GOG_Fix_1454315831,
         GOG_Fix_1454587428,
         GOG_Fix_1458058109,
         GOG_Fix_1589319779,
-        GOG_Fix_2147483047,
-        GOG_Fix_1787707874,
         GOG_Fix_1635627436,
-        STEAM_Fix_22300,
-        STEAM_Fix_22380,
-        STEAM_Fix_22330,
+        GOG_Fix_1787707874,
+        GOG_Fix_1808582759,
+        GOG_Fix_2147483047,
         STEAM_Fix_400,
-        STEAM_Fix_3373660,
+        STEAM_Fix_22300,
+        STEAM_Fix_22330,
+        STEAM_Fix_22370,
+        STEAM_Fix_22380,
+        STEAM_Fix_22490,
+        STEAM_Fix_413150,
+        STEAM_Fix_413420,
+        STEAM_Fix_752580,
         STEAM_Fix_1637320,
+        STEAM_Fix_1962700,
+        STEAM_Fix_2868840,
+        STEAM_Fix_3373660,
+        STEAM_Fix_990080,
         EPIC_Fix_b1b4e0b67a044575820cb5e63028dcae,
         EPIC_Fix_dabb52e328834da7bbe99691e374cb84,
+        EPIC_Fix_e345fdb9186645a48d30c3f85a8951dc,
         EPIC_Fix_59a0c86d02da42e8ba6444cb171e61bf,
+        EPIC_Fix_864c7bc2c2394f7dbd1b534aa068ff56,
     ).associateBy { it.gameSource to it.gameId }
+
+    private var fixesProvider: () -> Map<Pair<GameSource, String>, GameFix> = { fixes }
 
     fun applyFor(context: Context, appId: String, container: Container) {
         val source = ContainerUtils.extractGameSourceFromContainerId(appId)
@@ -50,7 +64,7 @@ object GameFixesRegistry {
             else -> gameId
         }
         Timber.i("GameFixesRegistry: Applying fixes for game: $source $catalogId if available")
-        val fix = fixes[source to catalogId] ?: return
+        val fix = fixesProvider()[source to catalogId] ?: return
         val (installPath, installPathWindows) = resolvePaths(context, source, gameId) ?: return
         fix.apply(context, catalogId, installPath, installPathWindows, container)
     }
@@ -76,5 +90,15 @@ object GameFixesRegistry {
             }
             else -> null
         }
+    }
+
+    /**
+     * Test-only hook to override the game-fixes provider.
+     * Not intended for production code paths.
+     *
+     * @param provider Fixes provider for tests; pass null to restore the default provider.
+     */
+    internal fun setFixesProviderForTests(provider: (() -> Map<Pair<GameSource, String>, GameFix>)?) {
+        fixesProvider = provider ?: { fixes }
     }
 }

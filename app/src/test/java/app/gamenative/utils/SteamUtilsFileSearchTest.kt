@@ -648,12 +648,12 @@ class SteamUtilsFileSearchTest {
             steamAppId.toString(), steamAppIdFile.readText().trim())
 
         // Verify files from experimental-drm.tzst are extracted to Steam directory
-        // At minimum, verify steamclient_loader_x64.dll exists (as checked in line 210 of SteamUtils.kt)
-        val steamClientLoaderDll = File(steamDir, "steamclient_loader_x64.dll")
+        // At minimum, verify steamclient_loader_x64.exe exists (as checked in SteamUtils.kt)
+        val steamClientLoader = File(steamDir, "steamclient_loader_x64.exe")
         // Note: If experimental-drm.tzst doesn't exist in test assets, this file won't exist
         // but the test should still verify the steam_settings creation worked
-        if (steamClientLoaderDll.exists()) {
-            assertTrue("steamclient_loader_x64.dll should exist after extraction", true)
+        if (steamClientLoader.exists()) {
+            assertTrue("steamclient_loader_x64.exe should exist after extraction", true)
         }
 
         // Verify steam_api64.dll in app directory is NOT replaced (remains original)
@@ -1531,12 +1531,12 @@ class SteamUtilsFileSearchTest {
 
         val userIniContent = userIni.readText()
 
-        // Verify [user::saves] section does NOT exist
-        assertFalse("configs.user.ini should not contain [user::saves] section",
+        // Verify [user::saves] section does exist
+        assertTrue("configs.user.ini should contain [user::saves] section",
             userIniContent.contains("[user::saves]"))
 
-        // Verify local_save_path does NOT exist
-        assertFalse("configs.user.ini should not contain local_save_path",
+        // Verify local_save_path does exist
+        assertTrue("configs.user.ini should contain local_save_path",
             userIniContent.contains("local_save_path="))
     }
 

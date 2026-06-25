@@ -335,6 +335,8 @@ public class Keyboard {
         keyboard.setKeysyms(XKeycode.KEY_F10.getId(), 65479, 0);
         keyboard.setKeysyms(XKeycode.KEY_F11.getId(), 65480, 0);
         keyboard.setKeysyms(XKeycode.KEY_F12.getId(), 65481, 0);
+        keyboard.setKeysyms(XKeycode.KEY_NUM_LOCK.getId(), 65407, 0);
+        keyboard.setKeysyms(XKeycode.KEY_CAPS_LOCK.getId(), 65509, 0);
         return keyboard;
     }
 

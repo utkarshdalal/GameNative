@@ -1,6 +1,7 @@
 package app.gamenative.utils
 
 import android.content.Context
+import app.gamenative.BuildConfig
 import com.winlator.contents.AdrenotoolsManager
 import com.winlator.contents.ContentProfile
 import com.winlator.contents.ContentsManager
@@ -8,9 +9,27 @@ import com.winlator.core.GPUHelper
 import com.winlator.core.StringUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.Locale
 
 object ManifestComponentHelper {
+    fun parseSemVerTriplet(value: String): Triple<Int, Int, Int>? {
+        val match = Regex("(\\d+)\\.(\\d+)(?:\\.(\\d+))?").find(value) ?: return null
+        val major = match.groupValues.getOrNull(1)?.toIntOrNull() ?: return null
+        val minor = match.groupValues.getOrNull(2)?.toIntOrNull() ?: return null
+        val patch = match.groupValues.getOrNull(3)?.toIntOrNull() ?: 0
+        return Triple(major, minor, patch)
+    }
+
+    fun isAtLeastVersion(value: String, minMajor: Int, minMinor: Int, minPatch: Int): Boolean {
+        val (major, minor, patch) = parseSemVerTriplet(value) ?: return false
+        return when {
+            major != minMajor -> major > minMajor
+            minor != minMinor -> minor > minMinor
+            else -> patch >= minPatch
+        }
+    }
+
     data class InstalledContentLists(
         val dxvk: List<String>,
         val vkd3d: List<String>,
@@ -104,11 +123,41 @@ object ManifestComponentHelper {
             )
         }
 
+        val mergedContent = installedContent.copy(
+            dxvk = (installedContent.dxvk + dxWrapperOnDiskVersions(context, "dxvk")).distinct(),
+            vkd3d = (installedContent.vkd3d + dxWrapperOnDiskVersions(context, "vkd3d")).distinct(),
+        )
+
         InstalledContentListsAndDrivers(
-            installed = installedContent,
+            installed = mergedContent,
             installedDrivers = installedDrivers,
         )
     }
+
+    /**
+     * dxvk/vkd3d versions present on disk as raw .tzst — either bundled in the APK or downloaded
+     * into the dxwrapper cache. These count as "installed" (un-greyed) without a ContentProfile.
+     */
+    fun dxWrapperOnDiskVersions(context: Context, type: String): List<String> {
+        val prefix = "$type-"
+        val names = linkedSetOf<String>()
+        try {
+            context.assets.list("dxwrapper")?.forEach { name ->
+                if (name.startsWith(prefix) && name.endsWith(".tzst")) names.add(name)
+            }
+        } catch (_: Exception) {}
+        File(context.filesDir, "assets/dxwrapper").listFiles()?.forEach { f ->
+            if (f.name.startsWith(prefix) && f.name.endsWith(".tzst")) names.add(f.name)
+        }
+        return names.map { it.removePrefix(prefix).removeSuffix(".tzst") }
+    }
+
+    /**
+     * On modern builds, dxvk/vkd3d are not bundled wholesale; the un-greyed base comes from what is
+     * actually on disk (see [dxWrapperOnDiskVersions]) plus the manifest. Legacy keeps the full list.
+     */
+    fun bundledDxWrapperBase(entries: List<String>): List<String> =
+        if (BuildConfig.MODERN_ANDROID) emptyList() else entries
 
     suspend fun loadComponentAvailability(context: Context): ComponentAvailability = withContext(Dispatchers.IO) {
         val installed = loadInstalledContentLists(context)
@@ -118,6 +167,14 @@ object ManifestComponentHelper {
             installed = installed.installed,
             installedDrivers = installed.installedDrivers,
         )
+    }
+
+    fun bundledGraphicsDriverBase(resourceEntries: List<String>): List<String> {
+        return if (BuildConfig.MODERN_ANDROID) {
+            resourceEntries.filter { it.equals("System", ignoreCase = true) }
+        } else {
+            resourceEntries
+        }
     }
 
     fun buildAvailableVersions(base: List<String>, installed: List<String>, manifest: List<ManifestEntry>, ): List<String> {
@@ -202,11 +259,25 @@ object ManifestComponentHelper {
             else if (isBionicVariant) dxvkOptions.muted
             else emptyList()
 
-        return if (isVKD3D) {
-            DxvkContext(isVortekLike, emptyList(), emptyList(), emptyList())
+        val (finalLabels, finalIds, finalMuted) = if (isVKD3D) {
+            val allowedIndices = ids.mapIndexedNotNull { index, id ->
+                if (isAtLeastVersion(id, 2, 1, 0)) index else null
+            }
+            if (allowedIndices.isNotEmpty()) {
+                Triple(
+                    allowedIndices.map { labels[it] },
+                    allowedIndices.map { ids[it] },
+                    if (muted.isNotEmpty()) allowedIndices.map { muted[it] } else emptyList(),
+                )
+            } else {
+                Triple(labels, ids, muted)
+            }
         } else {
-            DxvkContext(isVortekLike, labels, ids, muted)
+            Triple(labels, ids, muted)
         }
+
+        // Always return DXVK options regardless of wrapper selection (allows DXVK config even when VKD3D is selected)
+        return DxvkContext(isVortekLike, finalLabels, finalIds, finalMuted)
     }
 
     fun versionExists(version: String, available: List<String>): Boolean {
@@ -222,7 +293,7 @@ object ManifestComponentHelper {
         val normalized = version.trim()
         if (normalized.isEmpty()) return null
         return entries.firstOrNull { entry ->
-            normalized.equals(entry.id, ignoreCase=true)
+            normalized.equals(entry.id, ignoreCase = true) || normalized.equals(entry.name, ignoreCase = true)
         }
     }
 }

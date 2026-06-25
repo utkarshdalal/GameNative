@@ -13,7 +13,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import app.gamenative.R
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
@@ -93,10 +93,11 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                 var knownVarsMenuOpen by rememberSaveable { mutableStateOf(false) }
                 Column {
                     Row {
-                        OutlinedTextField(
+                        NoExtractOutlinedTextField(
                             value = envVarName,
                             onValueChange = { envVarName = it },
                             label = { Text(text = stringResource(R.string.name)) },
+                            singleLine = true,
                             trailingIcon = {
                                 IconButton(
                                     onClick = { knownVarsMenuOpen = true },
@@ -157,10 +158,11 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                     } else {
                         var suggestionsExpanded by remember { mutableStateOf(false) }
                         val hasSuggestions = selectedEnvVarInfo?.selectionType == EnvVarSelectionType.SUGGESTIONS
-                        OutlinedTextField(
+                        NoExtractOutlinedTextField(
                             value = envVarValue,
                             onValueChange = { envVarValue = it },
                             label = { Text(text = stringResource(R.string.value)) },
+                            singleLine = true,
                             trailingIcon = if (hasSuggestions) {
                                 {
                                     IconButton(onClick = { suggestionsExpanded = true }) {
@@ -174,13 +176,28 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                         onDismissRequest = { suggestionsExpanded = false },
                                     ) {
                                         selectedEnvVarInfo!!.possibleValues.forEach { suggestion ->
-                                            DropdownMenuItem(
-                                                text = { Text(suggestion) },
-                                                onClick = {
-                                                    envVarValue = suggestion
-                                                    suggestionsExpanded = false
-                                                },
-                                            )
+                                            // suggestion box headers
+                                            if (suggestion.startsWith("---")) {
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text = suggestion.removePrefix("---"),
+                                                            style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                                                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                        )
+                                                    },
+                                                    onClick = {},
+                                                    enabled = false,
+                                                )
+                                            } else {
+                                                DropdownMenuItem(
+                                                    text = { Text(suggestion) },
+                                                    onClick = {
+                                                        envVarValue = suggestion
+                                                        suggestionsExpanded = false
+                                                    },
+                                                )
+                                            }
                                         }
                                     }
                                 }

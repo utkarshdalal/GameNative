@@ -10,6 +10,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.UserLoginState
+import app.gamenative.PrefManager
 import com.posthog.PostHog
 import `in`.dragonbra.javasteam.steam.authentication.IAuthenticator
 import java.util.concurrent.CompletableFuture
@@ -30,10 +31,16 @@ class UserLoginViewModel : ViewModel() {
     val snackEvents = _snackEvents.receiveAsFlow()
 
     private val submitChannel = Channel<String>()
+    private var useGuardTotp: Boolean = false
 
     private val authenticator = object : IAuthenticator {
         override fun acceptDeviceConfirmation(): CompletableFuture<Boolean> {
             Timber.tag("UserLoginViewModel").i("Two-Factor, device confirmation")
+
+            if (useGuardTotp) {
+                useGuardTotp = false
+                return CompletableFuture.completedFuture(false)
+            }
 
             _loginState.update { currentState ->
                 currentState.copy(
@@ -140,18 +147,22 @@ class UserLoginViewModel : ViewModel() {
         }
 
         if (it.loginResult == LoginResult.Success) {
-            PostHog.capture(
-                event = "login_success",
-                properties = mapOf("method" to method),
-            )
+            if (PrefManager.usageAnalyticsEnabled) {
+                PostHog.capture(
+                    event = "login_success",
+                    properties = mapOf("method" to method),
+                )
+            }
         } else if (it.loginResult == LoginResult.Failed) {
-            PostHog.capture(
-                event = "login_failed",
-                properties = mapOf(
-                    "method" to method,
-                    "reason" to (it.message ?: "unknown"),
-                ),
-            )
+            if (PrefManager.usageAnalyticsEnabled) {
+                PostHog.capture(
+                    event = "login_failed",
+                    properties = mapOf(
+                        "method" to method,
+                        "reason" to (it.message ?: "unknown"),
+                    ),
+                )
+            }
             it.message?.let(::showSnack)
         }
     }
@@ -243,6 +254,7 @@ class UserLoginViewModel : ViewModel() {
             if (username.isEmpty() && password.isEmpty()) {
                 return@with
             }
+            SteamService.stopLoginWithQr()
 
             viewModelScope.launch {
                 SteamService.startLoginWithCredentials(
@@ -313,6 +325,21 @@ class UserLoginViewModel : ViewModel() {
     fun setTwoFactorCode(twoFactorCode: String) {
         _loginState.update { currentState ->
             currentState.copy(twoFactorCode = twoFactorCode)
+        }
+    }
+
+    fun useGuardTotp() {
+        useGuardTotp = true
+
+        with(_loginState.value) {
+            viewModelScope.launch {
+                SteamService.startLoginWithCredentials(
+                    username = username,
+                    password = password,
+                    rememberSession = rememberSession,
+                    authenticator = authenticator,
+                )
+            }
         }
     }
 

@@ -5,6 +5,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.gamenative.PrefManager
 
 /**
  * Window width size classes based on Material Design 3 guidelines.
@@ -34,9 +35,11 @@ fun rememberScreenWidthDp(): Int {
     return configuration.screenWidthDp
 }
 
-// TODO: Also consider if a gamepad is actually connected
 @Composable
 fun shouldShowGamepadUI(): Boolean {
+    if (!PrefManager.showGamepadHints) {
+        return false
+    }
     return rememberWindowWidthClass() != WindowWidthClass.COMPACT
 }
 

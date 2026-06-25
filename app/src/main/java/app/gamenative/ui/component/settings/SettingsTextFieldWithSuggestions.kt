@@ -10,7 +10,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.MaterialTheme
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -60,7 +61,7 @@ fun SettingsTextFieldWithSuggestions(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                OutlinedTextField(
+                NoExtractOutlinedTextField(
                     modifier = Modifier
                         .focusRequester(focusRequester)
                         .weight(1f),
@@ -82,13 +83,29 @@ fun SettingsTextFieldWithSuggestions(
                         onDismissRequest = { suggestionsExpanded = false },
                     ) {
                         suggestions.forEach { suggestion ->
-                            DropdownMenuItem(
-                                text = { Text(suggestion) },
-                                onClick = {
-                                    onValueChange(suggestion)
-                                    suggestionsExpanded = false
-                                },
-                            )
+                                            // suggestion box headers
+                                            if (suggestion.startsWith("---")) {
+                                                // Category header — greyed out, not clickable
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text = suggestion.removePrefix("---"),
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                        )
+                                                    },
+                                                    onClick = {},
+                                                    enabled = false,
+                                                )
+                                            } else {
+                                                DropdownMenuItem(
+                                                    text = { Text(suggestion) },
+                                                    onClick = {
+                                                        onValueChange(suggestion)
+                                                        suggestionsExpanded = false
+                                                    },
+                                                )
+                                            }
                         }
                     }
                 }

@@ -46,6 +46,8 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.CompatibilityBadge
+import app.gamenative.ui.component.GameStatsRow
+import app.gamenative.ui.data.GameCardStats
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +66,7 @@ internal fun ListViewCard(
     onFocusChanged: (Boolean) -> Unit,
     isRefreshing: Boolean,
     compatibilityStatus: GameCompatibilityStatus?,
+    gameStats: GameCardStats?,
     context: Context,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -91,8 +94,8 @@ internal fun ListViewCard(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
             },
         ),
-        border = if (isFocused) {
-            BorderStroke(
+        border = when {
+            isFocused -> BorderStroke(
                 2.dp,
                 Brush.horizontalGradient(
                     colors = listOf(
@@ -101,8 +104,11 @@ internal fun ListViewCard(
                     ),
                 ),
             )
-        } else {
-            null
+            appInfo.isRecommended -> BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+            )
+            else -> null
         },
     ) {
         Row(
@@ -177,10 +183,19 @@ internal fun ListViewCard(
                         }
                     }
                 }
+
+                GameStatsRow(
+                    stats = gameStats,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                )
             }
 
-            // Compatibility badge
-            compatibilityStatus?.let { status ->
+            val badgeStatus = if (appInfo.isRecommended) {
+                GameCompatibilityStatus.RECOMMENDED
+            } else {
+                compatibilityStatus
+            }
+            badgeStatus?.let { status ->
                 CompatibilityBadge(
                     status = status,
                     showLabel = true,
@@ -261,6 +276,7 @@ private fun InstallStatusBadge(
  * Gets the icon URL for a game in list view.
  */
 private fun getListIconUrl(context: Context, appInfo: LibraryItem): String {
+    if (appInfo.isRecommended) return appInfo.iconHash
     return if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
         val path = CustomGameScanner.findIconFileForCustomGame(context, appInfo.appId)
         if (!path.isNullOrEmpty()) {

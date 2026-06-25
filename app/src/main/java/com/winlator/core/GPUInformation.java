@@ -23,6 +23,11 @@ import javax.microedition.khronos.opengles.GL10;
 
 public abstract class GPUInformation {
 
+    // Bumped from "gpu_renderer" to invalidate caches that stored the renderer
+    // with a manufacturer prefix (e.g. "Oculus Adreno (TM) 740"); the empty new
+    // key forces a clean recompute.
+    private static final String RENDERER_PREF_KEY = "gpu_renderer2";
+
     static {
         System.loadLibrary("extras");
     }
@@ -103,7 +108,7 @@ public abstract class GPUInformation {
             gpuInfo.put("version", gpuVersion);
 
             PrefManager.init(context);
-            PrefManager.putString("gpu_renderer", gpuRenderer);
+            PrefManager.putString(RENDERER_PREF_KEY, gpuRenderer);
             PrefManager.putString("gpu_vendor", gpuVendor);
             PrefManager.putString("gpu_version", gpuVersion);
 
@@ -124,7 +129,7 @@ public abstract class GPUInformation {
 
     public static String getRenderer(Context context) {
         PrefManager.init(context);
-        String value = PrefManager.getString("gpu_renderer", "");
+        String value = PrefManager.getString(RENDERER_PREF_KEY, "");
         if (!value.isEmpty()) return value;
 
         ArrayMap<String, String> gpuInfo = loadGPUInformation(context);
@@ -159,6 +164,11 @@ public abstract class GPUInformation {
         return r.contains("adreno") && r.matches(".*\\b8(3[0-9]|4[0-9]|5[0-9])\\b.*");
     }
 
+    public static boolean isAdreno8EliteGen5(Context context) {
+        String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
+        return r.contains("adreno") && r.matches(".*\\b8(4[0-9]|5[0-9])\\b.*");
+    }
+
     public static boolean isTurnipCapable(Context context) {
         String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
         // match “adreno 610…699” or “adreno 710…799”
@@ -174,6 +184,11 @@ public abstract class GPUInformation {
     public static boolean isAdreno710_720_732(Context context) {
         String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
         return r.contains("adreno") && r.matches(".*\\b(710|720|732)\\b.*");
+    }
+
+    public static boolean isAdreno740(Context context) {
+        String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
+        return r.contains("adreno") && r.matches(".*\\b740\\b.*");
     }
 
 

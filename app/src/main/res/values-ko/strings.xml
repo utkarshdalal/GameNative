@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">사용자 로그인</string>
     <string name="login_2fa">2단계 인증</string>
@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Steam 모바일 앱을 사용하여 로그인을 확인하세요…</string>
     <string name="steam_2fa_device">인증 앱에서 2단계 인증 코드를 입력하세요.</string>
     <string name="steam_2fa_email">%s 이메일로 전송된 인증 코드를 입력하세요</string>
+    <string name="steam_2fa_use_guard_totp">또는 2단계 인증 코드를 사용하세요</string>
     <string name="steam_install_space_prompt">설치할 앱의 공간 요구사항은 다음과 같습니다. 계속하시겠습니까?\n\n\t다운로드 크기: %1$s\n\t디스크 사용량: %2$s\n\t사용 가능한 공간: %3$s</string>
     <string name="steam_install_space">다운로드 크기: %1$s\n디스크 사용량: %2$s\n사용 가능한 공간: %3$s</string>
     <string name="steam_install_not_enough_space">설치할 앱에 %1$s의 공간이 필요하지만 이 기기에는 %2$s만 남아있습니다</string>
@@ -27,11 +28,9 @@
     <string name="base_app_reset_container_confirm">초기화</string>
     <string name="steam_verify_files_title">파일 검증</string>
     <string name="steam_verify_files_message">검증하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
+    <string name="steam_cloud_sync_downloading_save_files">저장 파일 다운로드 중 %1$d/%2$d</string>
     <string name="steam_update_title">업데이트</string>
     <string name="steam_update_message">업데이트하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
-    <string name="steam_cloud_sync_success">클라우드 동기화가 완료되었습니다</string>
-    <string name="steam_cloud_sync_up_to_date">저장 파일이 이미 최신 상태입니다</string>
-    <string name="steam_cloud_sync_failed">클라우드 동기화 실패: %s</string>
     <string name="steam_not_logged_in">이 기능을 사용하려면 Steam에 로그인해야 합니다</string>
     <string name="steam_storage_permission_required">저장소 권한이 필요합니다</string>
     <string name="steam_container_reset_success">컨테이너가 기본값으로 초기화되었습니다</string>
@@ -41,6 +40,7 @@
     <string name="steam_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
     <string name="steam_uninstall_success">%1$s이(가) 제거되었습니다</string>
     <string name="steam_uninstall_failed">게임 제거 실패</string>
+    <string name="deleting">삭제 중…</string>
     <string name="amazon_uninstall_game_title">게임 제거</string>
     <string name="amazon_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
     <string name="amazon_install_game_title">게임 다운로드</string>
@@ -67,10 +67,6 @@
     <string name="epic_download_error">다운로드 오류: %1$s</string>
     <string name="epic_cancel_download_message">앱 다운로드를 취소하시겠습니까?</string>
     <string name="epic_delete_download_message">이 게임의 다운로드된 모든 데이터를 삭제하시겠습니까?</string>
-    <string name="epic_cloud_sync_starting">클라우드 저장 파일 동기화 시작…</string>
-    <string name="epic_cloud_sync_success">클라우드 저장 파일 동기화 완료</string>
-    <string name="epic_cloud_sync_failed">클라우드 저장 파일 동기화 실패</string>
-    <string name="epic_cloud_sync_error">클라우드 저장 파일 동기화 오류: %1$s</string>
     <string name="epic_uninstall_failed">제거 실패: %1$s</string>
     <string name="epic_uninstall_error">제거 오류: %1$s</string>
     <string name="steam_never">안 함</string>
@@ -103,6 +99,7 @@
     <string name="confirm_delete">삭제 확인</string>
     <string name="destination_library">라이브러리</string>
     <string name="destination_downloads">다운로드 및 저장소</string>
+    <string name="downloads_section_title">다운로드</string>
 
     <string name="downloads_empty">진행 중인 다운로드 없음</string>
     <string name="downloads_overview_subtitle">진행 중, 일시 중지됨, 다시 시작 가능한 다운로드를 추적합니다</string>
@@ -116,7 +113,11 @@
     <string name="downloads_status_complete">완료됨</string>
     <string name="downloads_status_failed">실패</string>
     <string name="downloads_status_paused">일시중지됨</string>
-    <string name="downloads_summary">한곳에서 진행 중인 다운로드와 저장소를 관리합니다</string>
+    <string name="downloads_summary">진행 중 %1$d개 • 재개 가능 %2$d개 • 완료 %3$d개</string>
+    <string name="storage_internal">내부</string>
+    <string name="storage_external">외부</string>
+    <string name="storage_free_of_total">%1$s: %3$s 중 %2$s 사용 가능</string>
+    <string name="storage_calculating">%1$s: 계산 중…</string>
     <string name="container_storage_title">저장소 관리자</string>
     <string name="container_storage_subtitle">내부 저장소와 외부 저장소 사이에서 설치 항목을 이동합니다</string>
     <string name="container_storage_summary">%1$d개 항목 • %2$s</string>
@@ -136,7 +137,7 @@
     <string name="container_storage_move_to_internal_button">내부로 이동</string>
     <string name="container_storage_move_external_disabled">게임을 이동하기 전에 설정에서 외부 저장소 경로를 지정하세요.</string>
     <string name="container_storage_move_success">%1$s을(를) %2$s(으)로 이동했습니다</string>
-    <string name="container_storage_move_failed">게임 이동 실패: %1$s</string>
+    <string name="container_storage_move_failed">%1$s 이동 실패: %2$s</string>
     <string name="container_storage_remove_button">컨테이너 제거</string>
     <string name="container_storage_remove_title">컨테이너 제거</string>
     <string name="container_storage_remove_message">%1$s의 컨테이너를 제거할까요? 게임 파일은 디스크에 그대로 유지됩니다.</string>
@@ -210,6 +211,8 @@
     <!-- Winlator: Win Components -->
     <string name="direct3d">Direct3D</string>
     <string name="directsound">DirectSound</string>
+    <string name="directinput8">DirectInput 8</string>
+    <string name="directinput">DirectInput</string>
     <string name="directmusic">DirectMusic</string>
     <string name="directplay">DirectPlay</string>
     <string name="directshow">DirectShow</string>
@@ -240,6 +243,7 @@
     <string name="intent_launch_service_pending">서비스 준비 시 게임이 실행됩니다</string>
     <string name="intent_launch_steam_login_failed">Steam 로그인 실패 — 게임 실행이 취소되었습니다</string>
     <string name="intent_launch_service_timeout">게임 서비스 시작 실패 — 게임 실행이 취소되었습니다</string>
+    <string name="back_press_exit_warning">뒤로 한 번 더 누르면 종료됩니다</string>
     <string name="game_executable_not_found_title">실행할 수 없음</string>
     <string name="game_executable_not_found">실행 파일을 자동으로 선택할 수 없습니다. 컨테이너 설정에서 실행 파일 경로를 지정하세요.</string>
     <string name="save_container_settings_title">컨테이너 구성을 저장하시겠습니까?</string>
@@ -262,6 +266,7 @@
     <string name="toggle_fullscreen">전체 화면 전환</string>
     <string name="toggle_orientation">방향 전환</string>
     <string name="task_manager">작업 관리자</string>
+    <string name="tools_wine_processes_running_hint">%1$d개 실행 중, 프로세스를 탭/클릭해 종료</string>
     <string name="magnifier">돋보기</string>
     <string name="logs">로그</string>
     <string name="exit_game">종료</string>
@@ -290,6 +295,7 @@
     <string name="open_navigation_menu">탐색 메뉴 열기</string>
     <string name="quick_menu_title">빠른 메뉴</string>
     <string name="quick_menu_back">뒤로</string>
+    <string name="display_brightness">디스플레이 밝기</string>
     <string name="screen_effects">화면 효과</string>
     <string name="screen_effects_live_preview">변경 사항이 현재 게임에 즉시 적용됩니다.</string>
     <string name="screen_effects_color_adjustments">색상 조정</string>
@@ -301,6 +307,8 @@
     <string name="screen_effects_toon_description">셀 셰이딩 느낌을 위해 어두운 외곽선을 추가합니다.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">가벼운 후처리 안티앨리어싱으로 계단 현상을 완화합니다.</string>
+    <string name="screen_effects_vivid">생동감</string>
+    <string name="screen_effects_vivid_description">더 선명한 화면을 위해 bloom과 대비를 강화합니다.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">주사선과 은은한 색수차를 추가합니다.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -311,6 +319,12 @@
     <string name="quick_menu_tab_controller">컨트롤러</string>
     <string name="performance_hud">성능 HUD</string>
     <string name="performance_hud_description">게임 내 오버레이를 표시하거나 숨깁니다.</string>
+    <string name="performance_hud_fps_limiter">FPS 제한기</string>
+    <string name="performance_hud_fps_limiter_description">게임 내 프레임 속도를 제한합니다. 최대: %1$d Hz.</string>
+    <string name="performance_hud_fps_limiter_target">목표 FPS</string>
+    <string name="performance_hud_fps_limiter_off">무제한</string>
+    <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">LSFG 사용 중에는 제한기가 비활성화됩니다. 소스 속도는 배수로 결정됩니다.</string>
     <string name="performance_hud_presets">프리셋</string>
     <string name="performance_hud_presets_description">일반적인 HUD 레이아웃으로 빠르게 전환합니다.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -457,6 +471,7 @@
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">이 앱의 PID에 대한 logcat 스냅샷만 저장합니다</string>
     <string name="settings_save_logcat_title">logcat 저장</string>
+    <string name="settings_achievement_show_notification">업적 알림 표시</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         CALL/RET 명령어의 플래그 처리<br /><br />
@@ -645,6 +660,10 @@
     <string name="width">너비</string>
     <string name="height">높이</string>
     <string name="audio_driver">오디오 드라이버</string>
+    <string name="pulseaudio_suspend_behavior">PulseAudio 일시 중단 동작</string>
+    <string name="pulseaudio_suspend_behavior_thread">스레드를 통한 일시 중단 (기본값)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Pactl을 통한 일시 중단 (절전)</string>
+    <string name="pulseaudio_low_latency">PulseAudio 저지연 모드</string>
     <string name="show_fps">FPS 표시</string>
     <string name="portrait_mode">세로 모드</string>
     <string name="portrait_mode_description">8BitDo FlipPad/GameSir Pocket Taco 유형 컨트롤러용</string>
@@ -659,6 +678,8 @@
     <string name="launch_steam_client_beta">Steam 클라이언트 실행(베타)</string>
     <string name="steam_offline_mode">Steam 오프라인 모드</string>
     <string name="steam_offline_mode_description">Steam 게임을 오프라인 모드로 실행</string>
+    <string name="epic_offline_mode">Epic 오프라인 모드</string>
+    <string name="epic_offline_mode_description">Epic 게임을 오프라인 모드로 실행</string>
     <string name="achievement_unlocked">업적 달성</string>
     <string name="settings_achievement_notification_position">업적 알림 위치</string>
     <string name="achievement_position_top_left">좌측 상단</string>
@@ -680,9 +701,12 @@
     <string name="vulkan_version">Vulkan 버전</string>
     <string name="image_cache_size">이미지 캐시 크기</string>
     <string name="dx_wrapper">DX Wrapper</string>
+    <string name="display_renderer">디스플레이 렌더러</string>
     <string name="vkd3d_feature_level">VKD3D 기능 수준</string>
     <string name="use_dri3">DRI3 사용</string>
     <string name="use_dri3_description">비활성화하면 일부 장치에서 그래픽 결함이 수정될 수 있습니다</string>
+    <string name="use_legacy_renderer">레거시 렌더러 사용</string>
+    <string name="use_legacy_renderer_description">VulkanRenderer 대신 레거시 GLRenderer를 사용합니다. VulkanRenderer는 성능을 향상시키지만, 베타 버전이므로 문제가 발생할 수 있습니다.</string>
     <string name="sync_frame">모든 프레임 동기화</string>
     <string name="disable_present_wait">KHR_present_wait 비활성화</string>
     <string name="present_modes">프레젠트 모드</string>
@@ -717,19 +741,19 @@
     <string name="directinput_mapper_type">DirectInput 매퍼 유형</string>
     <string name="disable_mouse_input">마우스 입력 비활성화</string>
     <string name="touchscreen_mode">터치스크린 모드</string>
-    <string name="touchscreen_mode_description">비주얼 노벨 및 RTS 게임용</string>
     <string name="shooter_mode_toggle">슈터 모드</string>
     <string name="shooter_mode_toggle_description">스틱 요소를 동적 조이스틱으로 교체</string>
     <string name="shooter_mode_on">마우스 활성화</string>
     <string name="shooter_mode_off">스틱 활성화</string>
 
     <!-- Gesture Settings Dialog -->
-    <string name="gesture_settings">제스처 설정</string>
     <string name="gesture_settings_title">터치 제스처 설정</string>
     <string name="gesture_tap">탭</string>
     <string name="gesture_tap_subtitle">왼쪽 클릭</string>
     <string name="gesture_drag">드래그</string>
     <string name="gesture_drag_subtitle">왼쪽 클릭 드래그 (영역 선택)</string>
+    <string name="gesture_hold_mouse_button_while_touching">터치하는 동안 마우스 버튼 누르기 유지</string>
+    <string name="gesture_mouse_button_label">마우스 버튼</string>
     <string name="gesture_long_press">길게 누르기</string>
     <string name="gesture_long_press_delay">길게 누르기 지연 (ms)</string>
     <string name="gesture_double_tap">더블 탭</string>
@@ -742,13 +766,54 @@
     <string name="gesture_action_right_click">오른쪽 클릭</string>
     <string name="gesture_action_middle_click">가운데 클릭</string>
     <string name="gesture_pan_middle_mouse">가운데 버튼 패닝</string>
+    <string name="gesture_pan_inverted_middle_mouse">반전 가운데 버튼 패닝</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">반전 WASD</string>
     <string name="gesture_pan_arrow_keys">화살표 키</string>
+    <string name="gesture_pan_inverted_arrow_keys">반전 화살표 키</string>
     <string name="gesture_zoom_scroll_wheel">스크롤 휠</string>
     <string name="gesture_zoom_plus_minus">+/- 키</string>
     <string name="gesture_zoom_page_up_down">페이지 위/아래</string>
     <string name="gesture_action_label">동작</string>
     <string name="gesture_delay_label">지연</string>
+    <string name="gesture_section_single_finger">한 손가락</string>
+    <string name="gesture_section_two_finger">두 손가락</string>
+    <string name="gesture_section_three_finger">세 손가락</string>
+    <string name="gesture_section_other">기타</string>
+    <string name="gesture_pan_left_click_drag">왼쪽 클릭 드래그</string>
+    <string name="gesture_pan_right_click_drag">오른쪽 클릭 드래그</string>
+    <string name="gesture_action_show_keyboard">키보드 표시</string>
+    <string name="gesture_mouse_behavior_label">마우스 동작</string>
+    <string name="gesture_mouse_behavior_click">클릭</string>
+    <string name="gesture_mouse_behavior_hold">누른 상태 유지</string>
+    <string name="gesture_header_special">특수</string>
+    <string name="gesture_header_mouse">마우스</string>
+    <string name="gesture_header_common_game">일반 게임 키</string>
+    <string name="gesture_header_navigation_editing">탐색 / 편집</string>
+    <string name="gesture_header_symbols">기호</string>
+    <string name="gesture_header_letters">문자 A-Z</string>
+    <string name="gesture_header_numbers">숫자 0-9</string>
+    <string name="gesture_header_numpad">숫자 키패드</string>
+    <string name="gesture_header_function_keys">기능 키</string>
+    <string name="gesture_header_modifiers_locks">보조키 / 잠금</string>
+    <string name="gesture_two_finger_hold">두 손가락 길게 누르기</string>
+    <string name="gesture_two_finger_hold_delay">두 손가락 길게 누르기 지연 (ms)</string>
+    <string name="gesture_three_finger_tap">세 손가락 탭</string>
+    <string name="gesture_three_finger_drag">세 손가락 드래그</string>
+    <string name="gesture_three_finger_hold">세 손가락 길게 누르기</string>
+    <string name="gesture_three_finger_hold_delay">세 손가락 길게 누르기 지연 (ms)</string>
+    <string name="gesture_threshold">제스처 임계값 (px)</string>
+    <string name="gesture_threshold_subtitle">제스처 유형을 고정하는 데 필요한 이동 거리 (낮을수록 더 반응이 빠름)</string>
+    <string name="gesture_mouse_drag_movement">드래그 시 마우스 이동</string>
+    <string name="gesture_mouse_drag_movement_subtitle">대부분의 게임에서는 직접 모드가 작동합니다. 드래그 시 카메라나 커서 문제가 있으면 상대 모드를 사용하세요</string>
+    <string name="gesture_mouse_drag_movement_direct">직접</string>
+    <string name="gesture_mouse_drag_movement_relative">상대</string>
+    <string name="gesture_show_click_highlight">클릭 강조 표시</string>
+    <string name="gesture_show_click_highlight_subtitle">탭 위치에 원 표시</string>
+    <string name="gesture_show_debug_overlay">제스처 디버그 오버레이 표시</string>
+    <string name="gesture_show_debug_overlay_subtitle">상단 중앙에 임시 제스처 레이블 표시</string>
+    <string name="gesture_show_cursor_touchscreen_mode">터치스크린 모드에서 커서 표시</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">터치스크린 제스처가 활성화된 동안 마우스 커서를 계속 표시</string>
 
     <!-- Shooter Mode -->
     <string name="shooter_mode_settings">동적 조이스틱 설정</string>
@@ -907,6 +972,8 @@
     <string name="settings_info_libraries_subtitle">GameNative를 가능하게 하는 기술 보기</string>
     <string name="settings_info_privacy_title">개인정보 보호정책</string>
     <string name="settings_info_privacy_subtitle">GameNative의 개인정보 보호정책 링크 열기</string>
+    <string name="settings_info_usage_analytics_title">사용 분석</string>
+    <string name="settings_info_usage_analytics_subtitle">개인 정보는 절대 추적하지 않습니다. 이 기능을 비활성화하면 비필수 분석이 중지되지만, 호환성 향상을 위한 정당한 이익으로서 핵심 게임 성능 데이터는 계속 수집됩니다.</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">인터페이스</string>
@@ -914,7 +981,13 @@
     <string name="settings_interface_external_links_subtitle">링크가 기본 웹 브라우저로 열립니다</string>
     <string name="settings_interface_hide_statusbar_title">게임이 아닐 때 상태 표시줄 숨기기</string>
     <string name="settings_interface_hide_statusbar_subtitle">게임 목록, 설정 등에서 Android 상태 표시줄을 숨깁니다. 변경 시 앱이 재시작됩니다.</string>
+    <string name="settings_interface_warn_before_exit_title">종료 전 경고</string>
+    <string name="settings_interface_warn_before_exit_subtitle">종료하려면 뒤로 두 번 눌러야 합니다 — 첫 번째는 경고를 표시합니다</string>
+    <string name="settings_interface_show_gamepad_hints_title">컨트롤러 힌트 표시</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">화면 하단에 컨트롤러 버튼 힌트 바를 표시합니다</string>
     <string name="settings_interface_icon_style">아이콘 스타일</string>
+    <string name="settings_interface_custom_games">사용자 지정 게임</string>
+    <string name="settings_interface_custom_game_import_as_steam">사용자 지정 게임을 Steam 게임으로 가져오기</string>
     <string name="settings_interface_wifi_only_title">Wi-Fi/LAN으로만 다운로드</string>
     <string name="settings_interface_wifi_only_subtitle">셀룰러 데이터로 다운로드 방지</string>
     <string name="settings_interface_external_storage_title">외부 저장소에 쓰기</string>
@@ -982,9 +1055,11 @@
     <string name="library_export_cancelled">내보내기 취소됨</string>
     <string name="library_shortcut_created">바로가기가 생성되었습니다</string>
     <string name="library_failed_to_create_shortcut">바로가기 생성 실패: %s</string>
+    <string name="library_cloud_sync_starting">클라우드 저장 파일 동기화 시작…</string>
     <string name="library_cloud_sync_success">클라우드 동기화가 완료되었습니다</string>
     <string name="library_cloud_sync_up_to_date">저장 파일이 이미 최신 상태입니다</string>
-    <string name="library_cloud_sync_failed">클라우드 동기화 실패: %s</string>
+    <string name="library_cloud_sync_failed">클라우드 동기화 실패</string>
+    <string name="library_cloud_sync_error">클라우드 저장 파일 동기화 오류: %1$s</string>
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">설치하려면 인터넷이 필요합니다</string>
@@ -1024,6 +1099,7 @@
     <string name="main_app_running_message">다른 장치에서 이미 %s을(를) 플레이 중입니다. \n이 게임을 플레이할 수 있지만 다른 세션의 Steam 연결이 끊어집니다.</string>
     <string name="main_app_running_other_device">다른 장치(%1$s)에서 이미 %2$s(%3$s)을(를) 플레이 중이며, 해당 저장 파일이 아직 클라우드에 없습니다. \n이 게임을 플레이할 수 있지만 다른 세션의 Steam 연결이 끊어지고 해당 세션의 진행 상황이 동기화될 때 저장 충돌이 발생할 수 있습니다</string>
     <string name="main_play_anyway">어쨌든 플레이</string>
+    <string name="main_app_running_unknown_game">게임</string>
 
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">저장 충돌</string>
@@ -1110,11 +1186,14 @@
 
     <!-- Best Config Toast Messages -->
     <string name="best_config_applied_successfully">설정이 성공적으로 적용되었습니다</string>
+    <string name="best_config_missing_components_title">구성이 적용되지 않음</string>
+    <string name="best_config_missing_components_message">이 장치에서 다음 필수 구성 요소를 사용할 수 없습니다:\n\n%1$s\n\n누락된 구성 요소를 설치하고 다시 시도하세요.</string>
     <string name="best_config_known_config_invalid">알려진 설정이 유효하지 않음</string>
     <string name="best_config_no_config_available">이 게임에 사용 가능한 최적 설정이 없습니다</string>
     <string name="best_config_fetch_failed">설정을 가져오지 못했습니다. 네트워크 연결을 확인하세요.</string>
+    <string name="best_config_apply_anyway">그래도 적용</string>
+    <string name="best_config_applied_with_defaults">구성이 적용되었습니다. 누락된 구성 요소가 기본값으로 대체되었습니다</string>
     <string name="best_config_apply_failed">설정 적용 실패: %s</string>
-    <string name="best_config_missing_content">%s 누락됨</string>
     <string name="import_config">설정 가져오기</string>
     <string name="export_config">설정 내보내기</string>
     <string name="library_app_type">앱 유형</string>
@@ -1367,4 +1446,173 @@
     <string name="workshop_processing">모드 처리 중…</string>
     <string name="workshop_failed_count">%1$d개의 워크숍 모드를 업데이트하지 못했습니다</string>
     <string name="workshop_download_failed">다운로드 실패</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">추천</string>
+    <string name="recommended_buy_button">게임 보기</string>
+    <string name="recommended_support_message">이 링크를 통해 구매하시면 GameNative 개발을 지원하는 데 도움이 됩니다.</string>
+    <string name="recommended_about_heading">이 게임에 대하여</string>
+    <string name="recommended_review_count">%1$s개의 리뷰 기반</string>
+    <string name="review_overwhelmingly_positive">압도적으로 긍정적</string>
+    <string name="review_very_positive">매우 긍정적</string>
+    <string name="review_mostly_positive">대체로 긍정적</string>
+    <string name="review_mixed">복합적</string>
+    <string name="review_mostly_negative">대체로 부정적</string>
+    <string name="review_overwhelmingly_negative">압도적으로 부정적</string>
+    <string name="settings_interface_show_recommendations_title">게임 추천 표시</string>
+    <string name="settings_interface_show_recommendations_subtitle">라이브러리에 엄선된 인디 게임을 표시합니다. 이 기능을 켜두면 인디 개발자와 GameNative를 지원하는 데 도움이 됩니다.</string>
+     <string name="steam_save_export_success">세이브 데이터 내보내기 완료</string>
+     <string name="steam_save_export_no_saves_found">세이브 파일을 찾을 수 없음</string>
+     <string name="steam_save_export_failed">세이브 데이터 내보내기 실패: %s</string>
+     <string name="steam_save_import_success">세이브 데이터 가져오기 완료</string>
+     <string name="steam_save_import_failed">세이브 데이터 가져오기 실패: %s</string>
+    <string name="option_import_saves">세이브 가져오기</string>
+    <string name="option_export_saves">세이브 내보내기</string>
+    <!-- HLTB (How Long To Beat) -->
+    <string name="hltb_main_story">메인 스토리</string>
+    <string name="hltb_main_plus_extras">메인 + 추가</string>
+    <string name="hltb_completionist">완벽주의자</string>
+    <string name="hltb_all_styles">모든 스타일</string>
+    <string name="hltb_hours_value">%sh</string>
+    <string name="hltb_section_title">HLTB</string>
+
+    <!-- LSFG-VK frame generation -->
+    <string name="lsfg_tab_title">LSFG-VK</string>
+    <string name="lsfg_description">Lossless Scaling의 Vulkan 레이어를 사용하여 중간 프레임 생성. Adreno 6xx 이상에서만 작동하는 것으로 알려져 있습니다.</string>
+    <string name="lsfg_enable">LSFG-VK 프레임 생성 활성화</string>
+    <string name="lsfg_multiplier">프레임 배율</string>
+    <string name="lsfg_flow_scale">플로우 스케일</string>
+    <string name="lsfg_flow_scale_desc">낮을수록 더 안정적이고, 높을수록 더 부드럽지만 아티팩트가 생길 수 있습니다.</string>
+    <string name="lsfg_performance_mode">성능 모드</string>
+    <string name="lsfg_not_supported">프레임 생성에는 Bionic 컨테이너가 필요합니다</string>
+    <string name="lsfg_install_prompt">Lossless Scaling이 설치되지 않았습니다. 탭하여 설치하세요. Adreno 6xx 이상에서만 작동하는 것으로 알려져 있습니다.</string>
+    <string name="lsfg_not_in_library">Lossless Scaling이 Steam 라이브러리에 없습니다</string>
+    <string name="lsfg_install_title">Lossless Scaling을 설치하시겠습니까?</string>
+    <string name="lsfg_install_message">프레임 생성을 활성화하기 위해 Steam에서 Lossless Scaling을 다운로드합니다.</string>
+    <string name="lsfg_installing">Lossless Scaling 다운로드 중…</string>
+    <string name="lsfg_performance_mode_desc">처리량 향상을 위해 품질 감소</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">처음 실행 시 부팅에 몇 분 정도 걸릴 수 있습니다</string>
+    <string name="game_launch_tip_2">팁: 게임 설정에서 \"%s\"를 눌러 게임 파일을 볼 수 있습니다.</string>
+    <string name="game_launch_tip_3">팁: 기본 설정 메뉴로 이동하여 기기용 사용자 정의 드라이버를 다운로드하여 Bionic에서 사용할 수 있습니다.</string>
+    <string name="game_launch_tip_4">팁: DirectX 오류가 발생하면 Bionic에서 DXVK 1.10.3-async와 leegao-wrapper를 사용하고 있는지 확인하세요.</string>
+    <string name="game_launch_tip_5">팁: \"%s\"를 클릭한 후 시작 메뉴에서 Direct3D 테스트를 실행하여 기기가 올바르게 작동하는지 확인하세요.</string>
+    <string name="game_launch_tip_6">팁: DirectX 8/9/10/11 게임에는 DXVK, DirectX 12 게임에는 VKD3D, OpenGL 게임에는 VirGL + WineD3D를 사용하세요.</string>
+    <string name="game_launch_tip_7">팁: glibc 또는 bionic에서 Turnip을 사용하여 DirectX 12 게임을 플레이하세요. Turnip을 지원하지 않는 기기의 DirectX 12 지원은 현재 제한적입니다.</string>
+    <string name="game_launch_tip_8">팁: 호환되는 기기인 경우 glibc에서 Adreno 또는 Snapdragon 8 Elite 드라이버를 사용해 보세요.</string>
+    <string name="game_launch_tip_9">팁: 게임 실행 시 검은 화면이 나타나면 \"%s\"(을)를 사용하고 A: 드라이브에서 게임을 실행해 보세요.</string>
+    <string name="game_launch_tip_10">팁: 설정에서 사용자 정의 게임의 경로를 추가할 수 있습니다.</string>
+    <string name="game_launch_tip_11">팁: 게임 내에서 FPS 통계를 보려면 빠른 메뉴의 성능 HUD를 사용하세요.</string>
+    <string name="game_launch_tip_12">팁: 게임이 실행되지 않는 경우 A:\\_CommonRedist의 패키지를 설치하세요.</string>
+    <string name="game_launch_tip_13">팁: 기기의 뒤로 가기 키로 화면 컨트롤러를 켜거나 끌 수 있습니다.</string>
+    <string name="game_launch_tip_14">팁: 기기의 뒤로 가기 키로 키보드를 불러올 수 있습니다.</string>
+    <string name="game_launch_tip_15">팁: 컨테이너 내부에서 두 손가락으로 탭하여 마우스 오른쪽 버튼을 클릭할 수 있습니다.</string>
+    <string name="game_launch_tip_16">팁: 화면 컨트롤러를 사용하는 경우 마우스를 비활성화하여 실수로 터치하는 것을 방지할 수 있습니다.</string>
+    <string name="game_launch_tip_17">팁: Discord에 문제를 보고해 주시면 수정하겠습니다.</string>
+    <string name="game_launch_tip_18">팁: Adreno GPU가 아닌 경우 glibc에서는 Vortek 드라이버를, Bionic에서는 wrapper-leegao를 사용하세요.</string>
+    <string name="game_launch_tip_19">팁: 해상도를 낮추고 box64를 성능 모드로 사용하여 FPS를 높일 수 있습니다.</string>
+    <string name="game_launch_tip_20">팁: 게임이 로딩 후 충돌하는 경우 비디오 메모리를 늘리세요.</string>
+    <string name="game_launch_tip_21">팁: 그래픽 이상 현상이 보이면 DRI3를 비활성화하세요.</string>
+    <string name="game_launch_tip_22">팁: 터치스크린 모드를 활성화할 수 있습니다.</string>
+    <string name="game_launch_tip_23">팁: Mali GPU를 사용하는 경우 시스템 드라이버를 사용하세요.</string>
+    <string name="game_launch_tip_24">팁: 검은 화면이 나타나나요? 메뉴에서 \"%s\" 옵션을 사용하여 드라이버가 올바르게 작동하는지 확인하세요.</string>
+    <string name="local_saves_only">로컬 저장 파일만 사용</string>
+    <string name="local_saves_only_description">이 게임의 클라우드 저장 동기화를 비활성화하고 저장 파일을 이 기기에만 보관합니다</string>
+    <string name="launch_bionic_steam">실험적 Bionic Steam 활성화</string>
+    <string name="launch_bionic_steam_description">온라인 플레이를 활성화하고 호환성을 개선합니다\n항상 작동하지는 않습니다\n시도하기 전에 저장 파일을 백업하세요</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">프론트엔드 동기화</string>
+    <string name="settings_interface_frontend_sync_subtitle">설치된 게임을 게임 라이브러리 프론트엔드에 자동으로 내보내기</string>
+    <string name="frontend_sync_dialog_title">프론트엔드 동기화</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">커스텀 게임</string>
+    <string name="frontend_sync_not_set">설정되지 않음</string>
+    <string name="frontend_sync_clear_confirm_title">이전 내보내기 파일을 제거하시겠습니까?</string>
+    <string name="frontend_sync_clear_confirm_message">이전 디렉토리에서 .%1$s 파일을 제거하시겠습니까?</string>
+    <string name="frontend_sync_confirm_remove">제거</string>
+    <string name="frontend_sync_confirm_keep">유지</string>
+    <string name="frontend_sync_resync_all">전체 재동기화</string>
+    <string name="frontend_sync_resync_complete">프론트엔드 동기화 완료</string>
+    <string name="frontend_sync_pick_directory_cd">%1$s용 디렉터리 선택</string>
+    <string name="frontend_sync_clear_directory_cd">%1$s용 디렉터리 선택 해제</string>
+    <string name="screen_effects_scaling">스케일링</string>
+    <string name="screen_effects_upscaling">업스케일링</string>
+    <string name="screen_effects_basic_scaling">기본 스케일링</string>
+    <string name="screen_effects_scaling_mode">스케일링 모드</string>
+    <string name="screen_effects_scaling_mode_none">스케일링 없음</string>
+    <string name="screen_effects_scaling_mode_none_desc">스케일링 없음.</string>
+    <string name="screen_effects_scaling_mode_nearest">최근접</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">선명한 픽셀(레트로).</string>
+    <string name="screen_effects_scaling_mode_linear">선형</string>
+    <string name="screen_effects_scaling_mode_linear_desc">부드러운 스케일링.</string>
+    <string name="screen_effects_scaling_mode_fill">채우기</string>
+    <string name="screen_effects_scaling_mode_fill_desc">화면을 채우고 가장자리를 자릅니다.</string>
+    <string name="screen_effects_scaling_mode_stretch">늘이기</string>
+    <string name="screen_effects_scaling_mode_stretch_desc">화면비를 무시하고 화면을 채웁니다.</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_scaling_mode_fsr_desc">선명한 초해상도 업스케일.</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, 화면비 유지.</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_dls_desc">샤픈/선명도 패스.</string>
+    <string name="screen_effects_scaling_mode_natural">자연</string>
+    <string name="screen_effects_scaling_mode_natural_desc">더 따뜻한 색조.</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">찾다</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">공식 AMD FidelityFX Super Resolution 1.0입니다. EASU + RCAS를 사용해 낮은 내부 해상도로 렌더링한 뒤 전체 해상도로 업스케일합니다.</string>
+    <string name="screen_effects_fsr_quality">FSR 품질</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">울트라 품질</string>
+    <string name="screen_effects_fsr_quality_quality">품질</string>
+    <string name="screen_effects_fsr_quality_balanced">균형</string>
+    <string name="screen_effects_fsr_quality_performance">성능</string>
+    <string name="screen_effects_fsr_sharpness">FSR 선명도</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">실행 시 선명도</string>
+    <string name="screen_effects_launch_sharpness_note">CAS와 DLS는 vkBasalt를 통해 적용되며, 다음 게임 실행부터 반영됩니다.</string>
+    <string name="tools_wine_processes_empty">실행 중인 EXE가 감지되지 않았습니다.</string>
+    <string name="performance_hud_battery_temperature">배터리 온도</string>
+    <string name="renderer_present_modes">렌더러 프레젠트 모드</string>
+    <string name="settings_emulation_auto_apply_known_config_title">알려진 설정 자동 적용</string>
+    <string name="settings_emulation_auto_apply_known_config_subtitle">Steam 게임을 처음 실행할 때 권장 설정을 자동으로 적용합니다</string>
+    <string name="download_no_wifi">Wi-Fi 또는 LAN에 연결되어 있지 않습니다</string>
+    <string name="download_paused_wifi">다운로드 일시 중지됨 - Wi-Fi 또는 LAN 연결 대기 중</string>
+    <string name="main_downloading_entry">%s 다운로드 중</string>
+    <string name="option_open_store_page">상점 페이지 열기</string>
+    <string name="option_export_for_frontend">프론트엔드용으로 내보내기</string>
+    <string name="option_open_container">컨테이너 열기</string>
+    <string name="option_edit_container">컨테이너 편집</string>
+    <string name="option_reset_to_defaults">컨테이너 초기화</string>
+    <string name="option_get_support">도움 받기</string>
+    <string name="option_submit_feedback">피드백 제출</string>
+    <string name="option_reset_drm">DRM 초기화</string>
+    <string name="option_use_known_config">알려진 설정 사용</string>
+    <string name="option_verify_files">파일 무결성 확인</string>
+    <string name="option_update">업데이트</string>
+    <string name="option_move_to_external_storage">외부 저장소로 이동</string>
+    <string name="option_move_to_internal_storage">내부 저장소로 이동</string>
+    <string name="option_force_cloud_sync">클라우드 동기화 강제 실행</string>
+    <string name="option_browse_online_saves">온라인 저장 파일 찾아보기</string>
+    <string name="option_force_download_remote">원격 저장 파일 강제 다운로드</string>
+    <string name="option_force_upload_local">로컬 저장 파일 강제 업로드</string>
+    <string name="option_fetch_game_images">게임 이미지 가져오기</string>
+    <string name="option_test_graphics">그래픽 테스트</string>
+    <string name="option_manage_dlc">DLC 관리</string>
+    <string name="option_manage_workshop">워크숍 관리</string>
+    <string name="stats_key_runs">내 GPU에서 성공한 실행</string>
+    <string name="stats_key_reviews">별 5개 리뷰 (내 GPU / 내 기기)</string>
+    <string name="stats_key_fps">예상 FPS</string>
+    <string name="stats_key_session">내 기기에서의 최장 세션</string>
+    <string name="sort_fps">예상 FPS</string>
+    <string name="sort_runs">성공한 실행</string>
+    <string name="sort_reviews">별 5개 리뷰 (기기)</string>
+    <string name="sort_reviews_gpu">별 5개 리뷰 (GPU)</string>
+    <string name="filter_expired">만료됨</string>
+    <string name="filter_playable">플레이 가능 (30+ FPS)</string>
+    <string name="filter_five_star_device">기기에서의 별 5개 리뷰</string>
+    <string name="filter_five_star_gpu">GPU에서의 별 5개 리뷰</string>
+    <string name="filter_proven_gpu">내 GPU에서 검증됨</string>
 </resources>

@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.winlator.container.Container;
+import com.winlator.fexcore.FEXCoreManager;
 import com.winlator.xenvironment.ImageFs;
 
 import org.json.JSONArray;
@@ -18,6 +19,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
+import app.gamenative.PrefManager;
 import timber.log.Timber;
 
 public abstract class WineUtils {
@@ -62,8 +64,12 @@ public abstract class WineUtils {
             FileUtils.symlink(path, dosdevicesPath+"/"+drive[0].toLowerCase(Locale.ENGLISH)+":");
 
             // Check if this is the A: drive (game directory)
-            if (drive[0].equals("A") && path.contains("/Steam/steamapps/common/")) {
-                gameDirectoryPath = path;
+            if (drive[0].equals("A")) {
+                if (path.contains("/Steam/steamapps/common/")) {
+                    gameDirectoryPath = path;
+                } else if (PrefManager.INSTANCE.getCustomGameManualFolders().contains(path)) {
+                    gameDirectoryPath = path;
+                }
             }
         }
 
@@ -170,6 +176,11 @@ public abstract class WineUtils {
             for (String name : xinputLibs) registryEditor.setStringValue(dllOverridesKey, name, "builtin,native");
             if (wineInfo.isArm64EC()) for (String name : opengLibs) registryEditor.setStringValue(dllOverridesKey, name, "native,builtin");
 
+            // Force Rockstar Social Club helper onto Wine's builtin D3D stack
+            final String socialClubDllOverridesKey = "Software\\Wine\\AppDefaults\\SocialClubHelper.exe\\DllOverrides";
+            final String[] socialClubBuiltinLibs = {"dxgi", "d3d9", "d3d10", "d3d10_1", "d3d10core", "d3d11"};
+            for (String name : socialClubBuiltinLibs) registryEditor.setStringValue(socialClubDllOverridesKey, name, "builtin");
+
             registryEditor.removeKey("Software\\Winlator\\WFM\\ContextMenu\\7-Zip");
             registryEditor.setStringValue("Software\\Winlator\\WFM\\ContextMenu\\7-Zip", "Open Archive", "Z:\\opt\\apps\\7-Zip\\7zFM.exe \"%FILE%\"");
             registryEditor.setStringValue("Software\\Winlator\\WFM\\ContextMenu\\7-Zip", "Extract Here", "Z:\\opt\\apps\\7-Zip\\7zG.exe x \"%FILE%\" -r -o\"%DIR%\" -y");
@@ -189,28 +200,24 @@ public abstract class WineUtils {
             FileUtils.copy(new File(wineSysWoW64Dir, dlname), new File(win64 ? containerSysWoW64Dir : containerSystem32Dir, dlname));
             if (win64) FileUtils.copy(new File(wineSystem32Dir, dlname), new File(containerSystem32Dir, dlname));
         }
+
+        // FEX AppConfig presets only apply when running Arm64X (arm64ec) Wine under FEX
+        if (wineInfo.isArm64EC()) {
+            FEXCoreManager.ensureAppConfigOverrides(context);
+        }
     }
 
     public static void overrideWinComponentDlls(Context context, Container container, String identifier, boolean useNative) {
-        final String dllOverridesKey = "Software\\Wine\\DllOverrides";
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
 
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
             JSONObject wincomponentsJSONObject = new JSONObject(FileUtils.readString(context, "wincomponents/wincomponents.json"));
-            JSONArray dlnames = wincomponentsJSONObject.getJSONArray(identifier);
-            for (int i = 0; i < dlnames.length(); i++) {
-                String dlname = dlnames.getString(i);
-                if (useNative) {
-                    registryEditor.setStringValue(dllOverridesKey, dlname, "native,builtin");
-                }
-                else registryEditor.removeValue(dllOverridesKey, dlname);
-            }
+            applyDllOverrides(registryEditor, wincomponentsJSONObject, identifier, useNative);
         }
         catch (JSONException e) {}
     }
 
     public static void overrideWinComponentDlls(Context context, Container container, String wincomponents) {
-        final String dllOverridesKey = "Software\\Wine\\DllOverrides";
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
         Iterator<String[]> oldWinComponentsIter = new KeyValueSet(container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS)).iterator();
 
@@ -226,18 +233,30 @@ public abstract class WineUtils {
                 String identifier = wincomponent[0];
                 boolean useNative = wincomponent[1].equals("1");
 
-                JSONArray dlnames = wincomponentsJSONObject.getJSONArray(identifier);
-                for (int i = 0; i < dlnames.length(); i++) {
-                    String dlname = dlnames.getString(i);
-                    if (useNative) {
-                        registryEditor.setStringValue(dllOverridesKey, dlname, "native,builtin");
-                    }
-                    else registryEditor.removeValue(dllOverridesKey, dlname);
-                }
+                applyDllOverrides(registryEditor, wincomponentsJSONObject, identifier, useNative);
             }
         }
         catch (JSONException e) {
             Log.e("WineUtils", "Failed to override win component dlls: " + e);
+        }
+    }
+
+    private static void applyDllOverrides(WineRegistryEditor registryEditor, JSONObject wincomponentsJSONObject, String identifier, boolean useNative) {
+        final String dllOverridesKey = "Software\\Wine\\DllOverrides";
+        try {
+            JSONArray dlnames = wincomponentsJSONObject.getJSONArray(identifier);
+            for (int i = 0; i < dlnames.length(); i++) {
+                String dlname = dlnames.getString(i);
+                if (useNative) {
+                    registryEditor.setStringValue(dllOverridesKey, dlname, "native,builtin");
+                }
+                else if ( dlname.equals("dinput") || dlname.equals("dinput8")) {
+                    registryEditor.setStringValue(dllOverridesKey, dlname, "builtin,native");
+                }
+                else registryEditor.removeValue(dllOverridesKey, dlname);
+            }
+        } catch (JSONException e) {
+            Log.e("WineUtils", "Failed to apply DLL overrides for identifier: " + identifier, e);
         }
     }
 

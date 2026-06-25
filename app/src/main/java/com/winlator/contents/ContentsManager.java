@@ -5,9 +5,11 @@ import android.net.Uri;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.winlator.core.FileUtils;
 import com.winlator.core.TarCompressorUtils;
+import com.winlator.xenvironment.ImageFs;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -84,7 +86,7 @@ public class ContentsManager {
     }
 
     public interface OnInstallFinishedCallback {
-        void onFailed(InstallFailedReason reason, Exception e);
+        void onFailed(InstallFailedReason reason, @Nullable Exception e);
 
         void onSucceed(ContentProfile profile);
     }
@@ -320,11 +322,10 @@ public class ContentsManager {
     }
 
     public static File getContentTypeDir(Context context, ContentProfile.ContentType type) {
-        // Wine/Proton must be installed inside imagefs/opt/ to run inside proot environment
-        // This is required for ARM64EC Wine to handle mmap(PROT_EXEC) calls properly
+        // Wine/Proton install to imagefs_shared/proton; symlinked into each variant's opt
         if (type == ContentProfile.ContentType.CONTENT_TYPE_WINE
                 || type == ContentProfile.ContentType.CONTENT_TYPE_PROTON) {
-            return new File(context.getFilesDir(), "imagefs/opt");
+            return ImageFs.getSharedProtonDir(context);
         }
         return new File(getContentDir(context), type.toString());
     }

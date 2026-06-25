@@ -1,7 +1,9 @@
 package app.gamenative.ui
 
 import android.content.Context
+import android.app.Activity
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -51,6 +53,7 @@ import androidx.navigation.navDeepLink
 import app.gamenative.BuildConfig
 import app.gamenative.Constants
 import app.gamenative.MainActivity
+import app.gamenative.NetworkMonitor
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
@@ -61,6 +64,7 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
+import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import com.posthog.PostHog
@@ -77,6 +81,7 @@ import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.components.BootingSplash
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.ConnectionState
+import app.gamenative.launch.LaunchReadiness
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
@@ -94,17 +99,20 @@ import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.GameFeedbackUtils
 import app.gamenative.utils.IntentLaunchManager
+import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateChecker
 import app.gamenative.utils.UpdateInfo
 import app.gamenative.utils.UpdateInstaller
 import app.gamenative.utils.LaunchDependencies
 import app.gamenative.workshop.WorkshopManager
+import app.gamenative.workshop.compatibility.SlayTheSpireModTheSpireCompatibility
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import com.winlator.core.StringUtils
 import com.winlator.core.TarCompressorUtils
+import com.winlator.xenvironment.ImageFSLegacyMigrator
 import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.ImageFsInstaller
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
@@ -214,11 +222,9 @@ private fun needsDeferLaunch(context: Context, appId: String): Boolean {
     return when (gameSource) {
         GameSource.STEAM -> {
             if (SteamService.isLoggedIn) return false
-            try {
-                !ContainerUtils.getContainer(context, appId).isSteamOfflineMode()
-            } catch (_: Exception) {
-                true // no container → needs login
-            }
+            // isLoggedIn is network-gated (requires LoggedOnCallback). allow offline launch when
+            // saved creds + local container exist — Steam can reconnect in background.
+            !(SteamUtils.hasStoredCredentials() && ContainerUtils.hasContainer(context, appId))
         }
         GameSource.GOG -> !GOGService.isRunning
         GameSource.EPIC -> !EpicService.isRunning
@@ -304,6 +310,9 @@ fun PluviaMain(
     // Track if connection banner was dismissed by user
     var connectionBannerDismissed by rememberSaveable { mutableStateOf(false) }
 
+    // suppress CONNECTING banner during first attempt; DISCONNECTED always shows
+    var initialConnectDone by rememberSaveable { mutableStateOf(SteamService.isConnected) }
+
     // Track previous connection state to detect actual changes (not just recomposition)
     val previousConnectionState = remember { mutableStateOf(state.connectionState) }
 
@@ -313,10 +322,15 @@ fun PluviaMain(
             connectionBannerDismissed = false
             previousConnectionState.value = state.connectionState
         }
+        // first attempt resolved (connected or failed)
+        if (state.connectionState != ConnectionState.CONNECTING) {
+            initialConnectDone = true
+        }
     }
 
     // Check for updates on app start
     LaunchedEffect(Unit) {
+        if (BuildConfig.MODERN_ANDROID) return@LaunchedEffect
         val checkedUpdateInfo = UpdateChecker.checkForUpdate(context)
         if (checkedUpdateInfo != null) {
             val appVersionCode = BuildConfig.VERSION_CODE
@@ -325,6 +339,50 @@ fun PluviaMain(
             if (appVersionCode < serverVersionCode) {
                 updateInfo = checkedUpdateInfo
                 viewModel.setUpdateInfo(checkedUpdateInfo)
+            }
+        }
+    }
+
+    // shared intent-launch path. resolves isOffline at the call site because intent launches can
+    // arrive pre-login (cold-boot via stored creds) and downstream cloud-sync needs a settled answer.
+    val launchIntentApp: (resolvedAppId: String, hasTemporaryOverride: Boolean) -> Unit = { resolvedAppId, hasTemporaryOverride ->
+        val requestedGameId = runCatching { ContainerUtils.extractGameIdFromContainerId(resolvedAppId) }.getOrNull()
+        if (SteamService.keepAlive && requestedGameId != null && ActiveGameRegistry.get()?.appId == requestedGameId) {
+            Timber.i("[PluviaMain]: Game $resolvedAppId already running; bringing XServer screen forward")
+            if (navController.currentDestination?.route != PluviaScreen.XServer.route) {
+                navController.navigate(PluviaScreen.XServer.route)
+            }
+        } else {
+            MainActivity.wasLaunchedViaExternalIntent = true
+            trackGameLaunched(resolvedAppId)
+            viewModel.setLaunchedAppId(resolvedAppId)
+            viewModel.setBootToContainer(false)
+            scope.launch(Dispatchers.IO) {
+                val gameSource = ContainerUtils.extractGameSourceFromContainerId(resolvedAppId)
+                val isOffline = when {
+                    gameSource != GameSource.STEAM -> false
+                    SteamService.isLoggedIn -> false
+                    !NetworkMonitor.hasInternet.value -> true
+                    else -> {
+                        viewModel.setLoadingDialogVisible(true)
+                        viewModel.setLoadingDialogMessage(context.getString(R.string.connecting_to_steam))
+                        viewModel.setLoadingDialogProgress(-1f)
+                        !SteamUtils.awaitSteamLogin()
+                    }
+                }
+                // sync viewModel — dialog retries + replaceSteamApi read isOffline.value
+                viewModel.setOffline(isOffline)
+                preLaunchApp(
+                    context = context,
+                    appId = resolvedAppId,
+                    useTemporaryOverride = hasTemporaryOverride,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = isOffline,
+                )
             }
         }
     }
@@ -349,20 +407,7 @@ fun PluviaMain(
                             context, launchRequest.appId, launchRequest.containerConfig,
                         )
                     }
-                    MainActivity.wasLaunchedViaExternalIntent = true
-                    trackGameLaunched(resolution.finalAppId)
-                    viewModel.setLaunchedAppId(resolution.finalAppId)
-                    viewModel.setBootToContainer(false)
-                    preLaunchApp(
-                        context = context,
-                        appId = resolution.finalAppId,
-                        useTemporaryOverride = launchRequest.containerConfig != null,
-                        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                        setLoadingProgress = viewModel::setLoadingDialogProgress,
-                        setLoadingMessage = viewModel::setLoadingDialogMessage,
-                        setMessageDialogState = setMessageDialogState,
-                        onSuccess = viewModel::launchApp,
-                    )
+                    launchIntentApp(resolution.finalAppId, launchRequest.containerConfig != null)
                 }
 
                 is GameResolutionResult.NotFound -> {
@@ -424,21 +469,8 @@ fun PluviaMain(
                             popUpTo(navController.graph.startDestinationId) { saveState = false }
                         }
                     }
-                    MainActivity.wasLaunchedViaExternalIntent = true
                     // finalAppId — track what actually launched (may differ from launchRequest.appId after resolution)
-                    trackGameLaunched(resolution.finalAppId)
-                    viewModel.setLaunchedAppId(resolution.finalAppId)
-                    viewModel.setBootToContainer(false)
-                    preLaunchApp(
-                        context = context,
-                        appId = resolution.finalAppId,
-                        useTemporaryOverride = launchRequest.containerConfig != null,
-                        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                        setLoadingProgress = viewModel::setLoadingDialogProgress,
-                        setLoadingMessage = viewModel::setLoadingDialogMessage,
-                        setMessageDialogState = setMessageDialogState,
-                        onSuccess = viewModel::launchApp,
-                    )
+                    launchIntentApp(resolution.finalAppId, launchRequest.containerConfig != null)
                 }
             }
         }
@@ -471,20 +503,9 @@ fun PluviaMain(
                     when (val resolution = resolveGameAppId(context, event.appId)) {
                         is GameResolutionResult.Success -> {
                             Timber.i("[PluviaMain]: Using appId: ${resolution.finalAppId} (original: ${event.appId}, isSteamInstalled: ${resolution.isSteamInstalled}, isCustomGame: ${resolution.isCustomGame})")
-
-                            MainActivity.wasLaunchedViaExternalIntent = true
-                            trackGameLaunched(resolution.finalAppId)
-                            viewModel.setLaunchedAppId(resolution.finalAppId)
-                            viewModel.setBootToContainer(false)
-                            preLaunchApp(
-                                context = context,
-                                appId = resolution.finalAppId,
-                                useTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(resolution.finalAppId),
-                                setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                                setLoadingProgress = viewModel::setLoadingDialogProgress,
-                                setLoadingMessage = viewModel::setLoadingDialogMessage,
-                                setMessageDialogState = setMessageDialogState,
-                                onSuccess = viewModel::launchApp,
+                            launchIntentApp(
+                                resolution.finalAppId,
+                                IntentLaunchManager.hasTemporaryOverride(resolution.finalAppId),
                             )
                         }
 
@@ -830,6 +851,7 @@ fun PluviaMain(
             }
         }
 
+
         DialogType.EXECUTABLE_NOT_FOUND -> {
             onConfirmClick = null
             onDismissClick = {
@@ -1086,11 +1108,18 @@ fun PluviaMain(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    var exitSnackbarVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         SnackbarManager.messages.collect { message ->
             snackbarHostState.showSnackbar(message)
+            // snackbar dismissed (timeout or new message) — reset exit flag
+            exitSnackbarVisible = false
         }
+    }
+
+    BackHandler(enabled = state.loadingDialogVisible && !SteamService.keepAlive) {
+        // TODO: Make prelaunch/loading operations cancellable so Back can exit safely.
     }
 
     PluviaTheme(
@@ -1220,12 +1249,13 @@ fun PluviaMain(
                 BootingSplash(
                     visible = state.showBootingSplash,
                     text = state.bootingSplashText,
+                    heroImageUrl = state.bootingSplashHeroImageUrl,
                 )
             }
 
             // Connection status banner (overlay) - dismissible so users can access navigation
-            if (state.currentScreen != PluviaScreen.LoginUser && !connectionBannerDismissed && !SteamService.isConnected &&
-                PrefManager.refreshToken.isNotEmpty() && PrefManager.username.isNotEmpty()) {
+            if (state.currentScreen != PluviaScreen.LoginUser && !connectionBannerDismissed && initialConnectDone && !state.isSteamConnected &&
+                SteamUtils.hasStoredCredentials()) {
                 Box(modifier = Modifier.zIndex(5f)) {
                     ConnectionStatusBanner(
                         connectionState = state.connectionState,
@@ -1249,7 +1279,7 @@ fun PluviaMain(
                 when {
                     SteamService.isLoggedIn -> PluviaScreen.Home.route + "?offline=false"
                     // skip login screen if any service has stored credentials
-                    (PrefManager.username.isNotEmpty() && PrefManager.refreshToken.isNotEmpty()) ||
+                    SteamUtils.hasStoredCredentials() ||
                         GOGService.hasStoredCredentials(context) ||
                         EpicService.hasStoredCredentials(context) ||
                         AmazonService.hasStoredCredentials(context) ->
@@ -1293,8 +1323,7 @@ fun PluviaMain(
                     // Show update/crash/support dialogs when Home is first displayed
                     // Skip when offline with Steam credentials (avoid flash when Steam reconnects)
                     LaunchedEffect(Unit) {
-                        val hasSteamCredentials = PrefManager.refreshToken.isNotEmpty() && PrefManager.username.isNotEmpty()
-                        val shouldShowDialogs = !isOffline || !hasSteamCredentials
+                        val shouldShowDialogs = !isOffline || !SteamUtils.hasStoredCredentials()
 
                         if (shouldShowDialogs && !state.annoyingDialogShown && PluviaApp.xEnvironment == null && !SteamService.keepAlive && !MainActivity.wasLaunchedViaExternalIntent) {
                             val currentUpdateInfo = updateInfo
@@ -1373,7 +1402,14 @@ fun PluviaMain(
                             )
                         },
                         onClickExit = {
-                            PluviaApp.events.emit(AndroidEvent.EndProcess)
+                            if (!PrefManager.warnBeforeExit) {
+                                PluviaApp.events.emit(AndroidEvent.EndProcess)
+                            } else if (exitSnackbarVisible) {
+                                PluviaApp.events.emit(AndroidEvent.EndProcess)
+                            } else {
+                                exitSnackbarVisible = true
+                                SnackbarManager.show(context.getString(R.string.back_press_exit_warning))
+                            }
                         },
                         onChat = {
                             navController.navigate(PluviaScreen.Chat.route(it))
@@ -1417,10 +1453,12 @@ fun PluviaMain(
 
                 /** Game Screen **/
                 composable(route = PluviaScreen.XServer.route) {
+                    val xServerIsOffline by viewModel.isOffline.collectAsStateWithLifecycle()
                     XServerScreen(
                         appId = state.launchedAppId,
                         bootToContainer = state.bootToContainer,
                         testGraphics = state.testGraphics,
+                        isOffline = xServerIsOffline,
                         registerBackAction = { cb ->
                             Timber.d("registerBackAction called: $cb")
                             gameBackAction = cb
@@ -1520,6 +1558,12 @@ fun preLaunchApp(
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
     CoroutineScope(Dispatchers.IO).launch {
+        if (LaunchReadiness.pending) {
+            setLoadingDialogVisible(false)
+            (context as? Activity)?.let { LaunchReadiness.resolve(it) }
+            return@launch
+        }
+
         // create container if it does not already exist
         // TODO: combine somehow with container creation in HomeLibraryAppScreen
         val containerManager = ContainerManager(context)
@@ -1534,6 +1578,31 @@ fun preLaunchApp(
 
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
         val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
+
+        // Migrate legacy on-disk imagefs layout (e.g. legacy Proton → shared paths) before manifest
+        // installs or launch deps — resolveMissingManifestInstallRequests can install Proton too.
+        val legacyImageFsRoot = File(context.filesDir, "imagefs")
+        val migrationOk = ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(
+            context,
+            legacyImageFsRoot,
+            container.wineVersion,
+        )
+        if (!migrationOk) {
+            Timber.tag("preLaunchApp").e(
+                "Legacy ImageFS migration failed: ${legacyImageFsRoot.absolutePath}",
+            )
+            setLoadingDialogVisible(false)
+            setMessageDialogState(
+                MessageDialogState(
+                    visible = true,
+                    type = DialogType.SYNC_FAIL,
+                    title = context.getString(R.string.install_failed_title),
+                    message = context.getString(R.string.install_failed_message),
+                    dismissBtnText = context.getString(R.string.ok),
+                ),
+            )
+            return@launch
+        }
 
         // When "Open container" is used we boot to desktop/file manager only — skip executable check
         if (!bootToContainer) {
@@ -1555,7 +1624,7 @@ fun preLaunchApp(
                         title = context.getString(R.string.game_executable_not_found_title),
                         message = context.getString(R.string.game_executable_not_found),
                         dismissBtnText = context.getString(R.string.ok),
-                        actionBtnText = AppOptionMenuType.EditContainer.text,
+                        actionBtnText = context.getString(AppOptionMenuType.EditContainer.title),
                     ),
                 )
                 return@launch
@@ -1592,108 +1661,6 @@ fun preLaunchApp(
 
         // set up Ubuntu file system — download required files and install
         SplitCompat.install(context)
-        try {
-            if (!SteamService.isImageFsInstallable(context, container.containerVariant)) {
-                setLoadingMessage("Downloading first-time files")
-                SteamService.downloadImageFs(
-                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                    this,
-                    variant = container.containerVariant,
-                    context = context,
-                ).await()
-            }
-            if (container.containerVariant.equals(Container.GLIBC) &&
-                !SteamService.isFileInstallable(context, "imagefs_patches_gamenative.tzst")
-            ) {
-                setLoadingMessage("Downloading Wine")
-                SteamService.downloadImageFsPatches(
-                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                    this,
-                    context = context,
-                ).await()
-            } else {
-                if (container.wineVersion.contains("proton-9.0-arm64ec") &&
-                    !SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz")
-                ) {
-                    setLoadingMessage("Downloading arm64ec Proton")
-                    SteamService.downloadFile(
-                        onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                        this,
-                        context = context,
-                        "proton-9.0-arm64ec.txz",
-                    ).await()
-                } else if (container.wineVersion.contains("proton-9.0-x86_64") &&
-                    !SteamService.isFileInstallable(context, "proton-9.0-x86_64.txz")
-                ) {
-                    setLoadingMessage("Downloading x86_64 Proton")
-                    SteamService.downloadFile(
-                        onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                        this,
-                        context = context,
-                        "proton-9.0-x86_64.txz",
-                    ).await()
-                }
-                if (container.wineVersion.contains("proton-9.0-x86_64") || container.wineVersion.contains("proton-9.0-arm64ec")) {
-                    val protonVersion = container.wineVersion
-                    val imageFs = ImageFs.find(context)
-                    val outFile = File(imageFs.rootDir, "/opt/$protonVersion")
-                    val binDir = File(outFile, "bin")
-                    if (!binDir.exists() || !binDir.isDirectory) {
-                        Timber.i("Extracting $protonVersion to /opt/")
-                        setLoadingMessage("Extracting $protonVersion")
-                        setLoadingProgress(-1f)
-                        val downloaded = File(imageFs.getFilesDir(), "$protonVersion.txz")
-                        TarCompressorUtils.extract(
-                            TarCompressorUtils.Type.XZ,
-                            downloaded,
-                            outFile,
-                        )
-                    }
-                }
-            }
-
-            if (!container.isUseLegacyDRM && !container.isLaunchRealSteam &&
-                !SteamService.isFileInstallable(context, "experimental-drm-20260116.tzst")
-            ) {
-                setLoadingMessage("Downloading extras")
-                SteamService.downloadFile(
-                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                    this,
-                    context = context,
-                    "experimental-drm-20260116.tzst",
-                ).await()
-            }
-            if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {
-                setLoadingMessage(context.getString(R.string.main_downloading_steam))
-                SteamService.downloadSteam(
-                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                    this,
-                    context = context,
-                ).await()
-            }
-            if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam-token.tzst")) {
-                setLoadingMessage("Downloading steam-token")
-                SteamService.downloadFile(
-                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                    this,
-                    context = context,
-                    "steam-token.tzst",
-                ).await()
-            }
-        } catch (e: Exception) {
-            Timber.tag("preLaunchApp").e(e, "File download failed")
-            setLoadingDialogVisible(false)
-            setMessageDialogState(
-                MessageDialogState(
-                    visible = true,
-                    type = DialogType.SYNC_FAIL,
-                    title = context.getString(R.string.download_failed_title),
-                    message = e.message ?: context.getString(R.string.download_failed_message),
-                    dismissBtnText = context.getString(R.string.ok),
-                ),
-            )
-            return@launch
-        }
 
         try {
             LaunchDependencies().ensureLaunchDependencies(
@@ -1713,6 +1680,70 @@ fun preLaunchApp(
                     type = DialogType.SYNC_FAIL,
                     title = context.getString(R.string.launch_dependency_failed_title),
                     message = e.message ?: context.getString(R.string.launch_dependency_failed_message),
+                    dismissBtnText = context.getString(R.string.ok),
+                ),
+            )
+            return@launch
+        }
+
+        try {
+            if (!SteamService.isImageFsInstallable(context, container.containerVariant)) {
+                setLoadingMessage("Downloading first-time files")
+                SteamService.downloadImageFs(
+                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                    this,
+                    variant = container.containerVariant,
+                    context = context,
+                ).await()
+            }
+            if (container.containerVariant.equals(Container.GLIBC) &&
+                !SteamService.isFileInstallable(context, "imagefs_patches_gamenative.tzst")
+            ) {
+                setLoadingMessage("Downloading Wine")
+                SteamService.downloadImageFsPatches(
+                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                    this,
+                    context = context,
+                ).await()
+            }
+
+            if (!container.isUseLegacyDRM && !container.isLaunchRealSteam &&
+                !SteamService.isFileInstallable(context, "experimental-drm-20260116.tzst")
+            ) {
+                setLoadingMessage("Downloading extras")
+                SteamService.downloadFile(
+                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                    this,
+                    context = context,
+                    "experimental-drm-20260116.tzst",
+                ).await()
+            }
+            if ((container.isLaunchRealSteam || container.isLaunchBionicSteam) && !SteamService.isFileInstallable(context, "steam.tzst")) {
+                setLoadingMessage(context.getString(R.string.main_downloading_steam))
+                SteamService.downloadSteam(
+                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                    this,
+                    context = context,
+                ).await()
+            }
+            if ((container.isLaunchRealSteam || container.isLaunchBionicSteam) && !SteamService.isFileInstallable(context, "steam-token.tzst")) {
+                setLoadingMessage("Downloading steam-token")
+                SteamService.downloadFile(
+                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                    this,
+                    context = context,
+                    "steam-token.tzst",
+                ).await()
+            }
+        } catch (e: Exception) {
+            Timber.tag("preLaunchApp").e(e, "File download failed")
+            setLoadingDialogVisible(false)
+            setMessageDialogState(
+                MessageDialogState(
+                    visible = true,
+                    type = DialogType.SYNC_FAIL,
+                    title = context.getString(R.string.download_failed_title),
+                    message = e.message ?: context.getString(R.string.download_failed_message),
                     dismissBtnText = context.getString(R.string.ok),
                 ),
             )
@@ -1751,25 +1782,29 @@ fun preLaunchApp(
         // must activate container before downloading save files
         containerManager.activateContainer(container)
 
-        // If another game is running on this account elsewhere, prompt user first (cross-app session)
+        // If another Steam game is running on this account elsewhere, prompt the user.
+        // Skip the prompt for apps we don't recognise — non-Steam shortcuts on the remote
+        // device report synthetic IDs that aren't kickable.
         val isSteamGame = gameSource == GameSource.STEAM
-        if(isSteamGame) {
+        if (isSteamGame) {
             try {
                 val currentPlaying = SteamService.getSelfCurrentlyPlayingAppId()
                 if (!isOffline && currentPlaying != null && currentPlaying != gameId) {
-                    val otherGameName = SteamService.getAppInfoOf(currentPlaying)?.name ?: "another game"
-                    setLoadingDialogVisible(false)
-                    setMessageDialogState(
-                        MessageDialogState(
-                            visible = true,
-                            type = DialogType.ACCOUNT_SESSION_ACTIVE,
-                            title = context.getString(R.string.main_app_running_title),
-                            message = context.getString(R.string.main_app_running_message, otherGameName),
-                            confirmBtnText = context.getString(R.string.main_play_anyway),
-                            dismissBtnText = context.getString(R.string.cancel),
-                        ),
-                    )
-                    return@launch
+                    val otherApp = SteamService.getAppInfoOf(currentPlaying)
+                    if (otherApp != null) {
+                        setLoadingDialogVisible(false)
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.ACCOUNT_SESSION_ACTIVE,
+                                title = context.getString(R.string.main_app_running_title),
+                                message = context.getString(R.string.main_app_running_message, otherApp.name),
+                                confirmBtnText = context.getString(R.string.main_play_anyway),
+                                dismissBtnText = context.getString(R.string.cancel),
+                            ),
+                        )
+                        return@launch
+                    }
                 }
             } catch (_: Exception) { /* ignore persona read errors */ }
         }
@@ -1844,7 +1879,7 @@ fun preLaunchApp(
 
             // Delete Ownership Token if exists
             Timber.tag("Epic").i("[Ownership Tokens] Cleaning up launch tokens for Epic games...")
-            EpicService.cleanupLaunchTokens(context)
+            EpicService.cleanupLaunchTokens(context, container)
 
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
@@ -1864,7 +1899,7 @@ fun preLaunchApp(
 
         // For Steam games, sync save files and check no pending remote operations are running
         val prefixToPath: (String) -> String = { prefix ->
-            PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+            PathType.from(prefix).toAbsPath(container, gameId, SteamService.userSteamId!!.accountID)
         }
 
         // Workshop mod sync: check for updates and download if needed
@@ -1884,6 +1919,15 @@ fun preLaunchApp(
                     Timber.tag("Workshop").w(
                         "Steam not connected/logged in or offline, skipping workshop sync for appId=$gameId"
                     )
+                    if (gameId == SlayTheSpireModTheSpireCompatibility.APP_ID) {
+                        setLoadingMessage(context.getString(R.string.workshop_processing))
+                        setLoadingProgress(-1f)
+                        WorkshopManager.configureLocalWorkshopContentForEnabledIds(
+                            context = context,
+                            appId = gameId,
+                            enabledIds = enabledWorkshopIds,
+                        )
+                    }
                 } else {
                 // If a background download is still running from the save
                 // handler, wait for it to finish so its markers are on disk
@@ -2012,6 +2056,13 @@ fun preLaunchApp(
                 } // else (isLoggedIn)
             } catch (e: Exception) {
                 Timber.tag("Workshop").e(e, "Workshop mod sync failed, continuing without mods")
+            }
+        } else if (
+            gameId == SlayTheSpireModTheSpireCompatibility.APP_ID &&
+            File(SteamService.getAppDirPath(gameId)).isDirectory
+        ) {
+            withContext(Dispatchers.IO) {
+                WorkshopManager.cleanupDisabledWorkshopArtifactsForApp(context, gameId)
             }
         }
 

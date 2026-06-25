@@ -13,6 +13,7 @@ import com.winlator.core.WineThemeManager;
 import com.winlator.fexcore.FEXCorePreset;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xenvironment.ImageFs;
+import com.winlator.xenvironment.components.PulseAudioComponent;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -34,17 +35,18 @@ public class Container {
     public static final String EXTERNAL_DISPLAY_MODE_HYBRID = "hybrid";
     public static final String DEFAULT_EXTERNAL_DISPLAY_MODE = EXTERNAL_DISPLAY_MODE_OFF;
 
-    public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact,deck_emu MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform,deck_emu DXVK_FRAME_RATE=60 VKD3D_SHADER_MODEL=6_0 PULSE_LATENCY_MSEC=144";
+    public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact,deck_emu MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform VKD3D_SHADER_MODEL=6_0 PULSE_LATENCY_MSEC=144";
     public static final String DEFAULT_SCREEN_SIZE = "1280x720";
     public static final String DEFAULT_GRAPHICS_DRIVER = DefaultVersion.DEFAULT_GRAPHICS_DRIVER;
     public static final String DEFAULT_AUDIO_DRIVER = "pulseaudio";
     public static final String DEFAULT_EMULATOR = "FEXCore";
     public static final String DEFAULT_DXWRAPPER = "dxvk";
+    public static final String DEFAULT_DISPLAY_RENDERER = "vulkan";
     public static final String DEFAULT_DDRAWRAPPER = "none";
     public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.DXVK + ",framerate=0,maxDeviceMemory=0,async=" + DefaultVersion.ASYNC + ",asyncCache=" + DefaultVersion.ASYNC_CACHE + ",vkd3dVersion=" + DefaultVersion.VKD3D + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";;
     public static final String DEFAULT_GRAPHICSDRIVERCONFIG = "vulkanVersion=1.3" + ",version=" + DefaultVersion.WRAPPER + ",blacklistedExtensions=" + ",maxDeviceMemory=0" + ",presentMode=mailbox" + ",syncFrame=0" + ",disablePresentWait=0" + ",resourceType=auto" + ",bcnEmulation=auto" + ",bcnEmulationType=compute" + ",bcnEmulationCache=0" + ",gpuName=Device";
-    public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0";
-    public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=0";
+    public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0";
+    public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=0";
     public static final String[] MEDIACONV_ENV_VARS = {
             "MEDIACONV_AUDIO_DUMP_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/audio.dmp",
             "MEDIACONV_VIDEO_DUMP_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/video.dmp",
@@ -79,12 +81,16 @@ public class Container {
     private String dxwrapper = DEFAULT_DXWRAPPER;
     private String dxwrapperConfig = DEFAULT_DXWRAPPERCONFIG;
     private String graphicsDriverConfig = DEFAULT_GRAPHICSDRIVERCONFIG;
+    private String rendererPresentMode = "fifo";
+    private String displayRenderer = Container.DEFAULT_DISPLAY_RENDERER;
     private String wincomponents = DEFAULT_WINCOMPONENTS;
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
+    private boolean pulseaudioLowLatency = false;
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
     private boolean launchRealSteam;
+    private boolean launchBionicSteam;
     private boolean allowSteamUpdates;
     private boolean wow64Mode = true;
     private boolean needsUnpacking = true;
@@ -124,8 +130,8 @@ public class Container {
     private byte dinputMapperType = 1;  // 1=standard, 2=XInput mapper
     // Disable external mouse input
     private boolean disableMouseInput = false;
-    // Touchscreen mode
-    private boolean touchscreenMode = false;
+    // Touchscreen mode (defaults on for XR builds)
+    private boolean touchscreenMode = app.gamenative.BuildConfig.XR_BUILD;
     // Shooter mode
     private boolean shooterMode = true;
     // Serialised JSON gesture configuration (used when touchscreenMode is true)
@@ -146,6 +152,8 @@ public class Container {
     private boolean localSavesOnly = false;
 
     private boolean steamOfflineMode = false;
+
+    private boolean epicOfflineMode = false;
 
     private boolean useLegacyDRM = false;
 
@@ -253,6 +261,14 @@ public class Container {
         this.graphicsDriverConfig = graphicsDriverConfig != null ? graphicsDriverConfig : "";
     }
 
+    public String getRendererPresentMode() { return rendererPresentMode; }
+
+    public void setRendererPresentMode(String v) { this.rendererPresentMode = v != null ? v : "fifo"; }
+
+    public String getDisplayRenderer() { return displayRenderer; }
+
+    public void setDisplayRenderer(String v) { this.displayRenderer = v; }
+
     public String getDXWrapperConfig() {
         return dxwrapperConfig;
     }
@@ -267,6 +283,14 @@ public class Container {
 
     public void setAudioDriver(String audioDriver) {
         this.audioDriver = audioDriver;
+    }
+
+    public boolean getPulseaudioLowLatency() {
+        return pulseaudioLowLatency;
+    }
+
+    public void setPulseaudioLowLatency(boolean pulseaudioLowLatency) {
+        this.pulseaudioLowLatency = pulseaudioLowLatency;
     }
 
     public String getWinComponents() {
@@ -323,6 +347,14 @@ public class Container {
 
     public void setLaunchRealSteam(boolean launchRealSteam) {
         this.launchRealSteam = launchRealSteam;
+    }
+
+    public boolean isLaunchBionicSteam() {
+        return launchBionicSteam;
+    }
+
+    public void setLaunchBionicSteam(boolean launchBionicSteam) {
+        this.launchBionicSteam = launchBionicSteam;
     }
 
     public boolean isAllowSteamUpdates() {
@@ -645,13 +677,17 @@ public class Container {
             data.put("graphicsDriver", graphicsDriver);
             data.put("graphicsDriverVersion", graphicsDriverVersion); // Ensure this is added
             if (!graphicsDriverConfig.isEmpty()) data.put("graphicsDriverConfig", graphicsDriverConfig);
+            data.put("rendererPresentMode", rendererPresentMode);
+            data.put("displayRendererMode", displayRenderer);
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
             data.put("audioDriver", audioDriver);
+            data.put("pulseaudioLowLatency", pulseaudioLowLatency);
             data.put("wincomponents", wincomponents);
             data.put("drives", drives);
             data.put("showFPS", showFPS);
             data.put("launchRealSteam", launchRealSteam);
+            data.put("launchBionicSteam", launchBionicSteam);
             data.put("allowSteamUpdates", allowSteamUpdates);
             data.put("inputType", inputType);
             data.put("dinputMapperType", dinputMapperType);
@@ -703,6 +739,9 @@ public class Container {
             // Steam offline mode setting
             data.put("steamOfflineMode", steamOfflineMode);
 
+            // Steam offline mode setting
+            data.put("epicOfflineMode", epicOfflineMode);
+
             // Use Legacy DRM setting
             data.put("useLegacyDRM", useLegacyDRM);
 
@@ -753,6 +792,12 @@ public class Container {
                 case "graphicsDriverConfig" :
                     setGraphicsDriverConfig(data.getString(key));
                     break;
+                case "rendererPresentMode" :
+                    setRendererPresentMode(data.getString(key));
+                    break;
+                case "displayRendererMode" :
+                    setDisplayRenderer(data.getString(key));
+                    break;
                 case "wincomponents" :
                     setWinComponents(data.getString(key));
                     break;
@@ -770,6 +815,9 @@ public class Container {
                     break;
                 case "launchRealSteam" :
                     setLaunchRealSteam(data.getBoolean(key));
+                    break;
+                case "launchBionicSteam" :
+                    setLaunchBionicSteam(data.getBoolean(key));
                     break;
                 case "allowSteamUpdates" :
                     setAllowSteamUpdates(data.getBoolean(key));
@@ -832,6 +880,9 @@ public class Container {
                     break;
                 case "audioDriver" :
                     setAudioDriver(data.getString(key));
+                    break;
+                case "pulseaudioLowLatency" :
+                    setPulseaudioLowLatency(data.getBoolean(key));
                     break;
                 case "desktopTheme" :
                     setDesktopTheme(data.getString(key));
@@ -899,6 +950,9 @@ public class Container {
                 case "steamOfflineMode":
                     this.steamOfflineMode = data.getBoolean(key);
                     break;
+                case "epicOfflineMode":
+                    this.epicOfflineMode = data.getBoolean(key);
+                    break;
                 case "useLegacyDRM":
                     this.useLegacyDRM = data.getBoolean(key);
                     break;
@@ -918,6 +972,12 @@ public class Container {
 
     public static void checkObsoleteOrMissingProperties(JSONObject data) {
         try {
+            if (!data.has("displayRendererMode") && data.has("useLegacyRenderer")) {
+                boolean legacy = data.optBoolean("useLegacyRenderer", false);
+                data.put("displayRendererMode", legacy ? "gl" : DEFAULT_DISPLAY_RENDERER);
+            }
+            data.remove("useLegacyRenderer");
+
             if (data.has("dxcomponents")) {
                 data.put("wincomponents", data.getString("dxcomponents"));
                 data.remove("dxcomponents");
@@ -941,6 +1001,10 @@ public class Container {
                 else if (graphicsDriver.equals("llvmpipe")) {
                     data.put("graphicsDriver", "virgl");
                 }
+            }
+
+            if (!data.has("wincomponents")) {
+                data.put("wincomponents", DEFAULT_WINCOMPONENTS);
             }
 
             KeyValueSet wincomponents1 = new KeyValueSet(DEFAULT_WINCOMPONENTS);
@@ -987,8 +1051,16 @@ public class Container {
         return steamOfflineMode;
     }
 
+    public boolean isEpicOfflineMode() {
+        return epicOfflineMode;
+    }
+
     public void setSteamOfflineMode(boolean steamOfflineMode) {
         this.steamOfflineMode = steamOfflineMode;
+    }
+
+    public void setEpicOfflineMode(boolean epicOfflineMode) {
+        this.epicOfflineMode = epicOfflineMode;
     }
 
     public boolean isUseLegacyDRM() {

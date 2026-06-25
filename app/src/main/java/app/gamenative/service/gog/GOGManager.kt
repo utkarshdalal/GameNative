@@ -1,53 +1,33 @@
 package app.gamenative.service.gog
 
 import android.content.Context
-import android.net.Uri
-import androidx.core.net.toUri
 import app.gamenative.PluviaApp
-import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GOGCloudSavesLocation
 import app.gamenative.data.GOGCloudSavesLocationTemplate
 import app.gamenative.data.GOGGame
 import app.gamenative.data.GameSource
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
-import app.gamenative.data.PostSyncInfo
-import app.gamenative.data.SteamApp
 import app.gamenative.db.dao.GOGGameDao
-import app.gamenative.enums.AppType
-import app.gamenative.enums.ControllerSupport
 import app.gamenative.enums.Marker
-import app.gamenative.enums.OS
 import app.gamenative.enums.PathType
-import app.gamenative.enums.ReleaseState
-import app.gamenative.enums.SyncResult
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
-import app.gamenative.utils.StorageUtils
 import com.winlator.container.Container
 import com.winlator.core.envvars.EnvVars
 import com.winlator.core.FileUtils as WinlatorFileUtils
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
-import java.util.EnumSet
-import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.Request
-import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 
@@ -159,6 +139,7 @@ class GOGManager @Inject constructor(
             if (result.isSuccess) {
                 val count = result.getOrNull() ?: 0
                 Timber.tag("GOG").i("Background sync completed: $count games synced")
+                backfillVerticalCovers()
                 return@withContext Result.success(Unit)
             } else {
                 val error = result.exceptionOrNull()
@@ -237,8 +218,15 @@ class GOGManager @Inject constructor(
                         val gameDetails = result.getOrNull()
                         if (gameDetails != null) {
                             Timber.tag("GOG").d("Got Game Details for ID: $id")
-                            val game = parseGameObject(gameDetails)
-                            if (game != null) {
+                            val parsedGame = parseGameObject(gameDetails)
+                            if (parsedGame != null) {
+                                // Only real (non-excluded) games are shown, so only fetch
+                                // their portrait cover to avoid wasting GamesDB requests.
+                                val game = if (parsedGame.exclude) {
+                                    parsedGame
+                                } else {
+                                    parsedGame.copy(verticalCoverUrl = GOGApiClient.getVerticalCoverUrl(id))
+                                }
                                 games.add(game)
                                 Timber.tag("GOG").d("Refreshed Game: ${game.title}")
                                 totalProcessed++
@@ -268,6 +256,31 @@ class GOGManager @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Failed to refresh GOG library")
             return@withContext Result.failure(e)
+        }
+    }
+
+    /**
+     * Backfill portrait covers for games already in the database that predate the
+     * vertical_cover_url column (or whose fetch previously failed). New games already
+     * get their cover during [refreshLibrary], so this only touches existing rows.
+     */
+    private suspend fun backfillVerticalCovers() = withContext(Dispatchers.IO) {
+        try {
+            val gameIds = gogGameDao.getGameIdsMissingVerticalCover()
+            if (gameIds.isEmpty()) return@withContext
+
+            Timber.tag("GOG").d("Backfilling vertical covers for ${gameIds.size} games")
+            var filled = 0
+            for (id in gameIds) {
+                val coverUrl = GOGApiClient.getVerticalCoverUrl(id)
+                if (coverUrl.isNotEmpty()) {
+                    gogGameDao.updateVerticalCoverUrl(id, coverUrl)
+                    filled++
+                }
+            }
+            Timber.tag("GOG").i("Backfilled $filled vertical covers")
+        } catch (e: Exception) {
+            Timber.tag("GOG").w(e, "Failed to backfill vertical covers")
         }
     }
 
@@ -470,36 +483,36 @@ class GOGManager @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val gameId = libraryItem.gameId.toString()
-                val installPath = getGameInstallPath(gameId, libraryItem.name)
-                val installDir = File(installPath)
-                val hadInstallArtifacts = installDir.exists() || MarkerUtils.hasPartialInstall(installPath)
-                val wasInstalled = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
 
-                // Delete the manifest file
+                val game = getGameFromDbById(gameId)
+                val storedPath = game?.installPath?.takeIf { it.isNotBlank() }
+                val computedPath = getGameInstallPath(gameId, libraryItem.name)
+                val pathsToClean = listOfNotNull(storedPath, computedPath).distinct()
+
                 val manifestPath = File(context.filesDir, "manifests/$gameId")
                 if (manifestPath.exists()) {
                     manifestPath.delete()
                     Timber.i("Deleted manifest file for game $gameId")
                 }
 
-                // Delete game files
-                if (installDir.exists()) {
-                    val success = installDir.deleteRecursively()
-                    if (success) {
-                        Timber.i("Successfully deleted game directory: $installPath")
+                val failedPaths = mutableListOf<String>()
+                for (path in pathsToClean) {
+                    val dir = File(path)
+                    if (dir.exists()) {
+                        if (dir.deleteRecursively()) {
+                            Timber.i("Successfully deleted game directory: $path")
+                        } else {
+                            Timber.w("Failed to delete some game files at $path")
+                            failedPaths.add(path)
+                        }
                     } else {
-                        Timber.w("Failed to delete some game files")
-                        return@withContext Result.failure(Exception("Failed to fully delete at $installPath"))
+                        Timber.w("GOG game directory doesn't exist: $path")
                     }
-                } else {
-                    Timber.w("GOG game directory doesn't exist: $installPath")
+                    MarkerUtils.removeMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)
+                    MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 }
 
-                MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
-                MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
-
-                val game = getGameFromDbById(gameId)
-                if (game != null && (wasInstalled || hadInstallArtifacts)) {
+                if (game != null) {
                     val updatedGame = game.copy(isInstalled = false, installPath = "")
                     gogGameDao.update(updatedGame)
                     Timber.d("Updated database: game marked as not installed")
@@ -511,8 +524,12 @@ class GOGManager @Inject constructor(
 
                 // Trigger library refresh event
                 app.gamenative.PluviaApp.events.emitJava(
-                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(libraryItem.gameId),
+                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(libraryItem.gameId, app.gamenative.data.GameSource.GOG),
                 )
+
+                if (failedPaths.isNotEmpty()) {
+                    return@withContext Result.failure(Exception("Failed to fully delete at: ${failedPaths.joinToString()}"))
+                }
 
                 Result.success(Unit)
             } catch (e: Exception) {
@@ -930,13 +947,13 @@ class GOGManager @Inject constructor(
      * @param context Android context
      * @param appId Game app ID
      * @param installPath Game install path
-     * @return Pair of (clientSecret, List of save location templates), or null if cloud saves not enabled or API call fails
+     * @return Triple of (clientId, clientSecret, List of save location templates), or null if cloud saves not enabled or API call fails
      */
     suspend fun getSaveSyncLocation(
         context: Context,
         appId: String,
         installPath: String,
-    ): Pair<String, List<GOGCloudSavesLocationTemplate>>? = withContext(Dispatchers.IO) {
+    ): Triple<String, String, List<GOGCloudSavesLocationTemplate>>? = withContext(Dispatchers.IO) {
         try {
             Timber.tag("GOG").d("[Cloud Saves] Getting save sync location for $appId")
             val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
@@ -947,16 +964,18 @@ class GOGManager @Inject constructor(
                 return@withContext null
             }
 
-            // Extract clientId from info file
-            val clientId = infoJson.optString("clientId", "")
+            // Get clientId + clientSecret from the build metadata, like gogdl/Heroic. The goggame-*.info
+            // clientId is optional and missing for many games (e.g. Dead Cells), so prefer the .info value
+            // only as a hint and fall back to the build metadata, which always carries both.
+            val buildCredentials = GOGApiClient.getClientCredentials(context, gameId.toString(), installPath)
+            val clientId = infoJson.optString("clientId", "").ifEmpty { buildCredentials?.first ?: "" }
             if (clientId.isEmpty()) {
-                Timber.tag("GOG").w("[Cloud Saves] No clientId found in info file for game $gameId")
+                Timber.tag("GOG").w("[Cloud Saves] No clientId in info file or build metadata for game $gameId")
                 return@withContext null
             }
             Timber.tag("GOG").d("[Cloud Saves] Client ID: $clientId")
 
-            // Get clientSecret from build metadata
-            val clientSecret = GOGApiClient.getClientSecret(context, gameId.toString(), installPath) ?: ""
+            val clientSecret = buildCredentials?.second ?: ""
             if (clientSecret.isEmpty()) {
                 Timber.tag("GOG").w("[Cloud Saves] No clientSecret available for game $gameId")
             } else {
@@ -967,7 +986,7 @@ class GOGManager @Inject constructor(
             remoteConfigCache[clientId]?.let { cachedLocations ->
                 Timber.tag("GOG").d("[Cloud Saves] Using cached save locations for clientId $clientId (${cachedLocations.size} locations)")
                 // Cache only contains locations, we still need to fetch clientSecret fresh
-                return@withContext Pair(clientSecret, cachedLocations)
+                return@withContext Triple(clientId, clientSecret, cachedLocations)
             }
 
             // Android runs games through Wine, so always use Windows platform
@@ -1049,7 +1068,7 @@ class GOGManager @Inject constructor(
                 }
 
                 Timber.tag("GOG").i("[Cloud Saves] Found ${locations.size} save location(s) for game $gameId")
-                return@withContext Pair(clientSecret, locations)
+                return@withContext Triple(clientId, clientSecret, locations)
             }
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "[Cloud Saves] Failed to get save sync location for appId $appId")
@@ -1086,34 +1105,26 @@ class GOGManager @Inject constructor(
             }
             Timber.tag("GOG").d("[Cloud Saves] Game install path: $installPath")
 
-            // Get clientId from info file
-            val infoJson = readInfoFile(appId, installPath)
-            val clientId = infoJson?.optString("clientId", "") ?: ""
-            if (clientId.isEmpty()) {
-                Timber.tag("GOG").w("[Cloud Saves] No clientId found in info file for game $gameId")
-                return@withContext null
-            }
-            Timber.tag("GOG").d("[Cloud Saves] Client ID: $clientId")
-
-            // Fetch save locations from API (Android runs games through Wine, so always Windows)
+            // Fetch clientId + clientSecret + save locations from API (Android runs games through Wine,
+            // so always Windows). clientId comes from build metadata when the goggame-*.info omits it.
             Timber.tag("GOG").d("[Cloud Saves] Fetching save locations from API")
             val result = getSaveSyncLocation(context, appId, installPath)
 
-            val clientSecret: String
-            val locations: List<GOGCloudSavesLocationTemplate>
-
-            // If no locations from API, use default Windows path
-            if (result == null || result.second.isEmpty()) {
-                clientSecret = ""
-                Timber.tag("GOG").d("[Cloud Saves] No save locations from API, using default for game $gameId")
-                val defaultLocation = "%LOCALAPPDATA%/GOG.com/Galaxy/Applications/$clientId/Storage/Shared/Files"
-                Timber.tag("GOG").d("[Cloud Saves] Using default location: $defaultLocation")
-                locations = listOf(GOGCloudSavesLocationTemplate("__default", defaultLocation))
-            } else {
-                clientSecret = result.first
-                locations = result.second
-                Timber.tag("GOG").i("[Cloud Saves] Retrieved ${locations.size} save location(s) from API")
+            if (result == null || result.third.isEmpty()) {
+                // The remote config API returned no locations, meaning this game either has cloud
+                // saves disabled or no save paths configured. We don't fall back to the default
+                // GOG Galaxy path (%LOCALAPPDATA%/GOG.com/Galaxy/Applications/<clientId>/Storage/…)
+                // because clientSecret also comes from the API — without it, cloud auth cannot
+                // succeed and the fallback path can never be used for a real sync.
+                Timber.tag("GOG").d("[Cloud Saves] No save locations from API for game $gameId, cloud saves not supported")
+                return@withContext null
             }
+
+            val clientId = result.first
+            val clientSecret = result.second
+            val locations = result.third
+            Timber.tag("GOG").d("[Cloud Saves] Client ID: $clientId")
+            Timber.tag("GOG").i("[Cloud Saves] Retrieved ${locations.size} save location(s) from API")
 
             // Resolve each location
             val resolvedLocations = mutableListOf<GOGCloudSavesLocation>()
@@ -1123,9 +1134,15 @@ class GOGManager @Inject constructor(
                 var resolvedPath = PathType.resolveGOGPathVariables(locationTemplate.location, installPath)
                 Timber.tag("GOG").d("[Cloud Saves] After GOG variable resolution: $resolvedPath")
 
-                // Map GOG Windows path to device path using PathType
-                // Pass appId to ensure we use the correct container-specific wine prefix
-                resolvedPath = PathType.toAbsPathForGOG(context, resolvedPath, appId)
+                // Install-relative locations (<?INSTALL?>) resolve to the real on-disk install dir, which
+                // is already an absolute host path — use it directly, like Heroic does. Only Windows-style
+                // locations (%LOCALAPPDATA% etc.) need mapping into the Wine prefix; running toAbsPathForGOG
+                // on an absolute host path wrongly re-roots it under .wine/drive_c.
+                resolvedPath = resolvedPath.replace("\\", "/")
+                if (!resolvedPath.startsWith(installPath.replace("\\", "/"))) {
+                    // Pass appId to ensure we use the correct container-specific wine prefix
+                    resolvedPath = PathType.toAbsPathForGOG(context, resolvedPath, appId)
+                }
                 Timber.tag("GOG").d("[Cloud Saves] After path mapping to Wine prefix: $resolvedPath")
 
                 // Normalize path to resolve any '..' or '.' components
@@ -1246,6 +1263,7 @@ class GOGManager @Inject constructor(
         val game = runBlocking { getGameFromDbById(gameId.toString()) }
 
         if (game != null) {
+            if (game.installPath.isNotBlank()) return game.installPath
             return GOGConstants.getGameInstallPath(game.title)
         }
 

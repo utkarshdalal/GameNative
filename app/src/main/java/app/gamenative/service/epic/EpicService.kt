@@ -3,6 +3,7 @@ package app.gamenative.service.epic
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.EpicCredentials
@@ -16,6 +17,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.NotificationHelper
+import com.winlator.container.Container
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -157,6 +159,8 @@ class EpicService : Service() {
 
         private fun setSyncInProgress(inProgress: Boolean) {
             syncInProgress = inProgress
+            if (inProgress) getInstance()?.notifierOrNull?.showSyncing(NotificationHelper.NOTIFICATION_ID_EPIC)
+            else getInstance()?.notifierOrNull?.showIdle(NotificationHelper.NOTIFICATION_ID_EPIC)
         }
 
         fun isSyncInProgress(): Boolean = syncInProgress
@@ -260,7 +264,7 @@ class EpicService : Service() {
 
                 // Trigger library refresh event
                 app.gamenative.PluviaApp.events.emitJava(
-                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(appId)
+                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(appId, app.gamenative.data.GameSource.EPIC)
                 )
 
                 Timber.tag("Epic").i("Game uninstalled: $appId")
@@ -419,6 +423,7 @@ class EpicService : Service() {
 
             instance.activeDownloads[appId] = downloadInfo
             downloadInfo.setActive(true)
+            instance.notifierOrNull?.trackDownload(downloadInfo, game.title ?: "", NotificationHelper.NOTIFICATION_ID_EPIC)
 
             // Start download in background
             val job = instance.scope.launch {
@@ -440,10 +445,34 @@ class EpicService : Service() {
 
                     if (result.isSuccess) {
                         Timber.i("[Download] Completed successfully for game $gameId")
-                        downloadInfo.setProgress(1.0f)
-                        downloadInfo.setActive(false)
+
+                        // Download cloud saves so they're ready before first launch.
+                        // Status message keeps isDownloading() true so Play stays hidden during sync.
+                        val epicAppId = "EPIC_$gameId"
+                        if (game.cloudSaveEnabled && !ContainerUtils.isLocalSavesOnly(context, epicAppId)) {
+                            downloadInfo.setPostInstallSyncing(true)
+                            PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, true))
+                            downloadInfo.updateStatusMessage("Syncing saves...")
+                            try {
+                                EpicCloudSavesManager.syncCloudSaves(
+                                    context = context,
+                                    appId = gameId,
+                                    preferredAction = "download",
+                                )
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Timber.e(e, "[PostInstallSync] Cloud save sync failed for game $gameId")
+                            } finally {
+                                downloadInfo.setPostInstallSyncing(false)
+                                downloadInfo.updateStatusMessage(null)
+                                PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, false))
+                            }
+                        }
 
                         SnackbarManager.show("Download completed successfully!")
+                        downloadInfo.setProgress(1.0f)
+                        downloadInfo.setActive(false)
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")
@@ -452,8 +481,16 @@ class EpicService : Service() {
 
                         SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     }
+                } catch (e: CancellationException) {
+                    downloadInfo.setPostInstallSyncing(false)
+                    downloadInfo.updateStatusMessage(null)
+                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, false))
+                    throw e
                 } catch (e: Exception) {
                     Timber.e(e, "[Download] Exception for game $gameId")
+                    downloadInfo.setPostInstallSyncing(false)
+                    downloadInfo.updateStatusMessage(null)
+                    PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, false))
                     downloadInfo.setProgress(-1.0f)
                     downloadInfo.setActive(false)
 
@@ -495,15 +532,59 @@ class EpicService : Service() {
 
         suspend fun buildLaunchParameters(
             context: Context,
+            container: Container,
             game: EpicGame,
             offline: Boolean = false,
             languageCode: String = "en-US"
         ): Result<List<String>> {
-            return EpicGameLauncher.buildLaunchParameters(context, game, offline, languageCode)
+            return EpicGameLauncher.buildLaunchParameters(context, container, game, offline, languageCode)
         }
 
-        fun cleanupLaunchTokens(context: Context) {
-            EpicGameLauncher.cleanupOwnershipTokens(context)
+        fun cleanupLaunchTokens(context: Context, container: Container? = null) {
+            EpicGameLauncher.cleanupOwnershipTokens(context, container)
+        }
+
+        // ==========================================================================
+        // EOS OVERLAY
+        // ==========================================================================
+
+        /**
+         * Install (or re-install) the EOS overlay into [container].
+         *
+         * Downloads the latest overlay from Epic's CDN, replaces incompatible DLLs
+         * with Wine-compatible stubs, and writes the overlay path to the Wine registry.
+         *
+         * @param context         Android context.
+         * @param container       Target Wine container.
+         * @param forceReinstall  Re-download even if the overlay appears installed.
+         * @param onProgress      Optional callback: (downloadedChunks, totalChunks).
+         */
+        suspend fun installOverlay(
+            context: Context,
+            container: Container,
+            forceReinstall: Boolean = false,
+            onProgress: ((Int, Int) -> Unit)? = null,
+        ): Result<Unit> {
+            val instance = getInstance()
+                ?: return Result.failure(Exception("EpicService not running"))
+            return instance.epicOverlayManager.installOverlay(
+                context, container, forceReinstall, onProgress,
+            )
+        }
+
+        /**
+         * Returns true if the EOS overlay is installed in [container].
+         */
+        fun isOverlayInstalled(container: Container): Boolean =
+            getInstance()?.epicOverlayManager?.isOverlayInstalled(container) ?: false
+
+        /**
+         * Remove the EOS overlay from [container] and clear its registry entry.
+         */
+        suspend fun removeOverlay(context: Context, container: Container): Result<Unit> {
+            val instance = getInstance()
+                ?: return Result.failure(Exception("EpicService not running"))
+            return instance.epicOverlayManager.removeOverlay(context, container)
         }
 
         // ==========================================================================
@@ -529,11 +610,16 @@ class EpicService : Service() {
 
     private lateinit var notificationHelper: NotificationHelper
 
+    private val notifierOrNull: NotificationHelper? get() = if (::notificationHelper.isInitialized) notificationHelper else null
+
     @Inject
     lateinit var epicManager: EpicManager
 
     @Inject
     lateinit var epicDownloadManager: EpicDownloadManager
+
+    @Inject
+    lateinit var epicOverlayManager: EpicOverlayManager
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -558,8 +644,13 @@ class EpicService : Service() {
 
         val instance = getInstance()
         // Start as foreground service
-        val notification = notificationHelper.createForegroundNotification("Connected")
-        startForeground(1, notification)
+        val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_EPIC, "Connected")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            startForeground(NotificationHelper.NOTIFICATION_ID_EPIC, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(NotificationHelper.NOTIFICATION_ID_EPIC, notification)
+        }
+        notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_EPIC)
 
         // Determine if we should sync based on the action
         val shouldSync = when (intent?.action) {
@@ -627,6 +718,12 @@ class EpicService : Service() {
         return START_STICKY
     }
 
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        super.onTimeout(startId, fgsType)
+        Timber.tag("EPIC").w("Foreground service timeout reached, restarting...")
+        stopSelf()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         Timber.tag("Epic").i("[EpicService] Service destroyed")
@@ -638,8 +735,18 @@ class EpicService : Service() {
 
         scope.cancel() // Cancel any ongoing operations
         stopForeground(STOP_FOREGROUND_REMOVE)
-        notificationHelper.cancel()
+        notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_EPIC)
         instance = null
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (!hasActiveOperations()) {
+            Timber.tag("Epic").i("Task removed and no active work — stopping service")
+            stopSelf()
+        } else {
+            Timber.tag("Epic").i("Task removed but active work exists — keeping service alive")
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

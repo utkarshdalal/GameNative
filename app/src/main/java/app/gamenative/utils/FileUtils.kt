@@ -145,7 +145,7 @@ object FileUtils {
                 Timber.i("Checking $fileName for pattern $pattern")
                 var startIndex = 0
                 !patternParts.map {
-                    val index = fileName.indexOf(it, startIndex)
+                    val index = fileName.indexOf(it, startIndex, ignoreCase = true)
                     if (index >= 0) {
                         startIndex = index + it.length
                     }
@@ -170,7 +170,7 @@ object FileUtils {
         fun matches(fileName: String): Boolean {
             var startIndex = 0
             for (part in patternParts) {
-                val index = fileName.indexOf(part, startIndex)
+                val index = fileName.indexOf(part, startIndex, ignoreCase = true)
                 if (index < 0) return false
                 startIndex = index + part.length
             }
@@ -226,15 +226,9 @@ object FileUtils {
     fun resolveCaseInsensitive(baseDir: File, relativePath: String): File {
         val segments = relativePath.replace('\\', '/').split('/').filter { it.isNotEmpty() }
         var current = baseDir
-        for ((i, segment) in segments.withIndex()) {
+        for (segment in segments) {
             val match = current.listFiles()?.firstOrNull { it.name.equals(segment, ignoreCase = true) }
-            if (match != null) {
-                current = match
-            } else {
-                // append remaining segments verbatim
-                for (j in i until segments.size) current = File(current, segments[j])
-                return current
-            }
+            current = match ?: File(current, segment)
         }
         return current
     }

@@ -17,8 +17,13 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.ui.enums.Orientation
 import java.util.EnumSet
+import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
+import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicCloudSavesManager
+import app.gamenative.service.epic.EpicService
+import app.gamenative.service.gog.GOGService
+import app.gamenative.utils.CustomGameScanner
 import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
@@ -45,6 +50,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 @HiltViewModel
@@ -317,6 +323,10 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(bootingSplashText = value) }
     }
 
+    fun setBootingSplashHeroImageUrl(url: String) {
+        _state.update { it.copy(bootingSplashHeroImageUrl = url) }
+    }
+
     // Connection state management
 
     /**
@@ -450,11 +460,48 @@ class MainViewModel @Inject constructor(
             setShowBootingSplash(true)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
+            val heroUrl = withContext(Dispatchers.IO) {
+                val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+                val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+                when (gameSource) {
+                    GameSource.STEAM -> {
+                        val steamApp = SteamService.getAppInfoOf(gameId)
+                        steamApp?.getHeroUrl()?.ifEmpty { steamApp.headerUrl } ?: ""
+                    }
+                    GameSource.GOG -> {
+                        val game = GOGService.getGOGGameOf(gameId.toString())
+                        game?.backgroundUrl?.ifEmpty { game.imageUrl } ?: ""
+                    }
+                    GameSource.EPIC -> {
+                        val game = EpicService.getEpicGameOf(gameId)
+                        game?.artPortrait?.ifEmpty { game.artCover.ifEmpty { game.artSquare } } ?: ""
+                    }
+                    GameSource.AMAZON -> {
+                        val game = AmazonService.getAmazonGameByAppId(gameId)
+                        game?.heroUrl?.ifEmpty { game.artUrl } ?: ""
+                    }
+                    GameSource.CUSTOM_GAME -> {
+                        val folderPath = CustomGameScanner.getFolderPathFromAppId(appId) ?: return@withContext ""
+                        val folder = java.io.File(folderPath)
+                        val heroFile = folder.listFiles()?.firstOrNull { file ->
+                            file.isFile &&
+                                file.name.startsWith("steamgriddb_hero", ignoreCase = true) &&
+                                !file.name.contains("grid_", ignoreCase = true) &&
+                                (file.name.endsWith(".png", ignoreCase = true) ||
+                                    file.name.endsWith(".jpg", ignoreCase = true) ||
+                                    file.name.endsWith(".webp", ignoreCase = true))
+                        }
+                        heroFile?.let { android.net.Uri.fromFile(it).toString() } ?: ""
+                    }
+                }
+            }
+            setBootingSplashHeroImageUrl(heroUrl)
+
             val apiJob = viewModelScope.async(Dispatchers.IO) {
                 val container = ContainerUtils.getOrCreateContainer(context, appId)
                 val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
                 if (gameSource == GameSource.STEAM) {
-                    if (container.isLaunchRealSteam()) {
+                    if (container.isLaunchRealSteam() || container.isLaunchBionicSteam()) {
                         SteamUtils.restoreSteamApi(context, appId)
                     } else {
                         val offline = _offline.value
@@ -488,6 +535,7 @@ class MainViewModel @Inject constructor(
 
                 val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
                 Timber.tag("Exit").i("Got game id: $gameId")
+                ActiveGameRegistry.clearIfMatches(gameId)
                 SteamService.notifyRunningProcesses()
                 handleExitCloudSync(context, appId, gameId)
 
@@ -586,8 +634,11 @@ class MainViewModel @Inject constructor(
 
         if (gameSource == GameSource.STEAM) {
             try {
+                val container = withContext(Dispatchers.IO) {
+                    ContainerUtils.getContainer(context, appId)
+                }
                 SteamService.closeApp(context, gameId, isOffline.value) { prefix ->
-                    PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+                    PathType.from(prefix).toAbsPath(container, gameId, SteamService.userSteamId!!.accountID)
                 }.await()
             } catch (e: CancellationException) {
                 throw e
@@ -640,15 +691,17 @@ class MainViewModel @Inject constructor(
                         // When launchRealSteam is true, let the real Steam client handle the "game is running" notification
                         val shouldLaunchRealSteam = try {
                             val container = ContainerUtils.getContainer(context, appId)
-                            container.isLaunchRealSteam()
+                            container.isLaunchRealSteam() || container.isLaunchBionicSteam()
                         } catch (e: Exception) {
                             // Container might not exist, default to notifying Steam
                             false
                         }
 
                         if (!shouldLaunchRealSteam) {
+                            ActiveGameRegistry.set(it)
                             SteamService.notifyRunningProcesses(it)
                         } else {
+                            ActiveGameRegistry.clear()
                             Timber.tag("MainViewModel").i("Skipping Steam process notification - real Steam will handle this")
                         }
                     }

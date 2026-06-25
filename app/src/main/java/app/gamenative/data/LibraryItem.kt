@@ -16,7 +16,8 @@ enum class GameCompatibilityStatus {
     NOT_COMPATIBLE,
     UNKNOWN,
     COMPATIBLE,
-    GPU_COMPATIBLE
+    GPU_COMPATIBLE,
+    RECOMMENDED,
 }
 
 /** Library list item. */
@@ -34,6 +35,8 @@ data class LibraryItem(
     val compatibilityStatus: GameCompatibilityStatus? = null,
     val sizeBytes: Long = 0L,
     val isInstalled: Boolean = false,
+    val isRecommended: Boolean = false,
+    val recommendedGameId: String = "",
 ) {
     val clientIconUrl: String
         get() = when (gameSource) {

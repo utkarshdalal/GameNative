@@ -1,6 +1,7 @@
 package app.gamenative.service.gog
 
 import android.content.Context
+import app.gamenative.PrefManager
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GOGGame
 import app.gamenative.service.gog.api.BuildsResponse
@@ -19,6 +20,8 @@ import java.nio.file.Files
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -31,11 +34,12 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28], manifest = Config.NONE, application = android.app.Application::class)
+@Config(manifest = Config.NONE, application = android.app.Application::class)
 class GOGDownloadManagerTest {
     private lateinit var apiClient: GOGApiClient
     private lateinit var parser: GOGManifestParser
@@ -50,6 +54,8 @@ class GOGDownloadManagerTest {
         gogManager = mock()
         context = mock()
         manager = GOGDownloadManager(apiClient, parser, gogManager, context)
+        PrefManager.init(RuntimeEnvironment.getApplication())
+        PrefManager.downloadSpeed = 32
     }
 
     // ===== Gen 2 =====
@@ -258,6 +264,43 @@ class GOGDownloadManagerTest {
 
         installPath.deleteRecursively()
         supportDir.deleteRecursively()
+    }
+
+    @Test
+    fun buildGen1MainBinUrl_insertsPathBeforeQueryToken() {
+        val baseUrl = "https://cdn.gog.com/store/1451150270?__token__=exp=123~acl=*"
+
+        val result = manager.buildGen1MainBinUrl(baseUrl)
+
+        assertEquals(
+            "https://cdn.gog.com/store/1451150270/main.bin?__token__=exp=123~acl=*",
+            result,
+        )
+    }
+
+    @Test
+    fun buildGen1MainBinUrl_appendsPathWithoutQuery() {
+        val result = manager.buildGen1MainBinUrl("https://cdn.gog.com/store/1451150270/")
+
+        assertEquals("https://cdn.gog.com/store/1451150270/main.bin", result)
+    }
+
+    @Test
+    fun buildGen1MainBinUrl_throwsWhenBaseUrlIsNull() {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            manager.buildGen1MainBinUrl(null)
+        }
+
+        assertTrue(exception.message?.contains("Missing Gen 1 secure link URL") == true)
+    }
+
+    @Test
+    fun buildGen1MainBinUrl_throwsWhenBaseUrlIsBlank() {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            manager.buildGen1MainBinUrl("   ")
+        }
+
+        assertTrue(exception.message?.contains("Missing Gen 1 secure link URL") == true)
     }
 
     private fun depotFile(path: String, support: Boolean): DepotFile {

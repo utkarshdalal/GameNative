@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="abc_action_bar_up_description">Перейти вверх</string>
     <string name="abc_action_mode_done">Готово</string>
     <string name="abc_capital_off">ВЫКЛ</string>
@@ -21,6 +21,7 @@
     <string name="abc_toolbar_collapse_description">Свернуть</string>
     <string name="about">О программе</string>
     <string name="acknowledge">ОК</string>
+    <string name="steam_cloud_sync_downloading_save_files">Загрузка файлов сохранения %1$d/%2$d</string>
     <string name="action_add_game">Добавить игру</string>
     <string name="action_details">Подробности</string>
     <string name="action_refresh">Обновить</string>
@@ -88,6 +89,10 @@
     <string name="appbar_scrolling_view_behavior">com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior</string>
     <string name="appearance">Внешний вид</string>
     <string name="audio_driver">Аудиодрайвер</string>
+    <string name="pulseaudio_suspend_behavior">Поведение приостановки PulseAudio</string>
+    <string name="pulseaudio_suspend_behavior_thread">Приостановка через поток (По умолчанию)</string>
+    <string name="pulseaudio_suspend_behavior_pactl">Приостановка через Pactl (Энергосбережение)</string>
+    <string name="pulseaudio_low_latency">Режим низкой задержки PulseAudio</string>
     <string name="auth_webview_title">Авторизация</string>
     <string name="autofill">Автозаполнение</string>
     <string name="back">Назад</string>
@@ -104,11 +109,14 @@
     <string name="bcn_emulation">Эмуляция BCn</string>
     <string name="bcn_emulation_type">Тип эмуляции BCn</string>
     <string name="best_config_applied_successfully">Конфигурация успешно применена</string>
+    <string name="best_config_applied_with_defaults">Конфигурация применена, отсутствующие компоненты заменены значениями по умолчанию</string>
+    <string name="best_config_apply_anyway">Применить всё равно</string>
     <string name="best_config_apply_failed">Ошибка применения конфигурации: %s</string>
     <string name="best_config_exact_gpu_match">Известная конфигурация работает на вашем GPU</string>
     <string name="best_config_fallback_match">Известная конфигурация может работать на вашем GPU</string>
     <string name="best_config_known_config_invalid">Известная конфигурация невалидна</string>
-    <string name="best_config_missing_content">%s отсутствует</string>
+    <string name="best_config_missing_components_message">Следующие необходимые компоненты недоступны на этом устройстве:\n\n%1$s\n\nУстановите недостающие компоненты и повторите попытку.</string>
+    <string name="best_config_missing_components_title">Конфигурация не применена</string>
     <string name="best_config_no_config_available">Нет доступной лучшей конфигурации для этой игры</string>
     <string name="best_config_fetch_failed">Не удалось получить конфигурацию. Проверьте сетевое подключение.</string>
     <string name="bind_button">Привязать: %1$s</string>
@@ -286,6 +294,7 @@
     <string name="denuvo">Denuvo</string>
     <string name="describe_what_happened">Опишите, что произошло</string>
     <string name="destination_downloads">Загрузки и хранилище</string>
+    <string name="downloads_section_title">Загрузки</string>
     <string name="destination_library">Библиотека</string>
     <string name="developer">Разработчик</string>
     <string name="direct3d">Direct3D</string>
@@ -298,6 +307,8 @@
     <string name="directplay">DirectPlay</string>
     <string name="directshow">DirectShow</string>
     <string name="directsound">DirectSound</string>
+    <string name="directinput8">DirectInput 8</string>
+    <string name="directinput">DirectInput</string>
     <string name="directx">DirectX</string>
     <string name="disable_mouse_input">Отключить ввод мыши</string>
     <string name="disable_present_wait">Отключить KHR_present_wait</string>
@@ -322,6 +333,7 @@
     <string name="driver_timeout">Время ожидания соединения истекло. Пожалуйста, проверьте сеть и попробуйте снова.</string>
     <string name="duplicate">Дублировать</string>
     <string name="dx_wrapper">DX обёртка</string>
+    <string name="display_renderer">Рендерер отображения</string>
     <string name="dxvk_version">Версия DXVK</string>
     <string name="edit">Редактировать</string>
     <string name="edit_controls">Редактировать экранный контроллер</string>
@@ -341,10 +353,6 @@
     <string name="end_process">Завершить процесс</string>
     <string name="environment_variables">Переменные окружения</string>
     <string name="epic_cancel_download_message">Вы уверены, что хотите отменить загрузку приложения?</string>
-    <string name="epic_cloud_sync_error">Ошибка синхронизации облачного сохранения: %1$s</string>
-    <string name="epic_cloud_sync_failed">Ошибка синхронизации облачного сохранения</string>
-    <string name="epic_cloud_sync_starting">Начало синхронизации облачного сохранения…</string>
-    <string name="epic_cloud_sync_success">Облачные сохранения успешно синхронизированы</string>
     <string name="epic_delete_download_message">Удалить все загруженные данные для этой игры?</string>
     <string name="epic_download_error">Ошибка загрузки: %1$s</string>
     <string name="epic_download_failed">Ошибка при запуске загрузки: %1$s</string>
@@ -433,6 +441,7 @@
     <string name="intent_launch_service_pending">Игра запустится после запуска сервиса</string>
     <string name="intent_launch_steam_login_failed">Ошибка входа в Steam — запуск игры отменён</string>
     <string name="intent_launch_service_timeout">Не удалось запустить игровой сервис — запуск игры отменён</string>
+    <string name="back_press_exit_warning">Нажмите назад ещё раз для выхода</string>
     <string name="game_not_installed_title">Игра не установлена</string>
     <string name="game_options_cloud_saves">Облачные сохранения</string>
     <string name="game_options_container">Контейнер</string>
@@ -448,16 +457,59 @@
     <string name="gesture_action_middle_click">Средний клик</string>
     <string name="gesture_action_right_click">Правый клик</string>
     <string name="gesture_delay_label">Задержка</string>
+    <string name="gesture_section_single_finger">Один палец</string>
+    <string name="gesture_section_two_finger">Два пальца</string>
+    <string name="gesture_section_three_finger">Три пальца</string>
+    <string name="gesture_section_other">Другое</string>
+    <string name="gesture_pan_left_click_drag">Перетаскивание левой кнопкой мыши</string>
+    <string name="gesture_pan_right_click_drag">Перетаскивание правой кнопкой мыши</string>
+    <string name="gesture_action_show_keyboard">Показать клавиатуру</string>
+    <string name="gesture_mouse_behavior_label">Поведение мыши</string>
+    <string name="gesture_mouse_behavior_click">Клик</string>
+    <string name="gesture_mouse_behavior_hold">Удержание</string>
+    <string name="gesture_header_special">Специальные</string>
+    <string name="gesture_header_mouse">Мышь</string>
+    <string name="gesture_header_common_game">Частые игровые клавиши</string>
+    <string name="gesture_header_navigation_editing">Навигация / редактирование</string>
+    <string name="gesture_header_symbols">Символы</string>
+    <string name="gesture_header_letters">Буквы A-Z</string>
+    <string name="gesture_header_numbers">Цифры 0-9</string>
+    <string name="gesture_header_numpad">Цифровая клавиатура</string>
+    <string name="gesture_header_function_keys">Функциональные клавиши</string>
+    <string name="gesture_header_modifiers_locks">Модификаторы / блокировки</string>
+    <string name="gesture_two_finger_hold">Удержание двумя пальцами</string>
+    <string name="gesture_two_finger_hold_delay">Задержка удержания двумя пальцами (мс)</string>
+    <string name="gesture_three_finger_tap">Касание тремя пальцами</string>
+    <string name="gesture_three_finger_drag">Перетаскивание тремя пальцами</string>
+    <string name="gesture_three_finger_hold">Удержание тремя пальцами</string>
+    <string name="gesture_three_finger_hold_delay">Задержка удержания тремя пальцами (мс)</string>
+    <string name="gesture_threshold">Порог жеста (px)</string>
+    <string name="gesture_threshold_subtitle">Движение, необходимое для фиксации типа жеста (меньше = быстрее отклик)</string>
+    <string name="gesture_mouse_drag_movement">Движение мыши при перетаскивании</string>
+    <string name="gesture_mouse_drag_movement_subtitle">Прямой режим подходит для большинства игр. Используйте относительный, если перетаскивание вызывает проблемы с камерой или курсором</string>
+    <string name="gesture_mouse_drag_movement_direct">Прямой</string>
+    <string name="gesture_mouse_drag_movement_relative">Относительный</string>
+    <string name="gesture_show_click_highlight">Показывать подсветку клика</string>
+    <string name="gesture_show_click_highlight_subtitle">Показывать круг в месте касания</string>
+    <string name="gesture_show_debug_overlay">Показывать отладочный оверлей жестов</string>
+    <string name="gesture_show_debug_overlay_subtitle">Показывать временные подписи жестов вверху по центру</string>
+    <string name="gesture_show_cursor_touchscreen_mode">Показывать курсор в режиме сенсорного экрана</string>
+    <string name="gesture_show_cursor_touchscreen_mode_subtitle">Оставлять курсор мыши видимым, пока жесты сенсорного экрана активны</string>
     <string name="gesture_double_tap">Двойной тап</string>
     <string name="gesture_double_tap_delay">Задержка двойного тапа (мс)</string>
     <string name="gesture_double_tap_subtitle">Двойной левый клик</string>
     <string name="gesture_drag">Перетаскивание пальца</string>
     <string name="gesture_drag_subtitle">Перетаскивание левого клика (выделение области)</string>
+    <string name="gesture_hold_mouse_button_while_touching">Удерживать кнопку мыши при касании</string>
+    <string name="gesture_mouse_button_label">Кнопка мыши</string>
     <string name="gesture_long_press">Долгое нажатие</string>
     <string name="gesture_long_press_delay">Задержка долгого нажатия (мс)</string>
     <string name="gesture_pan_arrow_keys">Клавиши со стрелками</string>
+    <string name="gesture_pan_inverted_arrow_keys">Инвертированные стрелки</string>
     <string name="gesture_pan_middle_mouse">Панорамирование средней кнопки мыши</string>
+    <string name="gesture_pan_inverted_middle_mouse">Инвертированное панорамирование средней кнопкой мыши</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">Инвертированное WASD</string>
     <string name="gesture_pinch">Щипок внутрь/наружу</string>
     <string name="gesture_settings">Настройки жестов</string>
     <string name="gesture_settings_title">Настройки жестов касания</string>
@@ -539,9 +591,11 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="library_app_status">Статус приложения</string>
     <string name="library_app_type">Тип приложения</string>
     <string name="library_cancel_download_message">Вы уверены, что хотите отменить загрузку приложения?</string>
-    <string name="library_cloud_sync_failed">Ошибка синхронизации облака: %s</string>
+    <string name="library_cloud_sync_starting">Начало синхронизации облака…</string>
     <string name="library_cloud_sync_success">Синхронизация облака завершена успешно</string>
     <string name="library_cloud_sync_up_to_date">Файлы сохранения уже актуальны</string>
+    <string name="library_cloud_sync_failed">Ошибка синхронизации облака</string>
+    <string name="library_cloud_sync_error">Ошибка синхронизации облачного сохранения: %1$s</string>
     <string name="library_compatibility_unknown">Неизвестно</string>
     <string name="library_compatible">Совместимо</string>
     <string name="library_config_title">Конфигурация %s</string>
@@ -646,9 +700,9 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="m3c_dropdown_menu_toggle">Переключить выпадающее меню</string>
     <string name="m3c_snackbar_dismiss">Закрыть</string>
     <string name="magnifier">Лупа</string>
-    <string name="main_app_running_message">Вы уже вошли на другом устройстве и играете в %s. 
+    <string name="main_app_running_message">Вы уже вошли на другом устройстве и играете в %s.
 Вы всё ещё можете играть в эту игру, но это отключит другой сеанс от Steam.</string>
-    <string name="main_app_running_other_device">Вы уже вошли на другом устройстве (%1$s) и играете в %2$s (%3$s), и это сохранение ещё не в облаке. 
+    <string name="main_app_running_other_device">Вы уже вошли на другом устройстве (%1$s) и играете в %2$s (%3$s), и это сохранение ещё не в облаке.
 Вы всё ещё можете играть в эту игру, но это отключит другой сеанс от Steam и может создать конфликт сохранений, когда прогресс того сеанса синхронизируется</string>
     <string name="main_app_running_title">Приложение запущено</string>
     <string name="main_app_session_suspended">Сеанс приложения приостановлен. Пожалуйста, перезапустите приложение.</string>
@@ -671,6 +725,7 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
 Вы всё ещё можете играть в эту игру, но это может создать конфликт, когда ваш предыдущий прогресс успешно загрузится.</string>
     <string name="main_pending_upload_title">Ожидание загрузки</string>
     <string name="main_play_anyway">Играть в любом случае</string>
+    <string name="main_app_running_unknown_game">игру</string>
     <string name="main_recent_crash_message">Приносим извинения!
 Было бы хорошо узнать о недавней проблеме, которая у вас была.
 Вы можете просмотреть и экспортировать самый последний журнал сбоев в настройках приложения и приложить его как Github проблему в репозитории проекта.
@@ -820,6 +875,7 @@ https://gamenative.app
     <string name="properties">Свойства</string>
     <string name="quick_menu_back">Назад</string>
     <string name="quick_menu_title">Быстрое меню</string>
+    <string name="display_brightness">Яркость дисплея</string>
     <string name="screen_effects">Эффекты экрана</string>
     <string name="screen_effects_live_preview">Изменения мгновенно применяются к текущей игре.</string>
     <string name="screen_effects_color_adjustments">Настройка цвета</string>
@@ -831,6 +887,8 @@ https://gamenative.app
     <string name="screen_effects_toon_description">Добавляет тёмные контуры для эффекта cel-shading.</string>
     <string name="screen_effects_fxaa">FXAA</string>
     <string name="screen_effects_fxaa_description">Сглаживает зубчатые края лёгким постобрабатывающим антиалиасингом.</string>
+    <string name="screen_effects_vivid">Насыщенный</string>
+    <string name="screen_effects_vivid_description">Добавляет bloom и усиливает контраст для более выразительного изображения.</string>
     <string name="screen_effects_crt">CRT</string>
     <string name="screen_effects_crt_description">Добавляет строки развёртки и лёгкую хроматическую аберрацию.</string>
     <string name="screen_effects_ntsc">NTSC</string>
@@ -841,6 +899,12 @@ https://gamenative.app
     <string name="quick_menu_tab_controller">Контроллер</string>
     <string name="performance_hud">HUD производительности</string>
     <string name="performance_hud_description">Показывать или скрывать игровое наложение.</string>
+    <string name="performance_hud_fps_limiter">Ограничитель FPS</string>
+    <string name="performance_hud_fps_limiter_description">Ограничивает частоту кадров в игре. Макс.: %1$d Гц.</string>
+    <string name="performance_hud_fps_limiter_target">Целевой FPS</string>
+    <string name="performance_hud_fps_limiter_off">Без ограничений</string>
+    <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_override">Ограничитель отключён, пока активен LSFG. Частоту источника задаёт множитель.</string>
     <string name="performance_hud_presets">Предустановки</string>
     <string name="performance_hud_presets_description">Быстро переключаться между типовыми макетами HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -974,6 +1038,8 @@ https://gamenative.app
     <string name="settings_info_libraries_title">Используемые библиотеки</string>
     <string name="settings_info_privacy_subtitle">Открывает ссылку на политику конфиденциальности GameNative</string>
     <string name="settings_info_privacy_title">Политика конфиденциальности</string>
+    <string name="settings_info_usage_analytics_title">Аналитика использования</string>
+    <string name="settings_info_usage_analytics_subtitle">Мы никогда не отслеживаем личную информацию. Отключение останавливает несущественную аналитику, однако основные данные о производительности игр по-прежнему собираются как законный интерес для улучшения совместимости.</string>
     <string name="settings_info_send_tip_subtitle">Внесите вклад в продолжающуюся разработку</string>
     <string name="settings_info_send_tip_title">Отправить чаевые</string>
     <string name="settings_info_source_subtitle">Просмотреть исходный код этого проекта</string>
@@ -986,7 +1052,13 @@ https://gamenative.app
     <string name="settings_interface_external_storage_title">Запись на внешнее хранилище</string>
     <string name="settings_interface_hide_statusbar_subtitle">Скрыть строку состояния Android в списке игр, настройках и т.д. Приложение перезагрузится при изменении.</string>
     <string name="settings_interface_hide_statusbar_title">Скрыть строку состояния, когда не в игре</string>
+    <string name="settings_interface_warn_before_exit_title">Предупреждать перед выходом</string>
+    <string name="settings_interface_warn_before_exit_subtitle">Для выхода требуется двойное нажатие назад — первое показывает предупреждение</string>
+    <string name="settings_interface_show_gamepad_hints_title">Показывать подсказки геймпада</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Показывает панель подсказок кнопок геймпада в нижней части экрана</string>
     <string name="settings_interface_icon_style">Стиль значка</string>
+    <string name="settings_interface_custom_games">Пользовательские игры</string>
+    <string name="settings_interface_custom_game_import_as_steam">Импортировать пользовательские игры как игры Steam</string>
     <string name="settings_interface_no_external_storage">Внешнее хранилище не обнаружено</string>
     <string name="settings_interface_restart_required_title">Требуется перезагрузка</string>
     <string name="settings_interface_storage_volume_title">Том хранилища</string>
@@ -1001,10 +1073,12 @@ https://gamenative.app
     <string name="settings_region_default">По умолчанию</string>
     <string name="settings_save_logcat_subtitle">Сохраняет снимок logcat только для PID этого приложения</string>
     <string name="settings_save_logcat_title">Сохранить logcat</string>
+    <string name="settings_achievement_show_notification">Показывать уведомления о достижениях</string>
     <string name="settings_saving_restarting">Сохранение настроек и перезагрузка…</string>
     <string name="settings_select_language">Выберите язык</string>
     <string name="settings_subtitle">Настройте ваш опыт</string>
     <string name="settings_text">Настройки</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">искать</string>
     <string name="settings_theme_alternate">Альтернативная</string>
     <string name="settings_theme_default">По умолчанию</string>
     <string name="settings_title">Настройки</string>
@@ -1050,9 +1124,6 @@ https://gamenative.app
     <string name="steam_2fa_email">Пожалуйста, введите код аутентификации, отправленный на %s</string>
     <string name="steam_2fa_incorrect">Предыдущий код был неправильным, пожалуйста, попробуйте снова.</string>
     <string name="steam_cancel_download_message">Вы уверены, что хотите отменить загрузку приложения?</string>
-    <string name="steam_cloud_sync_failed">Ошибка синхронизации облака: %s</string>
-    <string name="steam_cloud_sync_success">Синхронизация облака завершена успешно</string>
-    <string name="steam_cloud_sync_up_to_date">Файлы сохранения уже актуальны</string>
     <string name="steam_container_reset_success">Контейнер сброшен на значения по умолчанию</string>
     <string name="steam_continue">Продолжить</string>
     <string name="steam_delete_download_message">Удалить все загруженные данные для этой игры?</string>
@@ -1068,6 +1139,7 @@ https://gamenative.app
     <string name="steam_install_space">Размер загрузки: %1$s
 Размер на диске: %2$s
 Доступное место: %3$s</string>
+    <string name="steam_2fa_use_guard_totp">Или введите код двухфакторной аутентификации</string>
     <string name="steam_install_space_prompt">Устанавливаемое приложение имеет следующие требования к пространству. Вы хотите продолжить?
 
 	Размер загрузки: %1$s
@@ -1077,6 +1149,8 @@ https://gamenative.app
     <string name="steam_not_logged_in">Вы должны войти в Steam, чтобы использовать эту функцию</string>
     <string name="steam_offline_mode">Автономный режим Steam</string>
     <string name="steam_offline_mode_description">Запускать игры Steam в автономном режиме</string>
+    <string name="epic_offline_mode">Автономный режим Epic</string>
+    <string name="epic_offline_mode_description">Запускать игры Epic в автономном режиме</string>
     <string name="steam_reset_container_message">Это восстановит ваш контейнер к конфигурации по умолчанию.</string>
     <string name="steam_reset_container_title">Сбросить контейнер</string>
     <string name="steam_sign_in">Войти в Steam</string>
@@ -1085,6 +1159,7 @@ https://gamenative.app
     <string name="steam_type">Тип Steam</string>
     <string name="steam_uninstall_confirmation_message">Вы уверены, что хотите удалить %1$s? Это действие не может быть отменено.</string>
     <string name="steam_uninstall_failed">Ошибка удаления игры</string>
+    <string name="deleting">Удаление…</string>
     <string name="steam_uninstall_game_title">Удалить игру</string>
     <string name="steam_uninstall_success">%1$s была удалена</string>
     <string name="steam_update_message">Пожалуйста, убедитесь, что ваши сохранения загружены в облако или скопированы, поскольку они могут быть перезаписаны.</string>
@@ -1120,6 +1195,10 @@ https://gamenative.app
     <string name="downloads_status_failed">Ошибка</string>
     <string name="downloads_status_paused">Приостановлено</string>
     <string name="downloads_summary">Управляйте активными загрузками и хранилищем в одном месте</string>
+    <string name="storage_internal">Внутренняя</string>
+    <string name="storage_external">Внешняя</string>
+    <string name="storage_free_of_total">%1$s: %2$s свободно из %3$s</string>
+    <string name="storage_calculating">%1$s: Вычисление…</string>
     <string name="container_storage_title">Менеджер хранилища</string>
     <string name="container_storage_subtitle">Перемещайте установки между внутренним и внешним хранилищем</string>
     <string name="container_storage_summary">%1$d элементов • %2$s</string>
@@ -1165,6 +1244,7 @@ https://gamenative.app
     <string name="tab_local">Пользовательское</string>
     <string name="tab_steam">Steam</string>
     <string name="task_manager">Менеджер задач</string>
+    <string name="tools_wine_processes_running_hint">%1$d запущено, нажмите/кликните по процессу, чтобы закрыть его</string>
     <string name="template_percent">%1$d процент.</string>
     <string name="thumbstick_buttons">Кнопки джойстика</string>
     <string name="thumbstick_buttons_category">Кнопки джойстика</string>
@@ -1205,6 +1285,8 @@ https://gamenative.app
     <string name="use_adrenotools_turnip">Использовать Adrenotools Turnip</string>
     <string name="use_dri3">Использовать DRI3</string>
     <string name="use_dri3_description">Отключение может исправить графические глюки на некоторых устройствах</string>
+    <string name="use_legacy_renderer">Использовать устаревший рендерер</string>
+    <string name="use_legacy_renderer_description">Использовать устаревший GLRenderer вместо VulkanRenderer. VulkanRenderer повышает производительность, но находится в бета-версии и может вызывать проблемы.</string>
     <string name="use_legacy_drm">Использовать Legacy DRM</string>
     <string name="use_sdl_api">Использовать SDL API</string>
     <string name="use_steam_input">Использовать Steam Input</string>
@@ -1296,4 +1378,126 @@ https://gamenative.app
     <string name="workshop_processing">Обработка модов…</string>
     <string name="workshop_failed_count">Не удалось обновить %1$d мод(ов) Мастерской</string>
     <string name="workshop_download_failed">Ошибка загрузки</string>
+
+    <!-- Recommendations -->
+    <string name="recommended_badge">Рекомендуемое</string>
+    <string name="recommended_buy_button">Посмотреть игру</string>
+    <string name="recommended_support_message">Покупка по этой ссылке помогает поддержать разработку GameNative.</string>
+    <string name="recommended_about_heading">Об этой игре</string>
+    <string name="recommended_review_count">На основе %1$s отзывов</string>
+    <string name="review_overwhelmingly_positive">Крайне положительные</string>
+    <string name="review_very_positive">Очень положительные</string>
+    <string name="review_mostly_positive">В основном положительные</string>
+    <string name="review_mixed">Смешанные</string>
+    <string name="review_mostly_negative">В основном отрицательные</string>
+    <string name="review_overwhelmingly_negative">Крайне отрицательные</string>
+    <string name="settings_interface_show_recommendations_title">Показывать рекомендации игр</string>
+    <string name="settings_interface_show_recommendations_subtitle">Показывает подобранные инди-игры в вашей библиотеке. Оставляя это включённым, вы поддерживаете инди-разработчиков и GameNative.</string>
+     <string name="steam_save_export_success">Сохранения экспортированы</string>
+     <string name="steam_save_export_no_saves_found">Сохранения не найдены</string>
+     <string name="steam_save_export_failed">Не удалось экспортировать сохранения: %s</string>
+     <string name="steam_save_import_success">Сохранения импортированы</string>
+     <string name="steam_save_import_failed">Не удалось импортировать сохранения: %s</string>
+    <string name="option_import_saves">Импортировать сохранения</string>
+    <string name="option_export_saves">Экспортировать сохранения</string>
+    <!-- HLTB (How Long To Beat) -->
+    <string name="hltb_main_story">Основной сюжет</string>
+    <string name="hltb_main_plus_extras">Основное + Дополнения</string>
+    <string name="hltb_completionist">Перфекционист</string>
+    <string name="hltb_all_styles">Все стили</string>
+    <string name="hltb_hours_value">%sh</string>
+    <string name="hltb_section_title">HLTB</string>
+
+    <!-- LSFG-VK frame generation -->
+    <string name="lsfg_tab_title">LSFG-VK</string>
+    <string name="lsfg_description">Генерация промежуточных кадров с помощью слоя Vulkan Lossless Scaling. Известно, что работает только на Adreno 6xx и новее.</string>
+    <string name="lsfg_enable">Включить генерацию кадров LSFG-VK</string>
+    <string name="lsfg_multiplier">Множитель кадров</string>
+    <string name="lsfg_flow_scale">Масштаб потока</string>
+    <string name="lsfg_flow_scale_desc">Ниже — стабильнее; выше — плавнее, но могут появляться артефакты.</string>
+    <string name="lsfg_performance_mode">Режим производительности</string>
+    <string name="lsfg_not_supported">Для генерации кадров требуется контейнер Bionic</string>
+    <string name="lsfg_install_prompt">Lossless Scaling не установлен. Нажмите для установки. Известно, что работает только на Adreno 6xx и новее.</string>
+    <string name="lsfg_not_in_library">Lossless Scaling нет в вашей библиотеке Steam</string>
+    <string name="lsfg_install_title">Установить Lossless Scaling?</string>
+    <string name="lsfg_install_message">Это загрузит Lossless Scaling из Steam для включения генерации кадров.</string>
+    <string name="lsfg_installing">Загрузка Lossless Scaling…</string>
+    <string name="lsfg_performance_mode_desc">Снижает качество для повышения пропускной способности</string>
+    <!-- Game Launch Tips -->
+    <string name="game_launch_tip_1">Загрузка может занять несколько минут при первом запуске</string>
+    <string name="game_launch_tip_2">Совет: Вы можете просмотреть файлы игры, нажав \"%s\" в настройках игры.</string>
+    <string name="game_launch_tip_3">Совет: Вы можете перейти в главное меню настроек и загрузить пользовательские драйверы для вашего устройства для использования на Bionic.</string>
+    <string name="game_launch_tip_4">Совет: Если вы получаете ошибку DirectX, убедитесь, что вы используете DXVK 1.10.3-async и leegao-wrapper на Bionic.</string>
+    <string name="game_launch_tip_5">Совет: Попробуйте тест Direct3D в меню «Пуск» после нажатия \"%s\", чтобы проверить, правильно ли работает ваше устройство.</string>
+    <string name="game_launch_tip_6">Совет: Используйте DXVK для игр DirectX 8/9/10/11, VKD3D для игр DirectX 12 и VirGL + WineD3D для игр OpenGL.</string>
+    <string name="game_launch_tip_7">Совет: Используйте Turnip на glibc или bionic для игр DirectX 12. Поддержка DirectX 12 для устройств, не поддерживающих Turnip, в настоящее время ограничена.</string>
+    <string name="game_launch_tip_8">Совет: Попробуйте драйверы Adreno или Snapdragon 8 Elite на glibc, если у вас совместимое устройство.</string>
+    <string name="game_launch_tip_9">Совет: Если при запуске игры появляется черный экран, попробуйте \"%s\" и запустить игру с диска A:.</string>
+    <string name="game_launch_tip_10">Совет: Вы можете добавить разные расположения для пользовательских игр в настройках.</string>
+    <string name="game_launch_tip_11">Совет: Используйте HUD производительности в быстром меню, когда хотите видеть статистику FPS в игре.</string>
+    <string name="game_launch_tip_12">Совет: Установите пакеты в A:\\_CommonRedist, если игра не запускается.</string>
+    <string name="game_launch_tip_13">Совет: Вы можете включить или отключить экранный контроллер с помощью кнопки «Назад» на устройстве.</string>
+    <string name="game_launch_tip_14">Совет: Вы можете вызвать клавиатуру с помощью кнопки «Назад» на устройстве.</string>
+    <string name="game_launch_tip_15">Совет: Вы можете нажать двумя пальцами внутри контейнера для щелчка правой кнопкой мыши.</string>
+    <string name="game_launch_tip_16">Совет: Если вы используете экранный контроллер, вы можете отключить мышь, чтобы предотвратить случайные касания.</string>
+    <string name="game_launch_tip_17">Совет: Сообщайте о проблемах в Discord, чтобы мы могли их исправить.</string>
+    <string name="game_launch_tip_18">Совет: Используйте драйвер Vortek на glibc или wrapper-leegao на Bionic, если у вас не-Adreno GPU.</string>
+    <string name="game_launch_tip_19">Совет: Уменьшите разрешение и используйте box64 в режиме производительности для повышения FPS.</string>
+    <string name="game_launch_tip_20">Совет: Если игра вылетает после загрузки, увеличьте видеопамять.</string>
+    <string name="game_launch_tip_21">Совет: Если вы видите визуальные артефакты, отключите DRI3.</string>
+    <string name="game_launch_tip_22">Совет: Вы можете включить режим сенсорного экрана.</string>
+    <string name="game_launch_tip_23">Совет: Если у вас GPU Mali, используйте системные драйверы.</string>
+    <string name="game_launch_tip_24">Совет: Черный экран? Попробуйте использовать опцию \"%s\" в меню, чтобы проверить, правильно ли работают ваши драйверы.</string>
+    <string name="launch_bionic_steam_description">Включает онлайн-игру и улучшает совместимость\nРаботает не всегда\nСделайте резервную копию сохранений перед использованием</string>
+
+    <!-- Frontend Sync Settings -->
+    <string name="settings_interface_frontend_sync_title">Синхронизация frontend</string>
+    <string name="settings_interface_frontend_sync_subtitle">Автоматически экспортировать установленные игры для фронтендов библиотеки</string>
+    <string name="frontend_sync_dialog_title">Синхронизация frontend</string>
+    <string name="frontend_sync_source_steam">Steam</string>
+    <string name="frontend_sync_source_epic">Epic Games</string>
+    <string name="frontend_sync_source_gog">GOG</string>
+    <string name="frontend_sync_source_amazon">Amazon Games</string>
+    <string name="frontend_sync_source_custom">Пользовательские игры</string>
+    <string name="frontend_sync_not_set">Не задано</string>
+    <string name="frontend_sync_clear_confirm_title">Удалить старые файлы экспорта?</string>
+    <string name="frontend_sync_clear_confirm_message">Удалить файлы .%1$s из предыдущего каталога?</string>
+    <string name="frontend_sync_confirm_remove">Удалить</string>
+    <string name="frontend_sync_confirm_keep">Сохранить</string>
+    <string name="frontend_sync_resync_all">Повторная синхронизация всего</string>
+    <string name="frontend_sync_resync_complete">Синхронизация frontend завершена</string>
+    <string name="screen_effects_scaling">Масштабирование</string>
+    <string name="screen_effects_upscaling">Апскейлинг</string>
+    <string name="screen_effects_basic_scaling">Базовое масштабирование</string>
+    <string name="screen_effects_scaling_mode_none">Без масштабирования</string>
+    <string name="screen_effects_scaling_mode_none_desc">Без масштабирования.</string>
+    <string name="screen_effects_scaling_mode_nearest">Ближайший</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">Чёткие пиксели (ретро).</string>
+    <string name="screen_effects_scaling_mode_linear">Линейное</string>
+    <string name="screen_effects_scaling_mode_linear_desc">Плавное масштабирование.</string>
+    <string name="screen_effects_scaling_mode_fill">Заполнить</string>
+    <string name="screen_effects_scaling_mode_fill_desc">Заполняет экран, обрезая края.</string>
+    <string name="screen_effects_scaling_mode_stretch">Растянуть</string>
+    <string name="screen_effects_scaling_mode_stretch_desc">Заполняет экран, игнорируя соотношение сторон.</string>
+    <string name="screen_effects_scaling_mode_fsr">FSR</string>
+    <string name="screen_effects_scaling_mode_fsr_desc">Чёткое масштабирование сверхвысокого разрешения.</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
+    <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, сохраняет соотношение сторон.</string>
+    <string name="screen_effects_scaling_mode_dls">DLS</string>
+    <string name="screen_effects_scaling_mode_dls_desc">Повышение резкости / чёткости.</string>
+    <string name="screen_effects_scaling_mode_natural">Естественный</string>
+    <string name="screen_effects_scaling_mode_natural_desc">Более тёплый оттенок.</string>
+    <string name="stats_key_runs">Успешные запуски на вашем GPU</string>
+    <string name="stats_key_reviews">5-звёздочные отзывы (ваш GPU / ваше устройство)</string>
+    <string name="stats_key_fps">Ожидаемый FPS</string>
+    <string name="stats_key_session">Самая длинная сессия на вашем устройстве</string>
+    <string name="sort_fps">Ожидаемый FPS</string>
+    <string name="sort_runs">Успешные запуски</string>
+    <string name="sort_reviews">5-звёздочные отзывы (устройство)</string>
+    <string name="sort_reviews_gpu">5-звёздочные отзывы (GPU)</string>
+    <string name="filter_expired">Истекшие</string>
+    <string name="filter_playable">Играбельно (30+ FPS)</string>
+    <string name="filter_five_star_device">5-звёздочные отзывы на устройстве</string>
+    <string name="filter_five_star_gpu">5-звёздочные отзывы на GPU</string>
+    <string name="filter_proven_gpu">Проверено на вашем GPU</string>
 </resources>

@@ -376,7 +376,7 @@ public class ControlElement {
         }
         else {
             Binding binding = getBindingAt(0);
-            String text = binding.toString().replace("NUMPAD ", "NP").replace("BUTTON ", "");
+            String text = binding.toString().replace("NUMPAD ", "NP").replace("BUTTON ", "").replace("SHOW KEYBOARD", "KEY");
             if (text.length() > 7) {
                 String[] parts = text.split(" ");
                 StringBuilder sb = new StringBuilder();
@@ -732,6 +732,10 @@ public class ControlElement {
     }
 
     public boolean handleTouchMove(int pointerId, float x, float y) {
+        if (pointerId == currentPointerId && (type == Type.BUTTON || type == Type.SHOOTER_MODE)) {
+            return true;
+        }
+
         if (pointerId == currentPointerId && (type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD)) {
             float deltaX, deltaY;
             Rect boundingBox = getBoundingBox();

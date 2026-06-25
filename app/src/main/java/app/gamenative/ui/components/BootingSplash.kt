@@ -26,14 +26,23 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.R
 import app.gamenative.ui.theme.BrandGradient
+import app.gamenative.ui.theme.PluviaTheme
+import com.skydoves.landscapist.ImageOptions
+import com.skydoves.landscapist.coil.CoilImage
 import kotlin.math.sin
 import kotlin.random.Random
 import kotlinx.coroutines.delay
@@ -43,34 +52,36 @@ fun BootingSplash(
     visible: Boolean = true,
     text: String = "Initializing...",
     progress: Float = -1f, // -1 for indeterminate, 0-1 for determinate
+    heroImageUrl: String = "",
 ) {
     // Tips rotation (no animation cost, safe outside visibility check)
-    val tips = remember {
+    val context = LocalContext.current
+    val tips = remember(context) {
         listOf(
-            "Booting may take a few minutes on first launch",
-            "Tip: You can view the game files by pressing \"Open Container\" in the game settings.",
-            "Tip: You can go to the main settings menu and download custom drivers for your device to be used on Bionic.",
-            "Tip: If you are getting a DirectX error, make sure you are using DXVK 1.10.3-async and leegao-wrapper on Bionic.",
-            "Tip: Try the Direct3D test in the Start Menu after clicking Open Container to check if your device is working correctly.",
-            "Tip: Use DXVK for DirectX 8/9/10/11 games, VKD3D for DirectX 12 games and VirGL + WineD3D for OpenGL games.",
-            "Tip: Use Turnip on glibc or bionic to play DirectX 12 games. DirectX 12 support for devices that don't support Turnip is currently limited.",
-            "Tip: Try the Adreno or Snapdragon 8 Elite drivers on glibc if you are on a compatible device.",
-            "Tip: If you are getting a black screen when launching a game, try Open Container and launching the game from A: drive.",
-            "Tip: You can add different locations for Custom Games in the settings.",
-            "Tip: Use the quick menu performance HUD when you want FPS stats in-game.",
-            "Tip: Install packages in A:\\_CommonRedist if your game doesn't launch.",
-            "Tip: You can enable or disable the onscreen controller with your device's back key.",
-            "Tip: You can bring up the keyboard with your device's back key.",
-            "Tip: You can tap with two fingers inside the container to right click.",
-            "Tip: If you are using the onscreen controller, you can disable the mouse to prevent accidental touches.",
-            "Tip: Report issues on Discord so we can fix them.",
-            "Tip: Use the Vortek driver in glibc or wrapper-leegao in Bionic if you are on a non-Adreno GPU.",
-            "Tip: Lower resolution and use box64 in performance mode to boost FPS.",
-            "Tip: If the game is crashing after loading, increase the video memory.",
-            "Tip: If you are seeing visual glitches, disable DRI3.",
-            "Tip: You can enable touchscreen mode.",
-            "Tip: If you have a Mali GPU, please use System Drivers.",
-            "Tip: Getting a blank screen? Try using the Test Graphics option in the menu to check if your drivers are working correctly.",
+            context.getString(R.string.game_launch_tip_1),
+            context.getString(R.string.game_launch_tip_2, context.getString(R.string.option_open_container)),
+            context.getString(R.string.game_launch_tip_3),
+            context.getString(R.string.game_launch_tip_4),
+            context.getString(R.string.game_launch_tip_5, context.getString(R.string.option_open_container)),
+            context.getString(R.string.game_launch_tip_6),
+            context.getString(R.string.game_launch_tip_7),
+            context.getString(R.string.game_launch_tip_8),
+            context.getString(R.string.game_launch_tip_9, context.getString(R.string.option_open_container)),
+            context.getString(R.string.game_launch_tip_10),
+            context.getString(R.string.game_launch_tip_11),
+            context.getString(R.string.game_launch_tip_12),
+            context.getString(R.string.game_launch_tip_13),
+            context.getString(R.string.game_launch_tip_14),
+            context.getString(R.string.game_launch_tip_15),
+            context.getString(R.string.game_launch_tip_16),
+            context.getString(R.string.game_launch_tip_17),
+            context.getString(R.string.game_launch_tip_18),
+            context.getString(R.string.game_launch_tip_19),
+            context.getString(R.string.game_launch_tip_20),
+            context.getString(R.string.game_launch_tip_21),
+            context.getString(R.string.game_launch_tip_22),
+            context.getString(R.string.game_launch_tip_23),
+            context.getString(R.string.game_launch_tip_24, context.getString(R.string.option_test_graphics)),
         )
     }
 
@@ -90,6 +101,8 @@ fun BootingSplash(
     ) {
         // Animations only run while visible (inside AnimatedVisibility scope)
         val infiniteTransition = rememberInfiniteTransition(label = "bootSplash")
+        val scrimColor = MaterialTheme.colorScheme.scrim
+        var heroImageFailed by remember(heroImageUrl) { mutableStateOf(false) }
 
         val glowAlpha by infiniteTransition.animateFloat(
             initialValue = 0.4f,
@@ -131,21 +144,71 @@ fun BootingSplash(
             label = "particlePhase",
         )
 
+        val useHeroBackdrop = heroImageUrl.isNotEmpty() && !heroImageFailed
+
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.background,
-                            PluviaTheme.colors.surfacePanel,
-                            MaterialTheme.colorScheme.background,
-                        ),
-                    ),
-                ),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.background,
+                                PluviaTheme.colors.surfacePanel,
+                                MaterialTheme.colorScheme.background,
+                            ),
+                        ),
+                    ),
+            )
+
             AmbientParticles(phase = particlePhase)
+
+            if (useHeroBackdrop) {
+                val desaturate = remember {
+                    ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
+                }
+
+                CoilImage(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = 1.06f
+                            scaleY = 1.06f
+                        }
+                        .alpha(0.38f)
+                        .blur(7.dp),
+                    imageModel = { heroImageUrl },
+                    imageOptions = ImageOptions(
+                        contentScale = ContentScale.Crop,
+                        contentDescription = null,
+                        colorFilter = desaturate,
+                    ),
+                    loading = {},
+                    failure = {
+                        heroImageFailed = true
+                    },
+                    previewPlaceholder = painterResource(R.drawable.ic_logo_color),
+                )
+
+                // Single soft legibility scrim: light at the top, building toward the
+                // bottom where the status/tips text sits. No heavy top/bottom bands.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to scrimColor.copy(alpha = 0.48f),
+                                    0.4f to scrimColor.copy(alpha = 0.48f),
+                                    1.0f to scrimColor.copy(alpha = 0.62f),
+                                ),
+                            ),
+                        ),
+                )
+            }
 
             // Main content
             Column(
@@ -210,8 +273,17 @@ fun BootingSplash(
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 1.sp,
+                        shadow = Shadow(
+                            color = scrimColor.copy(alpha = if (useHeroBackdrop) 0.9f else 0f),
+                            offset = Offset(0f, 1f),
+                            blurRadius = 6f,
+                        ),
                     ),
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = if (useHeroBackdrop) {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
+                    } else {
+                        Color.White.copy(alpha = 0.7f)
+                    },
                     textAlign = TextAlign.Center,
                 )
 
@@ -234,8 +306,17 @@ fun BootingSplash(
                                 text = tips[idx],
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     lineHeight = 20.sp,
+                                    shadow = Shadow(
+                                        color = scrimColor.copy(alpha = if (useHeroBackdrop) 0.9f else 0f),
+                                        offset = Offset(0f, 1f),
+                                        blurRadius = 6f,
+                                    ),
                                 ),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (useHeroBackdrop) {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.76f)
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -248,6 +329,54 @@ fun BootingSplash(
         }
     }
 }
+
+@Composable
+private fun AmbientParticles(
+    phase: Float,
+    modifier: Modifier = Modifier,
+) {
+    val particleColor = PluviaTheme.colors.accentCyan
+
+    val particles = remember {
+        List(12) {
+            ParticleData(
+                baseX = Random.nextFloat(),
+                baseY = Random.nextFloat(),
+                size = Random.nextFloat() * 3f + 1f,
+                speed = Random.nextFloat() * 0.5f + 0.5f,
+                phaseOffset = Random.nextFloat() * 360f,
+            )
+        }
+    }
+
+    Canvas(modifier = modifier.fillMaxSize()) {
+        particles.forEach { particle ->
+            val animatedPhase = (phase + particle.phaseOffset) * particle.speed
+            val radians = Math.toRadians(animatedPhase.toDouble())
+
+            val offsetX = (sin(radians) * 30).toFloat()
+            val offsetY = (sin(radians * 0.7) * 20).toFloat()
+
+            val x = particle.baseX * size.width + offsetX
+            val y = particle.baseY * size.height + offsetY
+            val alpha = (0.15f + 0.15f * sin(radians * 2).toFloat()).coerceIn(0f, 0.3f)
+
+            drawCircle(
+                color = particleColor.copy(alpha = alpha),
+                radius = particle.size.dp.toPx(),
+                center = Offset(x, y),
+            )
+        }
+    }
+}
+
+private data class ParticleData(
+    val baseX: Float,
+    val baseY: Float,
+    val size: Float,
+    val speed: Float,
+    val phaseOffset: Float,
+)
 
 @Composable
 private fun ProgressBar(
@@ -303,55 +432,6 @@ private fun ProgressBar(
     }
 }
 
-@Composable
-private fun AmbientParticles(
-    phase: Float,
-    modifier: Modifier = Modifier,
-) {
-    val particleColor = PluviaTheme.colors.accentCyan
-
-    val particles = remember {
-        List(12) {
-            ParticleData(
-                baseX = Random.nextFloat(),
-                baseY = Random.nextFloat(),
-                size = Random.nextFloat() * 3f + 1f,
-                speed = Random.nextFloat() * 0.5f + 0.5f,
-                phaseOffset = Random.nextFloat() * 360f,
-            )
-        }
-    }
-
-    Canvas(modifier = modifier.fillMaxSize()) {
-        particles.forEach { particle ->
-            val animatedPhase = (phase + particle.phaseOffset) * particle.speed
-            val radians = Math.toRadians(animatedPhase.toDouble())
-
-            val offsetX = (sin(radians) * 30).toFloat()
-            val offsetY = (sin(radians * 0.7) * 20).toFloat()
-
-            val x = particle.baseX * size.width + offsetX
-            val y = particle.baseY * size.height + offsetY
-
-            // Pulsing alpha based on phase
-            val alpha = (0.15f + 0.15f * sin(radians * 2).toFloat()).coerceIn(0f, 0.3f)
-
-            drawCircle(
-                color = particleColor.copy(alpha = alpha),
-                radius = particle.size.dp.toPx(),
-                center = Offset(x, y),
-            )
-        }
-    }
-}
-
-private data class ParticleData(
-    val baseX: Float,
-    val baseY: Float,
-    val size: Float,
-    val speed: Float,
-    val phaseOffset: Float,
-)
 
 @Preview(name = "BootingSplash - Indeterminate")
 @Composable

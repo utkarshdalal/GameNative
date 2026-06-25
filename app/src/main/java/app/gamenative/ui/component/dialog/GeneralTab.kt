@@ -6,12 +6,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -19,12 +20,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import com.alorma.compose.settings.ui.SettingsSwitch
 import app.gamenative.ui.theme.settingsTileColors
@@ -36,6 +41,7 @@ import com.winlator.core.DefaultVersion
 import com.winlator.core.KeyValueSet
 import com.winlator.core.StringUtils
 import com.winlator.contents.ContentProfile
+import com.winlator.xenvironment.components.PulseAudioComponent
 import java.util.Locale
 
 @Composable
@@ -64,14 +70,17 @@ fun GeneralTabContent(
             onDismissRequest = { state.showCustomResolutionDialog.value = false },
             title = { Text(text = stringResource(R.string.container_config_custom_resolution_title)) },
             text = {
+                val heightFocusRequester = remember { FocusRequester() }
                 Column {
                     Row {
-                        OutlinedTextField(
+                        NoExtractOutlinedTextField(
                             modifier = Modifier.width(128.dp),
                             value = state.customScreenWidth.value,
                             onValueChange = { state.customScreenWidth.value = it },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = { heightFocusRequester.requestFocus() }),
                             label = { Text(text = stringResource(R.string.width)) },
+                            singleLine = true,
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -80,12 +89,13 @@ fun GeneralTabContent(
                             style = TextStyle(fontSize = 16.sp),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        OutlinedTextField(
-                            modifier = Modifier.width(128.dp),
+                        NoExtractOutlinedTextField(
+                            modifier = Modifier.width(128.dp).focusRequester(heightFocusRequester),
                             value = state.customScreenHeight.value,
                             onValueChange = { state.customScreenHeight.value = it },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             label = { Text(text = stringResource(R.string.height)) },
+                            singleLine = true,
                         )
                     }
                     if (state.customResolutionValidationError.value != null) {
@@ -253,12 +263,13 @@ fun GeneralTabContent(
             onValueChange = { state.config.value = config.copy(executablePath = it) },
             containerData = config,
         )
-        OutlinedTextField(
+        NoExtractOutlinedTextField(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             value = config.execArgs,
             onValueChange = { state.config.value = config.copy(execArgs = it) },
             label = { Text(text = stringResource(R.string.exec_arguments)) },
             placeholder = { Text(text = stringResource(R.string.exec_arguments_example)) },
+            singleLine = true,
         )
         val displayNameForLanguage: (String) -> String = { code ->
             when (code) {
@@ -313,6 +324,14 @@ fun GeneralTabContent(
                 state.config.value = config.copy(audioDriver = StringUtils.parseIdentifier(state.audioDrivers[it]))
             },
         )
+        if (config.audioDriver == "pulseaudio") {
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.pulseaudio_low_latency)) },
+                state = config.pulseaudioLowLatency,
+                onCheckedChange = { state.config.value = config.copy(pulseaudioLowLatency = it) },
+            )
+        }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.force_dlc)) },
@@ -320,13 +339,7 @@ fun GeneralTabContent(
             state = config.forceDlc,
             onCheckedChange = { state.config.value = config.copy(forceDlc = it) },
         )
-//        SettingsSwitch(
-//            colors = settingsTileColorsAlt(),
-//            title = { Text(text = stringResource(R.string.local_saves_only)) },
-//            subtitle = { Text(text = stringResource(R.string.local_saves_only_description)) },
-//            state = config.localSavesOnly,
-//            onCheckedChange = { state.config.value = config.copy(localSavesOnly = it) },
-//        )
+
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.use_legacy_drm)) },
@@ -351,11 +364,39 @@ fun GeneralTabContent(
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.epic_offline_mode)) },
+            subtitle = { Text(text = stringResource(R.string.epic_offline_mode_description)) },
+            state = config.epicOfflineMode,
+            onCheckedChange = { state.config.value = config.copy(epicOfflineMode = it) },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.launch_steam_client_beta)) },
             subtitle = { Text(text = stringResource(R.string.launch_steam_client_description)) },
             state = config.launchRealSteam,
-            onCheckedChange = { state.config.value = config.copy(launchRealSteam = it) },
+            onCheckedChange = {
+                state.config.value = if (it) {
+                    config.copy(launchRealSteam = true, launchBionicSteam = false)
+                } else {
+                    config.copy(launchRealSteam = false)
+                }
+            },
         )
+        if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.launch_bionic_steam)) },
+                subtitle = { Text(text = stringResource(R.string.launch_bionic_steam_description)) },
+                state = config.launchBionicSteam,
+                onCheckedChange = {
+                    state.config.value = if (it) {
+                        config.copy(launchBionicSteam = true, launchRealSteam = false)
+                    } else {
+                        config.copy(launchBionicSteam = false)
+                    }
+                },
+            )
+        }
         val steamTypeItems = listOf("Normal", "Light", "Ultra Light")
         val currentSteamTypeIndex = when (config.steamType.lowercase()) {
             Container.STEAM_TYPE_LIGHT -> 1

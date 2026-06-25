@@ -10,17 +10,26 @@ import android.provider.Settings
 import androidx.core.content.ContextCompat
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.data.AppInfo
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.DownloadService
+import app.gamenative.service.SteamService
+import app.gamenative.service.SteamService.Companion.INVALID_APP_ID
+import app.gamenative.service.SteamService.Companion.getMainAppDepots
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
 import java.io.File
 import kotlin.math.abs
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import timber.log.Timber
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.text.ifEmpty
 
 object CustomGameScanner {
 
@@ -213,6 +222,67 @@ object CustomGameScanner {
             Timber.tag("CustomGameScanner").d("No icon found for $appId")
         }
         return fromHeuristic
+    }
+
+    /**
+     * Finds a user-supplied cover image for a Custom Game's CAPSULE (vertical box-art) view.
+     *
+     * Priority: "coverv" (capsule-specific) first, then the generic "cover".
+     * Only the game's MAIN folder is searched — child folders are intentionally ignored.
+     * Supported extensions, in preference order: png, jpg, jpeg, webp.
+     *
+     * @return a file:// URI string usable directly as an image URL, or null if none exists.
+     */
+    fun findCapsuleCoverForCustomGame(appId: String): String? {
+        val folderPath = getFolderPathFromAppId(appId) ?: return null
+        return findCapsuleCoverInFolder(File(folderPath))
+    }
+
+    /** Folder-based variant of [findCapsuleCoverForCustomGame]. */
+    fun findCapsuleCoverInFolder(folder: File): String? =
+        findCoverByBaseNames(folder, listOf("coverv", "cover"))
+
+    /**
+     * Finds a user-supplied cover image for a Custom Game's HERO (horizontal banner) view.
+     *
+     * Priority: "coverh" (hero-specific) first, then the generic "cover".
+     * Only the game's MAIN folder is searched — child folders are intentionally ignored.
+     * Supported extensions, in preference order: png, jpg, jpeg, webp.
+     *
+     * @return a file:// URI string usable directly as an image URL, or null if none exists.
+     */
+    fun findHeroCoverForCustomGame(appId: String): String? {
+        val folderPath = getFolderPathFromAppId(appId) ?: return null
+        return findHeroCoverInFolder(File(folderPath))
+    }
+
+    /** Folder-based variant of [findHeroCoverForCustomGame]. */
+    fun findHeroCoverInFolder(folder: File): String? =
+        findCoverByBaseNames(folder, listOf("coverh", "cover"))
+
+    /**
+     * Scans ONLY the top level of [folder] for a file whose name matches one of [baseNames]
+     * (case-insensitive) with a supported image extension. [baseNames] are tried in order, so
+     * earlier entries take priority (e.g. "coverv" before the generic "cover"). Within a single
+     * base name, extensions are preferred png > jpg/jpeg > webp.
+     *
+     * @return a file:// URI string, or null if no matching file exists.
+     */
+    private fun findCoverByBaseNames(folder: File, baseNames: List<String>): String? {
+        if (!folder.exists() || !folder.isDirectory) return null
+        val extensions = listOf("png", "jpg", "jpeg", "webp")
+        val files = folder.listFiles { f -> f.isFile } ?: return null
+        for (base in baseNames) {
+            val match = files.filter { file ->
+                extensions.any { ext -> file.name.equals("$base.$ext", ignoreCase = true) }
+            }.minByOrNull { file ->
+                // Rank by extension preference so e.g. cover.png wins over cover.jpg.
+                val ext = file.name.substringAfterLast('.', "").lowercase()
+                extensions.indexOf(ext).let { if (it == -1) Int.MAX_VALUE else it }
+            }
+            if (match != null) return Uri.fromFile(match).toString()
+        }
+        return null
     }
 
     // Shared helper for .ico/.png heuristic
@@ -498,6 +568,53 @@ object CustomGameScanner {
         if (!folder.exists() || !folder.isDirectory) {
             Timber.tag("CustomGameScanner").w("Folder does not exist or is not a directory: $folderPath")
             return null
+        }
+
+        if (SteamService.instance != null && PrefManager.importCustomGameAsSteamGame) {
+            val steamApps = SteamService.findSteamAppWithInstallDir(dirName = folder.name)
+            if (steamApps?.size == 1) {
+                val steamApp = steamApps[0]
+                if (SteamService.isAppLicensed(steamApp.packageId)) {
+                    if (SteamService.getInstalledApp(steamApp.id) == null) {
+                        val preferredLanguage = PrefManager.containerLanguage
+                        val mainDepots = getMainAppDepots(steamApp.id, preferredLanguage)
+                        val mainAppDepots = mainDepots.filter { (_, depot) ->
+                            depot.dlcAppId == INVALID_APP_ID
+                        }
+                        val mainAppDepotIds = mainAppDepots.keys.sorted()
+
+                        runBlocking {
+                            SteamService.instance?.appInfoDao?.insert(
+                                AppInfo(
+                                    steamApp.id,
+                                    isDownloaded = true,
+                                    downloadedDepots = mainAppDepotIds,
+                                    dlcDepots = emptyList(),
+                                    branch = "public",
+                                    customInstallPath = folderPath
+                                ),
+                            )
+                        }
+
+                        MarkerUtils.addMarker(folderPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                    }
+
+                    val idPart = steamApp.id
+                    val appId = "${GameSource.STEAM.name}_$idPart"
+
+                    return LibraryItem(
+                        index = 0,
+                        appId = appId,
+                        name = steamApp.name,
+                        iconHash = steamApp.clientIconHash,
+                        capsuleImageUrl = steamApp.getCapsuleUrl(),
+                        headerImageUrl = steamApp.getHeaderImageUrl().orEmpty().ifEmpty { steamApp.headerUrl },
+                        heroImageUrl = steamApp.getHeroUrl().ifEmpty { steamApp.headerUrl },
+                        isShared = false,
+                        gameSource = GameSource.STEAM,
+                    )
+                }
+            }
         }
 
         val idPart = getOrGenerateGameId(folder)

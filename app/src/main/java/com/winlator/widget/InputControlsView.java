@@ -88,6 +88,11 @@ public class InputControlsView extends View {
     private boolean containerShooterMode = false;
     private boolean containerShooterModeRuntime = false; // runtime toggle state
 
+    // Callback invoked when the SHOW_KEYBOARD binding is triggered
+    private Runnable showKeyboardCallback;
+    // Tracks whether SHOW_KEYBOARD is currently held, so the callback fires once per press (rising edge only)
+    private boolean showKeyboardPressed;
+
     @SuppressLint("ResourceType")
     public InputControlsView(Context context) {
         super(context);
@@ -397,6 +402,14 @@ public class InputControlsView extends View {
         invalidate();
     }
 
+    public void setShowKeyboardCallback(Runnable callback) {
+        this.showKeyboardCallback = callback;
+    }
+
+    public void triggerShowKeyboard() {
+        if (showKeyboardCallback != null) showKeyboardCallback.run();
+    }
+
     /** Check if a STICK element should be hidden because container shooter mode replaces it. */
     private boolean isStickHiddenByShooterMode(ControlElement element) {
         if (!containerShooterModeRuntime) return false;
@@ -645,6 +658,59 @@ public class InputControlsView extends View {
         drawDynamicJoystick(canvas, joystickCenterX, joystickCenterY, joystickCurrentX, joystickCurrentY, joystickSizeMultiplier);
     }
 
+    private boolean isLeftSideTouch(float x) {
+        return x < getWidth() / 2f;
+    }
+
+    private boolean shouldUseRightJoystickLook() {
+        ControlElement smElement = getShooterModeElement();
+        return (smElement != null && "gamepad_right_stick".equals(smElement.getShooterLookType()))
+                || (containerShooterModeRuntime && smElement == null);
+    }
+
+    private boolean startShooterJoystickPointer(int pointerId, float x, float y) {
+        if (joystickPointerId != -1) return false;
+
+        joystickPointerId = pointerId;
+        joystickCenterX = x;
+        joystickCenterY = y;
+        joystickCurrentX = x;
+        joystickCurrentY = y;
+        invalidate();
+        return true;
+    }
+
+    private boolean startRightJoystickPointer(int pointerId, float x, float y) {
+        if (rightJoystickPointerId != -1) return false;
+
+        rightJoystickPointerId = pointerId;
+        rightJoystickCenterX = x;
+        rightJoystickCenterY = y;
+        rightJoystickCurrentX = x;
+        rightJoystickCurrentY = y;
+        invalidate();
+        return true;
+    }
+
+    private boolean startShooterLookPointer(int pointerId, float x, float y, ControlElement fireElement) {
+        if (lookPointerId != -1) return false;
+
+        lookPointerId = pointerId;
+        lookLastX = x;
+        lookLastY = y;
+        lookAccumX = 0;
+        lookAccumY = 0;
+        lookFireElement = fireElement;
+        return true;
+    }
+
+    private boolean startRightSideShooterPointer(int pointerId, float x, float y, ControlElement fireElement) {
+        if (shouldUseRightJoystickLook()) {
+            return startRightJoystickPointer(pointerId, x, y);
+        }
+        return startShooterLookPointer(pointerId, x, y, fireElement);
+    }
+
     private boolean handleShooterTouchDown(int pointerId, float x, float y) {
         boolean handled = false;
 
@@ -674,67 +740,18 @@ public class InputControlsView extends View {
             if (element.handleTouchDown(pointerId, x, y)) {
                 performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                 handled = true;
-                // Also track this pointer for look-around so the user can
-                // press any button and still look/aim with the same finger.
-                ControlElement smElement = getShooterModeElement();
-                boolean useRightStick = (smElement != null && "gamepad_right_stick".equals(smElement.getShooterLookType()))
-                                     || (containerShooterModeRuntime && smElement == null);
-                if (useRightStick) {
-                    if (rightJoystickPointerId == -1) {
-                        rightJoystickPointerId = pointerId;
-                        rightJoystickCenterX = x;
-                        rightJoystickCenterY = y;
-                        rightJoystickCurrentX = x;
-                        rightJoystickCurrentY = y;
-                    }
-                } else {
-                    if (lookPointerId == -1) {
-                        lookPointerId = pointerId;
-                        lookLastX = x;
-                        lookLastY = y;
-                        lookAccumX = 0;
-                        lookAccumY = 0;
-                        lookFireElement = element;
-                    }
+                if (element.getType() == ControlElement.Type.BUTTON) {
+                    if (isLeftSideTouch(x)) startShooterJoystickPointer(pointerId, x, y);
+                    else startRightSideShooterPointer(pointerId, x, y, element);
                 }
                 break;
             }
         }
         if (!handled) {
-            int screenMidX = getWidth() / 2;
-            if (x < screenMidX && joystickPointerId == -1) {
-                // Left side: spawn dynamic joystick
-                joystickPointerId = pointerId;
-                joystickCenterX = x;
-                joystickCenterY = y;
-                joystickCurrentX = x;
-                joystickCurrentY = y;
-                handled = true;
-                invalidate();
-            } else if (x >= screenMidX) {
-                // Right side: check look type
-                ControlElement smElement = getShooterModeElement();
-                boolean useRightStick = (smElement != null && "gamepad_right_stick".equals(smElement.getShooterLookType()))
-                                     || (containerShooterModeRuntime && smElement == null);
-                if (useRightStick && rightJoystickPointerId == -1) {
-                    // Right side: spawn dynamic right joystick
-                    rightJoystickPointerId = pointerId;
-                    rightJoystickCenterX = x;
-                    rightJoystickCenterY = y;
-                    rightJoystickCurrentX = x;
-                    rightJoystickCurrentY = y;
-                    handled = true;
-                    invalidate();
-                } else if (!useRightStick && lookPointerId == -1) {
-                    // Right side: mouse look
-                    lookPointerId = pointerId;
-                    lookLastX = x;
-                    lookLastY = y;
-                    lookAccumX = 0;
-                    lookAccumY = 0;
-                    lookFireElement = null;
-                    handled = true;
-                }
+            if (isLeftSideTouch(x)) {
+                handled = startShooterJoystickPointer(pointerId, x, y);
+            } else {
+                handled = startRightSideShooterPointer(pointerId, x, y, null);
             }
         }
         return handled;
@@ -882,8 +899,9 @@ public class InputControlsView extends View {
                         }
 
                         handled = false;
+                        int pid = event.getPointerId(i);
                         for (ControlElement element : profile.getElements()) {
-                            if (element.handleTouchMove(i, x, y)) handled = true;
+                            if (element.handleTouchMove(pid, x, y)) handled = true;
                         }
                         if (!handled) touchpadView.onTouchEvent(event);
                     }
@@ -911,6 +929,14 @@ public class InputControlsView extends View {
                     for (ControlElement element : profile.getElements()) if (element.handleTouchUp(pointerId)) handled = true;
                     if (!handled) touchpadView.onTouchEvent(event);
                     break;
+            }
+
+            // commit on-screen joystick state
+            WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
+            if (winHandler != null) {
+                GamepadState state = profile.getGamepadState();
+                winHandler.sendGamepadState();
+                winHandler.sendVirtualGamepadState(state);
             }
         }
         return true;
@@ -941,6 +967,8 @@ public class InputControlsView extends View {
     }
 
     public void handleInputEvent(Binding binding, boolean isActionDown, float offset) {
+        if (binding == null || binding == Binding.NONE) return;
+
         if (binding.isGamepad()) {
             WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
             GamepadState state = profile.getGamepadState();
@@ -976,12 +1004,32 @@ public class InputControlsView extends View {
             if (winHandler != null) {
                 ExternalController controller = winHandler.getCurrentController();
                 if (controller != null) controller.state.copy(state);
-                winHandler.sendGamepadState();
-                winHandler.sendVirtualGamepadState(state);
             }
         }
         else {
-            if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
+            if (binding == Binding.SHOW_KEYBOARD) {
+                if (isActionDown) {
+                    if (!showKeyboardPressed) {
+                        showKeyboardPressed = true;
+                        if (showKeyboardCallback != null) showKeyboardCallback.run();
+                    }
+                } else {
+                    showKeyboardPressed = false;
+                }
+                return;
+            }
+            else if (binding == Binding.ALT_ENTER) {
+                if (isActionDown) {
+                    xServer.injectKeyPress(Binding.KEY_ALT_L.keycode);
+                    xServer.injectKeyPress(Binding.KEY_ENTER.keycode);
+                }
+                else {
+                    xServer.injectKeyRelease(Binding.KEY_ENTER.keycode);
+                    xServer.injectKeyRelease(Binding.KEY_ALT_L.keycode);
+                }
+                return;
+            }
+            else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
                 mouseMoveOffset.x = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
                 if (isActionDown) createMouseMoveTimer();
             }
@@ -995,13 +1043,13 @@ public class InputControlsView extends View {
                     if (pointerButton != null) {
                         xServer.injectPointerButtonPress(pointerButton);
                     }
-                    else xServer.injectKeyPress(binding.keycode);
+                    else binding.inject(xServer, true);
                 }
                 else {
                     if (pointerButton != null) {
                         xServer.injectPointerButtonRelease(pointerButton);
                     }
-                    else xServer.injectKeyRelease(binding.keycode);
+                    else binding.inject(xServer, false);
                 }
             }
         }

@@ -7,12 +7,15 @@ import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.GOGGameDao
-import app.gamenative.events.AndroidEvent
 import app.gamenative.events.EventDispatcher
+import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.DownloadService
+import app.gamenative.service.SteamService
+import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.PlayIntegrity
+import app.gamenative.utils.downloader.ContainerFilesDownloader
 import java.io.File
 import javax.inject.Inject
 import kotlinx.coroutines.runBlocking
@@ -26,15 +29,15 @@ import com.winlator.container.Container
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
-import com.winlator.widget.XServerView
+import com.winlator.widget.XServerRendererView
 import com.winlator.xenvironment.XEnvironment
+import timber.log.Timber
 import dagger.hilt.android.HiltAndroidApp
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
 typealias NavChangedListener = NavController.OnDestinationChangedListener
 
@@ -48,6 +51,8 @@ class PluviaApp : SplitCompatApplication() {
 
     override fun onCreate() {
         super.onCreate()
+
+        preloadSystemLibraries()
 
         // Allows to find resource streams not closed within GameNative and JavaSteam
         if (BuildConfig.DEBUG) {
@@ -70,6 +75,7 @@ class PluviaApp : SplitCompatApplication() {
 
         // Init our datastore preferences.
         PrefManager.init(this)
+        FrontendSyncManager.init(this)
 
         // Initialize GOGConstants
         app.gamenative.service.gog.GOGConstants.init(this)
@@ -84,6 +90,11 @@ class PluviaApp : SplitCompatApplication() {
                 onProgressUpdate = null,
                 onComplete = null
             )
+        }
+
+        // Preload all container files in the background
+        appScope.launch {
+            ContainerFilesDownloader.preloadAllContainerFiles(applicationContext)
         }
 
         // Clear any stale temporary config overrides from previous app sessions
@@ -103,6 +114,15 @@ class PluviaApp : SplitCompatApplication() {
             personProfiles = PersonProfiles.ALWAYS
         }
         PostHogAndroid.setup(this, postHogConfig)
+
+        if (PrefManager.usageAnalyticsEnabled) {
+            com.posthog.PostHog.capture(
+                event = "\$set",
+                properties = mapOf(
+                    "\$set" to mapOf("recommendation_enabled" to PrefManager.showRecommendations),
+                ),
+            )
+        }
 
         PlayIntegrity.warmUp(this)
 
@@ -180,7 +200,7 @@ class PluviaApp : SplitCompatApplication() {
 
         // TODO: find a way to make this saveable, this is terrible (leak that memory baby)
         internal var xEnvironment: XEnvironment? = null
-        internal var xServerView: XServerView? = null
+        internal var xServerView: XServerRendererView? = null
         var inputControlsView: InputControlsView? = null
         var inputControlsManager: InputControlsManager? = null
         var touchpadView: TouchpadView? = null
@@ -200,6 +220,35 @@ class PluviaApp : SplitCompatApplication() {
             hasInitializedSuspendPolicyState = true
         }
 
+        /**
+         * full environment teardown — shared by XServerScreen.exit() and
+         * MainActivity.onDestroy fallback so both paths clean up identically
+         */
+        fun shutdownEnvironment() {
+            val env = xEnvironment
+            Timber.i("shutdownEnvironment: env=%s", env != null)
+
+            // per-step catch so one failing teardown doesn't prevent the rest from running
+            runCatching { achievementWatcher?.stop() }
+                .onFailure { Timber.e(it, "shutdownEnvironment: achievementWatcher.stop") }
+            runCatching { SteamService.clearCachedAchievements() }
+                .onFailure { Timber.e(it, "shutdownEnvironment: clearCachedAchievements") }
+            runCatching { touchpadView?.releasePointerCapture() }
+                .onFailure { Timber.e(it, "shutdownEnvironment: releasePointerCapture") }
+            runCatching { env?.stopEnvironmentComponents() }
+                .onFailure { Timber.e(it, "shutdownEnvironment: stopEnvironmentComponents") }
+
+            xEnvironment = null
+            inputControlsView = null
+            inputControlsManager = null
+            touchpadView = null
+            achievementWatcher = null
+            ActiveGameRegistry.clear()
+            SteamService.keepAlive = false
+            SteamService.clearPlayingConflict()
+            clearActiveSuspendState()
+        }
+
         fun clearActiveSuspendState() {
             activeSuspendPolicy = Container.SUSPEND_POLICY_MANUAL
             isOverlayPaused = false
@@ -212,5 +261,35 @@ class PluviaApp : SplitCompatApplication() {
 
         fun isManualSuspendMode(): Boolean = activeSuspendPolicy.equals(Container.SUSPEND_POLICY_MANUAL, ignoreCase = true)
 
+    }
+
+    /**
+     * Some native libraries we dlopen at runtime (libsteamclient.so via SteamBootstrap,
+     * the lsfg-vk layer, etc.) depend on `libjpeg.so`, which isn't on every device's
+     * dynamic linker search path. Pre-load the system copy here with RTLD_GLOBAL
+     * semantics (System.load is global) so all subsequent dlopens find its symbols.
+     *
+     * Single place for all: runs once in Application.onCreate before any other
+     * native lib is loaded by this process. Failures are non-fatal — devices that
+     * don't have the file (or have it elsewhere) just fall through.
+     */
+    private fun preloadSystemLibraries() {
+        val is64 = android.os.Build.SUPPORTED_64_BIT_ABIS.isNotEmpty()
+        val candidates = if (is64) {
+            listOf("/system/lib64/libjpeg.so", "/system/lib/libjpeg.so")
+        } else {
+            listOf("/system/lib/libjpeg.so", "/system/lib64/libjpeg.so")
+        }
+        for (path in candidates) {
+            if (!File(path).exists()) continue
+            try {
+                System.load(path)
+                Timber.i("[PluviaApp]: Preloaded $path")
+                return
+            } catch (e: Throwable) {
+                Timber.w(e, "[PluviaApp]: System.load($path) failed")
+            }
+        }
+        Timber.w("[PluviaApp]: Could not preload system libjpeg.so (none of the candidate paths worked)")
     }
 }

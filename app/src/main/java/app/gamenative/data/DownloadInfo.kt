@@ -33,6 +33,7 @@ data class DownloadInfo(
     private var hasEmaSpeed: Boolean = false
     private var isActive: Boolean = true
     private val statusMessage = MutableStateFlow<String?>(null)
+    private val postInstallSyncing = MutableStateFlow(false)
 
     fun cancel() {
         cancel("Cancelled by user")
@@ -48,6 +49,7 @@ data class DownloadInfo(
         // Mark as inactive and clear speed tracking so a future resume
         // does not use stale samples.
         setActive(false)
+        setPostInstallSyncing(false)
         resetSpeedTracking()
         downloadJob?.cancel(CancellationException(message))
     }
@@ -139,6 +141,14 @@ data class DownloadInfo(
     }
 
     fun getStatusMessageFlow(): StateFlow<String?> = statusMessage
+
+    fun setPostInstallSyncing(syncing: Boolean) {
+        postInstallSyncing.value = syncing
+    }
+
+    fun isPostInstallSyncing(): Boolean = postInstallSyncing.value
+
+    fun getPostInstallSyncingFlow(): StateFlow<Boolean> = postInstallSyncing
 
     private fun addSpeedSample(timestampMs: Long) {
         speedSamples.add(SpeedSample(timestampMs, bytesDownloaded))

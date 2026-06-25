@@ -9,8 +9,8 @@ import timber.log.Timber
 import java.io.File
 
 object DownloadService {
-    private var lastUpdateTime: Long = 0
-    private var downloadDirectoryApps: MutableList<String>? = null
+    @Volatile private var lastUpdateTime: Long = 0
+    @Volatile private var downloadDirectoryApps: MutableList<String>? = null
     var baseDataDirPath: String = ""
         private set(value) {
             field = value
@@ -37,13 +37,18 @@ object DownloadService {
         baseExternalAppDirPath = extFiles?.parentFile?.path ?: ""
 
         val sm = context.getSystemService(android.os.storage.StorageManager::class.java)
-        externalVolumePaths = context.getExternalFilesDirs(null)
-            .filterNotNull()
+        externalVolumePaths = StorageUtils.getAllExternalFilesDirs(context)
             .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
-            .filter { sm.getStorageVolume(it)?.isPrimary != true }
+            .filter { sm?.getStorageVolume(it)?.isPrimary != true }
             .map { it.absolutePath }
     }
 
+    @Synchronized
+    fun invalidateCache() {
+        lastUpdateTime = 0
+    }
+
+    @Synchronized
     fun getDownloadDirectoryApps (): MutableList<String> {
         // What apps have folders in the download area?
         // Isn't checking for "complete" marker - incomplete is accepted
