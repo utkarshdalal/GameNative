@@ -624,20 +624,12 @@ class Html5SaveSyncService @Inject constructor(
     // returns the strategy that actually ran (fs-authoritative titles reroute to FsBridge).
     private fun runSync(appId: String, setup: SyncSetup, direction: Direction): SaveSyncStrategy {
         val dirLabel = direction.name.lowercase()
-        // fs-authoritative routing. titles that call Node fs (via Html5FsBridge) canonically
-        // save to disk; their chromium LS/IDB is runtime scratch. swap LevelDbOriginRewrite for
-        // FsBridge no-op so we don't burn the 10s CURRENT-poll on empty shells or upload
-        // scratch bytes to cloud. gated by Html5FsAuthoritative.ROUTING_ENABLED so we can force
-        // leveldb-rewrite for regression testing if this masks a real bug.
-        // SaveSyncSpec.bypassFsBridgeReroute opts a title OUT of the reroute. Impact-class NW.js
-        // titles write BOTH fs files (cc.save) AND chromium-profile leveldb on real desktop;
-        // Galaxy's cross-device sync cross-validates the pair, so the dual-write must mirror
-        // that shape. Default false keeps the safe FsBridge no-op posture for any other
-        // fs-using title. Configured per-title via <pack>-patches.json byAppId override.
-        val bypassFsBridgeReroute = setup.profile.saves?.sync?.bypassFsBridgeReroute == true
+        // fs-authoritative titles (see Html5FsAuthoritative) skip the leveldb rewrite.
+        // syncChromiumProfile opts a title OUT of this reroute; see SaveSyncSpec.syncChromiumProfile.
+        val syncChromiumProfile = setup.profile.saves?.sync?.syncChromiumProfile == true
         val effectiveStrategy = if (
             setup.strategy is SaveSyncStrategy.LevelDbOriginRewrite &&
-            !bypassFsBridgeReroute &&
+            !syncChromiumProfile &&
             Html5FsAuthoritative.isFsAuthoritative(context, appId)
         ) {
             Timber.tag(TAG).i(
