@@ -5,69 +5,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#define EGL_EGLEXT_PROTOTYPES
-#define GL_GLEXT_PROTOTYPES
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-
 #define LOG_TAG "AHBImage"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,  LOG_TAG, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG,  LOG_TAG, __VA_ARGS__)
 
 #define AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM 5
-
-EGLImageKHR createImageKHR(AHardwareBuffer* hardwareBuffer, int textureId) {
-    if (!hardwareBuffer) {
-        LOGE("createImageKHR: Invalid AHardwareBuffer pointer\n");
-        return NULL;
-    }
-
-    const EGLint attribList[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE};
-    AHardwareBuffer_acquire(hardwareBuffer);
-
-    EGLClientBuffer clientBuffer = eglGetNativeClientBufferANDROID(hardwareBuffer);
-    if (!clientBuffer) {
-        LOGE("Failed to get native client buffer\n");
-        AHardwareBuffer_release(hardwareBuffer);
-        return NULL;
-    }
-
-    EGLDisplay eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    if (eglDisplay == EGL_NO_DISPLAY) {
-        LOGE("Invalid EGLDisplay\n");
-        AHardwareBuffer_release(hardwareBuffer);
-        return NULL;
-    }
-
-    EGLImageKHR imageKHR = eglCreateImageKHR(eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, attribList);
-    if (!imageKHR) {
-        LOGE("Failed to create EGLImageKHR\n");
-        AHardwareBuffer_release(hardwareBuffer);
-        return NULL;
-    }
-
-    glBindTexture(GL_TEXTURE_2D, textureId);
-    if (glGetError() != GL_NO_ERROR) {
-        LOGE("Failed to bind texture\n");
-        eglDestroyImageKHR(eglDisplay, imageKHR);
-        AHardwareBuffer_release(hardwareBuffer);
-        return NULL;
-    }
-
-    glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, imageKHR);
-    if (glGetError() != GL_NO_ERROR) {
-        LOGE("Failed to bind EGLImage to texture\n");
-        eglDestroyImageKHR(eglDisplay, imageKHR);
-        AHardwareBuffer_release(hardwareBuffer);
-        return NULL;
-    }
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    return imageKHR;
-}
 
 static void dump_ahb_usage(uint64_t usage)
 {
@@ -186,6 +128,18 @@ JNIEXPORT jlong JNICALL
 Java_com_winlator_renderer_AHBImage_hardwareBufferFromSocket(
         JNIEnv *env, jobject obj, jint fd)
 {
+    jclass cls = (*env)->GetObjectClass(env, obj);
+    if (cls == NULL) {
+        LOGE("Failed to get Java class reference\n");
+        return 0;
+    }
+
+    jmethodID setStride = (*env)->GetMethodID(env, cls, "setStride", "(S)V");
+    if (setStride == NULL) {
+        LOGE("Failed to get setStride method ID\n");
+        return 0;
+    }
+
     uint8_t ready = 1;
     if (write((int)fd, &ready, 1) != 1) {
         LOGE("nativeHardwareBufferFromSocket: write handshake failed");
@@ -207,6 +161,9 @@ Java_com_winlator_renderer_AHBImage_hardwareBufferFromSocket(
          desc.layers);
 
     dump_ahb_usage(desc.usage);
+
+    // Set Stride to AHBImage
+    (*env)->CallVoidMethod(env, obj, setStride, (jshort)desc.stride);
 
     // Check if incoming buffer is B8G8R8A8 (format value 5)
     // If so, we need to swap R/B when displaying
@@ -409,26 +366,6 @@ Java_com_winlator_renderer_AHBImage_nativeGetHeight(
     AHardwareBuffer_Desc desc;
     AHardwareBuffer_describe(ahb, &desc);
     return (jshort)desc.height;
-}
-
-JNIEXPORT void JNICALL
-Java_com_winlator_renderer_AHBImage_destroyImageKHR(JNIEnv *env, jclass obj, jlong imageKHRPtr) {
-    EGLImageKHR imageKHR = (EGLImageKHR)imageKHRPtr;
-    if (imageKHR) {
-        EGLDisplay eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-        eglDestroyImageKHR(eglDisplay, imageKHR);
-    }
-}
-
-// JNI method to create an EGL image
-JNIEXPORT jlong JNICALL
-Java_com_winlator_renderer_AHBImage_createImageKHR(JNIEnv *env, jclass obj, jlong hardwareBufferPtr, jint textureId) {
-    AHardwareBuffer* hardwareBuffer = (AHardwareBuffer*)hardwareBufferPtr;
-    if (!hardwareBuffer) {
-        LOGE("Invalid AHardwareBuffer pointer\n");
-        return 0;
-    }
-    return (jlong)createImageKHR(hardwareBuffer, textureId);
 }
 
 JNIEXPORT void JNICALL

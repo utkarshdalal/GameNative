@@ -8,7 +8,6 @@ import java.nio.ByteBuffer;
 
 public class AHBImage extends NativeTexture {
     private long hardwareBufferPtr;
-    private long imageKHRPtr;
     private ByteBuffer virtualData;
     private short stride;
     private int width = -1;
@@ -51,14 +50,8 @@ public class AHBImage extends NativeTexture {
             // Check if bit 0 is set (indicates B8G8R8A8 format needs R/B swap)
             needsRBSwap = (hardwareBufferPtr & 1) != 0;
             hardwareBufferPtr = hardwareBufferPtr & ~1L; // Clear the flag bit
-            virtualData = lockHardwareBuffer(hardwareBufferPtr);
             width = nativeGetWidth(hardwareBufferPtr);
             height = nativeGetHeight(hardwareBufferPtr);
-            if (virtualData == null) {
-                System.err.println("Error: Failed to lock hardware buffer");
-                destroyHardwareBuffer(hardwareBufferPtr);
-                hardwareBufferPtr = 0;
-            }
         } else {
             System.err.println("Error: Failed to create hardware buffer");
         }
@@ -66,26 +59,6 @@ public class AHBImage extends NativeTexture {
 
     public boolean needsRBSwap() {
         return needsRBSwap;
-    }
-
-    @Override
-    public void allocateTexture(short width, short height, ByteBuffer data) {
-        if (isAllocated()) return;
-        super.allocateTexture(width, height, null);
-        if (hardwareBufferPtr != 0) {
-            imageKHRPtr = createImageKHR(hardwareBufferPtr, textureId);
-            if (imageKHRPtr == 0) {
-                System.err.println("Error: Failed to create EGL image");
-                destroyHardwareBuffer(hardwareBufferPtr);
-                hardwareBufferPtr = 0;
-            }
-        }
-    }
-
-    @Override
-    public void updateFromDrawable(Drawable drawable) {
-        if (!isAllocated()) allocateTexture(drawable.width, drawable.height, null);
-        needsUpdate = false;
     }
 
     public short getStride() {
@@ -162,10 +135,6 @@ public class AHBImage extends NativeTexture {
                 }
             }
         }
-        if (imageKHRPtr != 0) {
-            destroyImageKHR(imageKHRPtr);
-            imageKHRPtr = 0;
-        }
         for (int i = 0; i < 3; i++) {
             if (swapchainAhbs[i] != 0) {
                 destroyHardwareBuffer(swapchainAhbs[i]);
@@ -184,31 +153,8 @@ public class AHBImage extends NativeTexture {
         return supported;
     }
 
-    public static void checkIsSupported() {
-        final short size = 8;
-        AHBImage gpuImage = new AHBImage(size, size);
-        gpuImage.allocateTexture(size, size, null);
-        supported = gpuImage.hardwareBufferPtr != 0 && gpuImage.imageKHRPtr != 0 && gpuImage.virtualData != null;
-        gpuImage.destroy();
-    }
-
     public long getHardwareBufferPtr() {
         return this.hardwareBufferPtr;
-    }
-
-    public void lock() {
-        if (hardwareBufferPtr != 0 && virtualData == null) {
-            virtualData = lockHardwareBuffer(hardwareBufferPtr);
-        }
-    }
-
-    public int unlock() {
-        if (hardwareBufferPtr != 0 && virtualData != null) {
-            int fenceFd = unlockHardwareBuffer(hardwareBufferPtr);
-            virtualData = null;
-            return fenceFd;
-        }
-        return -1;
     }
 
     private native long hardwareBufferFromSocket(int fd);
@@ -220,10 +166,6 @@ public class AHBImage extends NativeTexture {
     private native ByteBuffer lockHardwareBuffer(long hardwareBufferPtr);
 
     private native int unlockHardwareBuffer(long hardwareBufferPtr);
-
-    private native long createImageKHR(long hardwareBufferPtr, int textureId);
-
-    private native void destroyImageKHR(long imageKHRPtr);
 
     private native int copyHardwareBuffer(ByteBuffer srcBuffer, long dstPtr, short width, short height, short srcStride, int waitFence);
 
