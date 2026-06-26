@@ -28,7 +28,7 @@ struct CallbackTarget {
 
 struct BufferReleaseCtx {
     JavaVM* vm;
-    jobject gpuImageRef;
+    jobject ahbImageRef;
     jmethodID setSwapchainFenceId;
     int slot;
 };
@@ -54,7 +54,7 @@ public:
     void registerWindowSC(int64_t contentId, const char* debugName = "(x11_window)");
     void unregisterWindowSC(int64_t contentId);
     void setWindowBuffer(JNIEnv* env, int64_t contentId, AHardwareBuffer* ahb, int fenceFd,
-                         int64_t windowId = 0, int64_t serial = 0, jobject gpuImage = nullptr, int slot = -1);
+                         int64_t windowId = 0, int64_t serial = 0, jobject gpuImage = nullptr, int slot = -1, bool needsRBSwap = false);
 
     void scanoutSetCursorVisibility(bool visible);
     void applyCursorGeometry(short x, short y, short hotX, short hotY, bool cursorVisible);

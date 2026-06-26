@@ -42,6 +42,8 @@ typedef void (*pfn_STSetBufferWithRelease)(void* transaction, void* surface_cont
 #define ST_SET_TRANSPARENCY(t,sc,tr) if(fnSTSetBufferTransparency) ((pfn_STSetBufferTransparency)fnSTSetBufferTransparency)((t),(sc),(tr))
 #define ST_REPARENT(t,sc,p)    if(fnSTReparent) ((pfn_STReparent)fnSTReparent)((t),(sc),(p))
 
+#define AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM 5
+
 static void bufferReleaseCallback(void* context, int release_fence_fd) {
     auto* ctx = static_cast<BufferReleaseCtx*>(context);
     if (!ctx) {
@@ -49,7 +51,7 @@ static void bufferReleaseCallback(void* context, int release_fence_fd) {
         return;
     }
 
-    if (ctx->gpuImageRef && ctx->setSwapchainFenceId) {
+    if (ctx->ahbImageRef && ctx->setSwapchainFenceId) {
         JNIEnv* env = nullptr;
         bool attached = false;
         if (ctx->vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_EDETACHED) {
@@ -58,11 +60,11 @@ static void bufferReleaseCallback(void* context, int release_fence_fd) {
         }
 
         if (env) {
-            env->CallVoidMethod(ctx->gpuImageRef, ctx->setSwapchainFenceId, ctx->slot, release_fence_fd);
+            env->CallVoidMethod(ctx->ahbImageRef, ctx->setSwapchainFenceId, ctx->slot, release_fence_fd);
             if (env->ExceptionCheck()) {
                 env->ExceptionClear();
             }
-            env->DeleteGlobalRef(ctx->gpuImageRef);
+            env->DeleteGlobalRef(ctx->ahbImageRef);
         } else if (release_fence_fd >= 0) {
             close(release_fence_fd);
         }
@@ -295,32 +297,101 @@ void ASurfaceRendererContext::scanoutSetCursorPos(short x, short y, short hotX, 
     applyCursorGeometry(x, y, hotX, hotY, cursorVisible);
 }
 
-void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AHardwareBuffer* ahb, int fenceFd, int64_t windowId, int64_t serial, jobject gpuImage, int slot) {
+// Helper to swap R/B channels in a pixel (BGR -> RGB conversion)
+static inline uint32_t swapRB(uint32_t pixel) {
+    return ((pixel & 0xFF00FF00) |        // Keep G and A
+            ((pixel & 0x00FF0000) >> 16) | // Move B to R position
+            ((pixel & 0x000000FF) << 16)); // Move R to B position
+}
+
+void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AHardwareBuffer* ahb, int fenceFd, int64_t windowId, int64_t serial, jobject ahbImage, int slot, bool needsRBSwap) {
     if (!ahb) { if (fenceFd >= 0) close(fenceFd); return; }
+
+    AHardwareBuffer* finalAhb = ahb;
+    int finalFence = fenceFd;
+    AHardwareBuffer* tempAhb = nullptr;
+
+    // Check buffer format to determine if R/B swap is needed
+    if (!needsRBSwap) {
+        AHardwareBuffer_Desc srcDesc;
+        AHardwareBuffer_describe(ahb, &srcDesc);
+
+        // AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM = 5
+        // AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM = 1
+        // Vulkan creates R8G8B8A8 buffers but writes BGR data, so we need to swap for GPU buffers
+        if (srcDesc.format == AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM) {
+            // B8G8R8A8 format - always swap
+            needsRBSwap = true;
+        } else if (srcDesc.format == 1 && ahbImage == nullptr) {
+            // R8G8B8A8 format from GPU (Vulkan/GL) - swap because data is in BGR order
+            needsRBSwap = true;
+        }
+        // CPU buffers (ahbImage != null) with R8G8B8A8 format are already correct
+    }
+
+    // If incoming buffer needs R/B swap, convert it
+    if (needsRBSwap) {
+        AHardwareBuffer_Desc srcDesc;
+        AHardwareBuffer_describe(ahb, &srcDesc);
+
+        // Create a new R8G8B8A8 buffer
+        AHardwareBuffer_Desc dstDesc = srcDesc;
+        dstDesc.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+
+        if (AHardwareBuffer_allocate(&dstDesc, &tempAhb) == 0) {
+            // Lock both buffers
+            void* srcAddr = nullptr;
+            void* dstAddr = nullptr;
+            if (AHardwareBuffer_lock(ahb, AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN, fenceFd, nullptr, &srcAddr) == 0 &&
+                AHardwareBuffer_lock(tempAhb, AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, -1, nullptr, &dstAddr) == 0) {
+
+                // Copy with R/B swap
+                uint32_t* srcPixels = (uint32_t*)srcAddr;
+                uint32_t* dstPixels = (uint32_t*)dstAddr;
+                uint32_t pixelCount = srcDesc.stride * srcDesc.height;
+
+                for (uint32_t i = 0; i < pixelCount; i++) {
+                    dstPixels[i] = swapRB(srcPixels[i]);
+                }
+
+                // Unlock destination to get new fence
+                AHardwareBuffer_unlock(tempAhb, &finalFence);
+                AHardwareBuffer_unlock(ahb, nullptr);
+
+                finalAhb = tempAhb;
+            } else {
+                // Lock failed, use original
+                if (srcAddr) AHardwareBuffer_unlock(ahb, nullptr);
+                AHardwareBuffer_release(tempAhb);
+                tempAhb = nullptr;
+            }
+        }
+    }
 
     void* sc = nullptr;
     {
         std::lock_guard<std::mutex> lk(windowScMutex);
         auto it = windowScMap.find(contentId);
         if (it == windowScMap.end()) {
-            if (fenceFd >= 0) close(fenceFd);
+            if (finalFence >= 0) close(finalFence);
+            if (tempAhb) AHardwareBuffer_release(tempAhb);
             return;
         }
         sc = it->second;
     }
     void* tx = ST_CREATE();
     BufferReleaseCtx* relCtx = nullptr;
-    if (fnSTSetBufferWithRelease && gpuImage && slot >= 0) {
+    if (fnSTSetBufferWithRelease && ahbImage && slot >= 0) {
         relCtx = new BufferReleaseCtx();
         relCtx->vm = javaVm;
-        relCtx->gpuImageRef = env->NewGlobalRef(gpuImage);
-        jclass cls = env->GetObjectClass(gpuImage);
+        relCtx->ahbImageRef = env->NewGlobalRef(ahbImage);
+        jclass cls = env->GetObjectClass(ahbImage);
         relCtx->setSwapchainFenceId = env->GetMethodID(cls, "setSwapchainFence", "(II)V");
         env->DeleteLocalRef(cls);
         relCtx->slot = slot;
-        ST_SETBUF_WITH_RELEASE(tx, sc, ahb, fenceFd, relCtx, bufferReleaseCallback);
+        ST_SETBUF_WITH_RELEASE(tx, sc, finalAhb, finalFence, relCtx, bufferReleaseCallback);
     } else {
-        ST_SETBUF(tx, sc, ahb, fenceFd);
+        ST_SETBUF(tx, sc, finalAhb, finalFence);
     }
     ST_SET_TRANSPARENCY(tx, sc, 2);
     if (windowId != 0 || serial != 0) {
@@ -328,6 +399,11 @@ void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AH
     }
     ST_APPLY(tx);
     ST_DELETE(tx);
+
+    // Release temporary buffer if we created one
+    if (tempAhb) {
+        AHardwareBuffer_release(tempAhb);
+    }
 }
 
 void ASurfaceRendererContext::loadSfCallbackApi() {

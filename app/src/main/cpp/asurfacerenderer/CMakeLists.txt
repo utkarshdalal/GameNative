@@ -81,11 +81,11 @@ target_link_libraries(drawable
 enable_16kb_pages(drawable)
 
 # =========================================================
-# GPUImage library
+# AHBImage library
 # =========================================================
 
 add_library(ahbimage SHARED
-        gpuimage.c
+        ahbimage.c
 )
 
 target_compile_definitions(ahbimage PRIVATE

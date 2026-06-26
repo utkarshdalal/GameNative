@@ -183,7 +183,7 @@ static void dump_ahb_usage(uint64_t usage)
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_winlator_renderer_GPUImage_hardwareBufferFromSocket(
+Java_com_winlator_renderer_AHBImage_hardwareBufferFromSocket(
         JNIEnv *env, jobject obj, jint fd)
 {
     uint8_t ready = 1;
@@ -208,11 +208,29 @@ Java_com_winlator_renderer_GPUImage_hardwareBufferFromSocket(
 
     dump_ahb_usage(desc.usage);
 
+    // Check if incoming buffer is B8G8R8A8 (format value 5)
+    // If so, we need to swap R/B when displaying
+    // Android NDK defines: AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM = 5
+    //                    AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM = 1
+    if (desc.format == AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM) { // AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM
+        LOGD("RemoteAHB: Detected B8G8R8A8 format (value=5), will apply R/B swap");
+        // Store format info by encoding it in the pointer (bit 0 set = needs swap)
+        return (jlong)(uintptr_t)ahb | 1;
+    }
+
+    LOGD("RemoteAHB: Format is not B8G8R8A8 (value=%u), no swap needed", desc.format);
     return (jlong)(uintptr_t)ahb;
 }
 
+// Helper to swap R/B channels in a pixel (BGR -> RGB conversion)
+static inline uint32_t swapRB(uint32_t pixel) {
+    return ((pixel & 0xFF00FF00) |        // Keep G and A
+            ((pixel & 0x00FF0000) >> 16) | // Move B to R position
+            ((pixel & 0x000000FF) << 16)); // Move R to B position
+}
+
 JNIEXPORT jint JNICALL
-Java_com_winlator_renderer_GPUImage_copyHardwareBuffer(
+Java_com_winlator_renderer_AHBImage_copyHardwareBuffer(
         JNIEnv *env, jobject obj, jobject srcBuffer, jlong dstPtr, jshort width, jshort height, jshort srcStride, jint waitFence)
 {
     uint32_t* srcAddr = (uint32_t*)(*env)->GetDirectBufferAddress(env, srcBuffer);
@@ -230,11 +248,12 @@ Java_com_winlator_renderer_GPUImage_copyHardwareBuffer(
         AHardwareBuffer_describe(dstAhb, &desc);
         uint32_t dstStride = desc.stride;
 
-        if (dstStride == (uint32_t)srcStride) {
-            memcpy(dstAddr, srcAddr, (size_t)dstStride * height * 4);
-        } else {
-            for (int y = 0; y < height; y++) {
-                memcpy(dstAddr + y * dstStride, srcAddr + y * srcStride, width * 4);
+        // Copy with R/B swap (X11 data is BGR, destination is RGBA)
+        for (int y = 0; y < height; y++) {
+            uint32_t* srcRow = srcAddr + y * srcStride;
+            uint32_t* dstRow = dstAddr + y * dstStride;
+            for (int x = 0; x < width; x++) {
+                dstRow[x] = swapRB(srcRow[x]);
             }
         }
 
@@ -250,7 +269,7 @@ Java_com_winlator_renderer_GPUImage_copyHardwareBuffer(
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_winlator_renderer_GPUImage_createHardwareBuffer(
+Java_com_winlator_renderer_AHBImage_createHardwareBuffer(
         JNIEnv *env, jobject obj, jshort width, jshort height)
 {
     AHardwareBuffer_Desc desc;
@@ -286,7 +305,7 @@ Java_com_winlator_renderer_GPUImage_createHardwareBuffer(
 }
 
 JNIEXPORT void JNICALL
-Java_com_winlator_renderer_GPUImage_destroyHardwareBuffer(
+Java_com_winlator_renderer_AHBImage_destroyHardwareBuffer(
         JNIEnv *env, jobject obj, jlong ptr)
 {
     AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
@@ -297,7 +316,7 @@ Java_com_winlator_renderer_GPUImage_destroyHardwareBuffer(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_winlator_renderer_GPUImage_unlockHardwareBuffer(
+Java_com_winlator_renderer_AHBImage_unlockHardwareBuffer(
         JNIEnv *env, jobject obj, jlong ptr)
 {
     AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
@@ -313,7 +332,7 @@ Java_com_winlator_renderer_GPUImage_unlockHardwareBuffer(
 }
 
 JNIEXPORT jobject JNICALL
-Java_com_winlator_renderer_GPUImage_lockHardwareBuffer(
+Java_com_winlator_renderer_AHBImage_lockHardwareBuffer(
         JNIEnv *env, jobject obj, jlong ptr)
 {
     AHardwareBuffer* hardwareBuffer = (AHardwareBuffer*)ptr;
@@ -357,7 +376,7 @@ Java_com_winlator_renderer_GPUImage_lockHardwareBuffer(
 }
 
 JNIEXPORT jshort JNICALL
-Java_com_winlator_renderer_GPUImage_getStride(
+Java_com_winlator_renderer_AHBImage_getStride(
         JNIEnv *env, jobject obj, jlong ptr)
 {
     AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
@@ -369,7 +388,7 @@ Java_com_winlator_renderer_GPUImage_getStride(
 }
 
 JNIEXPORT jshort JNICALL
-Java_com_winlator_renderer_GPUImage_nativeGetWidth(
+Java_com_winlator_renderer_AHBImage_nativeGetWidth(
         JNIEnv *env, jobject obj, jlong ptr)
 {
     AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
@@ -381,7 +400,7 @@ Java_com_winlator_renderer_GPUImage_nativeGetWidth(
 }
 
 JNIEXPORT jshort JNICALL
-Java_com_winlator_renderer_GPUImage_nativeGetHeight(
+Java_com_winlator_renderer_AHBImage_nativeGetHeight(
         JNIEnv *env, jobject obj, jlong ptr)
 {
     AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
@@ -393,7 +412,7 @@ Java_com_winlator_renderer_GPUImage_nativeGetHeight(
 }
 
 JNIEXPORT void JNICALL
-Java_com_winlator_renderer_GPUImage_destroyImageKHR(JNIEnv *env, jclass obj, jlong imageKHRPtr) {
+Java_com_winlator_renderer_AHBImage_destroyImageKHR(JNIEnv *env, jclass obj, jlong imageKHRPtr) {
     EGLImageKHR imageKHR = (EGLImageKHR)imageKHRPtr;
     if (imageKHR) {
         EGLDisplay eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -403,7 +422,7 @@ Java_com_winlator_renderer_GPUImage_destroyImageKHR(JNIEnv *env, jclass obj, jlo
 
 // JNI method to create an EGL image
 JNIEXPORT jlong JNICALL
-Java_com_winlator_renderer_GPUImage_createImageKHR(JNIEnv *env, jclass obj, jlong hardwareBufferPtr, jint textureId) {
+Java_com_winlator_renderer_AHBImage_createImageKHR(JNIEnv *env, jclass obj, jlong hardwareBufferPtr, jint textureId) {
     AHardwareBuffer* hardwareBuffer = (AHardwareBuffer*)hardwareBufferPtr;
     if (!hardwareBuffer) {
         LOGE("Invalid AHardwareBuffer pointer\n");
@@ -413,6 +432,6 @@ Java_com_winlator_renderer_GPUImage_createImageKHR(JNIEnv *env, jclass obj, jlon
 }
 
 JNIEXPORT void JNICALL
-Java_com_winlator_renderer_GPUImage_nativeCloseFd(JNIEnv *env, jclass clazz, jint fd) {
+Java_com_winlator_renderer_AHBImage_nativeCloseFd(JNIEnv *env, jclass clazz, jint fd) {
     if (fd >= 0) close(fd);
 }
