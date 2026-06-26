@@ -50,6 +50,10 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private int cachedDesktopSrcW = 0, cachedDesktopSrcH = 0;
     private Window desktopWindow = null;
     private final ArrayList<RenderableWindow> renderList = new ArrayList<>();
+    private float pendingFrameRate = 0f;
+    private byte pendingFrameRateCompatibility = 0;
+    private byte pendingFrameRateChangeStrategy = 0;
+    private boolean hasPendingFrameRateRequest = false;
     private static class RenderableWindow {
         public Drawable content;
         public Window window;
@@ -146,6 +150,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private native void nativeUpdateWindow(long contentId, boolean visible, int zOrder,
             int srcL, int srcT, int srcR, int srcB,
             int dstL, int dstT, int dstR, int dstB);
+    private native void nativeSetFrameRate(float frameRate, byte compatibility, byte changeStrategy);
 
     private WindowSurface getOrCreateWindowSurface(int contentId, int w, int h, String debugName)
     {
@@ -249,6 +254,9 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         }
         surfaceInitialized = nativeInit(surface, xServer.screenInfo.width, xServer.screenInfo.height);
         if (surfaceInitialized) {
+            if (hasPendingFrameRateRequest) {
+                nativeSetFrameRate(pendingFrameRate, pendingFrameRateCompatibility, pendingFrameRateChangeStrategy);
+            }
             nativeSetSfCallbackTarget(this);
             updateTransform();
             nativeInitScanout();
@@ -643,6 +651,18 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             return wc != null && wc.contains(forceFullscreenWMClass);
         }
         return false;
+    }
+
+    public void setFrameRate(float frameRate, int compatibility, int changeStrategy) {
+        Timber.d("setFrameRate frameRate=%f compatibility=%d changeStrategy=%d", frameRate, compatibility, changeStrategy);
+        if (frameRate > 0 && frameRate < 30) frameRate = 30;
+        pendingFrameRate = frameRate;
+        pendingFrameRateCompatibility = (byte) compatibility;
+        pendingFrameRateChangeStrategy = (byte) changeStrategy;
+        hasPendingFrameRateRequest = true;
+        if (surfaceInitialized) {
+            nativeSetFrameRate(pendingFrameRate, pendingFrameRateCompatibility, pendingFrameRateChangeStrategy);
+        }
     }
 
     private FrameRating hudRef = null;

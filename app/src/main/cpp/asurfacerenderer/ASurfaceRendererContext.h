@@ -59,6 +59,8 @@ public:
           int srcL, int srcT, int srcR, int srcB,
           int dstL, int dstT, int dstR, int dstB);
 
+    void setFrameRate(float frameRate, int8_t compatibility, int8_t changeStrategy = 0);
+
     void setSfCallbackTarget(JNIEnv* env, jobject rendererObj);
 
     // -------------------------------------------------------------------------
@@ -91,6 +93,10 @@ private:
     int32_t scanoutCursorBufH = 0;
     int     scanoutCursorFence = -1;
 
+    float    pendingFrameRate        = 0.f;
+    int8_t   pendingCompatibility    = 0;
+    int8_t   pendingChangeStrategy   = 0;
+
     std::atomic<int64_t> scanoutDstXY{0}; // x<<32 | y (both as uint32)
     std::atomic<int64_t> scanoutDstWH{0}; // w<<32 | h (both as uint32)
 
@@ -109,6 +115,8 @@ private:
     void* fnSTSetBufferTransparency = nullptr;
     void* fnSTSetBufferTransform  = nullptr;
     void* fnSTReparent  = nullptr;
+    void* fnSTSetFrameRate = nullptr;
+    void* fnSTSetFrameRateWithChangeStrategy = nullptr;
     void oneShot(std::function<void(void*)> fill);
 
     // SurfaceFlinger Callbacks

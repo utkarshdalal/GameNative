@@ -23,6 +23,8 @@ typedef void  (*pfn_STSetBufferTransform)(void*, void*, int32_t);
 typedef void  (*pfn_STSetOnComplete)(void* transaction, void* context,
                                     void (*callback)(void* context, void* stats));
 typedef void  (*pfn_STReparent)(void*, void*, void*);
+typedef void  (*pfn_STSetFrameRate)(void*, void*, float, int8_t);
+typedef void  (*pfn_STSetFrameRateWithChangeStrategy)(void*, void*, float, int8_t, int8_t);
 
 #define SC_CREATE(win, name)   ((pfn_SCCreateFromWindow)fnSCCreateFromWin)((win),(name))
 #define SC_RELEASE(sc)         ((pfn_SCRelease)fnSCRelease)((sc))
@@ -35,6 +37,8 @@ typedef void  (*pfn_STReparent)(void*, void*, void*);
 #define ST_SETGEO(t,sc,s,d,r)  ((pfn_STSetGeometry)fnSTSetGeometry)((t),(sc),(s),(d),(r))
 #define ST_SET_TRANSPARENCY(t,sc,tr) if(fnSTSetBufferTransparency) ((pfn_STSetBufferTransparency)fnSTSetBufferTransparency)((t),(sc),(tr))
 #define ST_REPARENT(t,sc,p)    if(fnSTReparent) ((pfn_STReparent)fnSTReparent)((t),(sc),(p))
+#define ST_SETFRAMERATE(t,sc,r,c)       if(fnSTSetFrameRate) ((pfn_STSetFrameRate)fnSTSetFrameRate)((t),(sc),(r),(c))
+#define ST_SETFRAMERATE_CS(t,sc,r,c,s)  if(fnSTSetFrameRateWithChangeStrategy) ((pfn_STSetFrameRateWithChangeStrategy)fnSTSetFrameRateWithChangeStrategy)((t),(sc),(r),(c),(s))
 
 void ASurfaceRendererContext::oneShot(std::function<void(void*)> fill) {
     void* tx = ST_CREATE();
@@ -119,6 +123,8 @@ bool ASurfaceRendererContext::loadScanoutApi() {
     fnSTSetBufferTransparency = dlsym(lib, "ASurfaceTransaction_setBufferTransparency");
     fnSTSetBufferTransform = dlsym(lib, "ASurfaceTransaction_setBufferTransform");
     fnSTReparent      = dlsym(lib, "ASurfaceTransaction_reparent");
+    fnSTSetFrameRate = dlsym(lib, "ASurfaceTransaction_setFrameRate");
+    fnSTSetFrameRateWithChangeStrategy = dlsym(lib, "ASurfaceTransaction_setFrameRateWithChangeStrategy");
     sfCallbackSupported = fnSTSetOnComplete != nullptr;
     bool coreOk = fnSCCreateFromWin && fnSCRelease && fnSTCreate && fnSTDelete && fnSTSetOnComplete && fnSTReparent &&
                   fnSTApply && fnSTSetBuffer && fnSTSetVisibility && fnSTSetGeometry && fnSTSetBufferTransparency && fnSTSetBufferTransform;
@@ -402,6 +408,16 @@ void ASurfaceRendererContext::registerWindowSC(int64_t contentId, const char* de
         if (it != windowScMap.end()) oldSc = it->second;
         windowScMap[contentId] = sc;
     }
+
+    if (pendingFrameRate != 0.f && (fnSTSetFrameRate || fnSTSetFrameRateWithChangeStrategy)) {
+        oneShot([&](void* tx) {
+            if (fnSTSetFrameRateWithChangeStrategy)
+                ST_SETFRAMERATE_CS(tx, sc, pendingFrameRate, pendingCompatibility, pendingChangeStrategy);
+            else
+                ST_SETFRAMERATE(tx, sc, pendingFrameRate, pendingCompatibility);
+        });
+    }
+
     if (oldSc) {
         oneShot([&](void* tx) {
             ST_SETVIS(tx, oldSc, 0);
@@ -429,4 +445,33 @@ void ASurfaceRendererContext::unregisterWindowSC(int64_t contentId) {
         });
         SC_RELEASE(sc);
     }
+}
+
+void ASurfaceRendererContext::setFrameRate(float frameRate,
+                                           int8_t compatibility, int8_t changeStrategy)
+{
+    if (!fnSTSetFrameRate && !fnSTSetFrameRateWithChangeStrategy) return;
+
+    pendingFrameRate      = frameRate;
+    pendingCompatibility  = compatibility;
+    pendingChangeStrategy = changeStrategy;
+
+    std::vector<void*> scs;
+    {
+        std::lock_guard<std::mutex> lk(windowScMutex);
+        scs.reserve(windowScMap.size());
+        for (auto& [id, sc] : windowScMap)
+            scs.push_back(sc);
+    }
+    if (scs.empty()) return;
+
+    void* tx = ST_CREATE();
+    for (void* sc : scs) {
+        if (fnSTSetFrameRateWithChangeStrategy)
+            ST_SETFRAMERATE_CS(tx, sc, frameRate, compatibility, changeStrategy);
+        else
+            ST_SETFRAMERATE(tx, sc, frameRate, compatibility);
+    }
+    ST_APPLY(tx);
+    ST_DELETE(tx);
 }
