@@ -429,6 +429,8 @@
     <string name="fexcore_version">Версия FEXCore</string>
     <string name="force_dlc">Принудительно включить DLC</string>
     <string name="force_dlc_description">Включайте только если DLC не обнаружены или сохранения с DLC не работают</string>
+    <string name="local_saves_only">Только локальные сохранения</string>
+    <string name="local_saves_only_description">Отключить синхронизацию облачных сохранений для этой игры и хранить сохранения только на устройстве</string>
     <string name="frame_synchronization">Синхронизация кадров</string>
     <string name="game_executable_not_found">Исполняемый файл не смог быть автоматически выбран. Пожалуйста, установите путь исполняемого файла в настройках контейнера.</string>
     <string name="game_executable_not_found_title">Невозможно запустить</string>
@@ -575,6 +577,7 @@
     <string name="launch_steam_client_description">Снижает производительность и замедляет запуск
 Позволяет играть в сети и исправляет проблемы с DRM и контроллером
 Не все игры работают</string>
+    <string name="launch_bionic_steam">Включить экспериментальный Bionic Steam</string>
     <string name="left_analog_stick">Левый аналоговый джойстик</string>
     <string name="left_stick">Левый джойстик</string>
     <string name="left_stick_down">Левый джойстик вниз</string>
@@ -614,6 +617,8 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="library_failed_to_export">Ошибка экспорта: %s</string>
     <string name="library_family_shared">Семейно общее</string>
     <string name="library_file_count">Файл %1$d из %2$d</string>
+    <string name="download_no_wifi">Нет подключения к Wi-Fi/LAN</string>
+    <string name="download_paused_wifi">Загрузка приостановлена – ожидание Wi-Fi/LAN</string>
     <string name="library_filters">Фильтры</string>
     <string name="library_game_count">%1$d игр • %2$d установлено</string>
     <string name="library_gpu_compatible">GPU совместимо</string>
@@ -860,6 +865,7 @@ https://gamenative.app
     <string name="position">Положение</string>
     <string name="position_value">X: %1$d, Y: %2$d</string>
     <string name="present_modes">Режимы представления</string>
+    <string name="renderer_present_modes">Режим представления рендерера</string>
     <string name="preset_arrows">Стрелки</string>
     <string name="preset_dpad">D-Pad</string>
     <string name="preset_left_stick">Левый джойстик</string>
@@ -880,6 +886,7 @@ https://gamenative.app
     <string name="screen_effects_live_preview">Изменения мгновенно применяются к текущей игре.</string>
     <string name="screen_effects_color_adjustments">Настройка цвета</string>
     <string name="screen_effects_shader_toggles">Эффекты шейдеров</string>
+    <string name="screen_effects_scaling_mode">Режим масштабирования</string>
     <string name="screen_effects_brightness">Яркость</string>
     <string name="screen_effects_contrast">Контрастность</string>
     <string name="screen_effects_gamma">Гамма</string>
@@ -933,6 +940,7 @@ https://gamenative.app
     <string name="performance_hud_battery_level">Уровень батареи</string>
     <string name="performance_hud_power_draw">Потребление энергии</string>
     <string name="performance_hud_runtime_left">Оставшееся время</string>
+    <string name="performance_hud_battery_temperature">Температура батареи</string>
     <string name="performance_hud_clock_time">Время</string>
     <string name="performance_hud_cpu_temperature">Температура CPU</string>
     <string name="performance_hud_gpu_temperature">Температура GPU</string>
@@ -1245,6 +1253,7 @@ https://gamenative.app
     <string name="tab_steam">Steam</string>
     <string name="task_manager">Менеджер задач</string>
     <string name="tools_wine_processes_running_hint">%1$d запущено, нажмите/кликните по процессу, чтобы закрыть его</string>
+    <string name="tools_wine_processes_empty">Запущенные EXE не обнаружены.</string>
     <string name="template_percent">%1$d процент.</string>
     <string name="thumbstick_buttons">Кнопки джойстика</string>
     <string name="thumbstick_buttons_category">Кнопки джойстика</string>
@@ -1376,6 +1385,15 @@ https://gamenative.app
     <string name="workshop_processing">Обработка модов…</string>
     <string name="workshop_failed_count">Не удалось обновить %1$d мод(ов) Мастерской</string>
     <string name="workshop_download_failed">Ошибка загрузки</string>
+    <string name="option_open_store_page">Открыть страницу в магазине</string>
+    <string name="option_export_for_frontend">Экспортировать для фронтенда</string>
+    <string name="option_open_container">Открыть контейнер</string>
+    <string name="option_edit_container">Редактировать контейнер</string>
+    <string name="option_reset_to_defaults">Сбросить контейнер</string>
+    <string name="option_get_support">Получить поддержку</string>
+    <string name="option_submit_feedback">Отправить отзыв</string>
+    <string name="option_reset_drm">Сбросить DRM</string>
+    <string name="option_use_known_config">Использовать известную конфигурацию</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Рекомендуемое</string>
@@ -1398,6 +1416,18 @@ https://gamenative.app
      <string name="steam_save_import_failed">Не удалось импортировать сохранения: %s</string>
     <string name="option_import_saves">Импортировать сохранения</string>
     <string name="option_export_saves">Экспортировать сохранения</string>
+    <string name="option_verify_files">Проверить файлы</string>
+    <string name="option_update">Обновить</string>
+    <string name="option_move_to_external_storage">Переместить во внешнее хранилище</string>
+    <string name="option_move_to_internal_storage">Переместить во внутреннее хранилище</string>
+    <string name="option_force_cloud_sync">Принудительная синхронизация облака</string>
+    <string name="option_browse_online_saves">Просмотреть онлайн-сохранения</string>
+    <string name="option_force_download_remote">Принудительно загрузить удалённые сохранения</string>
+    <string name="option_force_upload_local">Принудительно выгрузить локальные сохранения</string>
+    <string name="option_fetch_game_images">Загрузить изображения игры</string>
+    <string name="option_test_graphics">Проверить графику</string>
+    <string name="option_manage_dlc">Управление DLC</string>
+    <string name="option_manage_workshop">Управление Workshop</string>
     <!-- HLTB (How Long To Beat) -->
     <string name="hltb_main_story">Основной сюжет</string>
     <string name="hltb_main_plus_extras">Основное + Дополнения</string>
@@ -1464,6 +1494,8 @@ https://gamenative.app
     <string name="frontend_sync_confirm_keep">Сохранить</string>
     <string name="frontend_sync_resync_all">Повторная синхронизация всего</string>
     <string name="frontend_sync_resync_complete">Синхронизация frontend завершена</string>
+    <string name="frontend_sync_pick_directory_cd">Выбрать каталог для %1$s</string>
+    <string name="frontend_sync_clear_directory_cd">Очистить каталог для %1$s</string>
     <string name="screen_effects_scaling">Масштабирование</string>
     <string name="screen_effects_upscaling">Апскейлинг</string>
     <string name="screen_effects_basic_scaling">Базовое масштабирование</string>
@@ -1485,6 +1517,17 @@ https://gamenative.app
     <string name="screen_effects_scaling_mode_dls_desc">Повышение резкости / чёткости.</string>
     <string name="screen_effects_scaling_mode_natural">Естественный</string>
     <string name="screen_effects_scaling_mode_natural_desc">Более тёплый оттенок.</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">Официальный AMD FidelityFX Super Resolution 1.0 с использованием EASU + RCAS с пониженным внутренним разрешением рендеринга и апскейлингом до полного разрешения.</string>
+    <string name="screen_effects_fsr_quality">Качество FSR</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">Ультра качество</string>
+    <string name="screen_effects_fsr_quality_quality">Качество</string>
+    <string name="screen_effects_fsr_quality_balanced">Сбалансированное</string>
+    <string name="screen_effects_fsr_quality_performance">Производительность</string>
+    <string name="screen_effects_fsr_sharpness">Резкость FSR</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">Резкость при запуске</string>
+    <string name="screen_effects_launch_sharpness_note">CAS и DLS применяются через vkBasalt и вступают в силу при следующем запуске игры.</string>
     <string name="stats_key_runs">Успешные запуски на вашем GPU</string>
     <string name="stats_key_reviews">5-звёздочные отзывы (ваш GPU / ваше устройство)</string>
     <string name="stats_key_fps">Ожидаемый FPS</string>

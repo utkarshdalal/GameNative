@@ -1482,6 +1482,8 @@
     <!-- App option menu labels -->
     <string name="option_open_store_page">ストアページを開く</string>
     <string name="option_export_for_frontend">フロントエンド用にエクスポート</string>
+    <string name="frontend_sync_pick_directory_cd">%1$s のディレクトリを選択</string>
+    <string name="frontend_sync_clear_directory_cd">%1$s のディレクトリをクリア</string>
     <string name="option_open_container">オープンコンテナ</string>
     <string name="option_edit_container">コンテナの編集</string>
     <string name="option_reset_to_defaults">コンテナをリセットする</string>

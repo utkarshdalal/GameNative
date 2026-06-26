@@ -266,6 +266,7 @@
     <string name="toggle_orientation">Przełącz orientację</string>
     <string name="task_manager">Menedżer zadań</string>
     <string name="tools_wine_processes_running_hint">%1$d uruchomionych, stuknij/kliknij proces, aby go zamknąć</string>
+    <string name="tools_wine_processes_empty">Nie wykryto uruchomionych plików EXE.</string>
     <string name="magnifier">Lupa</string>
     <string name="logs">Logi</string>
     <string name="exit_game">Wyjdź</string>
@@ -299,6 +300,7 @@
     <string name="screen_effects_live_preview">Zmiany są natychmiast stosowane do bieżącej gry.</string>
     <string name="screen_effects_color_adjustments">Regulacja kolorów</string>
     <string name="screen_effects_shader_toggles">Efekty shaderów</string>
+    <string name="screen_effects_scaling_mode">Tryb skalowania</string>
     <string name="screen_effects_brightness">Jasność</string>
     <string name="screen_effects_contrast">Kontrast</string>
     <string name="screen_effects_gamma">Gamma</string>
@@ -352,6 +354,7 @@
     <string name="performance_hud_battery_level">Poziom baterii</string>
     <string name="performance_hud_power_draw">Pobór mocy</string>
     <string name="performance_hud_runtime_left">Pozostały czas</string>
+    <string name="performance_hud_battery_temperature">Temperatura baterii</string>
     <string name="performance_hud_clock_time">Czas</string>
     <string name="performance_hud_cpu_temperature">Temperatura CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura GPU</string>
@@ -674,6 +677,8 @@
     <string name="unpack_files_description">Używaj tylko w przypadku błędu \'Application Load Error\'. Może zmniejszyć FPS.</string>
     <string name="force_dlc">Wymuś DLC</string>
     <string name="force_dlc_description">Włącz tylko jeśli DLC nie są wykrywane lub zapisy z DLC nie działają</string>
+    <string name="local_saves_only">Tylko zapisy lokalne</string>
+    <string name="local_saves_only_description">Wyłącz synchronizację zapisów w chmurze dla tej gry i przechowuj zapisy tylko na urządzeniu</string>
     <string name="launch_steam_client_beta">Uruchom Klienta Steam (Beta)</string>
     <string name="steam_offline_mode">Tryb Offline Steam</string>
     <string name="steam_offline_mode_description">Uruchamiaj gry Steam w trybie offline</string>
@@ -686,6 +691,7 @@
     <string name="achievement_position_bottom_left">Lewy dolny</string>
     <string name="achievement_position_bottom_right">Prawy dolny</string>
     <string name="launch_steam_client_description">Zmniejsza wydajność i spowalnia uruchamianie\nPozwala na grę online i naprawia problemy z DRM oraz kontrolerem\nNie wszystkie gry działają</string>
+    <string name="launch_bionic_steam">Włącz eksperymentalny Bionic Steam</string>
     <string name="allow_steam_updates">Zezwól na aktualizacje Steam</string>
     <string name="allow_steam_updates_description">Aktualizuje Steam do najnowszej wersji. Znacząco zmniejsza wydajność.</string>
     <string name="steam_type">Typ Steam</string>
@@ -709,6 +715,7 @@
     <string name="sync_frame">Synchronizuj każdą klatkę</string>
     <string name="disable_present_wait">Wyłącz KHR_present_wait</string>
     <string name="present_modes">Tryby prezentacji</string>
+    <string name="renderer_present_modes">Tryb prezentacji renderera</string>
     <string name="resource_type">Typ zasobu pamięci</string>
     <string name="bcn_emulation">Emulacja BCn</string>
     <string name="bcn_emulation_type">Typ emulacji BCn</string>
@@ -931,6 +938,8 @@
     <string name="settings_emulation_default_config_title">Zmodyfikuj domyślną konfigurację</string>
     <string name="settings_emulation_default_config_subtitle">Początkowe ustawienia kontenera dla każdej gry (nie wpływa na już zainstalowane gry)</string>
     <string name="settings_emulation_default_config_dialog_title">Domyślna konfiguracja kontenera</string>
+    <string name="settings_emulation_auto_apply_known_config_title">Automatycznie zastosuj znaną konfigurację</string>
+    <string name="settings_emulation_auto_apply_known_config_subtitle">Automatycznie zastosuj zalecane ustawienia dla gier Steam przy pierwszym uruchomieniu</string>
     <string name="settings_emulation_box64_presets_title">Presety Box64</string>
     <string name="settings_emulation_box64_presets_subtitle">Przeglądaj, modyfikuj i twórz presety Box64</string>
     <string name="settings_emulation_driver_manager_title">Menedżer sterowników</string>
@@ -1066,6 +1075,8 @@
     <string name="library_need_internet">Wymagany internet do instalacji</string>
     <string name="library_wifi_only_enabled">Włączono instalację tylko przez Wi-Fi/LAN</string>
     <string name="library_file_count">Plik %1$d z %2$d</string>
+    <string name="download_no_wifi">Brak połączenia z Wi-Fi/LAN</string>
+    <string name="download_paused_wifi">Pobieranie wstrzymane – oczekiwanie na Wi-Fi/LAN</string>
 
     <!-- PluviaMain: Update & App Info -->
     <string name="main_update_available_title">Dostępna aktualizacja</string>
@@ -1088,6 +1099,7 @@
     <string name="main_discord_support_title">Czy gra zadziałała?</string>
     <string name="main_discord_support_message">Dołącz do Discorda, aby uzyskać pomoc w naprawie gry lub poprawie wydajności.</string>
     <string name="main_open_discord">Otwórz Discord</string>
+    <string name="main_downloading_entry">Pobieranie %s</string>
 
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Pobieranie Steam...</string>
@@ -1445,6 +1457,15 @@
     <string name="workshop_processing">Przetwarzanie modów…</string>
     <string name="workshop_failed_count">Nie udało się zaktualizować %1$d modów z Warsztatu</string>
     <string name="workshop_download_failed">Pobieranie nie powiodło się</string>
+    <string name="option_open_store_page">Otwórz stronę sklepu</string>
+    <string name="option_export_for_frontend">Eksportuj dla frontendu</string>
+    <string name="option_open_container">Otwórz kontener</string>
+    <string name="option_edit_container">Edytuj kontener</string>
+    <string name="option_reset_to_defaults">Zresetuj kontener</string>
+    <string name="option_get_support">Uzyskaj pomoc</string>
+    <string name="option_submit_feedback">Wyślij opinię</string>
+    <string name="option_reset_drm">Zresetuj DRM</string>
+    <string name="option_use_known_config">Użyj znanej konfiguracji</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Polecane</string>
@@ -1467,6 +1488,18 @@
      <string name="steam_save_import_failed">Nie udało się zaimportować zapisów: %s</string>
     <string name="option_import_saves">Importuj zapisy</string>
     <string name="option_export_saves">Eksportuj zapisy</string>
+    <string name="option_verify_files">Zweryfikuj pliki</string>
+    <string name="option_update">Aktualizuj</string>
+    <string name="option_move_to_external_storage">Przenieś na pamięć zewnętrzną</string>
+    <string name="option_move_to_internal_storage">Przenieś do pamięci wewnętrznej</string>
+    <string name="option_force_cloud_sync">Wymuś synchronizację z chmurą</string>
+    <string name="option_browse_online_saves">Przeglądaj zapisy online</string>
+    <string name="option_force_download_remote">Wymuś pobranie zapisów zdalnych</string>
+    <string name="option_force_upload_local">Wymuś przesłanie zapisów lokalnych</string>
+    <string name="option_fetch_game_images">Pobierz obrazy gry</string>
+    <string name="option_test_graphics">Przetestuj grafikę</string>
+    <string name="option_manage_dlc">Zarządzaj DLC</string>
+    <string name="option_manage_workshop">Zarządzaj Workshop</string>
     <!-- HLTB (How Long To Beat) -->
     <string name="hltb_main_story">Główna fabuła</string>
     <string name="hltb_main_plus_extras">Główna + Dodatki</string>
@@ -1533,6 +1566,8 @@
     <string name="frontend_sync_confirm_keep">Zachowaj</string>
     <string name="frontend_sync_resync_all">Ponowna synchronizacja wszystkich</string>
     <string name="frontend_sync_resync_complete">Synchronizacja frontend zakończona</string>
+    <string name="frontend_sync_pick_directory_cd">Wybierz katalog dla %1$s</string>
+    <string name="frontend_sync_clear_directory_cd">Wyczyść katalog dla %1$s</string>
     <string name="screen_effects_scaling">Skalowanie</string>
     <string name="screen_effects_upscaling">Skalowanie w górę</string>
     <string name="screen_effects_basic_scaling">Podstawowe skalowanie</string>
@@ -1554,6 +1589,17 @@
     <string name="screen_effects_scaling_mode_dls_desc">Wyostrzanie / klarowność.</string>
     <string name="screen_effects_scaling_mode_natural">Naturalny</string>
     <string name="screen_effects_scaling_mode_natural_desc">Cieplejszy odcień kolorów.</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">Oficjalne AMD FidelityFX Super Resolution 1.0 wykorzystujące EASU + RCAS z niższą wewnętrzną rozdzielczością renderowania i skalowaniem do pełnej rozdzielczości.</string>
+    <string name="screen_effects_fsr_quality">Jakość FSR</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">Ultra jakość</string>
+    <string name="screen_effects_fsr_quality_quality">Jakość</string>
+    <string name="screen_effects_fsr_quality_balanced">Zrównoważony</string>
+    <string name="screen_effects_fsr_quality_performance">Wydajność</string>
+    <string name="screen_effects_fsr_sharpness">Ostrość FSR</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">Ostrość przy uruchomieniu</string>
+    <string name="screen_effects_launch_sharpness_note">CAS i DLS są stosowane przez vkBasalt i zaczynają działać przy następnym uruchomieniu gry.</string>
     <string name="stats_key_runs">Udane uruchomienia na twoim GPU</string>
     <string name="stats_key_reviews">Recenzje 5-gwiazdkowe (twój GPU / twoje urządzenie)</string>
     <string name="stats_key_fps">Oczekiwane FPS</string>

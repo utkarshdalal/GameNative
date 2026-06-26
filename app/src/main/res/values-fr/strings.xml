@@ -219,6 +219,10 @@
     <string name="delete">Supprimer</string>
     <string name="copy_from">Copier depuis</string>
     <string name="ok">Ok</string>
+    <string name="container_config_custom_resolution_title">Définir une résolution personnalisée</string>
+    <string name="container_config_custom_resolution_separator">x</string>
+    <string name="container_config_custom_resolution_error_nonzero">La largeur et la hauteur doivent être supérieures à 0</string>
+    <string name="container_config_custom_resolution_error_aspect">La largeur doit être supérieure à la hauteur</string>
     <string name="storage_info">Informations de stockage</string>
     <string name="duplicate">Dupliquer</string>
     <string name="reconfigure">Reconfigurer</string>
@@ -254,6 +258,7 @@
     <string name="toggle_orientation">Basculer l\'orientation</string>
     <string name="task_manager">Gestionnaire de tâches</string>
     <string name="tools_wine_processes_running_hint">%1$d en cours, touchez/cliquez sur un processus pour le fermer</string>
+    <string name="tools_wine_processes_empty">Aucun EXE en cours d\'exécution détecté.</string>
     <string name="magnifier">Loupe</string>
     <string name="logs">Journaux</string>
     <string name="exit_game">Quitter</string>
@@ -287,6 +292,7 @@
     <string name="screen_effects_live_preview">Les modifications s’appliquent instantanément au jeu en cours.</string>
     <string name="screen_effects_color_adjustments">Réglages des couleurs</string>
     <string name="screen_effects_shader_toggles">Effets de shader</string>
+    <string name="screen_effects_scaling_mode">Mode de mise à l\'échelle</string>
     <string name="screen_effects_brightness">Luminosité</string>
     <string name="screen_effects_contrast">Contraste</string>
     <string name="screen_effects_gamma">Gamma</string>
@@ -340,6 +346,7 @@
     <string name="performance_hud_battery_level">Niveau de batterie</string>
     <string name="performance_hud_power_draw">Consommation d’énergie</string>
     <string name="performance_hud_runtime_left">Autonomie restante</string>
+    <string name="performance_hud_battery_temperature">Température de la batterie</string>
     <string name="performance_hud_clock_time">Heure</string>
     <string name="performance_hud_cpu_temperature">Température CPU</string>
     <string name="performance_hud_gpu_temperature">Température GPU</string>
@@ -661,6 +668,8 @@
     <string name="unpack_files_description">Utiliser uniquement si vous obtenez \'Application Load Error 3:0000065432\'.</string>
     <string name="force_dlc">Forcer les DLC</string>
     <string name="force_dlc_description">N\'activer que si les DLC ne sont pas détectés ou si les sauvegardes avec DLC ne fonctionnent pas</string>
+    <string name="local_saves_only">Sauvegardes locales uniquement</string>
+    <string name="local_saves_only_description">Désactiver la synchronisation des sauvegardes dans le cloud pour ce jeu et conserver les sauvegardes uniquement sur l\'appareil</string>
     <string name="launch_steam_client_beta">Lancer le client Steam (Bêta)</string>
     <string name="steam_offline_mode">Mode Hors Ligne Steam</string>
     <string name="steam_offline_mode_description">Lancer les jeux Steam en mode hors ligne</string>
@@ -673,6 +682,7 @@
     <string name="achievement_position_bottom_left">En bas à gauche</string>
     <string name="achievement_position_bottom_right">En bas à droite</string>
     <string name="launch_steam_client_description">Réduit les performances et ralentit le lancement\nPermet le jeu en ligne et corrige les problèmes de DRM et de contrôleur\nTous les jeux ne fonctionnent pas</string>
+    <string name="launch_bionic_steam">Activer Bionic Steam expérimental</string>
     <string name="allow_steam_updates">Autoriser les mises à jour Steam</string>
     <string name="allow_steam_updates_description">Met à jour Steam vers la dernière version. Réduit considérablement les performances.</string>
     <string name="steam_type">Type Steam</string>
@@ -696,6 +706,7 @@
     <string name="sync_frame">Synchroniser chaque image</string>
     <string name="disable_present_wait">Désactiver KHR_present_wait</string>
     <string name="present_modes">Modes de présentation</string>
+    <string name="renderer_present_modes">Mode de présentation du moteur de rendu</string>
     <string name="resource_type">Type de ressource mémoire</string>
     <string name="bcn_emulation">Émulation BCn</string>
     <string name="bcn_emulation_type">Type d\'émulation BCn</string>
@@ -918,6 +929,8 @@
     <string name="settings_emulation_default_config_title">Modifier la configuration par défaut</string>
     <string name="settings_emulation_default_config_subtitle">Les paramètres de conteneur initiaux pour chaque jeu (n\'affecte pas les jeux déjà installés)</string>
     <string name="settings_emulation_default_config_dialog_title">Configuration de conteneur par défaut</string>
+    <string name="settings_emulation_auto_apply_known_config_title">Appliquer automatiquement la configuration connue</string>
+    <string name="settings_emulation_auto_apply_known_config_subtitle">Appliquer automatiquement les paramètres recommandés pour les jeux Steam au premier lancement</string>
     <string name="settings_emulation_box64_presets_title">Préréglages Box64</string>
     <string name="settings_emulation_box64_presets_subtitle">Voir, modifier et créer des préréglages Box64</string>
     <string name="settings_emulation_driver_manager_title">Gestionnaire de pilotes</string>
@@ -1054,6 +1067,8 @@
     <string name="library_need_internet">Connexion internet nécessaire pour installer</string>
     <string name="library_wifi_only_enabled">Installation sur Wi-Fi/LAN uniquement activée</string>
     <string name="library_file_count">Fichier %1$d sur %2$d</string>
+    <string name="download_no_wifi">Non connecté au Wi-Fi/LAN</string>
+    <string name="download_paused_wifi">Téléchargement en pause – en attente du Wi-Fi/LAN</string>
 
     <!-- PluviaMain: Update & App Info -->
     <string name="main_update_available_title">Mise à jour disponible</string>
@@ -1076,6 +1091,7 @@
     <string name="main_discord_support_title">Le jeu a-t-il fonctionné ?</string>
     <string name="main_discord_support_message">Rejoignez le Discord pour obtenir de l\'aide pour réparer votre jeu ou améliorer les performances.</string>
     <string name="main_open_discord">Ouvrir Discord</string>
+    <string name="main_downloading_entry">Téléchargement de %s</string>
 
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Téléchargement de Steam…</string>
@@ -1443,6 +1459,15 @@
     <string name="workshop_processing">Traitement des mods…</string>
     <string name="workshop_failed_count">%1$d mod(s) Workshop n\'ont pas pu être mis à jour</string>
     <string name="workshop_download_failed">Échec du téléchargement</string>
+    <string name="option_open_store_page">Ouvrir la page de la boutique</string>
+    <string name="option_export_for_frontend">Exporter pour le frontend</string>
+    <string name="option_open_container">Ouvrir le conteneur</string>
+    <string name="option_edit_container">Modifier le conteneur</string>
+    <string name="option_reset_to_defaults">Réinitialiser le conteneur</string>
+    <string name="option_get_support">Obtenir de l\'aide</string>
+    <string name="option_submit_feedback">Envoyer un commentaire</string>
+    <string name="option_reset_drm">Réinitialiser le DRM</string>
+    <string name="option_use_known_config">Utiliser la configuration connue</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Recommandé</string>
@@ -1465,6 +1490,18 @@
      <string name="steam_save_import_failed">Échec de l\'importation des sauvegardes : %s</string>
     <string name="option_import_saves">Importer les sauvegardes</string>
     <string name="option_export_saves">Exporter les sauvegardes</string>
+    <string name="option_verify_files">Vérifier les fichiers</string>
+    <string name="option_update">Mettre à jour</string>
+    <string name="option_move_to_external_storage">Déplacer vers le stockage externe</string>
+    <string name="option_move_to_internal_storage">Déplacer vers le stockage interne</string>
+    <string name="option_force_cloud_sync">Forcer la synchronisation cloud</string>
+    <string name="option_browse_online_saves">Parcourir les sauvegardes en ligne</string>
+    <string name="option_force_download_remote">Forcer le téléchargement des sauvegardes distantes</string>
+    <string name="option_force_upload_local">Forcer l\'envoi des sauvegardes locales</string>
+    <string name="option_fetch_game_images">Récupérer les images du jeu</string>
+    <string name="option_test_graphics">Tester les graphismes</string>
+    <string name="option_manage_dlc">Gérer les DLC</string>
+    <string name="option_manage_workshop">Gérer le Workshop</string>
     <!-- HLTB (How Long To Beat) -->
     <string name="hltb_main_story">Histoire principale</string>
     <string name="hltb_main_plus_extras">Principal + Extras</string>
@@ -1531,6 +1568,8 @@
     <string name="frontend_sync_confirm_keep">Conserver</string>
     <string name="frontend_sync_resync_all">Tout resynchroniser</string>
     <string name="frontend_sync_resync_complete">Synchronisation frontend terminée</string>
+    <string name="frontend_sync_pick_directory_cd">Choisir un dossier pour %1$s</string>
+    <string name="frontend_sync_clear_directory_cd">Effacer le dossier pour %1$s</string>
     <string name="screen_effects_scaling">Mise à l\'échelle</string>
     <string name="screen_effects_upscaling">Super-résolution</string>
     <string name="screen_effects_basic_scaling">Mise à l\'échelle de base</string>
@@ -1552,6 +1591,17 @@
     <string name="screen_effects_scaling_mode_dls_desc">Passe de netteté / clarté.</string>
     <string name="screen_effects_scaling_mode_natural">Naturel</string>
     <string name="screen_effects_scaling_mode_natural_desc">Teinte plus chaude.</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">AMD FidelityFX Super Resolution 1.0 officiel utilisant EASU + RCAS avec une résolution de rendu interne réduite et une mise à l\'échelle en pleine résolution.</string>
+    <string name="screen_effects_fsr_quality">Qualité FSR</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">Ultra qualité</string>
+    <string name="screen_effects_fsr_quality_quality">Qualité</string>
+    <string name="screen_effects_fsr_quality_balanced">Équilibré</string>
+    <string name="screen_effects_fsr_quality_performance">Performance</string>
+    <string name="screen_effects_fsr_sharpness">Netteté FSR</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">Netteté au lancement</string>
+    <string name="screen_effects_launch_sharpness_note">CAS et DLS sont appliqués via vkBasalt et prennent effet au prochain lancement du jeu.</string>
     <string name="stats_key_runs">Lancements réussis sur votre GPU</string>
     <string name="stats_key_reviews">Avis 5 étoiles (votre GPU / votre appareil)</string>
     <string name="stats_key_fps">FPS attendus</string>

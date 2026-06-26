@@ -670,6 +670,7 @@
     <string name="achievement_position_bottom_left">左下</string>
     <string name="achievement_position_bottom_right">右下</string>
     <string name="launch_steam_client_description">降低效能並減慢啟動速度\n允許線上遊玩並修復 DRM 和控制器問題\n並非所有遊戲都適用</string>
+    <string name="launch_bionic_steam">啟用實驗性 Bionic Steam</string>
     <string name="allow_steam_updates">允許 Steam 更新</string>
     <string name="allow_steam_updates_description">將 Steam 更新至最新版本, 會顯著降低效能</string>
     <string name="steam_type">Steam 類型</string>
@@ -692,6 +693,7 @@
     <string name="sync_frame">同步每幀影像</string>
     <string name="disable_present_wait">停用 KHR_present_wait</string>
     <string name="present_modes">當前模式</string>
+    <string name="renderer_present_modes">算繪器呈現模式</string>
     <string name="resource_type">記憶體資源類型</string>
     <string name="bcn_emulation">BCn 模擬</string>
     <string name="bcn_emulation_type">BCn 模擬類型</string>
@@ -1607,6 +1609,8 @@
     <string name="frontend_sync_confirm_keep">保留</string>
     <string name="frontend_sync_resync_all">重新同步全部</string>
     <string name="frontend_sync_resync_complete">前端同步完成</string>
+    <string name="frontend_sync_pick_directory_cd">為 %1$s 選擇目錄</string>
+    <string name="frontend_sync_clear_directory_cd">清除 %1$s 的目錄</string>
     <string name="stats_key_runs">在您的GPU上成功執行的次數</string>
     <string name="stats_key_reviews">五星評論（您的GPU / 您的裝置）</string>
     <string name="stats_key_fps">預計FPS</string>
