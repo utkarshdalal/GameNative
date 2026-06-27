@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -52,6 +53,7 @@ import androidx.compose.ui.layout.ContentScale
 import app.gamenative.R
 import app.gamenative.data.RecommendedGame
 import app.gamenative.ui.screen.library.components.VideoHero
+import app.gamenative.ui.util.requestInitialFocus
 import app.gamenative.PrefManager
 import com.posthog.PostHog
 import com.skydoves.landscapist.ImageOptions
@@ -67,6 +69,7 @@ internal fun RecommendedGameScreen(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val focusRequester = remember { FocusRequester() }
 
     val media = remember(game) {
         val list = mutableListOf<Pair<Boolean, String>>()
@@ -399,7 +402,9 @@ internal fun RecommendedGameScreen(
                         val browserIntent = Intent(Intent.ACTION_VIEW, game.affiliateUrl.toUri())
                         context.startActivity(browserIntent)
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .requestInitialFocus(focusRequester),
                     shape = RoundedCornerShape(12.dp),
                 ) {
                     Icon(

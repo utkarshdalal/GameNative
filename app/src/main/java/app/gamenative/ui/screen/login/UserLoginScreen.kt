@@ -616,6 +616,11 @@ private fun CredentialsForm(
     val passwordFocusRequester = remember { FocusRequester() }
     val usernameFocusRequester = remember { FocusRequester() }
 
+    // Focus the username field on entry so the first controller/D-pad press is not wasted.
+    LaunchedEffect(Unit) {
+        runCatching { usernameFocusRequester.requestFocus() }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth(),

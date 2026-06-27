@@ -352,6 +352,8 @@ private fun LibraryScreenContent(
     // buttons would otherwise light up for ~100ms and then lose focus).
     var tabBarHasFocus by remember { mutableStateOf(false) }
     var lastBootstrapAtMs by remember { mutableLongStateOf(0L) }
+    // One-shot guard so initial-entry focus is requested only once and doesn't fight the tab-change effect.
+    var didInitialContentFocus by remember { mutableStateOf(false) }
 
     fun firstVisibleContentIndex(): Int {
         val lastIndex = state.appInfoList.lastIndex
@@ -612,6 +614,22 @@ private fun LibraryScreenContent(
         }
 
         previousAppCount = currentCount
+    }
+
+    // Focus content on first entry once the library has loaded (one-shot).
+    LaunchedEffect(state.appInfoList.isNotEmpty()) {
+        if (!didInitialContentFocus &&
+            state.appInfoList.isNotEmpty() &&
+            selectedAppId == null &&
+            !isSystemMenuOpen &&
+            !state.isOptionsPanelOpen &&
+            !state.isSearching
+        ) {
+            didInitialContentFocus = true
+            // Brief delay to let the list lay out before requesting focus.
+            kotlinx.coroutines.delay(150)
+            requestContentFocusOrDefer(targetListIndex = 0)
+        }
     }
 
     // Restore focus when System Menu or Options Panel closes

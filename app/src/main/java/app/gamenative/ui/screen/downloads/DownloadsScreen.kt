@@ -370,6 +370,11 @@ private fun DownloadsTabRow(
     onSectionSelected: (DownloadsSection) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusRequesters = remember {
+        sections.associateWith { FocusRequester() }
+    }
+    var requestedInitialFocus by remember { mutableStateOf(false) }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -384,6 +389,7 @@ private fun DownloadsTabRow(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
+                    .focusRequester(focusRequesters.getValue(section))
                     .selectable(
                         selected = isSelected,
                         onClick = { onSectionSelected(section) },
@@ -422,6 +428,20 @@ private fun DownloadsTabRow(
                         color = if (isSelected) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+            }
+        }
+    }
+
+    LaunchedEffect(selectedSection, requestedInitialFocus) {
+        if (requestedInitialFocus) return@LaunchedEffect
+        val focusRequester = focusRequesters.getValue(selectedSection)
+        repeat(3) {
+            try {
+                focusRequester.requestFocus()
+                requestedInitialFocus = true
+                return@LaunchedEffect
+            } catch (_: Exception) {
+                delay(80)
             }
         }
     }
