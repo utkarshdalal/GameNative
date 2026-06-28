@@ -2,8 +2,6 @@ package com.winlator.renderer;
 
 import androidx.annotation.Keep;
 
-import com.winlator.xserver.Drawable;
-
 import java.nio.ByteBuffer;
 
 public class AHBImage extends NativeTexture {
@@ -18,6 +16,7 @@ public class AHBImage extends NativeTexture {
     private int lastAcquireFence = -1;
     private long[] swapchainAhbs = new long[3];
     private int swapchainIndex = 0;
+    private long preparedRendererGeneration = -1;
     private static boolean supported = false;
 
     static {
@@ -26,30 +25,42 @@ public class AHBImage extends NativeTexture {
 
     public AHBImage(short width, short height) {
         hardwareBufferPtr = createHardwareBuffer(width, height);
-        if (hardwareBufferPtr != 0) {
-            virtualData = lockHardwareBuffer(hardwareBufferPtr);
-            this.width = nativeGetWidth(hardwareBufferPtr);
-            this.height = nativeGetHeight(hardwareBufferPtr);
-            for (int i = 0; i < 3; i++)
-                swapchainAhbs[i] = createHardwareBuffer(width, height);
-            if (virtualData == null) {
-                System.err.println("Error: Failed to lock hardware buffer");
-                destroyHardwareBuffer(hardwareBufferPtr);
-                hardwareBufferPtr = 0;
-            }
-        } else {
+        if (hardwareBufferPtr == 0) {
             System.err.println("Error: Failed to create hardware buffer");
+            return;
+        }
+
+        virtualData = lockHardwareBuffer(hardwareBufferPtr);
+        this.width = nativeGetWidth(hardwareBufferPtr);
+        this.height = nativeGetHeight(hardwareBufferPtr);
+
+        if (virtualData == null) {
+            System.err.println("Error: Failed to lock hardware buffer");
+            destroyHardwareBuffer(hardwareBufferPtr);
+            hardwareBufferPtr = 0;
+            return;
+        }
+
+        boolean swapchainOk = true;
+        for (int i = 0; i < swapchainAhbs.length; i++) {
+            swapchainAhbs[i] = createHardwareBuffer(width, height);
+            if (swapchainAhbs[i] == 0) swapchainOk = false;
+        }
+
+        if (!swapchainOk) {
+            System.err.println("Error: Failed to create CPU scanout swapchain");
+            for (int i = 0; i < swapchainAhbs.length; i++) {
+                if (swapchainAhbs[i] != 0) {
+                    destroyHardwareBuffer(swapchainAhbs[i]);
+                    swapchainAhbs[i] = 0;
+                }
+            }
         }
     }
-
-    private boolean needsRBSwap = false;
 
     public AHBImage(int socketFd) {
         hardwareBufferPtr = hardwareBufferFromSocket(socketFd);
         if (hardwareBufferPtr != 0) {
-            // Check if bit 0 is set (indicates B8G8R8A8 format needs R/B swap)
-            needsRBSwap = (hardwareBufferPtr & 1) != 0;
-            hardwareBufferPtr = hardwareBufferPtr & ~1L; // Clear the flag bit
             width = nativeGetWidth(hardwareBufferPtr);
             height = nativeGetHeight(hardwareBufferPtr);
         } else {
@@ -57,35 +68,65 @@ public class AHBImage extends NativeTexture {
         }
     }
 
-    public boolean needsRBSwap() {
-        return needsRBSwap;
-    }
-
     public short getStride() {
         return stride;
     }
 
-    public long getScanoutHardwareBufferPtr() {
-        if (swapchainAhbs[0] != 0 && virtualData != null) {
-            long targetAhb = swapchainAhbs[swapchainIndex];
-
-            int waitFence = -1;
-            synchronized (fenceLock) {
-                waitFence = swapchainFences[swapchainIndex];
-                swapchainFences[swapchainIndex] = -1;
-            }
-
-            if (lastAcquireFence >= 0) {
-                nativeCloseFd(lastAcquireFence);
-            }
-
-            lastAcquireFence = copyHardwareBuffer(virtualData, targetAhb, (short)width, (short)height, stride, waitFence);
-
-            lastUsedSlot = swapchainIndex;
-            swapchainIndex = (swapchainIndex + 1) % 3;
-            return targetAhb;
+    private boolean hasCompleteScanoutSwapchain() {
+        for (long ahb : swapchainAhbs) {
+            if (ahb == 0) return false;
         }
-        return hardwareBufferPtr;
+        return true;
+    }
+
+    void prepareScanoutSources() {
+        if (!hasCompleteScanoutSwapchain()) return;
+
+        final long generation = ASurfaceRenderer.getNativeContextGeneration();
+        if (generation <= 0) return;
+        if (preparedRendererGeneration == generation) return;
+
+        try {
+            if (ASurfaceRenderer.nativePrepareCpuSourceBuffers(swapchainAhbs[0], swapchainAhbs[1], swapchainAhbs[2])) {
+                preparedRendererGeneration = generation;
+            }
+        } catch (UnsatisfiedLinkError ignored) {
+            // The ASurfaceRenderer native library may not be active.
+        }
+    }
+
+    private void releaseScanoutSources() {
+        if (!hasCompleteScanoutSwapchain()) return;
+        try {
+            ASurfaceRenderer.nativeReleaseCpuSourceBuffers(
+                    swapchainAhbs[0], swapchainAhbs[1], swapchainAhbs[2]);
+        } catch (UnsatisfiedLinkError ignored) {
+            // The ASurfaceRenderer library/context may already be gone.
+        } finally {
+            preparedRendererGeneration = -1;
+        }
+    }
+
+    public long getScanoutHardwareBufferPtr() {
+        if (!hasCompleteScanoutSwapchain() || virtualData == null) return 0;
+
+        long targetAhb = swapchainAhbs[swapchainIndex];
+
+        int waitFence;
+        synchronized (fenceLock) {
+            waitFence = swapchainFences[swapchainIndex];
+            swapchainFences[swapchainIndex] = -1;
+        }
+
+        if (lastAcquireFence >= 0) {
+            nativeCloseFd(lastAcquireFence);
+        }
+
+        lastAcquireFence = copyHardwareBuffer(virtualData, targetAhb, (short)width, (short)height, stride, waitFence);
+
+        lastUsedSlot = swapchainIndex;
+        swapchainIndex = (swapchainIndex + 1) % swapchainAhbs.length;
+        return targetAhb;
     }
 
     public int getLastUsedSlot() {
@@ -100,6 +141,11 @@ public class AHBImage extends NativeTexture {
 
     @Keep
     public void setSwapchainFence(int slot, int fence) {
+        if (slot < 0 || slot >= swapchainFences.length) {
+            if (fence >= 0) nativeCloseFd(fence);
+            return;
+        }
+
         synchronized (fenceLock) {
             if (swapchainFences[slot] >= 0) {
                 nativeCloseFd(swapchainFences[slot]);
@@ -123,19 +169,20 @@ public class AHBImage extends NativeTexture {
 
     @Override
     public void destroy() {
+        releaseScanoutSources();
         if (lastAcquireFence >= 0) {
             nativeCloseFd(lastAcquireFence);
             lastAcquireFence = -1;
         }
         synchronized (fenceLock) {
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < swapchainFences.length; i++) {
                 if (swapchainFences[i] >= 0) {
                     nativeCloseFd(swapchainFences[i]);
                     swapchainFences[i] = -1;
                 }
             }
         }
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < swapchainAhbs.length; i++) {
             if (swapchainAhbs[i] != 0) {
                 destroyHardwareBuffer(swapchainAhbs[i]);
                 swapchainAhbs[i] = 0;
@@ -145,7 +192,6 @@ public class AHBImage extends NativeTexture {
             destroyHardwareBuffer(hardwareBufferPtr);
             hardwareBufferPtr = 0;
         }
-        virtualData = null;
         super.destroy();
     }
 

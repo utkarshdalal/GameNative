@@ -14,7 +14,6 @@ import java.nio.ByteOrder;
 
 public class Drawable extends XResource {
     private static boolean DRAWABLE_FOR_ASR = false;
-    private boolean needsSwapRB = false;
     private ByteBuffer data;
     public final short height;
     private boolean offscreenStorage;
@@ -26,17 +25,17 @@ public class Drawable extends XResource {
     public final Visual visual;
     public final short width;
 
-    private static native void copyArea(short s, short s2, short s3, short s4, short s5, short s6, short s7, short s8, ByteBuffer byteBuffer, ByteBuffer byteBuffer2, boolean swapRB);
+    private static native void copyArea(short s, short s2, short s3, short s4, short s5, short s6, short s7, short s8, ByteBuffer byteBuffer, ByteBuffer byteBuffer2);
 
-    private static native void copyAreaOp(short s, short s2, short s3, short s4, short s5, short s6, short s7, short s8, ByteBuffer byteBuffer, ByteBuffer byteBuffer2, int i, boolean swapRB);
+    private static native void copyAreaOp(short s, short s2, short s3, short s4, short s5, short s6, short s7, short s8, ByteBuffer byteBuffer, ByteBuffer byteBuffer2, int i);
 
     private static native void drawAlphaMaskedBitmap(byte b, byte b2, byte b3, byte b4, byte b5, byte b6, ByteBuffer byteBuffer, ByteBuffer byteBuffer2, ByteBuffer byteBuffer3);
 
     private static native void drawBitmap(short s, short s2, ByteBuffer byteBuffer, ByteBuffer byteBuffer2);
 
-    private static native void drawLine(short s, short s2, short s3, short s4, int i, short s5, short s6, ByteBuffer byteBuffer, boolean swapRB);
+    private static native void drawLine(short s, short s2, short s3, short s4, int i, short s5, short s6, ByteBuffer byteBuffer);
 
-    private static native void fillRect(short s, short s2, short s3, short s4, int i, short s5, ByteBuffer byteBuffer, boolean swapRB);
+    private static native void fillRect(short s, short s2, short s3, short s4, int i, short s5, ByteBuffer byteBuffer);
 
     private static native void fromBitmap(Bitmap bitmap, ByteBuffer byteBuffer);
 
@@ -48,17 +47,8 @@ public class Drawable extends XResource {
         return DRAWABLE_FOR_ASR;
     }
 
-    public void setNeedsSwapRB(boolean value) {
-        this.needsSwapRB = value;
-    }
-
-    public boolean needsSwapRB() {
-        // Only swap if ASR mode is enabled AND this drawable's texture format requires it
-        return DRAWABLE_FOR_ASR && this.needsSwapRB;
-    }
-
     static {
-        System.loadLibrary("drawable");
+        System.loadLibrary("winlator_11");
     }
 
     public Drawable(int id, int width, int height, Visual visual) {
@@ -74,8 +64,6 @@ public class Drawable extends XResource {
             AHBImage g = new AHBImage((short) width, (short) height);
             this.texture = g;
             this.data = g.getVirtualData();
-            // CPU-based AHBImage: X11 data is BGRA, needs swap to RGBA
-            this.setNeedsSwapRB(true);
         } else {
             this.data = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.LITTLE_ENDIAN);
         }
@@ -158,7 +146,7 @@ public class Drawable extends XResource {
                 if ((dstX + width) > this.width) width = (short)((this.width - dstX));
                 if ((dstY + height) > this.height) height = (short)((this.height - dstY));
 
-                copyArea(srcX, srcY, dstX, dstY, width, height, totalWidth, this.getStride(), data, this.data, this.needsSwapRB());
+                copyArea(srcX, srcY, dstX, dstY, width, height, totalWidth, this.getStride(), data, this.data);
             }
             this.data.rewind();
             data.rewind();
@@ -179,7 +167,7 @@ public class Drawable extends XResource {
         if ((x + width) > this.width) width = (short)(this.width - x);
         if ((y + height) > this.height) height = (short)(this.height - y);
 
-        copyArea(x, y, (short)0, (short)0, width, height, this.getStride(), width, this.data, dstData, this.needsSwapRB());
+        copyArea(x, y, (short)0, (short)0, width, height, this.getStride(), width, this.data, dstData);
 
         this.data.rewind();
         dstData.rewind();
@@ -198,9 +186,9 @@ public class Drawable extends XResource {
             if ((dstY + height) > this.height) height = (short)(this.height - dstY);
 
             if (gcFunction == GraphicsContext.Function.COPY) {
-                copyArea(srcX, srcY, dstX, dstY, width, height, drawable.getStride(), this.getStride(), drawable.data, this.data, this.needsSwapRB());
+                copyArea(srcX, srcY, dstX, dstY, width, height, drawable.getStride(), this.getStride(), drawable.data, this.data);
             }
-            else copyAreaOp(srcX, srcY, dstX, dstY, width, height, drawable.getStride(), this.getStride(), drawable.data, this.data, gcFunction.ordinal(), this.needsSwapRB());
+            else copyAreaOp(srcX, srcY, dstX, dstY, width, height, drawable.getStride(), this.getStride(), drawable.data, this.data, gcFunction.ordinal());
 
             this.data.rewind();
             drawable.data.rewind();
@@ -221,7 +209,7 @@ public class Drawable extends XResource {
         if ((x + width) > this.width) width = (short)((this.width - x));
         if ((y + height) > this.height) height = (short)((this.height - y));
 
-        fillRect((short)x, (short)y, (short)width, (short)height, color, this.getStride(), this.data, this.needsSwapRB());
+        fillRect((short)x, (short)y, (short)width, (short)height, color, this.getStride(), this.data);
         this.data.rewind();
         forceUpdate();
     }
@@ -241,7 +229,7 @@ public class Drawable extends XResource {
         x1 = Mathf.clamp(x1, 0, width-lineWidth);
         y1 = Mathf.clamp(y1, 0, height-lineWidth);
 
-        drawLine((short)x0, (short)y0, (short)x1, (short)y1, color, (short)lineWidth, this.getStride(), this.data, this.needsSwapRB());
+        drawLine((short)x0, (short)y0, (short)x1, (short)y1, color, (short)lineWidth, this.getStride(), this.data);
 
         this.data.rewind();
         forceUpdate();
@@ -256,7 +244,7 @@ public class Drawable extends XResource {
                 return;
             }
             drawAlphaMaskedBitmap(foreRed, foreGreen, foreBlue, backRed, backGreen, backBlue, byteBuffer, byteBuffer3, byteBuffer2);
-        this.data.rewind();
+            this.data.rewind();
             forceUpdate();
         }
     }

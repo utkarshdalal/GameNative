@@ -3,6 +3,7 @@
 #include <android/log.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <string.h>
 
 #define LOG_TAG "AHBImage"
@@ -165,56 +166,62 @@ Java_com_winlator_renderer_AHBImage_hardwareBufferFromSocket(
     // Set Stride to AHBImage
     (*env)->CallVoidMethod(env, obj, setStride, (jshort)desc.stride);
 
-    // Check if incoming buffer is B8G8R8A8 (format value 5)
-    // If so, we need to swap R/B when displaying
-    // Android NDK defines: AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM = 5
-    //                    AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM = 1
-    if (desc.format == AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM) { // AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM
-        LOGD("RemoteAHB: Detected B8G8R8A8 format (value=5), will apply R/B swap");
-        // Store format info by encoding it in the pointer (bit 0 set = needs swap)
-        return (jlong)(uintptr_t)ahb | 1;
-    }
-
-    LOGD("RemoteAHB: Format is not B8G8R8A8 (value=%u), no swap needed", desc.format);
+    LOGD("RemoteAHB: (value=%u)", desc.format);
     return (jlong)(uintptr_t)ahb;
 }
 
 JNIEXPORT jint JNICALL
 Java_com_winlator_renderer_AHBImage_copyHardwareBuffer(
-        JNIEnv *env, jobject obj, jobject srcBuffer, jlong dstPtr, jshort width, jshort height, jshort srcStride, jint waitFence)
+        JNIEnv *env, jobject obj, jobject srcBuffer, jlong dstPtr,
+        jshort width, jshort height, jshort srcStride, jint waitFence)
 {
     uint32_t* srcAddr = (uint32_t*)(*env)->GetDirectBufferAddress(env, srcBuffer);
+    jlong srcCapacity = (*env)->GetDirectBufferCapacity(env, srcBuffer);
     AHardwareBuffer *dstAhb = (AHardwareBuffer *)(uintptr_t)dstPtr;
-    if (!srcAddr || !dstAhb) {
+    if (!srcAddr || !dstAhb || width <= 0 || height <= 0 ||
+        srcStride < width ||
+        srcCapacity < (jlong)srcStride * (jlong)height * 4) {
         if (waitFence >= 0) close(waitFence);
         return -1;
     }
+
     int32_t unlockFence = -1;
-
     void *dstAddrVoid = NULL;
-    if (AHardwareBuffer_lock(dstAhb, AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, waitFence, NULL, &dstAddrVoid) == 0) {
-        uint32_t* dstAddr = (uint32_t*)dstAddrVoid;
-        AHardwareBuffer_Desc desc;
-        AHardwareBuffer_describe(dstAhb, &desc);
-        uint32_t dstStride = desc.stride;
 
-        // Direct copy - data is already in RGBA format from drawable.c conversion
-        if (width == srcStride && width == dstStride) {
-            // Fast path: contiguous copy
-            memcpy(dstAddr, srcAddr, (size_t)width * height * 4);
-        } else {
-            // Row-by-row copy with stride handling
-            for (int y = 0; y < height; y++) {
-                memcpy(dstAddr + y * dstStride, srcAddr + y * srcStride, (size_t)width * 4);
-            }
-        }
+    int lockResult = AHardwareBuffer_lock(dstAhb, AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, waitFence, NULL, &dstAddrVoid);
+    if (lockResult != 0) {
+        LOGE("nativeCopyHardwareBuffer: lock failed: %d", lockResult);
+        return -1;
+    }
 
-        if (AHardwareBuffer_unlock(dstAhb, &unlockFence) != 0) {
-            LOGE("nativeCopyHardwareBuffer: unlock failed");
-        }
+    uint32_t* dstAddr = (uint32_t*)dstAddrVoid;
+    AHardwareBuffer_Desc desc;
+    AHardwareBuffer_describe(dstAhb, &desc);
+    const uint32_t dstStride = desc.stride;
+
+    if ((uint32_t)width > desc.width || (uint32_t)height > desc.height ||
+        dstStride < (uint32_t)width) {
+        LOGE("nativeCopyHardwareBuffer: invalid dimensions/stride");
+        AHardwareBuffer_unlock(dstAhb, NULL);
+        return -1;
+    }
+
+    if ((uint32_t)width == (uint32_t)srcStride &&
+        (uint32_t)width == dstStride) {
+        memcpy(dstAddr, srcAddr, (size_t)width * (size_t)height * 4);
     } else {
-        if (waitFence >= 0) close(waitFence);
-        LOGE("nativeCopyHardwareBuffer: lock failed");
+        for (int y = 0; y < height; y++) {
+            memcpy(dstAddr + (size_t)y * dstStride,
+                   srcAddr + (size_t)y * (uint32_t)srcStride,
+                   (size_t)width * 4);
+        }
+    }
+
+    const int unlockResult = AHardwareBuffer_unlock(dstAhb, &unlockFence);
+    if (unlockResult != 0) {
+        LOGE("nativeCopyHardwareBuffer: unlock failed: %d", unlockResult);
+        if (unlockFence >= 0) close(unlockFence);
+        return -1;
     }
 
     return unlockFence;
@@ -224,15 +231,20 @@ JNIEXPORT jlong JNICALL
 Java_com_winlator_renderer_AHBImage_createHardwareBuffer(
         JNIEnv *env, jobject obj, jshort width, jshort height)
 {
+    if (width <= 0 || height <= 0) {
+        LOGE("nativeCreateHardwareBuffer: invalid dimensions %d x %d", width, height);
+        return 0;
+    }
+
     AHardwareBuffer_Desc desc;
     memset(&desc, 0, sizeof(desc));
-    desc.width  = width;
-    desc.height = height;
+    desc.width  = (uint32_t)width;
+    desc.height = (uint32_t)height;
     desc.layers = 1;
     desc.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
     desc.usage  = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE
                   | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN
-                  | AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER
+                  | AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT
                   | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN
                   | AHARDWAREBUFFER_USAGE_COMPOSER_OVERLAY;
 

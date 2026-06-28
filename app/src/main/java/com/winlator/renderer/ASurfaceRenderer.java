@@ -27,11 +27,18 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ASurfaceRenderer implements WindowManager.OnWindowModificationListener,
         Pointer.OnPointerMotionListener,
         XServerRenderer {
     static { System.loadLibrary("asurface_renderer"); }
+
+    private static final AtomicLong NATIVE_CONTEXT_GENERATION = new AtomicLong();
+
+    static long getNativeContextGeneration() {
+        return NATIVE_CONTEXT_GENERATION.get();
+    }
 
     public final XServerView xServerView;
     private final XServer xServer;
@@ -134,6 +141,8 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private native boolean nativeReattachSurface(Surface surface);
     private native void nativeDestroyScanout();
     private native void nativeSetWindowBuffer(long contentId, long ahbPtr, int fenceFd, long windowId, long serial, AHBImage ahbImage, int slot);
+    static native boolean nativePrepareCpuSourceBuffers(long ahb0, long ahb1, long ahb2);
+    static native void nativeReleaseCpuSourceBuffers(long ahb0, long ahb1, long ahb2);
     private native void nativeScanoutSetCursorVisibility(boolean visible);
     private native void nativeRegisterWindowSC(long contentId, String debugName);
     private native void nativeUnregisterWindowSC(long contentId);
@@ -144,8 +153,8 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private native void nativeBeginTransaction();
     private native void nativeApplyTransaction();
     private native void nativeUpdateWindow(long contentId, boolean visible, int zOrder,
-            int srcL, int srcT, int srcR, int srcB,
-            int dstL, int dstT, int dstR, int dstB);
+                                           int srcL, int srcT, int srcR, int srcB,
+                                           int dstL, int dstT, int dstR, int dstB);
 
     private WindowSurface getOrCreateWindowSurface(int contentId, int w, int h, String debugName)
     {
@@ -249,6 +258,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         }
         surfaceInitialized = nativeInit(surface, xServer.screenInfo.width, xServer.screenInfo.height);
         if (surfaceInitialized) {
+            NATIVE_CONTEXT_GENERATION.incrementAndGet();
             nativeSetSfCallbackTarget(this);
             updateTransform();
             nativeInitScanout();
@@ -443,6 +453,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         }
         synchronized (drawable.renderLock) {
             if (drawable.getTexture() instanceof AHBImage g) {
+                g.prepareScanoutSources();
                 long ahbPtr = g.getScanoutHardwareBufferPtr();
                 if (ahbPtr != 0) {
                     int acquireFence = g.consumeAcquireFence();
@@ -551,11 +562,12 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 AHBImage g = new AHBImage(content.width, content.height);
                 if (g.getHardwareBufferPtr() != 0) {
                     content.setTexture(g);
-                    // CPU-based AHBImage: X11 data is BGRA, needs swap to RGBA
-                    content.setNeedsSwapRB(true);
                 }
             }
-            if (content.getTexture() instanceof AHBImage) {
+            if (content.getTexture() instanceof AHBImage g) {
+                // Import all three stable CPU scanout AHBs before the first
+                // onDraw frame whenever the native renderer already exists.
+                g.prepareScanoutSources();
                 content.setOnDrawListener(() -> {
                     if (windowSurfaces.containsKey(window.id)) { pushCpuImageToNative(window.id, content); }
                 });

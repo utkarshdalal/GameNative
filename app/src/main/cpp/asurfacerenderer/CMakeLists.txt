@@ -26,7 +26,6 @@ add_library(asurface_renderer SHARED
         asurface_jni.cpp
         ASurfaceRendererContext.cpp
         blit_converter.cpp
-        compute_converter.cpp
 )
 
 target_compile_options(asurface_renderer PRIVATE

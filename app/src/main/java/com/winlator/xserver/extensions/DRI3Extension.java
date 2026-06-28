@@ -156,11 +156,6 @@ public class DRI3Extension implements Extension {
             Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, image.getStride(), height, depth);
             drawable.setTexture(image);
 
-            // For GPU buffers from socket, check if format needs R/B swap
-            if (image instanceof AHBImage) {
-                drawable.setNeedsSwapRB(((AHBImage) image).needsRBSwap());
-            }
-
             client.xServer.pixmapManager.createPixmap(drawable);
         }
         finally {
