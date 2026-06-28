@@ -1176,6 +1176,34 @@ class GOGManager @Inject constructor(
         }
     }
 
+    suspend fun checkPreLaunchConflict(
+        appId: String,
+    ): GOGCloudSavesManager.SyncCheckResult? = withContext(Dispatchers.IO) {
+        try {
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+            val game = getGameFromDbById(gameId.toString()) ?: return@withContext null
+            val saveLocations = getSaveDirectoryPath(context, appId, game.title)
+            if (saveLocations.isNullOrEmpty()) return@withContext null
+
+            val cloudSavesManager = GOGCloudSavesManager(context)
+            val best = saveLocations.mapNotNull { location ->
+                val timestamp = getCloudSaveSyncTimestamp(appId, location.name).toLongOrNull() ?: 0L
+                cloudSavesManager.checkSync(
+                    clientId = location.clientId,
+                    clientSecret = location.clientSecret,
+                    localPath = location.location,
+                    dirname = location.name,
+                    lastSyncTimestamp = timestamp,
+                )?.takeIf { it.action == GOGCloudSavesManager.SyncAction.CONFLICT }
+            }.maxByOrNull { kotlin.math.abs(it.localTimestampMs - it.remoteTimestampMs) }
+
+            best
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "[Cloud Saves] Failed to check pre-launch conflict for appId $appId")
+            null
+        }
+    }
+
     /**
      * Get stored sync timestamp for a game+location
      * @param appId Game app ID

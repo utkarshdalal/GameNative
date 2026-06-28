@@ -450,6 +450,17 @@ class GOGService : Service() {
         }
 
         /**
+         * Returns the most diverged conflicted save location, or null if there is no conflict or
+         * the pre-flight check could not complete.
+         */
+        suspend fun checkPreLaunchConflict(
+            appId: String,
+        ): GOGCloudSavesManager.SyncCheckResult? = withContext(Dispatchers.IO) {
+            val serviceInstance = getInstance() ?: return@withContext null
+            serviceInstance.gogManager.checkPreLaunchConflict(appId)
+        }
+
+        /**
          * Sync GOG cloud saves for a game
          * @param context Android context
          * @param appId Game app ID (e.g., "gog_123456")

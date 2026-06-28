@@ -1825,14 +1825,54 @@ fun preLaunchApp(
             } else {
                 Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves before launch")
 
+                if (preferredSave == SaveLocation.None) {
+                    val conflictInfo = GOGService.checkPreLaunchConflict(appId)
+                    if (conflictInfo != null) {
+                        val localDate = Date(conflictInfo.localTimestampMs).toString()
+                        val remoteDate = Date(conflictInfo.remoteTimestampMs).toString()
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.SYNC_CONFLICT,
+                                title = context.getString(R.string.main_save_conflict_title),
+                                message = context.getString(R.string.main_save_conflict_message, localDate, remoteDate),
+                                dismissBtnText = context.getString(R.string.main_keep_local),
+                                confirmBtnText = context.getString(R.string.main_keep_remote),
+                            ),
+                        )
+                        setLoadingDialogVisible(false)
+                        return@launch
+                    }
+                }
+
                 // Sync cloud saves (download latest saves before playing)
                 Timber.tag("GOG").d("[Cloud Saves] Starting pre-game download sync for $appId")
+                val preferredAction = when (preferredSave) {
+                    SaveLocation.Remote -> "download"
+                    SaveLocation.Local -> "upload"
+                    else -> "none"
+                }
                 val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
                     context = context,
                     appId = appId,
+                    preferredAction = preferredAction,
                 )
 
                 if (!syncSuccess) {
+                    if (preferredSave != SaveLocation.None) {
+                        Timber.tag("GOG").e("[Cloud Saves] Forced sync failed for $appId with preferredSave=$preferredSave, aborting launch")
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.SYNC_FAIL,
+                                title = context.getString(R.string.sync_error_title),
+                                message = context.getString(R.string.main_sync_failed, "GOG cloud save sync"),
+                                dismissBtnText = context.getString(R.string.ok),
+                            ),
+                        )
+                        setLoadingDialogVisible(false)
+                        return@launch
+                    }
                     Timber.tag("GOG").w("[Cloud Saves] Download sync failed for $appId, proceeding with launch anyway")
                     // Don't block launch on sync failure - log warning and continue
                 } else {
