@@ -617,8 +617,16 @@ private fun CredentialsForm(
     val usernameFocusRequester = remember { FocusRequester() }
 
     // Focus the username field on entry so the first controller/D-pad press is not wasted.
+    // Retry: the field may not be attached on the first frame.
     LaunchedEffect(Unit) {
-        runCatching { usernameFocusRequester.requestFocus() }
+        repeat(5) {
+            try {
+                usernameFocusRequester.requestFocus()
+                return@LaunchedEffect
+            } catch (_: IllegalStateException) {
+                delay(32)
+            }
+        }
     }
 
     Column(

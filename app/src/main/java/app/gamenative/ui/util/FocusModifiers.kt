@@ -18,7 +18,7 @@ fun Modifier.requestInitialFocus(
     focusRequester: FocusRequester,
     enabled: Boolean = true,
 ): Modifier {
-    LaunchedEffect(enabled) {
+    LaunchedEffect(focusRequester, enabled) {
         if (!enabled) return@LaunchedEffect
         // Node may not be placed on the first frame; retry briefly until requestFocus() succeeds.
         repeat(5) {
