@@ -76,6 +76,10 @@ public class FrameRating extends FrameLayout implements Runnable {
                     minFPS = currentFPS;
                 }
 
+                // [FramePacingLogger] Feed the authoritative on-screen FPS (same value
+                // the Performance HUD shows) into the frame-pacing report.
+                com.winlator.renderer.FramePacingLogger.updateMeasuredFps(lastFPS, getAvgFPS());
+
                 lastReadingTime = time;
             }
 

@@ -145,6 +145,7 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
             synchronized (drawable.renderLock) {
                 drawable.forceUpdate();
             }
+            com.winlator.renderer.FramePacingLogger.recordVortekPresent(); // [FramePacingLogger] Vortek native frame pushed into the active renderer
         }
     }
 

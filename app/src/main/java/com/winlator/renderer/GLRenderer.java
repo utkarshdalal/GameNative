@@ -126,6 +126,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     @Override
     public void onDrawFrame(GL10 gl) {
+        FramePacingLogger.recordGLDrawFrame(); // [FramePacingLogger] GL renderer: one EGL swap / drawn frame
         if (toggleFullscreen) {
             fullscreen = !fullscreen;
             toggleFullscreen = false;

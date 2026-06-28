@@ -449,9 +449,11 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                         nativeScanoutSetBuffer(nativeHandle, ahbPtr,
                             rx, ry, pixmap.width, pixmap.height, fenceFd);
                         g.lock();
+                        FramePacingLogger.recordVkContentAHB(true); // [FramePacingLogger] Vulkan zero-copy scanout present (X Present direct)
                     } else {
                         nativeUpdateWindowContentAHB(nativeHandle, targetId, ahbPtr,
                             pixmap.width, pixmap.height, rx, ry);
+                        FramePacingLogger.recordVkContentAHB(false); // [FramePacingLogger] Vulkan AHB compositor present (X Present direct)
                     }
                     return;
                 }
@@ -460,6 +462,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     short s = g.getStride() > 0 ? g.getStride() : pixmap.width;
                     nativeUpdateWindowContent(nativeHandle, targetId, vd,
                         pixmap.width, pixmap.height, s, rx, ry);
+                    FramePacingLogger.recordVkContentPixels(); // [FramePacingLogger] Vulkan software pixel blit (X Present direct, virtual data)
                     return;
                 }
             }
@@ -468,11 +471,13 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
             short stride = (short)(buf.capacity() / (pixmap.height * 4));
             nativeUpdateWindowContent(nativeHandle, targetId, buf,
                 pixmap.width, pixmap.height, stride, rx, ry);
+            FramePacingLogger.recordVkContentPixels(); // [FramePacingLogger] Vulkan software pixel blit (X Present direct, raw buffer)
         }
     }
 
     @Override
     public void onUpdateWindowContent(Window window) {
+        FramePacingLogger.recordVkUpdate(); // [FramePacingLogger] Vulkan compositor sink invoked (ALL non-direct sources)
         if (hudRef != null) hudRef.update();
         final long handle;
         synchronized (lock) { handle = nativeHandle; }
@@ -500,6 +505,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                         nativeScanoutSetBuffer(handle, ahbPtr,
                             rx, ry, drawable.width, drawable.height, fenceFd);
                         g.lock();
+                        FramePacingLogger.recordVkContentAHB(true); // [FramePacingLogger] Vulkan zero-copy scanout present
                         boolean delivered = nativeIsGameFrameDelivered(handle);
                         if (!xRenderingPausedForScanout && !wasDelivered && delivered) {
                             xServer.setRenderingEnabled(false);
@@ -508,6 +514,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     } else if (!scanoutNow) {
                         nativeUpdateWindowContentAHB(handle, drawableId, ahbPtr,
                             drawable.width, drawable.height, rx, ry);
+                        FramePacingLogger.recordVkContentAHB(false); // [FramePacingLogger] Vulkan AHB compositor present
                     }
                     return;
                 }
@@ -516,6 +523,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     short s = g.getStride() > 0 ? g.getStride() : drawable.width;
                     nativeUpdateWindowContent(handle, drawableId, vd,
                         drawable.width, drawable.height, s, rx, ry);
+                    FramePacingLogger.recordVkContentPixels(); // [FramePacingLogger] Vulkan software pixel blit (virtual data)
                     return;
                 }
             }
@@ -524,6 +532,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
             short stride = (short)(buf.capacity() / (drawable.height * 4));
             nativeUpdateWindowContent(handle, drawableId, buf,
                 drawable.width, drawable.height, stride, rx, ry);
+            FramePacingLogger.recordVkContentPixels(); // [FramePacingLogger] Vulkan software pixel blit (raw buffer)
         }
     }
 
@@ -812,6 +821,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     public int getFpsLimit() { return fpsLimit; }
     public void setFpsLimit(int limit) {
         this.fpsLimit = limit;
+        FramePacingLogger.updateVkScanoutHint(limit); // [FramePacingLogger] Vulkan SurfaceControl frame-rate hint changed
         if (android.os.Build.VERSION.SDK_INT >= 30 && scanoutGameSC != null) {
             float targetFps = limit > 0 ? (float)limit
                 : xServerView.getDisplay() != null
