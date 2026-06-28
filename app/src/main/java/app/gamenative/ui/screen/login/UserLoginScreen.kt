@@ -621,11 +621,10 @@ private fun CredentialsForm(
     LaunchedEffect(Unit) {
         repeat(5) {
             try {
-                usernameFocusRequester.requestFocus()
-                return@LaunchedEffect
+                if (usernameFocusRequester.requestFocus()) return@LaunchedEffect
             } catch (_: IllegalStateException) {
-                delay(32)
             }
+            delay(32)
         }
     }
 

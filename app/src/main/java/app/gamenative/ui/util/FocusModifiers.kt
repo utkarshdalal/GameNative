@@ -20,14 +20,14 @@ fun Modifier.requestInitialFocus(
 ): Modifier {
     LaunchedEffect(focusRequester, enabled) {
         if (!enabled) return@LaunchedEffect
-        // Node may not be placed on the first frame; retry briefly until requestFocus() succeeds.
+        // Node may not be placed on the first frame, and requestFocus() returns false when the
+        // request is not honored yet; retry until it actually takes.
         repeat(5) {
             try {
-                focusRequester.requestFocus()
-                return@LaunchedEffect
+                if (focusRequester.requestFocus()) return@LaunchedEffect
             } catch (_: IllegalStateException) {
-                delay(32)
             }
+            delay(32)
         }
     }
     return this.focusRequester(focusRequester)

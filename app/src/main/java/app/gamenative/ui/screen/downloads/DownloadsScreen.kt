@@ -353,12 +353,13 @@ private fun DownloadsSidebar(
         val focusRequester = focusRequesters.getValue(selectedSection)
         repeat(3) {
             try {
-                focusRequester.requestFocus()
-                requestedInitialFocus = true
-                return@LaunchedEffect
+                if (focusRequester.requestFocus()) {
+                    requestedInitialFocus = true
+                    return@LaunchedEffect
+                }
             } catch (_: Exception) {
-                delay(80)
             }
+            delay(80)
         }
     }
 }
@@ -437,12 +438,13 @@ private fun DownloadsTabRow(
         val focusRequester = focusRequesters.getValue(selectedSection)
         repeat(3) {
             try {
-                focusRequester.requestFocus()
-                requestedInitialFocus = true
-                return@LaunchedEffect
+                if (focusRequester.requestFocus()) {
+                    requestedInitialFocus = true
+                    return@LaunchedEffect
+                }
             } catch (_: Exception) {
-                delay(80)
             }
+            delay(80)
         }
     }
 }
