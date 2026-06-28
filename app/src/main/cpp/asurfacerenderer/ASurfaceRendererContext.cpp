@@ -1,13 +1,35 @@
 #include "ASurfaceRendererContext.h"
+#include "blit_converter.h"
+#include "compute_converter.h"
 #include <algorithm>
 #include <cstring>
 #include <dlfcn.h>
 #include <unistd.h>
 #include <android/api-level.h>
 #include <android/log.h>
+#include <sys/system_properties.h>
 #include <unordered_map>
 #include <mutex>
 #include <functional>
+
+#define LOG_TAG "ASurfaceRenderer"
+
+// Enable/disable logging
+#ifndef ENABLE_ASR_LOGGING
+#define ENABLE_ASR_LOGGING 0
+#endif
+
+#if ENABLE_ASR_LOGGING
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#else
+#define LOGD(...) ((void)0)
+#define LOGI(...) ((void)0)
+#define LOGW(...) ((void)0)
+#define LOGE(...) ((void)0)
+#endif
 
 typedef void (*ASurfaceTransaction_OnBufferRelease)(void* context, int release_fence_fd);
 
@@ -100,6 +122,7 @@ ASurfaceRendererContext::ASurfaceRendererContext(ANativeWindow* win, int cWidth,
 {
     loadScanoutApi();
     loadSfCallbackApi();
+    initGPUConverters();
 }
 
 ASurfaceRendererContext::~ASurfaceRendererContext() {
@@ -120,6 +143,7 @@ ASurfaceRendererContext::~ASurfaceRendererContext() {
     }
 
     destroyScanout();
+    cleanupGPUConverters();
     if (window) {
         ANativeWindow_release(window);
         window = nullptr;
@@ -304,7 +328,7 @@ static inline uint32_t swapRB(uint32_t pixel) {
             ((pixel & 0x000000FF) << 16)); // Move R to B position
 }
 
-void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AHardwareBuffer* ahb, int fenceFd, int64_t windowId, int64_t serial, jobject ahbImage, int slot, bool needsRBSwap) {
+void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AHardwareBuffer* ahb, int fenceFd, int64_t windowId, int64_t serial, jobject ahbImage, int slot) {
     if (!ahb) { if (fenceFd >= 0) close(fenceFd); return; }
 
     AHardwareBuffer* finalAhb = ahb;
@@ -312,6 +336,7 @@ void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AH
     AHardwareBuffer* tempAhb = nullptr;
 
     // Check buffer format to determine if R/B swap is needed
+    bool needsRBSwap = false;
     if (!needsRBSwap) {
         AHardwareBuffer_Desc srcDesc;
         AHardwareBuffer_describe(ahb, &srcDesc);
@@ -321,49 +346,50 @@ void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AH
         // Vulkan creates R8G8B8A8 buffers but writes BGR data, so we need to swap for GPU buffers
         if (srcDesc.format == AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM) {
             // B8G8R8A8 format - always swap
+            LOGD("Buffer format B8G8R8A8 detected, enabling R/B swap");
             needsRBSwap = true;
         } else if (srcDesc.format == 1 && ahbImage == nullptr) {
             // R8G8B8A8 format from GPU (Vulkan/GL) - swap because data is in BGR order
+            LOGD("GPU buffer with R8G8B8A8 format detected, enabling R/B swap (data is BGR)");
             needsRBSwap = true;
+        } else {
+            LOGD("Buffer format=%d, ahbImage=%p, no R/B swap needed",
+                 srcDesc.format, ahbImage);
         }
         // CPU buffers (ahbImage != null) with R8G8B8A8 format are already correct
     }
 
-    // If incoming buffer needs R/B swap, convert it
+    // If incoming buffer needs R/B swap, convert it using GPU
     if (needsRBSwap) {
         AHardwareBuffer_Desc srcDesc;
         AHardwareBuffer_describe(ahb, &srcDesc);
 
-        // Create a new R8G8B8A8 buffer
-        AHardwareBuffer_Desc dstDesc = srcDesc;
-        dstDesc.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+        // If buffer is already B8G8R8A8, try submitting it directly first
+        // Some devices (like Odin 3) natively support B8G8R8A8 and don't need conversion
+        if (srcDesc.format == AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM) {
+            LOGI("Buffer is B8G8R8A8, submitting directly (device may support it natively)");
+            // Don't convert, just use the original buffer
+            // If colors are wrong, user can force conversion via property
+        } else {
+            // R8G8B8A8 buffer with BGR data - needs conversion
+            // Create a new R8G8B8A8 buffer for converted output
+            AHardwareBuffer_Desc dstDesc = srcDesc;
+            dstDesc.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
 
-        if (AHardwareBuffer_allocate(&dstDesc, &tempAhb) == 0) {
-            // Lock both buffers
-            void* srcAddr = nullptr;
-            void* dstAddr = nullptr;
-            if (AHardwareBuffer_lock(ahb, AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN, fenceFd, nullptr, &srcAddr) == 0 &&
-                AHardwareBuffer_lock(tempAhb, AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, -1, nullptr, &dstAddr) == 0) {
+            if (AHardwareBuffer_allocate(&dstDesc, &tempAhb) == 0) {
+                // Use GPU converter (much faster than CPU!)
+                int convertedFence = convertBufferGPU(ahb, tempAhb, fenceFd);
 
-                // Copy with R/B swap
-                uint32_t* srcPixels = (uint32_t*)srcAddr;
-                uint32_t* dstPixels = (uint32_t*)dstAddr;
-                uint32_t pixelCount = srcDesc.stride * srcDesc.height;
-
-                for (uint32_t i = 0; i < pixelCount; i++) {
-                    dstPixels[i] = swapRB(srcPixels[i]);
+                if (convertedFence >= 0) {
+                    finalAhb = tempAhb;
+                    finalFence = convertedFence;
+                    // Original fence is consumed by converter
+                } else {
+                    // GPU conversion failed, fall back to original buffer
+                    LOGW("GPU conversion failed, using original buffer (colors may be wrong)");
+                    AHardwareBuffer_release(tempAhb);
+                    tempAhb = nullptr;
                 }
-
-                // Unlock destination to get new fence
-                AHardwareBuffer_unlock(tempAhb, &finalFence);
-                AHardwareBuffer_unlock(ahb, nullptr);
-
-                finalAhb = tempAhb;
-            } else {
-                // Lock failed, use original
-                if (srcAddr) AHardwareBuffer_unlock(ahb, nullptr);
-                AHardwareBuffer_release(tempAhb);
-                tempAhb = nullptr;
             }
         }
     }
@@ -550,4 +576,89 @@ void ASurfaceRendererContext::unregisterWindowSC(int64_t contentId) {
         });
         SC_RELEASE(sc);
     }
+}
+
+// ============================================================================
+// GPU Converter Implementation
+// ============================================================================
+
+void ASurfaceRendererContext::initGPUConverters() {
+    // Try to initialize compute shader converter first (faster, but requires ES 3.1+)
+    computeConverter = new ComputeConverter();
+
+    // For now, we'll also create the blit converter as fallback
+    blitConverter = new BlitConverter();
+
+    // Check if compute converter should be disabled via system property
+    char propValue[PROP_VALUE_MAX] = {0};
+    __system_property_get("debug.gamenative.force_blit", propValue);
+    bool forceBlit = (strcmp(propValue, "1") == 0);
+
+    if (forceBlit) {
+        LOGI("Compute converter disabled via property, using blit converter");
+        useComputeConverter = false;
+    } else {
+        // We'll determine which to use on first conversion attempt
+        // Compute shader will be tried first, fallback to blit if it fails
+        useComputeConverter = true;
+        LOGI("GPU converters initialized (will auto-select based on device capability)");
+    }
+}
+
+void ASurfaceRendererContext::cleanupGPUConverters() {
+    if (blitConverter) {
+        delete blitConverter;
+        blitConverter = nullptr;
+    }
+    if (computeConverter) {
+        delete computeConverter;
+        computeConverter = nullptr;
+    }
+}
+
+int ASurfaceRendererContext::convertBufferGPU(AHardwareBuffer* srcBGRA, AHardwareBuffer* dstRGBA, int srcFenceFd) {
+    int resultFence = -1;
+
+    // Get buffer info for logging
+    AHardwareBuffer_Desc desc;
+    AHardwareBuffer_describe(srcBGRA, &desc);
+
+    // Try compute shader first if enabled
+    if (useComputeConverter && computeConverter) {
+        LOGD("Trying compute converter for %dx%d buffer", desc.width, desc.height);
+        resultFence = computeConverter->convertBGRAtoRGBA(srcBGRA, dstRGBA, srcFenceFd);
+
+        if (resultFence < 0) {
+            // Compute converter failed, disable it and fall back to blit converter
+            LOGW("Compute converter failed, switching to blit converter");
+            useComputeConverter = false;
+
+            // srcFenceFd was already consumed/closed by failed attempt, so pass -1
+            if (blitConverter) {
+                resultFence = blitConverter->convertBGRAtoRGBA(srcBGRA, dstRGBA, -1);
+                if (resultFence >= 0) {
+                    LOGI("Blit converter succeeded (fence=%d)", resultFence);
+                } else {
+                    LOGE("Blit converter also failed!");
+                }
+            }
+        } else {
+            LOGD("Compute converter succeeded (fence=%d)", resultFence);
+        }
+    } else if (blitConverter) {
+        // Use blit converter
+        LOGD("Using blit converter for %dx%d buffer", desc.width, desc.height);
+        resultFence = blitConverter->convertBGRAtoRGBA(srcBGRA, dstRGBA, srcFenceFd);
+        if (resultFence >= 0) {
+            LOGD("Blit converter succeeded (fence=%d)", resultFence);
+        } else {
+            LOGE("Blit converter failed!");
+        }
+    } else {
+        // No converter available
+        LOGE("No GPU converter available!");
+        if (srcFenceFd >= 0) close(srcFenceFd);
+    }
+
+    return resultFence;
 }

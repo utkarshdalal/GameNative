@@ -13,6 +13,10 @@
 #include <unordered_map>
 #include <functional>
 
+// Forward declarations for GPU converters
+class BlitConverter;
+class ComputeConverter;
+
 #define WLOG_TAG "asr_renderer"
 #define RLOG(...) __android_log_print(ANDROID_LOG_INFO, WLOG_TAG, __VA_ARGS__)
 #define RLOG_E(...) __android_log_print(ANDROID_LOG_ERROR, WLOG_TAG, __VA_ARGS__)
@@ -54,7 +58,7 @@ public:
     void registerWindowSC(int64_t contentId, const char* debugName = "(x11_window)");
     void unregisterWindowSC(int64_t contentId);
     void setWindowBuffer(JNIEnv* env, int64_t contentId, AHardwareBuffer* ahb, int fenceFd,
-                         int64_t windowId = 0, int64_t serial = 0, jobject gpuImage = nullptr, int slot = -1, bool needsRBSwap = false);
+                         int64_t windowId = 0, int64_t serial = 0, jobject gpuImage = nullptr, int slot = -1);
 
     void scanoutSetCursorVisibility(bool visible);
     void applyCursorGeometry(short x, short y, short hotX, short hotY, bool cursorVisible);
@@ -128,4 +132,13 @@ private:
     void* fnSTSetOnComplete     = nullptr;
 
     std::shared_ptr<CallbackTarget> callbackTarget;
+
+    // GPU Converters for R/B swap
+    void initGPUConverters();
+    void cleanupGPUConverters();
+    int convertBufferGPU(AHardwareBuffer* srcBGRA, AHardwareBuffer* dstRGBA, int srcFenceFd);
+
+    BlitConverter* blitConverter = nullptr;
+    ComputeConverter* computeConverter = nullptr;
+    bool useComputeConverter = false;
 };

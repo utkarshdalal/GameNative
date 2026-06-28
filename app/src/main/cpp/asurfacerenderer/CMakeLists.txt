@@ -25,6 +25,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 add_library(asurface_renderer SHARED
         asurface_jni.cpp
         ASurfaceRendererContext.cpp
+        blit_converter.cpp
+        compute_converter.cpp
 )
 
 target_compile_options(asurface_renderer PRIVATE
@@ -38,6 +40,8 @@ target_link_libraries(asurface_renderer
         android
         dl
         atomic
+        EGL
+        GLESv3
 )
 
 enable_16kb_pages(asurface_renderer)

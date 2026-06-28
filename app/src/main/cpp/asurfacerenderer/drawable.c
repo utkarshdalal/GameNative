@@ -13,6 +13,12 @@
 
 enum GCFunction {GCF_CLEAR, GCF_AND, GCF_AND_REVERSE, GCF_COPY, GCF_AND_INVERTED, GCF_NO_OP, GCF_XOR, GCF_OR, GCF_NOR, GCF_EQUIV, GCF_INVERT, GCF_OR_REVERSE, GCF_COPY_INVERTED, GCF_OR_INVERTED, GCF_NAND, GCF_SET};
 
+static inline uint32_t swapRB(uint32_t pixel) {
+    return ((pixel & 0xFF00FF00) |
+            ((pixel & 0x00FF0000) >> 16) |
+            ((pixel & 0x000000FF) << 16));
+}
+
 static int packColor(int8_t r, int8_t g, int8_t b) {
     return ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
 }
@@ -96,7 +102,7 @@ Java_com_winlator_xserver_Drawable_copyArea(JNIEnv *env, jclass obj, jshort srcX
                                             jshort srcY, jshort dstX, jshort dstY,
                                             jshort width, jshort height, jshort srcStride,
                                             jshort dstStride, jobject srcData,
-                                            jobject dstData) {
+                                            jobject dstData, jboolean needsSwapRB) {
     uint8_t *srcDataAddr = (*env)->GetDirectBufferAddress(env, srcData);
     uint8_t *dstDataAddr = (*env)->GetDirectBufferAddress(env, dstData);
 
@@ -105,21 +111,33 @@ Java_com_winlator_xserver_Drawable_copyArea(JNIEnv *env, jclass obj, jshort srcX
         return;
     }
 
-    /* Fast path when the image is tightly packed (width == stride on both buffers) */
-    if (width == srcStride && width == dstStride) {
-        size_t bytes = (size_t)height * dstStride * 4;
-        memcpy(dstDataAddr + (dstX + dstY * dstStride) * 4,
-               srcDataAddr + (srcX + srcY * srcStride) * 4,
-               bytes);
-        return;
-    }
+    if (needsSwapRB) {
+        /* Convert BGRA to RGBA while copying (X11 uses BGRA, AHB needs RGBA) */
+        uint32_t *srcPixels = (uint32_t*)srcDataAddr;
+        uint32_t *dstPixels = (uint32_t*)dstDataAddr;
 
-    /* General case: row-by-row copy */
-    size_t rowBytes = (size_t)width * 4;
-    for (int16_t y = 0; y < height; y++) {
-        memcpy(dstDataAddr + (dstX + (y + dstY) * dstStride) * 4,
-               srcDataAddr + (srcX + (y + srcY) * srcStride) * 4,
-               rowBytes);
+        for (int16_t y = 0; y < height; y++) {
+            uint32_t *srcRow = srcPixels + (srcX + (y + srcY) * srcStride);
+            uint32_t *dstRow = dstPixels + (dstX + (y + dstY) * dstStride);
+            for (int16_t x = 0; x < width; x++) {
+                dstRow[x] = swapRB(srcRow[x]);
+            }
+        }
+    } else {
+        /* Fast path when not using ASR - direct copy without conversion */
+        if (width == srcStride && width == dstStride) {
+            size_t bytes = (size_t)height * dstStride * 4;
+            memcpy(dstDataAddr + (dstX + dstY * dstStride) * 4,
+                   srcDataAddr + (srcX + srcY * srcStride) * 4,
+                   bytes);
+        } else {
+            size_t rowBytes = (size_t)width * 4;
+            for (int16_t y = 0; y < height; y++) {
+                memcpy(dstDataAddr + (dstX + (y + dstY) * dstStride) * 4,
+                       srcDataAddr + (srcX + (y + srcY) * srcStride) * 4,
+                       rowBytes);
+            }
+        }
     }
 }
 
@@ -128,7 +146,7 @@ Java_com_winlator_xserver_Drawable_copyAreaOp(JNIEnv *env, jclass obj, jshort sr
                                               jshort srcY, jshort dstX, jshort dstY,
                                               jshort width, jshort height, jshort srcStride,
                                               jshort dstStride, jobject srcData,
-                                              jobject dstData, int gcFunction) {
+                                              jobject dstData, int gcFunction, jboolean needsSwapRB) {
     uint8_t *srcDataAddr = (*env)->GetDirectBufferAddress(env, srcData);
     uint8_t *dstDataAddr = (*env)->GetDirectBufferAddress(env, dstData);
 
@@ -141,14 +159,24 @@ Java_com_winlator_xserver_Drawable_copyAreaOp(JNIEnv *env, jclass obj, jshort sr
         for (int16_t x = 0; x < width; x++) {
             int i = (x + srcX + (y + srcY) * srcStride) * 4;
             int j = (x + dstX + (y + dstY) * dstStride) * 4;
+
+            // Read colors (BGRA format in X11)
             int srcColor = (srcDataAddr[i+0] << 16) | (srcDataAddr[i+1] << 8) | srcDataAddr[i+2];
             int dstColor = (dstDataAddr[j+0] << 16) | (dstDataAddr[j+1] << 8) | dstDataAddr[j+2];
 
             dstColor = setPixelOp(srcColor, dstColor, gcFunction);
 
-            dstDataAddr[j+0] = (dstColor >> 16) & 0xff;
-            dstDataAddr[j+1] = (dstColor >> 8) & 0xff;
-            dstDataAddr[j+2] = dstColor & 0xff;
+            if (needsSwapRB) {
+                // Write as RGBA (swap R and B)
+                dstDataAddr[j+0] = dstColor & 0xff;         // B -> R position
+                dstDataAddr[j+1] = (dstColor >> 8) & 0xff;  // G stays
+                dstDataAddr[j+2] = (dstColor >> 16) & 0xff; // R -> B position
+            } else {
+                // Write as BGRA (original format)
+                dstDataAddr[j+0] = (dstColor >> 16) & 0xff;
+                dstDataAddr[j+1] = (dstColor >> 8) & 0xff;
+                dstDataAddr[j+2] = dstColor & 0xff;
+            }
         }
     }
 }
@@ -156,7 +184,7 @@ Java_com_winlator_xserver_Drawable_copyAreaOp(JNIEnv *env, jclass obj, jshort sr
 JNIEXPORT void JNICALL
 Java_com_winlator_xserver_Drawable_fillRect(JNIEnv *env, jclass obj, jshort x, jshort y,
                                             jshort width, jshort height, jint color, jshort stride,
-                                            jobject data) {
+                                            jobject data, jboolean needsSwapRB) {
     uint8_t *dataAddr = (*env)->GetDirectBufferAddress(env, data);
 
     if (!dataAddr) {
@@ -166,6 +194,13 @@ Java_com_winlator_xserver_Drawable_fillRect(JNIEnv *env, jclass obj, jshort x, j
 
     uint8_t rgba[4];
     unpackColor(color, rgba);
+
+    // If swapRB needed, convert BGRA to RGBA
+    if (needsSwapRB) {
+        uint8_t temp = rgba[0];
+        rgba[0] = rgba[2];  // B -> R position
+        rgba[2] = temp;     // R -> B position
+    }
 
     int rowSize = width * 4;
     uint8_t *row = malloc(rowSize);
@@ -185,7 +220,7 @@ Java_com_winlator_xserver_Drawable_fillRect(JNIEnv *env, jclass obj, jshort x, j
 JNIEXPORT void JNICALL
 Java_com_winlator_xserver_Drawable_drawLine(JNIEnv *env, jclass obj, jshort x0, jshort y0,
                                             jshort x1, jshort y1, jint color, jshort lineWidth,
-                                            jshort stride, jobject data) {
+                                            jshort stride, jobject data, jboolean needsSwapRB) {
     uint8_t *dataAddr = (*env)->GetDirectBufferAddress(env, data);
 
     if (!dataAddr) {
@@ -201,6 +236,13 @@ Java_com_winlator_xserver_Drawable_drawLine(JNIEnv *env, jclass obj, jshort x0, 
 
     uint8_t rgba[4];
     unpackColor(color, rgba);
+
+    // If swapRB needed, convert BGRA to RGBA
+    if (needsSwapRB) {
+        uint8_t temp = rgba[0];
+        rgba[0] = rgba[2];  // B -> R position
+        rgba[2] = temp;     // R -> B position
+    }
 
     int rowSize = lineWidth * 4;
     uint8_t *row = malloc(rowSize);

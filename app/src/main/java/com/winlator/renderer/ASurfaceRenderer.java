@@ -133,7 +133,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private native void nativeInitScanout();
     private native boolean nativeReattachSurface(Surface surface);
     private native void nativeDestroyScanout();
-    private native void nativeSetWindowBuffer(long contentId, long ahbPtr, int fenceFd, long windowId, long serial, AHBImage ahbImage, int slot, boolean needsRBSwap);
+    private native void nativeSetWindowBuffer(long contentId, long ahbPtr, int fenceFd, long windowId, long serial, AHBImage ahbImage, int slot);
     private native void nativeScanoutSetCursorVisibility(boolean visible);
     private native void nativeRegisterWindowSC(long contentId, String debugName);
     private native void nativeUnregisterWindowSC(long contentId);
@@ -446,7 +446,8 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 long ahbPtr = g.getScanoutHardwareBufferPtr();
                 if (ahbPtr != 0) {
                     int acquireFence = g.consumeAcquireFence();
-                    nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot(), false);
+                    // Disable swap R/B in cpu path as it is handled with drawable
+                    nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot());
                     if (hudRef != null) hudRef.update();
                 }
             }
@@ -465,7 +466,8 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             if (drawable.getTexture() instanceof AHBImage g) {
                 long ahbPtr = g.getHardwareBufferPtr();
                 if (ahbPtr != 0) {
-                    nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, xSerial, null, -1, g.needsRBSwap());
+                    // Need to match ahbImage needsRBSwap() for swap R/B
+                    nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, xSerial, null, -1);
                     if (hudRef != null) hudRef.update();
                 }
             }
@@ -549,6 +551,8 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 AHBImage g = new AHBImage(content.width, content.height);
                 if (g.getHardwareBufferPtr() != 0) {
                     content.setTexture(g);
+                    // CPU-based AHBImage: X11 data is BGRA, needs swap to RGBA
+                    content.setNeedsSwapRB(true);
                 }
             }
             if (content.getTexture() instanceof AHBImage) {

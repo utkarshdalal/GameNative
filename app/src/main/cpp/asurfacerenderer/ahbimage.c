@@ -179,13 +179,6 @@ Java_com_winlator_renderer_AHBImage_hardwareBufferFromSocket(
     return (jlong)(uintptr_t)ahb;
 }
 
-// Helper to swap R/B channels in a pixel (BGR -> RGB conversion)
-static inline uint32_t swapRB(uint32_t pixel) {
-    return ((pixel & 0xFF00FF00) |        // Keep G and A
-            ((pixel & 0x00FF0000) >> 16) | // Move B to R position
-            ((pixel & 0x000000FF) << 16)); // Move R to B position
-}
-
 JNIEXPORT jint JNICALL
 Java_com_winlator_renderer_AHBImage_copyHardwareBuffer(
         JNIEnv *env, jobject obj, jobject srcBuffer, jlong dstPtr, jshort width, jshort height, jshort srcStride, jint waitFence)
@@ -205,12 +198,14 @@ Java_com_winlator_renderer_AHBImage_copyHardwareBuffer(
         AHardwareBuffer_describe(dstAhb, &desc);
         uint32_t dstStride = desc.stride;
 
-        // Copy with R/B swap (X11 data is BGR, destination is RGBA)
-        for (int y = 0; y < height; y++) {
-            uint32_t* srcRow = srcAddr + y * srcStride;
-            uint32_t* dstRow = dstAddr + y * dstStride;
-            for (int x = 0; x < width; x++) {
-                dstRow[x] = swapRB(srcRow[x]);
+        // Direct copy - data is already in RGBA format from drawable.c conversion
+        if (width == srcStride && width == dstStride) {
+            // Fast path: contiguous copy
+            memcpy(dstAddr, srcAddr, (size_t)width * height * 4);
+        } else {
+            // Row-by-row copy with stride handling
+            for (int y = 0; y < height; y++) {
+                memcpy(dstAddr + y * dstStride, srcAddr + y * srcStride, (size_t)width * 4);
             }
         }
 
