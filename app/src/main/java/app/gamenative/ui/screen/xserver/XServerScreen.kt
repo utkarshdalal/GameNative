@@ -4126,6 +4126,12 @@ private fun unpackExecutableFile(
         }
     }
     if (!needsUnpacking || ContainerUtils.extractGameSourceFromContainerId(appId) != GameSource.STEAM){
+        // We need to clear the flag here, otherwise Mono installs every boot for non-steam games
+        if (needsUnpacking) {
+            container.setNeedsUnpacking(false)
+            container.saveData()
+            Timber.d("Cleared needsUnpacking for non-Steam source after Mono/unpack pass")
+        }
         return
     }
     try {
