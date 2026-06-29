@@ -39,7 +39,6 @@ import app.gamenative.db.dao.ChangeNumbersDao
 import app.gamenative.db.dao.EncryptedAppTicketDao
 import app.gamenative.db.dao.FileChangeListsDao
 import app.gamenative.db.dao.SteamAppDao
-import app.gamenative.db.dao.SteamAppPlayStatsUpdate
 import app.gamenative.db.dao.SteamFileHashCacheDao
 import app.gamenative.db.dao.SteamLicenseDao
 import app.gamenative.enums.LoginResult
@@ -231,6 +230,8 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     private lateinit var notificationHelper: NotificationHelper
 
+    private val notifierOrNull: NotificationHelper? get() = if (::notificationHelper.isInitialized) notificationHelper else null
+
     internal var callbackManager: CallbackManager? = null
     internal var steamClient: SteamClient? = null
     internal val callbackSubscriptions: ArrayList<Closeable> = ArrayList()
@@ -302,7 +303,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     companion object {
         const val MAX_PICS_BUFFER = 256
-        const val MAX_SQL_BIND_VARIABLES = 900
 
         const val MAX_RETRY_ATTEMPTS = 20
 
@@ -397,7 +397,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         private fun tryAcquireSync(appId: Int): Boolean {
             val flag = getSyncFlag(appId)
-            return flag.compareAndSet(false, true)
+            val acquired = flag.compareAndSet(false, true)
+            if (acquired) instance?.notifierOrNull?.showSyncing(NotificationHelper.NOTIFICATION_ID_STEAM)
+            return acquired
         }
 
         private fun releaseSync(appId: Int) {
@@ -406,6 +408,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             if (flag != null && !flag.get()) {
                 syncInProgressApps.remove(appId, flag)
             }
+            instance?.notifierOrNull?.showIdle(NotificationHelper.NOTIFICATION_ID_STEAM)
         }
 
         // Track whether a game is currently running to prevent premature service stop
@@ -798,63 +801,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 val localAppIds = service.appDao.getAllAppIds().toSet()
                 val missingAppIds = remoteAppIds - localAppIds
-                val existingAppIds = remoteAppIds - missingAppIds
-
-                val statsByAppId = ownedGames
-                    .asSequence()
-                    .filter { it.appId > 0 }
-                    .associate { game ->
-                        game.appId to SteamAppPlayStatsUpdate(
-                            id = game.appId,
-                            lastPlayed = game.rtimeLastPlayed.toLong(),
-                            playTimeMinutes = game.playtimeForever,
-                        )
-                    }
-
-                if (existingAppIds.isNotEmpty()) {
-                    val currentStatsByAppId = existingAppIds
-                        .toList()
-                        .chunked(MAX_SQL_BIND_VARIABLES)
-                        .flatMap { appIds -> service.appDao.findAccountPlayStats(appIds) }
-                        .associateBy { it.id }
-                    val changedStats = existingAppIds
-                        .asSequence()
-                        .mapNotNull { statsByAppId[it] }
-                        .filter { newStats ->
-                            val currentStats = currentStatsByAppId[newStats.id]
-                            currentStats == null ||
-                                currentStats.lastPlayed != newStats.lastPlayed ||
-                                currentStats.playTimeMinutes != newStats.playTimeMinutes
-                        }
-                        .toList()
-
-                    if (changedStats.isNotEmpty()) {
-                        service.db.withTransaction {
-                            service.appDao.updateAccountPlayStats(changedStats)
-                        }
-                    }
-                }
-
-                if (missingAppIds.isNotEmpty()) {
-                    val missingApps = ownedGames
-                        .asSequence()
-                        .filter { it.appId in missingAppIds }
-                        .map { game ->
-                            val stats = statsByAppId.getValue(game.appId)
-                            SteamApp(
-                                id = game.appId,
-                                name = game.name,
-                                lastPlayed = stats.lastPlayed,
-                                playTimeMinutes = stats.playTimeMinutes,
-                            )
-                        }
-                        .toList()
-
-                    service.db.withTransaction {
-                        service.appDao.insertAll(missingApps)
-                    }
-                }
-
                 if (missingAppIds.isEmpty()) {
                     return@runCatching 0
                 }
@@ -898,8 +844,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 (hasSteamUnlockedBranch && depot.encryptedManifests.isNotEmpty()) ||
                 depot.sharedInstall
             if (!hasContent)
-                return false
-            if (depot.manifests.isNotEmpty() && depot.manifests.values.all { it.size == 0L && it.download == 0L })
                 return false
             // 2. Supported OS
             if (!depot.isWindowsCompatible)
@@ -1370,7 +1314,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             return container.executablePath.ifEmpty { getInstalledExe(gameId) }
         }
 
-        fun deleteApp(appId: Int): Boolean {
+        suspend fun deleteApp(appId: Int): Boolean = withContext(Dispatchers.IO) {
             // snapshot path before marker removal (removing the marker changes resolution)
             val appInfo = getInstalledApp(appId)
             val result = if (appInfo?.isImported == true) {
@@ -1399,27 +1343,25 @@ class SteamService : Service(), IChallengeUrlChanged {
             // Remove from DB
             workshopPausedApps.remove(appId)
             with(instance!!) {
-                scope.launch {
-                    db.withTransaction {
-                        appInfoDao.deleteApp(appId)
-                        changeNumbersDao.deleteByAppId(appId)
-                        fileChangeListsDao.deleteByAppId(appId)
-                        steamFileHashCacheDao.deleteByAppId(appId)
-                        downloadingAppInfoDao.deleteApp(appId)
-                        appDao.clearWorkshopState(appId)
+                db.withTransaction {
+                    appInfoDao.deleteApp(appId)
+                    changeNumbersDao.deleteByAppId(appId)
+                    fileChangeListsDao.deleteByAppId(appId)
+                    steamFileHashCacheDao.deleteByAppId(appId)
+                    downloadingAppInfoDao.deleteApp(appId)
+                    appDao.clearWorkshopState(appId)
 
-                        val indirectDlcAppIds = getDownloadableDlcAppsOf(appId).orEmpty().map { it.id }
-                        indirectDlcAppIds.forEach { dlcAppId ->
-                            appInfoDao.deleteApp(dlcAppId)
-                            changeNumbersDao.deleteByAppId(dlcAppId)
-                            fileChangeListsDao.deleteByAppId(dlcAppId)
-                            steamFileHashCacheDao.deleteByAppId(dlcAppId)
-                        }
+                    val indirectDlcAppIds = getDownloadableDlcAppsOf(appId).orEmpty().map { it.id }
+                    indirectDlcAppIds.forEach { dlcAppId ->
+                        appInfoDao.deleteApp(dlcAppId)
+                        changeNumbersDao.deleteByAppId(dlcAppId)
+                        fileChangeListsDao.deleteByAppId(dlcAppId)
+                        steamFileHashCacheDao.deleteByAppId(dlcAppId)
                     }
                 }
             }
 
-            return result
+            return@withContext result
         }
 
         fun downloadApp(appId: Int): DownloadInfo? {
@@ -1885,6 +1827,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // map (line ~1666 short-circuit).
                 downloadJobs[appId] = di
                 notifyDownloadStarted(appId)
+                instance?.notifierOrNull?.trackDownload(di, getAppInfoOf(appId)?.name.orEmpty(), NotificationHelper.NOTIFICATION_ID_STEAM)
 
                 val downloadJob = instance!!.scope.launch {
                     try {
@@ -3487,6 +3430,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification)
         }
         notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_STEAM)
+        notificationHelper.showIdle(NotificationHelper.NOTIFICATION_ID_STEAM)
 
         when (intent?.action) {
             NotificationHelper.ACTION_EXIT -> {
@@ -4334,8 +4278,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                                         receivedPICS = true,
                                         lastChangeNumber = app.changeNumber,
                                         licenseFlags = packageFromDb?.licenseFlags ?: EnumSet.noneOf(ELicenseFlags::class.java),
-                                        lastPlayed = appFromDb?.lastPlayed ?: 0L,
-                                        playTimeMinutes = appFromDb?.playTimeMinutes ?: 0,
                                     )
                                     if (ufsParseVersionOutdated && newApp.ufs.saveFilePatterns.any { it.uploadRoot != it.root || it.uploadPath != it.path }) {
                                         // UFS path logic changed and this app has rootoverrides: store 0 to force one

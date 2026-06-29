@@ -13,11 +13,13 @@ import app.gamenative.PrefManager
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.LibraryPlayHistory
 import app.gamenative.data.SteamApp
 import app.gamenative.events.AndroidEvent
 import app.gamenative.data.GOGGame
 import app.gamenative.data.EpicGame
 import app.gamenative.data.AmazonGame
+import app.gamenative.db.dao.LibraryPlayHistoryDao
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.db.dao.EpicGameDao
@@ -71,6 +73,7 @@ private const val PROVEN_RUNS_THRESHOLD = 5
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
+    private val libraryPlayHistoryDao: LibraryPlayHistoryDao,
     private val steamAppDao: SteamAppDao,
     private val gogGameDao: GOGGameDao,
     private val epicGameDao: EpicGameDao,
@@ -107,6 +110,7 @@ class LibraryViewModel @Inject constructor(
     private var gogGameList: List<GOGGame> = emptyList()
     private var epicGameList: List<EpicGame> = emptyList()
     private var amazonGameList: List<AmazonGame> = emptyList()
+    private var playHistoryByAppId: Map<String, Long> = emptyMap()
 
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
@@ -116,7 +120,6 @@ class LibraryViewModel @Inject constructor(
 
     // Track debounce job for search
     private var searchDebounceJob: Job? = null
-    private var steamPlayStatsRefreshJob: Job? = null
     private val SEARCH_DEBOUNCE_MS = 500L // 500ms debounce
 
     // Cache GPU name to avoid repeated calls
@@ -179,9 +182,18 @@ class LibraryViewModel @Inject constructor(
                     if (appList != apps) {
                         appList = apps
                         onFilterApps(paginationCurrentPage)
-                        refreshSteamPlayStatsForRecentlyPlayedSort()
                     }
                 }
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            libraryPlayHistoryDao.getAll().collect { entries ->
+                val playHistory = entries.associate { it.appId to it.lastPlayed }
+                if (playHistoryByAppId != playHistory) {
+                    playHistoryByAppId = playHistory
+                    onFilterApps(paginationCurrentPage)
+                }
+            }
         }
 
         // Collect GOG games
@@ -230,13 +242,10 @@ class LibraryViewModel @Inject constructor(
                 onFilterApps(paginationCurrentPage)
             }
         }
-
-        refreshSteamPlayStatsForRecentlyPlayedSort()
     }
 
     override fun onCleared() {
         searchDebounceJob?.cancel()
-        steamPlayStatsRefreshJob?.cancel()
         PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
         PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
         PluviaApp.events.off<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
@@ -291,25 +300,6 @@ class LibraryViewModel @Inject constructor(
         PrefManager.librarySortOption = sortOption
         _state.update { it.copy(currentSortOption = sortOption) }
         onFilterApps()
-        refreshSteamPlayStatsForRecentlyPlayedSort()
-    }
-
-    private fun refreshSteamPlayStatsForRecentlyPlayedSort() {
-        if (_state.value.currentSortOption != SortOption.RECENTLY_PLAYED) return
-        if (steamPlayStatsRefreshJob?.isActive == true) return
-
-        steamPlayStatsRefreshJob = viewModelScope.launch(Dispatchers.IO) {
-            runCatching {
-                val newApps = SteamService.refreshOwnedGamesFromServer()
-                if (newApps > 0) {
-                    Timber.tag("LibraryViewModel").i("Queued $newApps newly owned games while refreshing recent-play stats")
-                } else {
-                    Timber.tag("LibraryViewModel").d("Recent-play stats refresh completed with no newly owned games")
-                }
-            }.onFailure { error ->
-                Timber.tag("LibraryViewModel").e(error, "Failed to refresh Steam recent-play stats")
-            }
-        }
     }
 
     fun onOptionsPanelToggle(isOpen: Boolean) {
@@ -575,11 +565,8 @@ class LibraryViewModel @Inject constructor(
             // Map Steam apps to UI items
             data class LibraryEntry(val item: LibraryItem, val isInstalled: Boolean, val lastPlayed: Long = 0L)
 
-            fun steamInstalledLastPlayedMillis(appId: Int): Long {
-                val path = SteamService.getAppDirPath(appId)
-                val file = File(path)
-                return if (file.exists()) file.lastModified() else 0L
-            }
+            fun lastPlayedFor(appId: String): Long = playHistoryByAppId[appId] ?: 0L
+
             val licensedDepotMap = SteamService.buildLicensedDepotMap(filteredSteamApps)
 
             // Added this to avoid duplicate from custom imported steam game
@@ -603,12 +590,6 @@ class LibraryViewModel @Inject constructor(
                 val appId = "${GameSource.STEAM.name}_${item.id}"
                 steamEntriesAppIds.add(appId)
 
-                val lastPlayed = LibrarySortUtils.steamLastPlayedOrInstallFallback(
-                    steamLastPlayed = item.lastPlayed,
-                    isInstalled = isInstalled,
-                    installedLastPlayed = if (isInstalled) steamInstalledLastPlayedMillis(item.id) else 0L,
-                )
-
                 LibraryEntry(
                     item = LibraryItem(
                         index = 0, // temporary, will be re-indexed after combining and paginating
@@ -622,7 +603,7 @@ class LibraryViewModel @Inject constructor(
                         sizeBytes = totalSizeBytes,
                     ),
                     isInstalled = isInstalled,
-                    lastPlayed = lastPlayed,
+                    lastPlayed = lastPlayedFor(appId),
                 )
             }
 
@@ -638,7 +619,7 @@ class LibraryViewModel @Inject constructor(
             val customEntries = customGameItems
                 .filter { !steamEntriesAppIds.contains(it.appId) } // Filter out imported steam appId
                 .filter { passesStatsFilters(currentState, it.gameSource, it.name) }
-                .map { LibraryEntry(it, true, lastPlayed = 0L) }
+                .map { LibraryEntry(it, true, lastPlayed = lastPlayedFor(it.appId)) }
 
             // Filter GOG games
             val filteredGOGGames = gogGameList
@@ -665,20 +646,21 @@ class LibraryViewModel @Inject constructor(
                 .filter { passesCompatibleFilter(it.title) }
                 .filter { passesStatsFilters(currentState, GameSource.GOG, it.title) }
                 .map { game ->
+                    val appId = "${GameSource.GOG.name}_${game.id}"
                     LibraryEntry(
                         item = LibraryItem(
                             index = 0,
-                            appId = "${GameSource.GOG.name}_${game.id}",
+                            appId = appId,
                             name = game.title,
                             iconHash = game.iconUrl.ifEmpty { game.imageUrl },
-                            capsuleImageUrl = game.iconUrl.ifEmpty { game.imageUrl },
+                            capsuleImageUrl = game.verticalCoverUrl.ifEmpty { game.iconUrl.ifEmpty { game.imageUrl } },
                             headerImageUrl = game.imageUrl.ifEmpty { game.iconUrl },
                             heroImageUrl = game.imageUrl.ifEmpty { game.iconUrl },
                             isShared = false,
                             gameSource = GameSource.GOG,
                         ),
                         isInstalled = game.isInstalled,
-                        lastPlayed = LibrarySortUtils.normalizeLastPlayedMillis(game.lastPlayed),
+                        lastPlayed = lastPlayedFor(appId),
                     )
                 }
 
@@ -707,10 +689,11 @@ class LibraryViewModel @Inject constructor(
                 .filter { passesCompatibleFilter(it.title) }
                 .filter { passesStatsFilters(currentState, GameSource.EPIC, it.title) }
                 .map { game ->
+                    val appId = "${GameSource.EPIC.name}_${game.id}"
                     LibraryEntry(
                         item = LibraryItem(
                             index = 0,
-                            appId = "${GameSource.EPIC.name}_${game.id}",
+                            appId = appId,
                             name = game.title,
                             iconHash = game.artSquare.ifEmpty { game.artCover },
                             capsuleImageUrl = game.artCover.ifEmpty { game.artSquare },
@@ -720,7 +703,7 @@ class LibraryViewModel @Inject constructor(
                             gameSource = GameSource.EPIC,
                         ),
                         isInstalled = game.isInstalled,
-                        lastPlayed = LibrarySortUtils.normalizeLastPlayedMillis(game.lastPlayed),
+                        lastPlayed = lastPlayedFor(appId),
                     )
                 }
 
@@ -751,10 +734,11 @@ class LibraryViewModel @Inject constructor(
                 .map { game ->
                     val layoutHero = AmazonArtwork.layoutHeroFromProductJson(game.productJson)
                         .ifEmpty { game.heroUrl.ifEmpty { game.artUrl } }
+                    val appId = "${GameSource.AMAZON.name}_${game.appId}"
                     LibraryEntry(
                         item = LibraryItem(
                             index = 0,
-                            appId = "AMAZON_${game.appId}",
+                            appId = appId,
                             name = game.title,
                             iconHash = game.artUrl,
                             capsuleImageUrl = game.artUrl,
@@ -765,7 +749,7 @@ class LibraryViewModel @Inject constructor(
                             gameSource = GameSource.AMAZON,
                         ),
                         isInstalled = game.isInstalled,
-                        lastPlayed = LibrarySortUtils.normalizeLastPlayedMillis(game.lastPlayed),
+                        lastPlayed = lastPlayedFor(appId),
                     )
                 }
 

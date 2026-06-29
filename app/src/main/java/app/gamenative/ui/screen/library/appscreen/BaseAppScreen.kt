@@ -900,8 +900,22 @@ abstract class BaseAppScreen {
         onBack: () -> Unit,
     ) {
         val context = LocalContext.current
-        val displayInfo = getGameDisplayInfo(context, libraryItem)
+        val displayInfoBase = getGameDisplayInfo(context, libraryItem)
         val appId = libraryItem.appId
+
+        // Fetch HLTB stats asynchronously (best-effort)
+        var hltbStats by remember(displayInfoBase.name) {
+            mutableStateOf<app.gamenative.utils.HltbService.Stats?>(null)
+        }
+        LaunchedEffect(displayInfoBase.name) {
+            if (displayInfoBase.name.isNotBlank())
+                hltbStats = try {
+                    app.gamenative.utils.HltbService.getStats(displayInfoBase.name)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) { null }
+        }
+        val displayInfo = displayInfoBase.copy(hltbStats = hltbStats)
 
         // Use composable state for values that change over time
         var isInstalledState by remember(libraryItem.appId) {
@@ -1187,6 +1201,9 @@ abstract class BaseAppScreen {
             }
         }
 
+        val launchActivity = context as? android.app.Activity
+        var showReadiness by remember { mutableStateOf(false) }
+
         // Render the common UI
         app.gamenative.ui.screen.library.AppScreenContent(
             displayInfo = displayInfo,
@@ -1198,10 +1215,14 @@ abstract class BaseAppScreen {
             isUpdatePending = isUpdatePendingState,
             downloadInfo = downloadInfo,
             onDownloadInstallClick = {
-                onDownloadInstallClick(context, libraryItem, onClickPlay)
-                uiScope.launch {
-                    delay(100)
-                    performStateRefresh(true)
+                if (app.gamenative.launch.LaunchReadiness.pending) {
+                    showReadiness = true
+                } else {
+                    onDownloadInstallClick(context, libraryItem, onClickPlay)
+                    uiScope.launch {
+                        delay(100)
+                        performStateRefresh(true)
+                    }
                 }
             },
             onPauseResumeClick = {
@@ -1220,6 +1241,19 @@ abstract class BaseAppScreen {
             onBack = onBack,
             optionsMenu = optionsMenu.toTypedArray(),
         )
+
+        if (showReadiness && launchActivity != null) {
+            app.gamenative.launch.LaunchReadiness.Prompt(launchActivity) {
+                showReadiness = false
+                if (!app.gamenative.launch.LaunchReadiness.pending) {
+                    onDownloadInstallClick(context, libraryItem, onClickPlay)
+                    uiScope.launch {
+                        delay(100)
+                        performStateRefresh(true)
+                    }
+                }
+            }
+        }
 
         // Show container config dialog if needed
         if (showConfigDialog) {

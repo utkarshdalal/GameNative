@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -38,6 +39,7 @@ import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -71,6 +73,9 @@ class EpicAppScreen : BaseAppScreen() {
             Timber.tag(TAG).d("shouldShowUninstallDialog: appId=$appId, result=$result")
             return result
         }
+
+        // Shared state for deletion progress dialog
+        var showDeletingDialog by mutableStateOf(false)
 
         // Shared state for install dialog - list of appIds that should show the dialog
         private val installDialogAppIds = mutableStateListOf<String>()
@@ -480,20 +485,29 @@ class EpicAppScreen : BaseAppScreen() {
      */
     private fun performUninstall(context: Context, libraryItem: LibraryItem) {
         Timber.tag(TAG).i("Uninstalling Epic game: ${libraryItem.appId}")
+        showDeletingDialog = true
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val result = EpicService.deleteGame(context, libraryItem.gameId)
                 DownloadService.invalidateCache()
 
-                if (result.isSuccess) {
-                    Timber.tag(TAG).i("Epic game uninstalled successfully: ${libraryItem.appId}")
-                } else {
-                    Timber.e("Failed to uninstall Epic game: ${libraryItem.appId} - ${result.exceptionOrNull()?.message}")
-                    SnackbarManager.show(context.getString(R.string.epic_uninstall_failed, result.exceptionOrNull()?.message ?: ""))
+                withContext(Dispatchers.Main) {
+                    if (result.isSuccess) {
+                        Timber.tag(TAG).i("Epic game uninstalled successfully: ${libraryItem.appId}")
+                    } else {
+                        Timber.e("Failed to uninstall Epic game: ${libraryItem.appId} - ${result.exceptionOrNull()?.message}")
+                        SnackbarManager.show(context.getString(R.string.epic_uninstall_failed, result.exceptionOrNull()?.message ?: ""))
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error uninstalling Epic game")
-                SnackbarManager.show(context.getString(R.string.epic_uninstall_error, e.message ?: ""))
+                withContext(Dispatchers.Main) {
+                    SnackbarManager.show(context.getString(R.string.epic_uninstall_error, e.message ?: ""))
+                }
+            } finally {
+                withContext(NonCancellable + Dispatchers.Main) {
+                    showDeletingDialog = false
+                }
             }
         }
     }
@@ -792,17 +806,29 @@ class EpicAppScreen : BaseAppScreen() {
                 app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD -> {
                     {
                         Timber.tag(TAG).i("Cancelling/deleting Epic download for: $gameId")
+                        BaseAppScreen.hideInstallDialog(appId)
+                        showDeletingDialog = true
                         val downloadInfo = EpicService.getDownloadInfo(gameId)
                         downloadInfo?.cancel()
-                        scope.launch {
-                            downloadInfo?.awaitCompletion()
-                            EpicService.cleanupDownload(context, gameId)
-                            EpicService.deleteGame(context, gameId)
-                            DownloadService.invalidateCache()
-                            withContext(Dispatchers.Main) {
-                                BaseAppScreen.hideInstallDialog(appId)
-                                app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false))
-                                app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId, app.gamenative.data.GameSource.EPIC))
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                downloadInfo?.awaitCompletion()
+                                EpicService.cleanupDownload(context, gameId)
+                                val result = EpicService.deleteGame(context, gameId)
+                                DownloadService.invalidateCache()
+                                withContext(Dispatchers.Main) {
+                                    if (result.isSuccess) {
+                                        app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false))
+                                        app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId, app.gamenative.data.GameSource.EPIC))
+                                    } else {
+                                        Timber.tag(TAG).e("Failed to delete Epic game after cancel: $gameId - ${result.exceptionOrNull()?.message}")
+                                        SnackbarManager.show("Failed to delete download: ${result.exceptionOrNull()?.message ?: ""}")
+                                    }
+                                }
+                            } finally {
+                                withContext(NonCancellable + Dispatchers.Main) {
+                                    showDeletingDialog = false
+                                }
                             }
                         }
                     }
@@ -836,6 +862,15 @@ class EpicAppScreen : BaseAppScreen() {
                 onDismissRequest = {
                     hideGameManagerDialog(gameId)
                 }
+            )
+        }
+
+        // Show deletion progress dialog
+        if (showDeletingDialog) {
+            LoadingDialog(
+                visible = true,
+                progress = -1f,
+                message = stringResource(R.string.deleting),
             )
         }
 

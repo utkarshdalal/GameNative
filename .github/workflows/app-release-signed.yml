@@ -76,12 +76,13 @@ jobs:
         yes | "$SDKMANAGER" --install "build-tools;34.0.0"
 
     - name: Build with Gradle
-      run: ./gradlew :app:bundleLegacyRelease :app:bundleModernRelease
+      run: ./gradlew :app:bundleLegacyRelease :app:bundleModernRelease :app:bundleLegacyXrRelease
 
     - name: Stage bundles
       run: |
         cp app/build/outputs/bundle/legacyRelease/app-legacy-release.aab app-release.aab
         cp app/build/outputs/bundle/modernRelease/app-modern-release.aab app-modern-release.aab
+        cp app/build/outputs/bundle/legacyXrRelease/app-legacyXr-release.aab app-legacy-xr-release.aab
 
     - name: Extract APKs from Bundles
       run: |
@@ -89,6 +90,8 @@ jobs:
         unzip -o app-release.apks universal.apk
         java -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app-modern-release.aab --output=app-modern-release.apks --mode=universal
         unzip -p app-modern-release.apks universal.apk > universal-modern.apk
+        java -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app-legacy-xr-release.aab --output=app-legacy-xr-release.apks --mode=universal
+        unzip -p app-legacy-xr-release.apks universal.apk > universal-legacy-xr.apk
 
     - name: Copy lineage file
       run: |
@@ -108,7 +111,7 @@ jobs:
         if [ ! -d "$BUILD_TOOLS_DIR" ]; then
           BUILD_TOOLS_DIR="${ANDROID_SDK_ROOT}/build-tools/34.0.0"
         fi
-        for apk in universal.apk universal-modern.apk; do
+        for apk in universal.apk universal-modern.apk universal-legacy-xr.apk; do
           "${BUILD_TOOLS_DIR}/apksigner" sign \
             --lineage app/keystores/prod-debug.lineage \
             --ks app/keystores/keystore \
@@ -136,6 +139,12 @@ jobs:
         name: app-release-signed-modern
         path: ${{ github.workspace }}/universal-modern.apk
 
+    - name: Upload Legacy XR APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-signed-legacy-xr
+        path: ${{ github.workspace }}/universal-legacy-xr.apk
+
     - name: Build changelog text
       id: changelog
       run: |
@@ -155,11 +164,13 @@ jobs:
         CHANGELOG: ${{ steps.changelog.outputs.log }}
         LEGACY_URL: https://nightly.link/utkarshdalal/GameNative/actions/runs/${{ github.run_id }}/app-release-signed.zip
         MODERN_URL: https://nightly.link/utkarshdalal/GameNative/actions/runs/${{ github.run_id }}/app-release-signed-modern.zip
+        LEGACY_XR_URL: https://nightly.link/utkarshdalal/GameNative/actions/runs/${{ github.run_id }}/app-release-signed-legacy-xr.zip
       run: |
         # jq -n handles JSON escaping (newlines, quotes, etc.) for us.
         payload=$(jq -n \
           --arg legacy "$LEGACY_URL" \
           --arg modern "$MODERN_URL" \
+          --arg legacyXr "$LEGACY_XR_URL" \
           --arg changes "$CHANGELOG" \
-          '{content: "**New Android build**\nStandard Build (Recommended): \($legacy)\nPlay Store Build (Android 11+ — built for the latest Android, so **no security warning** about an outdated target. No D drive access and no custom game support; glibc not supported, external storage location moved.): \($modern)\n\nChanges:\n\($changes)"}')
+          '{content: "**New Android build**\nStandard Build (Recommended): \($legacy)\nPlay Store Build (Android 11+ — built for the latest Android, so **no security warning** about an outdated target. No D drive access and no custom game support; glibc not supported, external storage location moved.): \($modern)\nQuest/VR Build (sideload only — legacy storage with all-files access and D drive support, forced landscape): \($legacyXr)\n\nChanges:\n\($changes)"}')
         curl -H 'Content-Type: application/json' -d "$payload" "$DISCORD_WEBHOOK_URL"

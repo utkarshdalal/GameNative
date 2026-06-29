@@ -38,6 +38,9 @@ import app.gamenative.data.TouchGestureConfig.Companion.MOUSE_DRAG_MOVEMENT_MODE
 import app.gamenative.data.TouchGestureConfig.Companion.MOUSE_DRAG_MOVEMENT_RELATIVE
 import app.gamenative.data.TouchGestureConfig.Companion.PAN_ACTIONS
 import app.gamenative.data.TouchGestureConfig.Companion.PAN_ARROW_KEYS
+import app.gamenative.data.TouchGestureConfig.Companion.PAN_INVERTED_ARROW_KEYS
+import app.gamenative.data.TouchGestureConfig.Companion.PAN_INVERTED_MIDDLE_MOUSE
+import app.gamenative.data.TouchGestureConfig.Companion.PAN_INVERTED_WASD
 import app.gamenative.data.TouchGestureConfig.Companion.PAN_LEFT_CLICK_DRAG
 import app.gamenative.data.TouchGestureConfig.Companion.PAN_MIDDLE_MOUSE
 import app.gamenative.data.TouchGestureConfig.Companion.PAN_RIGHT_CLICK_DRAG
@@ -54,6 +57,7 @@ import app.gamenative.ui.theme.PluviaBorder
 import app.gamenative.ui.theme.PluviaSurface
 import app.gamenative.ui.theme.PluviaSurfaceElevated
 import com.alorma.compose.settings.ui.SettingsSwitch
+import com.winlator.inputcontrols.Binding
 
 /**
  * Full-screen dialog for configuring per-game touch gesture settings.
@@ -560,12 +564,39 @@ private fun tapHoldActionLabel(action: String): String = when (action) {
     ACTION_SHOW_KEYBOARD -> stringResource(R.string.gesture_action_show_keyboard)
     else -> {
         if (action.startsWith("key_")) {
-            action.removePrefix("key_").replace("_", " ")
+            keyActionLabel(action)
         } else {
             action
         }
     }
 }
+
+private fun keyActionLabel(action: String): String {
+    return keyActionLabels[action]
+        ?: action.removePrefix("key_").replace("_", " ")
+}
+
+private val keyActionLabels: Map<String, String> =
+    Binding.keyboardBindingValues()
+        .mapNotNull { binding ->
+            binding.toTouchGestureAction()?.let { action -> action to binding.toString() }
+        }
+        .toMap()
+
+private fun Binding.toTouchGestureAction(): String? {
+    if (!name.startsWith("KEY_")) return null
+    val keyName = when (this) {
+        Binding.KEY_PG_UP -> "PRIOR"
+        Binding.KEY_PG_DOWN -> "NEXT"
+        else -> name.removePrefix("KEY_")
+    }
+    return "key_$keyName"
+}
+
+private fun keyActionsOf(vararg bindings: Binding): List<Pair<String, String>> =
+    bindings.mapNotNull { binding ->
+        binding.toTouchGestureAction()?.let { action -> action to binding.toString() }
+    }
 
 @Composable
 private fun holdGestureSubtitle(action: String, mouseBehavior: String): String {
@@ -590,8 +621,11 @@ private fun isMouseButtonAction(action: String): Boolean {
 @Composable
 private fun panActionLabel(action: String): String = when (action) {
     PAN_MIDDLE_MOUSE -> stringResource(R.string.gesture_pan_middle_mouse)
+    PAN_INVERTED_MIDDLE_MOUSE -> stringResource(R.string.gesture_pan_inverted_middle_mouse)
     PAN_WASD -> stringResource(R.string.gesture_pan_wasd)
+    PAN_INVERTED_WASD -> stringResource(R.string.gesture_pan_inverted_wasd)
     PAN_ARROW_KEYS -> stringResource(R.string.gesture_pan_arrow_keys)
+    PAN_INVERTED_ARROW_KEYS -> stringResource(R.string.gesture_pan_inverted_arrow_keys)
     PAN_LEFT_CLICK_DRAG -> stringResource(R.string.gesture_pan_left_click_drag)
     PAN_RIGHT_CLICK_DRAG -> stringResource(R.string.gesture_pan_right_click_drag)
     else -> action
@@ -638,6 +672,40 @@ private fun buildActionCategories(): List<ActionCategory> {
             "key_I" to "I", "key_M" to "M", "key_R" to "R",
         )
     )
+    val navigationEditing = ActionCategory(
+        header = stringResource(R.string.gesture_header_navigation_editing),
+        actions = keyActionsOf(
+            Binding.KEY_UP,
+            Binding.KEY_RIGHT,
+            Binding.KEY_DOWN,
+            Binding.KEY_LEFT,
+            Binding.KEY_BKSP,
+            Binding.KEY_DEL,
+            Binding.KEY_INSERT,
+            Binding.KEY_HOME,
+            Binding.KEY_END,
+            Binding.KEY_PG_UP,
+            Binding.KEY_PG_DOWN,
+            Binding.KEY_PRTSCN,
+        )
+    )
+    val symbols = ActionCategory(
+        header = stringResource(R.string.gesture_header_symbols),
+        actions = keyActionsOf(
+            Binding.KEY_BRACKET_LEFT,
+            Binding.KEY_BRACKET_RIGHT,
+            Binding.KEY_BACKSLASH,
+            Binding.KEY_SLASH,
+            Binding.KEY_SEMICOLON,
+            Binding.KEY_COMMA,
+            Binding.KEY_PERIOD,
+            Binding.KEY_APOSTROPHE,
+            Binding.KEY_GRAVE,
+            Binding.KEY_TILDE,
+            Binding.KEY_MINUS,
+            Binding.KEY_EQUAL,
+        )
+    )
     val letters = ActionCategory(
         header = stringResource(R.string.gesture_header_letters),
         actions = ('A'..'Z').map { "key_$it" to it.toString() }
@@ -646,11 +714,55 @@ private fun buildActionCategories(): List<ActionCategory> {
         header = stringResource(R.string.gesture_header_numbers),
         actions = (0..9).map { "key_$it" to it.toString() }
     )
+    val numpad = ActionCategory(
+        header = stringResource(R.string.gesture_header_numpad),
+        actions = keyActionsOf(
+            Binding.KEY_KP_DIVIDE,
+            Binding.KEY_KP_MULTIPLY,
+            Binding.KEY_KP_SUBTRACT,
+            Binding.KEY_KP_ADD,
+            Binding.KEY_KP_DEL,
+            Binding.KEY_KP_0,
+            Binding.KEY_KP_1,
+            Binding.KEY_KP_2,
+            Binding.KEY_KP_3,
+            Binding.KEY_KP_4,
+            Binding.KEY_KP_5,
+            Binding.KEY_KP_6,
+            Binding.KEY_KP_7,
+            Binding.KEY_KP_8,
+            Binding.KEY_KP_9,
+        )
+    )
     val functionKeys = ActionCategory(
         header = stringResource(R.string.gesture_header_function_keys),
         actions = (1..12).map { "key_F$it" to "F$it" }
     )
-    return listOf(special, mouse, commonGame, letters, numbers, functionKeys)
+    val modifiersLocks = ActionCategory(
+        header = stringResource(R.string.gesture_header_modifiers_locks),
+        actions = keyActionsOf(
+            Binding.KEY_SHIFT_L,
+            Binding.KEY_SHIFT_R,
+            Binding.KEY_CTRL_L,
+            Binding.KEY_CTRL_R,
+            Binding.KEY_ALT_L,
+            Binding.KEY_ALT_R,
+            Binding.KEY_CAPS_LOCK,
+            Binding.KEY_NUM_LOCK,
+        )
+    )
+    return listOf(
+        special,
+        mouse,
+        commonGame,
+        navigationEditing,
+        symbols,
+        letters,
+        numbers,
+        numpad,
+        functionKeys,
+        modifiersLocks,
+    )
 }
 
 @Composable

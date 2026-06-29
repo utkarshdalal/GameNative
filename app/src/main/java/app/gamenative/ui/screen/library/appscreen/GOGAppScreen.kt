@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,6 +32,7 @@ import com.winlator.container.ContainerData
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -66,6 +68,9 @@ class GOGAppScreen : BaseAppScreen() {
             Timber.tag(TAG).d("shouldShowUninstallDialog: appId=$appId, result=$result")
             return result
         }
+
+        // Shared state for deletion progress dialog
+        var showDeletingDialog by mutableStateOf(false)
 
         /**
          * Formats bytes into a human-readable string (KB, MB, GB).
@@ -395,23 +400,32 @@ class GOGAppScreen : BaseAppScreen() {
 
     private fun performUninstall(context: Context, libraryItem: LibraryItem) {
         Timber.i("Uninstalling GOG game: ${libraryItem.appId}")
+        showDeletingDialog = true
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Delegate to GOGService which calls GOGManager.deleteGame
                 val result = GOGService.deleteGame(context, libraryItem)
                 DownloadService.invalidateCache()
 
-                if (result.isSuccess) {
-                    Timber.i("Successfully uninstalled GOG game: ${libraryItem.appId}")
-                    SnackbarManager.show("Game uninstalled successfully")
-                } else {
-                    val error = result.exceptionOrNull()
-                    Timber.e(error, "Failed to uninstall GOG game: ${libraryItem.appId}")
-                    SnackbarManager.show("Failed to uninstall game: ${error?.message}")
+                withContext(Dispatchers.Main) {
+                    if (result.isSuccess) {
+                        Timber.i("Successfully uninstalled GOG game: ${libraryItem.appId}")
+                        SnackbarManager.show("Game uninstalled successfully")
+                    } else {
+                        val error = result.exceptionOrNull()
+                        Timber.e(error, "Failed to uninstall GOG game: ${libraryItem.appId}")
+                        SnackbarManager.show("Failed to uninstall game: ${error?.message}")
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error uninstalling GOG game")
-                SnackbarManager.show("Failed to uninstall game: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    SnackbarManager.show("Failed to uninstall game: ${e.message}")
+                }
+            } finally {
+                withContext(NonCancellable + Dispatchers.Main) {
+                    showDeletingDialog = false
+                }
             }
         }
     }
@@ -685,29 +699,38 @@ class GOGAppScreen : BaseAppScreen() {
                 app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD -> {
                     {
                         BaseAppScreen.hideInstallDialog(appId)
+                        showDeletingDialog = true
                         val gameId = libraryItem.gameId.toString()
                         CoroutineScope(Dispatchers.IO).launch {
-                            val downloadInfo = GOGService.getDownloadInfo(gameId)
-                            val wasDownloading = downloadInfo != null &&
-                                downloadInfo.isActive() &&
-                                (downloadInfo.getProgress() ?: 0f) < 1f
-                            downloadInfo?.cancel()
-                            downloadInfo?.awaitCompletion()
-                            GOGService.cleanupDownload(gameId)
+                            try {
+                                val downloadInfo = GOGService.getDownloadInfo(gameId)
+                                val wasDownloading = downloadInfo != null &&
+                                    downloadInfo.isActive() &&
+                                    (downloadInfo.getProgress() ?: 0f) < 1f
+                                downloadInfo?.cancel()
+                                downloadInfo?.awaitCompletion()
+                                GOGService.cleanupDownload(gameId)
 
-                            val isInstalledAfterCancel = GOGService.isGameInstalled(gameId)
-                            if (isInstalledAfterCancel) {
-                                // Download completed and game ended up installed; don't show "Download cancelled"
-                                return@launch
-                            }
+                                val isInstalledAfterCancel = GOGService.isGameInstalled(gameId)
+                                if (isInstalledAfterCancel) {
+                                    // Download completed and game ended up installed; don't show "Download cancelled"
+                                    return@launch
+                                }
 
-                            val result = GOGService.deleteGame(context, libraryItem)
-                            DownloadService.invalidateCache()
-                            if (wasDownloading && !isInstalledAfterCancel) {
-                                SnackbarManager.show("Download cancelled")
-                            }
-                            if (result.isFailure) {
-                                SnackbarManager.show("Failed to delete download: ${result.exceptionOrNull()?.message}")
+                                val result = GOGService.deleteGame(context, libraryItem)
+                                DownloadService.invalidateCache()
+                                withContext(Dispatchers.Main) {
+                                    if (wasDownloading && !isInstalledAfterCancel) {
+                                        SnackbarManager.show("Download cancelled")
+                                    }
+                                    if (result.isFailure) {
+                                        SnackbarManager.show("Failed to delete download: ${result.exceptionOrNull()?.message}")
+                                    }
+                                }
+                            } finally {
+                                withContext(NonCancellable + Dispatchers.Main) {
+                                    showDeletingDialog = false
+                                }
                             }
                         }
                     }
@@ -734,6 +757,15 @@ class GOGAppScreen : BaseAppScreen() {
                 dismissBtnText = installDialogState.dismissBtnText,
                 title = installDialogState.title,
                 message = installDialogState.message,
+            )
+        }
+
+        // Show deletion progress dialog
+        if (showDeletingDialog) {
+            LoadingDialog(
+                visible = true,
+                progress = -1f,
+                message = stringResource(R.string.deleting),
             )
         }
 

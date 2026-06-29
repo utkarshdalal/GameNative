@@ -409,10 +409,12 @@ private fun GridStatusIcons(appInfo: LibraryItem) {
 internal data class GridImageUrls(val primary: String, val fallback: String = "")
 
 private fun getGridContentScale(paneType: PaneType): ContentScale {
-    return if (paneType == PaneType.GRID_HERO) {
-        ContentScale.Crop
-    } else {
-        ContentScale.Fit
+    return when (paneType) {
+        // Hero and capsule both show cover art that should fill the slot. Capsule art is
+        // close to but not always exactly 2:3 (e.g. GOG covers are ~0.71), so cropping the
+        // overflow looks better than letterboxing it against the blurred backdrop.
+        PaneType.GRID_HERO, PaneType.GRID_CAPSULE -> ContentScale.Crop
+        else -> ContentScale.Fit
     }
 }
 
@@ -448,10 +450,18 @@ internal fun getGridImageUrl(
         GameSource.CUSTOM_GAME -> {
             val primary = when (paneType) {
                 PaneType.GRID_CAPSULE ->
-                    findSteamGridDBImage("grid_capsule") ?: appInfo.capsuleImageUrl
+                    // Capsule (vertical): user "coverv"/"cover" wins over SteamGridDB capsule.
+                    CustomGameScanner.findCapsuleCoverForCustomGame(appInfo.appId)
+                        ?: findSteamGridDBImage("grid_capsule")
+                        ?: appInfo.capsuleImageUrl
                 PaneType.GRID_HERO ->
-                    findSteamGridDBImage("grid_hero") ?: appInfo.headerImageUrl
+                    // Hero (horizontal): user "coverh"/"cover" wins over SteamGridDB hero.
+                    CustomGameScanner.findHeroCoverForCustomGame(appInfo.appId)
+                        ?: findSteamGridDBImage("grid_hero")
+                        ?: appInfo.headerImageUrl
                 else -> {
+                    // Default/carousel banner is also a horizontal hero view.
+                    val heroCover = CustomGameScanner.findHeroCoverForCustomGame(appInfo.appId)
                     val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
                     val heroUrl = gameFolderPath?.let { path ->
                         val folder = File(path)
@@ -466,7 +476,7 @@ internal fun getGridImageUrl(
                         }
                         heroFile?.let { android.net.Uri.fromFile(it).toString() }
                     }
-                    heroUrl ?: appInfo.headerImageUrl
+                    heroCover ?: heroUrl ?: appInfo.headerImageUrl
                 }
             }
             GridImageUrls(primary = primary)

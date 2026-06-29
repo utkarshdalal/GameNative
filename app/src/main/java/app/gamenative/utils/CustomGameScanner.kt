@@ -224,6 +224,67 @@ object CustomGameScanner {
         return fromHeuristic
     }
 
+    /**
+     * Finds a user-supplied cover image for a Custom Game's CAPSULE (vertical box-art) view.
+     *
+     * Priority: "coverv" (capsule-specific) first, then the generic "cover".
+     * Only the game's MAIN folder is searched — child folders are intentionally ignored.
+     * Supported extensions, in preference order: png, jpg, jpeg, webp.
+     *
+     * @return a file:// URI string usable directly as an image URL, or null if none exists.
+     */
+    fun findCapsuleCoverForCustomGame(appId: String): String? {
+        val folderPath = getFolderPathFromAppId(appId) ?: return null
+        return findCapsuleCoverInFolder(File(folderPath))
+    }
+
+    /** Folder-based variant of [findCapsuleCoverForCustomGame]. */
+    fun findCapsuleCoverInFolder(folder: File): String? =
+        findCoverByBaseNames(folder, listOf("coverv", "cover"))
+
+    /**
+     * Finds a user-supplied cover image for a Custom Game's HERO (horizontal banner) view.
+     *
+     * Priority: "coverh" (hero-specific) first, then the generic "cover".
+     * Only the game's MAIN folder is searched — child folders are intentionally ignored.
+     * Supported extensions, in preference order: png, jpg, jpeg, webp.
+     *
+     * @return a file:// URI string usable directly as an image URL, or null if none exists.
+     */
+    fun findHeroCoverForCustomGame(appId: String): String? {
+        val folderPath = getFolderPathFromAppId(appId) ?: return null
+        return findHeroCoverInFolder(File(folderPath))
+    }
+
+    /** Folder-based variant of [findHeroCoverForCustomGame]. */
+    fun findHeroCoverInFolder(folder: File): String? =
+        findCoverByBaseNames(folder, listOf("coverh", "cover"))
+
+    /**
+     * Scans ONLY the top level of [folder] for a file whose name matches one of [baseNames]
+     * (case-insensitive) with a supported image extension. [baseNames] are tried in order, so
+     * earlier entries take priority (e.g. "coverv" before the generic "cover"). Within a single
+     * base name, extensions are preferred png > jpg/jpeg > webp.
+     *
+     * @return a file:// URI string, or null if no matching file exists.
+     */
+    private fun findCoverByBaseNames(folder: File, baseNames: List<String>): String? {
+        if (!folder.exists() || !folder.isDirectory) return null
+        val extensions = listOf("png", "jpg", "jpeg", "webp")
+        val files = folder.listFiles { f -> f.isFile } ?: return null
+        for (base in baseNames) {
+            val match = files.filter { file ->
+                extensions.any { ext -> file.name.equals("$base.$ext", ignoreCase = true) }
+            }.minByOrNull { file ->
+                // Rank by extension preference so e.g. cover.png wins over cover.jpg.
+                val ext = file.name.substringAfterLast('.', "").lowercase()
+                extensions.indexOf(ext).let { if (it == -1) Int.MAX_VALUE else it }
+            }
+            if (match != null) return Uri.fromFile(match).toString()
+        }
+        return null
+    }
+
     // Shared helper for .ico/.png heuristic
     private fun findNearbyImageIcon(folder: File, uniqueExeRel: String?): String? {
         fun File.icoFiles(): List<File> = this.listFiles { f ->
@@ -509,7 +570,7 @@ object CustomGameScanner {
             return null
         }
 
-        if (SteamService.instance != null) {
+        if (SteamService.instance != null && PrefManager.importCustomGameAsSteamGame) {
             val steamApps = SteamService.findSteamAppWithInstallDir(dirName = folder.name)
             if (steamApps?.size == 1) {
                 val steamApp = steamApps[0]

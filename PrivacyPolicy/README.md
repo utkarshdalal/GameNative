@@ -1,15 +1,15 @@
 # Privacy Policy for GameNative
-<sub>Last Updated: Feb. 1, 2026</sub>
+<sub>Last Updated: June 26, 2026</sub>
 
-GameNative is an unofficial Steam client application for Android devices that enables users to access their Steam library and play their owned games.
+GameNative is an unofficial client application that lets you access your libraries from supported PC game stores and play your owned games on your device.
 
 ## Data Collection and Usage
 
 **Local Storage Only**
-All sensitive user data, including Steam login credentials and session information, is stored locally on your device. We do not collect, transmit, or store any personal information on external servers.
+Sensitive data — including your login credentials and session information for the game stores you sign into (such as Steam, Epic Games, GOG, and Amazon) — is stored locally on your device. We do not collect, transmit, or store this personal information on our own servers.
 
-**Steam Integration**
-When you use GameNative, your device communicates directly with Steam's servers to authenticate your account and access your game library. Any data collection, storage, or processing by Steam is governed by Steam's own privacy policy and terms of service.
+**Game Store Integrations**
+When you sign into a supported store (Steam, Epic Games, GOG, or Amazon), your device communicates directly with that store's servers to authenticate your account and access your game library. Any data those stores collect, store, or process is governed by their own privacy policies and terms of service.
 
 **Anonymous Usage Metadata**
 GameNative collects limited, non-personal technical metadata to improve compatibility and performance. This may include:
@@ -21,7 +21,7 @@ GameNative collects limited, non-personal technical metadata to improve compatib
 
 This data:
 
-- Does not include your name, email, Steam credentials, IP address, or any direct identifiers
+- Does not include your name, email, store credentials, IP address, or any direct identifiers
 - Cannot be used to identify you personally
 - Is used only to improve game compatibility, recommend working settings, and prioritize development fixes
 
@@ -29,31 +29,36 @@ GameNative does not build user profiles, track browsing activity, or sell data t
 
 ## Third-Party Services
 
-**Steam Platform**
-GameNative functions solely as an interface to Steam's services. We have no control over or responsibility for how Steam collects, uses, or stores your information. Please refer to Steam's privacy policy to understand how they handle your data.
+GameNative functions as an interface to the game stores you choose to use (Steam, Epic Games, GOG, and Amazon). We have no control over or responsibility for how those platforms collect, use, or store your information. Please refer to each platform's privacy policy to understand how they handle your data.
+
+## Meta Horizon (Quest) Store Version
+
+**This section applies only to the version of GameNative distributed through the Meta Horizon Store. The free, open-source build distributed via GitHub does not collect or use any of the data described in this section.**
+
+On the Meta Horizon Store version, the app reads your Meta account ID and your subscription/entitlement status in order to confirm your access and unlock the app on that platform. This information is used only for that verification. It is processed on your device and through Meta's In-App Purchases platform, and Meta's handling of it is governed by Meta's privacy policy. We do not store it on our own servers, and we do not share or sell it.
 
 ## Data Security
 
-**Local Protection**
-Your login credentials and session data are stored securely on your device using Android's standard security protocols. This data is only used to facilitate communication between your device and Steam's servers.
+Your login credentials and session data are stored securely on your device using your platform's standard security protocols. This data is only used to facilitate communication between your device and the game stores' servers.
 
-## User Rights
+## Your Rights and Data Deletion
 
 You can clear all locally stored data at any time by:
+
 - Logging out of the app
-- Clearing app data through Android settings
+- Clearing app data through your device settings
 - Uninstalling the application
+
+We do not retain your personal information on our own servers. If you believe we hold any data associated with you — for example, support correspondence — you can request its deletion by emailing support@gamenative.app, and we will action verified requests.
 
 ## Changes to Privacy Policy
 
-We reserve the right to update this privacy policy at any time. Any changes will be effective immediately upon posting the updated policy within the app.
+We reserve the right to update this privacy policy at any time. Any changes will be effective immediately upon posting the updated policy.
 
 ## Contact Information
 
-For questions about this privacy policy or GameNative's privacy practices, please contact us at support@gameaway.in.
+For questions about this privacy policy or GameNative's privacy practices, please contact us at support@gamenative.app.
 
 ## Age Requirements
 
-Users must be at least 13 years old to use GameNative, in accordance with Steam's own age requirements.
-
-<sub>(Generated by Claude 3.5 Sonnet)</sub>
+Users must be at least 13 years old to use GameNative, in accordance with the supported stores' own age requirements.

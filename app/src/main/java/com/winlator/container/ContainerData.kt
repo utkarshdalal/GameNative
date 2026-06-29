@@ -17,7 +17,7 @@ data class ContainerData(
     val graphicsDriverVersion: String = "",
     val graphicsDriverConfig: String = "",
     val rendererPresentMode: String = "fifo",
-    val useLegacyRenderer: Boolean = false,
+    val displayRenderer: String = Container.DEFAULT_DISPLAY_RENDERER,
     var dxwrapper: String = Container.DEFAULT_DXWRAPPER,
     val dxwrapperConfig: String = "",
     val audioDriver: String = Container.DEFAULT_AUDIO_DRIVER,
@@ -77,8 +77,8 @@ data class ContainerData(
     val dinputMapperType: Byte = 1,
     /** Disable external mouse input **/
     val disableMouseInput: Boolean = false,
-    /** Touchscreen mode **/
-    val touchscreenMode: Boolean = false,
+    /** Touchscreen mode (defaults on for XR builds) **/
+    val touchscreenMode: Boolean = app.gamenative.BuildConfig.XR_BUILD,
     /** Shooter mode (auto-replace sticks with dynamic joysticks) **/
     val shooterMode: Boolean = true,
     /** Serialised JSON gesture configuration (used when touchscreenMode is true) **/
@@ -115,7 +115,7 @@ data class ContainerData(
                     "graphicsDriverVersion" to state.graphicsDriverVersion,
                     "graphicsDriverConfig" to state.graphicsDriverConfig,
                     "rendererPresentMode" to state.rendererPresentMode,
-                    "useLegacyRenderer" to state.useLegacyRenderer,
+                    "displayRenderer" to state.displayRenderer,
                     "dxwrapper" to state.dxwrapper,
                     "dxwrapperConfig" to state.dxwrapperConfig,
                     "audioDriver" to state.audioDriver,
@@ -183,7 +183,7 @@ data class ContainerData(
                     graphicsDriverVersion = savedMap["graphicsDriverVersion"] as String,
                     graphicsDriverConfig = (savedMap["graphicsDriverConfig"] as? String) ?: "",
                     rendererPresentMode = (savedMap["rendererPresentMode"] as? String) ?: "fifo",
-                    useLegacyRenderer = (savedMap["useLegacyRenderer"] as? Boolean) ?: true,
+                    displayRenderer = (savedMap["displayRenderer"] as? String) ?: "vulkan",
                     dxwrapper = savedMap["dxwrapper"] as String,
                     dxwrapperConfig = savedMap["dxwrapperConfig"] as String,
                     audioDriver = savedMap["audioDriver"] as String,

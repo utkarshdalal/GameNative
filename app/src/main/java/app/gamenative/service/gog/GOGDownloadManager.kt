@@ -2,7 +2,9 @@ package app.gamenative.service.gog
 
 import android.content.Context
 import app.gamenative.data.DownloadInfo
+import app.gamenative.service.gog.api.DepotDirectory
 import app.gamenative.service.gog.api.DepotFile
+import app.gamenative.service.gog.api.DepotLink
 import app.gamenative.service.gog.api.FileChunk
 import app.gamenative.service.gog.api.GOGApiClient
 import app.gamenative.service.gog.api.GOGManifestMeta
@@ -93,6 +95,7 @@ class GOGDownloadManager @Inject constructor(
     companion object {
         private const val CHUNK_BUFFER_SIZE = 1024 * 1024 // 1MB buffer
         private const val MAX_CHUNK_RETRIES = 3 // Maximum retries per chunk
+        private const val MAX_CHUNK_ASSEMBLY_ATTEMPTS = 3 // Re-fetch+reassemble attempts before skipping a chunk
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
         private const val DEPENDENCY_URL = "https://content-system.gog.com/dependencies/repository?generation=2"
         private const val STREAM_PROGRESS_TIME_INTERVAL_MS = 200L
@@ -241,6 +244,10 @@ class GOGDownloadManager @Inject constructor(
             // Track which depot each file came from for proper productId mapping
             data class FileWithDepot(val file: DepotFile, val depotProductId: String)
             val allFilesWithDepots = mutableListOf<FileWithDepot>()
+            // Symlinks and empty directories declared in the depot manifests. These carry no chunks,
+            // so they bypass the chunk download/assemble path and must be created explicitly.
+            val allLinks = mutableListOf<Pair<DepotLink, String>>()
+            val allDirectories = mutableListOf<Pair<DepotDirectory, String>>()
 
             for ((index, depot) in depots.withIndex()) {
                 downloadInfo.updateStatusMessage("Fetching depot ${index + 1}/${depots.size}...")
@@ -252,10 +259,12 @@ class GOGDownloadManager @Inject constructor(
                     )
                 }
 
-                val files = depotResult.getOrThrow().files
-                files.forEach { file ->
+                val depotManifest = depotResult.getOrThrow()
+                depotManifest.files.forEach { file ->
                     allFilesWithDepots.add(FileWithDepot(file, depot.productId))
                 }
+                depotManifest.links.forEach { link -> allLinks.add(link to depot.productId) }
+                depotManifest.directories.forEach { dir -> allDirectories.add(dir to depot.productId) }
             }
 
             val allFiles = allFilesWithDepots.map { it.file }
@@ -439,6 +448,15 @@ class GOGDownloadManager @Inject constructor(
                 MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 return@withContext downloadAndAssembleResult
             }
+
+            // Create declared directories and symlinks (no chunks, so not handled by the assemble path).
+            // Gate by base/DLC ownership the same way files are: only the base product unless DLCs are included.
+            val includeProduct = { productId: String -> productId == gameManifest.baseProductId || withDlcs }
+            createDirectoriesAndLinks(
+                installDir = gameInstallDir,
+                directories = allDirectories.filter { includeProduct(it.second) }.map { it.first },
+                links = allLinks.filter { includeProduct(it.second) }.map { it.first },
+            )
 
             // Download Dependencies (They will either go to root or supportDir depending on )
             if (supportDir != null && dependencies.isNotEmpty()) {
@@ -795,6 +813,7 @@ class GOGDownloadManager @Inject constructor(
             val totalFiles = files.size
             val chunkUsageCounts = ConcurrentHashMap<String, AtomicInteger>()
             val downloadedChunkIds = newKeySet<String>()
+            val chunkAttempts = ConcurrentHashMap<String, AtomicInteger>()
             val pendingChunks = AtomicInteger(chunkHashes.size)
 
             chunkHashes.forEach { chunkMd5 ->
@@ -819,16 +838,17 @@ class GOGDownloadManager @Inject constructor(
                     file.chunks.any { chunk -> chunk.compressedMd5 == chunkMd5 }
                 }
 
-                // 2. For each file found, try to assemble if all chunks are ready
+                // 2. For each file found, write this chunk into its position
+                var expectedCount = 0
                 var assemblySuccessCount = 0
 
                 matchedFiles.forEach { file ->
                     file.chunks.withIndex()
                         .filter { (_, chunk) -> chunk.compressedMd5 == chunkMd5 }
                         .forEach { (chunkIndex, chunk) ->
+                            expectedCount++
                             val result = assembleFile(file, chunk, chunkIndex, chunkCacheDir, installDir)
                             if (result.isSuccess) {
-                                // 3. If assembly is successful and all chunks in downloadedChunkIds, increment file counter
                                 assemblySuccessCount++
                             } else {
                                 Timber.tag("GOG").d(result.exceptionOrNull()?.message ?: "Failed to assemble ${file.path}")
@@ -836,13 +856,19 @@ class GOGDownloadManager @Inject constructor(
                         }
                 }
 
-                // 4. Decrement usage count only when assembly is successful
-                if (assemblySuccessCount > 0) {
-                    val usageCount = chunkUsageCounts[chunkMd5]?.addAndGet(-assemblySuccessCount)
-                    if (usageCount != null && usageCount <= 0) {
-                        val cacheFile = File(chunkCacheDir, "${chunkMd5}.chunk")
-                        cacheFile.delete()
-                    }
+                // 3. Only finalize once every position using this chunk has been written; a partial
+                // result is reported as failure so the caller can re-fetch and retry the chunk.
+                if (assemblySuccessCount < expectedCount) {
+                    return Result.failure(
+                        Exception("Assembled $assemblySuccessCount/$expectedCount position(s) for chunk $chunkMd5"),
+                    )
+                }
+
+                // 4. Free the cached chunk once it has been placed into all of its positions
+                val usageCount = chunkUsageCounts[chunkMd5]?.addAndGet(-assemblySuccessCount)
+                if (usageCount != null && usageCount <= 0) {
+                    val cacheFile = File(chunkCacheDir, "${chunkMd5}.chunk")
+                    cacheFile.delete()
                 }
 
                 return Result.success(Unit)
@@ -885,15 +911,23 @@ class GOGDownloadManager @Inject constructor(
                                 downloadedChunkIds.add(chunkMd5)
 
                                 val assembleResult = assembleReady(chunkMd5)
-                                if (assembleResult.isFailure) {
-                                    assemblyFailure = assembleResult.exceptionOrNull()
-                                        ?: Exception("Failed to assemble ready files")
-                                    Timber.tag("GOG").d("Chunk $chunkMd5 assembleReady Failed: ${assemblyFailure.message}")
-
-                                    // Requeue the chunk for retry
-                                    downloadedChunkIds.remove(chunkMd5)
-                                    networkChunkFlow.tryEmit(chunkMd5)
-                                    return@flow
+                                if (assembleResult.isFailure && downloadInfo.isActive()) {
+                                    // A position failed to assemble (e.g. corrupt chunk bytes). The per-chunk
+                                    // md5 is reliable, so re-fetch a fresh copy and retry a few times. If it
+                                    // still fails, skip this chunk and keep installing the rest instead of
+                                    // aborting the whole download.
+                                    val attempts = chunkAttempts.computeIfAbsent(chunkMd5) { AtomicInteger(0) }.incrementAndGet()
+                                    if (attempts <= MAX_CHUNK_ASSEMBLY_ATTEMPTS) {
+                                        Timber.tag("GOG").w(
+                                            "Chunk $chunkMd5 assembly failed (attempt $attempts/$MAX_CHUNK_ASSEMBLY_ATTEMPTS), " +
+                                                "re-fetching: ${assembleResult.exceptionOrNull()?.message}",
+                                        )
+                                        File(chunkCacheDir, "${chunkMd5}.chunk").delete()
+                                        downloadedChunkIds.remove(chunkMd5)
+                                        networkChunkFlow.tryEmit(chunkMd5)
+                                        return@flow
+                                    }
+                                    Timber.tag("GOG").e("Chunk $chunkMd5 could not be assembled after $MAX_CHUNK_ASSEMBLY_ATTEMPTS attempts, skipping")
                                 }
 
                                 val progress = downloadedChunkIds.size.toFloat() / totalChunks
@@ -1603,6 +1637,42 @@ class GOGDownloadManager @Inject constructor(
 
     private fun getSupportInstallPath(path: String): String {
         return if (path.startsWith("app/")) path.removePrefix("app/") else path
+    }
+
+    /**
+     * Create depot-declared empty directories and symlinks. These items carry no chunks, so the
+     * chunk download/assemble path skips them; gogdl creates them separately (prepare_location /
+     * CREATE_SYMLINK) and so must we, or affected games appear partially installed.
+     */
+    private fun createDirectoriesAndLinks(
+        installDir: File,
+        directories: List<DepotDirectory>,
+        links: List<DepotLink>,
+    ) {
+        directories.forEach { dir ->
+            val relPath = dir.path.removePrefix("/")
+            if (relPath.isBlank()) return@forEach
+            try {
+                File(installDir, relPath).mkdirs()
+            } catch (e: Exception) {
+                Timber.tag("GOG").w(e, "Failed to create directory ${dir.path}")
+            }
+        }
+        links.forEach { link ->
+            val relPath = link.path.replace("\\", "/").removePrefix("/")
+            if (relPath.isBlank() || link.target.isBlank()) return@forEach
+            try {
+                val linkFile = File(installDir, relPath)
+                linkFile.parentFile?.mkdirs()
+                if (linkFile.exists() || Files.isSymbolicLink(linkFile.toPath())) {
+                    linkFile.delete()
+                }
+                Files.createSymbolicLink(linkFile.toPath(), java.nio.file.Paths.get(link.target))
+                Timber.tag("GOG").d("Created symlink ${link.path} -> ${link.target}")
+            } catch (e: Exception) {
+                Timber.tag("GOG").w(e, "Failed to create symlink ${link.path} -> ${link.target}")
+            }
+        }
     }
 
     /**

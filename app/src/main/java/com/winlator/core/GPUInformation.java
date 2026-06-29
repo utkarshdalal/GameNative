@@ -2,7 +2,6 @@ package com.winlator.core;
 
 import android.content.Context;
 import android.opengl.EGL14;
-import android.os.Build;
 import android.util.Log;
 
 import androidx.collection.ArrayMap;
@@ -23,6 +22,11 @@ import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.opengles.GL10;
 
 public abstract class GPUInformation {
+
+    // Bumped from "gpu_renderer" to invalidate caches that stored the renderer
+    // with a manufacturer prefix (e.g. "Oculus Adreno (TM) 740"); the empty new
+    // key forces a clean recompute.
+    private static final String RENDERER_PREF_KEY = "gpu_renderer2";
 
     static {
         System.loadLibrary("extras");
@@ -98,14 +102,13 @@ public abstract class GPUInformation {
             String gpuRenderer = Objects.toString(gl.glGetString(GL10.GL_RENDERER), "");
             String gpuVendor = Objects.toString(gl.glGetString(GL10.GL_VENDOR), "");
             String gpuVersion = Objects.toString(gl.glGetString(GL10.GL_VERSION), "");
-            if (GPUBlackist.isTurnipBlacklisted()) gpuRenderer = Build.MANUFACTURER + " " + gpuRenderer;
 
             gpuInfo.put("renderer", gpuRenderer);
             gpuInfo.put("vendor", gpuVendor);
             gpuInfo.put("version", gpuVersion);
 
             PrefManager.init(context);
-            PrefManager.putString("gpu_renderer", gpuRenderer);
+            PrefManager.putString(RENDERER_PREF_KEY, gpuRenderer);
             PrefManager.putString("gpu_vendor", gpuVendor);
             PrefManager.putString("gpu_version", gpuVersion);
 
@@ -126,7 +129,7 @@ public abstract class GPUInformation {
 
     public static String getRenderer(Context context) {
         PrefManager.init(context);
-        String value = PrefManager.getString("gpu_renderer", "");
+        String value = PrefManager.getString(RENDERER_PREF_KEY, "");
         if (!value.isEmpty()) return value;
 
         ArrayMap<String, String> gpuInfo = loadGPUInformation(context);
@@ -169,7 +172,7 @@ public abstract class GPUInformation {
     public static boolean isTurnipCapable(Context context) {
         String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
         // match “adreno 610…699” or “adreno 710…799”
-        return r.contains("adreno") && r.matches(".*\\b[67][0-9]{2}\\b.*") && !GPUBlackist.isTurnipBlacklisted();
+        return r.contains("adreno") && r.matches(".*\\b[67][0-9]{2}\\b.*");
     }
 
     /**

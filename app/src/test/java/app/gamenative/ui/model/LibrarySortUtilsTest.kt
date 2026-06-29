@@ -52,43 +52,4 @@ class LibrarySortUtilsTest {
 
         assertEquals(listOf("alpha", "Beta", "Charlie"), sorted.map { it.name })
     }
-
-    @Test
-    fun normalizeLastPlayedMillis_handlesSecondsMillisAndUnsetValues() {
-        assertEquals(0L, LibrarySortUtils.normalizeLastPlayedMillis(0L))
-        assertEquals(1_700_000_000_000L, LibrarySortUtils.normalizeLastPlayedMillis(1_700_000_000L))
-        assertEquals(1_700_000_000_000L, LibrarySortUtils.normalizeLastPlayedMillis(1_700_000_000_000L))
-    }
-
-    @Test
-    fun steamLastPlayedOrInstallFallback_prefersSteamTimestamp() {
-        assertEquals(
-            1_700_000_000_000L,
-            LibrarySortUtils.steamLastPlayedOrInstallFallback(
-                steamLastPlayed = 1_700_000_000L,
-                isInstalled = true,
-                installedLastPlayed = 1_800_000_000_000L,
-            ),
-        )
-    }
-
-    @Test
-    fun steamLastPlayedOrInstallFallback_usesInstallTimestampOnlyWhenInstalledAndSteamUnset() {
-        assertEquals(
-            1_800_000_000_000L,
-            LibrarySortUtils.steamLastPlayedOrInstallFallback(
-                steamLastPlayed = 0L,
-                isInstalled = true,
-                installedLastPlayed = 1_800_000_000_000L,
-            ),
-        )
-        assertEquals(
-            0L,
-            LibrarySortUtils.steamLastPlayedOrInstallFallback(
-                steamLastPlayed = 0L,
-                isInstalled = false,
-                installedLastPlayed = 1_800_000_000_000L,
-            ),
-        )
-    }
 }

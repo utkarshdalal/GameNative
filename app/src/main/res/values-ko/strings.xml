@@ -40,6 +40,7 @@
     <string name="steam_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
     <string name="steam_uninstall_success">%1$s이(가) 제거되었습니다</string>
     <string name="steam_uninstall_failed">게임 제거 실패</string>
+    <string name="deleting">삭제 중…</string>
     <string name="amazon_uninstall_game_title">게임 제거</string>
     <string name="amazon_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
     <string name="amazon_install_game_title">게임 다운로드</string>
@@ -112,7 +113,7 @@
     <string name="downloads_status_complete">완료됨</string>
     <string name="downloads_status_failed">실패</string>
     <string name="downloads_status_paused">일시중지됨</string>
-    <string name="downloads_summary">한곳에서 진행 중인 다운로드와 저장소를 관리합니다</string>
+    <string name="downloads_summary">진행 중 %1$d개 • 재개 가능 %2$d개 • 완료 %3$d개</string>
     <string name="storage_internal">내부</string>
     <string name="storage_external">외부</string>
     <string name="storage_free_of_total">%1$s: %3$s 중 %2$s 사용 가능</string>
@@ -136,7 +137,7 @@
     <string name="container_storage_move_to_internal_button">내부로 이동</string>
     <string name="container_storage_move_external_disabled">게임을 이동하기 전에 설정에서 외부 저장소 경로를 지정하세요.</string>
     <string name="container_storage_move_success">%1$s을(를) %2$s(으)로 이동했습니다</string>
-    <string name="container_storage_move_failed">게임 이동 실패: %1$s</string>
+    <string name="container_storage_move_failed">%1$s 이동 실패: %2$s</string>
     <string name="container_storage_remove_button">컨테이너 제거</string>
     <string name="container_storage_remove_title">컨테이너 제거</string>
     <string name="container_storage_remove_message">%1$s의 컨테이너를 제거할까요? 게임 파일은 디스크에 그대로 유지됩니다.</string>
@@ -210,6 +211,8 @@
     <!-- Winlator: Win Components -->
     <string name="direct3d">Direct3D</string>
     <string name="directsound">DirectSound</string>
+    <string name="directinput8">DirectInput 8</string>
+    <string name="directinput">DirectInput</string>
     <string name="directmusic">DirectMusic</string>
     <string name="directplay">DirectPlay</string>
     <string name="directshow">DirectShow</string>
@@ -292,6 +295,7 @@
     <string name="open_navigation_menu">탐색 메뉴 열기</string>
     <string name="quick_menu_title">빠른 메뉴</string>
     <string name="quick_menu_back">뒤로</string>
+    <string name="display_brightness">디스플레이 밝기</string>
     <string name="screen_effects">화면 효과</string>
     <string name="screen_effects_live_preview">변경 사항이 현재 게임에 즉시 적용됩니다.</string>
     <string name="screen_effects_color_adjustments">색상 조정</string>
@@ -697,6 +701,7 @@
     <string name="vulkan_version">Vulkan 버전</string>
     <string name="image_cache_size">이미지 캐시 크기</string>
     <string name="dx_wrapper">DX Wrapper</string>
+    <string name="display_renderer">디스플레이 렌더러</string>
     <string name="vkd3d_feature_level">VKD3D 기능 수준</string>
     <string name="use_dri3">DRI3 사용</string>
     <string name="use_dri3_description">비활성화하면 일부 장치에서 그래픽 결함이 수정될 수 있습니다</string>
@@ -736,14 +741,12 @@
     <string name="directinput_mapper_type">DirectInput 매퍼 유형</string>
     <string name="disable_mouse_input">마우스 입력 비활성화</string>
     <string name="touchscreen_mode">터치스크린 모드</string>
-    <string name="touchscreen_mode_description">비주얼 노벨 및 RTS 게임용</string>
     <string name="shooter_mode_toggle">슈터 모드</string>
     <string name="shooter_mode_toggle_description">스틱 요소를 동적 조이스틱으로 교체</string>
     <string name="shooter_mode_on">마우스 활성화</string>
     <string name="shooter_mode_off">스틱 활성화</string>
 
     <!-- Gesture Settings Dialog -->
-    <string name="gesture_settings">제스처 설정</string>
     <string name="gesture_settings_title">터치 제스처 설정</string>
     <string name="gesture_tap">탭</string>
     <string name="gesture_tap_subtitle">왼쪽 클릭</string>
@@ -763,8 +766,11 @@
     <string name="gesture_action_right_click">오른쪽 클릭</string>
     <string name="gesture_action_middle_click">가운데 클릭</string>
     <string name="gesture_pan_middle_mouse">가운데 버튼 패닝</string>
+    <string name="gesture_pan_inverted_middle_mouse">반전 가운데 버튼 패닝</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">반전 WASD</string>
     <string name="gesture_pan_arrow_keys">화살표 키</string>
+    <string name="gesture_pan_inverted_arrow_keys">반전 화살표 키</string>
     <string name="gesture_zoom_scroll_wheel">스크롤 휠</string>
     <string name="gesture_zoom_plus_minus">+/- 키</string>
     <string name="gesture_zoom_page_up_down">페이지 위/아래</string>
@@ -783,9 +789,13 @@
     <string name="gesture_header_special">특수</string>
     <string name="gesture_header_mouse">마우스</string>
     <string name="gesture_header_common_game">일반 게임 키</string>
+    <string name="gesture_header_navigation_editing">탐색 / 편집</string>
+    <string name="gesture_header_symbols">기호</string>
     <string name="gesture_header_letters">문자 A-Z</string>
     <string name="gesture_header_numbers">숫자 0-9</string>
+    <string name="gesture_header_numpad">숫자 키패드</string>
     <string name="gesture_header_function_keys">기능 키</string>
+    <string name="gesture_header_modifiers_locks">보조키 / 잠금</string>
     <string name="gesture_two_finger_hold">두 손가락 길게 누르기</string>
     <string name="gesture_two_finger_hold_delay">두 손가락 길게 누르기 지연 (ms)</string>
     <string name="gesture_three_finger_tap">세 손가락 탭</string>
@@ -976,6 +986,8 @@
     <string name="settings_interface_show_gamepad_hints_title">컨트롤러 힌트 표시</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">화면 하단에 컨트롤러 버튼 힌트 바를 표시합니다</string>
     <string name="settings_interface_icon_style">아이콘 스타일</string>
+    <string name="settings_interface_custom_games">사용자 지정 게임</string>
+    <string name="settings_interface_custom_game_import_as_steam">사용자 지정 게임을 Steam 게임으로 가져오기</string>
     <string name="settings_interface_wifi_only_title">Wi-Fi/LAN으로만 다운로드</string>
     <string name="settings_interface_wifi_only_subtitle">셀룰러 데이터로 다운로드 방지</string>
     <string name="settings_interface_external_storage_title">외부 저장소에 쓰기</string>
@@ -1454,6 +1466,13 @@
      <string name="steam_save_import_failed">세이브 데이터 가져오기 실패: %s</string>
     <string name="option_import_saves">세이브 가져오기</string>
     <string name="option_export_saves">세이브 내보내기</string>
+    <!-- HLTB (How Long To Beat) -->
+    <string name="hltb_main_story">메인 스토리</string>
+    <string name="hltb_main_plus_extras">메인 + 추가</string>
+    <string name="hltb_completionist">완벽주의자</string>
+    <string name="hltb_all_styles">모든 스타일</string>
+    <string name="hltb_hours_value">%sh</string>
+    <string name="hltb_section_title">HLTB</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1495,7 +1514,10 @@
     <string name="game_launch_tip_22">팁: 터치스크린 모드를 활성화할 수 있습니다.</string>
     <string name="game_launch_tip_23">팁: Mali GPU를 사용하는 경우 시스템 드라이버를 사용하세요.</string>
     <string name="game_launch_tip_24">팁: 검은 화면이 나타나나요? 메뉴에서 \"%s\" 옵션을 사용하여 드라이버가 올바르게 작동하는지 확인하세요.</string>
-    <string name="launch_bionic_steam_description">온라인 플레이 활성화, 호환성 향상\n항상 작동하지 않을 수 있음\n시도하기 전에 저장 파일을 백업하세요</string>
+    <string name="local_saves_only">로컬 저장 파일만 사용</string>
+    <string name="local_saves_only_description">이 게임의 클라우드 저장 동기화를 비활성화하고 저장 파일을 이 기기에만 보관합니다</string>
+    <string name="launch_bionic_steam">실험적 Bionic Steam 활성화</string>
+    <string name="launch_bionic_steam_description">온라인 플레이를 활성화하고 호환성을 개선합니다\n항상 작동하지는 않습니다\n시도하기 전에 저장 파일을 백업하세요</string>
 
     <!-- Frontend Sync Settings -->
     <string name="settings_interface_frontend_sync_title">프론트엔드 동기화</string>
@@ -1513,9 +1535,12 @@
     <string name="frontend_sync_confirm_keep">유지</string>
     <string name="frontend_sync_resync_all">전체 재동기화</string>
     <string name="frontend_sync_resync_complete">프론트엔드 동기화 완료</string>
+    <string name="frontend_sync_pick_directory_cd">%1$s용 디렉터리 선택</string>
+    <string name="frontend_sync_clear_directory_cd">%1$s용 디렉터리 선택 해제</string>
     <string name="screen_effects_scaling">스케일링</string>
     <string name="screen_effects_upscaling">업스케일링</string>
     <string name="screen_effects_basic_scaling">기본 스케일링</string>
+    <string name="screen_effects_scaling_mode">스케일링 모드</string>
     <string name="screen_effects_scaling_mode_none">스케일링 없음</string>
     <string name="screen_effects_scaling_mode_none_desc">스케일링 없음.</string>
     <string name="screen_effects_scaling_mode_nearest">최근접</string>
@@ -1534,6 +1559,47 @@
     <string name="screen_effects_scaling_mode_dls_desc">샤픈/선명도 패스.</string>
     <string name="screen_effects_scaling_mode_natural">자연</string>
     <string name="screen_effects_scaling_mode_natural_desc">더 따뜻한 색조.</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">찾다</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">공식 AMD FidelityFX Super Resolution 1.0입니다. EASU + RCAS를 사용해 낮은 내부 해상도로 렌더링한 뒤 전체 해상도로 업스케일합니다.</string>
+    <string name="screen_effects_fsr_quality">FSR 품질</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">울트라 품질</string>
+    <string name="screen_effects_fsr_quality_quality">품질</string>
+    <string name="screen_effects_fsr_quality_balanced">균형</string>
+    <string name="screen_effects_fsr_quality_performance">성능</string>
+    <string name="screen_effects_fsr_sharpness">FSR 선명도</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">실행 시 선명도</string>
+    <string name="screen_effects_launch_sharpness_note">CAS와 DLS는 vkBasalt를 통해 적용되며, 다음 게임 실행부터 반영됩니다.</string>
+    <string name="tools_wine_processes_empty">실행 중인 EXE가 감지되지 않았습니다.</string>
+    <string name="performance_hud_battery_temperature">배터리 온도</string>
+    <string name="renderer_present_modes">렌더러 프레젠트 모드</string>
+    <string name="settings_emulation_auto_apply_known_config_title">알려진 설정 자동 적용</string>
+    <string name="settings_emulation_auto_apply_known_config_subtitle">Steam 게임을 처음 실행할 때 권장 설정을 자동으로 적용합니다</string>
+    <string name="download_no_wifi">Wi-Fi 또는 LAN에 연결되어 있지 않습니다</string>
+    <string name="download_paused_wifi">다운로드 일시 중지됨 - Wi-Fi 또는 LAN 연결 대기 중</string>
+    <string name="main_downloading_entry">%s 다운로드 중</string>
+    <string name="option_open_store_page">상점 페이지 열기</string>
+    <string name="option_export_for_frontend">프론트엔드용으로 내보내기</string>
+    <string name="option_open_container">컨테이너 열기</string>
+    <string name="option_edit_container">컨테이너 편집</string>
+    <string name="option_reset_to_defaults">컨테이너 초기화</string>
+    <string name="option_get_support">도움 받기</string>
+    <string name="option_submit_feedback">피드백 제출</string>
+    <string name="option_reset_drm">DRM 초기화</string>
+    <string name="option_use_known_config">알려진 설정 사용</string>
+    <string name="option_verify_files">파일 무결성 확인</string>
+    <string name="option_update">업데이트</string>
+    <string name="option_move_to_external_storage">외부 저장소로 이동</string>
+    <string name="option_move_to_internal_storage">내부 저장소로 이동</string>
+    <string name="option_force_cloud_sync">클라우드 동기화 강제 실행</string>
+    <string name="option_browse_online_saves">온라인 저장 파일 찾아보기</string>
+    <string name="option_force_download_remote">원격 저장 파일 강제 다운로드</string>
+    <string name="option_force_upload_local">로컬 저장 파일 강제 업로드</string>
+    <string name="option_fetch_game_images">게임 이미지 가져오기</string>
+    <string name="option_test_graphics">그래픽 테스트</string>
+    <string name="option_manage_dlc">DLC 관리</string>
+    <string name="option_manage_workshop">워크숍 관리</string>
     <string name="stats_key_runs">내 GPU에서 성공한 실행</string>
     <string name="stats_key_reviews">별 5개 리뷰 (내 GPU / 내 기기)</string>
     <string name="stats_key_fps">예상 FPS</string>

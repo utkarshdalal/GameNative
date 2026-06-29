@@ -25,9 +25,16 @@ class PhysicalControllerHandler(
     private val onOpenNavigationMenu: (() -> Unit)? = null,
     private val onShowKeyboard: (() -> Unit)? = null
 ) {
+    companion object {
+        private const val SCROLL_REPEAT_INTERVAL_MS = 90L
+    }
+
     private val TAG = "gncontrol"
     private val mouseMoveOffset = PointF(0f, 0f)
     private var mouseMoveTimer: Timer? = null
+    private var scrollRepeatTimer: Timer? = null
+    private val scrollRepeatLock = Any()
+    private val activeScrollBindings = mutableSetOf<Binding>()
     // track which axis keycodes are currently "pressed" so we only release on actual transitions.
     // accessed only from main thread (MotionEvent dispatch + Compose lifecycle), no sync needed.
     private val activeAxisBindings = mutableSetOf<Int>()
@@ -47,6 +54,7 @@ class PhysicalControllerHandler(
 
     fun setProfile(profile: ControlsProfile?) {
         releaseActiveAxes()
+        clearScrollRepeats()
         this.profile = profile
         Log.d(TAG, "PhysicalControllerHandler: Profile set to ${profile?.name}")
 
@@ -66,6 +74,7 @@ class PhysicalControllerHandler(
         mouseMoveTimer?.cancel()
         mouseMoveTimer = null
         mouseMoveOffset.set(0f, 0f)
+        clearScrollRepeats()
         showKeyboardPressed = false
     }
 
@@ -188,6 +197,61 @@ class PhysicalControllerHandler(
         }
     }
 
+    private fun handleScrollBinding(binding: Binding, isActionDown: Boolean): Boolean {
+        if (binding != Binding.MOUSE_SCROLL_UP && binding != Binding.MOUSE_SCROLL_DOWN) {
+            return false
+        }
+
+        var pulseImmediately = false
+        synchronized(scrollRepeatLock) {
+            if (isActionDown) {
+                pulseImmediately = activeScrollBindings.add(binding)
+                createScrollRepeatTimerLocked()
+            } else {
+                activeScrollBindings.remove(binding)
+                if (activeScrollBindings.isEmpty()) {
+                    cancelScrollRepeatTimerLocked()
+                }
+            }
+        }
+
+        if (pulseImmediately) {
+            sendScrollPulse(binding)
+        }
+        return true
+    }
+
+    private fun createScrollRepeatTimerLocked() {
+        if (scrollRepeatTimer != null) return
+        scrollRepeatTimer = Timer()
+        scrollRepeatTimer?.schedule(object : TimerTask() {
+            override fun run() {
+                val bindings = synchronized(scrollRepeatLock) {
+                    activeScrollBindings.toList()
+                }
+                bindings.forEach { sendScrollPulse(it) }
+            }
+        }, SCROLL_REPEAT_INTERVAL_MS, SCROLL_REPEAT_INTERVAL_MS)
+    }
+
+    private fun cancelScrollRepeatTimerLocked() {
+        scrollRepeatTimer?.cancel()
+        scrollRepeatTimer = null
+    }
+
+    private fun clearScrollRepeats() {
+        synchronized(scrollRepeatLock) {
+            activeScrollBindings.clear()
+            cancelScrollRepeatTimerLocked()
+        }
+    }
+
+    private fun sendScrollPulse(binding: Binding) {
+        val pointerButton = binding.pointerButton ?: return
+        xServer?.injectPointerButtonPress(pointerButton)
+        xServer?.injectPointerButtonRelease(pointerButton)
+    }
+
     /**
      * Process analog stick input and apply bindings.
      * Extracted from InputControlsView.processJoystickInput()
@@ -255,6 +319,8 @@ class PhysicalControllerHandler(
     // offset: analog axis value for presses; must be 0f for releases (triggers use offset > 0f
     // to determine pressed state, sticks gate on isActionDown, everything else ignores offset)
     private fun handleInputEvent(binding: Binding, isActionDown: Boolean, offset: Float = 0f) {
+        if (binding == Binding.NONE) return
+
         if (binding.isGamepad) {
             val winHandler = xServer?.winHandler
             val state = profile?.gamepadState
@@ -356,6 +422,8 @@ class PhysicalControllerHandler(
                     createMouseMoveTimer()
                 }
                 // Don't reset when isActionDown=false - mouseMoveOffset is reset at the start of processJoystickInput
+            } else if (handleScrollBinding(binding, isActionDown)) {
+                // Mouse wheel events are pulses, not held button state.
             } else {
                 // For keyboard/mouse button bindings, inject into XServer
                 val pointerButton = binding.pointerButton
@@ -363,13 +431,13 @@ class PhysicalControllerHandler(
                     if (pointerButton != null) {
                         xServer?.injectPointerButtonPress(pointerButton)
                     } else {
-                        xServer?.injectKeyPress(binding.keycode)
+                        xServer?.let { binding.inject(it, true) }
                     }
                 } else {
                     if (pointerButton != null) {
                         xServer?.injectPointerButtonRelease(pointerButton)
                     } else {
-                        xServer?.injectKeyRelease(binding.keycode)
+                        xServer?.let { binding.inject(it, false) }
                     }
                 }
             }

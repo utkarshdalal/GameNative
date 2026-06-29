@@ -40,6 +40,7 @@
     <string name="steam_uninstall_confirmation_message">Êtes-vous sûr de vouloir désinstaller %1$s ? Cette action ne peut pas être annulée.</string>
     <string name="steam_uninstall_success">%1$s a été désinstallé</string>
     <string name="steam_uninstall_failed">Échec de la désinstallation du jeu</string>
+    <string name="deleting">Suppression…</string>
     <string name="amazon_uninstall_game_title">Désinstaller le jeu</string>
     <string name="amazon_uninstall_confirmation_message">Êtes-vous sûr de vouloir désinstaller %1$s ? Cette action ne peut pas être annulée.</string>
     <string name="amazon_install_game_title">Télécharger le jeu</string>
@@ -201,6 +202,8 @@
     <!-- Winlator: Win Components -->
     <string name="direct3d">Direct3D</string>
     <string name="directsound">DirectSound</string>
+    <string name="directinput8">DirectInput 8</string>
+    <string name="directinput">DirectInput</string>
     <string name="directmusic">DirectMusic</string>
     <string name="directplay">DirectPlay</string>
     <string name="directshow">DirectShow</string>
@@ -279,6 +282,7 @@
     <string name="open_navigation_menu">Ouvrir le menu de navigation</string>
     <string name="quick_menu_title">Menu rapide</string>
     <string name="quick_menu_back">Retour</string>
+    <string name="display_brightness">Luminosité de l’écran</string>
     <string name="screen_effects">Effets d’écran</string>
     <string name="screen_effects_live_preview">Les modifications s’appliquent instantanément au jeu en cours.</string>
     <string name="screen_effects_color_adjustments">Réglages des couleurs</string>
@@ -683,6 +687,7 @@
     <string name="vulkan_version">Version Vulkan</string>
     <string name="image_cache_size">Taille du cache d\'images</string>
     <string name="dx_wrapper">Wrapper DX</string>
+    <string name="display_renderer">Rendu d\'affichage</string>
     <string name="vkd3d_feature_level">Niveau de fonctionnalité VKD3D</string>
     <string name="use_dri3">Utiliser DRI3</string>
     <string name="use_dri3_description">Désactiver peut corriger les problèmes graphiques sur certains appareils</string>
@@ -749,8 +754,11 @@
     <string name="gesture_action_right_click">Clic droit</string>
     <string name="gesture_action_middle_click">Clic central</string>
     <string name="gesture_pan_middle_mouse">Pan souris centrale</string>
+    <string name="gesture_pan_inverted_middle_mouse">Pan souris centrale inversé</string>
     <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_inverted_wasd">WASD inversé</string>
     <string name="gesture_pan_arrow_keys">Touches fléchées</string>
+    <string name="gesture_pan_inverted_arrow_keys">Touches fléchées inversées</string>
     <string name="gesture_zoom_scroll_wheel">Molette de défilement</string>
     <string name="gesture_zoom_plus_minus">Touches +/-</string>
     <string name="gesture_zoom_page_up_down">Page haut/bas</string>
@@ -769,9 +777,13 @@
     <string name="gesture_header_special">Spécial</string>
     <string name="gesture_header_mouse">Souris</string>
     <string name="gesture_header_common_game">Touches de jeu courantes</string>
+    <string name="gesture_header_navigation_editing">Navigation / édition</string>
+    <string name="gesture_header_symbols">Symboles</string>
     <string name="gesture_header_letters">Lettres A-Z</string>
     <string name="gesture_header_numbers">Nombres 0-9</string>
+    <string name="gesture_header_numpad">Pavé numérique</string>
     <string name="gesture_header_function_keys">Touches de fonction</string>
+    <string name="gesture_header_modifiers_locks">Modificateurs / verrouillage</string>
     <string name="gesture_two_finger_hold">Maintien à deux doigts</string>
     <string name="gesture_two_finger_hold_delay">Délai du maintien à deux doigts (ms)</string>
     <string name="gesture_three_finger_tap">Appui à trois doigts</string>
@@ -962,6 +974,8 @@
     <string name="settings_interface_show_gamepad_hints_title">Afficher les indications de manette</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Affiche la barre d\'indications des boutons de la manette en bas de l\'écran</string>
     <string name="settings_interface_icon_style">Style d\'icône</string>
+    <string name="settings_interface_custom_games">Jeux personnalisés</string>
+    <string name="settings_interface_custom_game_import_as_steam">Importer les jeux personnalisés comme jeu Steam</string>
     <string name="settings_interface_wifi_only_title">Télécharger uniquement via Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Empêcher les téléchargements sur données cellulaires</string>
     <string name="settings_interface_external_storage_title">Écrire sur le stockage externe</string>
@@ -999,6 +1013,7 @@
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Continuer</string>
     <string name="settings_text">Paramètres</string>
+    <string name="settings_interface_settingslistdropdownsearchable_searchlabel">Rechercher</string>
 
 
     <!-- Connecting to Servers Screen -->
@@ -1450,6 +1465,13 @@
      <string name="steam_save_import_failed">Échec de l\'importation des sauvegardes : %s</string>
     <string name="option_import_saves">Importer les sauvegardes</string>
     <string name="option_export_saves">Exporter les sauvegardes</string>
+    <!-- HLTB (How Long To Beat) -->
+    <string name="hltb_main_story">Histoire principale</string>
+    <string name="hltb_main_plus_extras">Principal + Extras</string>
+    <string name="hltb_completionist">Complétiste</string>
+    <string name="hltb_all_styles">Tous les styles</string>
+    <string name="hltb_hours_value">%sh</string>
+    <string name="hltb_section_title">HLTB</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>

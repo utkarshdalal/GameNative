@@ -173,6 +173,8 @@ class GOGService : Service() {
 
         private fun setSyncInProgress(inProgress: Boolean) {
             syncInProgress = inProgress
+            if (inProgress) getInstance()?.notifierOrNull?.showSyncing(NotificationHelper.NOTIFICATION_ID_GOG)
+            else getInstance()?.notifierOrNull?.showIdle(NotificationHelper.NOTIFICATION_ID_GOG)
         }
 
         fun isSyncInProgress(): Boolean = syncInProgress
@@ -350,6 +352,7 @@ class GOGService : Service() {
 
             // Track in activeDownloads first
             instance.activeDownloads[gameId] = downloadInfo
+            instance.notifierOrNull?.trackDownload(downloadInfo, "", NotificationHelper.NOTIFICATION_ID_GOG)
 
             // Launch download in service scope so it runs independently
             val job = instance.scope.launch {
@@ -625,6 +628,8 @@ class GOGService : Service() {
     }
 
     private lateinit var notificationHelper: NotificationHelper
+
+    private val notifierOrNull: NotificationHelper? get() = if (::notificationHelper.isInitialized) notificationHelper else null
 
     @Inject
     lateinit var gogManager: GOGManager

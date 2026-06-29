@@ -4,6 +4,66 @@
   "items": {
     "driver": [
       {
+        "id": "turnip26.0.0_R8",
+        "name": "turnip26.0.0_R8",
+        "url": "https://downloads.gamenative.app/drivers/turnip26.0.0_R8.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip26.0.0_R4",
+        "name": "turnip26.0.0_R4",
+        "url": "https://downloads.gamenative.app/drivers/turnip26.0.0_R4.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip25.3.0_R11",
+        "name": "turnip25.3.0_R11",
+        "url": "https://downloads.gamenative.app/drivers/turnip25.3.0_R11.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip25.3.0_R6_Gmem",
+        "name": "turnip25.3.0_R6_Gmem",
+        "url": "https://downloads.gamenative.app/drivers/turnip25.3.0_R6_Gmem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip25.3.0_R3_Gmem",
+        "name": "turnip25.3.0_R3_Gmem",
+        "url": "https://downloads.gamenative.app/drivers/turnip25.3.0_R3_Gmem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip25.3.0_R3_Auto",
+        "name": "turnip25.3.0_R3_Auto",
+        "url": "https://downloads.gamenative.app/drivers/turnip25.3.0_R3_Auto.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip25.1.0",
+        "name": "turnip25.1.0",
+        "url": "https://downloads.gamenative.app/drivers/turnip25.1.0.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip_Gen8_V25",
+        "name": "Turnip_Gen8_V25",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_Gen8_V25.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "v762",
+        "name": "v762",
+        "url": "https://downloads.gamenative.app/drivers/v762.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "v805",
+        "name": "v805",
+        "url": "https://downloads.gamenative.app/drivers/v805.zip",
+        "variant": "bionic"
+      },
+      {
         "id": "Turnip v26.2.0 R4",
         "name": "Turnip_v26.2.0_R4",
         "url": "https://downloads.gamenative.app/drivers/Turnio_v26.2.0_R4.zip",
@@ -612,6 +672,48 @@
     ],
     "dxvk": [
       {
+        "id": "2.7.1",
+        "name": "DXVK 2.7.1",
+        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-2.7.1.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "1.10.3",
+        "name": "DXVK 1.10.3",
+        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.10.3.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "1.10.1",
+        "name": "DXVK 1.10.1",
+        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.10.1.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "1.10.9-sarek",
+        "name": "DXVK 1.10.9-sarek",
+        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.10.9-sarek.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "1.9.2",
+        "name": "DXVK 1.9.2",
+        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.9.2.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.4.1",
+        "name": "DXVK 2.4.1",
+        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-2.4.1.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "1.12.0-sarek-0",
+        "name": "DXVK 1.12.0-sarek",
+        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.12.0-sarek.wcp",
+        "variant": "bionic"
+      },
+      {
         "id": "2.7.1-1-gplasync-0",
         "name": "DXVK-GPLASYNC 2.7.1-1",
         "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK-GPLASYNC/dxvk-gplasync-2.7.1-1.wcp",
@@ -739,6 +841,30 @@
       }
     ],
     "vkd3d": [
+      {
+        "id": "2.6",
+        "name": "VKD3D 2.6",
+        "url": "https://downloads.gamenative.app/dxwrapper/vkd3d-2.6.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.12",
+        "name": "VKD3D 2.12",
+        "url": "https://downloads.gamenative.app/dxwrapper/vkd3d-2.12.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.13",
+        "name": "VKD3D 2.13",
+        "url": "https://downloads.gamenative.app/dxwrapper/vkd3d-2.13.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "3.0b",
+        "name": "VKD3D 3.0b",
+        "url": "https://downloads.gamenative.app/dxwrapper/vkd3d-3.0b.tzst",
+        "variant": "bionic"
+      },
       {
         "id": "3.0.1-0",
         "name": "VKD3D 3.0.1-0",

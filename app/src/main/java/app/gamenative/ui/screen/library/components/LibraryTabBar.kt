@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.theme.PluviaTheme
@@ -133,7 +134,7 @@ private fun CompactLibraryTabBar(
     onNextTab: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tabs = LibraryTab.entries
+    val tabs = LibraryTab.visibleEntries
     val currentIndex = tabs.indexOf(currentTab)
     val scrollState = rememberScrollState()
     val tabPositions = remember { mutableStateMapOf<Int, Float>() }
@@ -277,11 +278,13 @@ private fun CompactLibraryTabBar(
                 contentDescription = stringResource(R.string.search),
                 onClick = onSearchClick,
             )
-            CompactIconButton(
-                icon = Icons.Default.Add,
-                contentDescription = stringResource(R.string.action_add_game),
-                onClick = onAddGameClick,
-            )
+            if (!BuildConfig.MODERN_ANDROID) {
+                CompactIconButton(
+                    icon = Icons.Default.Add,
+                    contentDescription = stringResource(R.string.action_add_game),
+                    onClick = onAddGameClick,
+                )
+            }
             CompactIconButton(
                 icon = Icons.Default.Menu,
                 contentDescription = stringResource(R.string.menu),
@@ -371,7 +374,7 @@ private fun ExpandedLibraryTabBar(
     onNextTab: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tabs = LibraryTab.entries
+    val tabs = LibraryTab.visibleEntries
     val currentIndex = tabs.indexOf(currentTab)
     val scrollState = rememberScrollState()
 
@@ -513,11 +516,13 @@ private fun ExpandedLibraryTabBar(
                 onClick = onSearchClick,
             )
 
-            IconActionButton(
-                icon = Icons.Default.Add,
-                contentDescription = stringResource(R.string.action_add_game),
-                onClick = onAddGameClick,
-            )
+            if (!BuildConfig.MODERN_ANDROID) {
+                IconActionButton(
+                    icon = Icons.Default.Add,
+                    contentDescription = stringResource(R.string.action_add_game),
+                    onClick = onAddGameClick,
+                )
+            }
 
             IconActionButton(
                 icon = Icons.Default.Menu,

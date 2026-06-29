@@ -10,11 +10,13 @@ import com.winlator.xserver.GraphicsContext;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import timber.log.Timber;
+
 public class Drawable extends XResource {
+    private static boolean DRAWABLE_FOR_ASR = false;
     private ByteBuffer data;
     public final short height;
     private boolean offscreenStorage;
-    private boolean directScanout = false;
     private Callback<Drawable> onDestroyListener;
     private Runnable onDrawListener;
     public final Object renderLock;
@@ -37,6 +39,10 @@ public class Drawable extends XResource {
 
     private static native void fromBitmap(Bitmap bitmap, ByteBuffer byteBuffer);
 
+    public static void DRAWABLE_ASR_MODE(boolean value) {
+        DRAWABLE_FOR_ASR = value;
+    }
+
     static {
         System.loadLibrary("winlator_11");
     }
@@ -49,7 +55,14 @@ public class Drawable extends XResource {
         this.width = (short)width;
         this.height = (short)height;
         this.visual = visual;
-        this.data = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.LITTLE_ENDIAN);
+
+        if (Drawable.DRAWABLE_FOR_ASR) {
+            GPUImage g = new GPUImage((short) width, (short) height);
+            this.texture = g;
+            this.data = g.getVirtualData();
+        } else {
+            this.data = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.LITTLE_ENDIAN);
+        }
     }
 
     public static Drawable fromBitmap(Bitmap bitmap) {
@@ -86,12 +99,8 @@ public class Drawable extends XResource {
         return data;
     }
 
-    public void setDirectScanout(boolean value) {
-        this.directScanout = value;
-    }
-
     public boolean isDirectScanout() {
-        return directScanout;
+        return false;
     }
 
     public void setData(ByteBuffer data) {

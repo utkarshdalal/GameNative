@@ -42,6 +42,9 @@ data class GOGGame(
     @ColumnInfo(name = "background_url", defaultValue = "''")
     val backgroundUrl: String = "",
 
+    @ColumnInfo(name = "vertical_cover_url", defaultValue = "''")
+    val verticalCoverUrl: String = "",
+
     @ColumnInfo("description")
     val description: String = "",
 

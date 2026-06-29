@@ -7,12 +7,8 @@ import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
-import app.gamenative.utils.LsfgVkManager
 import app.gamenative.service.epic.EpicService
-import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
-import app.gamenative.utils.BestConfigService
-import app.gamenative.utils.CustomGameScanner
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
@@ -22,9 +18,6 @@ import com.winlator.core.GPUInformation
 import com.winlator.core.envvars.EnvVars
 import com.winlator.core.WineRegistryEditor
 import com.winlator.core.WineThemeManager
-import com.winlator.fexcore.FEXCoreManager
-import com.winlator.inputcontrols.ControlsProfile
-import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.winhandler.WinHandler.PreferredInputApi
 import com.winlator.xenvironment.ImageFs
 import java.io.File
@@ -42,6 +35,13 @@ object ContainerUtils {
         val name: String,
     )
 
+    const val WRAPPER_TURNIP_CAPABLE = "Turnip v26.2.0 R4"
+    const val WRAPPER_ADRENO_8ELITE_GEN5 = "Turnip Adreno Driver T26 (@Mr_Purple_666)"
+    const val WRAPPER_ADRENO_8ELITE = "Turnip Gen8 V30"
+
+    val wrapperDriverDefaults: List<String> =
+        listOf(WRAPPER_TURNIP_CAPABLE, WRAPPER_ADRENO_8ELITE_GEN5, WRAPPER_ADRENO_8ELITE)
+
     fun setContainerDefaults(context: Context) {
         // Override default driver and DXVK version based on Turnip capability
         if (GPUInformation.isTurnipCapable(context)) {
@@ -50,7 +50,7 @@ object ContainerUtils {
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = if (GPUInformation.isAdreno6xx(context)) "1.11.1-sarek" else "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
-            DefaultVersion.WRAPPER = "Turnip_v26.2.0_R4"
+            DefaultVersion.WRAPPER = WRAPPER_TURNIP_CAPABLE
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdreno8EliteGen5(context)) {
@@ -59,7 +59,7 @@ object ContainerUtils {
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
-            DefaultVersion.WRAPPER = "Turnip Adreno Driver T26 (@Mr_Purple_666)"
+            DefaultVersion.WRAPPER = WRAPPER_ADRENO_8ELITE_GEN5
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdreno8Elite(context)) {
@@ -68,7 +68,7 @@ object ContainerUtils {
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
-            DefaultVersion.WRAPPER = "Turnip_Gen8_V30"
+            DefaultVersion.WRAPPER = WRAPPER_ADRENO_8ELITE
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
             DefaultVersion.ASYNC_CACHE = "1"
         } else {
@@ -105,7 +105,7 @@ object ContainerUtils {
             graphicsDriverVersion = PrefManager.graphicsDriverVersion,
             graphicsDriverConfig = PrefManager.graphicsDriverConfig,
             rendererPresentMode = PrefManager.rendererPresentMode,
-            useLegacyRenderer = PrefManager.useLegacyRenderer,
+            displayRenderer = PrefManager.displayRendererMode,
             dxwrapper = PrefManager.dxWrapper,
             dxwrapperConfig = PrefManager.dxWrapperConfig,
             audioDriver = PrefManager.audioDriver,
@@ -170,7 +170,7 @@ object ContainerUtils {
         PrefManager.graphicsDriverVersion = containerData.graphicsDriverVersion
         PrefManager.graphicsDriverConfig = containerData.graphicsDriverConfig
         PrefManager.rendererPresentMode = containerData.rendererPresentMode
-        PrefManager.useLegacyRenderer = containerData.useLegacyRenderer
+        PrefManager.displayRendererMode = containerData.displayRenderer
         PrefManager.dxWrapper = containerData.dxwrapper
         PrefManager.dxWrapperConfig = containerData.dxwrapperConfig
         PrefManager.audioDriver = containerData.audioDriver
@@ -286,7 +286,7 @@ object ContainerUtils {
             graphicsDriverVersion = container.graphicsDriverVersion,
             graphicsDriverConfig = container.graphicsDriverConfig,
             rendererPresentMode = container.rendererPresentMode,
-            useLegacyRenderer = container.isUseLegacyRenderer,
+            displayRenderer = container.displayRenderer,
             dxwrapper = container.dxWrapper,
             dxwrapperConfig = container.dxWrapperConfig,
             audioDriver = container.audioDriver,
@@ -440,6 +440,8 @@ object ContainerUtils {
         val previousSteamOfflineMode: Boolean = container.isSteamOfflineMode()
 
         val previousUnpackFiles: Boolean = container.isUnpackFiles
+        val previousLaunchBionicSteam: Boolean = container.isLaunchBionicSteam
+        val previousLaunchRealSteam: Boolean = container.isLaunchRealSteam
         val userRegFile = File(container.rootDir, ".wine/user.reg")
         WineRegistryEditor(userRegFile).use { registryEditor ->
             registryEditor.setStringValue("Software\\Wine\\Direct3D", "renderer", containerData.renderer)
@@ -465,7 +467,7 @@ object ContainerUtils {
         // Save driver config through to container
         container.graphicsDriverConfig = containerData.graphicsDriverConfig
         container.rendererPresentMode = containerData.rendererPresentMode
-        container.setUseLegacyRenderer(containerData.useLegacyRenderer)
+        container.displayRenderer = containerData.displayRenderer
         container.dxWrapper = containerData.dxwrapper
         container.dxWrapperConfig = containerData.dxwrapperConfig
         container.audioDriver = containerData.audioDriver
@@ -480,6 +482,10 @@ object ContainerUtils {
         container.isShowFPS = false
         container.isLaunchRealSteam = containerData.launchRealSteam
         container.isLaunchBionicSteam = containerData.launchBionicSteam
+        if (previousLaunchBionicSteam != containerData.launchBionicSteam ||
+            previousLaunchRealSteam != containerData.launchRealSteam) {
+            container.setNeedsUnpacking(true)
+        }
         container.isAllowSteamUpdates = containerData.allowSteamUpdates
         container.setSteamType(containerData.steamType)
         container.cpuList = containerData.cpuList
@@ -848,7 +854,7 @@ object ContainerUtils {
                 graphicsDriverVersion = PrefManager.graphicsDriverVersion,
                 graphicsDriverConfig = PrefManager.graphicsDriverConfig,
                 rendererPresentMode = PrefManager.rendererPresentMode,
-                useLegacyRenderer = PrefManager.useLegacyRenderer,
+                displayRenderer = PrefManager.displayRendererMode,
                 dxwrapper = initialDxWrapper,
                 dxwrapperConfig = PrefManager.dxWrapperConfig,
                 audioDriver = PrefManager.audioDriver,

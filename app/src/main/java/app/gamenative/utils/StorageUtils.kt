@@ -1,6 +1,10 @@
 package app.gamenative.utils
 
+import android.content.Context
+import android.os.Build
+import android.os.Environment
 import android.os.StatFs
+import android.os.storage.StorageManager
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -26,6 +30,24 @@ object StorageUtils {
             throw IllegalArgumentException("Invalid path: $path")
         }
         val stat = StatFs(path)
+        return stat.blockSizeLong * stat.availableBlocksLong
+    }
+
+    /**
+     * Free space on the volume that would contain [path], even if [path] doesn't exist yet
+     * (e.g. a game's install directory before the first download has created it). Walks up to
+     * the nearest existing ancestor, which is on the same volume, since [StatFs] needs an
+     * existing path. Throws only if no ancestor exists (e.g. a blank/invalid path).
+     */
+    fun getAvailableSpaceForUncreatedPath(path: String): Long {
+        var file: File? = File(path)
+        while (file != null && !file.exists()) {
+            file = file.parentFile
+        }
+        if (file == null) {
+            throw IllegalArgumentException("Invalid path: $path")
+        }
+        val stat = StatFs(file.path)
         return stat.blockSizeLong * stat.availableBlocksLong
     }
 
@@ -74,6 +96,56 @@ object StorageUtils {
         )
 
         return result
+    }
+
+    /**
+     * Gets all app-specific external files directories, using StorageManager as a fallback
+     * for cases where context.getExternalFilesDirs(null) might return null or incomplete results
+     * (e.g. USB OTG drives, which most devices omit from getExternalFilesDirs).
+     */
+    fun getAllExternalFilesDirs(context: Context): List<File> {
+        val result = mutableSetOf<File>()
+
+        // 1. Primary source: Standard Android API
+        try {
+            context.getExternalFilesDirs(null)?.filterNotNull()?.let {
+                result.addAll(it)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error calling getExternalFilesDirs")
+        }
+
+        // 2. Fallback: Iterate through all storage volumes using StorageManager
+        val sm = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
+        if (sm != null) {
+            try {
+                for (volume in sm.storageVolumes) {
+                    if (volume.state != Environment.MEDIA_MOUNTED) continue
+
+                    val volumeDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        volume.directory
+                    } else {
+                        // Use reflection for older APIs (26-29) if getExternalFilesDirs missed it
+                        try {
+                            val getPath = volume.javaClass.getMethod("getPath")
+                            (getPath.invoke(volume) as? String)?.let { File(it) }
+                        } catch (re: Exception) {
+                            null
+                        }
+                    } ?: continue
+
+                    // The app-specific dedicated directory is /Android/data/<package_name>/files
+                    val appFilesDir = File(volumeDir, "Android/data/${context.packageName}/files")
+                    if (!result.contains(appFilesDir) && (appFilesDir.exists() || appFilesDir.mkdirs())) {
+                        result.add(appFilesDir)
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error iterating storage volumes in fallback")
+            }
+        }
+
+        return result.toList()
     }
 
     suspend fun moveDirectory(

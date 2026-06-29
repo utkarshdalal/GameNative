@@ -204,6 +204,17 @@ object PrefManager {
             setPref(RENDERER_PRESENT_MODE, value)
         }
 
+    private val DISPLAY_RENDERER_MODE = stringPreferencesKey("display_renderer_mode")
+    var displayRendererMode: String
+        get() {
+            val stored = getPref(DISPLAY_RENDERER_MODE, "")
+            if (stored.isNotEmpty()) return stored
+            return if (getPref(USE_LEGACY_RENDERER, false)) "gl" else "vulkan"
+        }
+        set(value) {
+            setPref(DISPLAY_RENDERER_MODE, value)
+        }
+
     private val USE_LEGACY_RENDERER = booleanPreferencesKey("use_legacy_renderer")
     var useLegacyRenderer: Boolean
         get() = getPref(USE_LEGACY_RENDERER, false)
@@ -1125,6 +1136,15 @@ object PrefManager {
             setPref(SHOW_ADD_CUSTOM_GAME_DIALOG, value)
         }
 
+
+    // Import the custom game as a Steam game
+    private val IMPORT_CUSTOM_GAME_AS_STEAM_GAME = booleanPreferencesKey("import_custom_game_as_steam_game")
+    var importCustomGameAsSteamGame: Boolean
+        get() = getPref(IMPORT_CUSTOM_GAME_AS_STEAM_GAME, false)
+        set(value) {
+            setPref(IMPORT_CUSTOM_GAME_AS_STEAM_GAME, value)
+        }
+
     // Whether to download games only over Wi-Fi.
     private val DOWNLOAD_ON_WIFI_ONLY = booleanPreferencesKey("download_on_wifi_only")
     var downloadOnWifiOnly: Boolean
@@ -1279,6 +1299,14 @@ object PrefManager {
         get() = getPref(GAME_COMPATIBILITY_CACHE, "{}")
         set(value) {
             setPref(GAME_COMPATIBILITY_CACHE, value)
+        }
+
+    // HLTB cache (JSON string)
+    private val HLTB_CACHE = stringPreferencesKey("hltb_cache")
+    var hltbCache: String
+        get() = getPref(HLTB_CACHE, "{}")
+        set(value) {
+            setPref(HLTB_CACHE, value)
         }
 
     // Device-wide game stats cache (JSON string)
