@@ -1,15 +1,11 @@
 package app.gamenative.ui.component
 
-import android.content.Intent
 import android.database.ContentObserver
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -78,7 +74,6 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ScreenEffectsConfig
-import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.ui.util.applyScreenEffectsConfig
 import app.gamenative.ui.util.loadScreenEffectsConfig
@@ -165,21 +160,13 @@ private fun DisplayBrightnessRow(
 ) {
     val context = LocalContext.current
     val activity = remember(context) { BrightnessManager.findActivity(context) }
-    // Without an Activity there is no system brightness target to control.
+    // Without an Activity there is no window brightness target to control.
     if (activity == null) return
     var displayBrightness by remember(activity) {
         mutableFloatStateOf(BrightnessManager.readDisplayBrightness(activity))
     }
-    val writeSettingsLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult(),
-    ) {
-        BrightnessManager.clearDisplayBrightnessOverride(activity)
-        displayBrightness = BrightnessManager.readDisplayBrightness(activity)
-    }
 
     DisposableEffect(activity) {
-        BrightnessManager.clearDisplayBrightnessOverride(activity)
-
         val contentResolver = activity.contentResolver
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
@@ -200,29 +187,13 @@ private fun DisplayBrightnessRow(
 
         onDispose {
             contentResolver.unregisterContentObserver(observer)
-            BrightnessManager.clearDisplayBrightnessOverride(activity)
         }
-    }
-
-    fun requestWriteSettingsPermission() {
-        SnackbarManager.show(context.getString(R.string.display_brightness_permission_required))
-        writeSettingsLauncher.launch(
-            Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
-                data = Uri.parse("package:${context.packageName}")
-            },
-        )
     }
 
     fun setDisplayBrightness(value: Float) {
         val next = BrightnessManager.snapDisplayBrightness(value)
-        if (!BrightnessManager.canWriteSystemSettings(context)) {
-            requestWriteSettingsPermission()
-            return
-        }
-
-        if (BrightnessManager.applyDisplayBrightness(activity, next)) {
-            displayBrightness = BrightnessManager.readDisplayBrightness(activity)
-        }
+        displayBrightness = next
+        BrightnessManager.applyDisplayBrightness(activity, next)
     }
 
     ScreenEffectAdjustmentRow(

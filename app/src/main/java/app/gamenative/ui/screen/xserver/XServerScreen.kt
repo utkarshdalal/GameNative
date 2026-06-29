@@ -2,8 +2,12 @@ package app.gamenative.ui.screen.xserver
 
 import android.app.Activity
 import android.content.Context
+import android.database.ContentObserver
 import android.graphics.Color
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import android.util.Log
 import android.view.Display
 import android.view.Gravity
@@ -112,6 +116,7 @@ import app.gamenative.utils.ManifestComponentHelper
 import app.gamenative.utils.downloader.DXWrapperDownloader
 import app.gamenative.utils.downloader.GraphicsDriverDownloader
 import app.gamenative.utils.PreInstallSteps
+import app.gamenative.utils.BrightnessManager
 import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.downloader.WinComponentDownloader
@@ -342,6 +347,34 @@ fun XServerScreen(
 
     val container = remember(appId) {
         ContainerUtils.getContainer(context, appId)
+    }
+    val activity = remember(context) { BrightnessManager.findActivity(context) }
+
+    DisposableEffect(activity) {
+        if (activity == null) return@DisposableEffect onDispose { }
+
+        val contentResolver = activity.contentResolver
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                BrightnessManager.clearDisplayBrightnessOverride(activity)
+            }
+        }
+
+        contentResolver.registerContentObserver(
+            Settings.System.getUriFor(Settings.System.SCREEN_BRIGHTNESS),
+            false,
+            observer,
+        )
+        contentResolver.registerContentObserver(
+            Settings.System.getUriFor(Settings.System.SCREEN_BRIGHTNESS_MODE),
+            false,
+            observer,
+        )
+
+        onDispose {
+            contentResolver.unregisterContentObserver(observer)
+            BrightnessManager.clearDisplayBrightnessOverride(activity)
+        }
     }
 
     val suspendPolicy = remember(container.id) { container.suspendPolicy }
