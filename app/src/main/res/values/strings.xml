@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">User Login</string>
     <string name="login_2fa">Two Factor</string>
@@ -2185,4 +2185,9 @@
     <string name="local_mod_copied_progress">Copied %1$s of %2$s</string>
     <string name="nexus_invalid_source_metadata">This managed mod has incomplete source information and cannot be retried.</string>
     <string name="nexus_archive_memory_error">Archive needs more memory than Android allows. Retry after updating GameNative or choose a smaller file.</string>
+    <string name="screen_effects_barrel_distortion">Barrel Zoom</string>
+    <string name="screen_effects_barrel_distortion_description">Enable Barrel Zoom. Must be configured to match the vertical FOV of your game - can reduce visual fatigue with high FOV applications on a small screen.</string>
+    <string name="screen_effects_barrel_distortion_strength">Barrel Zoom Strength</string>
+    <string name="screen_effects_barrel_distortion_fov">Barrel Zoom VFOV</string>
+    <string name="screen_effects_barrel_distortion_cylindrical_ratio">Barrel Zoom Cyl Ratio</string>
 </resources>

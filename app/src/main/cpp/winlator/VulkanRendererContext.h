@@ -124,6 +124,9 @@ struct WindowPushConstants {
     float gamma;
     float outW;   // on-screen quad width  in pixels (for FSR/EASU upscale ratio)
     float outH;   // on-screen quad height in pixels
+    float barrelStrength;
+    float barrelHeight;
+    float barrelCylindricalRatio;
 };
 
 class VulkanRendererContext {
@@ -175,7 +178,10 @@ public:
 
     void setFilterMode(int mode);
     void setSwapRB(bool enabled);
-    void setEffect(int effectId, float sharpness, int effectMask, float brightness, float contrast, float gamma);
+    void setEffect(int effectId, float sharpness, int effectMask, float brightness, float contrast, float gamma,
+                       float barrelStrength = 0.0f,
+                       float barrelHeight = 0.176327f,
+                       float barrelCylindricalRatio = 0.5f);
     void setPresentMode(VkPresentModeKHR mode);
     std::vector<int> getSupportedPresentModes() const;
 
@@ -218,6 +224,9 @@ private:
     float activeBrightness = 0.0f;
     float activeContrast = 0.0f;
     float activeGamma = 1.0f;
+    float activeBarrelStrength       = 0.0f;
+    float activeBarrelHeight         = 0.176327f;
+    float activeBarrelCylindricalRatio = 0.5f;
     float maxAnisotropy           = 1.0f;
     bool  cubicSupported          = false;
     VkPhysicalDeviceMemoryProperties memProperties{};
