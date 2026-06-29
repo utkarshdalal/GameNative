@@ -683,7 +683,7 @@
     <string name="image_cache_size">图像缓存大小</string>
     <string name="dx_wrapper">DX 封装器</string>
     <string name="apply_color_correction">应用颜色校正</string>
-    <string name="apply_color_correction_description">转换 BGRA 到 RGBA 格式。某些驱动程序已原生支持 BGRA；禁用可能会减少故障。</string>
+    <string name="apply_color_correction_description">转换 BGRA 到 RGBA 格式。某些驱动程序已原生支持 BGRA；禁用可能会减少图形错误。</string>
     <string name="vkd3d_feature_level">VKD3D 功能级别</string>
     <string name="use_dri3">使用 DRI3</string>
     <string name="use_dri3_description">在某些设备上禁用此功能或许能修复图形故障</string>
