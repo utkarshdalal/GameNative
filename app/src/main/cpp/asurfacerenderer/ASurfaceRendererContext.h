@@ -58,7 +58,8 @@ public:
                          int64_t windowId  = 0,
                          int64_t serial    = 0,
                          jobject gpuImage  = nullptr,
-                         int     slot      = -1);
+                         int     slot      = -1,
+                         bool    applyColorCorrection = true);
 
     // Pre-imports the stable three-buffer CPU scanout swapchain. Repeated calls
     // are cheap and make surface/context recreation safe.

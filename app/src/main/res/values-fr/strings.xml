@@ -688,6 +688,8 @@
     <string name="image_cache_size">Taille du cache d\'images</string>
     <string name="dx_wrapper">Wrapper DX</string>
     <string name="display_renderer">Rendu d\'affichage</string>
+    <string name="apply_color_correction">Appliquer la correction des couleurs</string>
+    <string name="apply_color_correction_description">Convertir le format BGRA en RGBA. Certains pilotes prennent déjà en charge BGRA nativement ; la désactivation peut réduire les problèmes.</string>
     <string name="vkd3d_feature_level">Niveau de fonctionnalité VKD3D</string>
     <string name="use_dri3">Utiliser DRI3</string>
     <string name="use_dri3_description">Désactiver peut corriger les problèmes graphiques sur certains appareils</string>

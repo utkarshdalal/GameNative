@@ -684,6 +684,8 @@
     <string name="vulkan_version">Vulkan 版本</string>
     <string name="image_cache_size">圖像快取大小</string>
     <string name="dx_wrapper">DX Wrapper</string>
+    <string name="apply_color_correction">套用色彩校正</string>
+    <string name="apply_color_correction_description">轉換 BGRA 到 RGBA 格式。某些驅動程式已原生支援 BGRA；停用可能會減少故障。</string>
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">使用 DRI3</string>
     <string name="use_dri3_description">在某些裝置上停用此功能或許能修復圖形故障</string>

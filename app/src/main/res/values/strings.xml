@@ -730,6 +730,8 @@
     <string name="image_cache_size">Image Cache Size</string>
     <string name="dx_wrapper">DX Wrapper</string>
     <string name="display_renderer">Display Renderer</string>
+    <string name="apply_color_correction">Apply Color Correction</string>
+    <string name="apply_color_correction_description">Convert BGRA to RGBA format. Some drivers already support BGRA natively; disabling may reduce glitches.</string>
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">Use DRI3</string>
     <string name="use_dri3_description">Disabling may fix graphical glitches on some devices</string>
