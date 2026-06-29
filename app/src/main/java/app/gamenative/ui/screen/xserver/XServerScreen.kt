@@ -1190,7 +1190,11 @@ fun XServerScreen(
                 )
                 imeInputReceiver?.hideKeyboard()
                 // Resume processes before exiting so they can receive SIGTERM cleanly.
-                forceResumeIfSuspended()
+                // Don't resume audio to avoid resume->suspend race condition causing ANR.
+                if (PluviaApp.isOverlayPaused && !neverSuspend) {
+                    PluviaApp.xEnvironment?.resumeGameProcesses()
+                }
+                clearOverlayPauseState()
                 exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
                 true
             }
