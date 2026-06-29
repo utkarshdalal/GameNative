@@ -45,7 +45,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     public final ViewTransformation viewTransformation = new ViewTransformation();
     public int surfaceWidth;
     public int surfaceHeight;
-    private boolean applyColorCorrection = true;
+    private boolean sfCompatMode = true;
     private String[] unviewableWMClasses = null;
     private String forceFullscreenWMClass = null;
     private boolean containerCursorVisible = true;
@@ -82,8 +82,8 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         xServer.pointer.addOnPointerMotionListener(this);
     }
 
-    public void setApplyColorCorrection(boolean apply) {
-        this.applyColorCorrection = apply;
+    public void setSfCompatMode(boolean apply) {
+        this.sfCompatMode = apply;
     }
 
     private Drawable createRootCursorDrawable() {
@@ -145,7 +145,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private native void nativeInitScanout();
     private native boolean nativeReattachSurface(Surface surface);
     private native void nativeDestroyScanout();
-    private native void nativeSetWindowBuffer(long contentId, long ahbPtr, int fenceFd, long windowId, long serial, AHBImage ahbImage, int slot, boolean applyColorCorrection);
+    private native void nativeSetWindowBuffer(long contentId, long ahbPtr, int fenceFd, long windowId, long serial, AHBImage ahbImage, int slot, boolean sfCompatMode);
     static native boolean nativePrepareCpuSourceBuffers(long ahb0, long ahb1, long ahb2);
     static native void nativeReleaseCpuSourceBuffers(long ahb0, long ahb1, long ahb2);
     private native void nativeScanoutSetCursorVisibility(boolean visible);
@@ -463,7 +463,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 if (ahbPtr != 0) {
                     int acquireFence = g.consumeAcquireFence();
                     // Disable swap R/B in cpu path as it is handled with drawable
-                    nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot(), true);
+                    nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot(), sfCompatMode);
                     if (hudRef != null) hudRef.update();
                 }
             }
@@ -483,7 +483,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 long ahbPtr = g.getHardwareBufferPtr();
                 if (ahbPtr != 0) {
                     // Need to match ahbImage needsRBSwap() for swap R/B
-                    nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, xSerial, null, -1, applyColorCorrection);
+                    nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, xSerial, null, -1, sfCompatMode);
                     if (hudRef != null) hudRef.update();
                 }
             }

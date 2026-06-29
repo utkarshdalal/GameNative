@@ -708,8 +708,8 @@
     <string name="image_cache_size">画像キャッシュサイズ</string>
     <string name="dx_wrapper">DXラッパー</string>
     <string name="display_renderer">ディスプレイレンダラー</string>
-    <string name="apply_color_correction">色補正を適用</string>
-    <string name="apply_color_correction_description">BGRA を RGBA 形式に変換します。一部のドライバーは既に BGRA をネイティブサポートしています。無効にすると不具合が減る場合があります。</string>
+    <string name="sf_compat_mode">互換モード</string>
+    <string name="sf_compat_mode_description">BGRA を RGBA 形式に変換します。一部のドライバーは既に BGRA をネイティブサポートしています。無効にすると不具合が減る場合があります。</string>
     <string name="vkd3d_feature_level">VKD3D 機能レベル</string>
     <string name="use_dri3">DRI3 を使用する</string>
     <string name="use_dri3_description">無効にすると、一部のデバイスでのグラフィックの不具合が修正される場合があります</string>

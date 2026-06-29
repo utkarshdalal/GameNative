@@ -59,7 +59,7 @@ public:
                          int64_t serial    = 0,
                          jobject gpuImage  = nullptr,
                          int     slot      = -1,
-                         bool    applyColorCorrection = true);
+                         bool    sfCompatMode = true);
 
     // Pre-imports the stable three-buffer CPU scanout swapchain. Repeated calls
     // are cheap and make surface/context recreation safe.

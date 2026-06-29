@@ -168,7 +168,7 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeReleaseCpuSourceBuffers(
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeSetWindowBuffer(
         JNIEnv* env, jobject, jlong contentId,
-        jlong ahbPtr, jint fenceFd, jlong windowId, jlong serial, jobject ahbImage, jint slot, jboolean applyColorCorrection)
+        jlong ahbPtr, jint fenceFd, jlong windowId, jlong serial, jobject ahbImage, jint slot, jboolean sfCompatMode)
 {
     std::shared_lock lk(g_ctxMutex);
     auto* r = g_ctx;
@@ -183,7 +183,7 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeSetWindowBuffer(
             (int64_t)serial,
             ahbImage,
             (int)slot,
-            (bool)applyColorCorrection);
+            (bool)sfCompatMode);
 }
 
 extern "C" JNIEXPORT void JNICALL

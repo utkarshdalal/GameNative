@@ -215,11 +215,11 @@ object PrefManager {
             setPref(DISPLAY_RENDERER_MODE, value)
         }
 
-    private val APPLY_COLOR_CORRECTION = booleanPreferencesKey("apply_color_correction")
-    var applyColorCorrection: Boolean
-        get() = getPref(APPLY_COLOR_CORRECTION, true)
+    private val SF_COMPAT_MODE = booleanPreferencesKey("sf_compat_mode")
+    var sfCompatMode: Boolean
+        get() = getPref(SF_COMPAT_MODE, true)
         set(value) {
-            setPref(APPLY_COLOR_CORRECTION, value)
+            setPref(SF_COMPAT_MODE, value)
         }
 
     private val USE_LEGACY_RENDERER = booleanPreferencesKey("use_legacy_renderer")

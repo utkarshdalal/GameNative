@@ -365,11 +365,11 @@ private fun DxWrapperSection(state: ContainerConfigState) {
     if (StringUtils.parseIdentifier(state.displayRenderers.getOrNull(state.displayRendererIndex.value).orEmpty()) == "surfaceflinger") {
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.apply_color_correction)) },
-            subtitle = { Text(text = stringResource(R.string.apply_color_correction_description)) },
-            state = config.applyColorCorrection,
+            title = { Text(text = stringResource(R.string.sf_compat_mode)) },
+            subtitle = { Text(text = stringResource(R.string.sf_compat_mode_description)) },
+            state = config.sfCompatMode,
             onCheckedChange = {
-                state.config.value = config.copy(applyColorCorrection = it)
+                state.config.value = config.copy(sfCompatMode = it)
             },
         )
     }

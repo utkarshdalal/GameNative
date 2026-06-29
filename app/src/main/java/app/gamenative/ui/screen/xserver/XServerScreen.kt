@@ -1696,7 +1696,7 @@ fun XServerScreen(
                     renderer.setVkPresentMode(vkMode)
                 }
                 if (renderer is ASurfaceRenderer) {
-                    renderer.setApplyColorCorrection(container.applyColorCorrection)
+                    renderer.setSfCompatMode(container.sfCompatMode)
                 }
                 applyMouseCursorVisibility()
                 renderer.setOnFrameRenderedListener {

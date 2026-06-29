@@ -83,7 +83,7 @@ public class Container {
     private String graphicsDriverConfig = DEFAULT_GRAPHICSDRIVERCONFIG;
     private String rendererPresentMode = "fifo";
     private String displayRenderer = Container.DEFAULT_DISPLAY_RENDERER;
-    private boolean applyColorCorrection = true;
+    private boolean sfCompatMode = true;
     private String wincomponents = DEFAULT_WINCOMPONENTS;
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
     private boolean pulseaudioLowLatency = false;
@@ -270,9 +270,9 @@ public class Container {
 
     public void setDisplayRenderer(String v) { this.displayRenderer = v; }
 
-    public boolean getApplyColorCorrection() { return applyColorCorrection; }
+    public boolean getSfCompatMode() { return sfCompatMode; }
 
-    public void setApplyColorCorrection(boolean v) { this.applyColorCorrection = v; }
+    public void setSfCompatMode(boolean v) { this.sfCompatMode = v; }
 
     public String getDXWrapperConfig() {
         return dxwrapperConfig;
@@ -684,7 +684,7 @@ public class Container {
             if (!graphicsDriverConfig.isEmpty()) data.put("graphicsDriverConfig", graphicsDriverConfig);
             data.put("rendererPresentMode", rendererPresentMode);
             data.put("displayRendererMode", displayRenderer);
-            data.put("applyColorCorrection", applyColorCorrection);
+            data.put("sfCompatMode", sfCompatMode);
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
             data.put("audioDriver", audioDriver);
@@ -804,8 +804,8 @@ public class Container {
                 case "displayRendererMode" :
                     setDisplayRenderer(data.getString(key));
                     break;
-                case "applyColorCorrection" :
-                    setApplyColorCorrection(data.getBoolean(key));
+                case "sfCompatMode" :
+                    setSfCompatMode(data.getBoolean(key));
                     break;
                 case "wincomponents" :
                     setWinComponents(data.getString(key));

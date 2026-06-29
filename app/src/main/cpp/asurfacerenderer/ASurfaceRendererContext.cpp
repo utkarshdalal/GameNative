@@ -322,7 +322,7 @@ void ASurfaceRendererContext::returnSourceFence(JNIEnv* env, jobject ahbImage, i
 }
 
 void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AHardwareBuffer* sourceAhb, int sourceAcquireFenceFd,
-                                              int64_t windowId, int64_t serial, jobject ahbImage, int sourceSlot, bool applyColorCorrection) {
+                                              int64_t windowId, int64_t serial, jobject ahbImage, int sourceSlot, bool sfCompatMode) {
     if (!sourceAhb) { if (sourceAcquireFenceFd >= 0) close(sourceAcquireFenceFd); return; }
     if (!acceptingConvertedFrames.load(std::memory_order_acquire)) {
         returnSourceFence(env, ahbImage, sourceSlot, sourceAcquireFenceFd);
@@ -349,7 +349,7 @@ void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AH
         return;
     }
 
-    if (applyColorCorrection) {
+    if (sfCompatMode) {
         AHardwareBuffer_Desc sourceDescriptor{};
         AHardwareBuffer_describe(sourceAhb, &sourceDescriptor);
 
