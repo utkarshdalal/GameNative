@@ -418,6 +418,9 @@ fun XServerScreen(
             exitWatchJob?.cancel()
             exitWatchJob = null
             keyboardEscMenuHandler.cancel()
+            // [FramePacingLogger] Game session is ending — stop the reporter and wipe
+            // the session so the next game (re)populates fresh context lines on launch.
+            com.winlator.renderer.FramePacingLogger.setEnabled(false)
         }
     }
     var isKeyboardVisible = false
@@ -554,6 +557,8 @@ fun XServerScreen(
         xServerView?.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
             ?.setFrameRateLimit(limit)
+        // [FramePacingLogger] Mirror the QuickMenu FPS-limiter state into the report.
+        com.winlator.renderer.FramePacingLogger.updateFpsLimiterState(fpsLimiterEnabled, fpsLimiterTarget)
     }
 
     fun effectiveFpsLimit(): Int =
@@ -3401,6 +3406,66 @@ private fun setupXEnvironment(
         Timber.i("Env Vars (Final Guest): ${envVars.toString()}")   // Log the actual env vars being passed
         Timber.i("Guest Executable: ${guestProgramLauncherComponent.guestExecutable}") // Log the command
         Timber.i("---------------------------")
+
+        // [FramePacingLogger] Per-game opt-in: GN_FRAME_LOG=1 in the container's
+        // Environment Variables. ALWAYS re-apply the enable state — a new game launched
+        // in the same process without the flag must disable the previous game's report
+        // (otherwise it keeps logging the prior game's name/exe/limits).
+        val frameLogEnabled = envVars.get("GN_FRAME_LOG") == "1"
+        com.winlator.renderer.FramePacingLogger.setEnabled(frameLogEnabled)
+        if (frameLogEnabled) {
+            com.winlator.renderer.FramePacingLogger.notifyLaunch(
+                envVars.get("DXVK_FRAME_RATE"),
+                envVars.get("VKD3D_FRAME_RATE"),
+                envVars.get("MANGOHUD_CONFIG"),
+            )
+            try {
+                val dxConfig = DXVKHelper.parseConfig(container.dxWrapperConfig)
+                // Only report the wrapper that is actually selected: the dxvk bundle always
+                // carries a vkd3dVersion in its config, but VKD3D is only used when the
+                // wrapper type is vkd3d (D3D12). Gate each version on the wrapper type.
+                val dxWrapper = container.dxWrapper
+                val dxvkVer = if (dxWrapper.contains("dxvk", true)) dxConfig.get("version", "") else ""
+                val vkd3dVer = if (dxWrapper.contains("vkd3d", true)) dxConfig.get("vkd3dVersion", "") else ""
+                // Concrete driver: the graphics-driver config "version" holds the real driver
+                // build (e.g. the adrenotools Turnip build); graphicsDriver is the wrapper layer.
+                val gdConfig = KeyValueSet(container.getGraphicsDriverConfig())
+                val driverVer = gdConfig.get("version", "").ifEmpty { container.graphicsDriverVersion }
+                // Low-cost: reuse already-loaded Steam app info / launch info (no extra I/O).
+                // Exe: container.executablePath is set for ALL sources (Steam/GOG/Epic/…);
+                // fall back to the Steam LaunchInfo. Show just the basename (e.g. Dishonored.exe).
+                val rawExe = container.executablePath.takeIf { it.isNotBlank() }
+                    ?: appLaunchInfo?.executable
+                val gameExe = rawExe
+                    ?.substringAfterLast('/')?.substringAfterLast('\\')
+                    ?.takeIf { it.isNotEmpty() } ?: "UNKNOWN"
+                // Name: source-aware resolver covers Steam/GOG/Epic/Amazon/Custom; then
+                // container name → exe basename (strip .exe) → UNKNOWN.
+                val resolvedName = ContainerUtils.resolveGameName(appId)
+                val gameName = resolvedName.takeIf { it.isNotEmpty() && !it.equals("Unknown", true) }
+                    ?: container.name.takeIf { it.isNotEmpty() }
+                    ?: gameExe.substringBeforeLast('.').takeIf { it.isNotEmpty() && it != "UNKNOWN" }
+                    ?: "UNKNOWN"
+                com.winlator.renderer.FramePacingLogger.notifyDeviceInfo(
+                    gameName,                                // game name (Steam name → container name)
+                    gameExe,                                 // launch executable (may differ from name)
+                    "${Build.MANUFACTURER} ${Build.MODEL}",  // device
+                    GPUInformation.getRenderer(context),     // GPU renderer string
+                    dxWrapper,                               // active DX wrapper type
+                    dxvkVer,                                 // DXVK version (blank if wrapper != dxvk)
+                    vkd3dVer,                                // VKD3D version (blank if wrapper != vkd3d)
+                    container.graphicsDriver,                // graphics driver / wrapper layer
+                    driverVer,                               // concrete driver build/version
+                )
+                // [FramePacingLogger] Panel info for the live vs max refresh / judder line.
+                val frameLogDisplay = ContextCompat.getSystemService(context, DisplayManager::class.java)
+                    ?.getDisplay(Display.DEFAULT_DISPLAY)
+                com.winlator.renderer.FramePacingLogger.notifyDisplayInfo(frameLogDisplay)
+            } catch (e: Exception) {
+                Timber.w(e, "[FramePacingLogger] Failed to report device info")
+            }
+            Timber.i("[FramePacingLogger] enabled via GN_FRAME_LOG=1")
+        }
     }
 
     // Request encrypted app ticket for Steam games at launch time

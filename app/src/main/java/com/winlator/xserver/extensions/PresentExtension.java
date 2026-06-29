@@ -69,6 +69,7 @@ public class PresentExtension implements Extension {
 
     public void setFrameRateLimit(int limit) {
         this.frameRateLimit = Math.max(0, limit);
+        com.winlator.renderer.FramePacingLogger.updatePresentExtLimit(this.frameRateLimit); // [FramePacingLogger] X Present back-pressure cap changed
     }
 
     public void close() {
@@ -298,11 +299,13 @@ public class PresentExtension implements Extension {
                 if (window.attributes.isMapped()) {
                     asr.onUpdateWindowContent(window);
                 }
+                com.winlator.renderer.FramePacingLogger.recordXPresent(true, false); // [FramePacingLogger] X Present → SurfaceFlinger (FLIP/scanout)
                 if (targetFps > 0) scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
                 else sendIdleNotify(window, pixmap, serial, idleFence);
             } else if (vr != null && window.attributes.isMapped()) {
                 sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
                 vr.onUpdateWindowContentDirect(window, pixmap.drawable, xOff, yOff);
+                com.winlator.renderer.FramePacingLogger.recordXPresent(false, true); // [FramePacingLogger] X Present → Vulkan compositor (COPY)
                 if (targetFps > 0) scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
                 else sendIdleNotify(window, pixmap, serial, idleFence);
             } else {
@@ -310,6 +313,7 @@ public class PresentExtension implements Extension {
                 content.copyArea((short)0, (short)0, xOff, yOff,
                         pixmap.drawable.width, pixmap.drawable.height, pixmap.drawable);
                 sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
+                com.winlator.renderer.FramePacingLogger.recordXPresent(false, true); // [FramePacingLogger] X Present → GL renderer (COPY)
                 if (targetFps > 0) scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
                 else sendIdleNotify(window, pixmap, serial, idleFence);
             }

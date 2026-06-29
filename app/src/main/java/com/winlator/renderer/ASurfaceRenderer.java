@@ -454,6 +454,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
 
                     nativeSetWindowBuffer(windowId, ahbPtr, fence, 0, 0);
                     if (hudRef != null) hudRef.update();
+                    FramePacingLogger.recordSurfaceFlingerPresent(false); // [FramePacingLogger] SurfaceFlinger present (CPU/AHB path)
 
                     if (isFallback) {
                         g.lock();
@@ -477,6 +478,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 if (ahbPtr != 0) {
                     nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, xSerial);
                     if (hudRef != null) hudRef.update();
+                    FramePacingLogger.recordSurfaceFlingerPresent(true); // [FramePacingLogger] SurfaceFlinger present (GPU/AHB path)
                 }
             }
         }
