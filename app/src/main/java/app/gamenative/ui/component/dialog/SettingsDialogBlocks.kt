@@ -125,11 +125,8 @@ fun DelayTextField(
     valueRange: IntRange = 0..10000,
     onValueChange: (Int) -> Unit,
 ) {
-    val safeValue = value.coerceIn(valueRange)
-    var text by remember(safeValue, valueRange) { mutableStateOf(safeValue.toString()) }
-
     NoExtractOutlinedTextField(
-        value = text,
+        value = value.coerceIn(valueRange).toString(),
         onValueChange = { newText ->
             val filtered = newText.filter { it.isDigit() }
             val nextValue = when {
@@ -139,7 +136,6 @@ fun DelayTextField(
                     ?.toInt()
                     ?: valueRange.last
             }
-            text = nextValue.toString()
             onValueChange(nextValue)
         },
         label = { Text(label) },

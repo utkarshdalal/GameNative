@@ -411,11 +411,8 @@ public class InputControlsView extends View {
     public void setShooterModeActive(boolean active) {
         this.shooterModeActive = active;
         if (!active) {
-            releaseShooterJoystick();
-            releaseShooterLook();
-            releaseRightJoystick();
-            releasePendingButtonLook();
-            releaseShooterSprint();
+            releaseAllShooterInputs();
+            commitGamepadState();
         }
         invalidate();
     }
@@ -424,21 +421,15 @@ public class InputControlsView extends View {
         this.containerShooterMode = enabled;
         this.containerShooterModeRuntime = enabled;
         if (!enabled && !shooterModeActive) {
-            releaseShooterJoystick();
-            releaseShooterLook();
-            releaseRightJoystick();
-            releasePendingButtonLook();
-            releaseShooterSprint();
+            releaseAllShooterInputs();
+            commitGamepadState();
         }
         invalidate();
     }
 
     public void setShooterModeConfig(ShooterModeConfig config) {
-        releaseShooterJoystick();
-        releaseRightJoystick();
-        releaseShooterLook();
-        releasePendingButtonLook();
-        releaseShooterSprint();
+        releaseAllShooterInputs();
+        commitGamepadState();
         this.shooterModeConfig = config != null ? config : ShooterModeConfig.fromJson("");
         lookAccumX = 0;
         lookAccumY = 0;
@@ -633,6 +624,14 @@ public class InputControlsView extends View {
         pendingButtonLookLeftSide = false;
     }
 
+    private void releaseAllShooterInputs() {
+        releaseShooterJoystick();
+        releaseShooterLook();
+        releaseRightJoystick();
+        releasePendingButtonLook();
+        releaseShooterSprint();
+    }
+
     private Binding getShooterSprintBinding() {
         String bindingName = shooterModeConfig != null ? shooterModeConfig.getSprintBinding() : ShooterModeConfig.SPRINT_BINDING_SHIFT;
         Binding binding = Binding.fromString(bindingName);
@@ -668,7 +667,10 @@ public class InputControlsView extends View {
 
     private void commitGamepadStateIfNeeded(Binding binding) {
         if (binding == null || !binding.isGamepad()) return;
+        commitGamepadState();
+    }
 
+    private void commitGamepadState() {
         WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
         if (winHandler != null && profile != null) {
             GamepadState state = profile.getGamepadState();
@@ -995,11 +997,8 @@ public class InputControlsView extends View {
             if (toggleRect.contains(x, y)) {
                 containerShooterModeRuntime = !containerShooterModeRuntime;
                 if (!containerShooterModeRuntime) {
-                    releaseShooterJoystick();
-                    releaseShooterLook();
-                    releaseRightJoystick();
-                    releasePendingButtonLook();
-                    releaseShooterSprint();
+                    releaseAllShooterInputs();
+                    commitGamepadState();
                 }
                 performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                 invalidate();
@@ -1242,21 +1241,28 @@ public class InputControlsView extends View {
                 case MotionEvent.ACTION_CANCEL:
                     // Shooter mode intercept
                     if (shooterModeActive || containerShooterModeRuntime) {
-                        if (pointerId == pendingButtonLookPointerId) {
-                            releasePendingButtonLook();
+                        if (actionMasked == MotionEvent.ACTION_CANCEL) {
+                            releaseAllShooterInputs();
+                            commitGamepadState();
                             handled = true;
                         }
-                        if (pointerId == joystickPointerId) {
-                            releaseShooterJoystick();
-                            handled = true;
-                        }
-                        if (pointerId == rightJoystickPointerId) {
-                            releaseRightJoystick();
-                            handled = true;
-                        }
-                        if (pointerId == lookPointerId) {
-                            releaseShooterLook();
-                            handled = true;
+                        else {
+                            if (pointerId == pendingButtonLookPointerId) {
+                                releasePendingButtonLook();
+                                handled = true;
+                            }
+                            if (pointerId == joystickPointerId) {
+                                releaseShooterJoystick();
+                                handled = true;
+                            }
+                            if (pointerId == rightJoystickPointerId) {
+                                releaseRightJoystick();
+                                handled = true;
+                            }
+                            if (pointerId == lookPointerId) {
+                                releaseShooterLook();
+                                handled = true;
+                            }
                         }
                     }
                     for (ControlElement element : profile.getElements()) if (element.handleTouchUp(pointerId)) handled = true;

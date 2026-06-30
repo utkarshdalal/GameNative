@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import app.gamenative.data.ShooterModeConfig
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
@@ -130,7 +131,10 @@ private fun ContainerData.commonOverrides(): ContainerData {
         touchscreenMode = true,
         shooterMode = false,
         gestureConfig = "{\"longPressEnabled\":true,\"twoFingerTapAction\":\"middle_click\"}",
-        shooterConfig = "{\"buttonLookThroughEnabled\":false,\"movementZoneSplit\":0.6}",
+        shooterConfig = ShooterModeConfig(
+            buttonLookThroughEnabled = false,
+            movementZoneSplit = 0.6f,
+        ).toJson(),
         emulateKeyboardMouse = true,
         controllerEmulationBindings = buildControllerBindings(),
         startupSelection = Container.STARTUP_SELECTION_AGGRESSIVE,

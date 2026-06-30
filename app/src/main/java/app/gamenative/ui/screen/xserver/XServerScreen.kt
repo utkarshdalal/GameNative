@@ -1204,6 +1204,21 @@ fun XServerScreen(
                 container.setShooterMode(newMode)
                 container.saveData()
                 isShooterModeActive = newMode
+                if (newMode && !areControlsVisible) {
+                    val manager = PluviaApp.inputControlsManager
+                    val profiles = manager?.getProfiles(false) ?: listOf()
+                    val winHandler = xServerView?.getxServer()?.winHandler
+                    if (profiles.isNotEmpty() && winHandler != null) {
+                        val profileId = container.getExtra("profileId", "0").toIntOrNull() ?: 0
+                        val targetProfile = if (profileId != 0) {
+                            manager?.getProfile(profileId)
+                        } else {
+                            null
+                        } ?: manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
+                        showInputControls(targetProfile, winHandler, container)
+                        areControlsVisible = true
+                    }
+                }
                 PluviaApp.inputControlsView?.setContainerShooterMode(newMode)
                 PluviaApp.inputControlsView?.setShooterModeConfig(currentShooterConfig)
                 false
