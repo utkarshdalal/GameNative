@@ -86,6 +86,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.ShooterModeConfig
 import app.gamenative.data.SteamApp
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
@@ -468,9 +469,14 @@ fun XServerScreen(
     var showPlayingBlockedDialog by rememberSaveable { mutableStateOf(false) }
     var playingBlockedRemoteName by rememberSaveable { mutableStateOf<String?>(null) }
     var showTouchGestureDialog by remember { mutableStateOf(false) }
+    var showShooterModeDialog by remember { mutableStateOf(false) }
     var isTouchscreenModeActive by remember { mutableStateOf(container.isTouchscreenMode) }
+    var isShooterModeActive by remember { mutableStateOf(container.isShooterMode) }
     var currentGestureConfig by remember {
         mutableStateOf(app.gamenative.data.TouchGestureConfig.fromJson(container.getGestureConfig()))
+    }
+    var currentShooterConfig by remember {
+        mutableStateOf(ShooterModeConfig.fromJson(container.getShooterConfig()))
     }
     fun shouldShowMouseCursor(): Boolean {
         return !container.isDisableMouseInput &&
@@ -1190,6 +1196,16 @@ fun XServerScreen(
                         }
                     }
                 }
+                false
+            }
+
+            QuickMenuAction.SHOOTER_MODE -> {
+                val newMode = !container.isShooterMode
+                container.setShooterMode(newMode)
+                container.saveData()
+                isShooterModeActive = newMode
+                PluviaApp.inputControlsView?.setContainerShooterMode(newMode)
+                PluviaApp.inputControlsView?.setShooterModeConfig(currentShooterConfig)
                 false
             }
 
@@ -2182,6 +2198,7 @@ fun XServerScreen(
 
                 // Set container-level shooter mode
                 setContainerShooterMode(container.isShooterMode)
+                setShooterModeConfig(currentShooterConfig)
             }
             PluviaApp.inputControlsView = icView
 
@@ -2538,9 +2555,12 @@ fun XServerScreen(
             hasPhysicalController = hasPhysicalController,
             isTouchscreenModeActive = isTouchscreenModeActive,
             onTouchGestureSettingsClick = { showTouchGestureDialog = true },
+            isShooterModeActive = isShooterModeActive,
+            onShooterModeSettingsClick = { showShooterModeDialog = true },
             activeToggleIds = buildSet {
                 if (areControlsVisible) add(QuickMenuAction.INPUT_CONTROLS)
                 if (isTouchscreenModeActive) add(QuickMenuAction.TOUCHSCREEN_MODE)
+                if (isShooterModeActive) add(QuickMenuAction.SHOOTER_MODE)
                 if (isDisableMouseInput) add(QuickMenuAction.DISABLE_MOUSE)
             },
             // LSFG hot-reload (tab only visible when enabled in container settings)
@@ -2625,6 +2645,24 @@ fun XServerScreen(
                 PluviaApp.touchpadView?.setGestureConfig(newConfig)
                 applyMouseCursorVisibility()
                 showTouchGestureDialog = false
+            },
+        )
+    }
+
+    if (showShooterModeDialog) {
+        app.gamenative.ui.component.dialog.ShooterModeSettingsDialog(
+            shooterConfig = currentShooterConfig,
+            defaultJoystickOpacity = PrefManager.getFloat(
+                "controls_opacity",
+                InputControlsView.DEFAULT_OVERLAY_OPACITY,
+            ),
+            onDismiss = { showShooterModeDialog = false },
+            onSave = { newConfig ->
+                currentShooterConfig = newConfig
+                container.setShooterConfig(newConfig.toJson())
+                container.saveData()
+                PluviaApp.inputControlsView?.setShooterModeConfig(newConfig)
+                showShooterModeDialog = false
             },
         )
     }
@@ -2877,6 +2915,8 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
     profile.setVirtualGamepad(true)
 
     PluviaApp.inputControlsView?.let { icView ->
+        icView.setContainerShooterMode(container.isShooterMode)
+        icView.setShooterModeConfigJson(container.getShooterConfig())
         // Check if we need to load/reload elements with valid dimensions
         if (!profile.isElementsLoaded || icView.width == 0 || icView.height == 0) {
             if (icView.width == 0 || icView.height == 0) {
@@ -2890,6 +2930,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
                     icView.setVisibility(View.VISIBLE)
                     icView.requestFocus()
                     icView.invalidate()
+                    winHandler.refreshControllerMappingsCompat()
                 }
             } else {
                 // View has dimensions but elements not loaded - load them now
@@ -2900,6 +2941,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
                 icView.setVisibility(View.VISIBLE)
                 icView.requestFocus()
                 icView.invalidate()
+                winHandler.refreshControllerMappingsCompat()
             }
         } else {
             // Elements already loaded with valid dimensions - just show
@@ -2909,6 +2951,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
             icView.setVisibility(View.VISIBLE)
             icView.requestFocus()
             icView.invalidate()
+            winHandler.refreshControllerMappingsCompat()
         }
     }
 
@@ -2929,9 +2972,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
 
 
         // Tell WinHandler to update its internal state.
-        if (winHandler != null) {
-            winHandler.refreshControllerMappings()
-        }
+        winHandler.refreshControllerMappingsCompat()
     }
 }
 
@@ -2939,6 +2980,8 @@ private fun hideInputControls() {
     PluviaApp.inputControlsView?.setShowTouchscreenControls(false)
     PluviaApp.inputControlsView?.setVisibility(View.GONE)
     PluviaApp.inputControlsView?.setProfile(null)
+    ControllerManager.getInstance().autoAssignConnectedDevicesCompat()
+    PluviaApp.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsCompat()
 
     PluviaApp.touchpadView?.setSensitivity(1.0f)
     PluviaApp.touchpadView?.setPointerButtonLeftEnabled(true)
@@ -2950,6 +2993,58 @@ private fun hideInputControls() {
         }
     }
     PluviaApp.inputControlsView?.invalidate()
+}
+
+private fun WinHandler.refreshControllerMappingsCompat() {
+    val hotplugRefreshMethod = runCatching {
+        javaClass.getMethod("refreshControllerMappingsForHotplug")
+    }.getOrNull()
+
+    if (hotplugRefreshMethod != null) {
+        val hotplugRefreshSucceeded = runCatching {
+            hotplugRefreshMethod.invoke(this)
+        }.onFailure {
+            Timber.w(it, "Failed to refresh controller mappings through hotplug-aware API")
+        }.isSuccess
+
+        if (hotplugRefreshSucceeded) {
+            return
+        }
+    }
+
+    refreshControllerMappings()
+}
+
+private fun ControllerManager.autoAssignConnectedDevicesCompat() {
+    val autoAssignMethod = runCatching {
+        javaClass.getMethod("autoAssignConnectedDevices")
+    }.getOrNull()
+
+    if (autoAssignMethod != null) {
+        val autoAssignSucceeded = runCatching {
+            autoAssignMethod.invoke(this)
+        }.onFailure {
+            Timber.w(it, "Failed to auto-assign connected controllers")
+        }.isSuccess
+
+        if (autoAssignSucceeded) {
+            return
+        }
+    }
+
+    scanForDevices()
+    getDetectedDevices().forEach { device ->
+        if (getSlotForDevice(device.id) >= 0) {
+            return@forEach
+        }
+
+        val freeSlot = (0 until 4).firstOrNull { slot ->
+            getAssignedDeviceForSlot(slot) == null
+        } ?: return
+
+        setSlotEnabled(freeSlot, true)
+        assignDeviceToSlot(freeSlot, device)
+    }
 }
 
 /**

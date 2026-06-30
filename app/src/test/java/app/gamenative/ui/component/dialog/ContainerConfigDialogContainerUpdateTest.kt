@@ -167,6 +167,7 @@ class ContainerConfigDialogContainerUpdateTest {
             touchscreenMode = true,
             shooterMode = false,
             gestureConfig = "{\"longPressEnabled\":true,\"twoFingerTapAction\":\"middle_click\"}",
+            shooterConfig = "{\"buttonLookThroughEnabled\":false,\"movementZoneSplit\":0.6}",
             startupSelection = Container.STARTUP_SELECTION_AGGRESSIVE,
             cpuList = "0,2,4,6",
             cpuListWoW64 = "1,3,5,7",
@@ -208,6 +209,7 @@ class ContainerConfigDialogContainerUpdateTest {
         assertEquals(mutated.touchscreenMode, container.isTouchscreenMode)
         assertEquals(mutated.shooterMode, container.isShooterMode)
         assertEquals(mutated.gestureConfig, container.gestureConfig)
+        assertEquals(mutated.shooterConfig, container.shooterConfig)
 
         // Steam type
         assertEquals(mutated.steamType, container.getSteamType())
@@ -310,6 +312,7 @@ class ContainerConfigDialogContainerUpdateTest {
             touchscreenMode = true,
             shooterMode = false,
             gestureConfig = "{\"longPressEnabled\":true,\"twoFingerTapAction\":\"middle_click\"}",
+            shooterConfig = "{\"buttonLookThroughEnabled\":false,\"movementZoneSplit\":0.6}",
             startupSelection = Container.STARTUP_SELECTION_AGGRESSIVE,
             cpuList = "0,2,4,6",
             cpuListWoW64 = "1,3,5,7",
@@ -352,6 +355,7 @@ class ContainerConfigDialogContainerUpdateTest {
         assertEquals(mutated.touchscreenMode, container.isTouchscreenMode)
         assertEquals(mutated.shooterMode, container.isShooterMode)
         assertEquals(mutated.gestureConfig, container.gestureConfig)
+        assertEquals(mutated.shooterConfig, container.shooterConfig)
 
         // Steam type
         assertEquals(mutated.steamType, container.getSteamType())
