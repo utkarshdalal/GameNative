@@ -434,11 +434,18 @@ public class InputControlsView extends View {
     }
 
     public void setShooterModeConfig(ShooterModeConfig config) {
+        releaseShooterJoystick();
+        releaseRightJoystick();
+        releaseShooterLook();
+        releasePendingButtonLook();
         releaseShooterSprint();
         this.shooterModeConfig = config != null ? config : ShooterModeConfig.fromJson("");
-        releasePendingButtonLook();
+        lookAccumX = 0;
+        lookAccumY = 0;
         lookDeadzoneAccumX = 0;
         lookDeadzoneAccumY = 0;
+        lookSmoothX = 0;
+        lookSmoothY = 0;
         invalidate();
     }
 

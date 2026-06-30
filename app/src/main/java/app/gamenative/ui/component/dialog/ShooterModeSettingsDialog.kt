@@ -52,7 +52,8 @@ fun ShooterModeSettingsDialog(
     onDismiss: () -> Unit,
     onSave: (ShooterModeConfig) -> Unit,
 ) {
-    var config by remember { mutableStateOf(shooterConfig) }
+    var config by remember(shooterConfig) { mutableStateOf(shooterConfig) }
+    val locale = Locale.getDefault()
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -137,7 +138,7 @@ fun ShooterModeSettingsDialog(
                             subtitle = stringResource(R.string.shooter_movement_zone_width_subtitle),
                             value = config.movementZoneSplit,
                             valueRange = 0.10f..0.90f,
-                            valueText = "${(config.movementZoneSplit * 100).roundToInt()}%",
+                            valueText = percentText(config.movementZoneSplit, locale),
                             onValueChange = { config = config.copy(movementZoneSplit = it) },
                         )
 
@@ -174,7 +175,7 @@ fun ShooterModeSettingsDialog(
                                 subtitle = stringResource(R.string.look_sensitivity_x_subtitle),
                                 value = config.lookSensitivityX,
                                 valueRange = 0.1f..10.0f,
-                                valueText = multiplierText(config.lookSensitivityX),
+                                valueText = multiplierText(config.lookSensitivityX, locale),
                                 onValueChange = { config = config.copy(lookSensitivityX = it) },
                             )
 
@@ -183,7 +184,7 @@ fun ShooterModeSettingsDialog(
                                 subtitle = stringResource(R.string.look_sensitivity_y_subtitle),
                                 value = config.lookSensitivityY,
                                 valueRange = 0.1f..10.0f,
-                                valueText = multiplierText(config.lookSensitivityY),
+                                valueText = multiplierText(config.lookSensitivityY, locale),
                                 onValueChange = { config = config.copy(lookSensitivityY = it) },
                             )
 
@@ -202,7 +203,7 @@ fun ShooterModeSettingsDialog(
                                 subtitle = stringResource(R.string.look_smoothing_subtitle),
                                 value = config.lookSmoothing,
                                 valueRange = 0.0f..0.95f,
-                                valueText = "${(config.lookSmoothing * 100).roundToInt()}%",
+                                valueText = percentText(config.lookSmoothing, locale),
                                 onValueChange = { config = config.copy(lookSmoothing = it) },
                             )
 
@@ -211,7 +212,7 @@ fun ShooterModeSettingsDialog(
                                 subtitle = stringResource(R.string.look_deadzone_subtitle),
                                 value = config.lookDeadzone,
                                 valueRange = 0.0f..8.0f,
-                                valueText = String.format(Locale.US, "%.1f px", config.lookDeadzone),
+                                valueText = pixelText(config.lookDeadzone, locale),
                                 onValueChange = { config = config.copy(lookDeadzone = it) },
                             )
 
@@ -226,7 +227,7 @@ fun ShooterModeSettingsDialog(
                                     subtitle = stringResource(R.string.mouse_acceleration_strength_subtitle),
                                     value = config.mouseAccelerationStrength,
                                     valueRange = 0.1f..5.0f,
-                                    valueText = multiplierText(config.mouseAccelerationStrength),
+                                    valueText = multiplierText(config.mouseAccelerationStrength, locale),
                                     onValueChange = { config = config.copy(mouseAccelerationStrength = it) },
                                     compact = true,
                                 )
@@ -235,7 +236,7 @@ fun ShooterModeSettingsDialog(
                                     subtitle = stringResource(R.string.mouse_acceleration_max_subtitle),
                                     value = config.mouseAccelerationMaxMultiplier,
                                     valueRange = 1.0f..8.0f,
-                                    valueText = multiplierText(config.mouseAccelerationMaxMultiplier),
+                                    valueText = multiplierText(config.mouseAccelerationMaxMultiplier, locale),
                                     onValueChange = { config = config.copy(mouseAccelerationMaxMultiplier = it) },
                                     compact = true,
                                 )
@@ -249,7 +250,7 @@ fun ShooterModeSettingsDialog(
                             subtitle = stringResource(R.string.joystick_opacity_subtitle),
                             value = config.resolvedJoystickOpacity(defaultJoystickOpacity),
                             valueRange = 0.01f..1.0f,
-                            valueText = percentText(config.resolvedJoystickOpacity(defaultJoystickOpacity)),
+                            valueText = percentText(config.resolvedJoystickOpacity(defaultJoystickOpacity), locale),
                             onValueChange = { config = config.copy(joystickOpacity = it) },
                         )
 
@@ -260,7 +261,7 @@ fun ShooterModeSettingsDialog(
                             subtitle = stringResource(R.string.movement_joystick_size_subtitle),
                             value = config.movementJoystickSize,
                             valueRange = 0.5f..3.0f,
-                            valueText = multiplierText(config.movementJoystickSize),
+                            valueText = multiplierText(config.movementJoystickSize, locale),
                             onValueChange = { config = config.copy(movementJoystickSize = it) },
                         )
 
@@ -279,7 +280,7 @@ fun ShooterModeSettingsDialog(
                                 subtitle = stringResource(R.string.movement_joystick_deadzone_subtitle),
                                 value = config.movementJoystickDeadzone,
                                 valueRange = 0.0f..0.75f,
-                                valueText = percentText(config.movementJoystickDeadzone),
+                                valueText = percentText(config.movementJoystickDeadzone, locale),
                                 onValueChange = { config = config.copy(movementJoystickDeadzone = it) },
                             )
 
@@ -288,7 +289,7 @@ fun ShooterModeSettingsDialog(
                                 subtitle = stringResource(R.string.movement_stick_sensitivity_subtitle),
                                 value = config.movementStickSensitivity,
                                 valueRange = 0.1f..5.0f,
-                                valueText = multiplierText(config.movementStickSensitivity),
+                                valueText = multiplierText(config.movementStickSensitivity, locale),
                                 onValueChange = { config = config.copy(movementStickSensitivity = it) },
                             )
                         }
@@ -301,7 +302,7 @@ fun ShooterModeSettingsDialog(
                                 subtitle = stringResource(R.string.look_joystick_size_subtitle),
                                 value = config.lookJoystickSize,
                                 valueRange = 0.5f..3.0f,
-                                valueText = multiplierText(config.lookJoystickSize),
+                                valueText = multiplierText(config.lookJoystickSize, locale),
                                 onValueChange = { config = config.copy(lookJoystickSize = it) },
                             )
 
@@ -319,7 +320,7 @@ fun ShooterModeSettingsDialog(
                                 subtitle = stringResource(R.string.look_joystick_deadzone_subtitle),
                                 value = config.lookJoystickDeadzone,
                                 valueRange = 0.0f..0.75f,
-                                valueText = percentText(config.lookJoystickDeadzone),
+                                valueText = percentText(config.lookJoystickDeadzone, locale),
                                 onValueChange = { config = config.copy(lookJoystickDeadzone = it) },
                             )
 
@@ -328,7 +329,7 @@ fun ShooterModeSettingsDialog(
                                 subtitle = stringResource(R.string.look_stick_sensitivity_subtitle),
                                 value = config.lookStickSensitivity,
                                 valueRange = 0.1f..5.0f,
-                                valueText = multiplierText(config.lookStickSensitivity),
+                                valueText = multiplierText(config.lookStickSensitivity, locale),
                                 onValueChange = { config = config.copy(lookStickSensitivity = it) },
                             )
                         }
@@ -346,7 +347,7 @@ fun ShooterModeSettingsDialog(
                                 subtitle = stringResource(R.string.outer_ring_sprint_threshold_subtitle),
                                 value = config.outerRingSprintThreshold,
                                 valueRange = 0.5f..1.0f,
-                                valueText = "${(config.outerRingSprintThreshold * 100).roundToInt()}%",
+                                valueText = percentText(config.outerRingSprintThreshold, locale),
                                 onValueChange = { config = config.copy(outerRingSprintThreshold = it) },
                                 compact = true,
                             )
@@ -474,13 +475,16 @@ private fun joystickBehaviorLabels(): List<String> = listOf(
     stringResource(R.string.joystick_behavior_floating),
 )
 
-@Composable
-private fun multiplierText(value: Float): String {
-    return String.format(Locale.US, "%.1fx", value)
+private fun multiplierText(value: Float, locale: Locale): String {
+    return String.format(locale, "%.1fx", value)
 }
 
-private fun percentText(value: Float): String {
-    return "${(value * 100).roundToInt()}%"
+private fun pixelText(value: Float, locale: Locale): String {
+    return String.format(locale, "%.1f px", value)
+}
+
+private fun percentText(value: Float, locale: Locale): String {
+    return String.format(locale, "%d%%", (value * 100).roundToInt())
 }
 
 private fun ShooterModeConfig.resolvedJoystickOpacity(defaultJoystickOpacity: Float): Float {

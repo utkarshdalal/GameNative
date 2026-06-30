@@ -130,8 +130,12 @@ fun DelayTextField(
         value = text,
         onValueChange = { newText ->
             val filtered = newText.filter { it.isDigit() }
-            text = filtered
-            filtered.toIntOrNull()?.let { onValueChange(it) }
+            val nextValue = when {
+                filtered.isEmpty() -> 0
+                else -> filtered.toIntOrNull() ?: Int.MAX_VALUE
+            }
+            text = nextValue.toString()
+            onValueChange(nextValue)
         },
         label = { Text(label) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -406,7 +410,7 @@ private fun buildBindingActionCategories(
         )
     }
 
-    return categories
+    return categories.filter { it.actions.isNotEmpty() }
 }
 
 private fun bindingActionsOf(
