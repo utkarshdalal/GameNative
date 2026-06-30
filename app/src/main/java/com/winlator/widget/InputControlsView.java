@@ -21,6 +21,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.util.Log;
+import android.util.SparseArray;
 
 import androidx.compose.ui.input.pointer.PointerIcon;
 import androidx.core.graphics.ColorUtils;
@@ -89,10 +90,7 @@ public class InputControlsView extends View {
     private float lookSmoothX, lookSmoothY;
     private ControlElement lookFireElement = null;
     // Delays button-originated look/move until the touch becomes an intentional drag.
-    private int pendingButtonLookPointerId = -1;
-    private float pendingButtonLookStartX, pendingButtonLookStartY;
-    private ControlElement pendingButtonLookElement = null;
-    private boolean pendingButtonLookLeftSide = false;
+    private final SparseArray<PendingButtonLook> pendingButtonLooks = new SparseArray<>();
     // Right dynamic joystick (for gamepad_right_stick look type)
     private int rightJoystickPointerId = -1;
     private float rightJoystickCenterX, rightJoystickCenterY;
@@ -116,6 +114,20 @@ public class InputControlsView extends View {
     private Runnable showKeyboardCallback;
     // Tracks whether SHOW_KEYBOARD is currently held, so the callback fires once per press (rising edge only)
     private boolean showKeyboardPressed;
+
+    private static class PendingButtonLook {
+        private final float startX;
+        private final float startY;
+        private final ControlElement element;
+        private final boolean leftSide;
+
+        private PendingButtonLook(float startX, float startY, ControlElement element, boolean leftSide) {
+            this.startX = startX;
+            this.startY = startY;
+            this.element = element;
+            this.leftSide = leftSide;
+        }
+    }
 
     @SuppressLint("ResourceType")
     public InputControlsView(Context context) {
@@ -619,9 +631,11 @@ public class InputControlsView extends View {
     }
 
     private void releasePendingButtonLook() {
-        pendingButtonLookPointerId = -1;
-        pendingButtonLookElement = null;
-        pendingButtonLookLeftSide = false;
+        pendingButtonLooks.clear();
+    }
+
+    private void releasePendingButtonLook(int pointerId) {
+        pendingButtonLooks.remove(pointerId);
     }
 
     private void releaseAllShooterInputs() {
@@ -956,31 +970,26 @@ public class InputControlsView extends View {
             return;
         }
 
-        if (pendingButtonLookPointerId != -1) return;
-        pendingButtonLookPointerId = pointerId;
-        pendingButtonLookStartX = x;
-        pendingButtonLookStartY = y;
-        pendingButtonLookElement = fireElement;
-        pendingButtonLookLeftSide = isLeftSideTouch(x);
+        if (pendingButtonLooks.get(pointerId) != null) return;
+        pendingButtonLooks.put(pointerId, new PendingButtonLook(x, y, fireElement, isLeftSideTouch(x)));
     }
 
     private boolean handlePendingButtonLookMove(int pointerId, float x, float y) {
-        if (pointerId != pendingButtonLookPointerId) return false;
+        PendingButtonLook pending = pendingButtonLooks.get(pointerId);
+        if (pending == null) return false;
 
-        float dx = x - pendingButtonLookStartX;
-        float dy = y - pendingButtonLookStartY;
+        float dx = x - pending.startX;
+        float dy = y - pending.startY;
         float threshold = shooterModeConfig != null ? shooterModeConfig.getButtonLookThroughDragThreshold() : 0;
         if (dx * dx + dy * dy < threshold * threshold) {
             return true;
         }
 
-        ControlElement fireElement = pendingButtonLookElement;
-        boolean leftSide = pendingButtonLookLeftSide;
-        releasePendingButtonLook();
+        releasePendingButtonLook(pointerId);
 
-        boolean started = leftSide
-                ? startShooterJoystickPointer(pointerId, pendingButtonLookStartX, pendingButtonLookStartY)
-                : startRightSideShooterPointer(pointerId, pendingButtonLookStartX, pendingButtonLookStartY, fireElement);
+        boolean started = pending.leftSide
+                ? startShooterJoystickPointer(pointerId, pending.startX, pending.startY)
+                : startRightSideShooterPointer(pointerId, pending.startX, pending.startY, pending.element);
 
         if (started) {
             return handleShooterTouchMovePointer(pointerId, x, y);
@@ -1247,8 +1256,8 @@ public class InputControlsView extends View {
                             handled = true;
                         }
                         else {
-                            if (pointerId == pendingButtonLookPointerId) {
-                                releasePendingButtonLook();
+                            if (pendingButtonLooks.get(pointerId) != null) {
+                                releasePendingButtonLook(pointerId);
                                 handled = true;
                             }
                             if (pointerId == joystickPointerId) {
