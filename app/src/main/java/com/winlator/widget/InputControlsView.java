@@ -409,11 +409,11 @@ public class InputControlsView extends View {
     }
 
     public void setShooterModeActive(boolean active) {
-        this.shooterModeActive = active;
         if (!active) {
             releaseAllShooterInputs();
-            commitGamepadState();
         }
+        this.shooterModeActive = active;
+        if (!active) commitGamepadState();
         invalidate();
     }
 
@@ -1017,7 +1017,7 @@ public class InputControlsView extends View {
             if (element.handleTouchDown(pointerId, x, y)) {
                 performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                 handled = true;
-                if (element.getType() == ControlElement.Type.BUTTON) {
+                if (element.getType() == ControlElement.Type.BUTTON && isFireButton(element)) {
                     startPendingButtonLookPointer(pointerId, x, y, element);
                 }
                 break;
