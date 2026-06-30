@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ASurfaceRenderer implements WindowManager.OnWindowModificationListener,
@@ -134,7 +135,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     }
 
     private int pendingPresentSerial = 0;
-    private int skipFPSCount = 0;
+    private AtomicInteger skipFPSCount = new AtomicInteger(0);
     public void setPendingPresentSerial(int serial) {
         pendingPresentSerial = serial;
     }
@@ -261,7 +262,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 return;
             }
         }
-        skipFPSCount = 0;
+        skipFPSCount.set(0);
         surfaceInitialized = nativeInit(surface, xServer.screenInfo.width, xServer.screenInfo.height);
         if (surfaceInitialized) {
             NATIVE_CONTEXT_GENERATION.incrementAndGet();
@@ -304,7 +305,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             nativeDestroy();
             surfaceInitialized = false;
         }
-        skipFPSCount = 0;
+        skipFPSCount.set(0);
         windowSurfaces.clear();
         cachedDesktopDst = null;
     }
@@ -466,11 +467,11 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                     int acquireFence = g.consumeAcquireFence();
                     // Disable swap R/B in cpu path as it is handled with drawable
                     nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot(), sfCompatMode);
-                    if (hudRef != null && skipFPSCount >= 1) {
+                    if (hudRef != null && skipFPSCount.get() >= 1) {
                         hudRef.update();
-                        skipFPSCount = 0;
+                        skipFPSCount.set(0);
                     } else {
-                        skipFPSCount++;
+                        skipFPSCount.incrementAndGet();
                     }
                 }
             }
