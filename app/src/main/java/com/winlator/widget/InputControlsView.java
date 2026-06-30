@@ -1017,7 +1017,7 @@ public class InputControlsView extends View {
             if (element.handleTouchDown(pointerId, x, y)) {
                 performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                 handled = true;
-                if (element.getType() == ControlElement.Type.BUTTON && isFireButton(element)) {
+                if (element.getType() == ControlElement.Type.BUTTON) {
                     startPendingButtonLookPointer(pointerId, x, y, element);
                 }
                 break;
