@@ -1659,12 +1659,12 @@
     <string name="game_launch_tip_2">Tip: You can view the game files by pressing \"%s\" in the game settings.</string>
     <string name="game_launch_tip_3">Tip: You can go to the main settings menu and download custom drivers for your device to be used on Bionic.</string>
     <string name="game_launch_tip_4">Tip: If you are getting a DirectX error, try using DXVK 1.11.1-sarek and System driver on Bionic.</string>
-    <string name="game_launch_tip_5">Tip: If games aren't booting for you, check \"%s\" under the settings cog - you should see a spinning cube.</string>
+    <string name="game_launch_tip_5">Tip: If games aren\'t booting for you, check \"%s\" under the settings cog - you should see a spinning cube.</string>
     <string name="game_launch_tip_6">Tip: Use DXVK for DirectX 8/9/10/11 games and VKD3D for DirectX 12 games.</string>
     <string name="game_launch_tip_7">Tip: Use Turnip drivers to play DirectX 12 games. DirectX 12 support for devices that don\'t support Turnip is currently limited.</string>
     <string name="game_launch_tip_8">Tip: If controls don\'t work, enable Steam Input and check that your app isn\'t installed to a private space.</string>
     <string name="game_launch_tip_9">Tip: To add files to the game, place them in your device\'s Downloads folder, hit \"%s\" and they will be in D: drive.</string>
-    <string name="game_launch_tip_10">Tip: Import a config from gamenative.app/compatibility for your GPU or GPU family if you can't get your game working.</string>
+    <string name="game_launch_tip_10">Tip: Import a config from gamenative.app/compatibility for your GPU or GPU family if you can\'t get your game working.</string>
     <string name="game_launch_tip_11">Tip: Use the quick menu performance HUD when you want FPS stats in-game.</string>
     <string name="game_launch_tip_12">Tip: If your game has no audio, use Proton 10 to automatically extract XAudio DLLs.</string>
     <string name="game_launch_tip_13">Tip: You can enable or disable the onscreen controller with your device\'s back key.</string>
