@@ -643,17 +643,26 @@ class GOGService : Service() {
         /**
          * Check every save location for a conflict (both local and cloud changed since the last
          * sync) WITHOUT uploading or downloading anything. Returns the first conflicting location's
-         * timestamps (millis), or null if there is no conflict. Does not take the sync lock so it
-         * can run before the real sync.
+         * timestamps (millis), or null if there is no conflict.
+         *
+         * Takes the per-app sync lock (startSync/endSync) for the duration of the read so it never
+         * observes a half-synced snapshot: a concurrent syncSaves mutates local files, remote
+         * metadata, and the stored timestamp, any of which would otherwise yield a wrong result.
+         * If a sync is already running for this app, skips detection and returns null — that sync
+         * reconciles state, and a real conflict surfaces on a later launch.
          */
         suspend fun detectCloudSaveConflict(
             context: Context,
             appId: String,
         ): GogConflict? = withContext(Dispatchers.IO) {
-            try {
-                val instance = getInstance() ?: return@withContext null
-                if (!GOGAuthManager.hasStoredCredentials(context)) return@withContext null
+            val instance = getInstance() ?: return@withContext null
+            if (!GOGAuthManager.hasStoredCredentials(context)) return@withContext null
 
+            if (!instance.gogManager.startSync(appId)) {
+                Timber.tag("GOG").d("[Cloud Saves] Sync already in progress for $appId, skipping conflict detection")
+                return@withContext null
+            }
+            try {
                 val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
                 val game = instance.gogManager.getGameFromDbById(gameId.toString()) ?: return@withContext null
                 val saveLocations = instance.gogManager.getSaveDirectoryPath(context, appId, game.title)
@@ -682,6 +691,8 @@ class GOGService : Service() {
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "[Cloud Saves] Conflict detection failed for $appId")
                 null
+            } finally {
+                instance.gogManager.endSync(appId)
             }
         }
     }
