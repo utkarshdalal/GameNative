@@ -1668,7 +1668,7 @@
     <string name="outer_ring_sprint_threshold">Soglia sprint</string>
     <string name="outer_ring_sprint_threshold_subtitle">Distanza del joystick necessaria per attivare lo sprint</string>
     <string name="outer_ring_sprint_press_mode">Premi azione sprint</string>
-    <string name="outer_ring_sprint_press_mode_subtitle">Tocca una volta input sprint entrando nell anello sprint invece di tenerlo premuto</string>
+    <string name="outer_ring_sprint_press_mode_subtitle">Tocca una volta input sprint entrando nell\'anello sprint invece di tenerlo premuto</string>
     <string name="sprint_binding">Azione sprint</string>
     <string name="gesture_header_gamepad">Gamepad</string>
 </resources>
