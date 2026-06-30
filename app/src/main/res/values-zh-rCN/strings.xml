@@ -1644,7 +1644,7 @@
     <string name="shooter_section_mouse_look">鼠标视角</string>
     <string name="shooter_section_joysticks">摇杆</string>
     <string name="shooter_section_movement_joystick">移动摇杆</string>
-    <string name="shooter_section_right_joystick">右摇杆视角摇杆</string>
+    <string name="shooter_section_right_joystick">右摇杆视角</string>
     <string name="shooter_section_movement">移动</string>
     <string name="look_sensitivity_x">水平灵敏度</string>
     <string name="look_sensitivity_x_subtitle">右侧水平鼠标视角倍率</string>
@@ -1674,7 +1674,7 @@
     <string name="movement_stick_sensitivity_subtitle">更改虚拟左摇杆达到最大输出的速度</string>
     <string name="movement_joystick_behavior">移动摇杆行为</string>
     <string name="movement_joystick_behavior_subtitle">长时间拖动时左侧摇杆中心的行为</string>
-    <string name="look_joystick_size">右摇杆大小</string>
+    <string name="look_joystick_size">右摇杆视角大小</string>
     <string name="look_joystick_size_subtitle">视角类型输出游戏手柄右摇杆时的大小倍率</string>
     <string name="look_joystick_deadzone">右摇杆死区</string>
     <string name="look_joystick_deadzone_subtitle">忽略游戏手柄右摇杆的细微视角输入</string>
@@ -1695,7 +1695,7 @@
     <string name="outer_ring_sprint_subtitle">移动摇杆接近边缘时使用冲刺输入</string>
     <string name="outer_ring_sprint_threshold">冲刺阈值</string>
     <string name="outer_ring_sprint_threshold_subtitle">激活冲刺所需的摇杆距离</string>
-    <string name="outer_ring_sprint_press_mode">按下冲刺绑定</string>
+    <string name="outer_ring_sprint_press_mode">点按冲刺绑定</string>
     <string name="outer_ring_sprint_press_mode_subtitle">进入冲刺环时点按一次冲刺输入，而不是按住</string>
     <string name="sprint_binding">冲刺绑定</string>
     <string name="gesture_header_gamepad">游戏手柄</string>
