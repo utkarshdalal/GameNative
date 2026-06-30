@@ -260,8 +260,14 @@ fun GeneralTabContent(
         ExecutablePathDropdown(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             value = config.executablePath,
-            onValueChange = { state.config.value = config.copy(executablePath = it) },
+            onLaunchOptionSelected = { path, args ->
+                state.config.value = config.copy(
+                    executablePath = path,
+                    execArgs = args ?: config.execArgs,
+                )
+            },
             containerData = config,
+            steamAppId = state.steamAppId,
         )
         NoExtractOutlinedTextField(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),

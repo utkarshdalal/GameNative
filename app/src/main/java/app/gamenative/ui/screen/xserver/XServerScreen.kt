@@ -282,6 +282,7 @@ private fun normalizeProcessName(name: String): String {
 
 private fun extractExecutableBasename(path: String): String {
     if (path.isBlank()) return ""
+    if (ContainerUtils.isUriScheme(path)) return ""
     return normalizeProcessName(path)
 }
 
@@ -1819,7 +1820,7 @@ fun XServerScreen(
                 if (!bootToContainer) {
                     renderer.setUnviewableWMClasses("explorer.exe")
                     // TODO: make 'force fullscreen' be an option of the app being launched
-                    if (container.executablePath.isNotBlank()) {
+                    if (container.executablePath.isNotBlank() && !ContainerUtils.isUriScheme(container.executablePath)) {
                         renderer.forceFullscreenWMClass = Paths.get(container.executablePath).name
                     }
                     // Here, Ludashi calls setDriverInfo to use Adrenotools for the compositor
@@ -3872,14 +3873,22 @@ private fun getWineStartCommand(
             return "winhandler.exe \"wfm.exe\""
         }
 
-        // Set working directory to the game folder
-        val executableDir = gameFolderPath + "/" + executablePath.substringBeforeLast("/", "")
+        // Set working directory to the game folder (URIs have no meaningful subdirectory)
+        val executableDir = if (ContainerUtils.isUriScheme(executablePath)) {
+            gameFolderPath!!
+        } else {
+            gameFolderPath + "/" + executablePath.substringBeforeLast("/", "")
+        }
         guestProgramLauncherComponent.workingDir = File(executableDir)
 
         // Normalize path separators (ensure Windows-style backslashes)
         val normalizedPath = executablePath.replace('/', '\\')
         envVars.put("WINEPATH", "A:\\")
-        "\"A:\\${normalizedPath}\""
+        when {
+            ContainerUtils.isUriScheme(executablePath) -> "cmd /c start /WAIT \"\" \"$executablePath\""
+            ContainerUtils.isBatchScript(executablePath) -> "cmd /c call \"A:\\${normalizedPath}\""
+            else -> "\"A:\\${normalizedPath}\""
+        }
     } else if (container.executablePath.isEmpty()) {
         // For Steam games, we need appLaunchInfo
         Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
@@ -3912,11 +3921,15 @@ private fun getWineStartCommand(
             }
             if (container.isUseLegacyDRM) {
                 val appDirPath = SteamService.getAppDirPath(gameId)
-                val executableDir = appDirPath + "/" + executablePath.substringBeforeLast("/", "")
-                guestProgramLauncherComponent.workingDir = File(executableDir);
-                Timber.i("Working directory is ${executableDir}")
+                val executableDir = if (ContainerUtils.isUriScheme(executablePath)) {
+                    appDirPath
+                } else {
+                    appDirPath + "/" + executablePath.substringBeforeLast("/", "")
+                }
+                guestProgramLauncherComponent.workingDir = File(executableDir)
+                Timber.i("Working directory is $executableDir")
 
-                Timber.i("Final exe path is " + executablePath)
+                Timber.i("Final exe path is $executablePath")
                 val drives = container.drives
                 val driveIndex = drives.indexOf(appDirPath)
                 // greater than 1 since there is the drive character and the colon before the app dir path
@@ -3929,7 +3942,11 @@ private fun getWineStartCommand(
                 if (appLaunchInfo != null){
                     envVars.put("WINEPATH", "$drive:/${appLaunchInfo.workingDir}")
                 }
-                "\"$drive:/${executablePath}\""
+                when {
+                    ContainerUtils.isUriScheme(executablePath) -> "cmd /c start /WAIT \"\" \"$executablePath\""
+                    ContainerUtils.isBatchScript(executablePath) -> "cmd /c call \"$drive:/${executablePath}\""
+                    else -> "\"$drive:/${executablePath}\""
+                }
             } else {
                 "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamclient_loader_x64.exe\""
             }

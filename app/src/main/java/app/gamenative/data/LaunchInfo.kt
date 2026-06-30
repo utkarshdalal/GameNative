@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class LaunchInfo(
     val executable: String,
+    val arguments: String = "",
     val workingDir: String,
     val description: String,
     val type: String,

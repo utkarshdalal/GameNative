@@ -140,6 +140,7 @@ fun KeyValue.generateSteamApp(): SteamApp {
             launch = this["config"]["launch"].children.map {
                 LaunchInfo(
                     executable = it["executable"].value?.replace('\\', '/').orEmpty(),
+                    arguments = it["arguments"].value.orEmpty(),
                     workingDir = it["workingdir"].value?.replace('\\', '/').orEmpty(),
                     description = it["description"].value.orEmpty(),
                     type = it["type"].value.orEmpty(),

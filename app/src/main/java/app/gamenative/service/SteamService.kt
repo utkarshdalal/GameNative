@@ -2300,8 +2300,11 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun getWindowsLaunchInfos(appId: Int): List<LaunchInfo> {
             return getAppInfoOf(appId)?.let { appInfo ->
                 appInfo.config.launch.filter { launchInfo ->
-                    // since configOS was unreliable and configArch was even more unreliable
-                    launchInfo.executable.endsWith(".exe", ignoreCase = true)
+                    val exe = launchInfo.executable
+                    exe.endsWith(".exe", ignoreCase = true) ||
+                        exe.endsWith(".bat", ignoreCase = true) ||
+                        exe.endsWith(".cmd", ignoreCase = true) ||
+                        exe.contains("://")
                 }
             }.orEmpty()
         }

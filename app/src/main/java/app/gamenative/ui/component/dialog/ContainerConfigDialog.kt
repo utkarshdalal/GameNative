@@ -36,6 +36,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -86,6 +87,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.data.LaunchInfo
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ManifestComponentHelper
 import app.gamenative.utils.ManifestContentTypes
@@ -271,6 +273,7 @@ fun ContainerConfigDialog(
     default: Boolean = false,
     title: String,
     initialConfig: ContainerData = ContainerData(),
+    steamAppId: Int? = null,
     onDismissRequest: () -> Unit,
     onSave: (ContainerData) -> Unit,
 ) {
@@ -1046,6 +1049,7 @@ fun ContainerConfigDialog(
 
         val state = ContainerConfigState(
             config = configState,
+            steamAppId = steamAppId,
             graphicsDrivers = graphicsDriversRef,
             bionicWineEntries = bionicWineEntriesRef,
             glibcWineEntries = glibcWineEntriesRef,
@@ -1339,39 +1343,56 @@ private fun Preview_ContainerConfigDialog() {
     }
 }
 
-/**
- * Editable dropdown for selecting executable paths from the container's A: drive
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ExecutablePathDropdown(
     modifier: Modifier = Modifier,
     value: String,
-    onValueChange: (String) -> Unit,
+    onLaunchOptionSelected: (executablePath: String, execArgs: String?) -> Unit,
     containerData: ContainerData,
+    steamAppId: Int? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var executables by remember { mutableStateOf<List<String>>(emptyList()) }
+    var picsEntries by remember { mutableStateOf<List<LaunchInfo>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    val context = LocalContext.current
 
-    // Load executables from A: drive when component is first created
-    LaunchedEffect(containerData.drives) {
+    LaunchedEffect(containerData.drives, steamAppId) {
         isLoading = true
-        executables = withContext(Dispatchers.IO) {
-            ContainerUtils.scanExecutablesInADrive(containerData.drives)
+        val (pics, scanned) = withContext(Dispatchers.IO) {
+            val pics = if (steamAppId != null) {
+                SteamService.getWindowsLaunchInfos(steamAppId)
+            } else {
+                emptyList()
+            }
+            val scanned = ContainerUtils.scanExecutablesInADrive(containerData.drives)
+            pics to scanned
         }
+        picsEntries = pics
+        executables = scanned
+
+        if (pics.isNotEmpty()) {
+            val alreadyMatchesPics = pics.any {
+                it.executable == value && it.arguments == containerData.execArgs
+            }
+            val alreadyMatchesScanned = scanned.any { it == value }
+            if (!alreadyMatchesPics && !alreadyMatchesScanned) {
+                val defaultEntry = pics.firstOrNull { it.type == "default" } ?: pics.first()
+                onLaunchOptionSelected(defaultEntry.executable, defaultEntry.arguments)
+            }
+        }
+
         isLoading = false
     }
 
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = it },
-        modifier = modifier
+        modifier = modifier,
     ) {
         NoExtractOutlinedTextField(
             value = value,
-            onValueChange = onValueChange,
+            onValueChange = { },
             readOnly = true,
             label = { Text(stringResource(R.string.container_config_executable_path)) },
             placeholder = { Text(stringResource(R.string.container_config_executable_path_placeholder)) },
@@ -1385,35 +1406,70 @@ internal fun ExecutablePathDropdown(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(),
-            singleLine = true
+            singleLine = true,
         )
 
-        if (!isLoading && executables.isNotEmpty()) {
+        val hasContent = !isLoading && (picsEntries.isNotEmpty() || executables.isNotEmpty())
+        if (hasContent) {
             ExposedDropdownMenu(
                 expanded = expanded,
-                onDismissRequest = { expanded = false }
+                onDismissRequest = { expanded = false },
             ) {
-                executables.forEach { executable ->
+                picsEntries.forEach { entry ->
                     DropdownMenuItem(
                         text = {
                             Column {
                                 Text(
-                                    text = executable.substringAfterLast('\\'),
-                                    style = MaterialTheme.typography.bodyMedium
+                                    text = entry.description.ifEmpty { "Default" },
+                                    style = MaterialTheme.typography.bodyMedium,
                                 )
-                                if (executable.contains('\\')) {
+                                Text(
+                                    text = entry.executable,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                if (entry.arguments.isNotEmpty()) {
                                     Text(
-                                        text = executable.substringBeforeLast('\\'),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        text = entry.arguments,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             }
                         },
                         onClick = {
-                            onValueChange(executable)
+                            onLaunchOptionSelected(entry.executable, entry.arguments)
                             expanded = false
-                        }
+                        },
+                    )
+                }
+
+                if (picsEntries.isNotEmpty() && executables.isNotEmpty()) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                }
+
+                executables.forEach { executable ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(
+                                    text = executable.substringAfterLast('/').substringAfterLast('\\'),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                val parent = executable.substringBeforeLast('/').substringBeforeLast('\\')
+                                if (parent != executable) {
+                                    Text(
+                                        text = parent,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        },
+                        onClick = {
+                            onLaunchOptionSelected(executable, null)
+                            expanded = false
+                        },
                     )
                 }
             }

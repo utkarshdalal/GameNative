@@ -1225,6 +1225,11 @@ object ContainerUtils {
         return null
     }
 
+    fun isUriScheme(path: String): Boolean = path.contains("://")
+
+    fun isBatchScript(path: String): Boolean =
+        path.endsWith(".bat", ignoreCase = true) || path.endsWith(".cmd", ignoreCase = true)
+
     /**
      * Scans the container's A: drive for all .exe files
      */
@@ -1256,7 +1261,9 @@ object ContainerUtils {
                     if (file.isDirectory) {
                         if (FileUtils.isSymlink(file)) return@forEach
                         scanRecursive(file, baseDir, depth + 1, maxDepth)
-                    } else if (file.isFile && file.name.lowercase().endsWith(".exe")) {
+                    } else if (file.isFile && file.name.lowercase().let { name ->
+                        name.endsWith(".exe") || name.endsWith(".bat") || name.endsWith(".cmd")
+                    }) {
                         // Convert to relative Windows path format
                         val relativePath = baseDir.toURI().relativize(file.toURI()).path
                         executables.add(relativePath)
@@ -1299,28 +1306,21 @@ object ContainerUtils {
      * Assigns priority scores to executables for better sorting
      */
     private fun getExecutablePriority(exePath: String): Int {
-        val fileName = exePath.substringAfterLast('\\').lowercase()
+        val fileName = exePath.substringAfterLast('\\').substringAfterLast('/').lowercase()
         val baseName = fileName.substringBeforeLast('.')
+        val isBatch = fileName.endsWith(".bat") || fileName.endsWith(".cmd")
 
-        return when {
-            // Highest priority: common game executable patterns
+        val baseScore = when {
             fileName.contains("game") -> 100
-
             fileName.contains("start") -> 85
-
             fileName.contains("main") -> 80
-
             fileName.contains("launcher") && !fileName.contains("unins") -> 75
-
-            // High priority: probable main executables
             baseName.length >= 4 && !isSystemExecutable(fileName) -> 70
-
-            // Medium priority: any non-system executable
             !isSystemExecutable(fileName) -> 50
-
-            // Low priority: system/utility executables
             else -> 10
         }
+
+        return if (isBatch) (baseScore - 10).coerceAtLeast(5) else baseScore
     }
 
     /**

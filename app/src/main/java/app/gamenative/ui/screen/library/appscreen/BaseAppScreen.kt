@@ -1260,6 +1260,7 @@ abstract class BaseAppScreen {
             ContainerConfigDialog(
                 title = "${displayInfo.name} Config",
                 initialConfig = containerData,
+                steamAppId = if (libraryItem.gameSource == GameSource.STEAM) libraryItem.gameId else null,
                 onDismissRequest = { showConfigDialog = false },
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)
