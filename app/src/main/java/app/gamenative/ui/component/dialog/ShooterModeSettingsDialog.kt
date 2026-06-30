@@ -161,9 +161,8 @@ fun ShooterModeSettingsDialog(
                             DelayTextField(
                                 label = stringResource(R.string.button_drag_threshold),
                                 value = config.buttonLookThroughDragThreshold,
-                                onValueChange = {
-                                    config = config.copy(buttonLookThroughDragThreshold = it.coerceIn(0, 64))
-                                },
+                                valueRange = 0..64,
+                                onValueChange = { config = config.copy(buttonLookThroughDragThreshold = it) },
                             )
                         }
 

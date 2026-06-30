@@ -122,17 +122,22 @@ fun GestureSubSettings(content: @Composable ColumnScope.() -> Unit) {
 fun DelayTextField(
     label: String,
     value: Int,
+    valueRange: IntRange = 0..10000,
     onValueChange: (Int) -> Unit,
 ) {
-    var text by remember(value) { mutableStateOf(value.toString()) }
+    val safeValue = value.coerceIn(valueRange)
+    var text by remember(safeValue, valueRange) { mutableStateOf(safeValue.toString()) }
 
     NoExtractOutlinedTextField(
         value = text,
         onValueChange = { newText ->
             val filtered = newText.filter { it.isDigit() }
             val nextValue = when {
-                filtered.isEmpty() -> 0
-                else -> filtered.toIntOrNull() ?: Int.MAX_VALUE
+                filtered.isEmpty() -> valueRange.first
+                else -> filtered.toLongOrNull()
+                    ?.coerceIn(valueRange.first.toLong(), valueRange.last.toLong())
+                    ?.toInt()
+                    ?: valueRange.last
             }
             text = nextValue.toString()
             onValueChange(nextValue)

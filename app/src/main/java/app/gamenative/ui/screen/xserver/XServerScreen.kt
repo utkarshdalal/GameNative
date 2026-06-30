@@ -469,13 +469,13 @@ fun XServerScreen(
     var showPlayingBlockedDialog by rememberSaveable { mutableStateOf(false) }
     var playingBlockedRemoteName by rememberSaveable { mutableStateOf<String?>(null) }
     var showTouchGestureDialog by remember { mutableStateOf(false) }
-    var showShooterModeDialog by remember { mutableStateOf(false) }
+    var showShooterModeDialog by remember(container.id) { mutableStateOf(false) }
     var isTouchscreenModeActive by remember { mutableStateOf(container.isTouchscreenMode) }
-    var isShooterModeActive by remember { mutableStateOf(container.isShooterMode) }
+    var isShooterModeActive by remember(container.id) { mutableStateOf(container.isShooterMode) }
     var currentGestureConfig by remember {
         mutableStateOf(app.gamenative.data.TouchGestureConfig.fromJson(container.getGestureConfig()))
     }
-    var currentShooterConfig by remember {
+    var currentShooterConfig by remember(container.id) {
         mutableStateOf(ShooterModeConfig.fromJson(container.getShooterConfig()))
     }
     fun shouldShowMouseCursor(): Boolean {

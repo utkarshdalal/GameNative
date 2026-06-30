@@ -159,6 +159,7 @@ fun TouchGestureSettingsDialog(
                     DelayTextField(
                         label = stringResource(R.string.gesture_double_tap_delay),
                         value = config.doubleTapDelay,
+                        valueRange = 0..5000,
                         onValueChange = { config = config.copy(doubleTapDelay = it) },
                     )
                 }
@@ -182,6 +183,7 @@ fun TouchGestureSettingsDialog(
                     DelayTextField(
                         label = stringResource(R.string.gesture_long_press_delay),
                         value = config.longPressDelay,
+                        valueRange = 0..5000,
                         onValueChange = { config = config.copy(longPressDelay = it) },
                     )
                 }
@@ -242,6 +244,7 @@ fun TouchGestureSettingsDialog(
                     DelayTextField(
                         label = stringResource(R.string.gesture_two_finger_hold_delay),
                         value = config.twoFingerHoldDelay,
+                        valueRange = 0..5000,
                         onValueChange = { config = config.copy(twoFingerHoldDelay = it) },
                     )
                 }
@@ -320,6 +323,7 @@ fun TouchGestureSettingsDialog(
                     DelayTextField(
                         label = stringResource(R.string.gesture_three_finger_hold_delay),
                         value = config.threeFingerHoldDelay,
+                        valueRange = 0..5000,
                         onValueChange = { config = config.copy(threeFingerHoldDelay = it) },
                     )
                 }
@@ -352,6 +356,7 @@ fun TouchGestureSettingsDialog(
                 DelayTextField(
                     label = stringResource(R.string.gesture_threshold),
                     value = config.gestureThreshold,
+                    valueRange = 0..200,
                     onValueChange = { config = config.copy(gestureThreshold = it) },
                 )
 
