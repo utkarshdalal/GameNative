@@ -16,7 +16,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -113,6 +112,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
@@ -212,22 +212,7 @@ private fun PrimaryActionButton(
             .background(
                 if (enabled) buttonColor else buttonColor.copy(alpha = 0.5f),
             )
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        2.dp,
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.tertiary,
-                            ),
-                        ),
-                        RoundedCornerShape(8.dp),
-                    )
-                } else {
-                    Modifier
-                },
-            )
+            .focusRing(interactionSource, RoundedCornerShape(8.dp), width = 2.dp)
             .focusRequester(focusRequester)
             .selectable(
                 selected = isFocused,
@@ -337,22 +322,7 @@ private fun ActionIconButton(
                     Color.White.copy(alpha = 0.1f)
                 },
             )
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        2.dp,
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.tertiary,
-                            ),
-                        ),
-                        RoundedCornerShape(8.dp),
-                    )
-                } else {
-                    Modifier
-                },
-            )
+            .focusRing(interactionSource, RoundedCornerShape(8.dp), width = 2.dp)
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -383,6 +353,7 @@ private fun InfoCard(
     focusableForNavigation: Boolean = false,
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val scope = rememberCoroutineScope()
     val cardModifier = if (focusableForNavigation) {
@@ -394,23 +365,8 @@ private fun InfoCard(
                     scope.launch { bringIntoViewRequester.bringIntoView() }
                 }
             }
-            .focusable()
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        2.dp,
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.tertiary,
-                            ),
-                        ),
-                        RoundedCornerShape(16.dp),
-                    )
-                } else {
-                    Modifier
-                },
-            )
+            .focusable(interactionSource = interactionSource)
+            .focusRing(interactionSource, RoundedCornerShape(16.dp), width = 2.dp)
     } else {
         modifier
     }

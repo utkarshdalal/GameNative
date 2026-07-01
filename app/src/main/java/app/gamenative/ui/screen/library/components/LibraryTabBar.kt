@@ -6,8 +6,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -17,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -41,10 +40,9 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -60,6 +58,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.gamenative.BuildConfig
 import app.gamenative.R
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.WindowWidthClass
@@ -216,24 +215,6 @@ private fun CompactLibraryTabBar(
                                 tabPositions[index] = coordinates.positionInParent().x
                                 tabWidths[index] = coordinates.size.width.toFloat()
                             }
-                            .then(
-                                if (isTabFocused) {
-                                    Modifier.border(
-                                        BorderStroke(
-                                            2.dp,
-                                            Brush.verticalGradient(
-                                                colors = listOf(
-                                                    MaterialTheme.colorScheme.primary,
-                                                    MaterialTheme.colorScheme.tertiary,
-                                                ),
-                                            ),
-                                        ),
-                                        RoundedCornerShape(16.dp),
-                                    )
-                                } else {
-                                    Modifier
-                                },
-                            )
                             .clip(RoundedCornerShape(16.dp))
                             .background(
                                 when {
@@ -242,6 +223,7 @@ private fun CompactLibraryTabBar(
                                     else -> Color.Transparent
                                 },
                             )
+                            .focusRing(tabInteractionSource, RoundedCornerShape(16.dp), width = 2.dp)
                             .selectable(
                                 selected = isSelected,
                                 interactionSource = tabInteractionSource,
@@ -310,24 +292,6 @@ private fun CompactIconButton(
     Box(
         modifier = modifier
             .size(36.dp)
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        BorderStroke(
-                            2.dp,
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.tertiary,
-                                ),
-                            ),
-                        ),
-                        CircleShape,
-                    )
-                } else {
-                    Modifier
-                },
-            )
             .clip(CircleShape)
             .background(
                 if (isFocused) {
@@ -336,6 +300,7 @@ private fun CompactIconButton(
                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 },
             )
+            .focusRing(interactionSource, CircleShape, width = 2.dp)
             .selectable(
                 selected = false,
                 interactionSource = interactionSource,
@@ -560,26 +525,16 @@ private fun IconActionButton(
 
     Box(
         modifier = modifier
-            .scale(scale)
+            // Both the focus scale and alpha go in a SINGLE graphicsLayer above the ring. Previously
+            // .scale (above) and .alpha (below) were two separate animating layers sandwiching the
+            // focusRing draw node, which made the ring flicker off ~100ms after focus. One stable
+            // layer wrapping clip/background/focusRing fixes it.
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                this.alpha = alpha
+            }
             .size(44.dp)
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        BorderStroke(
-                            2.dp,
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.tertiary,
-                                ),
-                            ),
-                        ),
-                        CircleShape,
-                    )
-                } else {
-                    Modifier
-                },
-            )
             .clip(CircleShape)
             .background(
                 brush = Brush.radialGradient(
@@ -596,13 +551,15 @@ private fun IconActionButton(
                     },
                 ),
             )
+            .focusRing(interactionSource, CircleShape, width = 2.dp)
             .selectable(
-                selected = isFocused,
+                // These are actions, not toggles; feeding isFocused back as `selected` caused an
+                // extra recomposition on every focus change.
+                selected = false,
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
-            )
-            .alpha(alpha),
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -648,25 +605,12 @@ private fun TabItem(
 
     Box(
         modifier = modifier
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        BorderStroke(
-                            2.dp,
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.tertiary,
-                                ),
-                            ),
-                        ),
-                        RoundedCornerShape(20.dp),
-                    )
-                } else {
-                    Modifier
-                },
-            )
+            // Min height = the sliding pill's height (40.dp) so the focus ring outlines the same
+            // 40dp-tall, 20dp-radius capsule the user sees. Uses heightIn (not a fixed height) so the
+            // label can grow at large accessibility font scales instead of being clipped.
+            .heightIn(min = 40.dp)
             .clip(RoundedCornerShape(20.dp))
+            .focusRing(interactionSource, RoundedCornerShape(20.dp), width = 2.dp)
             .onGloballyPositioned { coordinates ->
                 onPositioned(
                     coordinates.positionInParent().x,
@@ -679,7 +623,7 @@ private fun TabItem(
                 indication = null,
                 onClick = onClick,
             )
-            .padding(horizontal = 20.dp, vertical = 10.dp),
+            .padding(horizontal = 20.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
