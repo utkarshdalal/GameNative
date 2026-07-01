@@ -1275,7 +1275,7 @@ class EpicDownloadManager @Inject constructor(
         }
 
         if (isRoot) {
-            val totalSize = calculateTotalSize(dir)
+            val totalSize = calculateDirectorySize(dir)
             val fileCount = countFiles(dir)
             Timber.tag("Epic").i("=== Summary ===")
             Timber.tag("Epic").i("Total files: $fileCount")
@@ -1294,15 +1294,6 @@ class EpicDownloadManager @Inject constructor(
             bytes < 1024 * 1024 * 1024 -> "%.2f MB".format(bytes / (1024.0 * 1024.0))
             else -> "%.2f GB".format(bytes / (1024.0 * 1024.0 * 1024.0))
         }
-    }
-
-    /**
-     * Calculate total size of a directory recursively
-     */
-    private fun calculateTotalSize(dir: File): Long {
-        if (!dir.exists()) return 0
-        if (dir.isFile) return dir.length()
-        return dir.listFiles()?.sumOf { calculateTotalSize(it) } ?: 0
     }
 
     /**
