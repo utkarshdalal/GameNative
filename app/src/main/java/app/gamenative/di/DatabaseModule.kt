@@ -14,6 +14,7 @@ import app.gamenative.db.dao.SteamUnlockedBranchDao
 import app.gamenative.db.migration.ROOM_MIGRATION_V20_to_V23
 import app.gamenative.db.migration.ROOM_MIGRATION_V21_to_V23
 import app.gamenative.db.migration.ROOM_MIGRATION_V22_to_V23
+import app.gamenative.db.migration.ROOM_MIGRATION_V23_to_V24
 import app.gamenative.db.migration.ROOM_MIGRATION_V7_to_V8
 import dagger.Module
 import dagger.Provides
@@ -37,6 +38,7 @@ class DatabaseModule {
                 ROOM_MIGRATION_V20_to_V23,
                 ROOM_MIGRATION_V21_to_V23,
                 ROOM_MIGRATION_V22_to_V23,
+                ROOM_MIGRATION_V23_to_V24,
             )
             .fallbackToDestructiveMigration(true)
             .build()

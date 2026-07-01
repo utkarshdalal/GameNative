@@ -18,6 +18,11 @@ internal val ROOM_MIGRATION_V7_to_V8 = object : Migration(7, 8) {
 internal val ROOM_MIGRATION_V20_to_V23 = nexusModSupportMigration(20)
 internal val ROOM_MIGRATION_V21_to_V23 = nexusModSupportMigration(21)
 internal val ROOM_MIGRATION_V22_to_V23 = nexusModSupportMigration(22)
+internal val ROOM_MIGRATION_V23_to_V24 = object : Migration(23, 24) {
+    override fun migrate(connection: SQLiteConnection) {
+        migrateNexusModSupportToV23(connection)
+    }
+}
 
 private fun nexusModSupportMigration(from: Int) = object : Migration(from, 23) {
     override fun migrate(connection: SQLiteConnection) {
@@ -30,9 +35,7 @@ private fun migrateNexusModSupportToV23(connection: SQLiteConnection) {
         connection.execSQL("ALTER TABLE `app_info` ADD COLUMN `custom_install_path` TEXT NOT NULL DEFAULT ''")
     }
 
-    if (!connection.hasColumn("gog_games", "vertical_cover_url")) {
-        connection.execSQL("ALTER TABLE `gog_games` ADD COLUMN `vertical_cover_url` TEXT NOT NULL DEFAULT ''")
-    }
+    ensureGogVerticalCoverUrl(connection)
 
     connection.execSQL(
         """
@@ -159,6 +162,12 @@ private fun migrateNexusModSupportToV23(connection: SQLiteConnection) {
     )
     connection.execSQL("CREATE INDEX IF NOT EXISTS `index_mod_overwrite_manifest_install_id` ON `mod_overwrite_manifest` (`install_id`)")
     connection.execSQL("CREATE INDEX IF NOT EXISTS `index_mod_overwrite_manifest_target_path` ON `mod_overwrite_manifest` (`target_path`)")
+}
+
+private fun ensureGogVerticalCoverUrl(connection: SQLiteConnection) {
+    if (!connection.hasColumn("gog_games", "vertical_cover_url")) {
+        connection.execSQL("ALTER TABLE `gog_games` ADD COLUMN `vertical_cover_url` TEXT NOT NULL DEFAULT ''")
+    }
 }
 
 private fun SQLiteConnection.hasColumn(table: String, column: String): Boolean {
