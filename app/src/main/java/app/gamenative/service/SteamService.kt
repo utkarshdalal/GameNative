@@ -4057,14 +4057,16 @@ class SteamService : Service(), IChallengeUrlChanged {
                 //      from family sharing... We really can't test this as there is a 1-year cooldown.
                 //      Then 'findStaleLicences' will find these now invalid items to remove.
 
-                // Store raw licenses for DepotDownloader - each license in its own row
+                // Chunk the input to reduce memory pressures for very large items.
                 licenses = callback.licenseList
                 cachedLicenseDao.deleteAll()
-                val cachedLicenses = callback.licenseList.map { license ->
-                    CachedLicense(licenseJson = LicenseSerializer.serializeLicense(license))
+                callback.licenseList.chunked(500).forEach { chunk ->
+                    cachedLicenseDao.insertAll(
+                        chunk.map { license ->
+                            CachedLicense(licenseJson = LicenseSerializer.serializeLicense(license))
+                        },
+                    )
                 }
-                cachedLicenseDao.insertAll(cachedLicenses)
-
                 val licensesToAdd = callback.licenseList
                     .groupBy { it.packageID }
                     .map { licensesEntry ->
@@ -4097,7 +4099,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 if (licensesToAdd.isNotEmpty()) {
                     Timber.i("Adding ${licensesToAdd.size} licenses")
-                    licenseDao.insertAll(licensesToAdd)
+                    licensesToAdd.chunked(500).forEach { chunk ->
+                        licenseDao.insertAll(chunk)
+                    }
                 }
 
                 val licensesToRemove = licenseDao.findStaleLicences(
