@@ -1943,6 +1943,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                 val chunkStagingRedirectDir = File(DownloadService.baseCacheDirPath, "depot_chunks/$appId")
                     .takeIf { !appDirPath.startsWith(DownloadService.baseDataDirPath) }
 
+                // Register with centralized queue and auto-pause other downloads
+                GameDownloadQueue.registerDownload(
+                    gameSource = GameSource.STEAM,
+                    gameId = appId.toString(),
+                    downloadInfo = di
+                )
+
                 val downloadJob = instance!!.scope.launch {
                     try {
                         if (isUpdateOrVerify) {
@@ -2216,6 +2223,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         // Remove the downloading app info
                         instance?.downloadingAppInfoDao?.deleteApp(appId)
+
+                        // Unregister from queue (will auto-resume next paused download)
+                        GameDownloadQueue.unregisterDownload(GameSource.STEAM, appId.toString())
                     } catch (e: CancellationException) {
                         Timber.d(e, "Download canceled for app $appId")
                         throw e
@@ -3573,6 +3583,17 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
+        // Register resume listener with GameDownloadQueue
+        GameDownloadQueue.registerResumeListener(GameSource.STEAM, object : GameDownloadQueue.ResumeListener {
+            override fun onResumeRequested(gameSource: GameSource, gameId: String) {
+                val appId = gameId.toIntOrNull() ?: return
+                Timber.i("[SteamService] Resume requested for app $appId")
+                scope.launch {
+                    downloadApp(appId)
+                }
+            }
+        })
+
         // clear stale download records (completed games) but keep interrupted ones (preserves DLC selection)
         scope.launch {
             for (record in downloadingAppInfoDao.getAll()) {
@@ -3747,6 +3768,9 @@ class SteamService : Service(), IChallengeUrlChanged {
         notificationHelper.cancel()
 
         connectivityManager.unregisterNetworkCallback(networkCallback)
+
+        // Unregister resume listener from GameDownloadQueue
+        GameDownloadQueue.unregisterResumeListener(GameSource.STEAM)
 
         scope.launch { stop() }
     }
