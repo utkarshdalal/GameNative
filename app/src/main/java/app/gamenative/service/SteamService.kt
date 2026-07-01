@@ -4004,40 +4004,41 @@ class SteamService : Service(), IChallengeUrlChanged {
         scope.launch {
             db.withTransaction {
                 // Send off an event if we change states.
-                if (callback.friendId == steamClient!!.steamID) {
-                    val avatarHash = callback.avatarHash.toHexString()
-                    val playerName = callback.playerName
+                val userSteamId = steamClient?.steamID ?: return@withTransaction
+                if(callback.friendId !== userSteamId) return@withTransaction
 
-                    // When connected, callback may return Offline due to missing Status flag in request.
-                    // Trust PrefManager.personaState (user's chosen state) in that case.
-                    val state = if (callback.personaState == EPersonaState.Offline && isConnected) {
-                        PrefManager.personaState
-                    } else {
-                        callback.personaState
-                    }
+                val avatarHash = callback.avatarHash.toHexString()
+                val playerName = callback.playerName
 
-                    Timber.d(
-                        "Local persona state received: ${callback.playerName}, state=$state, gameAppId=${callback.gamePlayedAppId}, gameName=${callback.gameName}",
-                    )
-
-                    // Update local state flow
-                    _localPersona.update {
-                        it.copy(
-                            avatarHash = avatarHash,
-                            name = playerName,
-                            state = state,
-                            gameAppID = callback.gamePlayedAppId,
-                            gameName = appDao.findApp(callback.gamePlayedAppId)?.name ?: callback.gameName,
-                        )
-                    }
-
-                    // Cache local persona
-                    PrefManager.steamUserAvatarHash = avatarHash
-                    PrefManager.steamUserName = playerName
-
-                    val event = SteamEvent.PersonaStateReceived(localPersona.value)
-                    PluviaApp.events.emit(event)
+                // When connected, callback may return Offline due to missing Status flag in request.
+                // Trust PrefManager.personaState (user's chosen state) in that case.
+                val state = if (callback.personaState == EPersonaState.Offline && isConnected) {
+                    PrefManager.personaState
+                } else {
+                    callback.personaState
                 }
+
+                Timber.d(
+                    "Local persona state received: ${callback.playerName}, state=$state, gameAppId=${callback.gamePlayedAppId}, gameName=${callback.gameName}",
+                )
+
+                // Update local state flow
+                _localPersona.update {
+                    it.copy(
+                        avatarHash = avatarHash,
+                        name = playerName,
+                        state = state,
+                        gameAppID = callback.gamePlayedAppId,
+                        gameName = appDao.findApp(callback.gamePlayedAppId)?.name ?: callback.gameName,
+                    )
+                }
+
+                // Cache local persona
+                PrefManager.steamUserAvatarHash = avatarHash
+                PrefManager.steamUserName = playerName
+
+                val event = SteamEvent.PersonaStateReceived(localPersona.value)
+                PluviaApp.events.emit(event)
             }
         }
     }
