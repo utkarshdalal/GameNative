@@ -1577,7 +1577,7 @@ class GOGDownloadManager @Inject constructor(
      * @param writeOffset Offset in the output file to write at
      * @return Result indicating success or failure
      */
-    private fun decompressChunkToFile(
+    internal fun decompressChunkToFile(
         chunkFile: File,
         chunk: FileChunk,
         outputFile: File,
