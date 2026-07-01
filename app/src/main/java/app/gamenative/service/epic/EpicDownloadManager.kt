@@ -880,6 +880,9 @@ class EpicDownloadManager @Inject constructor(
             val downloadedChunkIds = newKeySet<String>()
             val pendingChunks = AtomicInteger(chunkQueue.size)
 
+            // Calculate total expected installed size once (sum of all file sizes)
+            val totalExpectedSize = files.sumOf { it.fileSize }
+
             chunkQueue.forEach { chunkInfo ->
                 chunkUsageCounts[chunkInfo.guidStr] = AtomicInteger(
                     files.sumOf { file -> file.chunkParts.count { chunk -> chunk.guidStr == chunkInfo.guidStr } }
@@ -1083,17 +1086,14 @@ class EpicDownloadManager @Inject constructor(
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
 
-                // Calculate storage usage stats
-                // Note: chunkCacheDir is inside installDir, so we need to calculate separately to avoid double-counting
+                // Calculate storage usage stats (only scan cache dir, not entire install dir)
                 val chunkCacheSize = calculateDirectorySize(chunkCacheDir)
-                val totalInstallDirSize = calculateDirectorySize(installDir)
-                val installedFilesSize = totalInstallDirSize - chunkCacheSize // Exclude cache from installed files
 
                 Timber.tag("EPIC").d(
                     """Waiting for $currentPendingChunks pending chunks
                     |  Cache: ${chunkCacheSize / 1_000_000}MB
-                    |  Game files: ${installedFilesSize / 1_000_000}MB
-                    |  Total disk: ${totalInstallDirSize / 1_000_000}MB
+                    |  Game files: ${totalExpectedSize / 1_000_000}MB
+                    |  Total disk: ${(chunkCacheSize + totalExpectedSize) / 1_000_000}MB
                     """.trimMargin()
                 )
 
