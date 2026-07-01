@@ -62,7 +62,7 @@ fun BootingSplash(
             context.getString(R.string.game_launch_tip_2, context.getString(R.string.option_open_container)),
             context.getString(R.string.game_launch_tip_3),
             context.getString(R.string.game_launch_tip_4),
-            context.getString(R.string.game_launch_tip_5, context.getString(R.string.option_open_container)),
+            context.getString(R.string.game_launch_tip_5, context.getString(R.string.option_test_graphics)),
             context.getString(R.string.game_launch_tip_6),
             context.getString(R.string.game_launch_tip_7),
             context.getString(R.string.game_launch_tip_8),
@@ -82,6 +82,7 @@ fun BootingSplash(
             context.getString(R.string.game_launch_tip_22),
             context.getString(R.string.game_launch_tip_23),
             context.getString(R.string.game_launch_tip_24, context.getString(R.string.option_test_graphics)),
+            context.getString(R.string.game_launch_tip_25),
         )
     }
 

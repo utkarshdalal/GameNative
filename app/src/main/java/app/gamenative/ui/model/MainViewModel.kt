@@ -9,6 +9,8 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
+import app.gamenative.data.LibraryPlayHistory
+import app.gamenative.db.dao.LibraryPlayHistoryDao
 import app.gamenative.di.IAppTheme
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
@@ -57,6 +59,7 @@ import timber.log.Timber
 class MainViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val appTheme: IAppTheme,
+    private val libraryPlayHistoryDao: LibraryPlayHistoryDao,
 ) : ViewModel() {
 
     companion object {
@@ -457,6 +460,15 @@ class MainViewModel @Inject constructor(
     fun launchApp(context: Context, appId: String) {
         // Show booting splash before launching the app
         viewModelScope.launch {
+            viewModelScope.launch(Dispatchers.IO) {
+                libraryPlayHistoryDao.upsert(
+                    LibraryPlayHistory(
+                        appId = appId,
+                        lastPlayed = System.currentTimeMillis(),
+                    ),
+                )
+            }
+
             setShowBootingSplash(true)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 

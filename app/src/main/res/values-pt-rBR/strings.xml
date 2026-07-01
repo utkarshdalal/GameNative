@@ -148,6 +148,10 @@
     <string name="delete">Excluir</string>
     <string name="copy_from">Copiar de</string>
     <string name="ok">Ok</string>
+    <string name="container_config_custom_resolution_title">Definir resolução personalizada</string>
+    <string name="container_config_custom_resolution_separator">x</string>
+    <string name="container_config_custom_resolution_error_nonzero">A largura e a altura devem ser maiores que 0</string>
+    <string name="container_config_custom_resolution_error_aspect">A largura deve ser maior que a altura</string>
     <string name="storage_info">Info de armazenamento</string>
     <string name="duplicate">Duplicar</string>
     <string name="reconfigure">Reconfigurar</string>
@@ -183,6 +187,7 @@
     <string name="toggle_orientation">Alternar Orientação</string>
     <string name="task_manager">Gerenciador de tarefas</string>
     <string name="tools_wine_processes_running_hint">%1$d em execução, toque/clique em um processo para fechá-lo</string>
+    <string name="tools_wine_processes_empty">Nenhum EXE em execução detectado.</string>
     <string name="magnifier">Lupa</string>
     <string name="logs">Logs</string>
     <string name="exit_game">Sair</string>
@@ -216,6 +221,7 @@
     <string name="screen_effects_live_preview">As alterações são aplicadas instantaneamente ao jogo atual.</string>
     <string name="screen_effects_color_adjustments">Ajustes de cor</string>
     <string name="screen_effects_shader_toggles">Efeitos de shader</string>
+    <string name="screen_effects_scaling_mode">Modo de escalonamento</string>
     <string name="screen_effects_brightness">Brilho</string>
     <string name="screen_effects_contrast">Contraste</string>
     <string name="screen_effects_gamma">Gama</string>
@@ -269,6 +275,7 @@
     <string name="performance_hud_battery_level">Nível da bateria</string>
     <string name="performance_hud_power_draw">Consumo de energia</string>
     <string name="performance_hud_runtime_left">Tempo restante</string>
+    <string name="performance_hud_battery_temperature">Temperatura da bateria</string>
     <string name="performance_hud_clock_time">Hora</string>
     <string name="performance_hud_cpu_temperature">Temperatura da CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura da GPU</string>
@@ -498,6 +505,8 @@
     <!-- Container Configuration: Steam Integration -->
     <string name="force_dlc">Forçar DLC</string>
     <string name="force_dlc_description">Ative somente se os DLCs não forem detectados ou os saves com DLC não estiverem funcionando</string>
+    <string name="local_saves_only">Apenas saves locais</string>
+    <string name="local_saves_only_description">Desativa a sincronização de saves na nuvem para este jogo e mantém os saves somente no dispositivo</string>
     <string name="launch_steam_client_beta">Iniciar o cliente Steam (Beta)</string>
     <string name="steam_offline_mode">Modo Offline do Steam</string>
     <string name="steam_offline_mode_description">Iniciar jogos Steam no modo offline</string>
@@ -510,6 +519,7 @@
     <string name="achievement_position_bottom_left">Inferior esquerdo</string>
     <string name="achievement_position_bottom_right">Inferior direito</string>
     <string name="launch_steam_client_description">Reduz o desempenho e atrasa a inicialização\nPermite jogo online e corrige problemas de DRM e de controle\nNem todos os jogos funcionam</string>
+    <string name="launch_bionic_steam">Ativar Bionic Steam experimental</string>
     <string name="allow_steam_updates">Permitir atualizações do Steam</string>
     <string name="allow_steam_updates_description">Atualiza o Steam para a versão mais recente. Reduz significativamente o desempenho.</string>
     <string name="steam_type">Tipo de Steam</string>
@@ -525,6 +535,8 @@
     <string name="image_cache_size">Tamanho do Cache de Imagens</string>
     <string name="dx_wrapper">DX Wrapper</string>
     <string name="display_renderer">Renderizador da Tela</string>
+    <string name="sf_compat_mode">Modo de Compatibilidade</string>
+    <string name="sf_compat_mode_description">Desative para melhor desempenho. Mantenha ativado para corrigir cores invertidas.</string>
     <string name="vkd3d_feature_level">Nível de recurso do VKD3D</string>
     <string name="use_dri3">Usar DRI3</string>
     <string name="use_dri3_description">Desabilitar pode corrigir glitches gráficos em alguns dispositivos</string>
@@ -679,6 +691,7 @@
 
     <!-- Container Configuration: Rendering -->
     <string name="renderer">Renderizador</string>
+    <string name="renderer_present_modes">Modo de apresentação do renderizador</string>
     <string name="gpu_name">Nome da GPU</string>
     <string name="offscreen_rendering_mode">Modo de Renderização Offscreen</string>
     <string name="video_memory_size">Tamanho da Memória de Vídeo</string>
@@ -742,6 +755,8 @@
     <string name="settings_emulation_default_config_title">Modificar configuração padrão</string>
     <string name="settings_emulation_default_config_subtitle">As configurações iniciais do contêiner para cada jogo (não afeta jogos já instalados)</string>
     <string name="settings_emulation_default_config_dialog_title">Configuração padrão do contêiner</string>
+    <string name="settings_emulation_auto_apply_known_config_title">Aplicar configuração conhecida automaticamente</string>
+    <string name="settings_emulation_auto_apply_known_config_subtitle">Aplica automaticamente as configurações recomendadas para jogos Steam na primeira inicialização</string>
     <string name="settings_emulation_box64_presets_title">Predefinições do Box64</string>
     <string name="settings_emulation_box64_presets_subtitle">Visualizar, modificar e criar predefinições do Box64</string>
     <string name="settings_emulation_driver_manager_title">Gerenciador de drivers</string>
@@ -878,6 +893,8 @@
     <string name="library_need_internet">Internet necessária para instalar</string>
     <string name="library_wifi_only_enabled">Instalação apenas por Wi-Fi/LAN habilitada</string>
     <string name="library_file_count">Arquivo %1$d de %2$d</string>
+    <string name="download_no_wifi">Não conectado ao Wi-Fi/LAN</string>
+    <string name="download_paused_wifi">Download pausado – aguardando Wi-Fi/LAN</string>
 
     <!-- TODO: Revisão manual - PluviaMain: Atualização e informações do app -->
     <string name="main_update_available_title">Atualização disponível</string>
@@ -900,6 +917,7 @@
     <string name="main_discord_support_title">O jogo funcionou?</string>
     <string name="main_discord_support_message">Junte-se ao Discord para obter suporte para corrigir seu jogo ou melhorar o desempenho.</string>
     <string name="main_open_discord">Abrir Discord</string>
+    <string name="main_downloading_entry">Baixando %s</string>
 
     <!-- TODO: Revisão manual - PluviaMain: Inicialização do jogo -->
     <string name="main_downloading_steam">Baixando Steam...</string>
@@ -1313,6 +1331,15 @@
     <string name="workshop_processing">Processando mods…</string>
     <string name="workshop_failed_count">%1$d mod(s) da Oficina não puderam ser atualizados</string>
     <string name="workshop_download_failed">Falha no download</string>
+    <string name="option_open_store_page">Abrir página da loja</string>
+    <string name="option_export_for_frontend">Exportar para frontend</string>
+    <string name="option_open_container">Abrir contêiner</string>
+    <string name="option_edit_container">Editar contêiner</string>
+    <string name="option_reset_to_defaults">Redefinir contêiner</string>
+    <string name="option_get_support">Obter suporte</string>
+    <string name="option_submit_feedback">Enviar feedback</string>
+    <string name="option_reset_drm">Redefinir DRM</string>
+    <string name="option_use_known_config">Usar configuração conhecida</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Recomendado</string>
@@ -1335,6 +1362,18 @@
      <string name="steam_save_import_failed">Falha ao importar saves: %s</string>
     <string name="option_import_saves">Importar saves</string>
     <string name="option_export_saves">Exportar saves</string>
+    <string name="option_verify_files">Verificar arquivos</string>
+    <string name="option_update">Atualizar</string>
+    <string name="option_move_to_external_storage">Mover para armazenamento externo</string>
+    <string name="option_move_to_internal_storage">Mover para armazenamento interno</string>
+    <string name="option_force_cloud_sync">Forçar sincronização na nuvem</string>
+    <string name="option_browse_online_saves">Procurar saves online</string>
+    <string name="option_force_download_remote">Forçar download dos saves remotos</string>
+    <string name="option_force_upload_local">Forçar upload dos saves locais</string>
+    <string name="option_fetch_game_images">Buscar imagens do jogo</string>
+    <string name="option_test_graphics">Testar gráficos</string>
+    <string name="option_manage_dlc">Gerenciar DLC</string>
+    <string name="option_manage_workshop">Gerenciar Workshop</string>
     <!-- HLTB (How Long To Beat) -->
     <string name="hltb_main_story">História principal</string>
     <string name="hltb_main_plus_extras">Principal + Extras</string>
@@ -1362,27 +1401,28 @@
     <string name="game_launch_tip_1">A inicialização pode levar alguns minutos na primeira execução</string>
     <string name="game_launch_tip_2">Dica: Você pode visualizar os arquivos do jogo pressionando \"%s\" nas configurações do jogo.</string>
     <string name="game_launch_tip_3">Dica: Você pode ir ao menu de configurações principal e baixar drivers personalizados para seu dispositivo para usar no Bionic.</string>
-    <string name="game_launch_tip_4">Dica: Se estiver recebendo um erro DirectX, certifique-se de estar usando DXVK 1.10.3-async e leegao-wrapper no Bionic.</string>
-    <string name="game_launch_tip_5">Dica: Experimente o teste Direct3D no Menu Iniciar após clicar em \"%s\" para verificar se seu dispositivo está funcionando corretamente.</string>
-    <string name="game_launch_tip_6">Dica: Use DXVK para jogos DirectX 8/9/10/11, VKD3D para jogos DirectX 12 e VirGL + WineD3D para jogos OpenGL.</string>
-    <string name="game_launch_tip_7">Dica: Use Turnip no glibc ou bionic para jogar jogos DirectX 12. O suporte a DirectX 12 para dispositivos que não suportam Turnip é atualmente limitado.</string>
-    <string name="game_launch_tip_8">Dica: Experimente os drivers Adreno ou Snapdragon 8 Elite no glibc se você tiver um dispositivo compatível.</string>
-    <string name="game_launch_tip_9">Dica: Se estiver com tela preta ao iniciar um jogo, tente usar \"%s\" e iniciar o jogo a partir da unidade A:.</string>
-    <string name="game_launch_tip_10">Dica: Você pode adicionar diferentes locais para jogos personalizados nas configurações.</string>
+    <string name="game_launch_tip_4">Dica: Se estiver recebendo um erro DirectX, tente usar DXVK 1.11.1-sarek e System driver no Bionic.</string>
+    <string name="game_launch_tip_5">Dica: Se os jogos não estiverem iniciando para você, verifique \"%s\" na engrenagem de configurações - você deve ver um cubo girando.</string>
+    <string name="game_launch_tip_6">Dica: Use DXVK para jogos DirectX 8/9/10/11 e VKD3D para jogos DirectX 12.</string>
+    <string name="game_launch_tip_7">Dica: Use drivers Turnip para jogar jogos DirectX 12. O suporte a DirectX 12 para dispositivos que não suportam Turnip é atualmente limitado.</string>
+    <string name="game_launch_tip_8">Dica: Se os controles não funcionarem, ative o Steam Input e verifique se seu aplicativo não está instalado em um espaço privado.</string>
+    <string name="game_launch_tip_9">Dica: Para adicionar arquivos ao jogo, coloque-os na pasta Downloads do seu dispositivo, toque em \"%s\" e eles estarão na D: drive.</string>
+    <string name="game_launch_tip_10">Dica: Importe uma configuração de gamenative.app/compatibility para sua GPU ou família de GPU se você não conseguir fazer seu jogo funcionar.</string>
     <string name="game_launch_tip_11">Dica: Use o HUD de desempenho do menu rápido quando quiser estatísticas de FPS no jogo.</string>
-    <string name="game_launch_tip_12">Dica: Instale os pacotes em A:\\_CommonRedist se o jogo não iniciar.</string>
+    <string name="game_launch_tip_12">Dica: Se o seu jogo não tiver áudio, use Proton 10 para extrair automaticamente as DLLs do XAudio.</string>
     <string name="game_launch_tip_13">Dica: Você pode ativar ou desativar o controle na tela com a tecla voltar do seu dispositivo.</string>
     <string name="game_launch_tip_14">Dica: Você pode abrir o teclado com a tecla voltar do seu dispositivo.</string>
     <string name="game_launch_tip_15">Dica: Você pode tocar com dois dedos dentro do contêiner para clicar com o botão direito.</string>
     <string name="game_launch_tip_16">Dica: Se estiver usando o controle na tela, você pode desativar o mouse para evitar toques acidentais.</string>
     <string name="game_launch_tip_17">Dica: Relate problemas no Discord para que possamos corrigi-los.</string>
-    <string name="game_launch_tip_18">Dica: Use o driver Vortek no glibc ou wrapper-leegao no Bionic se você tiver uma GPU que não seja Adreno.</string>
-    <string name="game_launch_tip_19">Dica: Reduza a resolução e use box64 no modo de desempenho para aumentar os FPS.</string>
-    <string name="game_launch_tip_20">Dica: Se o jogo travar após carregar, aumente a memória de vídeo.</string>
-    <string name="game_launch_tip_21">Dica: Se estiver vendo falhas visuais, desative o DRI3.</string>
+    <string name="game_launch_tip_18">Dica: Use o driver Turnip Gen8 V25/V30 ou MrPurple T26 se você estiver em um dispositivo 8 Elite.</string>
+    <string name="game_launch_tip_19">Dica: Reduza a resolução e use FSR no menu rápido durante o jogo para aumentar o desempenho.</string>
+    <string name="game_launch_tip_20">Dica: Se o aplicativo inteiro estiver travando após carregar um jogo, seu dispositivo está ficando sem RAM.</string>
+    <string name="game_launch_tip_21">Dica: Experimente o renderizador SurfaceFlinger para melhorar os FPS e a latência.</string>
     <string name="game_launch_tip_22">Dica: Você pode ativar o modo touchscreen.</string>
     <string name="game_launch_tip_23">Dica: Se você tiver uma GPU Mali, use os drivers do sistema.</string>
     <string name="game_launch_tip_24">Dica: Tela preta? Experimente a opção \"%s\" no menu para verificar se seus drivers estão funcionando corretamente.</string>
+    <string name="game_launch_tip_25">Dica: Use Proton x86-64 se você não conseguir clicar com o mouse nos jogos.</string>
     <string name="launch_bionic_steam_description">Ativa o jogo online e melhora a compatibilidade\nNem sempre funciona\nFaça backup dos seus saves antes de testar</string>
 
     <!-- Frontend Sync Settings -->
@@ -1401,6 +1441,8 @@
     <string name="frontend_sync_confirm_keep">Manter</string>
     <string name="frontend_sync_resync_all">Ressincronizar tudo</string>
     <string name="frontend_sync_resync_complete">Sincronização de frontend concluída</string>
+    <string name="frontend_sync_pick_directory_cd">Escolher diretório para %1$s</string>
+    <string name="frontend_sync_clear_directory_cd">Limpar diretório de %1$s</string>
     <string name="screen_effects_scaling">Escalonamento</string>
     <string name="screen_effects_upscaling">Ampliação</string>
     <string name="screen_effects_basic_scaling">Escalonamento básico</string>
@@ -1422,6 +1464,17 @@
     <string name="screen_effects_scaling_mode_dls_desc">Passe de nitidez / clareza.</string>
     <string name="screen_effects_scaling_mode_natural">Natural</string>
     <string name="screen_effects_scaling_mode_natural_desc">Tom de cor mais quente.</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">AMD FidelityFX Super Resolution 1.0 oficial usando EASU + RCAS com uma resolução de renderização interna mais baixa e upscale em resolução total.</string>
+    <string name="screen_effects_fsr_quality">Qualidade do FSR</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">Ultra Qualidade</string>
+    <string name="screen_effects_fsr_quality_quality">Qualidade</string>
+    <string name="screen_effects_fsr_quality_balanced">Equilibrado</string>
+    <string name="screen_effects_fsr_quality_performance">Desempenho</string>
+    <string name="screen_effects_fsr_sharpness">Nitidez do FSR</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">Nitidez na inicialização</string>
+    <string name="screen_effects_launch_sharpness_note">CAS e DLS são aplicados através do vkBasalt e entram em vigor na próxima vez que você iniciar o jogo.</string>
     <string name="stats_key_runs">Execuções bem-sucedidas na sua GPU</string>
     <string name="stats_key_reviews">Avaliações 5 estrelas (sua GPU / seu dispositivo)</string>
     <string name="stats_key_fps">FPS esperado</string>

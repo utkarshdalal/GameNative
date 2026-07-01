@@ -10,6 +10,7 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.net.toUri
 import app.gamenative.MainActivity
+import app.gamenative.data.DownloadInfo
 import app.gamenative.PrefManager
 import app.gamenative.R
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -29,12 +30,17 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
         private const val NOTIFICATION_ID_SUMMARY = 100
 
         const val ACTION_EXIT = "com.oxgames.pluvia.EXIT"
+
+        private const val NO_PROGRESS = -2
     }
 
     private val notificationManager: NotificationManager =
         context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
     private val activeServices = mutableSetOf<Int>()
+
+    @Volatile
+    private var summaryContent: String = "Connected"
 
     init {
         createNotificationChannel()
@@ -63,7 +69,22 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
 
     @Synchronized
     fun notify(content: String, id: Int = NOTIFICATION_ID_STEAM) {
+        summaryContent = content
         val notification = createServiceNotification(id, content)
+        notificationManager.notify(id, notification)
+        activeServices.add(id)
+        refreshSummary()
+    }
+
+    /**
+     * Updates a foreground-service notification to reflect an active data-transfer task
+     * (download/cloud sync), with an optional progress bar. [progress]: 0..100 = determinate,
+     * -1 = indeterminate (e.g. syncing), any other value = no progress bar.
+     */
+    @Synchronized
+    fun notifyProgress(content: String, progress: Int, id: Int = NOTIFICATION_ID_STEAM) {
+        summaryContent = content
+        val notification = buildNotification(serviceNameFor(id), content, isSummary = false, progress = progress)
         notificationManager.notify(id, notification)
         activeServices.add(id)
         refreshSummary()
@@ -95,6 +116,27 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
     fun createForegroundNotification(content: String): Notification =
         createServiceNotification(NOTIFICATION_ID_STEAM, content)
 
+    /**
+     * Drives a live "Downloading <name> · X%" progress notification off [downloadInfo]'s existing
+     * progress callbacks (event-driven, throttled to whole-percent changes). Reverts to idle when
+     * the download finishes. Call once per download, per service [id].
+     */
+    fun trackDownload(downloadInfo: DownloadInfo, name: String, id: Int = NOTIFICATION_ID_STEAM) {
+        val title = name.ifBlank { "your game" }
+        var lastPct = -1
+        downloadInfo.addProgressListener { fraction ->
+            val pct = (fraction * 100f).toInt().coerceIn(0, 100)
+            if (pct != lastPct) {
+                lastPct = pct
+                if (pct >= 100) showIdle(id) else notifyProgress("Downloading $title · $pct%", pct, id)
+            }
+        }
+    }
+
+    fun showSyncing(id: Int = NOTIFICATION_ID_STEAM) = notifyProgress("Syncing cloud saves…", -1, id)
+
+    fun showIdle(id: Int = NOTIFICATION_ID_STEAM) = notifyProgress("Connected", -2, id)
+
     @Synchronized
     fun markActive(id: Int) {
         if (activeServices.add(id)) refreshSummary()
@@ -110,11 +152,11 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
 
     private fun buildSummary(): Notification = buildNotification(
         title = context.getString(R.string.app_name),
-        content = "Connected",
+        content = summaryContent,
         isSummary = true,
     )
 
-    private fun buildNotification(title: String, content: String, isSummary: Boolean): Notification {
+    private fun buildNotification(title: String, content: String, isSummary: Boolean, progress: Int = NO_PROGRESS): Notification {
         val intent = Intent(
             Intent.ACTION_VIEW,
             "pluvia://home".toUri(),
@@ -163,6 +205,12 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
             .setContentIntent(pendingIntent)
             .setGroup(GROUP_KEY)
             .addAction(0, "Exit", stopPendingIntent)
+
+        when {
+            progress == NO_PROGRESS -> {}
+            progress < 0 -> builder.setProgress(0, 0, true)
+            else -> builder.setProgress(100, progress.coerceIn(0, 100), false)
+        }
 
         if (isSummary) builder.setGroupSummary(true)
 

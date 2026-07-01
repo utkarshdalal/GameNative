@@ -1,12 +1,8 @@
 #include <jni.h>
 #include <android/native_window_jni.h>
-#include <dlfcn.h>
-#include <sys/stat.h>
 #include <unistd.h>
-#include <cstdlib>
-#include <cstring>
 #include "ASurfaceRendererContext.h"
-#include <unordered_map>
+#include <mutex>
 #include <shared_mutex>
 
 static JavaVM* g_javaVm = nullptr;
@@ -37,10 +33,13 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeInit(
 
     return true;
 }
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_ASurfaceRenderer_nativeDestroy(JNIEnv*, jobject) {
     std::unique_lock lk(g_ctxMutex);
     auto* ctx = g_ctx;
+    if (!ctx) return;
+    ctx->beginShutdown();
     g_ctx = nullptr;
     delete ctx;
 }
@@ -71,7 +70,7 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeScanoutSetCursorImage(
 {
     if (!buf) return;
     void* px = env->GetDirectBufferAddress(buf);
-    if (px && env->GetDirectBufferCapacity(buf) >= (jlong)w*h*4) {
+    if (px && env->GetDirectBufferCapacity(buf) >= (jlong)w * h * 4) {
         std::shared_lock lk(g_ctxMutex);
         if (auto* r = g_ctx) r->scanoutSetCursorImage(px, w, h, stride);
     }
@@ -138,22 +137,53 @@ Java_com_winlator_renderer_ASurfaceRenderer_nativeScanoutSetCursorVisibility(
     if (auto* r = g_ctx) r->scanoutSetCursorVisibility(visible);
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_winlator_renderer_ASurfaceRenderer_nativePrepareCpuSourceBuffers(
+        JNIEnv*, jclass, jlong buffer0, jlong buffer1, jlong buffer2)
+{
+    std::shared_lock lk(g_ctxMutex);
+    auto* r = g_ctx;
+    if (!r) return JNI_FALSE;
+
+    const bool ok = r->prepareCpuSourceBuffers(
+            reinterpret_cast<AHardwareBuffer*>(buffer0),
+            reinterpret_cast<AHardwareBuffer*>(buffer1),
+            reinterpret_cast<AHardwareBuffer*>(buffer2));
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
 extern "C" JNIEXPORT void JNICALL
-Java_com_winlator_renderer_ASurfaceRenderer_nativeSetWindowBuffer(
-        JNIEnv*, jobject, jlong contentId,
-        jlong ahbPtr, jint fenceFd, jlong windowId, jlong serial)
+Java_com_winlator_renderer_ASurfaceRenderer_nativeReleaseCpuSourceBuffers(
+        JNIEnv*, jclass, jlong buffer0, jlong buffer1, jlong buffer2)
 {
     std::shared_lock lk(g_ctxMutex);
     if (auto* r = g_ctx) {
-        if (ahbPtr) {
-            r->setWindowBuffer(
-                    (int64_t) contentId,
-                    reinterpret_cast<AHardwareBuffer *>(ahbPtr),
-                    (int) fenceFd,
-                    (int64_t) windowId,
-                    (int64_t) serial);
-        }
+        r->releaseCpuSourceBuffers(
+                reinterpret_cast<AHardwareBuffer*>(buffer0),
+                reinterpret_cast<AHardwareBuffer*>(buffer1),
+                reinterpret_cast<AHardwareBuffer*>(buffer2));
     }
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_renderer_ASurfaceRenderer_nativeSetWindowBuffer(
+        JNIEnv* env, jobject, jlong contentId,
+        jlong ahbPtr, jint fenceFd, jlong windowId, jlong serial, jobject ahbImage, jint slot, jboolean sfCompatMode)
+{
+    std::shared_lock lk(g_ctxMutex);
+    auto* r = g_ctx;
+    if (!r || !ahbPtr) { if (fenceFd >= 0) close(fenceFd); return; }
+
+    r->setWindowBuffer(
+            env,
+            (int64_t)contentId,
+            reinterpret_cast<AHardwareBuffer*>(ahbPtr),
+            (int)fenceFd,
+            (int64_t)windowId,
+            (int64_t)serial,
+            ahbImage,
+            (int)slot,
+            (bool)sfCompatMode);
 }
 
 extern "C" JNIEXPORT void JNICALL

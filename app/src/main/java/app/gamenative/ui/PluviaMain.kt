@@ -330,7 +330,7 @@ fun PluviaMain(
 
     // Check for updates on app start
     LaunchedEffect(Unit) {
-        if (BuildConfig.MODERN_XR) return@LaunchedEffect
+        if (BuildConfig.MODERN_ANDROID) return@LaunchedEffect
         val checkedUpdateInfo = UpdateChecker.checkForUpdate(context)
         if (checkedUpdateInfo != null) {
             val appVersionCode = BuildConfig.VERSION_CODE
@@ -1825,18 +1825,50 @@ fun preLaunchApp(
             } else {
                 Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves before launch")
 
-                // Sync cloud saves (download latest saves before playing)
-                Timber.tag("GOG").d("[Cloud Saves] Starting pre-game download sync for $appId")
-                val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
+                // Map an explicit user choice (from the conflict dialog) to a forced sync direction.
+                val gogPreferredAction = when (preferredSave) {
+                    SaveLocation.Local -> "forceupload" // "Keep local" -> force local up, past the conflict guard
+                    SaveLocation.Remote -> "download" // "Keep remote" -> pull cloud down
+                    SaveLocation.None -> null
+                }
+
+                // Initial launch (no choice yet): detect a conflict and prompt before syncing.
+                if (gogPreferredAction == null) {
+                    val conflict = GOGService.detectCloudSaveConflict(context, appId)
+                    if (conflict != null) {
+                        Timber.tag("GOG").i("[Cloud Saves] Conflict detected for $appId — prompting user")
+                        val localDate = Date(conflict.localTimestamp).toString()
+                        val remoteDate = Date(conflict.remoteTimestamp).toString()
+                        setLoadingDialogVisible(false)
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.SYNC_CONFLICT,
+                                title = context.getString(R.string.main_save_conflict_title),
+                                message = context.getString(R.string.main_save_conflict_message, localDate, remoteDate),
+                                dismissBtnText = context.getString(R.string.main_keep_local),
+                                confirmBtnText = context.getString(R.string.main_keep_remote),
+                            ),
+                        )
+                        // Wait for the user; the dialog handlers re-enter preLaunchApp with a SaveLocation.
+                        return@launch
+                    }
+                }
+
+                // No conflict, or the user already chose a side: perform the sync.
+                val action = gogPreferredAction ?: "none"
+                Timber.tag("GOG").d("[Cloud Saves] Starting pre-game sync for $appId (action: $action)")
+                val syncSuccess = GOGService.syncCloudSaves(
                     context = context,
                     appId = appId,
+                    preferredAction = action,
                 )
 
                 if (!syncSuccess) {
-                    Timber.tag("GOG").w("[Cloud Saves] Download sync failed for $appId, proceeding with launch anyway")
+                    Timber.tag("GOG").w("[Cloud Saves] Pre-game sync failed for $appId, proceeding with launch anyway")
                     // Don't block launch on sync failure - log warning and continue
                 } else {
-                    Timber.tag("GOG").i("[Cloud Saves] Download sync completed successfully for $appId")
+                    Timber.tag("GOG").i("[Cloud Saves] Pre-game sync completed successfully for $appId")
                 }
             }
 

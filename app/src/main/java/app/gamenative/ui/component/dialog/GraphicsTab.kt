@@ -361,6 +361,18 @@ private fun DxWrapperSection(state: ContainerConfigState) {
             state.config.value = config.copy(displayRenderer = StringUtils.parseIdentifier(state.displayRenderers[it]))
         },
     )
+    // Show color correction toggle only for ASurfaceRenderer (SurfaceFlinger)
+    if (StringUtils.parseIdentifier(state.displayRenderers.getOrNull(state.displayRendererIndex.value).orEmpty()) == "surfaceflinger") {
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.sf_compat_mode)) },
+            subtitle = { Text(text = stringResource(R.string.sf_compat_mode_description)) },
+            state = config.sfCompatMode,
+            onCheckedChange = {
+                state.config.value = config.copy(sfCompatMode = it)
+            },
+        )
+    }
     SettingsListDropdown(
         colors = settingsTileColors(),
         title = { Text(text = stringResource(R.string.dx_wrapper)) },

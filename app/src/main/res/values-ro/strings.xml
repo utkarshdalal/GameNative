@@ -256,6 +256,7 @@
     <string name="toggle_orientation">Comută orientarea</string>
     <string name="task_manager">Manager de activități</string>
     <string name="tools_wine_processes_running_hint">%1$d în execuție, atinge/clic pe un proces pentru a-l închide</string>
+    <string name="tools_wine_processes_empty">Niciun EXE în execuție detectat.</string>
     <string name="magnifier">Lupă</string>
     <string name="logs">Loguri</string>
     <string name="exit_game">Ieșire</string>
@@ -289,6 +290,7 @@
     <string name="screen_effects_live_preview">Modificările se aplică instantaneu jocului curent.</string>
     <string name="screen_effects_color_adjustments">Ajustări de culoare</string>
     <string name="screen_effects_shader_toggles">Efecte shader</string>
+    <string name="screen_effects_scaling_mode">Mod de scalare</string>
     <string name="screen_effects_brightness">Luminozitate</string>
     <string name="screen_effects_contrast">Contrast</string>
     <string name="screen_effects_gamma">Gamma</string>
@@ -342,6 +344,7 @@
     <string name="performance_hud_battery_level">Nivel baterie</string>
     <string name="performance_hud_power_draw">Consum de energie</string>
     <string name="performance_hud_runtime_left">Timp rămas</string>
+    <string name="performance_hud_battery_temperature">Temperatura bateriei</string>
     <string name="performance_hud_clock_time">Ora</string>
     <string name="performance_hud_cpu_temperature">Temperatura CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura GPU</string>
@@ -666,6 +669,8 @@
 	<string name="unpack_files_description">Folosește doar dacă primești \'Application Load Error 3:0000065432\'.</string>
 	<string name="force_dlc">Forțează DLC</string>
 	<string name="force_dlc_description">Activează doar dacă DLC‑urile nu sunt detectate sau salvările cu DLC nu funcționează</string>
+	<string name="local_saves_only">Doar salvări locale</string>
+	<string name="local_saves_only_description">Dezactivează sincronizarea salvărilor în cloud pentru acest joc și păstrează salvările doar pe dispozitiv</string>
 	<string name="launch_steam_client_beta">Pornește Steam Client (Beta)</string>
 	<string name="steam_offline_mode">Mod Offline Steam</string>
 	<string name="steam_offline_mode_description">Pornește jocurile Steam în mod offline</string>
@@ -678,6 +683,7 @@
 	<string name="achievement_position_bottom_left">Stânga jos</string>
 	<string name="achievement_position_bottom_right">Dreapta jos</string>
 	<string name="launch_steam_client_description">Reduce performanța și încetinește lansarea\nPermite joc online și rezolvă probleme DRM și controller\nNu toate jocurile funcționează</string>
+	<string name="launch_bionic_steam">Activează Bionic Steam experimental</string>
 	<string name="allow_steam_updates">Permite actualizările Steam</string>
 	<string name="allow_steam_updates_description">Actualizează Steam la ultima versiune. Reduce semnificativ performanța.</string>
 	<string name="steam_type">Tip Steam</string>
@@ -693,6 +699,8 @@
 	<string name="image_cache_size">Dimensiune cache imagini</string>
 	<string name="dx_wrapper">Wrapper DX</string>
     <string name="display_renderer">Renderer de afișaj</string>
+    <string name="sf_compat_mode">Mod de compatibilitate</string>
+    <string name="sf_compat_mode_description">Dezactivează pentru performanță mai bună. Lasă activat pentru a corecta culorile inversate.</string>
 	<string name="vkd3d_feature_level">Nivel funcțional VKD3D</string>
 	<string name="use_dri3">Folosește DRI3</string>
 	<string name="use_dri3_description">Dezactivarea poate rezolva artefacte grafice pe unele dispozitive</string>
@@ -701,6 +709,7 @@
 	<string name="sync_frame">Sincronizează fiecare cadru</string>
 	<string name="disable_present_wait">Dezactivează KHR_present_wait</string>
 	<string name="present_modes">Moduri de prezentare</string>
+	<string name="renderer_present_modes">Mod de prezentare renderer</string>
 	<string name="resource_type">Tip resursă de memorie</string>
 	<string name="bcn_emulation">Emulare BCn</string>
 	<string name="bcn_emulation_type">Tip emulare BCn</string>
@@ -923,6 +932,8 @@
 	<string name="settings_emulation_default_config_title">Modifică configurația implicită</string>
 	<string name="settings_emulation_default_config_subtitle">Setările inițiale ale containerului pentru fiecare joc (nu afectează jocurile deja instalate)</string>
 	<string name="settings_emulation_default_config_dialog_title">Config container implicit</string>
+	<string name="settings_emulation_auto_apply_known_config_title">Aplică automat configurația cunoscută</string>
+	<string name="settings_emulation_auto_apply_known_config_subtitle">Aplică automat setările recomandate pentru jocurile Steam la prima lansare</string>
 	<string name="settings_emulation_box64_presets_title">Presetări Box64</string>
 	<string name="settings_emulation_box64_presets_subtitle">Vizualizează, modifică și creează presetări Box64</string>
 	<string name="settings_emulation_driver_manager_title">Manager drivere</string>
@@ -1058,6 +1069,8 @@
 	<string name="library_need_internet">Este necesar internet pentru instalare</string>
 	<string name="library_wifi_only_enabled">Instalare doar prin Wi‑Fi/LAN activată</string>
 	<string name="library_file_count">Fișier %1$d din %2$d</string>
+	<string name="download_no_wifi">Neconectat la Wi-Fi/LAN</string>
+	<string name="download_paused_wifi">Descărcare în pauză – se așteaptă Wi-Fi/LAN</string>
 
 	<!-- PluviaMain: Update & App Info -->
 	<string name="main_update_available_title">Actualizare disponibilă</string>
@@ -1080,6 +1093,7 @@
 	<string name="main_discord_support_title">A funcționat jocul?</string>
 	<string name="main_discord_support_message">Alătură-te serverului de Discord pentru suport și optimizare.</string>
 	<string name="main_open_discord">Deschide Discord</string>
+	<string name="main_downloading_entry">Se descarcă %s</string>
 
 	<!-- PluviaMain: Game Launch -->
 	<string name="main_downloading_steam">Se descarcă Steam...</string>
@@ -1448,6 +1462,15 @@
     <string name="workshop_processing">Se procesează modurile…</string>
     <string name="workshop_failed_count">%1$d mod(uri) Workshop nu au putut fi actualizate</string>
     <string name="workshop_download_failed">Descărcarea a eșuat</string>
+    <string name="option_open_store_page">Deschide pagina din magazin</string>
+    <string name="option_export_for_frontend">Exportă pentru frontend</string>
+    <string name="option_open_container">Deschide containerul</string>
+    <string name="option_edit_container">Editează containerul</string>
+    <string name="option_reset_to_defaults">Resetează containerul</string>
+    <string name="option_get_support">Obține suport</string>
+    <string name="option_submit_feedback">Trimite feedback</string>
+    <string name="option_reset_drm">Resetează DRM</string>
+    <string name="option_use_known_config">Folosește configurația cunoscută</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Recomandat</string>
@@ -1470,6 +1493,18 @@
      <string name="steam_save_import_failed">Importul salvărilor a eșuat: %s</string>
     <string name="option_import_saves">Importă salvări</string>
     <string name="option_export_saves">Exportă salvări</string>
+    <string name="option_verify_files">Verifică fișierele</string>
+    <string name="option_update">Actualizează</string>
+    <string name="option_move_to_external_storage">Mută pe stocarea externă</string>
+    <string name="option_move_to_internal_storage">Mută pe stocarea internă</string>
+    <string name="option_force_cloud_sync">Forțează sincronizarea în cloud</string>
+    <string name="option_browse_online_saves">Răsfoiește salvările online</string>
+    <string name="option_force_download_remote">Forțează descărcarea salvărilor remote</string>
+    <string name="option_force_upload_local">Forțează încărcarea salvărilor locale</string>
+    <string name="option_fetch_game_images">Preia imaginile jocului</string>
+    <string name="option_test_graphics">Testează grafica</string>
+    <string name="option_manage_dlc">Gestionează DLC</string>
+    <string name="option_manage_workshop">Gestionează Workshop</string>
     <!-- HLTB (How Long To Beat) -->
     <string name="hltb_main_story">Poveste principală</string>
     <string name="hltb_main_plus_extras">Principal + Suplimente</string>
@@ -1497,27 +1532,28 @@
 	<string name="game_launch_tip_1">Pornirea poate dura câteva minute la prima lansare</string>
 	<string name="game_launch_tip_2">Sfat: Puteți vizualiza fișierele jocului apăsând \"%s\" în setările jocului.</string>
 	<string name="game_launch_tip_3">Sfat: Puteți merge la meniul principal de setări și descărca drivere personalizate pentru dispozitivul dvs. pentru a fi utilizate pe Bionic.</string>
-	<string name="game_launch_tip_4">Sfat: Dacă primiți o eroare DirectX, asigurați-vă că utilizați DXVK 1.10.3-async și leegao-wrapper pe Bionic.</string>
-	<string name="game_launch_tip_5">Sfat: Încercați testul Direct3D din meniul Start după ce faceți clic pe \"%s\" pentru a verifica dacă dispozitivul dvs. funcționează corect.</string>
-	<string name="game_launch_tip_6">Sfat: Utilizați DXVK pentru jocurile DirectX 8/9/10/11, VKD3D pentru jocurile DirectX 12 și VirGL + WineD3D pentru jocurile OpenGL.</string>
-	<string name="game_launch_tip_7">Sfat: Utilizați Turnip pe glibc sau bionic pentru a juca jocuri DirectX 12. Suportul DirectX 12 pentru dispozitivele care nu acceptă Turnip este în prezent limitat.</string>
-	<string name="game_launch_tip_8">Sfat: Încercați driverele Adreno sau Snapdragon 8 Elite pe glibc dacă aveți un dispozitiv compatibil.</string>
-	<string name="game_launch_tip_9">Sfat: Dacă primiți un ecran negru la lansarea unui joc, încercați \"%s\" și să lansați jocul de pe unitatea A:.</string>
-	<string name="game_launch_tip_10">Sfat: Puteți adăuga diferite locații pentru jocuri personalizate în setări.</string>
+	<string name="game_launch_tip_4">Sfat: Dacă primiți o eroare DirectX, încercați să utilizați DXVK 1.11.1-sarek și System driver pe Bionic.</string>
+	<string name="game_launch_tip_5">Sfat: Dacă jocurile nu pornesc, verificați \"%s\" în meniul de setări (rotița) - ar trebui să vedeți un cub care se rotește.</string>
+	<string name="game_launch_tip_6">Sfat: Utilizați DXVK pentru jocurile DirectX 8/9/10/11 și VKD3D pentru jocurile DirectX 12.</string>
+	<string name="game_launch_tip_7">Sfat: Utilizați driverele Turnip pentru a juca jocuri DirectX 12. Suportul DirectX 12 pentru dispozitivele care nu acceptă Turnip este în prezent limitat.</string>
+	<string name="game_launch_tip_8">Sfat: Dacă controalele nu funcționează, activați Steam Input și verificați că aplicația dvs. nu este instalată într-un spațiu privat.</string>
+	<string name="game_launch_tip_9">Sfat: Pentru a adăuga fișiere în joc, plasați-le în folderul Downloads al dispozitivului, apăsați \"%s\" și vor fi în D: drive.</string>
+	<string name="game_launch_tip_10">Sfat: Importați o configurație de pe gamenative.app/compatibility pentru GPU-ul dvs. sau familia de GPU dacă nu reușiți să porniți jocul.</string>
 	<string name="game_launch_tip_11">Sfat: Utilizați HUD-ul de performanță din meniul rapid când doriți statistici FPS în joc.</string>
-	<string name="game_launch_tip_12">Sfat: Instalați pachetele în A:\\_CommonRedist dacă jocul dvs. nu se lansează.</string>
+	<string name="game_launch_tip_12">Sfat: Dacă jocul dvs. nu are sunet, utilizați Proton 10 pentru a extrage automat XAudio DLLs.</string>
 	<string name="game_launch_tip_13">Sfat: Puteți activa sau dezactiva controllerul pe ecran cu tasta de revenire a dispozitivului dvs.</string>
 	<string name="game_launch_tip_14">Sfat: Puteți afișa tastatura cu tasta de revenire a dispozitivului dvs.</string>
 	<string name="game_launch_tip_15">Sfat: Puteți atinge cu două degete în interiorul containerului pentru a face clic dreapta.</string>
 	<string name="game_launch_tip_16">Sfat: Dacă utilizați controllerul pe ecran, puteți dezactiva mouse-ul pentru a preveni atingerile accidentale.</string>
 	<string name="game_launch_tip_17">Sfat: Raportați problemele pe Discord pentru a le putea remedia.</string>
-	<string name="game_launch_tip_18">Sfat: Utilizați driverul Vortek pe glibc sau wrapper-leegao pe Bionic dacă aveți un GPU non-Adreno.</string>
-	<string name="game_launch_tip_19">Sfat: Reduceți rezoluția și utilizați box64 în modul de performanță pentru a crește FPS-ul.</string>
-	<string name="game_launch_tip_20">Sfat: Dacă jocul se blochează după încărcare, măriți memoria video.</string>
-	<string name="game_launch_tip_21">Sfat: Dacă vedeți artefacte vizuale, dezactivați DRI3.</string>
+	<string name="game_launch_tip_18">Sfat: Utilizați driverul Turnip Gen8 V25/V30 sau MrPurple T26 dacă aveți un dispozitiv 8 Elite.</string>
+	<string name="game_launch_tip_19">Sfat: Reduceți rezoluția și utilizați FSR din meniul rapid în joc pentru a crește performanța.</string>
+	<string name="game_launch_tip_20">Sfat: Dacă întreaga aplicație se blochează după încărcarea unui joc, dispozitivul dvs. rămâne fără RAM.</string>
+	<string name="game_launch_tip_21">Sfat: Încercați rendererul SurfaceFlinger pentru a îmbunătăți FPS-ul și latența.</string>
 	<string name="game_launch_tip_22">Sfat: Puteți activa modul ecran tactil.</string>
 	<string name="game_launch_tip_23">Sfat: Dacă aveți un GPU Mali, vă rugăm să utilizați driverele de sistem.</string>
 	<string name="game_launch_tip_24">Sfat: Ecran negru? Încercați opțiunea \"%s\" din meniu pentru a verifica dacă driverele dvs. funcționează corect.</string>
+	<string name="game_launch_tip_25">Sfat: Utilizați Proton x86-64 dacă nu puteți face clic cu mouse-ul în jocuri.</string>
     <string name="launch_bionic_steam_description">Activează jocul online și îmbunătățește compatibilitatea\nNu funcționează întotdeauna\nFă backup salvărilor înainte să încerci</string>
 
     <!-- Frontend Sync Settings -->
@@ -1536,6 +1572,8 @@
     <string name="frontend_sync_confirm_keep">Păstrați</string>
     <string name="frontend_sync_resync_all">Resincronizare completă</string>
     <string name="frontend_sync_resync_complete">Sincronizare frontend finalizată</string>
+    <string name="frontend_sync_pick_directory_cd">Alege directorul pentru %1$s</string>
+    <string name="frontend_sync_clear_directory_cd">Șterge directorul pentru %1$s</string>
     <string name="screen_effects_scaling">Scalare</string>
     <string name="screen_effects_upscaling">Scalare superioară</string>
     <string name="screen_effects_basic_scaling">Scalare de bază</string>
@@ -1557,6 +1595,17 @@
     <string name="screen_effects_scaling_mode_dls_desc">Trecere de claritate.</string>
     <string name="screen_effects_scaling_mode_natural">Natural</string>
     <string name="screen_effects_scaling_mode_natural_desc">Ton de culoare mai cald.</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">AMD FidelityFX Super Resolution 1.0 oficial, folosind EASU + RCAS cu o rezoluție internă de randare mai mică și scalare la rezoluția completă.</string>
+    <string name="screen_effects_fsr_quality">Calitate FSR</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">Ultra Calitate</string>
+    <string name="screen_effects_fsr_quality_quality">Calitate</string>
+    <string name="screen_effects_fsr_quality_balanced">Echilibrat</string>
+    <string name="screen_effects_fsr_quality_performance">Performanță</string>
+    <string name="screen_effects_fsr_sharpness">Claritate FSR</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">Claritate la lansare</string>
+    <string name="screen_effects_launch_sharpness_note">CAS și DLS sunt aplicate prin vkBasalt și au efect la următoarea lansare a jocului.</string>
     <string name="stats_key_runs">Rulări reușite pe GPU-ul tău</string>
     <string name="stats_key_reviews">Recenzii de 5 stele (GPU-ul tău / dispozitivul tău)</string>
     <string name="stats_key_fps">FPS estimat</string>

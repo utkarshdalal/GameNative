@@ -13,11 +13,13 @@ import app.gamenative.PrefManager
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.LibraryPlayHistory
 import app.gamenative.data.SteamApp
 import app.gamenative.events.AndroidEvent
 import app.gamenative.data.GOGGame
 import app.gamenative.data.EpicGame
 import app.gamenative.data.AmazonGame
+import app.gamenative.db.dao.LibraryPlayHistoryDao
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.db.dao.EpicGameDao
@@ -71,6 +73,7 @@ private const val PROVEN_RUNS_THRESHOLD = 5
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
+    private val libraryPlayHistoryDao: LibraryPlayHistoryDao,
     private val steamAppDao: SteamAppDao,
     private val gogGameDao: GOGGameDao,
     private val epicGameDao: EpicGameDao,
@@ -107,6 +110,7 @@ class LibraryViewModel @Inject constructor(
     private var gogGameList: List<GOGGame> = emptyList()
     private var epicGameList: List<EpicGame> = emptyList()
     private var amazonGameList: List<AmazonGame> = emptyList()
+    private var playHistoryByAppId: Map<String, Long> = emptyMap()
 
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
@@ -175,11 +179,21 @@ class LibraryViewModel @Inject constructor(
                 .collect { apps ->
                     Timber.tag("LibraryViewModel").d("Collecting ${apps.size} apps")
                     // Check if the list has actually changed before triggering a re-filter
-                    if (appList.size != apps.size) {
+                    if (appList != apps) {
                         appList = apps
                         onFilterApps(paginationCurrentPage)
                     }
                 }
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            libraryPlayHistoryDao.getAll().collect { entries ->
+                val playHistory = entries.associate { it.appId to it.lastPlayed }
+                if (playHistoryByAppId != playHistory) {
+                    playHistoryByAppId = playHistory
+                    onFilterApps(paginationCurrentPage)
+                }
+            }
         }
 
         // Collect GOG games
@@ -549,7 +563,10 @@ class LibraryViewModel @Inject constructor(
                 .toList()
 
             // Map Steam apps to UI items
-            data class LibraryEntry(val item: LibraryItem, val isInstalled: Boolean)
+            data class LibraryEntry(val item: LibraryItem, val isInstalled: Boolean, val lastPlayed: Long = 0L)
+
+            fun lastPlayedFor(appId: String): Long = playHistoryByAppId[appId] ?: 0L
+
             val licensedDepotMap = SteamService.buildLicensedDepotMap(filteredSteamApps)
 
             // Added this to avoid duplicate from custom imported steam game
@@ -586,6 +603,7 @@ class LibraryViewModel @Inject constructor(
                         sizeBytes = totalSizeBytes,
                     ),
                     isInstalled = isInstalled,
+                    lastPlayed = lastPlayedFor(appId),
                 )
             }
 
@@ -601,7 +619,7 @@ class LibraryViewModel @Inject constructor(
             val customEntries = customGameItems
                 .filter { !steamEntriesAppIds.contains(it.appId) } // Filter out imported steam appId
                 .filter { passesStatsFilters(currentState, it.gameSource, it.name) }
-                .map { LibraryEntry(it, true) }
+                .map { LibraryEntry(it, true, lastPlayed = lastPlayedFor(it.appId)) }
 
             // Filter GOG games
             val filteredGOGGames = gogGameList
@@ -628,21 +646,23 @@ class LibraryViewModel @Inject constructor(
                 .filter { passesCompatibleFilter(it.title) }
                 .filter { passesStatsFilters(currentState, GameSource.GOG, it.title) }
                 .map { game ->
-                LibraryEntry(
-                    item = LibraryItem(
-                        index = 0,
-                        appId = "${GameSource.GOG.name}_${game.id}",
-                        name = game.title,
-                        iconHash = game.iconUrl.ifEmpty { game.imageUrl },
-                        capsuleImageUrl = game.verticalCoverUrl.ifEmpty { game.iconUrl.ifEmpty { game.imageUrl } },
-                        headerImageUrl = game.imageUrl.ifEmpty { game.iconUrl },
-                        heroImageUrl = game.imageUrl.ifEmpty { game.iconUrl },
-                        isShared = false,
-                        gameSource = GameSource.GOG,
-                    ),
-                    isInstalled = game.isInstalled,
-                )
-            }
+                    val appId = "${GameSource.GOG.name}_${game.id}"
+                    LibraryEntry(
+                        item = LibraryItem(
+                            index = 0,
+                            appId = appId,
+                            name = game.title,
+                            iconHash = game.iconUrl.ifEmpty { game.imageUrl },
+                            capsuleImageUrl = game.verticalCoverUrl.ifEmpty { game.iconUrl.ifEmpty { game.imageUrl } },
+                            headerImageUrl = game.imageUrl.ifEmpty { game.iconUrl },
+                            heroImageUrl = game.imageUrl.ifEmpty { game.iconUrl },
+                            isShared = false,
+                            gameSource = GameSource.GOG,
+                        ),
+                        isInstalled = game.isInstalled,
+                        lastPlayed = lastPlayedFor(appId),
+                    )
+                }
 
             // Filter Epic games
             val filteredEpicGames = epicGameList
@@ -669,21 +689,23 @@ class LibraryViewModel @Inject constructor(
                 .filter { passesCompatibleFilter(it.title) }
                 .filter { passesStatsFilters(currentState, GameSource.EPIC, it.title) }
                 .map { game ->
-                LibraryEntry(
-                    item = LibraryItem(
-                        index = 0,
-                        appId = "${GameSource.EPIC.name}_${game.id}",
-                        name = game.title,
-                        iconHash = game.artSquare.ifEmpty { game.artCover },
-                        capsuleImageUrl = game.artCover.ifEmpty { game.artSquare },
-                        headerImageUrl = game.artPortrait.ifEmpty { game.artSquare.ifEmpty { game.artCover } },
-                        heroImageUrl = game.artPortrait.ifEmpty { game.artSquare.ifEmpty { game.artCover } },
-                        isShared = false,
-                        gameSource = GameSource.EPIC,
-                    ),
-                    isInstalled = game.isInstalled,
-                )
-            }
+                    val appId = "${GameSource.EPIC.name}_${game.id}"
+                    LibraryEntry(
+                        item = LibraryItem(
+                            index = 0,
+                            appId = appId,
+                            name = game.title,
+                            iconHash = game.artSquare.ifEmpty { game.artCover },
+                            capsuleImageUrl = game.artCover.ifEmpty { game.artSquare },
+                            headerImageUrl = game.artPortrait.ifEmpty { game.artSquare.ifEmpty { game.artCover } },
+                            heroImageUrl = game.artPortrait.ifEmpty { game.artSquare.ifEmpty { game.artCover } },
+                            isShared = false,
+                            gameSource = GameSource.EPIC,
+                        ),
+                        isInstalled = game.isInstalled,
+                        lastPlayed = lastPlayedFor(appId),
+                    )
+                }
 
             // Amazon games
             val filteredAmazonGames = amazonGameList
@@ -710,24 +732,26 @@ class LibraryViewModel @Inject constructor(
                 .filter { passesCompatibleFilter(it.title) }
                 .filter { passesStatsFilters(currentState, GameSource.AMAZON, it.title) }
                 .map { game ->
-                val layoutHero = AmazonArtwork.layoutHeroFromProductJson(game.productJson)
-                    .ifEmpty { game.heroUrl.ifEmpty { game.artUrl } }
-                LibraryEntry(
-                    item = LibraryItem(
-                        index = 0,
-                        appId = "AMAZON_${game.appId}",
-                        name = game.title,
-                        iconHash = game.artUrl,
-                        capsuleImageUrl = game.artUrl,
-                        headerImageUrl = layoutHero,
-                        heroImageUrl = layoutHero.ifEmpty { game.artUrl },
-                        gridHeroImageScale = AmazonArtwork.GRID_HERO_ZOOM_SCALE,
-                        isShared = false,
-                        gameSource = GameSource.AMAZON,
-                    ),
-                    isInstalled = game.isInstalled,
-                )
-            }
+                    val layoutHero = AmazonArtwork.layoutHeroFromProductJson(game.productJson)
+                        .ifEmpty { game.heroUrl.ifEmpty { game.artUrl } }
+                    val appId = "${GameSource.AMAZON.name}_${game.appId}"
+                    LibraryEntry(
+                        item = LibraryItem(
+                            index = 0,
+                            appId = appId,
+                            name = game.title,
+                            iconHash = game.artUrl,
+                            capsuleImageUrl = game.artUrl,
+                            headerImageUrl = layoutHero,
+                            heroImageUrl = layoutHero.ifEmpty { game.artUrl },
+                            gridHeroImageScale = AmazonArtwork.GRID_HERO_ZOOM_SCALE,
+                            isShared = false,
+                            gameSource = GameSource.AMAZON,
+                        ),
+                        isInstalled = game.isInstalled,
+                        lastPlayed = lastPlayedFor(appId),
+                    )
+                }
 
             // Calculate installed counts
             val gogInstalledCount = filteredGOGGames.count { it.isInstalled }
@@ -789,9 +813,11 @@ class LibraryViewModel @Inject constructor(
 
                 SortOption.NAME_DESC -> compareByDescending { it.item.name.lowercase() }
 
-                SortOption.RECENTLY_PLAYED -> compareBy<LibraryEntry> { entry ->
-                    if (entry.isInstalled) 0 else 1
-                }.thenBy { it.item.name.lowercase() }
+                SortOption.RECENTLY_PLAYED -> LibrarySortUtils.recentlyPlayedComparator(
+                    name = { it.item.name },
+                    isInstalled = { it.isInstalled },
+                    lastPlayed = { it.lastPlayed },
+                )
 
                 SortOption.SIZE_SMALLEST -> compareBy<LibraryEntry> { it.item.sizeBytes }
                     .thenBy { it.item.name.lowercase() }

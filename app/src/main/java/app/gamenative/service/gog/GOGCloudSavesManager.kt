@@ -220,10 +220,48 @@ class GOGCloudSavesManager(
                 return@withContext currentTimestamp()
             }
 
-            if (preferredAction == "upload" && localFiles.isNotEmpty()) {
+            // Explicit "keep local" choice from the conflict dialog: force-upload every local file so
+            // local wins, bypassing the conflict guard on the plain "upload" path below.
+            if (preferredAction == "forceupload" && localFiles.isNotEmpty()) {
                 Timber.tag("GOG-CloudSaves").i("Forcing upload of ${localFiles.size} file(s) (user requested)")
                 localFiles.forEach { file ->
                     uploadFile(credentials.userId, clientId, dirname, file, credentials.accessToken)
+                }
+                return@withContext currentTimestamp()
+            }
+
+            if (preferredAction == "upload" && localFiles.isNotEmpty()) {
+                // Use classifier to intelligently determine which files need uploading
+                val classifier = classifyFiles(localFiles, cloudFiles, lastSyncTimestamp)
+
+                // Don't clobber the cloud on an automatic exit upload. If the cloud is newer
+                // (DOWNLOAD) or both sides changed (CONFLICT), skip and leave the timestamp
+                // untouched — the next launch detects the conflict and prompts the user to resolve it.
+                val action = classifier.determineAction()
+                if (action == SyncAction.DOWNLOAD || action == SyncAction.CONFLICT) {
+                    Timber.tag("GOG-CloudSaves").w("Skipping upload: cloud changed since last sync (action=$action), deferring to launch conflict prompt")
+                    return@withContext lastSyncTimestamp
+                }
+
+                val filesToUpload = mutableListOf<SyncFile>()
+
+                // Upload files that were updated locally since last sync
+                filesToUpload.addAll(classifier.updatedLocal)
+
+                // Upload files that don't exist remotely
+                filesToUpload.addAll(classifier.notExistingRemotely)
+
+                // Deduplicate by relativePath (new files can appear in both lists)
+                val uniqueFilesToUpload = filesToUpload.distinctBy { it.relativePath }
+
+                if (uniqueFilesToUpload.isNotEmpty()) {
+                    Timber.tag("GOG-CloudSaves").i("Smart upload: ${uniqueFilesToUpload.size} file(s) changed since last sync (out of ${localFiles.size} total)")
+                    uniqueFilesToUpload.forEach { file ->
+                        uploadFile(credentials.userId, clientId, dirname, file, credentials.accessToken)
+                    }
+                } else {
+                    Timber.tag("GOG-CloudSaves").i("Smart upload: No files changed since last sync, skipping upload")
+                    return@withContext lastSyncTimestamp
                 }
                 return@withContext currentTimestamp()
             }
@@ -328,6 +366,53 @@ class GOGCloudSavesManager(
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "Sync failed: ${e.message}")
             return@withContext 0L
+        }
+    }
+
+    /**
+     * Conflict timestamps for a save location, in milliseconds (for display).
+     */
+    data class ConflictInfo(
+        val localTimestamp: Long,
+        val remoteTimestamp: Long
+    )
+
+    /**
+     * Detect whether a save location is in conflict (both local and cloud changed since the last
+     * sync) WITHOUT uploading or downloading anything. Returns null when there is no conflict, or
+     * on any error (fail open so the regular sync still runs).
+     */
+    suspend fun detectConflict(
+        localPath: String,
+        dirname: String,
+        clientId: String,
+        clientSecret: String,
+        lastSyncTimestamp: Long = 0
+    ): ConflictInfo? = withContext(Dispatchers.IO) {
+        try {
+            val syncDir = File(localPath)
+            if (!syncDir.exists()) return@withContext null
+
+            val localFiles = scanLocalFiles(syncDir)
+            if (localFiles.isEmpty()) return@withContext null // nothing local => no conflict
+
+            val credentials = GOGAuthManager.getGameCredentials(context, clientId, clientSecret).getOrNull()
+                ?: return@withContext null
+            val cloudFiles = getCloudFiles(credentials.userId, clientId, dirname, credentials.accessToken)
+                ?: return@withContext null
+            if (cloudFiles.none { !it.isDeleted }) return@withContext null // nothing in cloud => no conflict
+
+            val classifier = classifyFiles(localFiles, cloudFiles, lastSyncTimestamp)
+            if (classifier.determineAction() != SyncAction.CONFLICT) return@withContext null
+
+            // updateTimestamp is stored in seconds; convert to millis for display.
+            val localTs = localFiles.mapNotNull { it.updateTimestamp }.maxOrNull() ?: 0L
+            val remoteTs = cloudFiles.filter { !it.isDeleted }.mapNotNull { it.updateTimestamp }.maxOrNull() ?: 0L
+            Timber.tag("GOG-CloudSaves").i("Conflict detected for '$dirname' (local: $localTs, remote: $remoteTs)")
+            ConflictInfo(localTimestamp = localTs * 1000, remoteTimestamp = remoteTs * 1000)
+        } catch (e: Exception) {
+            Timber.tag("GOG-CloudSaves").e(e, "Conflict detection failed for '$dirname': ${e.message}")
+            null
         }
     }
 
@@ -555,13 +640,25 @@ class GOGCloudSavesManager(
                 val localFile = FileUtils.resolveCaseInsensitive(syncDir, file.relativePath)
                 localFile.parentFile?.mkdirs()
 
+                // Write file content
                 FileOutputStream(localFile).use { fos ->
                     fos.write(bytes)
                 }
 
-                // Preserve timestamp if available
-                file.updateTimestamp?.let { timestamp ->
-                    localFile.setLastModified(timestamp * 1000)
+                // Preserve cloud timestamp (must be done after closing the stream)
+                file.updateTimestamp?.let { cloudTimestamp ->
+                    val cloudMillis = cloudTimestamp * 1000
+                    val success = localFile.setLastModified(cloudMillis)
+                    if (success) {
+                        val actualMillis = localFile.lastModified()
+                        if (actualMillis == cloudMillis) {
+                            Timber.tag("GOG-CloudSaves").d("Preserved cloud timestamp for ${file.relativePath}: $cloudTimestamp seconds")
+                        } else {
+                            Timber.tag("GOG-CloudSaves").w("Timestamp mismatch for ${file.relativePath}: set $cloudMillis but got $actualMillis")
+                        }
+                    } else {
+                        Timber.tag("GOG-CloudSaves").w("Failed to set timestamp for ${file.relativePath}")
+                    }
                 }
 
                 Timber.tag("GOG-CloudSaves").i("Successfully downloaded: ${file.relativePath}")

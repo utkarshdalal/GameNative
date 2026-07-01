@@ -215,6 +215,13 @@ object PrefManager {
             setPref(DISPLAY_RENDERER_MODE, value)
         }
 
+    private val SF_COMPAT_MODE = booleanPreferencesKey("sf_compat_mode")
+    var sfCompatMode: Boolean
+        get() = getPref(SF_COMPAT_MODE, true)
+        set(value) {
+            setPref(SF_COMPAT_MODE, value)
+        }
+
     private val USE_LEGACY_RENDERER = booleanPreferencesKey("use_legacy_renderer")
     var useLegacyRenderer: Boolean
         get() = getPref(USE_LEGACY_RENDERER, false)

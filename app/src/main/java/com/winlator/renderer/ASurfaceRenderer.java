@@ -3,9 +3,8 @@ package com.winlator.renderer;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.Build;
 import android.view.Surface;
-import android.view.SurfaceControl;
+
 import app.gamenative.R;
 import android.graphics.Rect;
 import timber.log.Timber;
@@ -27,17 +26,26 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ASurfaceRenderer implements WindowManager.OnWindowModificationListener,
         Pointer.OnPointerMotionListener,
         XServerRenderer {
     static { System.loadLibrary("asurface_renderer"); }
 
+    private static final AtomicLong NATIVE_CONTEXT_GENERATION = new AtomicLong();
+
+    static long getNativeContextGeneration() {
+        return NATIVE_CONTEXT_GENERATION.get();
+    }
+
     public final XServerView xServerView;
     private final XServer xServer;
     public final ViewTransformation viewTransformation = new ViewTransformation();
     public int surfaceWidth;
     public int surfaceHeight;
+    private boolean sfCompatMode = true;
     private String[] unviewableWMClasses = null;
     private String forceFullscreenWMClass = null;
     private boolean containerCursorVisible = true;
@@ -72,6 +80,10 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         rootCursorDrawable = createRootCursorDrawable();
         xServer.windowManager.addOnWindowModificationListener(this);
         xServer.pointer.addOnPointerMotionListener(this);
+    }
+
+    public void setSfCompatMode(boolean apply) {
+        this.sfCompatMode = apply;
     }
 
     private Drawable createRootCursorDrawable() {
@@ -123,6 +135,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     }
 
     private int pendingPresentSerial = 0;
+    private AtomicInteger skipFPSCount = new AtomicInteger(0);
     public void setPendingPresentSerial(int serial) {
         pendingPresentSerial = serial;
     }
@@ -133,7 +146,9 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private native void nativeInitScanout();
     private native boolean nativeReattachSurface(Surface surface);
     private native void nativeDestroyScanout();
-    private native void nativeSetWindowBuffer(long contentId, long ahbPtr, int fenceFd, long windowId, long serial);
+    private native void nativeSetWindowBuffer(long contentId, long ahbPtr, int fenceFd, long windowId, long serial, AHBImage ahbImage, int slot, boolean sfCompatMode);
+    static native boolean nativePrepareCpuSourceBuffers(long ahb0, long ahb1, long ahb2);
+    static native void nativeReleaseCpuSourceBuffers(long ahb0, long ahb1, long ahb2);
     private native void nativeScanoutSetCursorVisibility(boolean visible);
     private native void nativeRegisterWindowSC(long contentId, String debugName);
     private native void nativeUnregisterWindowSC(long contentId);
@@ -144,8 +159,8 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private native void nativeBeginTransaction();
     private native void nativeApplyTransaction();
     private native void nativeUpdateWindow(long contentId, boolean visible, int zOrder,
-            int srcL, int srcT, int srcR, int srcB,
-            int dstL, int dstT, int dstR, int dstB);
+                                           int srcL, int srcT, int srcR, int srcB,
+                                           int dstL, int dstT, int dstR, int dstB);
 
     private WindowSurface getOrCreateWindowSurface(int contentId, int w, int h, String debugName)
     {
@@ -247,8 +262,10 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 return;
             }
         }
+        skipFPSCount.set(0);
         surfaceInitialized = nativeInit(surface, xServer.screenInfo.width, xServer.screenInfo.height);
         if (surfaceInitialized) {
+            NATIVE_CONTEXT_GENERATION.incrementAndGet();
             nativeSetSfCallbackTarget(this);
             updateTransform();
             nativeInitScanout();
@@ -288,6 +305,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             nativeDestroy();
             surfaceInitialized = false;
         }
+        skipFPSCount.set(0);
         windowSurfaces.clear();
         cachedDesktopDst = null;
     }
@@ -364,7 +382,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             WindowSurface ws = getOrCreateWindowSurface(contentId, rw.content.width, rw.content.height, debugName);
             int srcW = rw.content.width;
             int srcH = rw.content.height;
-            if (rw.content.getTexture() instanceof GPUImage g) {
+            if (rw.content.getTexture() instanceof AHBImage g) {
                 int ahbW = g.getWidth();
                 int ahbH = g.getHeight();
                 if (ahbW > 0 && ahbH > 0) {
@@ -442,21 +460,18 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             nativeScanoutSetCursorVisibility(containerCursorVisible && gameCursorVisible);
         }
         synchronized (drawable.renderLock) {
-            if (drawable.getTexture() instanceof GPUImage g) {
+            if (drawable.getTexture() instanceof AHBImage g) {
+                g.prepareScanoutSources();
                 long ahbPtr = g.getScanoutHardwareBufferPtr();
                 if (ahbPtr != 0) {
-                    int fence = -1;
-                    boolean isFallback = (ahbPtr == g.getHardwareBufferPtr());
-
-                    if (isFallback) {
-                        fence = g.unlock();
-                    }
-
-                    nativeSetWindowBuffer(windowId, ahbPtr, fence, 0, 0);
-                    if (hudRef != null) hudRef.update();
-
-                    if (isFallback) {
-                        g.lock();
+                    int acquireFence = g.consumeAcquireFence();
+                    // Disable swap R/B in cpu path as it is handled with drawable
+                    nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot(), sfCompatMode);
+                    if (hudRef != null && skipFPSCount.get() >= 1) {
+                        hudRef.update();
+                        skipFPSCount.set(0);
+                    } else {
+                        skipFPSCount.incrementAndGet();
                     }
                 }
             }
@@ -472,10 +487,11 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             nativeScanoutSetCursorVisibility(containerCursorVisible && gameCursorVisible);
         }
         synchronized (drawable.renderLock) {
-            if (drawable.getTexture() instanceof GPUImage g) {
+            if (drawable.getTexture() instanceof AHBImage g) {
                 long ahbPtr = g.getHardwareBufferPtr();
                 if (ahbPtr != 0) {
-                    nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, xSerial);
+                    // Need to match ahbImage needsRBSwap() for swap R/B
+                    nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, xSerial, null, -1, sfCompatMode);
                     if (hudRef != null) hudRef.update();
                 }
             }
@@ -555,13 +571,16 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         }
         Drawable content = window.getContent();
         if (content != null && content.width > 0 && content.height > 0) {
-            if (!(content.getTexture() instanceof GPUImage)) {
-                GPUImage g = new GPUImage(content.width, content.height);
+            if (!(content.getTexture() instanceof AHBImage)) {
+                AHBImage g = new AHBImage(content.width, content.height);
                 if (g.getHardwareBufferPtr() != 0) {
                     content.setTexture(g);
                 }
             }
-            if (content.getTexture() instanceof GPUImage) {
+            if (content.getTexture() instanceof AHBImage g) {
+                // Import all three stable CPU scanout AHBs before the first
+                // onDraw frame whenever the native renderer already exists.
+                g.prepareScanoutSources();
                 content.setOnDrawListener(() -> {
                     if (windowSurfaces.containsKey(window.id)) { pushCpuImageToNative(window.id, content); }
                 });

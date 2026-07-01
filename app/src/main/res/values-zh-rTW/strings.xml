@@ -670,6 +670,7 @@
     <string name="achievement_position_bottom_left">左下</string>
     <string name="achievement_position_bottom_right">右下</string>
     <string name="launch_steam_client_description">降低效能並減慢啟動速度\n允許線上遊玩並修復 DRM 和控制器問題\n並非所有遊戲都適用</string>
+    <string name="launch_bionic_steam">啟用實驗性 Bionic Steam</string>
     <string name="allow_steam_updates">允許 Steam 更新</string>
     <string name="allow_steam_updates_description">將 Steam 更新至最新版本, 會顯著降低效能</string>
     <string name="steam_type">Steam 類型</string>
@@ -684,6 +685,8 @@
     <string name="vulkan_version">Vulkan 版本</string>
     <string name="image_cache_size">圖像快取大小</string>
     <string name="dx_wrapper">DX Wrapper</string>
+    <string name="sf_compat_mode">相容模式</string>
+    <string name="sf_compat_mode_description">關閉以提升效能。開啟以修正顏色反轉。</string>
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">使用 DRI3</string>
     <string name="use_dri3_description">在某些裝置上停用此功能或許能修復圖形故障</string>
@@ -692,6 +695,7 @@
     <string name="sync_frame">同步每幀影像</string>
     <string name="disable_present_wait">停用 KHR_present_wait</string>
     <string name="present_modes">當前模式</string>
+    <string name="renderer_present_modes">算繪器呈現模式</string>
     <string name="resource_type">記憶體資源類型</string>
     <string name="bcn_emulation">BCn 模擬</string>
     <string name="bcn_emulation_type">BCn 模擬類型</string>
@@ -1568,27 +1572,28 @@
     <string name="game_launch_tip_1">首次啟動可能需要幾分鐘時間</string>
     <string name="game_launch_tip_2">提示：你可以在遊戲設定中點擊「%s」來檢視遊戲檔案。</string>
     <string name="game_launch_tip_3">提示：你可以前往主設定選單下載自訂驅動，用於 Bionic 容器。</string>
-    <string name="game_launch_tip_4">提示：如果遇到 DirectX 錯誤，請確保在 Bionic 上使用 DXVK 1.10.3-async 和 leegao-wrapper。</string>
-    <string name="game_launch_tip_5">提示：點擊「%s」後，可以在開始選單中嘗試 Direct3D 測試，檢查裝置是否正常運作。</string>
-    <string name="game_launch_tip_6">提示：DirectX 8/9/10/11 遊戲使用 DXVK，DirectX 12 遊戲使用 VKD3D，OpenGL 遊戲使用 VirGL + WineD3D。</string>
-    <string name="game_launch_tip_7">提示：在 glibc 或 bionic 上使用 Turnip 來執行 DirectX 12 遊戲。不支援 Turnip 的裝置對 DirectX 12 的支援目前有限。</string>
-    <string name="game_launch_tip_8">提示：如果裝置相容，可以在 glibc 上嘗試 Adreno 或 Snapdragon 8 Elite 驅動。</string>
-    <string name="game_launch_tip_9">提示：如果啟動遊戲時黑屏，請嘗試「%s」並從 A: 磁碟機啟動遊戲。</string>
-    <string name="game_launch_tip_10">提示：你可以在設定中新增不同的自訂遊戲路徑。</string>
+    <string name="game_launch_tip_4">提示：如果遇到 DirectX 錯誤，請嘗試在 Bionic 上使用 DXVK 1.11.1-sarek 和 System driver。</string>
+    <string name="game_launch_tip_5">提示：如果遊戲無法啟動，請檢查設定齒輪下的「%s」—你應該會看到一個旋轉的立方體。</string>
+    <string name="game_launch_tip_6">提示：DirectX 8/9/10/11 遊戲使用 DXVK，DirectX 12 遊戲使用 VKD3D。</string>
+    <string name="game_launch_tip_7">提示：使用 Turnip 驅動來執行 DirectX 12 遊戲。不支援 Turnip 的裝置對 DirectX 12 的支援目前有限。</string>
+    <string name="game_launch_tip_8">提示：如果控制器無法運作，請啟用 Steam Input 並檢查你的應用程式沒有安裝到私人空間。</string>
+    <string name="game_launch_tip_9">提示：若要將檔案加入遊戲，請將它們放在裝置的 Downloads 資料夾中，點擊「%s」，它們就會出現在 D: drive 中。</string>
+    <string name="game_launch_tip_10">提示：如果無法讓遊戲運作，請從 gamenative.app/compatibility 匯入適合你的 GPU 或 GPU 系列的設定。</string>
     <string name="game_launch_tip_11">提示：在遊戲中使用快速選單的效能 HUD 檢視 FPS 統計資訊。</string>
-    <string name="game_launch_tip_12">提示：如果遊戲無法啟動，請安裝 A:\\_CommonRedist 中的執行庫。</string>
+    <string name="game_launch_tip_12">提示：如果遊戲沒有聲音，請使用 Proton 10 來自動擷取 XAudio DLLs。</string>
     <string name="game_launch_tip_13">提示：你可以透過裝置的返回鍵啟用或停用螢幕手把。</string>
     <string name="game_launch_tip_14">提示：你可以透過裝置的返回鍵叫出鍵盤。</string>
     <string name="game_launch_tip_15">提示：在容器中用雙指點擊可以模擬滑鼠右鍵。</string>
     <string name="game_launch_tip_16">提示：使用螢幕手把時，可以停用滑鼠以防止誤觸。</string>
     <string name="game_launch_tip_17">提示：在 Discord 上回報問題，以便我們修復。</string>
-    <string name="game_launch_tip_18">提示：如果你使用的是非 Adreno GPU，在 glibc 上使用 Vortek 驅動，在 Bionic 上使用 wrapper-leegao。</string>
-    <string name="game_launch_tip_19">提示：降低解析度並使用 box64 效能模式可以提升 FPS。</string>
-    <string name="game_launch_tip_20">提示：如果遊戲載入後當機，請增加視訊記憶體大小。</string>
-    <string name="game_launch_tip_21">提示：如果出現影像異常，請停用 DRI3。</string>
+    <string name="game_launch_tip_18">提示：如果你使用的是 8 Elite 裝置，請使用 Turnip Gen8 V25/V30 或 MrPurple T26 驅動。</string>
+    <string name="game_launch_tip_19">提示：在遊戲中降低解析度並從快速選單使用 FSR 可以提升效能。</string>
+    <string name="game_launch_tip_20">提示：如果整個應用程式在載入遊戲後當機，表示你的裝置 RAM 不足。</string>
+    <string name="game_launch_tip_21">提示：嘗試使用 SurfaceFlinger 渲染器來提升 FPS 和降低延遲。</string>
     <string name="game_launch_tip_22">提示：你可以啟用觸控螢幕模式。</string>
     <string name="game_launch_tip_23">提示：如果你使用的是 Mali GPU，請使用系統驅動。</string>
     <string name="game_launch_tip_24">提示：出現黑畫面？嘗試使用選單中的「%s」選項檢查驅動是否正常運作。</string>
+    <string name="game_launch_tip_25">提示：如果你在遊戲中無法點擊滑鼠，請使用 Proton x86-64。</string>
     <string name="launch_bionic_steam_description">啟用線上遊玩並提升相容性\n不一定總能正常運作\n嘗試前請先備份存檔</string>
 
     <!-- Frontend Sync Settings -->
@@ -1607,6 +1612,8 @@
     <string name="frontend_sync_confirm_keep">保留</string>
     <string name="frontend_sync_resync_all">重新同步全部</string>
     <string name="frontend_sync_resync_complete">前端同步完成</string>
+    <string name="frontend_sync_pick_directory_cd">為 %1$s 選擇目錄</string>
+    <string name="frontend_sync_clear_directory_cd">清除 %1$s 的目錄</string>
     <string name="stats_key_runs">在您的GPU上成功執行的次數</string>
     <string name="stats_key_reviews">五星評論（您的GPU / 您的裝置）</string>
     <string name="stats_key_fps">預計FPS</string>

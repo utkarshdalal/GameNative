@@ -253,6 +253,7 @@
     <string name="toggle_orientation">Перемкнути орієнтацію екрана</string>
     <string name="task_manager">Диспетчер завдань</string>
     <string name="tools_wine_processes_running_hint">%1$d запущено, торкніться/клацніть процес, щоб закрити його</string>
+    <string name="tools_wine_processes_empty">Запущених EXE не виявлено.</string>
     <string name="magnifier">Лупа</string>
     <string name="logs">Журнали</string>
     <string name="exit_game">Вийти з гри</string>
@@ -286,6 +287,7 @@
     <string name="screen_effects_live_preview">Зміни миттєво застосовуються до поточної гри.</string>
     <string name="screen_effects_color_adjustments">Налаштування кольору</string>
     <string name="screen_effects_shader_toggles">Ефекти шейдерів</string>
+    <string name="screen_effects_scaling_mode">Режим масштабування</string>
     <string name="screen_effects_brightness">Яскравість</string>
     <string name="screen_effects_contrast">Контрастність</string>
     <string name="screen_effects_gamma">Гама</string>
@@ -339,6 +341,7 @@
     <string name="performance_hud_battery_level">Рівень батареї</string>
     <string name="performance_hud_power_draw">Споживання енергії</string>
     <string name="performance_hud_runtime_left">Залишок часу</string>
+    <string name="performance_hud_battery_temperature">Температура батареї</string>
     <string name="performance_hud_clock_time">Час</string>
     <string name="performance_hud_cpu_temperature">Температура CPU</string>
     <string name="performance_hud_gpu_temperature">Температура GPU</string>
@@ -660,6 +663,8 @@
     <string name="unpack_files_description">Використовувати лише якщо з\'являється \'Application Load Error 3:0000065432\'.</string>
     <string name="force_dlc">Примусити DLC</string>
     <string name="force_dlc_description">Увімкнути лише тоді, якщо не виявлено DLC або не працюють збереження з DLC</string>
+    <string name="local_saves_only">Лише локальні збереження</string>
+    <string name="local_saves_only_description">Вимкнути синхронізацію хмарних збережень для цієї гри та зберігати збереження лише на пристрої</string>
     <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
     <string name="steam_offline_mode">Режим Офлайн Steam</string>
     <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
@@ -672,6 +677,7 @@
     <string name="achievement_position_bottom_left">Лівий нижній</string>
     <string name="achievement_position_bottom_right">Правий нижній</string>
     <string name="launch_steam_client_description">Зменшує продуктивність та сповільнює запуск.\nДозволяє онлайн гру, а також вирішує проблему DRM та контролеру.\nПрацює не з усіма іграми</string>
+    <string name="launch_bionic_steam">Увімкнути експериментальний Bionic Steam</string>
     <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
     <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>
     <string name="steam_type">Версія Steam</string>
@@ -687,6 +693,8 @@
     <string name="image_cache_size">Розмір кешу</string>
     <string name="dx_wrapper">DX Wrapper</string>
     <string name="display_renderer">Рендерер відображення</string>
+    <string name="sf_compat_mode">Режим сумісності</string>
+    <string name="sf_compat_mode_description">Вимкніть для кращої продуктивності. Увімкніть, щоб виправити інвертовані кольори.</string>
     <string name="vkd3d_feature_level">Рівень функцій VKD3D</string>
     <string name="use_dri3">Використовувати DRI3</string>
     <string name="use_dri3_description">Вимкнення параметра може виправити графічні проблеми на деяких пристроях</string>
@@ -695,6 +703,7 @@
     <string name="sync_frame">Синхронізувати кожен кадр</string>
     <string name="disable_present_wait">Вимкнути KHR_present_wait</string>
     <string name="present_modes">Режими відображення</string>
+    <string name="renderer_present_modes">Режим відображення рендерера</string>
     <string name="resource_type">Тип ресурсу пам\'яті</string>
     <string name="bcn_emulation">Емуляція BCn</string>
     <string name="bcn_emulation_type">Тип емуляції BCn</string>
@@ -917,6 +926,8 @@
     <string name="settings_emulation_default_config_title">Змінити стандартну конфігурацію</string>
     <string name="settings_emulation_default_config_subtitle">Стандартні налаштування контейнера для кожної гри (не впливає на вже інстальовані ігри)</string>
     <string name="settings_emulation_default_config_dialog_title">Стандартні налаштування контейнера</string>
+    <string name="settings_emulation_auto_apply_known_config_title">Автоматично застосовувати відому конфігурацію</string>
+    <string name="settings_emulation_auto_apply_known_config_subtitle">Автоматично застосовувати рекомендовані налаштування для ігор Steam при першому запуску</string>
     <string name="settings_emulation_box64_presets_title">Box64 Пресети</string>
     <string name="settings_emulation_box64_presets_subtitle">Перегляд, зміна та створення пресетів Box64</string>
     <string name="settings_emulation_driver_manager_title">Менеджер драйвера</string>
@@ -1052,6 +1063,8 @@
     <string name="library_need_internet">Потрібне інтернет-з\'єднання для інсталяції</string>
     <string name="library_wifi_only_enabled">Увімкнено інсталяцію лише через Wi-Fi/LAN</string>
     <string name="library_file_count">Файл %1$d з %2$d</string>
+    <string name="download_no_wifi">Немає підключення до Wi-Fi/LAN</string>
+    <string name="download_paused_wifi">Завантаження призупинено – очікування Wi-Fi/LAN</string>
 
     <!-- PluviaMain: Update & App Info -->
     <string name="main_update_available_title">Доступне оновлення</string>
@@ -1074,6 +1087,7 @@
     <string name="main_discord_support_title">Чи працювала гра?</string>
     <string name="main_discord_support_message">Долучайтесь до нашого Discord, щоб отримати підтримку у виправленні чи покращенні роботи ігор.</string>
     <string name="main_open_discord">Відкрити Discord</string>
+    <string name="main_downloading_entry">Завантаження %s</string>
 
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Завантаження Steam...</string>
@@ -1441,6 +1455,15 @@
     <string name="workshop_processing">Обробка модів…</string>
     <string name="workshop_failed_count">Не вдалося оновити %1$d мод(ів) Майстерні</string>
     <string name="workshop_download_failed">Помилка завантаження</string>
+    <string name="option_open_store_page">Відкрити сторінку магазину</string>
+    <string name="option_export_for_frontend">Експортувати для frontend</string>
+    <string name="option_open_container">Відкрити контейнер</string>
+    <string name="option_edit_container">Редагувати контейнер</string>
+    <string name="option_reset_to_defaults">Скинути контейнер</string>
+    <string name="option_get_support">Отримати підтримку</string>
+    <string name="option_submit_feedback">Надіслати відгук</string>
+    <string name="option_reset_drm">Скинути DRM</string>
+    <string name="option_use_known_config">Використати відому конфігурацію</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Рекомендовано</string>
@@ -1463,6 +1486,18 @@
      <string name="steam_save_import_failed">Не вдалося імпортувати збереження: %s</string>
     <string name="option_import_saves">Імпортувати збереження</string>
     <string name="option_export_saves">Експортувати збереження</string>
+    <string name="option_verify_files">Перевірити файли</string>
+    <string name="option_update">Оновити</string>
+    <string name="option_move_to_external_storage">Перемістити на зовнішнє сховище</string>
+    <string name="option_move_to_internal_storage">Перемістити на внутрішнє сховище</string>
+    <string name="option_force_cloud_sync">Примусова синхронізація з хмарою</string>
+    <string name="option_browse_online_saves">Переглянути онлайн-збереження</string>
+    <string name="option_force_download_remote">Примусово завантажити віддалені збереження</string>
+    <string name="option_force_upload_local">Примусово вивантажити локальні збереження</string>
+    <string name="option_fetch_game_images">Отримати зображення гри</string>
+    <string name="option_test_graphics">Перевірити графіку</string>
+    <string name="option_manage_dlc">Керувати DLC</string>
+    <string name="option_manage_workshop">Керувати Workshop</string>
     <!-- HLTB (How Long To Beat) -->
     <string name="hltb_main_story">Основний сюжет</string>
     <string name="hltb_main_plus_extras">Основне + Доповнення</string>
@@ -1490,27 +1525,28 @@
     <string name="game_launch_tip_1">Завантаження може зайняти кілька хвилин при першому запуску</string>
     <string name="game_launch_tip_2">Порада: Ви можете переглянути файли гри, натиснувши \"%s\" у налаштуваннях гри.</string>
     <string name="game_launch_tip_3">Порада: Ви можете перейти до головного меню налаштувань і завантажити власні драйвери для вашого пристрою для використання на Bionic.</string>
-    <string name="game_launch_tip_4">Порада: Якщо ви отримуєте помилку DirectX, переконайтеся, що ви використовуєте DXVK 1.10.3-async та leegao-wrapper на Bionic.</string>
-    <string name="game_launch_tip_5">Порада: Спробуйте тест Direct3D у меню «Пуск» після натискання \"%s\", щоб перевірити, чи ваш пристрій працює правильно.</string>
-    <string name="game_launch_tip_6">Порада: Використовуйте DXVK для ігор DirectX 8/9/10/11, VKD3D для ігор DirectX 12 та VirGL + WineD3D для ігор OpenGL.</string>
-    <string name="game_launch_tip_7">Порада: Використовуйте Turnip на glibc або bionic для ігор DirectX 12. Підтримка DirectX 12 для пристроїв, які не підтримують Turnip, наразі обмежена.</string>
-    <string name="game_launch_tip_8">Порада: Спробуйте драйвери Adreno або Snapdragon 8 Elite на glibc, якщо у вас сумісний пристрій.</string>
-    <string name="game_launch_tip_9">Порада: Якщо при запуску гри з\'являється чорний екран, спробуйте \"%s\" і запустити гру з диска A:.</string>
-    <string name="game_launch_tip_10">Порада: Ви можете додати різні розташування для користувацьких ігор у налаштуваннях.</string>
+    <string name="game_launch_tip_4">Порада: Якщо ви отримуєте помилку DirectX, спробуйте використати DXVK 1.11.1-sarek та System driver на Bionic.</string>
+    <string name="game_launch_tip_5">Порада: Якщо ігри не запускаються, перевірте \"%s\" під шестернею налаштувань — ви маєте побачити обертовий куб.</string>
+    <string name="game_launch_tip_6">Порада: Використовуйте DXVK для ігор DirectX 8/9/10/11 та VKD3D для ігор DirectX 12.</string>
+    <string name="game_launch_tip_7">Порада: Використовуйте драйвери Turnip, щоб грати в ігри DirectX 12. Підтримка DirectX 12 для пристроїв, які не підтримують Turnip, наразі обмежена.</string>
+    <string name="game_launch_tip_8">Порада: Якщо керування не працює, увімкніть Steam Input та перевірте, що ваш застосунок не встановлено у приватний простір.</string>
+    <string name="game_launch_tip_9">Порада: Щоб додати файли до гри, помістіть їх у папку Downloads вашого пристрою, натисніть \"%s\" — і вони з\'являться на D: drive.</string>
+    <string name="game_launch_tip_10">Порада: Імпортуйте конфігурацію з gamenative.app/compatibility для вашого GPU або сімейства GPU, якщо не вдається запустити гру.</string>
     <string name="game_launch_tip_11">Порада: Використовуйте HUD продуктивності в швидкому меню, коли хочете бачити статистику FPS у грі.</string>
-    <string name="game_launch_tip_12">Порада: Встановіть пакети в A:\\_CommonRedist, якщо ваша гра не запускається.</string>
+    <string name="game_launch_tip_12">Порада: Якщо у вашій грі немає звуку, використовуйте Proton 10 для автоматичного видобування XAudio DLLs.</string>
     <string name="game_launch_tip_13">Порада: Ви можете ввімкнути або вимкнути екранний контролер за допомогою кнопки «Назад» на вашому пристрої.</string>
     <string name="game_launch_tip_14">Порада: Ви можете викликати клавіатуру за допомогою кнопки «Назад» на вашому пристрої.</string>
     <string name="game_launch_tip_15">Порада: Ви можете натиснути двома пальцями всередині контейнера для клацання правою кнопкою миші.</string>
     <string name="game_launch_tip_16">Порада: Якщо ви використовуєте екранний контролер, ви можете вимкнути мишу, щоб запобігти випадковим дотикам.</string>
     <string name="game_launch_tip_17">Порада: Повідомляйте про проблеми в Discord, щоб ми могли їх виправити.</string>
-    <string name="game_launch_tip_18">Порада: Використовуйте драйвер Vortek на glibc або wrapper-leegao на Bionic, якщо у вас не-Adreno GPU.</string>
-    <string name="game_launch_tip_19">Порада: Зменшіть роздільну здатність і використовуйте box64 у режимі продуктивності для підвищення FPS.</string>
-    <string name="game_launch_tip_20">Порада: Якщо гра вилітає після завантаження, збільште відеопам\'ять.</string>
-    <string name="game_launch_tip_21">Порада: Якщо ви бачите візуальні артефакти, вимкніть DRI3.</string>
+    <string name="game_launch_tip_18">Порада: Використовуйте драйвер Turnip Gen8 V25/V30 або MrPurple T26, якщо у вас пристрій 8 Elite.</string>
+    <string name="game_launch_tip_19">Порада: Зменшіть роздільну здатність і використовуйте FSR зі швидкого меню в грі для підвищення продуктивності.</string>
+    <string name="game_launch_tip_20">Порада: Якщо весь застосунок вилітає після завантаження гри, вашому пристрою бракує RAM.</string>
+    <string name="game_launch_tip_21">Порада: Спробуйте рендерер SurfaceFlinger, щоб покращити FPS і затримку.</string>
     <string name="game_launch_tip_22">Порада: Ви можете ввімкнути режим сенсорного екрана.</string>
     <string name="game_launch_tip_23">Порада: Якщо у вас GPU Mali, будь ласка, використовуйте системні драйвери.</string>
     <string name="game_launch_tip_24">Порада: Чорний екран? Спробуйте опцію \"%s\" у меню, щоб перевірити, чи ваші драйвери працюють правильно.</string>
+    <string name="game_launch_tip_25">Порада: Використовуйте Proton x86-64, якщо вам не вдається клацнути мишею в іграх.</string>
     <string name="launch_bionic_steam_description">Увімкнення онлайн-гри та покращення сумісності\nПрацює не завжди\nПеред спробою зробіть резервну копію збережень</string>
 
     <!-- Frontend Sync Settings -->
@@ -1529,6 +1565,8 @@
     <string name="frontend_sync_confirm_keep">Зберегти</string>
     <string name="frontend_sync_resync_all">Повторна синхронізація всього</string>
     <string name="frontend_sync_resync_complete">Синхронізація frontend завершена</string>
+    <string name="frontend_sync_pick_directory_cd">Вибрати каталог для %1$s</string>
+    <string name="frontend_sync_clear_directory_cd">Очистити каталог для %1$s</string>
     <string name="screen_effects_scaling">Масштабування</string>
     <string name="screen_effects_upscaling">Апскейлінг</string>
     <string name="screen_effects_basic_scaling">Базове масштабування</string>
@@ -1550,6 +1588,17 @@
     <string name="screen_effects_scaling_mode_dls_desc">Прохід різкості / чіткості.</string>
     <string name="screen_effects_scaling_mode_natural">Природний</string>
     <string name="screen_effects_scaling_mode_natural_desc">Тепліший відтінок.</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">Офіційний AMD FidelityFX Super Resolution 1.0 з використанням EASU + RCAS зі зниженою внутрішньою роздільністю рендерингу та апскейлом до повної роздільності.</string>
+    <string name="screen_effects_fsr_quality">Якість FSR</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">Ультраякість</string>
+    <string name="screen_effects_fsr_quality_quality">Якість</string>
+    <string name="screen_effects_fsr_quality_balanced">Збалансовано</string>
+    <string name="screen_effects_fsr_quality_performance">Продуктивність</string>
+    <string name="screen_effects_fsr_sharpness">Чіткість FSR</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">Чіткість при запуску</string>
+    <string name="screen_effects_launch_sharpness_note">CAS і DLS застосовуються через vkBasalt і набувають чинності при наступному запуску гри.</string>
     <string name="stats_key_runs">Успішні запуски на вашому GPU</string>
     <string name="stats_key_reviews">5-зіркові відгуки (ваш GPU / ваш пристрій)</string>
     <string name="stats_key_fps">Очікуваний FPS</string>

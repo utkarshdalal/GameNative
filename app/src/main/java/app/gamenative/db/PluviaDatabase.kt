@@ -6,6 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import app.gamenative.data.ChangeNumbers
 import app.gamenative.data.AppInfo
+import app.gamenative.data.LibraryPlayHistory
 import app.gamenative.data.FileChangeLists
 import app.gamenative.data.SteamApp
 import app.gamenative.data.SteamFileHashCache
@@ -31,6 +32,7 @@ import app.gamenative.db.converters.GOGConverter
 import app.gamenative.db.dao.ModDao
 import app.gamenative.db.dao.ChangeNumbersDao
 import app.gamenative.db.dao.FileChangeListsDao
+import app.gamenative.db.dao.LibraryPlayHistoryDao
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.db.dao.SteamFileHashCacheDao
 import app.gamenative.db.dao.SteamLicenseDao
@@ -52,6 +54,7 @@ const val DATABASE_NAME = "pluvia.db"
         ChangeNumbers::class,
         EncryptedAppTicket::class,
         FileChangeLists::class,
+        LibraryPlayHistory::class,
         SteamApp::class,
         SteamFileHashCache::class,
         SteamLicense::class,
@@ -88,6 +91,7 @@ const val DATABASE_NAME = "pluvia.db"
         AutoMigration(from = 19, to = 20), // Added custom_install_path to app_info
         AutoMigration(from = 20, to = 21), // Added steam_file_hash_cache table
         AutoMigration(from = 21, to = 22), // Added GOG vertical_cover_url column
+        AutoMigration(from = 22, to = 23), // Added local library play history table
     ]
 )
 @TypeConverters(
@@ -109,6 +113,8 @@ abstract class PluviaDatabase : RoomDatabase() {
     abstract fun appChangeNumbersDao(): ChangeNumbersDao
 
     abstract fun appFileChangeListsDao(): FileChangeListsDao
+
+    abstract fun libraryPlayHistoryDao(): LibraryPlayHistoryDao
 
     abstract fun appInfoDao(): AppInfoDao
 

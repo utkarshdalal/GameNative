@@ -4,13 +4,13 @@ import android.graphics.Bitmap;
 
 import com.winlator.core.Callback;
 import com.winlator.math.Mathf;
+import com.winlator.renderer.AHBImage;
 import com.winlator.renderer.GPUImage;
 import com.winlator.renderer.Texture;
-import com.winlator.xserver.GraphicsContext;
+import com.winlator.renderer.NativeTexture;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-
-import timber.log.Timber;
 
 public class Drawable extends XResource {
     private static boolean DRAWABLE_FOR_ASR = false;
@@ -43,6 +43,10 @@ public class Drawable extends XResource {
         DRAWABLE_FOR_ASR = value;
     }
 
+    public static boolean IS_ASR() {
+        return DRAWABLE_FOR_ASR;
+    }
+
     static {
         System.loadLibrary("winlator_11");
     }
@@ -57,7 +61,7 @@ public class Drawable extends XResource {
         this.visual = visual;
 
         if (Drawable.DRAWABLE_FOR_ASR) {
-            GPUImage g = new GPUImage((short) width, (short) height);
+            AHBImage g = new AHBImage((short) width, (short) height);
             this.texture = g;
             this.data = g.getVirtualData();
         } else {
@@ -84,7 +88,7 @@ public class Drawable extends XResource {
     }
 
     public void setTexture(Texture texture) {
-        if (texture instanceof GPUImage) data = ((GPUImage)texture).getVirtualData();
+        if (texture instanceof NativeTexture) data = ((NativeTexture)texture).getVirtualData();
         this.texture = texture;
     }
 
@@ -108,7 +112,7 @@ public class Drawable extends XResource {
     }
 
     private short getStride() {
-        return texture instanceof GPUImage ? ((GPUImage)texture).getStride() : width;
+        return texture instanceof NativeTexture ? ((NativeTexture)texture).getStride() : width;
     }
 
     public Runnable getOnDrawListener() {
@@ -240,7 +244,7 @@ public class Drawable extends XResource {
                 return;
             }
             drawAlphaMaskedBitmap(foreRed, foreGreen, foreBlue, backRed, backGreen, backBlue, byteBuffer, byteBuffer3, byteBuffer2);
-        this.data.rewind();
+            this.data.rewind();
             forceUpdate();
         }
     }

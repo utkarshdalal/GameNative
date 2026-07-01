@@ -230,6 +230,8 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     private lateinit var notificationHelper: NotificationHelper
 
+    private val notifierOrNull: NotificationHelper? get() = if (::notificationHelper.isInitialized) notificationHelper else null
+
     internal var callbackManager: CallbackManager? = null
     internal var steamClient: SteamClient? = null
     internal val callbackSubscriptions: ArrayList<Closeable> = ArrayList()
@@ -395,7 +397,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         private fun tryAcquireSync(appId: Int): Boolean {
             val flag = getSyncFlag(appId)
-            return flag.compareAndSet(false, true)
+            val acquired = flag.compareAndSet(false, true)
+            if (acquired) instance?.notifierOrNull?.showSyncing(NotificationHelper.NOTIFICATION_ID_STEAM)
+            return acquired
         }
 
         private fun releaseSync(appId: Int) {
@@ -404,6 +408,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             if (flag != null && !flag.get()) {
                 syncInProgressApps.remove(appId, flag)
             }
+            instance?.notifierOrNull?.showIdle(NotificationHelper.NOTIFICATION_ID_STEAM)
         }
 
         // Track whether a game is currently running to prevent premature service stop
@@ -1822,6 +1827,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // map (line ~1666 short-circuit).
                 downloadJobs[appId] = di
                 notifyDownloadStarted(appId)
+                instance?.notifierOrNull?.trackDownload(di, getAppInfoOf(appId)?.name.orEmpty(), NotificationHelper.NOTIFICATION_ID_STEAM)
 
                 val downloadJob = instance!!.scope.launch {
                     try {
@@ -3424,6 +3430,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification)
         }
         notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_STEAM)
+        notificationHelper.showIdle(NotificationHelper.NOTIFICATION_ID_STEAM)
 
         when (intent?.action) {
             NotificationHelper.ACTION_EXIT -> {

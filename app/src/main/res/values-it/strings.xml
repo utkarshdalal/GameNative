@@ -258,6 +258,7 @@
     <string name="toggle_orientation">Cambia Orientamento</string>
     <string name="task_manager">Gestione Attività</string>
     <string name="tools_wine_processes_running_hint">%1$d in esecuzione, tocca/fai clic su un processo per chiuderlo</string>
+    <string name="tools_wine_processes_empty">Nessun EXE in esecuzione rilevato.</string>
     <string name="magnifier">Lente d\'ingrandimento</string>
     <string name="logs">Log</string>
     <string name="exit_game">Esci</string>
@@ -291,6 +292,7 @@
     <string name="screen_effects_live_preview">Le modifiche si applicano istantaneamente al gioco corrente.</string>
     <string name="screen_effects_color_adjustments">Regolazioni colore</string>
     <string name="screen_effects_shader_toggles">Effetti shader</string>
+    <string name="screen_effects_scaling_mode">Modalità di scaling</string>
     <string name="screen_effects_brightness">Luminosità</string>
     <string name="screen_effects_contrast">Contrasto</string>
     <string name="screen_effects_gamma">Gamma</string>
@@ -344,6 +346,7 @@
     <string name="performance_hud_battery_level">Livello batteria</string>
     <string name="performance_hud_power_draw">Consumo energetico</string>
     <string name="performance_hud_runtime_left">Autonomia residua</string>
+    <string name="performance_hud_battery_temperature">Temperatura batteria</string>
     <string name="performance_hud_clock_time">Ora</string>
     <string name="performance_hud_cpu_temperature">Temperatura CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura GPU</string>
@@ -665,6 +668,8 @@
     <string name="unpack_files_description">Usa solo se ottieni \'Application Load Error 3:0000065432\'.</string>
     <string name="force_dlc">Forza DLC</string>
     <string name="force_dlc_description">Abilita solo se i DLC non vengono rilevati o i salvataggi con DLC non funzionano</string>
+    <string name="local_saves_only">Solo salvataggi locali</string>
+    <string name="local_saves_only_description">Disabilita la sincronizzazione dei salvataggi cloud per questo gioco e mantieni i salvataggi solo sul dispositivo</string>
     <string name="launch_steam_client_beta">Avvia Client Steam (Beta)</string>
     <string name="steam_offline_mode">Modalità Offline Steam</string>
     <string name="steam_offline_mode_description">Avvia i giochi Steam in modalità offline</string>
@@ -677,6 +682,7 @@
     <string name="achievement_position_bottom_left">In basso a sinistra</string>
     <string name="achievement_position_bottom_right">In basso a destra</string>
     <string name="launch_steam_client_description">Riduce le prestazioni e rallenta l\'avvio\nConsente il gioco online e corregge problemi di DRM e controller\nNon tutti i giochi funzionano</string>
+    <string name="launch_bionic_steam">Abilita Bionic Steam sperimentale</string>
     <string name="allow_steam_updates">Consenti aggiornamenti Steam</string>
     <string name="allow_steam_updates_description">Aggiorna Steam all\'ultima versione. Riduce significativamente le prestazioni.</string>
     <string name="steam_type">Tipo Steam</string>
@@ -692,6 +698,8 @@
     <string name="image_cache_size">Dimensione Cache Immagini</string>
     <string name="dx_wrapper">Wrapper DX</string>
     <string name="display_renderer">Display Renderer</string>
+    <string name="sf_compat_mode">Modalità compatibilità</string>
+    <string name="sf_compat_mode_description">Disattiva per prestazioni migliori. Mantieni attivo per correggere i colori invertiti.</string>
     <string name="vkd3d_feature_level">Livello Funzionalità VKD3D</string>
     <string name="use_dri3">Usa DRI3</string>
     <string name="use_dri3_description">Disabilitare può correggere glitch grafici su alcuni dispositivi</string>
@@ -700,6 +708,7 @@
     <string name="sync_frame">Sincronizza Ogni Fotogramma</string>
     <string name="disable_present_wait">Disabilita KHR_present_wait</string>
     <string name="present_modes">Modalità Presentazione</string>
+    <string name="renderer_present_modes">Modalità Presentazione Renderer</string>
     <string name="resource_type">Tipo Risorsa Memoria</string>
     <string name="bcn_emulation">Emulazione BCn</string>
     <string name="bcn_emulation_type">Tipo Emulazione BCn</string>
@@ -914,6 +923,8 @@
     <string name="settings_emulation_default_config_title">Modifica Config Predefinita</string>
     <string name="settings_emulation_default_config_subtitle">Le impostazioni iniziali del container per ogni gioco (non influisce sui giochi già installati)</string>
     <string name="settings_emulation_default_config_dialog_title">Config Container Predefinita</string>
+    <string name="settings_emulation_auto_apply_known_config_title">Applica automaticamente config nota</string>
+    <string name="settings_emulation_auto_apply_known_config_subtitle">Applica automaticamente le impostazioni consigliate per i giochi Steam al primo avvio</string>
     <string name="settings_emulation_box64_presets_title">Preset Box64</string>
     <string name="settings_emulation_box64_presets_subtitle">Visualizza, modifica e crea preset Box64</string>
     <string name="settings_emulation_driver_manager_title">Gestione Driver</string>
@@ -1049,6 +1060,8 @@
     <string name="library_need_internet">Serve internet per installare</string>
     <string name="library_wifi_only_enabled">Installa solo tramite Wi-Fi/LAN abilitato</string>
     <string name="library_file_count">File %1$d di %2$d</string>
+    <string name="download_no_wifi">Non connesso a Wi-Fi/LAN</string>
+    <string name="download_paused_wifi">Download in pausa – in attesa di Wi-Fi/LAN</string>
 
     <!-- PluviaMain: Update & App Info -->
     <string name="main_update_available_title">Aggiornamento Disponibile</string>
@@ -1071,6 +1084,7 @@
     <string name="main_discord_support_title">Il gioco ha funzionato?</string>
     <string name="main_discord_support_message">Unisciti al Discord per ottenere supporto per correggere il tuo gioco o migliorare le prestazioni.</string>
     <string name="main_open_discord">Apri Discord</string>
+    <string name="main_downloading_entry">Download di %s in corso</string>
 
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Scaricamento Steam...</string>
@@ -1438,6 +1452,15 @@
     <string name="workshop_processing">Elaborazione mod…</string>
     <string name="workshop_failed_count">%1$d mod del Workshop non aggiornati</string>
     <string name="workshop_download_failed">Download non riuscito</string>
+    <string name="option_open_store_page">Apri pagina dello store</string>
+    <string name="option_export_for_frontend">Esporta per frontend</string>
+    <string name="option_open_container">Apri container</string>
+    <string name="option_edit_container">Modifica container</string>
+    <string name="option_reset_to_defaults">Reimposta container</string>
+    <string name="option_get_support">Ottieni supporto</string>
+    <string name="option_submit_feedback">Invia feedback</string>
+    <string name="option_reset_drm">Reimposta DRM</string>
+    <string name="option_use_known_config">Usa config nota</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Consigliato</string>
@@ -1460,6 +1483,18 @@
      <string name="steam_save_import_failed">Importazione salvataggi fallita: %s</string>
     <string name="option_import_saves">Importa salvataggi</string>
     <string name="option_export_saves">Esporta salvataggi</string>
+    <string name="option_verify_files">Verifica file</string>
+    <string name="option_update">Aggiorna</string>
+    <string name="option_move_to_external_storage">Sposta su archiviazione esterna</string>
+    <string name="option_move_to_internal_storage">Sposta su archiviazione interna</string>
+    <string name="option_force_cloud_sync">Forza sincronizzazione cloud</string>
+    <string name="option_browse_online_saves">Sfoglia salvataggi online</string>
+    <string name="option_force_download_remote">Forza download salvataggi remoti</string>
+    <string name="option_force_upload_local">Forza caricamento salvataggi locali</string>
+    <string name="option_fetch_game_images">Recupera immagini del gioco</string>
+    <string name="option_test_graphics">Prova grafica</string>
+    <string name="option_manage_dlc">Gestisci DLC</string>
+    <string name="option_manage_workshop">Gestisci Workshop</string>
     <!-- HLTB (How Long To Beat) -->
     <string name="hltb_main_story">Storia principale</string>
     <string name="hltb_main_plus_extras">Principale + Extra</string>
@@ -1487,27 +1522,28 @@
     <string name="game_launch_tip_1">L\'avvio potrebbe richiedere alcuni minuti al primo avvio</string>
     <string name="game_launch_tip_2">Suggerimento: puoi visualizzare i file di gioco premendo \"%s\" nelle impostazioni del gioco.</string>
     <string name="game_launch_tip_3">Suggerimento: puoi andare al menu delle impostazioni principali e scaricare driver personalizzati per il tuo dispositivo da usare su Bionic.</string>
-    <string name="game_launch_tip_4">Suggerimento: se ricevi un errore DirectX, assicurati di utilizzare DXVK 1.10.3-async e leegao-wrapper su Bionic.</string>
-    <string name="game_launch_tip_5">Suggerimento: prova il test Direct3D nel menu Start dopo aver cliccato su \"%s\" per verificare che il tuo dispositivo funzioni correttamente.</string>
-    <string name="game_launch_tip_6">Suggerimento: usa DXVK per i giochi DirectX 8/9/10/11, VKD3D per i giochi DirectX 12 e VirGL + WineD3D per i giochi OpenGL.</string>
-    <string name="game_launch_tip_7">Suggerimento: usa Turnip su glibc o bionic per giocare a giochi DirectX 12. Il supporto DirectX 12 per i dispositivi che non supportano Turnip è attualmente limitato.</string>
-    <string name="game_launch_tip_8">Suggerimento: prova i driver Adreno o Snapdragon 8 Elite su glibc se hai un dispositivo compatibile.</string>
-    <string name="game_launch_tip_9">Suggerimento: se ottieni una schermata nera all\'avvio di un gioco, prova \"%s\" e ad avviare il gioco dall\'unità A:.</string>
-    <string name="game_launch_tip_10">Suggerimento: puoi aggiungere diverse posizioni per i giochi personalizzati nelle impostazioni.</string>
+    <string name="game_launch_tip_4">Suggerimento: se ricevi un errore DirectX, prova a usare DXVK 1.11.1-sarek e il System driver su Bionic.</string>
+    <string name="game_launch_tip_5">Suggerimento: se i giochi non si avviano, controlla \"%s\" sotto l\'icona delle impostazioni - dovresti vedere un cubo che ruota.</string>
+    <string name="game_launch_tip_6">Suggerimento: usa DXVK per i giochi DirectX 8/9/10/11 e VKD3D per i giochi DirectX 12.</string>
+    <string name="game_launch_tip_7">Suggerimento: usa i driver Turnip per giocare a giochi DirectX 12. Il supporto DirectX 12 per i dispositivi che non supportano Turnip è attualmente limitato.</string>
+    <string name="game_launch_tip_8">Suggerimento: se i controlli non funzionano, abilita Steam Input e verifica che la tua app non sia installata in uno spazio privato.</string>
+    <string name="game_launch_tip_9">Suggerimento: per aggiungere file al gioco, mettili nella cartella Download del tuo dispositivo, premi \"%s\" e saranno nel D: drive.</string>
+    <string name="game_launch_tip_10">Suggerimento: importa una configurazione da gamenative.app/compatibility per la tua GPU o famiglia di GPU se non riesci a far funzionare il tuo gioco.</string>
     <string name="game_launch_tip_11">Suggerimento: usa l\'HUD delle prestazioni nel menu rapido quando vuoi le statistiche FPS in-game.</string>
-    <string name="game_launch_tip_12">Suggerimento: installa i pacchetti in A:\\_CommonRedist se il gioco non si avvia.</string>
+    <string name="game_launch_tip_12">Suggerimento: se il tuo gioco non ha audio, usa Proton 10 per estrarre automaticamente le DLL XAudio.</string>
     <string name="game_launch_tip_13">Suggerimento: puoi attivare o disattivare il controller sullo schermo con il tasto indietro del tuo dispositivo.</string>
     <string name="game_launch_tip_14">Suggerimento: puoi richiamare la tastiera con il tasto indietro del tuo dispositivo.</string>
     <string name="game_launch_tip_15">Suggerimento: puoi toccare con due dita all\'interno del container per fare clic destro.</string>
     <string name="game_launch_tip_16">Suggerimento: se stai usando il controller sullo schermo, puoi disabilitare il mouse per evitare tocchi accidentali.</string>
     <string name="game_launch_tip_17">Suggerimento: segnala i problemi su Discord in modo che possiamo risolverli.</string>
-    <string name="game_launch_tip_18">Suggerimento: usa il driver Vortek su glibc o wrapper-leegao su Bionic se hai una GPU non Adreno.</string>
-    <string name="game_launch_tip_19">Suggerimento: abbassa la risoluzione e usa box64 in modalità performance per aumentare gli FPS.</string>
-    <string name="game_launch_tip_20">Suggerimento: se il gioco si blocca dopo il caricamento, aumenta la memoria video.</string>
-    <string name="game_launch_tip_21">Suggerimento: se vedi artefatti visivi, disabilita DRI3.</string>
+    <string name="game_launch_tip_18">Suggerimento: usa il driver Turnip Gen8 V25/V30 o MrPurple T26 se hai un dispositivo 8 Elite.</string>
+    <string name="game_launch_tip_19">Suggerimento: abbassa la risoluzione e usa FSR dal menu rapido in-game per aumentare le prestazioni.</string>
+    <string name="game_launch_tip_20">Suggerimento: se l\'intera app si blocca dopo aver caricato un gioco, il tuo dispositivo sta esaurendo la RAM.</string>
+    <string name="game_launch_tip_21">Suggerimento: prova il renderer SurfaceFlinger per migliorare gli FPS e la latenza.</string>
     <string name="game_launch_tip_22">Suggerimento: puoi attivare la modalità touchscreen.</string>
     <string name="game_launch_tip_23">Suggerimento: se hai una GPU Mali, utilizza i driver di sistema.</string>
     <string name="game_launch_tip_24">Suggerimento: schermata nera? Prova l\'opzione \"%s\" nel menu per verificare se i tuoi driver funzionano correttamente.</string>
+    <string name="game_launch_tip_25">Suggerimento: usa Proton x86-64 se non riesci a cliccare con il mouse nei giochi.</string>
     <string name="launch_bionic_steam_description">Abilita il gioco online e migliora la compatibilità\nNon sempre funziona\nEsegui un backup dei salvataggi prima di provarlo</string>
 
     <!-- Frontend Sync Settings -->
@@ -1526,6 +1562,8 @@
     <string name="frontend_sync_confirm_keep">Mantieni</string>
     <string name="frontend_sync_resync_all">Risincronizza tutto</string>
     <string name="frontend_sync_resync_complete">Sincronizzazione frontend completata</string>
+    <string name="frontend_sync_pick_directory_cd">Scegli cartella per %1$s</string>
+    <string name="frontend_sync_clear_directory_cd">Cancella cartella per %1$s</string>
     <string name="screen_effects_scaling">Ridimensionamento</string>
     <string name="screen_effects_upscaling">Super risoluzione</string>
     <string name="screen_effects_basic_scaling">Ridimensionamento di base</string>
@@ -1547,6 +1585,17 @@
     <string name="screen_effects_scaling_mode_dls_desc">Passaggio di nitidezza / chiarezza.</string>
     <string name="screen_effects_scaling_mode_natural">Naturale</string>
     <string name="screen_effects_scaling_mode_natural_desc">Tonalità più calda.</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">AMD FidelityFX Super Resolution 1.0 ufficiale, che usa EASU + RCAS con una risoluzione di rendering interna inferiore e un upscale a piena risoluzione.</string>
+    <string name="screen_effects_fsr_quality">Qualità FSR</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">Ultra Qualità</string>
+    <string name="screen_effects_fsr_quality_quality">Qualità</string>
+    <string name="screen_effects_fsr_quality_balanced">Bilanciato</string>
+    <string name="screen_effects_fsr_quality_performance">Prestazioni</string>
+    <string name="screen_effects_fsr_sharpness">Nitidezza FSR</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">Nitidezza all\'avvio</string>
+    <string name="screen_effects_launch_sharpness_note">CAS e DLS vengono applicati tramite vkBasalt e hanno effetto al prossimo avvio del gioco.</string>
     <string name="stats_key_runs">Esecuzioni riuscite sulla tua GPU</string>
     <string name="stats_key_reviews">Recensioni a 5 stelle (la tua GPU / il tuo dispositivo)</string>
     <string name="stats_key_fps">FPS previsti</string>

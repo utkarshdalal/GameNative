@@ -25,6 +25,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 add_library(asurface_renderer SHARED
         asurface_jni.cpp
         ASurfaceRendererContext.cpp
+        blit_converter.cpp
 )
 
 target_compile_options(asurface_renderer PRIVATE
@@ -38,6 +39,8 @@ target_link_libraries(asurface_renderer
         android
         dl
         atomic
+        EGL
+        GLESv3
 )
 
 enable_16kb_pages(asurface_renderer)
@@ -81,28 +84,28 @@ target_link_libraries(drawable
 enable_16kb_pages(drawable)
 
 # =========================================================
-# GPUImage library
+# AHBImage library
 # =========================================================
 
-add_library(gpuimage SHARED
-        gpuimage.c
+add_library(ahbimage SHARED
+        ahbimage.c
 )
 
-target_compile_definitions(gpuimage PRIVATE
+target_compile_definitions(ahbimage PRIVATE
         EGL_EGLEXT_PROTOTYPES
         GL_GLEXT_PROTOTYPES
 )
 
-target_compile_options(gpuimage PRIVATE
+target_compile_options(ahbimage PRIVATE
         -Wall
         -Wextra
 )
 
-target_link_libraries(gpuimage
+target_link_libraries(ahbimage
         log
         android
         EGL
         GLESv2
 )
 
-enable_16kb_pages(gpuimage)
+enable_16kb_pages(ahbimage)

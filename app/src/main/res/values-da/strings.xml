@@ -148,6 +148,10 @@
     <string name="delete">Slet</string>
     <string name="copy_from">Kopiér fra</string>
     <string name="ok">Ok</string>
+    <string name="container_config_custom_resolution_title">Angiv brugerdefineret opløsning</string>
+    <string name="container_config_custom_resolution_separator">x</string>
+    <string name="container_config_custom_resolution_error_nonzero">Bredde og højde skal være større end 0</string>
+    <string name="container_config_custom_resolution_error_aspect">Bredden skal være større end højden</string>
     <string name="storage_info">Lagerinformation</string>
     <string name="duplicate">Duplikér</string>
     <string name="reconfigure">Konfigurér igen</string>
@@ -183,6 +187,7 @@
     <string name="toggle_orientation">Skift orientering</string>
     <string name="task_manager">Jobliste</string>
     <string name="tools_wine_processes_running_hint">%1$d kører, tryk/klik på en proces for at lukke den</string>
+    <string name="tools_wine_processes_empty">Ingen kørende EXE-filer fundet.</string>
     <string name="magnifier">Forstørrelsesglas</string>
     <string name="logs">Logfiler</string>
     <string name="exit_game">Afslut</string>
@@ -216,6 +221,7 @@
     <string name="screen_effects_live_preview">Ændringer anvendes straks på det aktuelle spil.</string>
     <string name="screen_effects_color_adjustments">Farvejusteringer</string>
     <string name="screen_effects_shader_toggles">Shader-effekter</string>
+    <string name="screen_effects_scaling_mode">Skaleringstilstand</string>
     <string name="screen_effects_brightness">Lysstyrke</string>
     <string name="screen_effects_contrast">Kontrast</string>
     <string name="screen_effects_gamma">Gamma</string>
@@ -269,6 +275,7 @@
     <string name="performance_hud_battery_level">Batteriniveau</string>
     <string name="performance_hud_power_draw">Strømforbrug</string>
     <string name="performance_hud_runtime_left">Resterende tid</string>
+    <string name="performance_hud_battery_temperature">Batteritemperatur</string>
     <string name="performance_hud_clock_time">Klokkeslæt</string>
     <string name="performance_hud_cpu_temperature">CPU-temperatur</string>
     <string name="performance_hud_gpu_temperature">GPU-temperatur</string>
@@ -498,6 +505,8 @@
     <!-- Container Configuration: Steam Integration -->
     <string name="force_dlc">Gennemtving DLC</string>
     <string name="force_dlc_description">Kun aktiver hvis DLC\'er ikke opdages, eller gemfiler med DLC ikke virker</string>
+    <string name="local_saves_only">Kun lokale gemfiler</string>
+    <string name="local_saves_only_description">Deaktiver synkronisering af cloud-gemfiler for dette spil, og behold gemfiler kun på enheden</string>
     <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
     <string name="steam_offline_mode">Steam Offline-tilstand</string>
     <string name="steam_offline_mode_description">Start Steam-spil i offline-tilstand</string>
@@ -510,6 +519,7 @@
     <string name="achievement_position_bottom_left">Nederst til venstre</string>
     <string name="achievement_position_bottom_right">Nederst til højre</string>
     <string name="launch_steam_client_description">Reducerer ydelse og gør opstart langsommere\nMuliggør online-spil og løser DRM- og controllerproblemer\nIkke alle spil virker</string>
+    <string name="launch_bionic_steam">Aktivér eksperimentel Bionic Steam</string>
     <string name="allow_steam_updates">Tillad Steam-opdateringer</string>
     <string name="allow_steam_updates_description">Opdaterer Steam til nyeste version. Reducerer ydelsen markant.</string>
     <string name="steam_type">Steam-type</string>
@@ -525,6 +535,8 @@
     <string name="image_cache_size">Billedcache-størrelse</string>
     <string name="dx_wrapper">DX-wrapper</string>
     <string name="display_renderer">Display-renderer</string>
+    <string name="sf_compat_mode">Kompatibilitetstilstand</string>
+    <string name="sf_compat_mode_description">Slå fra for bedre ydeevne. Lad være tændt for at rette omvendte farver.</string>
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">Brug DRI3</string>
     <string name="use_dri3_description">Deaktivering kan løse grafiske fejl på nogle enheder</string>
@@ -685,6 +697,7 @@
     <string name="enable_csmt">Aktivér CSMT (Command Stream Multi-Thread)</string>
     <string name="enable_strict_shader_math">Aktivér Strict Shader Math</string>
     <string name="mouse_warp_override">Mouse Warp Override</string>
+    <string name="renderer_present_modes">Renderer-præsentationstilstand</string>
 
     <!-- Container Configuration: Management -->
     <string name="environment_variables">Miljøvariabler</string>
@@ -742,6 +755,8 @@
     <string name="settings_emulation_default_config_title">Redigér standardkonfiguration</string>
     <string name="settings_emulation_default_config_subtitle">De indledende containerindstillinger for hvert spil (påvirker ikke allerede installerede spil)</string>
     <string name="settings_emulation_default_config_dialog_title">Standard containerkonfiguration</string>
+    <string name="settings_emulation_auto_apply_known_config_title">Anvend kendt konfiguration automatisk</string>
+    <string name="settings_emulation_auto_apply_known_config_subtitle">Anvend automatisk anbefalede indstillinger for Steam-spil ved første start</string>
     <string name="settings_emulation_box64_presets_title">Box64-forudindstillinger</string>
     <string name="settings_emulation_box64_presets_subtitle">Vis, redigér og opret Box64-forudindstillinger</string>
     <string name="settings_emulation_driver_manager_title">Driverhåndtering</string>
@@ -878,6 +893,8 @@
     <string name="library_need_internet">Internet påkrævet for installation</string>
     <string name="library_wifi_only_enabled">Installation kun via Wi-Fi/LAN aktiveret</string>
     <string name="library_file_count">Fil %1$d af %2$d</string>
+    <string name="download_no_wifi">Ikke forbundet til Wi-Fi/LAN</string>
+    <string name="download_paused_wifi">Download sat på pause – venter på Wi-Fi/LAN</string>
 
     <!-- TODO: Manual review - PluviaMain: Update & App Info -->
     <string name="main_update_available_title">Opdatering tilgængelig</string>
@@ -900,6 +917,7 @@
     <string name="main_discord_support_title">Virkede spillet?</string>
     <string name="main_discord_support_message">Tilmeld dig Discord for at få support til at rette dit spil eller forbedre ydelsen.</string>
     <string name="main_open_discord">Åbn Discord</string>
+    <string name="main_downloading_entry">Downloader %s</string>
 
     <!-- TODO: Manual review - PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Downloader Steam...</string>
@@ -1313,6 +1331,15 @@
     <string name="workshop_processing">Behandler mods…</string>
     <string name="workshop_failed_count">%1$d workshop-mod(s) kunne ikke opdateres</string>
     <string name="workshop_download_failed">Download mislykkedes</string>
+    <string name="option_open_store_page">Åbn butikssiden</string>
+    <string name="option_export_for_frontend">Eksportér til frontend</string>
+    <string name="option_open_container">Åbn container</string>
+    <string name="option_edit_container">Redigér container</string>
+    <string name="option_reset_to_defaults">Nulstil container</string>
+    <string name="option_get_support">Få support</string>
+    <string name="option_submit_feedback">Send feedback</string>
+    <string name="option_reset_drm">Nulstil DRM</string>
+    <string name="option_use_known_config">Brug kendt konfiguration</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Anbefalet</string>
@@ -1335,6 +1362,18 @@
      <string name="steam_save_import_failed">Kunne ikke importere gemte filer: %s</string>
     <string name="option_import_saves">Importér gemte spil</string>
     <string name="option_export_saves">Eksportér gemte spil</string>
+    <string name="option_verify_files">Verificér filer</string>
+    <string name="option_update">Opdatér</string>
+    <string name="option_move_to_external_storage">Flyt til ekstern lager</string>
+    <string name="option_move_to_internal_storage">Flyt til intern lager</string>
+    <string name="option_force_cloud_sync">Gennemtving cloud-synkronisering</string>
+    <string name="option_browse_online_saves">Gennemse online-gemfiler</string>
+    <string name="option_force_download_remote">Gennemtving download af fjern-gemfiler</string>
+    <string name="option_force_upload_local">Gennemtving upload af lokale gemfiler</string>
+    <string name="option_fetch_game_images">Hent spilbilleder</string>
+    <string name="option_test_graphics">Test grafik</string>
+    <string name="option_manage_dlc">Administrér DLC</string>
+    <string name="option_manage_workshop">Administrér Workshop</string>
     <!-- HLTB (How Long To Beat) -->
     <string name="hltb_main_story">Hovedhistorie</string>
     <string name="hltb_main_plus_extras">Hoved + Ekstra</string>
@@ -1362,27 +1401,28 @@
     <string name="game_launch_tip_1">Opstart kan tage et par minutter ved første lancering</string>
     <string name="game_launch_tip_2">Tip: Du kan se spilfilerne ved at trykke på \"%s\" i spilindstillingerne.</string>
     <string name="game_launch_tip_3">Tip: Gå til hovedindstillingsmenuen for at downloade brugerdefinerede drivere til din enhed, der skal bruges på Bionic.</string>
-    <string name="game_launch_tip_4">Tip: Hvis du får en DirectX-fejl, skal du sørge for at bruge DXVK 1.10.3-async og leegao-wrapper på Bionic.</string>
-    <string name="game_launch_tip_5">Tip: Prøv Direct3D-testen i Startmenuen efter at have klikket på \"%s\" for at kontrollere, om din enhed fungerer korrekt.</string>
-    <string name="game_launch_tip_6">Tip: Brug DXVK til DirectX 8/9/10/11 spil, VKD3D til DirectX 12 spil og VirGL + WineD3D til OpenGL spil.</string>
-    <string name="game_launch_tip_7">Tip: Brug Turnip på glibc eller bionic til at spille DirectX 12 spil. DirectX 12-understøttelse til enheder, der ikke understøtter Turnip, er i øjeblikket begrænset.</string>
-    <string name="game_launch_tip_8">Tip: Prøv Adreno- eller Snapdragon 8 Elite-driverne på glibc, hvis du har en kompatibel enhed.</string>
-    <string name="game_launch_tip_9">Tip: Hvis du får en sort skærm, når du starter et spil, så prøv at \"%s\" og start spillet fra A:-drevet.</string>
-    <string name="game_launch_tip_10">Tip: Du kan tilføje forskellige placeringer til brugerdefinerede spil i indstillingerne.</string>
+    <string name="game_launch_tip_4">Tip: Hvis du får en DirectX-fejl, så prøv at bruge DXVK 1.11.1-sarek og System driver på Bionic.</string>
+    <string name="game_launch_tip_5">Tip: Hvis spil ikke starter for dig, så tjek \"%s\" under indstillingstandhjulet - du bør se en roterende terning.</string>
+    <string name="game_launch_tip_6">Tip: Brug DXVK til DirectX 8/9/10/11 spil og VKD3D til DirectX 12 spil.</string>
+    <string name="game_launch_tip_7">Tip: Brug Turnip-drivere til at spille DirectX 12 spil. DirectX 12-understøttelse til enheder, der ikke understøtter Turnip, er i øjeblikket begrænset.</string>
+    <string name="game_launch_tip_8">Tip: Hvis controllere ikke virker, så aktivér Steam Input og kontrollér, at din app ikke er installeret i et privat rum.</string>
+    <string name="game_launch_tip_9">Tip: For at tilføje filer til spillet skal du placere dem i din enheds Downloads-mappe, trykke på \"%s\", så vil de være på D: drive.</string>
+    <string name="game_launch_tip_10">Tip: Importer en konfiguration fra gamenative.app/compatibility til din GPU eller GPU-familie, hvis du ikke kan få dit spil til at virke.</string>
     <string name="game_launch_tip_11">Tip: Brug performance HUD i hurtigmenuen, når du vil have FPS-statistik i spillet.</string>
-    <string name="game_launch_tip_12">Tip: Installer pakker i A:\\_CommonRedist, hvis dit spil ikke starter.</string>
+    <string name="game_launch_tip_12">Tip: Hvis dit spil ikke har nogen lyd, så brug Proton 10 til automatisk at udpakke XAudio-DLLs.</string>
     <string name="game_launch_tip_13">Tip: Du kan aktivere eller deaktivere skærmcontrolleren med din enheds tilbage-knap.</string>
     <string name="game_launch_tip_14">Tip: Du kan få tastaturet frem med din enheds tilbage-knap.</string>
     <string name="game_launch_tip_15">Tip: Du kan trykke med to fingre inde i containeren for at højreklikke.</string>
     <string name="game_launch_tip_16">Tip: Hvis du bruger skærmcontrolleren, kan du deaktivere musen for at forhindre utilsigtede berøringer.</string>
     <string name="game_launch_tip_17">Tip: Rapporter problemer på Discord, så vi kan rette dem.</string>
-    <string name="game_launch_tip_18">Tip: Brug Vortek-driveren på glibc eller wrapper-leegao på Bionic, hvis du har et ikke-Adreno GPU.</string>
-    <string name="game_launch_tip_19">Tip: Sænk opløsningen og brug box64 i performance-tilstand for at øge FPS.</string>
-    <string name="game_launch_tip_20">Tip: Hvis spillet går ned efter indlæsning, skal du øge videohukommelsen.</string>
-    <string name="game_launch_tip_21">Tip: Hvis du ser visuelle fejl, skal du deaktivere DRI3.</string>
+    <string name="game_launch_tip_18">Tip: Brug Turnip Gen8 V25/V30- eller MrPurple T26-driveren, hvis du er på en 8 Elite-enhed.</string>
+    <string name="game_launch_tip_19">Tip: Sænk opløsningen og brug FSR fra hurtigmenuen i spillet for at øge ydelsen.</string>
+    <string name="game_launch_tip_20">Tip: Hvis hele appen går ned efter indlæsning af et spil, er din enhed ved at løbe tør for RAM.</string>
+    <string name="game_launch_tip_21">Tip: Prøv SurfaceFlinger-rendereren for at forbedre FPS og latens.</string>
     <string name="game_launch_tip_22">Tip: Du kan aktivere touchscreen-tilstand.</string>
     <string name="game_launch_tip_23">Tip: Hvis du har et Mali GPU, skal du bruge systemdrivere.</string>
     <string name="game_launch_tip_24">Tip: Får du en sort skærm? Prøv at bruge \"%s\"-indstillingen i menuen for at kontrollere, om dine drivere fungerer korrekt.</string>
+    <string name="game_launch_tip_25">Tip: Brug Proton x86-64, hvis du ikke kan klikke med musen i spil.</string>
     <string name="launch_bionic_steam_description">Aktiverer online-spil og forbedrer kompatibilitet\nVirker ikke altid\nTag backup af dine gemte spil, før du prøver dette</string>
 
     <!-- Frontend Sync Settings -->
@@ -1401,6 +1441,8 @@
     <string name="frontend_sync_confirm_keep">Behold</string>
     <string name="frontend_sync_resync_all">Synkroniser alt igen</string>
     <string name="frontend_sync_resync_complete">Frontend-synkronisering fuldført</string>
+    <string name="frontend_sync_pick_directory_cd">Vælg mappe til %1$s</string>
+    <string name="frontend_sync_clear_directory_cd">Ryd mappe for %1$s</string>
     <string name="screen_effects_scaling">Skalering</string>
     <string name="screen_effects_upscaling">Opskalering</string>
     <string name="screen_effects_basic_scaling">Grundlæggende skalering</string>
@@ -1422,6 +1464,17 @@
     <string name="screen_effects_scaling_mode_dls_desc">Skarphed / klarhed.</string>
     <string name="screen_effects_scaling_mode_natural">Naturlig</string>
     <string name="screen_effects_scaling_mode_natural_desc">Varmere farvetone.</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">Officiel AMD FidelityFX Super Resolution 1.0 med EASU + RCAS, der bruger en lavere intern renderopløsning og opskalerer til fuld opløsning.</string>
+    <string name="screen_effects_fsr_quality">FSR-kvalitet</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">Ultra-kvalitet</string>
+    <string name="screen_effects_fsr_quality_quality">Kvalitet</string>
+    <string name="screen_effects_fsr_quality_balanced">Balanceret</string>
+    <string name="screen_effects_fsr_quality_performance">Ydelse</string>
+    <string name="screen_effects_fsr_sharpness">FSR-skarphed</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">Skarphed ved opstart</string>
+    <string name="screen_effects_launch_sharpness_note">CAS og DLS anvendes via vkBasalt og træder i kraft næste gang du starter spillet.</string>
     <string name="stats_key_runs">Vellykkede kørsler på din GPU</string>
     <string name="stats_key_reviews">5-stjernede anmeldelser (din GPU / din enhed)</string>
     <string name="stats_key_fps">Forventet FPS</string>

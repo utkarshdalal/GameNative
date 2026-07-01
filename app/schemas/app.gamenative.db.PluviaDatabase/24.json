@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 24,
-    "identityHash": "7fd4ae29ff2d225283afe5af8205ea08",
+    "identityHash": "0ef28c1efc69a89b320374a93d2ae0f6",
     "entities": [
       {
         "tableName": "app_info",
@@ -187,6 +187,31 @@
           "autoGenerate": false,
           "columnNames": [
             "appId"
+          ]
+        }
+      },
+      {
+        "tableName": "library_play_history",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`app_id` TEXT NOT NULL, `last_played` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`app_id`))",
+        "fields": [
+          {
+            "fieldPath": "appId",
+            "columnName": "app_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastPlayed",
+            "columnName": "last_played",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "app_id"
           ]
         }
       },
@@ -1829,7 +1854,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7fd4ae29ff2d225283afe5af8205ea08')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0ef28c1efc69a89b320374a93d2ae0f6')"
     ]
   }
 }

@@ -3,71 +3,14 @@
 #include <android/log.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <string.h>
-
-#define EGL_EGLEXT_PROTOTYPES
-#define GL_GLEXT_PROTOTYPES
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
 
 #define LOG_TAG "AHBImage"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,  LOG_TAG, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG,  LOG_TAG, __VA_ARGS__)
 
 #define AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM 5
-
-EGLImageKHR createImageKHR(AHardwareBuffer* hardwareBuffer, int textureId) {
-    if (!hardwareBuffer) {
-        LOGE("createImageKHR: Invalid AHardwareBuffer pointer\n");
-        return NULL;
-    }
-
-    const EGLint attribList[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE};
-    AHardwareBuffer_acquire(hardwareBuffer);
-
-    EGLClientBuffer clientBuffer = eglGetNativeClientBufferANDROID(hardwareBuffer);
-    if (!clientBuffer) {
-        LOGE("Failed to get native client buffer\n");
-        AHardwareBuffer_release(hardwareBuffer);
-        return NULL;
-    }
-
-    EGLDisplay eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    if (eglDisplay == EGL_NO_DISPLAY) {
-        LOGE("Invalid EGLDisplay\n");
-        AHardwareBuffer_release(hardwareBuffer);
-        return NULL;
-    }
-
-    EGLImageKHR imageKHR = eglCreateImageKHR(eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, attribList);
-    if (!imageKHR) {
-        LOGE("Failed to create EGLImageKHR\n");
-        AHardwareBuffer_release(hardwareBuffer);
-        return NULL;
-    }
-
-    glBindTexture(GL_TEXTURE_2D, textureId);
-    if (glGetError() != GL_NO_ERROR) {
-        LOGE("Failed to bind texture\n");
-        eglDestroyImageKHR(eglDisplay, imageKHR);
-        AHardwareBuffer_release(hardwareBuffer);
-        return NULL;
-    }
-
-    glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, imageKHR);
-    if (glGetError() != GL_NO_ERROR) {
-        LOGE("Failed to bind EGLImage to texture\n");
-        eglDestroyImageKHR(eglDisplay, imageKHR);
-        AHardwareBuffer_release(hardwareBuffer);
-        return NULL;
-    }
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    return imageKHR;
-}
 
 static void dump_ahb_usage(uint64_t usage)
 {
@@ -183,9 +126,21 @@ static void dump_ahb_usage(uint64_t usage)
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_winlator_renderer_GPUImage_hardwareBufferFromSocket(
+Java_com_winlator_renderer_AHBImage_hardwareBufferFromSocket(
         JNIEnv *env, jobject obj, jint fd)
 {
+    jclass cls = (*env)->GetObjectClass(env, obj);
+    if (cls == NULL) {
+        LOGE("Failed to get Java class reference\n");
+        return 0;
+    }
+
+    jmethodID setStride = (*env)->GetMethodID(env, cls, "setStride", "(S)V");
+    if (setStride == NULL) {
+        LOGE("Failed to get setStride method ID\n");
+        return 0;
+    }
+
     uint8_t ready = 1;
     if (write((int)fd, &ready, 1) != 1) {
         LOGE("nativeHardwareBufferFromSocket: write handshake failed");
@@ -208,50 +163,90 @@ Java_com_winlator_renderer_GPUImage_hardwareBufferFromSocket(
 
     dump_ahb_usage(desc.usage);
 
+    // Set Stride to AHBImage
+    (*env)->CallVoidMethod(env, obj, setStride, (jshort)desc.stride);
+
+    LOGD("RemoteAHB: (value=%u)", desc.format);
     return (jlong)(uintptr_t)ahb;
 }
 
-JNIEXPORT void JNICALL
-Java_com_winlator_renderer_GPUImage_copyHardwareBuffer(
-        JNIEnv *env, jobject obj, jobject srcBuffer, jlong dstPtr, jshort width, jshort height, jshort srcStride)
+JNIEXPORT jint JNICALL
+Java_com_winlator_renderer_AHBImage_copyHardwareBuffer(
+        JNIEnv *env, jobject obj, jobject srcBuffer, jlong dstPtr,
+        jshort width, jshort height, jshort srcStride, jint waitFence)
 {
     uint32_t* srcAddr = (uint32_t*)(*env)->GetDirectBufferAddress(env, srcBuffer);
+    jlong srcCapacity = (*env)->GetDirectBufferCapacity(env, srcBuffer);
     AHardwareBuffer *dstAhb = (AHardwareBuffer *)(uintptr_t)dstPtr;
-    if (!srcAddr || !dstAhb) return;
-
-    void *dstAddrVoid = NULL;
-    if (AHardwareBuffer_lock(dstAhb, AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, -1, NULL, &dstAddrVoid) == 0) {
-        uint32_t* dstAddr = (uint32_t*)dstAddrVoid;
-        AHardwareBuffer_Desc desc;
-        AHardwareBuffer_describe(dstAhb, &desc);
-        uint32_t dstStride = desc.stride;
-
-        if (dstStride == (uint32_t)srcStride) {
-            memcpy(dstAddr, srcAddr, (size_t)dstStride * height * 4);
-        } else {
-            for (int y = 0; y < height; y++) {
-                memcpy(dstAddr + y * dstStride, srcAddr + y * srcStride, width * 4);
-            }
-        }
-
-        AHardwareBuffer_unlock(dstAhb, NULL);
-    } else {
-        LOGE("nativeCopyHardwareBuffer: lock failed");
+    if (!srcAddr || !dstAhb || width <= 0 || height <= 0 ||
+        srcStride < width ||
+        srcCapacity < (jlong)srcStride * (jlong)height * 4) {
+        if (waitFence >= 0) close(waitFence);
+        return -1;
     }
+
+    int32_t unlockFence = -1;
+    void *dstAddrVoid = NULL;
+
+    int lockResult = AHardwareBuffer_lock(dstAhb, AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, waitFence, NULL, &dstAddrVoid);
+    if (lockResult != 0) {
+        LOGE("nativeCopyHardwareBuffer: lock failed: %d", lockResult);
+        return -1;
+    }
+
+    uint32_t* dstAddr = (uint32_t*)dstAddrVoid;
+    AHardwareBuffer_Desc desc;
+    AHardwareBuffer_describe(dstAhb, &desc);
+    const uint32_t dstStride = desc.stride;
+
+    if ((uint32_t)width > desc.width || (uint32_t)height > desc.height ||
+        dstStride < (uint32_t)width) {
+        LOGE("nativeCopyHardwareBuffer: invalid dimensions/stride");
+        AHardwareBuffer_unlock(dstAhb, NULL);
+        return -1;
+    }
+
+    if ((uint32_t)width == (uint32_t)srcStride &&
+        (uint32_t)width == dstStride) {
+        memcpy(dstAddr, srcAddr, (size_t)width * (size_t)height * 4);
+    } else {
+        for (int y = 0; y < height; y++) {
+            memcpy(dstAddr + (size_t)y * dstStride,
+                   srcAddr + (size_t)y * (uint32_t)srcStride,
+                   (size_t)width * 4);
+        }
+    }
+
+    const int unlockResult = AHardwareBuffer_unlock(dstAhb, &unlockFence);
+    if (unlockResult != 0) {
+        LOGE("nativeCopyHardwareBuffer: unlock failed: %d", unlockResult);
+        if (unlockFence >= 0) close(unlockFence);
+        return -1;
+    }
+
+    return unlockFence;
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_winlator_renderer_GPUImage_createHardwareBuffer(
+Java_com_winlator_renderer_AHBImage_createHardwareBuffer(
         JNIEnv *env, jobject obj, jshort width, jshort height)
 {
+    if (width <= 0 || height <= 0) {
+        LOGE("nativeCreateHardwareBuffer: invalid dimensions %d x %d", width, height);
+        return 0;
+    }
+
     AHardwareBuffer_Desc desc;
     memset(&desc, 0, sizeof(desc));
-    desc.width  = width;
-    desc.height = height;
+    desc.width  = (uint32_t)width;
+    desc.height = (uint32_t)height;
     desc.layers = 1;
     desc.format = AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM;
     desc.usage  = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE
-                  | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
+                  | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN
+                  | AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT
+                  | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN
+                  | AHARDWAREBUFFER_USAGE_COMPOSER_OVERLAY;
 
     AHardwareBuffer *ahb = NULL;
     if (AHardwareBuffer_allocate(&desc, &ahb) != 0) {
@@ -274,7 +269,7 @@ Java_com_winlator_renderer_GPUImage_createHardwareBuffer(
 }
 
 JNIEXPORT void JNICALL
-Java_com_winlator_renderer_GPUImage_destroyHardwareBuffer(
+Java_com_winlator_renderer_AHBImage_destroyHardwareBuffer(
         JNIEnv *env, jobject obj, jlong ptr)
 {
     AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
@@ -285,7 +280,7 @@ Java_com_winlator_renderer_GPUImage_destroyHardwareBuffer(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_winlator_renderer_GPUImage_unlockHardwareBuffer(
+Java_com_winlator_renderer_AHBImage_unlockHardwareBuffer(
         JNIEnv *env, jobject obj, jlong ptr)
 {
     AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
@@ -301,7 +296,7 @@ Java_com_winlator_renderer_GPUImage_unlockHardwareBuffer(
 }
 
 JNIEXPORT jobject JNICALL
-Java_com_winlator_renderer_GPUImage_lockHardwareBuffer(
+Java_com_winlator_renderer_AHBImage_lockHardwareBuffer(
         JNIEnv *env, jobject obj, jlong ptr)
 {
     AHardwareBuffer* hardwareBuffer = (AHardwareBuffer*)ptr;
@@ -345,7 +340,7 @@ Java_com_winlator_renderer_GPUImage_lockHardwareBuffer(
 }
 
 JNIEXPORT jshort JNICALL
-Java_com_winlator_renderer_GPUImage_getStride(
+Java_com_winlator_renderer_AHBImage_getStride(
         JNIEnv *env, jobject obj, jlong ptr)
 {
     AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
@@ -357,7 +352,7 @@ Java_com_winlator_renderer_GPUImage_getStride(
 }
 
 JNIEXPORT jshort JNICALL
-Java_com_winlator_renderer_GPUImage_nativeGetWidth(
+Java_com_winlator_renderer_AHBImage_nativeGetWidth(
         JNIEnv *env, jobject obj, jlong ptr)
 {
     AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
@@ -369,7 +364,7 @@ Java_com_winlator_renderer_GPUImage_nativeGetWidth(
 }
 
 JNIEXPORT jshort JNICALL
-Java_com_winlator_renderer_GPUImage_nativeGetHeight(
+Java_com_winlator_renderer_AHBImage_nativeGetHeight(
         JNIEnv *env, jobject obj, jlong ptr)
 {
     AHardwareBuffer *ahb = (AHardwareBuffer *)(uintptr_t)ptr;
@@ -381,21 +376,6 @@ Java_com_winlator_renderer_GPUImage_nativeGetHeight(
 }
 
 JNIEXPORT void JNICALL
-Java_com_winlator_renderer_GPUImage_destroyImageKHR(JNIEnv *env, jclass obj, jlong imageKHRPtr) {
-    EGLImageKHR imageKHR = (EGLImageKHR)imageKHRPtr;
-    if (imageKHR) {
-        EGLDisplay eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-        eglDestroyImageKHR(eglDisplay, imageKHR);
-    }
-}
-
-// JNI method to create an EGL image
-JNIEXPORT jlong JNICALL
-Java_com_winlator_renderer_GPUImage_createImageKHR(JNIEnv *env, jclass obj, jlong hardwareBufferPtr, jint textureId) {
-    AHardwareBuffer* hardwareBuffer = (AHardwareBuffer*)hardwareBufferPtr;
-    if (!hardwareBuffer) {
-        LOGE("Invalid AHardwareBuffer pointer\n");
-        return 0;
-    }
-    return (jlong)createImageKHR(hardwareBuffer, textureId);
+Java_com_winlator_renderer_AHBImage_nativeCloseFd(JNIEnv *env, jclass clazz, jint fd) {
+    if (fd >= 0) close(fd);
 }

@@ -334,6 +334,8 @@
     <string name="duplicate">Дублировать</string>
     <string name="dx_wrapper">DX обёртка</string>
     <string name="display_renderer">Рендерер отображения</string>
+    <string name="sf_compat_mode">Режим совместимости</string>
+    <string name="sf_compat_mode_description">Отключите для повышения производительности. Включите, чтобы исправить инвертированные цвета.</string>
     <string name="dxvk_version">Версия DXVK</string>
     <string name="edit">Редактировать</string>
     <string name="edit_controls">Редактировать экранный контроллер</string>
@@ -429,6 +431,8 @@
     <string name="fexcore_version">Версия FEXCore</string>
     <string name="force_dlc">Принудительно включить DLC</string>
     <string name="force_dlc_description">Включайте только если DLC не обнаружены или сохранения с DLC не работают</string>
+    <string name="local_saves_only">Только локальные сохранения</string>
+    <string name="local_saves_only_description">Отключить синхронизацию облачных сохранений для этой игры и хранить сохранения только на устройстве</string>
     <string name="frame_synchronization">Синхронизация кадров</string>
     <string name="game_executable_not_found">Исполняемый файл не смог быть автоматически выбран. Пожалуйста, установите путь исполняемого файла в настройках контейнера.</string>
     <string name="game_executable_not_found_title">Невозможно запустить</string>
@@ -575,6 +579,7 @@
     <string name="launch_steam_client_description">Снижает производительность и замедляет запуск
 Позволяет играть в сети и исправляет проблемы с DRM и контроллером
 Не все игры работают</string>
+    <string name="launch_bionic_steam">Включить экспериментальный Bionic Steam</string>
     <string name="left_analog_stick">Левый аналоговый джойстик</string>
     <string name="left_stick">Левый джойстик</string>
     <string name="left_stick_down">Левый джойстик вниз</string>
@@ -614,6 +619,8 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="library_failed_to_export">Ошибка экспорта: %s</string>
     <string name="library_family_shared">Семейно общее</string>
     <string name="library_file_count">Файл %1$d из %2$d</string>
+    <string name="download_no_wifi">Нет подключения к Wi-Fi/LAN</string>
+    <string name="download_paused_wifi">Загрузка приостановлена – ожидание Wi-Fi/LAN</string>
     <string name="library_filters">Фильтры</string>
     <string name="library_game_count">%1$d игр • %2$d установлено</string>
     <string name="library_gpu_compatible">GPU совместимо</string>
@@ -860,6 +867,7 @@ https://gamenative.app
     <string name="position">Положение</string>
     <string name="position_value">X: %1$d, Y: %2$d</string>
     <string name="present_modes">Режимы представления</string>
+    <string name="renderer_present_modes">Режим представления рендерера</string>
     <string name="preset_arrows">Стрелки</string>
     <string name="preset_dpad">D-Pad</string>
     <string name="preset_left_stick">Левый джойстик</string>
@@ -880,6 +888,7 @@ https://gamenative.app
     <string name="screen_effects_live_preview">Изменения мгновенно применяются к текущей игре.</string>
     <string name="screen_effects_color_adjustments">Настройка цвета</string>
     <string name="screen_effects_shader_toggles">Эффекты шейдеров</string>
+    <string name="screen_effects_scaling_mode">Режим масштабирования</string>
     <string name="screen_effects_brightness">Яркость</string>
     <string name="screen_effects_contrast">Контрастность</string>
     <string name="screen_effects_gamma">Гамма</string>
@@ -933,6 +942,7 @@ https://gamenative.app
     <string name="performance_hud_battery_level">Уровень батареи</string>
     <string name="performance_hud_power_draw">Потребление энергии</string>
     <string name="performance_hud_runtime_left">Оставшееся время</string>
+    <string name="performance_hud_battery_temperature">Температура батареи</string>
     <string name="performance_hud_clock_time">Время</string>
     <string name="performance_hud_cpu_temperature">Температура CPU</string>
     <string name="performance_hud_gpu_temperature">Температура GPU</string>
@@ -1245,6 +1255,7 @@ https://gamenative.app
     <string name="tab_steam">Steam</string>
     <string name="task_manager">Менеджер задач</string>
     <string name="tools_wine_processes_running_hint">%1$d запущено, нажмите/кликните по процессу, чтобы закрыть его</string>
+    <string name="tools_wine_processes_empty">Запущенные EXE не обнаружены.</string>
     <string name="template_percent">%1$d процент.</string>
     <string name="thumbstick_buttons">Кнопки джойстика</string>
     <string name="thumbstick_buttons_category">Кнопки джойстика</string>
@@ -1376,6 +1387,15 @@ https://gamenative.app
     <string name="workshop_processing">Обработка модов…</string>
     <string name="workshop_failed_count">Не удалось обновить %1$d мод(ов) Мастерской</string>
     <string name="workshop_download_failed">Ошибка загрузки</string>
+    <string name="option_open_store_page">Открыть страницу в магазине</string>
+    <string name="option_export_for_frontend">Экспортировать для фронтенда</string>
+    <string name="option_open_container">Открыть контейнер</string>
+    <string name="option_edit_container">Редактировать контейнер</string>
+    <string name="option_reset_to_defaults">Сбросить контейнер</string>
+    <string name="option_get_support">Получить поддержку</string>
+    <string name="option_submit_feedback">Отправить отзыв</string>
+    <string name="option_reset_drm">Сбросить DRM</string>
+    <string name="option_use_known_config">Использовать известную конфигурацию</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Рекомендуемое</string>
@@ -1398,6 +1418,18 @@ https://gamenative.app
      <string name="steam_save_import_failed">Не удалось импортировать сохранения: %s</string>
     <string name="option_import_saves">Импортировать сохранения</string>
     <string name="option_export_saves">Экспортировать сохранения</string>
+    <string name="option_verify_files">Проверить файлы</string>
+    <string name="option_update">Обновить</string>
+    <string name="option_move_to_external_storage">Переместить во внешнее хранилище</string>
+    <string name="option_move_to_internal_storage">Переместить во внутреннее хранилище</string>
+    <string name="option_force_cloud_sync">Принудительная синхронизация облака</string>
+    <string name="option_browse_online_saves">Просмотреть онлайн-сохранения</string>
+    <string name="option_force_download_remote">Принудительно загрузить удалённые сохранения</string>
+    <string name="option_force_upload_local">Принудительно выгрузить локальные сохранения</string>
+    <string name="option_fetch_game_images">Загрузить изображения игры</string>
+    <string name="option_test_graphics">Проверить графику</string>
+    <string name="option_manage_dlc">Управление DLC</string>
+    <string name="option_manage_workshop">Управление Workshop</string>
     <!-- HLTB (How Long To Beat) -->
     <string name="hltb_main_story">Основной сюжет</string>
     <string name="hltb_main_plus_extras">Основное + Дополнения</string>
@@ -1425,27 +1457,28 @@ https://gamenative.app
     <string name="game_launch_tip_1">Загрузка может занять несколько минут при первом запуске</string>
     <string name="game_launch_tip_2">Совет: Вы можете просмотреть файлы игры, нажав \"%s\" в настройках игры.</string>
     <string name="game_launch_tip_3">Совет: Вы можете перейти в главное меню настроек и загрузить пользовательские драйверы для вашего устройства для использования на Bionic.</string>
-    <string name="game_launch_tip_4">Совет: Если вы получаете ошибку DirectX, убедитесь, что вы используете DXVK 1.10.3-async и leegao-wrapper на Bionic.</string>
-    <string name="game_launch_tip_5">Совет: Попробуйте тест Direct3D в меню «Пуск» после нажатия \"%s\", чтобы проверить, правильно ли работает ваше устройство.</string>
-    <string name="game_launch_tip_6">Совет: Используйте DXVK для игр DirectX 8/9/10/11, VKD3D для игр DirectX 12 и VirGL + WineD3D для игр OpenGL.</string>
-    <string name="game_launch_tip_7">Совет: Используйте Turnip на glibc или bionic для игр DirectX 12. Поддержка DirectX 12 для устройств, не поддерживающих Turnip, в настоящее время ограничена.</string>
-    <string name="game_launch_tip_8">Совет: Попробуйте драйверы Adreno или Snapdragon 8 Elite на glibc, если у вас совместимое устройство.</string>
-    <string name="game_launch_tip_9">Совет: Если при запуске игры появляется черный экран, попробуйте \"%s\" и запустить игру с диска A:.</string>
-    <string name="game_launch_tip_10">Совет: Вы можете добавить разные расположения для пользовательских игр в настройках.</string>
+    <string name="game_launch_tip_4">Совет: Если вы получаете ошибку DirectX, попробуйте использовать DXVK 1.11.1-sarek и System driver на Bionic.</string>
+    <string name="game_launch_tip_5">Совет: Если игры не запускаются, проверьте \"%s\" под значком настроек — вы должны увидеть вращающийся куб.</string>
+    <string name="game_launch_tip_6">Совет: Используйте DXVK для игр DirectX 8/9/10/11 и VKD3D для игр DirectX 12.</string>
+    <string name="game_launch_tip_7">Совет: Используйте драйверы Turnip для игр DirectX 12. Поддержка DirectX 12 для устройств, не поддерживающих Turnip, в настоящее время ограничена.</string>
+    <string name="game_launch_tip_8">Совет: Если управление не работает, включите Steam Input и убедитесь, что приложение не установлено в приватное пространство.</string>
+    <string name="game_launch_tip_9">Совет: Чтобы добавить файлы в игру, поместите их в папку «Загрузки» вашего устройства, нажмите \"%s\", и они появятся на диске D:.</string>
+    <string name="game_launch_tip_10">Совет: Импортируйте конфигурацию с gamenative.app/compatibility для вашего GPU или семейства GPU, если у вас не получается запустить игру.</string>
     <string name="game_launch_tip_11">Совет: Используйте HUD производительности в быстром меню, когда хотите видеть статистику FPS в игре.</string>
-    <string name="game_launch_tip_12">Совет: Установите пакеты в A:\\_CommonRedist, если игра не запускается.</string>
+    <string name="game_launch_tip_12">Совет: Если в игре нет звука, используйте Proton 10 для автоматического извлечения DLL XAudio.</string>
     <string name="game_launch_tip_13">Совет: Вы можете включить или отключить экранный контроллер с помощью кнопки «Назад» на устройстве.</string>
     <string name="game_launch_tip_14">Совет: Вы можете вызвать клавиатуру с помощью кнопки «Назад» на устройстве.</string>
     <string name="game_launch_tip_15">Совет: Вы можете нажать двумя пальцами внутри контейнера для щелчка правой кнопкой мыши.</string>
     <string name="game_launch_tip_16">Совет: Если вы используете экранный контроллер, вы можете отключить мышь, чтобы предотвратить случайные касания.</string>
     <string name="game_launch_tip_17">Совет: Сообщайте о проблемах в Discord, чтобы мы могли их исправить.</string>
-    <string name="game_launch_tip_18">Совет: Используйте драйвер Vortek на glibc или wrapper-leegao на Bionic, если у вас не-Adreno GPU.</string>
-    <string name="game_launch_tip_19">Совет: Уменьшите разрешение и используйте box64 в режиме производительности для повышения FPS.</string>
-    <string name="game_launch_tip_20">Совет: Если игра вылетает после загрузки, увеличьте видеопамять.</string>
-    <string name="game_launch_tip_21">Совет: Если вы видите визуальные артефакты, отключите DRI3.</string>
+    <string name="game_launch_tip_18">Совет: Используйте драйвер Turnip Gen8 V25/V30 или MrPurple T26, если у вас устройство 8 Elite.</string>
+    <string name="game_launch_tip_19">Совет: Уменьшите разрешение и используйте FSR из быстрого меню в игре для повышения производительности.</string>
+    <string name="game_launch_tip_20">Совет: Если всё приложение вылетает после загрузки игры, вашему устройству не хватает RAM.</string>
+    <string name="game_launch_tip_21">Совет: Попробуйте рендерер SurfaceFlinger для повышения FPS и снижения задержки.</string>
     <string name="game_launch_tip_22">Совет: Вы можете включить режим сенсорного экрана.</string>
     <string name="game_launch_tip_23">Совет: Если у вас GPU Mali, используйте системные драйверы.</string>
     <string name="game_launch_tip_24">Совет: Черный экран? Попробуйте использовать опцию \"%s\" в меню, чтобы проверить, правильно ли работают ваши драйверы.</string>
+    <string name="game_launch_tip_25">Совет: Используйте Proton x86-64, если вы не можете нажать мышью в играх.</string>
     <string name="launch_bionic_steam_description">Включает онлайн-игру и улучшает совместимость\nРаботает не всегда\nСделайте резервную копию сохранений перед использованием</string>
 
     <!-- Frontend Sync Settings -->
@@ -1464,6 +1497,8 @@ https://gamenative.app
     <string name="frontend_sync_confirm_keep">Сохранить</string>
     <string name="frontend_sync_resync_all">Повторная синхронизация всего</string>
     <string name="frontend_sync_resync_complete">Синхронизация frontend завершена</string>
+    <string name="frontend_sync_pick_directory_cd">Выбрать каталог для %1$s</string>
+    <string name="frontend_sync_clear_directory_cd">Очистить каталог для %1$s</string>
     <string name="screen_effects_scaling">Масштабирование</string>
     <string name="screen_effects_upscaling">Апскейлинг</string>
     <string name="screen_effects_basic_scaling">Базовое масштабирование</string>
@@ -1485,6 +1520,17 @@ https://gamenative.app
     <string name="screen_effects_scaling_mode_dls_desc">Повышение резкости / чёткости.</string>
     <string name="screen_effects_scaling_mode_natural">Естественный</string>
     <string name="screen_effects_scaling_mode_natural_desc">Более тёплый оттенок.</string>
+    <string name="screen_effects_fsr">FSR 1.0</string>
+    <string name="screen_effects_fsr_description">Официальный AMD FidelityFX Super Resolution 1.0 с использованием EASU + RCAS с пониженным внутренним разрешением рендеринга и апскейлингом до полного разрешения.</string>
+    <string name="screen_effects_fsr_quality">Качество FSR</string>
+    <string name="screen_effects_fsr_quality_ultra_quality">Ультра качество</string>
+    <string name="screen_effects_fsr_quality_quality">Качество</string>
+    <string name="screen_effects_fsr_quality_balanced">Сбалансированное</string>
+    <string name="screen_effects_fsr_quality_performance">Производительность</string>
+    <string name="screen_effects_fsr_sharpness">Резкость FSR</string>
+    <string name="screen_effects_fsr_sharpness_value">%1$d/5</string>
+    <string name="screen_effects_launch_sharpness">Резкость при запуске</string>
+    <string name="screen_effects_launch_sharpness_note">CAS и DLS применяются через vkBasalt и вступают в силу при следующем запуске игры.</string>
     <string name="stats_key_runs">Успешные запуски на вашем GPU</string>
     <string name="stats_key_reviews">5-звёздочные отзывы (ваш GPU / ваше устройство)</string>
     <string name="stats_key_fps">Ожидаемый FPS</string>
