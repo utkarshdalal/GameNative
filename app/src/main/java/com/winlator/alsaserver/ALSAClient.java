@@ -176,12 +176,13 @@ public class ALSAClient {
             do {
                 try {
                     int bytesWritten = this.audioTrack.write(data, data.remaining(), 0);
-                    if (bytesWritten < 0) {
+                    if (bytesWritten <= 0) {
                         break;
                     } else {
                         increaseBufferSizeIfUnderrunOccurs();
                     }
                 } catch (Exception e) {
+                    break;
                 }
             } while (data.position() != data.limit());
             this.position += data.position();

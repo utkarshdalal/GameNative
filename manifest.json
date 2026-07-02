@@ -1,8 +1,14 @@
 {
   "version": 1,
-  "updatedAt": "2026-01-26",
+  "updatedAt": "2026-06-30",
   "items": {
     "driver": [
+      {
+        "id": "Turnip v26.1.0 A12 Fix",
+        "name": "Turnip_v26.1.0_A12Fix",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_v26.1.0_A12Fix.zip",
+        "variant": "bionic"
+      },
       {
         "id": "turnip26.0.0_R8",
         "name": "turnip26.0.0_R8",

@@ -213,6 +213,10 @@ object BestConfigService {
      *
      * - Adreno 6xx requires DXVK 1.11.1-sarek (newer DXVK 2.x is incompatible).
      * - Adreno 8 Elite Gen 5 (84x/85x) requires the MrPurple T26 driver.
+     * - Adreno A12 requires the A12-fix Turnip driver.
+     *
+     * The override is skipped when the matched GPU is the same family (e.g. an
+     * exact A12 match), so a server-provided exact-GPU config is left untouched.
      */
     private fun applyGpuFamilyOverrides(
         context: Context,
@@ -236,6 +240,13 @@ object BestConfigService {
             kvs.put("version", "Turnip Adreno Driver T26 (@Mr_Purple_666)")
             filteredJson.put("graphicsDriverConfig", kvs.toString())
             filteredJson.put("graphicsDriverVersion", "Turnip Adreno Driver T26 (@Mr_Purple_666)")
+        }
+
+        if (GPUInformation.isAdrenoA12(context) && !matched.matches(Regex(".*adreno.*\\ba12\\b.*"))) {
+            val kvs = KeyValueSet(filteredJson.optString("graphicsDriverConfig", ""))
+            kvs.put("version", ContainerUtils.WRAPPER_ADRENO_A12)
+            filteredJson.put("graphicsDriverConfig", kvs.toString())
+            filteredJson.put("graphicsDriverVersion", ContainerUtils.WRAPPER_ADRENO_A12)
         }
 
         return filteredJson
