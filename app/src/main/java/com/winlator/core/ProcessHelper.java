@@ -200,8 +200,12 @@ public abstract class ProcessHelper {
         Thread stdoutDrainer = null;
         Thread stderrDrainer = null;
         try {
-            Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
             if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
+
+            if (BuildConfig.DEBUG) {
+                Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            }
+            
             ProcessBuilder pb = new ProcessBuilder(splitCommand(command));
             Map<String, String> env = pb.environment();
             env.clear();
@@ -275,7 +279,11 @@ public abstract class ProcessHelper {
         java.lang.Process process = null;
         try {
             if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
-            Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+
+            if (BuildConfig.DEBUG) {
+                Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            }
+
             process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
 
             Field pidField = process.getClass().getDeclaredField("pid");
@@ -303,8 +311,12 @@ public abstract class ProcessHelper {
 
     public static java.lang.Process startProcess(String command, String[] envp, File workingDir) {
         try {
-            Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
             if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
+
+            if (BuildConfig.DEBUG) {
+                Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            }
+
             java.lang.Process process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
             if (!debugCallbacks.isEmpty()) {
                 createDebugThread(process.getInputStream());
