@@ -4005,7 +4005,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             db.withTransaction {
                 // Send off an event if we change states.
                 val userSteamId = steamClient?.steamID ?: return@withTransaction
-                if(callback.friendId !== userSteamId) return@withTransaction
+                if(callback.friendId != userSteamId) return@withTransaction
 
                 val avatarHash = callback.avatarHash.toHexString()
                 val playerName = callback.playerName
