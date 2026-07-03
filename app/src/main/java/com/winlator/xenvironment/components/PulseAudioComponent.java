@@ -13,6 +13,8 @@ import com.winlator.xenvironment.XEnvironment;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import timber.log.Timber;
@@ -45,6 +47,8 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private byte performanceMode = 1;
     private final AtomicBoolean isPaused = new AtomicBoolean(false);
     private boolean lowLatency = false;
+
+    private final ExecutorService pauseResumeExecutor = Executors.newSingleThreadExecutor();
 
     public PulseAudioComponent(UnixSocketConfig socketConfig, boolean lowLatency) {
         this.socketConfig = socketConfig;
@@ -105,7 +109,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
     }
 
     public void pause() {
-        new Thread(() -> {
+        pauseResumeExecutor.execute(() -> {
             synchronized (lock) {
                 if (!isPaused.get() && isServerRunning()) {
                     Timber.tag("PulseAudioComponent").d("Pausing...");
@@ -117,11 +121,11 @@ public class PulseAudioComponent extends EnvironmentComponent {
                     Timber.tag("PulseAudioComponent").d("Audio paused");
                 }
             }
-        }).start();
+        });
     }
 
     public void resume() {
-        new Thread(() -> {
+        pauseResumeExecutor.execute(() -> {
             synchronized (lock) {
                 if (isPaused.get()) {
                     Timber.tag("PulseAudioComponent").d("Resuming...");
@@ -137,7 +141,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
                     }
                 }
             }
-        }).start();
+        });
     }
 
     public boolean isServerRunning() {
