@@ -105,35 +105,39 @@ public class PulseAudioComponent extends EnvironmentComponent {
     }
 
     public void pause() {
-        synchronized (lock) {
-            if (!isPaused.get() && isServerRunning()) {
-                Timber.tag("PulseAudioComponent").d("Pausing...");
+        new Thread(() -> {
+            synchronized (lock) {
+                if (!isPaused.get() && isServerRunning()) {
+                    Timber.tag("PulseAudioComponent").d("Pausing...");
 
-                // Suspend sink and set isPaused together immediately
-                isPaused.set(true);
-                updateSink(true);
+                    // Suspend sink and set isPaused together immediately
+                    isPaused.set(true);
+                    updateSink(true);
 
-                Timber.tag("PulseAudioComponent").d("Audio paused");
+                    Timber.tag("PulseAudioComponent").d("Audio paused");
+                }
             }
-        }
+        }).start();
     }
 
     public void resume() {
-        synchronized (lock) {
-            if (isPaused.get()) {
-                Timber.tag("PulseAudioComponent").d("Resuming...");
+        new Thread(() -> {
+            synchronized (lock) {
+                if (isPaused.get()) {
+                    Timber.tag("PulseAudioComponent").d("Resuming...");
 
-                if (isServerRunning()) {
-                    // Set isPaused immediately
-                    isPaused.set(false);
-                    updateSink(false);
+                    if (isServerRunning()) {
+                        // Set isPaused immediately
+                        isPaused.set(false);
+                        updateSink(false);
 
-                    Timber.tag("PulseAudioComponent").d("Audio resumed");
-                } else {
-                    start();
+                        Timber.tag("PulseAudioComponent").d("Audio resumed");
+                    } else {
+                        start();
+                    }
                 }
             }
-        }
+        }).start();
     }
 
     public boolean isServerRunning() {
