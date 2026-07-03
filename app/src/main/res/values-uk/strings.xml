@@ -2023,4 +2023,27 @@
     <string name="outer_ring_sprint_press_mode_subtitle">Один раз натискає ввід спринту під час входу в кільце спринту замість утримання</string>
     <string name="sprint_binding">Дія спринту</string>
     <string name="gesture_header_gamepad">Геймпад</string>
+    <string name="control_appearance">Вигляд елемента</string>
+    <string name="button_color">Колір елемента</string>
+    <string name="button_color_subtitle">HEX-колір контуру, піктограми та тексту елемента</string>
+    <string name="button_active_color">Колір під час натискання</string>
+    <string name="button_active_color_subtitle">Колір, коли елемент натиснуто або активний</string>
+    <string name="button_opacity">Непрозорість елемента</string>
+    <string name="button_opacity_value">%1$d%%</string>
+    <string name="button_opacity_inherited">%1$d%% (глобально за замовчуванням)</string>
+    <string name="control_stroke_width">Товщина лінії</string>
+    <string name="control_stroke_width_subtitle">Налаштувати товщину контуру та розділювачів елемента</string>
+    <string name="control_stroke_width_thin">Тонка</string>
+    <string name="control_stroke_width_default">За замовчуванням</string>
+    <string name="control_stroke_width_thick">Товста</string>
+    <string name="control_stroke_width_extra_thick">Дуже товста</string>
+    <string name="button_shooter_look_through">Наскрізне введення shooter</string>
+    <string name="button_shooter_look_through_subtitle">Дозволити цьому дотику кнопки також керувати динамічним рухом і оглядом shooter</string>
+    <string name="preview">Попередній перегляд</string>
+    <string name="active">Активно</string>
+    <string name="apply_all">Застосувати до всіх</string>
+    <string name="copy_appearance_from_button">Копіювати вигляд з елемента</string>
+    <string name="toast_no_buttons_to_copy_appearance">Немає інших елементів для копіювання вигляду</string>
+    <string name="toast_copied_button_appearance">Вигляд елемента скопійовано</string>
+    <string name="toast_applied_button_appearance">Вигляд застосовано до всіх елементів</string>
 </resources>

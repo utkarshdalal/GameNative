@@ -2027,4 +2027,27 @@
     <string name="outer_ring_sprint_press_mode_subtitle">스프린트 링에 들어갈 때 길게 누르는 대신 스프린트 입력을 한 번 탭합니다</string>
     <string name="sprint_binding">스프린트 입력</string>
     <string name="gesture_header_gamepad">게임패드</string>
+    <string name="control_appearance">컨트롤 모양</string>
+    <string name="button_color">컨트롤 색상</string>
+    <string name="button_color_subtitle">컨트롤 윤곽선, 아이콘, 텍스트의 16진수 색상</string>
+    <string name="button_active_color">누름 색상</string>
+    <string name="button_active_color_subtitle">누르거나 활성 상태일 때의 색상</string>
+    <string name="button_opacity">컨트롤 불투명도</string>
+    <string name="button_opacity_value">%1$d%%</string>
+    <string name="button_opacity_inherited">%1$d%% (전역 기본값)</string>
+    <string name="control_stroke_width">선 두께</string>
+    <string name="control_stroke_width_subtitle">컨트롤 윤곽선과 구분선 두께 조정</string>
+    <string name="control_stroke_width_thin">얇게</string>
+    <string name="control_stroke_width_default">기본</string>
+    <string name="control_stroke_width_thick">두껍게</string>
+    <string name="control_stroke_width_extra_thick">매우 두껍게</string>
+    <string name="button_shooter_look_through">슈터 통과 입력</string>
+    <string name="button_shooter_look_through_subtitle">이 버튼 터치가 동적 슈터 이동 및 시점도 제어하도록 허용</string>
+    <string name="preview">미리보기</string>
+    <string name="active">활성</string>
+    <string name="apply_all">모두 적용</string>
+    <string name="copy_appearance_from_button">컨트롤에서 모양 복사</string>
+    <string name="toast_no_buttons_to_copy_appearance">모양을 복사할 다른 컨트롤이 없습니다</string>
+    <string name="toast_copied_button_appearance">컨트롤 모양을 복사했습니다</string>
+    <string name="toast_applied_button_appearance">모든 컨트롤에 모양을 적용했습니다</string>
 </resources>

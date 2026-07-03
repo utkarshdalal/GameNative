@@ -2020,4 +2020,27 @@
     <string name="outer_ring_sprint_press_mode_subtitle">Tocca una volta input sprint entrando nell\'anello sprint invece di tenerlo premuto</string>
     <string name="sprint_binding">Azione sprint</string>
     <string name="gesture_header_gamepad">Gamepad</string>
+    <string name="control_appearance">Aspetto controllo</string>
+    <string name="button_color">Colore controllo</string>
+    <string name="button_color_subtitle">Colore esadecimale per contorno, icona e testo del controllo</string>
+    <string name="button_active_color">Colore premuto</string>
+    <string name="button_active_color_subtitle">Colore mentre è premuto o attivo</string>
+    <string name="button_opacity">Opacità controllo</string>
+    <string name="button_opacity_value">%1$d%%</string>
+    <string name="button_opacity_inherited">%1$d%% (predefinito globale)</string>
+    <string name="control_stroke_width">Spessore linea</string>
+    <string name="control_stroke_width_subtitle">Regola lo spessore del contorno e dei divisori del controllo</string>
+    <string name="control_stroke_width_thin">Sottile</string>
+    <string name="control_stroke_width_default">Predefinito</string>
+    <string name="control_stroke_width_thick">Spesso</string>
+    <string name="control_stroke_width_extra_thick">Molto spesso</string>
+    <string name="button_shooter_look_through">Passaggio mira shooter</string>
+    <string name="button_shooter_look_through_subtitle">Consenti a questo tocco del pulsante di controllare anche movimento e mira shooter dinamici</string>
+    <string name="preview">Anteprima</string>
+    <string name="active">Attivo</string>
+    <string name="apply_all">Applica a tutti</string>
+    <string name="copy_appearance_from_button">Copia aspetto da controllo</string>
+    <string name="toast_no_buttons_to_copy_appearance">Nessun altro controllo disponibile da cui copiare aspetto</string>
+    <string name="toast_copied_button_appearance">Aspetto del controllo copiato</string>
+    <string name="toast_applied_button_appearance">Aspetto applicato a tutti i controlli</string>
 </resources>

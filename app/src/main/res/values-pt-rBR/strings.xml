@@ -1899,4 +1899,27 @@
     <string name="outer_ring_sprint_press_mode_subtitle">Toca a entrada de sprint uma vez ao entrar no anel de sprint em vez de manter pressionado</string>
     <string name="sprint_binding">Ação de sprint</string>
     <string name="gesture_header_gamepad">Gamepad</string>
+    <string name="control_appearance">Aparência do controle</string>
+    <string name="button_color">Cor do controle</string>
+    <string name="button_color_subtitle">Cor hexadecimal do contorno, ícone e texto do controle</string>
+    <string name="button_active_color">Cor ao pressionar</string>
+    <string name="button_active_color_subtitle">Cor enquanto pressionado ou ativo</string>
+    <string name="button_opacity">Opacidade do controle</string>
+    <string name="button_opacity_value">%1$d%%</string>
+    <string name="button_opacity_inherited">%1$d%% (padrão global)</string>
+    <string name="control_stroke_width">Espessura da linha</string>
+    <string name="control_stroke_width_subtitle">Ajusta a espessura do contorno e divisórias do controle</string>
+    <string name="control_stroke_width_thin">Fina</string>
+    <string name="control_stroke_width_default">Padrão</string>
+    <string name="control_stroke_width_thick">Grossa</string>
+    <string name="control_stroke_width_extra_thick">Extra grossa</string>
+    <string name="button_shooter_look_through">Passagem de mira shooter</string>
+    <string name="button_shooter_look_through_subtitle">Permitir que este toque de botão também controle movimento e mira shooter dinâmicos</string>
+    <string name="preview">Prévia</string>
+    <string name="active">Ativo</string>
+    <string name="apply_all">Aplicar a todos</string>
+    <string name="copy_appearance_from_button">Copiar aparência de um controle</string>
+    <string name="toast_no_buttons_to_copy_appearance">Nenhum outro controle disponível para copiar aparência</string>
+    <string name="toast_copied_button_appearance">Aparência do controle copiada</string>
+    <string name="toast_applied_button_appearance">Aparência aplicada a todos os controles</string>
 </resources>

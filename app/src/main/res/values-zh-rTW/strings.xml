@@ -2038,4 +2038,27 @@
     <string name="outer_ring_sprint_press_mode_subtitle">進入衝刺環時點按一次衝刺輸入，而不是按住</string>
     <string name="sprint_binding">衝刺綁定</string>
     <string name="gesture_header_gamepad">遊戲手把</string>
+    <string name="control_appearance">控制項外觀</string>
+    <string name="button_color">控制項顏色</string>
+    <string name="button_color_subtitle">控制項外框、圖示和文字的十六進位顏色</string>
+    <string name="button_active_color">按下顏色</string>
+    <string name="button_active_color_subtitle">按下或啟用時的顏色</string>
+    <string name="button_opacity">控制項不透明度</string>
+    <string name="button_opacity_value">%1$d%%</string>
+    <string name="button_opacity_inherited">%1$d%%（全域預設）</string>
+    <string name="control_stroke_width">線條粗細</string>
+    <string name="control_stroke_width_subtitle">調整控制項外框和分隔線粗細</string>
+    <string name="control_stroke_width_thin">細</string>
+    <string name="control_stroke_width_default">預設</string>
+    <string name="control_stroke_width_thick">粗</string>
+    <string name="control_stroke_width_extra_thick">特粗</string>
+    <string name="button_shooter_look_through">射擊模式穿透</string>
+    <string name="button_shooter_look_through_subtitle">允許此按鈕觸控同時控制動態射擊移動和視角</string>
+    <string name="preview">預覽</string>
+    <string name="active">啟用</string>
+    <string name="apply_all">全部套用</string>
+    <string name="copy_appearance_from_button">從控制項複製外觀</string>
+    <string name="toast_no_buttons_to_copy_appearance">沒有其他可複製外觀的控制項</string>
+    <string name="toast_copied_button_appearance">已複製控制項外觀</string>
+    <string name="toast_applied_button_appearance">已將外觀套用到所有控制項</string>
 </resources>

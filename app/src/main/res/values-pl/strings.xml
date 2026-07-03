@@ -2027,4 +2027,27 @@
     <string name="outer_ring_sprint_press_mode_subtitle">Dotknij wejścia sprintu raz po wejściu w pierścień sprintu zamiast je przytrzymywać</string>
     <string name="sprint_binding">Akcja sprintu</string>
     <string name="gesture_header_gamepad">Gamepad</string>
+    <string name="control_appearance">Wygląd elementu sterującego</string>
+    <string name="button_color">Kolor elementu</string>
+    <string name="button_color_subtitle">Kolor hex obrysu, ikony i tekstu elementu</string>
+    <string name="button_active_color">Kolor po naciśnięciu</string>
+    <string name="button_active_color_subtitle">Kolor podczas naciśnięcia lub aktywności</string>
+    <string name="button_opacity">Nieprzezroczystość elementu</string>
+    <string name="button_opacity_value">%1$d%%</string>
+    <string name="button_opacity_inherited">%1$d%% (domyślne globalne)</string>
+    <string name="control_stroke_width">Grubość linii</string>
+    <string name="control_stroke_width_subtitle">Dostosuj grubość obrysu i separatorów elementu</string>
+    <string name="control_stroke_width_thin">Cienka</string>
+    <string name="control_stroke_width_default">Domyślna</string>
+    <string name="control_stroke_width_thick">Gruba</string>
+    <string name="control_stroke_width_extra_thick">Bardzo gruba</string>
+    <string name="button_shooter_look_through">Przepuszczanie widoku shooter</string>
+    <string name="button_shooter_look_through_subtitle">Pozwól temu dotknięciu przycisku także sterować dynamicznym ruchem i widokiem shooter</string>
+    <string name="preview">Podgląd</string>
+    <string name="active">Aktywny</string>
+    <string name="apply_all">Zastosuj do wszystkich</string>
+    <string name="copy_appearance_from_button">Kopiuj wygląd z elementu</string>
+    <string name="toast_no_buttons_to_copy_appearance">Brak innych elementów do skopiowania wyglądu</string>
+    <string name="toast_copied_button_appearance">Skopiowano wygląd elementu</string>
+    <string name="toast_applied_button_appearance">Zastosowano wygląd do wszystkich elementów</string>
 </resources>

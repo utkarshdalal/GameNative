@@ -146,6 +146,10 @@ public class InputControlsView extends View {
         this.overlayOpacity = overlayOpacity;
     }
 
+    public float getOverlayOpacity() {
+        return overlayOpacity;
+    }
+
     public int getSnappingSize() {
         return snappingSize;
     }
@@ -1019,7 +1023,7 @@ public class InputControlsView extends View {
             if (element.handleTouchDown(pointerId, x, y)) {
                 performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                 handled = true;
-                if (element.getType() == ControlElement.Type.BUTTON) {
+                if (element.getType() == ControlElement.Type.BUTTON && element.isShooterLookThrough()) {
                     startPendingButtonLookPointer(pointerId, x, y, element);
                 }
                 break;

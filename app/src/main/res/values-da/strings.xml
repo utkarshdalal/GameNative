@@ -1899,4 +1899,27 @@
     <string name="outer_ring_sprint_press_mode_subtitle">Tryk sprint-input én gang, når sprint-ringen nås, i stedet for at holde det nede</string>
     <string name="sprint_binding">Sprintbinding</string>
     <string name="gesture_header_gamepad">Gamepad</string>
+    <string name="control_appearance">Kontroludseende</string>
+    <string name="button_color">Kontrolfarve</string>
+    <string name="button_color_subtitle">Hexfarve for kontrollens omrids, ikon og tekst</string>
+    <string name="button_active_color">Trykket farve</string>
+    <string name="button_active_color_subtitle">Farve mens den trykkes eller er aktiv</string>
+    <string name="button_opacity">Kontrolopacitet</string>
+    <string name="button_opacity_value">%1$d%%</string>
+    <string name="button_opacity_inherited">%1$d%% (global standard)</string>
+    <string name="control_stroke_width">Linjetykkelse</string>
+    <string name="control_stroke_width_subtitle">Juster tykkelsen på kontrollens omrids og opdelere</string>
+    <string name="control_stroke_width_thin">Tynd</string>
+    <string name="control_stroke_width_default">Standard</string>
+    <string name="control_stroke_width_thick">Tyk</string>
+    <string name="control_stroke_width_extra_thick">Ekstra tyk</string>
+    <string name="button_shooter_look_through">Shooter-gennemkig</string>
+    <string name="button_shooter_look_through_subtitle">Tillad at denne knapberøring også styrer dynamisk shooter-bevægelse og blik</string>
+    <string name="preview">Forhåndsvisning</string>
+    <string name="active">Aktiv</string>
+    <string name="apply_all">Anvend alle</string>
+    <string name="copy_appearance_from_button">Kopiér udseende fra kontrol</string>
+    <string name="toast_no_buttons_to_copy_appearance">Ingen andre kontroller at kopiere udseende fra</string>
+    <string name="toast_copied_button_appearance">Kontroludseende kopieret</string>
+    <string name="toast_applied_button_appearance">Udseende anvendt på alle kontroller</string>
 </resources>

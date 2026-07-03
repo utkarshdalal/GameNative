@@ -1969,4 +1969,27 @@
     <string name="outer_ring_sprint_press_mode_subtitle">Sprint-Eingabe beim Erreichen des Sprintrings einmal antippen statt gedrückt halten</string>
     <string name="sprint_binding">Sprintbindung</string>
     <string name="gesture_header_gamepad">Gamepad</string>
+    <string name="control_appearance">Steuerungsdarstellung</string>
+    <string name="button_color">Steuerungsfarbe</string>
+    <string name="button_color_subtitle">Hex-Farbe für Umriss, Symbol und Text der Steuerung</string>
+    <string name="button_active_color">Farbe beim Drücken</string>
+    <string name="button_active_color_subtitle">Farbe während gedrückt oder aktiv</string>
+    <string name="button_opacity">Deckkraft der Steuerung</string>
+    <string name="button_opacity_value">%1$d%%</string>
+    <string name="button_opacity_inherited">%1$d%% (globaler Standard)</string>
+    <string name="control_stroke_width">Linienstärke</string>
+    <string name="control_stroke_width_subtitle">Stärke von Umriss und Trennlinien der Steuerung anpassen</string>
+    <string name="control_stroke_width_thin">Dünn</string>
+    <string name="control_stroke_width_default">Standard</string>
+    <string name="control_stroke_width_thick">Dick</string>
+    <string name="control_stroke_width_extra_thick">Extra dick</string>
+    <string name="button_shooter_look_through">Shooter-Durchgriff</string>
+    <string name="button_shooter_look_through_subtitle">Diese Tastenberührung auch dynamische Shooter-Bewegung und Blick steuern lassen</string>
+    <string name="preview">Vorschau</string>
+    <string name="active">Aktiv</string>
+    <string name="apply_all">Auf alle anwenden</string>
+    <string name="copy_appearance_from_button">Darstellung von Steuerung kopieren</string>
+    <string name="toast_no_buttons_to_copy_appearance">Keine anderen Steuerungen zum Kopieren der Darstellung verfügbar</string>
+    <string name="toast_copied_button_appearance">Steuerungsdarstellung kopiert</string>
+    <string name="toast_applied_button_appearance">Darstellung auf alle Steuerungen angewendet</string>
 </resources>

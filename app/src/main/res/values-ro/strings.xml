@@ -2030,4 +2030,27 @@
     <string name="outer_ring_sprint_press_mode_subtitle">Atinge input-ul de sprint o dată la intrarea în inelul de sprint în loc să îl menții apăsat</string>
     <string name="sprint_binding">Acțiune sprint</string>
     <string name="gesture_header_gamepad">Gamepad</string>
+    <string name="control_appearance">Aspect control</string>
+    <string name="button_color">Culoare control</string>
+    <string name="button_color_subtitle">Culoare hex pentru conturul, pictograma și textul controlului</string>
+    <string name="button_active_color">Culoare la apăsare</string>
+    <string name="button_active_color_subtitle">Culoare când este apăsat sau activ</string>
+    <string name="button_opacity">Opacitate control</string>
+    <string name="button_opacity_value">%1$d%%</string>
+    <string name="button_opacity_inherited">%1$d%% (implicit global)</string>
+    <string name="control_stroke_width">Grosime linie</string>
+    <string name="control_stroke_width_subtitle">Ajustează grosimea conturului și separatorilor controlului</string>
+    <string name="control_stroke_width_thin">Subțire</string>
+    <string name="control_stroke_width_default">Implicit</string>
+    <string name="control_stroke_width_thick">Gros</string>
+    <string name="control_stroke_width_extra_thick">Foarte gros</string>
+    <string name="button_shooter_look_through">Trecere privire shooter</string>
+    <string name="button_shooter_look_through_subtitle">Permite ca această atingere a butonului să controleze și mișcarea și privirea shooter dinamice</string>
+    <string name="preview">Previzualizare</string>
+    <string name="active">Activ</string>
+    <string name="apply_all">Aplică tuturor</string>
+    <string name="copy_appearance_from_button">Copiază aspectul de la control</string>
+    <string name="toast_no_buttons_to_copy_appearance">Nu există alte controale de la care să copiezi aspectul</string>
+    <string name="toast_copied_button_appearance">Aspectul controlului a fost copiat</string>
+    <string name="toast_applied_button_appearance">Aspectul a fost aplicat tuturor controalelor</string>
 </resources>

@@ -2047,4 +2047,27 @@
     <string name="outer_ring_sprint_press_mode_subtitle">进入冲刺环时点按一次冲刺输入，而不是按住</string>
     <string name="sprint_binding">冲刺绑定</string>
     <string name="gesture_header_gamepad">游戏手柄</string>
+    <string name="control_appearance">控件外观</string>
+    <string name="button_color">控件颜色</string>
+    <string name="button_color_subtitle">控件轮廓、图标和文本的十六进制颜色</string>
+    <string name="button_active_color">按下颜色</string>
+    <string name="button_active_color_subtitle">按下或激活时的颜色</string>
+    <string name="button_opacity">控件不透明度</string>
+    <string name="button_opacity_value">%1$d%%</string>
+    <string name="button_opacity_inherited">%1$d%%（全局默认）</string>
+    <string name="control_stroke_width">线条粗细</string>
+    <string name="control_stroke_width_subtitle">调整控件轮廓和分隔线粗细</string>
+    <string name="control_stroke_width_thin">细</string>
+    <string name="control_stroke_width_default">默认</string>
+    <string name="control_stroke_width_thick">粗</string>
+    <string name="control_stroke_width_extra_thick">特粗</string>
+    <string name="button_shooter_look_through">射击模式穿透</string>
+    <string name="button_shooter_look_through_subtitle">允许此按钮触摸同时控制动态射击移动和视角</string>
+    <string name="preview">预览</string>
+    <string name="active">激活</string>
+    <string name="apply_all">全部应用</string>
+    <string name="copy_appearance_from_button">从控件复制外观</string>
+    <string name="toast_no_buttons_to_copy_appearance">没有其他可复制外观的控件</string>
+    <string name="toast_copied_button_appearance">已复制控件外观</string>
+    <string name="toast_applied_button_appearance">已将外观应用到所有控件</string>
 </resources>

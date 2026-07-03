@@ -2027,4 +2027,27 @@
     <string name="outer_ring_sprint_press_mode_subtitle">Toca la entrada de sprint una vez al entrar en el anillo de sprint en vez de mantenerla presionada</string>
     <string name="sprint_binding">Acción de sprint</string>
     <string name="gesture_header_gamepad">Gamepad</string>
+    <string name="control_appearance">Apariencia del control</string>
+    <string name="button_color">Color del control</string>
+    <string name="button_color_subtitle">Color hexadecimal para el contorno, icono y texto del control</string>
+    <string name="button_active_color">Color al pulsar</string>
+    <string name="button_active_color_subtitle">Color mientras está pulsado o activo</string>
+    <string name="button_opacity">Opacidad del control</string>
+    <string name="button_opacity_value">%1$d%%</string>
+    <string name="button_opacity_inherited">%1$d%% (valor global predeterminado)</string>
+    <string name="control_stroke_width">Grosor de línea</string>
+    <string name="control_stroke_width_subtitle">Ajusta el grosor del contorno y los divisores del control</string>
+    <string name="control_stroke_width_thin">Fino</string>
+    <string name="control_stroke_width_default">Predeterminado</string>
+    <string name="control_stroke_width_thick">Grueso</string>
+    <string name="control_stroke_width_extra_thick">Extra grueso</string>
+    <string name="button_shooter_look_through">Paso de mirada shooter</string>
+    <string name="button_shooter_look_through_subtitle">Permitir que este toque de botón también controle el movimiento y la mirada shooter dinámicos</string>
+    <string name="preview">Vista previa</string>
+    <string name="active">Activo</string>
+    <string name="apply_all">Aplicar a todos</string>
+    <string name="copy_appearance_from_button">Copiar apariencia de control</string>
+    <string name="toast_no_buttons_to_copy_appearance">No hay otros controles disponibles para copiar la apariencia</string>
+    <string name="toast_copied_button_appearance">Apariencia del control copiada</string>
+    <string name="toast_applied_button_appearance">Apariencia aplicada a todos los controles</string>
 </resources>

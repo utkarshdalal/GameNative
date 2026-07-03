@@ -1986,4 +1986,27 @@
     <string name="outer_ring_sprint_press_mode_subtitle">スプリントリングに入ったとき、長押しではなく一度だけスプリント入力をタップします</string>
     <string name="sprint_binding">スプリント入力</string>
     <string name="gesture_header_gamepad">ゲームパッド</string>
+    <string name="control_appearance">コントロールの外観</string>
+    <string name="button_color">コントロールの色</string>
+    <string name="button_color_subtitle">コントロールの枠線、アイコン、テキストの16進カラー</string>
+    <string name="button_active_color">押下時の色</string>
+    <string name="button_active_color_subtitle">押下中またはアクティブ時の色</string>
+    <string name="button_opacity">コントロールの不透明度</string>
+    <string name="button_opacity_value">%1$d%%</string>
+    <string name="button_opacity_inherited">%1$d%%（グローバル既定値）</string>
+    <string name="control_stroke_width">線の太さ</string>
+    <string name="control_stroke_width_subtitle">コントロールの枠線と区切り線の太さを調整</string>
+    <string name="control_stroke_width_thin">細い</string>
+    <string name="control_stroke_width_default">既定</string>
+    <string name="control_stroke_width_thick">太い</string>
+    <string name="control_stroke_width_extra_thick">極太</string>
+    <string name="button_shooter_look_through">シューター透過操作</string>
+    <string name="button_shooter_look_through_subtitle">このボタンのタッチでも動的シューター移動や視点操作を行う</string>
+    <string name="preview">プレビュー</string>
+    <string name="active">アクティブ</string>
+    <string name="apply_all">すべてに適用</string>
+    <string name="copy_appearance_from_button">コントロールから外観をコピー</string>
+    <string name="toast_no_buttons_to_copy_appearance">外観をコピーできる他のコントロールがありません</string>
+    <string name="toast_copied_button_appearance">コントロールの外観をコピーしました</string>
+    <string name="toast_applied_button_appearance">すべてのコントロールに外観を適用しました</string>
 </resources>

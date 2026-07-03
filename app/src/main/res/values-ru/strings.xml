@@ -1955,4 +1955,27 @@ https://gamenative.app
     <string name="outer_ring_sprint_press_mode_subtitle">Однократно нажимает ввод спринта при входе в кольцо спринта вместо удержания</string>
     <string name="sprint_binding">Действие спринта</string>
     <string name="gesture_header_gamepad">Геймпад</string>
+    <string name="control_appearance">Внешний вид элемента</string>
+    <string name="button_color">Цвет элемента</string>
+    <string name="button_color_subtitle">HEX-цвет контура, значка и текста элемента</string>
+    <string name="button_active_color">Цвет при нажатии</string>
+    <string name="button_active_color_subtitle">Цвет при нажатии или активности</string>
+    <string name="button_opacity">Непрозрачность элемента</string>
+    <string name="button_opacity_value">%1$d%%</string>
+    <string name="button_opacity_inherited">%1$d%% (глобально по умолчанию)</string>
+    <string name="control_stroke_width">Толщина линии</string>
+    <string name="control_stroke_width_subtitle">Настроить толщину контура и разделителей элемента</string>
+    <string name="control_stroke_width_thin">Тонкая</string>
+    <string name="control_stroke_width_default">По умолчанию</string>
+    <string name="control_stroke_width_thick">Толстая</string>
+    <string name="control_stroke_width_extra_thick">Очень толстая</string>
+    <string name="button_shooter_look_through">Сквозной ввод shooter</string>
+    <string name="button_shooter_look_through_subtitle">Разрешить этому касанию кнопки также управлять динамическим движением и обзором shooter</string>
+    <string name="preview">Предпросмотр</string>
+    <string name="active">Активно</string>
+    <string name="apply_all">Применить ко всем</string>
+    <string name="copy_appearance_from_button">Копировать внешний вид из элемента</string>
+    <string name="toast_no_buttons_to_copy_appearance">Нет других элементов для копирования внешнего вида</string>
+    <string name="toast_copied_button_appearance">Внешний вид элемента скопирован</string>
+    <string name="toast_applied_button_appearance">Внешний вид применен ко всем элементам</string>
 </resources>
