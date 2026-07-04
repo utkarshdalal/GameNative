@@ -196,7 +196,7 @@ private fun ButtonPreview(
     val strokeWidth = 2.dp * strokeScale
     Box(
         modifier = Modifier
-            .then(if (shape == ControlElement.Shape.CIRCLE || shape == ControlElement.Shape.SQUARE) Modifier.size(56.dp) else Modifier.height(48.dp).fillMaxWidth())
+            .then(if (shape == ControlElement.Shape.CIRCLE || shape == ControlElement.Shape.SQUARE) Modifier.size(56.dp) else Modifier.width(96.dp).height(48.dp))
             .clip(composeShape)
             .border(strokeWidth, drawColor, composeShape),
         contentAlignment = Alignment.Center
