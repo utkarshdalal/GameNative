@@ -1956,11 +1956,14 @@ fun XServerScreen(
                             val containerManager = ContainerManager(context)
                             // Configure WinHandler with container's input API settings
                             val handler = getxServer().winHandler
-                            if (container.inputType !in 0..3) {
-                                container.inputType = PreferredInputApi.BOTH.ordinal
-                                container.saveData()
+                            val safeInputType = synchronized(container) {
+                                if (container.inputType !in 0..3) {
+                                    container.inputType = PreferredInputApi.BOTH.ordinal
+                                    container.saveData()
+                                }
+                                container.inputType
                             }
-                            handler.setPreferredInputApi(PreferredInputApi.values()[container.inputType])
+                            handler.setPreferredInputApi(PreferredInputApi.entries[safeInputType])
                             handler.setDInputMapperType(container.dinputMapperType)
                             if (container.isDisableMouseInput()) {
                                 PluviaApp.touchpadView?.setTouchscreenMouseDisabled(true)
@@ -2161,6 +2164,8 @@ fun XServerScreen(
                     }
 
                     Timber.d("=== Profile Loading Complete ===")
+                    XServerScreenUtils.applyDefaultControllerPresetIfNeeded(context, container, targetProfile)
+
                     setProfile(targetProfile)
 
                     physicalControllerHandler = PhysicalControllerHandler(
@@ -2284,6 +2289,8 @@ fun XServerScreen(
                         profile.loadElements(icView)
                     }
 
+                    XServerScreenUtils.applyDefaultLayoutPresetIfNeeded(context, container, profile, icView)
+
                     // Only auto-show if profile has on-screen elements
                     Timber.d("Profile has ${profile.elements.size} elements loaded")
                     if (profile.elements.isNotEmpty()) {
@@ -2394,6 +2401,8 @@ fun XServerScreen(
             }
         }
 
+        val layoutPresetCallbacks = rememberLayoutPresetCallbacks(context)
+
         // Floating toolbar for edit mode (always visible in edit mode)
         if (isEditMode && areControlsVisible) {
             EditModeToolbar(
@@ -2450,6 +2459,7 @@ fun XServerScreen(
                     keepPausedForEditor = false
                     resumeIfAllowedAfterOverlay()
                 },
+                layoutPresetCallbacks = layoutPresetCallbacks,
                 onDuplicate = { id ->
                     val manager = PluviaApp.inputControlsManager
                     val profile = manager?.getProfile(id)
@@ -2767,9 +2777,9 @@ private fun EditModeToolbar(
     onDelete: () -> Unit,
     onSave: () -> Unit,
     onClose: () -> Unit,
-    onDuplicate: (Int) -> Unit
+    onDuplicate: (Int) -> Unit,
+    layoutPresetCallbacks: LayoutPresetCallbacks,
 ) {
-    var duplicateProfileOpen by remember { mutableStateOf(false) }
     var toolbarOffsetX by remember { mutableStateOf(0f) }
     var toolbarOffsetY by remember { mutableStateOf(0f) }
     val density = LocalDensity.current
@@ -2800,7 +2810,6 @@ private fun EditModeToolbar(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Drag handle indicator
             Icon(
                 imageVector = Icons.Default.Menu,
                 contentDescription = "Drag to move",
@@ -2808,67 +2817,40 @@ private fun EditModeToolbar(
                 modifier = Modifier.padding(end = 4.dp)
             )
 
-            // Add button
             TextButton(onClick = onAdd) {
                 Icon(Icons.Default.Add, contentDescription = "Add", tint = androidx.compose.ui.graphics.Color.White)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(stringResource(R.string.add), color = androidx.compose.ui.graphics.Color.White)
             }
 
-            // Edit button
             TextButton(onClick = onEdit) {
                 Icon(Icons.Default.Edit, contentDescription = "Edit", tint = androidx.compose.ui.graphics.Color.White)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(stringResource(R.string.edit), color = androidx.compose.ui.graphics.Color.White)
             }
 
-            // Delete button
             TextButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete", tint = androidx.compose.ui.graphics.Color.White)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(stringResource(R.string.delete), color = androidx.compose.ui.graphics.Color.White)
             }
 
-            // Duplicate button with dropdown
-            Box {
-                TextButton(onClick = { duplicateProfileOpen = !duplicateProfileOpen }) {
-                    Icon(Icons.Filled.ContentCopy, contentDescription = "Copy From", tint = androidx.compose.ui.graphics.Color.White)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(R.string.copy_from), color = androidx.compose.ui.graphics.Color.White)
-                }
-
-                val knownProfiles = PluviaApp.inputControlsManager?.getProfiles(false) ?: emptyList()
-                if (knownProfiles.isNotEmpty()) {
-                    DropdownMenu(
-                        expanded = duplicateProfileOpen,
-                        onDismissRequest = { duplicateProfileOpen = false }
-                    ) {
-                        for (knownProfile in knownProfiles) {
-                            DropdownMenuItem(
-                                text = { Text(knownProfile.name) },
-                                onClick = {
-                                    onDuplicate(knownProfile.id)
-                                    duplicateProfileOpen = false
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Save button
             TextButton(onClick = onSave) {
                 Icon(Icons.Default.Check, contentDescription = "Save", tint = androidx.compose.ui.graphics.Color.White)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(stringResource(R.string.save), color = androidx.compose.ui.graphics.Color.White)
             }
 
-            // Close button
             TextButton(onClick = onClose) {
                 Icon(Icons.Default.Close, contentDescription = "Close", tint = androidx.compose.ui.graphics.Color.White)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(stringResource(R.string.close), color = androidx.compose.ui.graphics.Color.White)
             }
+
+            EditToolbarOverflowMenu(
+                onCopyFromProfile = onDuplicate,
+                layoutPresetCallbacks = layoutPresetCallbacks,
+            )
         }
     }
 }

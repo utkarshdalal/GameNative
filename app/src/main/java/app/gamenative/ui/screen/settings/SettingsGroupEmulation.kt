@@ -1,10 +1,12 @@
 package app.gamenative.ui.screen.settings
 
 import android.content.res.Configuration
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -15,8 +17,10 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.component.dialog.Box64PresetsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.ControllerPresetManager
 import app.gamenative.ui.component.dialog.FEXCorePresetsDialog
 import app.gamenative.ui.component.dialog.OrientationDialog
+import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
@@ -102,6 +106,27 @@ fun SettingsGroupEmulation() {
                 PrefManager.autoApplyKnownConfig = it
             },
         )
+
+        val context = LocalContext.current
+
+        val controllerPresetNames = remember { ControllerPresetManager.getAllPresets(context).map { it.name } }
+        PresetPicker(
+            titleRes = R.string.settings_default_controller_preset_title,
+            noneRes = R.string.settings_default_controller_preset_none,
+            presetNames = controllerPresetNames,
+            savedName = PrefManager.defaultControllerPreset,
+            onNameSelected = { PrefManager.defaultControllerPreset = it },
+        )
+
+        val layoutPresetNames = remember { ControllerPresetManager.getLayoutPresets(context).map { it.name } }
+        PresetPicker(
+            titleRes = R.string.settings_default_layout_preset_title,
+            noneRes = R.string.settings_default_layout_preset_none,
+            presetNames = layoutPresetNames,
+            savedName = PrefManager.defaultLayoutPreset,
+            onNameSelected = { PrefManager.defaultLayoutPreset = it },
+        )
+
         SettingsMenuLink(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.settings_emulation_box64_presets_title)) },
@@ -133,6 +158,34 @@ fun SettingsGroupEmulation() {
             onClick = { showWineProtonManager = true },
         )
     }
+}
+
+@Composable
+private fun PresetPicker(
+    titleRes: Int,
+    noneRes: Int,
+    presetNames: List<String>,
+    savedName: String,
+    onNameSelected: (String) -> Unit,
+) {
+    val noneLabel = stringResource(noneRes)
+    val items = remember(presetNames, noneLabel) { listOf(noneLabel) + presetNames }
+    var currentName by rememberSaveable { mutableStateOf(savedName) }
+    val selectedIndex = remember(currentName, presetNames) {
+        if (currentName.isEmpty()) 0 else (presetNames.indexOf(currentName) + 1).coerceAtLeast(0)
+    }
+
+    SettingsListDropdown(
+        colors = settingsTileColors(),
+        title = { Text(text = stringResource(titleRes)) },
+        value = selectedIndex,
+        items = items,
+        onItemSelected = { index ->
+            val newName = if (index == 0) "" else presetNames.getOrNull(index - 1).orEmpty()
+            currentName = newName
+            onNameSelected(newName)
+        },
+    )
 }
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)

@@ -727,6 +727,26 @@
     <string name="fexcore_presets_description">Перегляд, зміна та створення пресетів FEXCore</string>
     <string name="preset_name">Назва пресета</string>
 
+    <!-- Controller Presets -->
+    <string name="load_controller_preset">Завантажити пресет</string>
+    <string name="save_controller_preset">Зберегти пресет</string>
+    <string name="no_presets_available">Немає доступних пресетів</string>
+    <string name="factory_preset">Заводський пресет</string>
+    <string name="preset_will_overwrite">Пресет з такою назвою вже існує і буде перезаписаний</string>
+    <string name="preset_name_already_exists">Пресет з такою назвою вже існує</string>
+    <string name="save_as_new">Зберегти як \"%1$s\"</string>
+    <string name="overwrite">Перезаписати</string>
+    <string name="rename">Перейменувати</string>
+    <string name="rename_preset">Перейменувати пресет</string>
+    <string name="reset_to_defaults">Скинути до стандартних</string>
+    <string name="import_bindings">Імпортувати прив\'язки</string>
+    <string name="import_bindings_failed">Не вдалося імпортувати прив\'язки</string>
+    <string name="save_preset_failed">Не вдалося зберегти пресет</string>
+    <string name="export_bindings">Експортувати прив\'язки</string>
+    <string name="export_bindings_failed">Не вдалося експортувати прив\'язки</string>
+    <string name="delete_preset_title">Видалити пресет</string>
+    <string name="delete_preset_message">Видалити \"%1$s\"? Цю дію не можна скасувати.</string>
+
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Використовувати SDL API</string>
     <string name="use_steam_input">Використовувати Steam Input</string>
@@ -1612,4 +1632,18 @@
     <string name="filter_five_star_device">5-зіркові відгуки на пристрої</string>
     <string name="filter_five_star_gpu">5-зіркові відгуки на GPU</string>
     <string name="filter_proven_gpu">Перевірено на вашому GPU</string>
+    <string name="settings_default_controller_preset_title">Стандартний пресет контролера</string>
+    <string name="settings_default_controller_preset_none">Немає (використовувати вбудовані налаштування)</string>
+    <string name="settings_default_layout_preset_title">Стандартний пресет макета</string>
+    <string name="settings_default_layout_preset_none">Немає (використовувати вбудовані налаштування)</string>
+
+    <string name="save_layout_preset">Зберегти макет</string>
+    <string name="load_layout_preset">Завантажити макет</string>
+    <string name="layout_preset_saved">Макет збережено</string>
+    <string name="layout_preset_loaded">Макет завантажено</string>
+    <string name="save_layout_preset_failed">Не вдалося зберегти макет</string>
+    <string name="import_layout_preset">Імпортувати макет</string>
+    <string name="export_layout_preset">Експортувати макет</string>
+    <string name="import_layout_preset_failed">Не вдалося імпортувати макет</string>
+    <string name="export_layout_preset_failed">Не вдалося експортувати макет</string>
 </resources>

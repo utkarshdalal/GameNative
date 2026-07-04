@@ -706,6 +706,26 @@
     <string name="fexcore_presets">FEXCore-Voreinstellungen</string>
     <string name="fexcore_presets_description">FEXCore-Voreinstellungen anzeigen, ändern oder neue erstellen</string>
     <string name="preset_name">Name der Voreinstellung</string>
+
+    <!-- Controller Presets -->
+    <string name="load_controller_preset">Voreinstellung laden</string>
+    <string name="save_controller_preset">Voreinstellung speichern</string>
+    <string name="no_presets_available">Keine Voreinstellungen verfügbar</string>
+    <string name="factory_preset">Werkseinstellung</string>
+    <string name="preset_will_overwrite">Eine Voreinstellung mit diesem Namen existiert bereits und wird überschrieben</string>
+    <string name="preset_name_already_exists">Eine Voreinstellung mit diesem Namen existiert bereits</string>
+    <string name="save_as_new">Speichern als \"%1$s\"</string>
+    <string name="overwrite">Überschreiben</string>
+    <string name="rename">Umbenennen</string>
+    <string name="rename_preset">Voreinstellung umbenennen</string>
+    <string name="reset_to_defaults">Auf Standardwerte zurücksetzen</string>
+    <string name="import_bindings">Tastenbelegungen importieren</string>
+    <string name="import_bindings_failed">Import der Tastenbelegungen fehlgeschlagen</string>
+    <string name="save_preset_failed">Voreinstellung konnte nicht gespeichert werden</string>
+    <string name="export_bindings">Tastenbelegungen exportieren</string>
+    <string name="export_bindings_failed">Export der Tastenbelegungen fehlgeschlagen</string>
+    <string name="delete_preset_title">Voreinstellung löschen</string>
+    <string name="delete_preset_message">\"%1$s\" löschen? Dies kann nicht rückgängig gemacht werden.</string>
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">SDL-API verwenden</string>
     <string name="use_steam_input">Steam Input verwenden</string>
@@ -1558,4 +1578,18 @@
     <string name="filter_five_star_device">5-Sterne-Bewertungen auf dem Gerät</string>
     <string name="filter_five_star_gpu">5-Sterne-Bewertungen auf der GPU</string>
     <string name="filter_proven_gpu">Bewährt auf deiner GPU</string>
+    <string name="settings_default_controller_preset_title">Standard-Controller-Voreinstellung</string>
+    <string name="settings_default_controller_preset_none">Keine (integrierte Standards verwenden)</string>
+    <string name="settings_default_layout_preset_title">Standard-Layout-Voreinstellung</string>
+    <string name="settings_default_layout_preset_none">Keine (integrierte Standards verwenden)</string>
+
+    <string name="save_layout_preset">Layout-Voreinstellung speichern</string>
+    <string name="load_layout_preset">Layout-Voreinstellung laden</string>
+    <string name="layout_preset_saved">Layout-Voreinstellung gespeichert</string>
+    <string name="layout_preset_loaded">Layout-Voreinstellung geladen</string>
+    <string name="save_layout_preset_failed">Layout-Voreinstellung konnte nicht gespeichert werden</string>
+    <string name="import_layout_preset">Layout-Voreinstellung importieren</string>
+    <string name="export_layout_preset">Layout-Voreinstellung exportieren</string>
+    <string name="import_layout_preset_failed">Layout-Voreinstellung konnte nicht importiert werden</string>
+    <string name="export_layout_preset_failed">Layout-Voreinstellung konnte nicht exportiert werden</string>
 </resources>

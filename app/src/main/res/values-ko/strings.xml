@@ -735,6 +735,26 @@
     <string name="fexcore_presets_description">FEXCore 프리셋 보기, 수정 및 생성</string>
     <string name="preset_name">프리셋 이름</string>
 
+    <!-- Controller Presets -->
+    <string name="load_controller_preset">프리셋 불러오기</string>
+    <string name="save_controller_preset">프리셋 저장</string>
+    <string name="no_presets_available">사용 가능한 프리셋 없음</string>
+    <string name="factory_preset">기본 제공</string>
+    <string name="preset_will_overwrite">같은 이름의 프리셋이 이미 존재하며 덮어쓰기됩니다</string>
+    <string name="preset_name_already_exists">같은 이름의 프리셋이 이미 존재합니다</string>
+    <string name="save_as_new">\"%1$s\"(으)로 저장</string>
+    <string name="overwrite">덮어쓰기</string>
+    <string name="rename">이름 변경</string>
+    <string name="rename_preset">프리셋 이름 변경</string>
+    <string name="reset_to_defaults">기본값으로 재설정</string>
+    <string name="import_bindings">바인딩 가져오기</string>
+    <string name="import_bindings_failed">바인딩 가져오기 실패</string>
+    <string name="save_preset_failed">프리셋 저장 실패</string>
+    <string name="export_bindings">바인딩 내보내기</string>
+    <string name="export_bindings_failed">바인딩 내보내기 실패</string>
+    <string name="delete_preset_title">프리셋 삭제</string>
+    <string name="delete_preset_message">\"%1$s\"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</string>
+
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">SDL API 사용</string>
     <string name="use_steam_input">Steam Input 사용</string>
@@ -1616,4 +1636,18 @@
     <string name="filter_five_star_device">기기에서의 별 5개 리뷰</string>
     <string name="filter_five_star_gpu">GPU에서의 별 5개 리뷰</string>
     <string name="filter_proven_gpu">내 GPU에서 검증됨</string>
+    <string name="settings_default_controller_preset_title">기본 컨트롤러 프리셋</string>
+    <string name="settings_default_controller_preset_none">없음 (내장 기본값 사용)</string>
+    <string name="settings_default_layout_preset_title">기본 레이아웃 프리셋</string>
+    <string name="settings_default_layout_preset_none">없음 (내장 기본값 사용)</string>
+
+    <string name="save_layout_preset">레이아웃 프리셋 저장</string>
+    <string name="load_layout_preset">레이아웃 프리셋 불러오기</string>
+    <string name="layout_preset_saved">레이아웃 프리셋 저장됨</string>
+    <string name="layout_preset_loaded">레이아웃 프리셋 불러옴</string>
+    <string name="save_layout_preset_failed">레이아웃 프리셋 저장 실패</string>
+    <string name="import_layout_preset">레이아웃 프리셋 가져오기</string>
+    <string name="export_layout_preset">레이아웃 프리셋 내보내기</string>
+    <string name="import_layout_preset_failed">레이아웃 프리셋 가져오기 실패</string>
+    <string name="export_layout_preset_failed">레이아웃 프리셋 내보내기 실패</string>
 </resources>

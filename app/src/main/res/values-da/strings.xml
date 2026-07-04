@@ -555,6 +555,26 @@
     <string name="box64_presets">Box64-forudindstillinger</string>
     <string name="preset_name">Forudindstillingsnavn</string>
 
+    <!-- Controller Presets -->
+    <string name="load_controller_preset">Indlæs forudindstilling</string>
+    <string name="save_controller_preset">Gem forudindstilling</string>
+    <string name="no_presets_available">Ingen forudindstillinger tilgængelige</string>
+    <string name="factory_preset">Fabrik</string>
+    <string name="preset_will_overwrite">En forudindstilling med dette navn findes allerede og vil blive overskrevet</string>
+    <string name="preset_name_already_exists">En forudindstilling med dette navn findes allerede</string>
+    <string name="save_as_new">Gem som \"%1$s\"</string>
+    <string name="overwrite">Overskriv</string>
+    <string name="rename">Omdøb</string>
+    <string name="rename_preset">Omdøb forudindstilling</string>
+    <string name="reset_to_defaults">Nulstil til standarder</string>
+    <string name="import_bindings">Importér bindinger</string>
+    <string name="import_bindings_failed">Import af bindinger mislykkedes</string>
+    <string name="save_preset_failed">Kunne ikke gemme forudindstilling</string>
+    <string name="export_bindings">Eksportér bindinger</string>
+    <string name="export_bindings_failed">Eksport af bindinger mislykkedes</string>
+    <string name="delete_preset_title">Slet forudindstilling</string>
+    <string name="delete_preset_message">Slet \"%1$s\"? Dette kan ikke fortrydes.</string>
+
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Brug SDL API</string>
     <string name="use_steam_input">Brug Steam Input</string>
@@ -1488,4 +1508,18 @@
     <string name="filter_five_star_device">5-stjernede anmeldelser på enhed</string>
     <string name="filter_five_star_gpu">5-stjernede anmeldelser på GPU</string>
     <string name="filter_proven_gpu">Afprøvet på din GPU</string>
+    <string name="settings_default_controller_preset_title">Standard controller-forudindstilling</string>
+    <string name="settings_default_controller_preset_none">Ingen (brug indbyggede standarder)</string>
+    <string name="settings_default_layout_preset_title">Standard layoutforudindstilling</string>
+    <string name="settings_default_layout_preset_none">Ingen (brug indbyggede standarder)</string>
+
+    <string name="save_layout_preset">Gem layoutforudindstilling</string>
+    <string name="load_layout_preset">Indlæs layoutforudindstilling</string>
+    <string name="layout_preset_saved">Layoutforudindstilling gemt</string>
+    <string name="layout_preset_loaded">Layoutforudindstilling indlæst</string>
+    <string name="save_layout_preset_failed">Kunne ikke gemme layoutforudindstilling</string>
+    <string name="import_layout_preset">Importér layoutforudindstilling</string>
+    <string name="export_layout_preset">Eksportér layoutforudindstilling</string>
+    <string name="import_layout_preset_failed">Kunne ikke importere layoutforudindstilling</string>
+    <string name="export_layout_preset_failed">Kunne ikke eksportere layoutforudindstilling</string>
 </resources>
