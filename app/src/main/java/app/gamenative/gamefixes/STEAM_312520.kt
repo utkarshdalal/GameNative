@@ -26,8 +26,9 @@ val STEAM_Fix_312520: KeyedGameFix = object : KeyedGameFix {
         var changed = false
         val envVars = EnvVars(container.envVars)
         val dllOverrides = envVars.get("WINEDLLOVERRIDES")
-        if (!hasWinHttpOverride(dllOverrides)) {
-            envVars.put("WINEDLLOVERRIDES", appendWinHttpOverride(dllOverrides))
+        val requiredDllOverrides = ensureWinHttpOverride(dllOverrides)
+        if (requiredDllOverrides != dllOverrides) {
+            envVars.put("WINEDLLOVERRIDES", requiredDllOverrides)
             container.envVars = envVars.toString()
             changed = true
         }
@@ -54,13 +55,24 @@ val STEAM_Fix_312520: KeyedGameFix = object : KeyedGameFix {
     }
 }
 
-private fun appendWinHttpOverride(value: String): String =
-    value.trim().takeIf { it.isNotEmpty() }
-        ?.let { "$it;$RAIN_WORLD_WINHTTP_OVERRIDE" }
-        ?: RAIN_WORLD_WINHTTP_OVERRIDE
+private fun ensureWinHttpOverride(value: String): String {
+    val parts = value.trim().split(';', ' ').filter { it.isNotBlank() }
+    val winHttpParts = parts.filter { overridePartContainsWinHttp(it) }
+    if (winHttpParts.size == 1 && winHttpParts.single().equals(RAIN_WORLD_WINHTTP_OVERRIDE, ignoreCase = true)) {
+        return value
+    }
 
-private fun hasWinHttpOverride(value: String): Boolean =
-    value.split(';', ' ')
-        .map { it.substringBefore('=').split(',') }
-        .flatten()
-        .any { it.equals("winhttp", ignoreCase = true) }
+    return (parts.mapNotNull { part ->
+        val dllNames = part.substringBefore('=').split(',')
+        val keptDllNames = dllNames.filterNot { it.equals("winhttp", ignoreCase = true) }
+        when {
+            keptDllNames.size == dllNames.size -> part
+            keptDllNames.isEmpty() -> null
+            part.contains('=') -> keptDllNames.joinToString(",") + part.substring(part.indexOf('='))
+            else -> keptDllNames.joinToString(",")
+        }
+    } + RAIN_WORLD_WINHTTP_OVERRIDE).joinToString(";")
+}
+
+private fun overridePartContainsWinHttp(part: String): Boolean =
+    part.substringBefore('=').split(',').any { it.equals("winhttp", ignoreCase = true) }

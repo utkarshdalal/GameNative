@@ -2531,12 +2531,20 @@ object WorkshopManager {
                         item.publishedFileId.toString() to index
                     }.toMap()
                     val rainWorldNamesByDir = modDirs.associateWith { rainWorldModId(it) ?: it.name }
+                    val orderByRainWorldId = linkedMapOf<String, Int>()
+                    rainWorldNamesByDir.forEach { (dir, id) ->
+                        orderByRainWorldId.putIfAbsent(id, orderByItemId[dir.name] ?: Int.MAX_VALUE)
+                    }
 
                     modDirs.forEach { itemDir ->
                         val linkName = rainWorldNamesByDir[itemDir] ?: itemDir.name
                         enabledRainWorldIds += linkName
                         val linkPath = targetDir.toPath().resolve(linkName)
-                        if (!Files.exists(linkPath)) {
+                        val linkFile = linkPath.toFile()
+                        if (isWorkshopContentSymlink(linkFile, workshopContentDir)) {
+                            Files.deleteIfExists(linkPath)
+                        }
+                        if (!Files.exists(linkPath, LinkOption.NOFOLLOW_LINKS)) {
                             Files.createSymbolicLink(linkPath, itemDir.toPath())
                         }
                     }
@@ -2544,10 +2552,7 @@ object WorkshopManager {
                         gameRootDir,
                         enabledRainWorldIds
                             .distinct()
-                            .sortedBy { id ->
-                                val sourceDir = modDirs.firstOrNull { rainWorldModId(it) == id || it.name == id }
-                                orderByItemId[sourceDir?.name] ?: Int.MAX_VALUE
-                            },
+                            .sortedBy { id -> orderByRainWorldId[id] ?: Int.MAX_VALUE },
                         previousRainWorldWorkshopIds,
                     )
                 } else {
