@@ -136,7 +136,9 @@ public class PulseAudioComponent extends EnvironmentComponent {
 
     public boolean isServerRunning() {
         final String info = execPactlCommand("info").toLowerCase(java.util.Locale.ROOT);
-        return info.contains("server name:") && !info.contains("connection failure");
+        return info.contains("server name:") && (
+                !info.contains("connection failure") || !info.contains("process timeout")
+        );
     }
 
     public void setVolume(float volume) {
