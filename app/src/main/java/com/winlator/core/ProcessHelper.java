@@ -244,6 +244,11 @@ public abstract class ProcessHelper {
             boolean finished = process.waitFor(30, TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();
+                try {
+                    process.waitFor(5, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
                 output.append("Error: Process timeout after 30 seconds");
                 return output.toString().trim();
             }
