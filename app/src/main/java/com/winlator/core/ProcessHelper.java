@@ -241,7 +241,7 @@ public abstract class ProcessHelper {
             stderrDrainer.setDaemon(true);
             stderrDrainer.start();
 
-            boolean finished = process.waitFor(30, TimeUnit.SECONDS);
+            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();
                 try {
@@ -249,7 +249,7 @@ public abstract class ProcessHelper {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-                output.append("Error: Process timeout after 30 seconds");
+                output.append("Error: Process timeout after 5 seconds");
             }
 
             try { stdoutStream.close(); } catch (IOException ignored) {}

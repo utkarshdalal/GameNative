@@ -85,11 +85,9 @@ public class PulseAudioComponent extends EnvironmentComponent {
     public void start() {
         singleThreadExecutor.execute(() -> {
             Timber.tag("PulseAudioComponent").d("Starting...");
-            if (!isServerRunning()) {
-                killAllPulseAudioProcesses();
-                startPulseAudio();
-                isPaused.set(false);
-            }
+            killAllPulseAudioProcesses();
+            startPulseAudio();
+            isPaused.set(false);
         });
     }
 
@@ -106,7 +104,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
     public void pause() {
         singleThreadExecutor.execute(() -> {
             if (!isPaused.get()) {
-                if (!isPauseResumeRunning.get() && isServerRunning()) {
+                if (!isPauseResumeRunning.get()) {
                     isPauseResumeRunning.set(true);
                     Timber.tag("PulseAudioComponent").d("Pausing...");
 
@@ -130,29 +128,17 @@ public class PulseAudioComponent extends EnvironmentComponent {
                     isPauseResumeRunning.set(true);
                     Timber.tag("PulseAudioComponent").d("Resuming...");
 
-                    if (isServerRunning()) {
-                        if (updateSink(false)) {
-                            isPaused.set(false);
-                            Timber.tag("PulseAudioComponent").d("Audio resumed");
-                        } else {
-                            Timber.tag("PulseAudioComponent").d("Failed to resume Audio");
-                        }
+                    if (updateSink(false)) {
+                        isPaused.set(false);
+                        Timber.tag("PulseAudioComponent").d("Audio resumed");
                     } else {
                         Timber.tag("PulseAudioComponent").d("Failed to resume Audio");
-                        start();
                     }
 
                     isPauseResumeRunning.set(false);
                 }
             }
         });
-    }
-
-    public boolean isServerRunning() {
-        final String info = execPactlCommand("info").toLowerCase(java.util.Locale.ROOT);
-        return info.contains("server name:") && (
-                !info.contains("connection failure") && !info.contains("process timeout")
-        );
     }
 
     public void setVolume(float volume) {
@@ -236,9 +222,9 @@ public class PulseAudioComponent extends EnvironmentComponent {
 
     private boolean updateSink(boolean suspend) {
         if (!suspend) {
-            return !execPactlCommand("suspend-sink " + SINK_NAME + " false").contains("process timeout");
+            return !execPactlCommand("suspend-sink " + SINK_NAME + " false").toLowerCase().contains("process timeout");
         } else {
-            return !execPactlCommand("suspend-sink " + SINK_NAME + " true").contains("process timeout");
+            return !execPactlCommand("suspend-sink " + SINK_NAME + " true").toLowerCase().contains("process timeout");
         }
     }
 
