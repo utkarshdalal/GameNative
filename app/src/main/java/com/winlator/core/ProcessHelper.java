@@ -250,7 +250,6 @@ public abstract class ProcessHelper {
                     Thread.currentThread().interrupt();
                 }
                 output.append("Error: Process timeout after 30 seconds");
-                return output.toString().trim();
             }
 
             try { stdoutStream.close(); } catch (IOException ignored) {}
