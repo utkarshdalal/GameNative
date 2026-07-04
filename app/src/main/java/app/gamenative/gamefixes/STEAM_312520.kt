@@ -36,7 +36,7 @@ val STEAM_Fix_312520: KeyedGameFix = object : KeyedGameFix {
         val userRegFile = File(container.rootDir, ".wine/user.reg")
         if (!userRegFile.isFile) {
             userRegFile.parentFile?.mkdirs()
-            userRegFile.writeText("REGEDIT4\n")
+            userRegFile.writeText("WINE REGISTRY Version 2\n\n")
         }
         WineRegistryEditor(userRegFile).use { editor ->
             editor.setCreateKeyIfNotExist(true)
