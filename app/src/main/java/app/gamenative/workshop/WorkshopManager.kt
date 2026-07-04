@@ -71,6 +71,9 @@ import java.util.concurrent.atomic.AtomicInteger
 object WorkshopManager {
 
     private const val TAG = "WorkshopManager"
+    private const val RAIN_WORLD_APP_ID = 312520
+    private const val RAIN_WORLD_MODS_PATH = "RainWorld_Data/StreamingAssets/mods"
+    private const val RAIN_WORLD_ENABLED_MODS_PATH = "RainWorld_Data/StreamingAssets/enabledMods.txt"
     private const val MAX_PAGES = 50
     private const val PAGE_SIZE = 100
     private var workshopTypesPatched = false
@@ -1329,6 +1332,9 @@ object WorkshopManager {
         // Clean up installed mod entries (symlinks/copies) in the game tree
         // before deleting the content dir, so isOurSymlink checks still work.
         if (gameRootDir != null) {
+            if (gameId == RAIN_WORLD_APP_ID) {
+                cleanupRainWorldWorkshopMods(gameRootDir, workshopDir)
+            }
             cleanupInstalledModEntries(gameRootDir, workshopDir, winePrefix, gameName)
         }
 
@@ -2411,7 +2417,12 @@ object WorkshopManager {
         // When the user has set a custom mod folder, symlink all workshop
         // items into that directory. mods.json is still populated for games
         // that use ISteamUGC. All automatic detection is bypassed.
-        val hasManualModPath = workshopModPath.isNotEmpty()
+        val effectiveWorkshopModPath = if (appId == RAIN_WORLD_APP_ID) {
+            File(gameRootDir, RAIN_WORLD_MODS_PATH).absolutePath
+        } else {
+            workshopModPath
+        }
+        val hasManualModPath = effectiveWorkshopModPath.isNotEmpty()
         val ignoreManualModPath =
             compatibilityOverride?.ignoreManualModPath == true || useMetadataOnly
         val useManualModPath = hasManualModPath && !ignoreManualModPath
@@ -2421,7 +2432,7 @@ object WorkshopManager {
             )
         }
         if (useManualModPath) {
-            val targetDir = File(workshopModPath)
+            val targetDir = File(effectiveWorkshopModPath)
 
             // ── Clean ALL workshop symlinks from every possible location ─────
             // When switching from one manual path to another (e.g. LocalLow→Local),
@@ -2489,6 +2500,11 @@ object WorkshopManager {
             // ── Create fresh symlinks in the chosen target ──────────────────
             try {
                 if (!targetDir.isDirectory) targetDir.mkdirs()
+                val previousRainWorldWorkshopIds = if (appId == RAIN_WORLD_APP_ID) {
+                    workshopSymlinkNames(targetDir, workshopContentDir)
+                } else {
+                    emptySet()
+                }
                 // Clean the target itself (in case of stale entries)
                 cleanWorkshopSymlinksFrom(targetDir).also {
                     // The helper skips targetCanonical, so clean it explicitly
@@ -2509,11 +2525,37 @@ object WorkshopManager {
                         }
                     }
                 }
-                // Create fresh symlinks
-                modDirs.forEach { itemDir ->
-                    val linkPath = targetDir.toPath().resolve(itemDir.name)
-                    if (!Files.exists(linkPath)) {
-                        Files.createSymbolicLink(linkPath, itemDir.toPath())
+                if (appId == RAIN_WORLD_APP_ID) {
+                    val enabledRainWorldIds = mutableListOf<String>()
+                    val orderByItemId = items.mapIndexed { index, item ->
+                        item.publishedFileId.toString() to index
+                    }.toMap()
+                    val rainWorldNamesByDir = modDirs.associateWith { rainWorldModId(it) ?: it.name }
+
+                    modDirs.forEach { itemDir ->
+                        val linkName = rainWorldNamesByDir[itemDir] ?: itemDir.name
+                        enabledRainWorldIds += linkName
+                        val linkPath = targetDir.toPath().resolve(linkName)
+                        if (!Files.exists(linkPath)) {
+                            Files.createSymbolicLink(linkPath, itemDir.toPath())
+                        }
+                    }
+                    syncRainWorldEnabledMods(
+                        gameRootDir,
+                        enabledRainWorldIds
+                            .distinct()
+                            .sortedBy { id ->
+                                val sourceDir = modDirs.firstOrNull { rainWorldModId(it) == id || it.name == id }
+                                orderByItemId[sourceDir?.name] ?: Int.MAX_VALUE
+                            },
+                        previousRainWorldWorkshopIds,
+                    )
+                } else {
+                    modDirs.forEach { itemDir ->
+                        val linkPath = targetDir.toPath().resolve(itemDir.name)
+                        if (!Files.exists(linkPath)) {
+                            Files.createSymbolicLink(linkPath, itemDir.toPath())
+                        }
                     }
                 }
                 Timber.tag(TAG).i(
@@ -3195,7 +3237,7 @@ object WorkshopManager {
         // When the user has a manual mod path inside the game tree, skip
         // cleaning symlinks in that directory — they were just created above.
         val manualTargetCanonical = if (useManualModPath) {
-            runCatching { File(workshopModPath).canonicalPath }.getOrElse { workshopModPath }
+            runCatching { File(effectiveWorkshopModPath).canonicalPath }.getOrElse { effectiveWorkshopModPath }
         } else ""
         gameRootDir.walkTopDown().maxDepth(6).forEach { entry ->
             if (!Files.isSymbolicLink(entry.toPath())) return@forEach
@@ -3774,6 +3816,70 @@ object WorkshopManager {
             compatibilityOverride = compatibilityOverride,
             bionicSteam = bionicSteam,
         )
+    }
+
+    private fun rainWorldModId(itemDir: File): String? =
+        runCatching {
+            JSONObject(File(itemDir, "modinfo.json").readText(Charsets.UTF_8).trimStart('\uFEFF'))
+                .optString("id")
+                .trim()
+                .takeIf { it.isNotEmpty() }
+        }.getOrNull()
+
+    private fun cleanupRainWorldWorkshopMods(gameRootDir: File, workshopContentDir: File) {
+        val modsDir = File(gameRootDir, RAIN_WORLD_MODS_PATH)
+        val managedIds = workshopSymlinkNames(modsDir, workshopContentDir)
+        modsDir.listFiles()?.forEach { entry ->
+            if (entry.name in managedIds) {
+                runCatching { Files.deleteIfExists(entry.toPath()) }
+            }
+        }
+        syncRainWorldEnabledMods(gameRootDir, emptyList(), managedIds)
+    }
+
+    private fun syncRainWorldEnabledMods(
+        gameRootDir: File,
+        activeWorkshopIds: List<String>,
+        previousWorkshopIds: Set<String>,
+    ) {
+        val enabledModsFile = File(gameRootDir, RAIN_WORLD_ENABLED_MODS_PATH)
+        val activeIdSet = activeWorkshopIds.toSet()
+        val preservedIds = if (enabledModsFile.isFile) {
+            enabledModsFile.readLines()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() && it !in previousWorkshopIds && it !in activeIdSet }
+        } else {
+            emptyList()
+        }
+        val nextIds = (preservedIds + activeWorkshopIds).distinct()
+        if (nextIds.isEmpty()) {
+            enabledModsFile.delete()
+        } else {
+            enabledModsFile.parentFile?.mkdirs()
+            enabledModsFile.writeText(nextIds.joinToString("\n", postfix = "\n"))
+        }
+    }
+
+    private fun workshopSymlinkNames(targetDir: File, workshopContentDir: File): Set<String> =
+        targetDir.listFiles()
+            ?.filter { isWorkshopContentSymlink(it, workshopContentDir) }
+            ?.mapTo(mutableSetOf()) { it.name }
+            ?: emptySet()
+
+    private fun isWorkshopContentSymlink(entry: File, workshopContentDir: File): Boolean {
+        if (!Files.isSymbolicLink(entry.toPath())) return false
+        return runCatching {
+            val linkTarget = Files.readSymbolicLink(entry.toPath())
+            val resolved = if (linkTarget.isAbsolute) {
+                linkTarget
+            } else {
+                entry.toPath().parent.resolve(linkTarget)
+            }
+            val resolvedPath = runCatching { resolved.toRealPath().toString() }
+                .getOrElse { resolved.normalize().toAbsolutePath().toString() }
+            resolvedPath.contains("workshop/content/") ||
+                resolvedPath.startsWith(workshopContentDir.absolutePath)
+        }.getOrDefault(false)
     }
 
     /**
