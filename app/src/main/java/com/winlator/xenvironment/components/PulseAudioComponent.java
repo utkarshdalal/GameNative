@@ -100,6 +100,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
             isPaused.set(false);
             Timber.tag("PulseAudioComponent").d("Stopped PulseAudio server");
         });
+        singleThreadExecutor.shutdown();
     }
 
     public void pause() {
