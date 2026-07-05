@@ -3486,14 +3486,16 @@ private fun setupXEnvironment(
         Timber.tag("achievements").d("Setting up achievements for Steam appID=$appId...")
         val gameIdInt = ContainerUtils.extractGameIdFromContainerId(appId)
         val configDirectory = gameIdInt?.let { SteamService.findSteamSettingsDir(context, it) }
-        val achAppId = SteamService.cachedAchievementsAppId
+        var cachedAchAppId = SteamService.cachedAchievementsAppId
 
         if (gameIdInt != null && configDirectory != null) {
             // Re-generate achievements (it should keep the already existing ones if they're there).
-            if (achAppId != gameIdInt && SteamService.isLoggedIn) {
+            if (cachedAchAppId != gameIdInt && SteamService.isLoggedIn) {
                 try {
                     runBlocking {
                         SteamService.generateAchievements(gameIdInt, configDirectory)
+                        // Update reference to new value set by generateAchievements
+                        cachedAchAppId = SteamService.cachedAchievementsAppId
                     }
                 } catch (e: Exception) {
                     Timber.tag("achievements").e(e, "Failed to refresh achievement cache for appId=$gameIdInt")
@@ -3502,7 +3504,7 @@ private fun setupXEnvironment(
 
             val watchDirs = SteamService.getGseSaveDirs(context, gameIdInt)
             val cachedAchievements = SteamService.cachedAchievements
-                .takeIf { achAppId == gameIdInt }
+                .takeIf { cachedAchAppId == gameIdInt }
             val displayNameMap = cachedAchievements?.associate { ach ->
                 ach.name to (ach.displayName?.get(container.language)
                     ?: ach.displayName?.get("english")
@@ -3510,7 +3512,7 @@ private fun setupXEnvironment(
             } ?: emptyMap()
             val iconUrlMap = SteamService.cachedAchievements?.associate { ach ->
                 ach.name to ach.icon?.let {
-                    "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$gameIdInt/$it"
+                    "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$cachedAchAppId/$it"
                 }
             } ?: emptyMap()
             PluviaApp.achievementWatcher = AchievementWatcher(
