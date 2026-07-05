@@ -3504,6 +3504,7 @@ private fun setupXEnvironment(
                 displayNameMap = displayNameMap,
                 iconUrlMap = iconUrlMap,
                 configDirectory = configDirectory,
+                context = context,
             ).also { it.start() }
         }
     }
