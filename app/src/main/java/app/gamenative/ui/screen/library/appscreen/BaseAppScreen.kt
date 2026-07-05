@@ -893,10 +893,8 @@ abstract class BaseAppScreen {
         val isInstalled = isInstalled(context, libraryItem)
         val menuOptions = mutableListOf<AppMenuOption>()
 
-        val isGamenativeWrapper = remember(libraryItem.appId) {
-            runCatching { loadContainerData(context, libraryItem).graphicsDriver }
-                .getOrNull()?.equals("wrapper-gamenative", ignoreCase = true) == true
-        }
+        val isGamenativeWrapper = runCatching { loadContainerData(context, libraryItem).graphicsDriver }
+            .getOrNull()?.equals("wrapper-gamenative", ignoreCase = true) == true
 
         // Always available: Edit Container
         menuOptions.add(getEditContainerOption(context, libraryItem, onEditContainer))

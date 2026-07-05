@@ -456,7 +456,7 @@ class MainActivity : ComponentActivity() {
         // Library UI is no longer visible (e.g. a game is now in the foreground) —
         // drop the cover-art bitmap cache so its GPU memory is reclaimed for the game.
         // Not on a config change (rotation), where we want to keep it warm.
-        if (!isChangingConfigurations) {
+        if (!isChangingConfigurations && hasReadyGameLifecycleState("stop")) {
             releaseImageCaches()
         }
 
