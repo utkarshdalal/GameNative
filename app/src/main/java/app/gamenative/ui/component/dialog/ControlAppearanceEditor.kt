@@ -484,12 +484,13 @@ private fun StickPreview(normalColor: Color, activeColor: Color, active: Boolean
 @Composable
 private fun TrackpadPreview(normalColor: Color, activeColor: Color, active: Boolean, strokeScale: Float) {
     Canvas(modifier = Modifier.size(72.dp)) {
+        val drawColor = if (active) activeColor else normalColor
         val strokeWidth = 2.dp.toPx() * strokeScale
         val stroke = Stroke(width = strokeWidth)
         val halfStroke = strokeWidth * 0.5f
         val corner = CornerRadius(size.height * 0.15f, size.height * 0.15f)
         drawRoundRect(
-            color = normalColor,
+            color = drawColor,
             topLeft = Offset(halfStroke, halfStroke),
             size = Size(size.width - strokeWidth, size.height - strokeWidth),
             cornerRadius = corner,
@@ -497,7 +498,7 @@ private fun TrackpadPreview(normalColor: Color, activeColor: Color, active: Bool
         )
         val inset = strokeWidth * 4f
         drawRoundRect(
-            color = if (active) activeColor else normalColor,
+            color = drawColor,
             topLeft = Offset(inset, inset),
             size = Size(size.width - inset * 2f, size.height - inset * 2f),
             cornerRadius = CornerRadius(size.height * 0.08f, size.height * 0.08f),
