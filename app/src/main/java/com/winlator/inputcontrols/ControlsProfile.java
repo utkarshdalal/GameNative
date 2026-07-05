@@ -282,7 +282,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     element.setButtonColor(ControlElement.parseRgbColor(elementJSONObject.get("buttonColor"), ControlElement.DEFAULT_BUTTON_COLOR));
                 }
                 if (elementJSONObject.has("buttonActiveColor")) {
-                    element.setButtonActiveColor(ControlElement.parseRgbColor(elementJSONObject.get("buttonActiveColor"), ControlElement.DEFAULT_BUTTON_ACTIVE_COLOR));
+                    element.setButtonActiveColor(ControlElement.parseRgbColor(elementJSONObject.get("buttonActiveColor"), ControlElement.DEFAULT_BUTTON_ACTIVE_COLOR), true);
                 }
                 if (elementJSONObject.has("buttonOpacity")) element.setButtonOpacity((float)elementJSONObject.getDouble("buttonOpacity"));
                 if (elementJSONObject.has("buttonStrokeScale")) element.setButtonStrokeScale((float)elementJSONObject.getDouble("buttonStrokeScale"));

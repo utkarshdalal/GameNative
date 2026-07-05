@@ -33,13 +33,14 @@ import com.winlator.widget.InputControlsView
 internal data class ControlAppearance(
     val color: Int,
     val activeColor: Int,
+    val activeColorCustom: Boolean,
     val opacity: Float,
     val strokeScale: Float,
     val shooterLookThrough: Boolean
 ) {
     fun applyTo(element: ControlElement) {
         element.setButtonColor(color)
-        element.setButtonActiveColor(activeColor)
+        element.setButtonActiveColor(activeColor, activeColorCustom)
         element.setButtonOpacity(opacity)
         element.setButtonStrokeScale(strokeScale)
         element.setShooterLookThrough(shooterLookThrough)
@@ -49,6 +50,7 @@ internal data class ControlAppearance(
         fun capture(element: ControlElement) = ControlAppearance(
             color = element.buttonColor,
             activeColor = element.buttonActiveColor,
+            activeColorCustom = element.hasCustomButtonActiveColor(),
             opacity = element.buttonOpacity,
             strokeScale = element.buttonStrokeScale,
             shooterLookThrough = element.isShooterLookThrough

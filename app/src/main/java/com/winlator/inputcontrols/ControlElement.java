@@ -98,6 +98,7 @@ public class ControlElement {
     private float shooterJoystickSize = 1.0f;
     private int buttonColor = DEFAULT_BUTTON_COLOR;
     private int buttonActiveColor = DEFAULT_BUTTON_ACTIVE_COLOR;
+    private boolean buttonActiveColorCustom = false;
     private float buttonOpacity = INHERIT_BUTTON_OPACITY;
     private float buttonStrokeScale = DEFAULT_BUTTON_STROKE_SCALE;
     private boolean shooterLookThrough = true;
@@ -280,7 +281,16 @@ public class ControlElement {
     }
 
     public void setButtonActiveColor(int buttonActiveColor) {
+        setButtonActiveColor(buttonActiveColor, true);
+    }
+
+    public void setButtonActiveColor(int buttonActiveColor, boolean custom) {
         this.buttonActiveColor = buttonActiveColor & 0x00ffffff;
+        this.buttonActiveColorCustom = custom;
+    }
+
+    public boolean hasCustomButtonActiveColor() {
+        return buttonActiveColorCustom;
     }
 
     public float getButtonOpacity() {
@@ -315,6 +325,7 @@ public class ControlElement {
     public void copyButtonAppearanceFrom(ControlElement element) {
         buttonColor = element.buttonColor;
         buttonActiveColor = element.buttonActiveColor;
+        buttonActiveColorCustom = element.buttonActiveColorCustom;
         buttonOpacity = element.buttonOpacity;
         buttonStrokeScale = element.buttonStrokeScale;
         shooterLookThrough = element.shooterLookThrough;
@@ -509,9 +520,15 @@ public class ControlElement {
     }
 
     private int getEditorSelectionDrawColor() {
-        int rgb = buttonActiveColor != DEFAULT_BUTTON_ACTIVE_COLOR ? buttonActiveColor : inputControlsView.getSecondaryColor();
+        int rgb = buttonActiveColorCustom ? buttonActiveColor : inputControlsView.getSecondaryColor();
         int alpha = (int)(getEffectiveButtonOpacity(inputControlsView.getOverlayOpacity()) * 255);
         return ColorUtils.setAlphaComponent(0xff000000 | (rgb & 0x00ffffff), alpha);
+    }
+
+    private int getRuntimeSelectedDrawColor() {
+        if (buttonActiveColorCustom) return getAppearanceDrawColor(true);
+        int alpha = (int)(getEffectiveButtonOpacity(inputControlsView.getOverlayOpacity()) * 255);
+        return ColorUtils.setAlphaComponent(inputControlsView.getSecondaryColor(), alpha);
     }
 
     private static void setDPadDirectionPath(Path path, byte direction, Rect boundingBox, float cx, float cy, float offsetX, float offsetY, float start) {
@@ -687,7 +704,9 @@ public class ControlElement {
         boolean editSelected = selected && inputControlsView.isEditMode();
         int normalColor = getAppearanceDrawColor(false);
         int activeColor = editSelected ? getEditorSelectionDrawColor() : getAppearanceDrawColor(true);
+        if (selected && !editSelected) activeColor = getRuntimeSelectedDrawColor();
         int primaryColor = active ? activeColor : normalColor;
+        int contentColor = selected && !buttonActiveColorCustom ? normalColor : primaryColor;
 
         paint.setColor(primaryColor);
         paint.setStyle(Paint.Style.STROKE);
@@ -720,14 +739,14 @@ public class ControlElement {
                 }
 
                 if (iconId > 0) {
-                    drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId, primaryColor);
+                    drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId, contentColor);
                 }
                 else {
                     String text = getDisplayText();
                     paint.setTextSize(Math.min(getTextSizeForWidth(paint, text, boundingBox.width() - strokeWidth * 2), snappingSize * 2 * scale));
                     paint.setTextAlign(Paint.Align.CENTER);
                     paint.setStyle(Paint.Style.FILL);
-                    paint.setColor(primaryColor);
+                    paint.setColor(contentColor);
                     canvas.drawText(text, x, (y - ((paint.descent() + paint.ascent()) * 0.5f)), paint);
                 }
                 break;
@@ -926,7 +945,7 @@ public class ControlElement {
 
                 short thumbRadius = (short) (snappingSize * 3.5f * scale);
                 paint.setStyle(Paint.Style.FILL);
-                paint.setColor(ColorUtils.setAlphaComponent(primaryColor, Math.min(50, primaryColor >>> 24)));
+                paint.setColor(ColorUtils.setAlphaComponent(contentColor, Math.min(50, contentColor >>> 24)));
                 canvas.drawCircle(thumbstickX, thumbstickY, thumbRadius, paint);
 
                 paint.setStyle(Paint.Style.STROKE);
@@ -964,13 +983,13 @@ public class ControlElement {
 
                 // Draw icon or fallback text
                 if (iconId > 0) {
-                    drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId, primaryColor);
+                    drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId, contentColor);
                 } else {
                     String displayText = (text != null && !text.isEmpty()) ? text : "DJ";
                     paint.setTextSize(Math.min(getTextSizeForWidth(paint, displayText, boundingBox.width() - strokeWidth * 2), snappingSize * 2 * scale));
                     paint.setTextAlign(Paint.Align.CENTER);
                     paint.setStyle(Paint.Style.FILL);
-                    paint.setColor(primaryColor);
+                    paint.setColor(contentColor);
                     canvas.drawText(displayText, cx, (cy - ((paint.descent() + paint.ascent()) * 0.5f)), paint);
                 }
                 break;
@@ -1022,7 +1041,7 @@ public class ControlElement {
             }
 
             if (buttonColor != DEFAULT_BUTTON_COLOR) elementJSONObject.put("buttonColor", formatRgbColor(buttonColor));
-            if (buttonActiveColor != DEFAULT_BUTTON_ACTIVE_COLOR) elementJSONObject.put("buttonActiveColor", formatRgbColor(buttonActiveColor));
+            if (buttonActiveColorCustom || buttonActiveColor != DEFAULT_BUTTON_ACTIVE_COLOR) elementJSONObject.put("buttonActiveColor", formatRgbColor(buttonActiveColor));
             if (buttonOpacity >= 0) elementJSONObject.put("buttonOpacity", (double)buttonOpacity);
             if (buttonStrokeScale != DEFAULT_BUTTON_STROKE_SCALE) elementJSONObject.put("buttonStrokeScale", (double)buttonStrokeScale);
             if (type == Type.BUTTON && !shooterLookThrough) elementJSONObject.put("shooterLookThrough", false);

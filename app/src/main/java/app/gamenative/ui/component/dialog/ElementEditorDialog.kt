@@ -188,6 +188,7 @@ fun ElementEditorDialog(
     var currentButtonColor by remember { mutableIntStateOf(element.buttonColor) }
     var currentButtonColorText by remember { mutableStateOf(rgbToHex(element.buttonColor)) }
     var currentButtonActiveColor by remember { mutableIntStateOf(element.buttonActiveColor) }
+    var currentButtonActiveColorCustom by remember { mutableStateOf(element.hasCustomButtonActiveColor()) }
     var currentButtonActiveColorText by remember { mutableStateOf(rgbToHex(element.buttonActiveColor)) }
     var currentButtonOpacityInherited by remember { mutableStateOf(element.buttonOpacity < 0f) }
     var currentButtonOpacity by remember {
@@ -208,7 +209,7 @@ fun ElementEditorDialog(
 
     fun applyCurrentControlAppearance() {
         element.setButtonColor(currentButtonColor)
-        element.setButtonActiveColor(currentButtonActiveColor)
+        element.setButtonActiveColor(currentButtonActiveColor, currentButtonActiveColorCustom)
         element.setButtonOpacity(
             if (currentButtonOpacityInherited) ControlElement.INHERIT_BUTTON_OPACITY else currentButtonOpacity
         )
@@ -219,6 +220,7 @@ fun ElementEditorDialog(
     fun currentAppearance() = ControlAppearance(
         color = currentButtonColor,
         activeColor = currentButtonActiveColor,
+        activeColorCustom = currentButtonActiveColorCustom,
         opacity = if (currentButtonOpacityInherited) ControlElement.INHERIT_BUTTON_OPACITY else currentButtonOpacity,
         strokeScale = currentButtonStrokeScale,
         shooterLookThrough = currentShooterLookThrough
@@ -838,11 +840,13 @@ fun ElementEditorDialog(
                             currentButtonActiveColorText = value.uppercase(Locale.US)
                             parseRgbHex(value)?.let {
                                 currentButtonActiveColor = it
+                                currentButtonActiveColorCustom = true
                                 hasUnsavedChanges = true
                             }
                         },
                         onPresetSelected = {
                             currentButtonActiveColor = it
+                            currentButtonActiveColorCustom = true
                             currentButtonActiveColorText = rgbToHex(it)
                             hasUnsavedChanges = true
                         }
@@ -942,6 +946,7 @@ fun ElementEditorDialog(
                                     currentButtonColor = appearance.color
                                     currentButtonColorText = rgbToHex(appearance.color)
                                     currentButtonActiveColor = appearance.activeColor
+                                    currentButtonActiveColorCustom = appearance.activeColorCustom
                                     currentButtonActiveColorText = rgbToHex(appearance.activeColor)
                                     currentButtonOpacityInherited = appearance.opacity < 0f
                                     currentButtonOpacity = if (appearance.opacity >= 0f) appearance.opacity else view.overlayOpacity
@@ -976,6 +981,7 @@ fun ElementEditorDialog(
                                 currentButtonColor = ControlElement.DEFAULT_BUTTON_COLOR
                                 currentButtonColorText = rgbToHex(ControlElement.DEFAULT_BUTTON_COLOR)
                                 currentButtonActiveColor = ControlElement.DEFAULT_BUTTON_ACTIVE_COLOR
+                                currentButtonActiveColorCustom = false
                                 currentButtonActiveColorText = rgbToHex(ControlElement.DEFAULT_BUTTON_ACTIVE_COLOR)
                                 currentButtonOpacityInherited = true
                                 currentButtonOpacity = view.overlayOpacity
