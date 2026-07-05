@@ -5192,18 +5192,23 @@ private suspend fun extractGraphicsDriverFiles(
         val disablePresentWait = graphicsDriverConfig.get("disablePresentWait")
         envVars.put("WRAPPER_DISABLE_PRESENT_WAIT", disablePresentWait)
 
+        val isWrapperGamenative = graphicsDriver.equals("wrapper-gamenative", ignoreCase = true)
+        val vendorId = GPUInformation.getVendorID(null, null)
+        val isAdreno = vendorId == 0x5143
+        val isXclipse = vendorId == 0x144D
+        val excludeBcnCompute = isAdreno || (isWrapperGamenative && isXclipse)
         val bcnEmulation = graphicsDriverConfig.get("bcnEmulation")
         val bcnEmulationType = graphicsDriverConfig.get("bcnEmulationType")
         when (bcnEmulation) {
             "auto" -> {
-                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
+                if (bcnEmulationType.equals("compute") && !excludeBcnCompute) {
                     envVars.put("ENABLE_BCN_COMPUTE", "1");
                     envVars.put("BCN_COMPUTE_AUTO", "1");
                 }
                 envVars.put("WRAPPER_EMULATE_BCN", "3");
             }
             "full" -> {
-                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
+                if (bcnEmulationType.equals("compute") && !excludeBcnCompute) {
                     envVars.put("ENABLE_BCN_COMPUTE", "1");
                     envVars.put("BCN_COMPUTE_AUTO", "0");
                 }
