@@ -679,7 +679,8 @@ public class ControlElement {
             path.moveTo(left + radius, top);
             path.lineTo(right - radius, top);
             path.quadTo(right, top, right, top + radius);
-            path.moveTo(left, top + radius);
+            path.moveTo(left + radius, top);
+            path.quadTo(left, top, left, top + radius);
             path.lineTo(left, Math.max(top + radius, stop));
             path.moveTo(right, top + radius);
             path.lineTo(right, Math.max(top + radius, stop));

@@ -372,7 +372,8 @@ private fun RangeButtonPreview(
                         outlinePath.moveTo(left + radius, top)
                         outlinePath.lineTo(right - radius, top)
                         outlinePath.quadraticTo(right, top, right, top + radius)
-                        outlinePath.moveTo(left, top + radius)
+                        outlinePath.moveTo(left + radius, top)
+                        outlinePath.quadraticTo(left, top, left, top + radius)
                         outlinePath.lineTo(left, maxOf(top + radius, activeTop))
                         outlinePath.moveTo(right, top + radius)
                         outlinePath.lineTo(right, maxOf(top + radius, activeTop))
@@ -482,11 +483,18 @@ private fun StickPreview(normalColor: Color, activeColor: Color, active: Boolean
 
 @Composable
 private fun TrackpadPreview(normalColor: Color, activeColor: Color, active: Boolean, strokeScale: Float) {
-    Canvas(modifier = Modifier.height(56.dp).fillMaxWidth()) {
+    Canvas(modifier = Modifier.size(72.dp)) {
         val strokeWidth = 2.dp.toPx() * strokeScale
         val stroke = Stroke(width = strokeWidth)
+        val halfStroke = strokeWidth * 0.5f
         val corner = CornerRadius(size.height * 0.15f, size.height * 0.15f)
-        drawRoundRect(normalColor, size = size, cornerRadius = corner, style = stroke)
+        drawRoundRect(
+            color = normalColor,
+            topLeft = Offset(halfStroke, halfStroke),
+            size = Size(size.width - strokeWidth, size.height - strokeWidth),
+            cornerRadius = corner,
+            style = stroke
+        )
         val inset = strokeWidth * 4f
         drawRoundRect(
             color = if (active) activeColor else normalColor,
