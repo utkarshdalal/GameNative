@@ -603,7 +603,7 @@ internal fun showCopyAppearanceDialog(
             element.text
         } else {
             val binding = element.getBindingAt(0)
-            if (binding != null && binding != com.winlator.inputcontrols.Binding.NONE) binding.toString().take(15) else "No Binding"
+            if (binding != null && binding != com.winlator.inputcontrols.Binding.NONE) binding.toString().take(15) else context.getString(R.string.binding_none)
         }
         "${element.type.name.replace("_", " ")} - ${rgbToHex(element.buttonColor)} - $label"
     }.toTypedArray()

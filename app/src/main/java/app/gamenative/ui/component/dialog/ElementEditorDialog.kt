@@ -1089,7 +1089,7 @@ fun ElementEditorDialog(
                 TextButton(onClick = {
                     // Discard changes and close
                     element.setScale(originalScale)
-                    element.type = originalType
+                    element.setTypeWithoutReset(originalType)
                     element.shape = originalShape
                     // Restore original range button properties before bindings; setBindingCount resets bindings.
                     if (originalType == ControlElement.Type.RANGE_BUTTON) {
@@ -1302,7 +1302,7 @@ private fun showCopySizeDialog(
             if (binding != null && binding != com.winlator.inputcontrols.Binding.NONE) {
                 binding.toString().take(15)
             } else {
-                "No Binding"
+                context.getString(R.string.binding_none)
             }
         }
 
