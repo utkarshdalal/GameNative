@@ -1616,4 +1616,14 @@
     <string name="filter_five_star_device">Recenzje 5-gwiazdkowe na urządzeniu</string>
     <string name="filter_five_star_gpu">Recenzje 5-gwiazdkowe na GPU</string>
     <string name="filter_proven_gpu">Sprawdzone na twoim GPU</string>
+    <string name="transcoder">Transkoder</string>
+    <string name="wrapper_quality">Jakość</string>
+    <string name="transcoder_cpu">CPU (domyślnie)</string>
+    <string name="transcoder_gpu">GPU (eksperymentalne, może być szybsze)</string>
+    <string name="wrapper_quality_low">Niska (łagodniejsze obrazy, mniej pamięci RAM)</string>
+    <string name="wrapper_quality_high">Wysoka (ostrzejsze obrazy, więcej pamięci RAM)</string>
+    <string name="option_play_with_diagnostics">Uruchomienie diagnostyczne</string>
+    <string name="option_share_diagnostics">Udostępnij diagnostykę</string>
+    <string name="diagnostics_share_title">Udostępnij dziennik diagnostyki</string>
+    <string name="diagnostics_share_none">Brak dziennika diagnostyki. Najpierw użyj \"Uruchomienie diagnostyczne\".</string>
 </resources>

@@ -1575,4 +1575,14 @@
     <string name="filter_five_star_device">5つ星レビュー（デバイス）</string>
     <string name="filter_five_star_gpu">5つ星レビュー（GPU）</string>
     <string name="filter_proven_gpu">お使いのGPUで実証済み</string>
+    <string name="transcoder">トランスコーダー</string>
+    <string name="wrapper_quality">画質</string>
+    <string name="transcoder_cpu">CPU（デフォルト）</string>
+    <string name="transcoder_gpu">GPU（実験的、高速な場合あり）</string>
+    <string name="wrapper_quality_low">低（ソフトな画像、RAM 使用量が少ない）</string>
+    <string name="wrapper_quality_high">高（より鮮明な画像、RAM 使用量が多い）</string>
+    <string name="option_play_with_diagnostics">診断実行</string>
+    <string name="option_share_diagnostics">診断を共有</string>
+    <string name="diagnostics_share_title">診断ログを共有</string>
+    <string name="diagnostics_share_none">診断ログがまだありません。先に「診断実行」を使用してください。</string>
 </resources>

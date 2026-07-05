@@ -90,6 +90,7 @@ internal fun GridViewCard(
     gameStats: GameCardStats?,
     showFocusGlow: Boolean,
     context: Context,
+    animateStats: Boolean = true,
 ) {
     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) 2f / 3f else 460f / 215f
     val isCapsule = paneType == PaneType.GRID_CAPSULE
@@ -164,13 +165,19 @@ internal fun GridViewCard(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 // Game image (primary + optional fallback for Steam header/hero)
-                val imageUrls by produceState(
-                    initialValue = GridImageUrls("", ""),
-                    key1 = appInfo.appId,
-                    key2 = paneType,
-                    key3 = imageRefreshCounter,
-                ) {
-                    value = withContext(Dispatchers.IO) {
+                val imageUrls = if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                    produceState(
+                        initialValue = GridImageUrls("", ""),
+                        key1 = appInfo.appId,
+                        key2 = paneType,
+                        key3 = imageRefreshCounter,
+                    ) {
+                        value = withContext(Dispatchers.IO) {
+                            getGridImageUrl(context, appInfo, paneType)
+                        }
+                    }.value
+                } else {
+                    remember(appInfo.appId, paneType, imageRefreshCounter) {
                         getGridImageUrl(context, appInfo, paneType)
                     }
                 }
@@ -285,6 +292,7 @@ internal fun GridViewCard(
                         stats = gameStats,
                         tint = Color.White.copy(alpha = 0.55f),
                         onDark = true,
+                        animate = animateStats,
                     )
                 }
 

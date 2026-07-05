@@ -1488,4 +1488,14 @@
     <string name="filter_five_star_device">Avaliações 5 estrelas no dispositivo</string>
     <string name="filter_five_star_gpu">Avaliações 5 estrelas na GPU</string>
     <string name="filter_proven_gpu">Comprovado na sua GPU</string>
+    <string name="transcoder">Transcodificador</string>
+    <string name="wrapper_quality">Qualidade</string>
+    <string name="transcoder_cpu">CPU (padrão)</string>
+    <string name="transcoder_gpu">GPU (experimental, pode ser mais rápido)</string>
+    <string name="wrapper_quality_low">Baixa (imagens mais suaves, usa menos RAM)</string>
+    <string name="wrapper_quality_high">Alta (imagens mais nítidas, usa mais RAM)</string>
+    <string name="option_play_with_diagnostics">Execução de diagnóstico</string>
+    <string name="option_share_diagnostics">Compartilhar diagnóstico</string>
+    <string name="diagnostics_share_title">Compartilhar registro de diagnóstico</string>
+    <string name="diagnostics_share_none">Ainda não há registro de diagnóstico. Use \"Execução de diagnóstico\" primeiro.</string>
 </resources>

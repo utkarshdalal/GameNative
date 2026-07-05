@@ -1619,4 +1619,14 @@
     <string name="filter_five_star_device">Recenzii de 5 stele pe dispozitiv</string>
     <string name="filter_five_star_gpu">Recenzii de 5 stele pe GPU</string>
     <string name="filter_proven_gpu">Testat pe GPU-ul tău</string>
+    <string name="transcoder">Transcodor</string>
+    <string name="wrapper_quality">Calitate</string>
+    <string name="transcoder_cpu">CPU (implicit)</string>
+    <string name="transcoder_gpu">GPU (experimental, poate fi mai rapid)</string>
+    <string name="wrapper_quality_low">Scăzută (imagini mai fine, folosește mai puțină RAM)</string>
+    <string name="wrapper_quality_high">Ridicată (imagini mai clare, folosește mai multă RAM)</string>
+    <string name="option_play_with_diagnostics">Rulare de diagnosticare</string>
+    <string name="option_share_diagnostics">Partajează diagnosticarea</string>
+    <string name="diagnostics_share_title">Partajează jurnalul de diagnosticare</string>
+    <string name="diagnostics_share_none">Încă nu există jurnal de diagnosticare. Folosește mai întâi \"Rulare de diagnosticare\".</string>
 </resources>

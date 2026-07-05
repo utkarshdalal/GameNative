@@ -1636,4 +1636,14 @@
     <string name="filter_five_star_device">设备上的五星好评</string>
     <string name="filter_five_star_gpu">GPU上的五星好评</string>
     <string name="filter_proven_gpu">已在您的GPU上验证</string>
+    <string name="transcoder">转码器</string>
+    <string name="wrapper_quality">质量</string>
+    <string name="transcoder_cpu">CPU（默认）</string>
+    <string name="transcoder_gpu">GPU（实验性，可能更快）</string>
+    <string name="wrapper_quality_low">低（图像更柔和，占用更少内存）</string>
+    <string name="wrapper_quality_high">高（图像更清晰，占用更多内存）</string>
+    <string name="option_play_with_diagnostics">诊断运行</string>
+    <string name="option_share_diagnostics">分享诊断</string>
+    <string name="diagnostics_share_title">分享诊断日志</string>
+    <string name="diagnostics_share_none">尚无诊断日志。请先使用「诊断运行」。</string>
 </resources>

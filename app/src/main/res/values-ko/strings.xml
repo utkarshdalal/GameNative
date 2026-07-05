@@ -1616,4 +1616,14 @@
     <string name="filter_five_star_device">기기에서의 별 5개 리뷰</string>
     <string name="filter_five_star_gpu">GPU에서의 별 5개 리뷰</string>
     <string name="filter_proven_gpu">내 GPU에서 검증됨</string>
+    <string name="transcoder">트랜스코더</string>
+    <string name="wrapper_quality">품질</string>
+    <string name="transcoder_cpu">CPU (기본값)</string>
+    <string name="transcoder_gpu">GPU (실험적, 더 빠를 수 있음)</string>
+    <string name="wrapper_quality_low">낮음 (더 부드러운 이미지, RAM 사용량 적음)</string>
+    <string name="wrapper_quality_high">높음 (더 선명한 이미지, RAM 사용량 많음)</string>
+    <string name="option_play_with_diagnostics">진단 실행</string>
+    <string name="option_share_diagnostics">진단 공유</string>
+    <string name="diagnostics_share_title">진단 로그 공유</string>
+    <string name="diagnostics_share_none">아직 진단 로그가 없습니다. 먼저 \"진단 실행\"을 사용하세요.</string>
 </resources>

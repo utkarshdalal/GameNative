@@ -1612,4 +1612,14 @@
     <string name="filter_five_star_device">5-зіркові відгуки на пристрої</string>
     <string name="filter_five_star_gpu">5-зіркові відгуки на GPU</string>
     <string name="filter_proven_gpu">Перевірено на вашому GPU</string>
+    <string name="transcoder">Транскодер</string>
+    <string name="wrapper_quality">Якість</string>
+    <string name="transcoder_cpu">CPU (за замовчуванням)</string>
+    <string name="transcoder_gpu">GPU (експериментально, може бути швидше)</string>
+    <string name="wrapper_quality_low">Низька (м\'якші зображення, менше ОЗП)</string>
+    <string name="wrapper_quality_high">Висока (чіткіші зображення, більше ОЗП)</string>
+    <string name="option_play_with_diagnostics">Діагностичний запуск</string>
+    <string name="option_share_diagnostics">Поділитися діагностикою</string>
+    <string name="diagnostics_share_title">Поділитися журналом діагностики</string>
+    <string name="diagnostics_share_none">Журналу діагностики ще немає. Спершу скористайтеся \"Діагностичний запуск\".</string>
 </resources>

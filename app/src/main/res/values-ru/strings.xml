@@ -1544,4 +1544,14 @@ https://gamenative.app
     <string name="filter_five_star_device">5-звёздочные отзывы на устройстве</string>
     <string name="filter_five_star_gpu">5-звёздочные отзывы на GPU</string>
     <string name="filter_proven_gpu">Проверено на вашем GPU</string>
+    <string name="transcoder">Транскодер</string>
+    <string name="wrapper_quality">Качество</string>
+    <string name="transcoder_cpu">CPU (по умолчанию)</string>
+    <string name="transcoder_gpu">GPU (экспериментально, может быть быстрее)</string>
+    <string name="wrapper_quality_low">Низкое (более мягкое изображение, меньше ОЗУ)</string>
+    <string name="wrapper_quality_high">Высокое (более чёткое изображение, больше ОЗУ)</string>
+    <string name="option_play_with_diagnostics">Диагностический запуск</string>
+    <string name="option_share_diagnostics">Поделиться диагностикой</string>
+    <string name="diagnostics_share_title">Поделиться журналом диагностики</string>
+    <string name="diagnostics_share_none">Журнала диагностики пока нет. Сначала используйте \"Диагностический запуск\".</string>
 </resources>

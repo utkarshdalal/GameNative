@@ -745,6 +745,12 @@
     <string name="bcn_emulation">BCn Emulation</string>
     <string name="bcn_emulation_type">BCn Emulation Type</string>
     <string name="bcn_emulation_cache">BCn Emulation Cache</string>
+    <string name="transcoder">Transcoder</string>
+    <string name="transcoder_cpu">CPU (default)</string>
+    <string name="transcoder_gpu">GPU (experimental, may be faster)</string>
+    <string name="wrapper_quality">Quality</string>
+    <string name="wrapper_quality_low">Low (softer images, uses less RAM)</string>
+    <string name="wrapper_quality_high">High (sharper images, uses more RAM)</string>
     <string name="sharpness_effect">Sharpness Boost</string>
     <string name="sharpness_level">Sharpness Level</string>
     <string name="sharpness_denoise">Sharpness Denoise</string>
@@ -1534,6 +1540,10 @@
     <string name="option_force_upload_local">Force upload local saves</string>
     <string name="option_fetch_game_images">Fetch game images</string>
     <string name="option_test_graphics">Test graphics</string>
+    <string name="option_play_with_diagnostics">Diagnostic Run</string>
+    <string name="option_share_diagnostics">Share diagnostics</string>
+    <string name="diagnostics_share_title">Share diagnostics log</string>
+    <string name="diagnostics_share_none">No diagnostics log yet. Use \"Diagnostic Run\" first.</string>
     <string name="option_manage_dlc">Manage DLC</string>
     <string name="option_manage_workshop">Manage Workshop</string>
     <!-- Recommendations -->

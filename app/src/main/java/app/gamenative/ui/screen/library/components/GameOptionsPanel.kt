@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.AltRoute
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
@@ -339,6 +340,8 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.ForceUploadLocal -> Icons.Default.CloudUpload
         AppOptionMenuType.FetchSteamGridDBImages -> Icons.Default.Image
         AppOptionMenuType.TestGraphics -> Icons.Default.Build
+        AppOptionMenuType.PlayWithDiagnostics -> Icons.Default.BugReport
+        AppOptionMenuType.ShareDiagnostics -> Icons.Default.Share
         AppOptionMenuType.ImportConfig -> Icons.Default.ArrowDownward
         AppOptionMenuType.ExportConfig -> Icons.Default.ArrowUpward
         AppOptionMenuType.ImportSaves -> Icons.Default.ArrowDownward
@@ -397,6 +400,8 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.SubmitFeedback,
             AppOptionMenuType.FetchSteamGridDBImages,
             AppOptionMenuType.TestGraphics,
+            AppOptionMenuType.PlayWithDiagnostics,
+            AppOptionMenuType.ShareDiagnostics,
             AppOptionMenuType.ManageGameContent,
             AppOptionMenuType.ManageWorkshop
             -> helpInfo.add(option)
