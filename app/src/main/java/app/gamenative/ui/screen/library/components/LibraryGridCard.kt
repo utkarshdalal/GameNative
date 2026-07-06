@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Face4
@@ -50,6 +51,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -289,22 +291,42 @@ internal fun GridViewCard(
                         GridStatusIcons(appInfo = appInfo)
                     }
 
-                    if (appInfo.isRecommended) {
-                        appInfo.recPrice?.let { price ->
-                            Text(
-                                text = price,
-                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White,
-                            )
+                    if (appInfo.isRecommended && (appInfo.recPrice != null || appInfo.recDiscount != null)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            appInfo.recPrice?.let { price ->
+                                Text(
+                                    text = price,
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White,
+                                )
+                            }
+                            appInfo.recBasePrice?.let { base ->
+                                Text(
+                                    text = base,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        textDecoration = TextDecoration.LineThrough,
+                                    ),
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    modifier = Modifier.padding(start = 6.dp),
+                                )
+                            }
+                            appInfo.recDiscount?.let { discount ->
+                                Text(
+                                    text = discount,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = Color(0xFF4CAF50),
+                                    modifier = Modifier.padding(start = 6.dp),
+                                )
+                            }
                         }
-                    } else {
-                        GameStatsRow(
-                            stats = gameStats,
-                            tint = Color.White.copy(alpha = 0.55f),
-                            onDark = true,
-                            animate = animateStats,
-                        )
                     }
+
+                    GameStatsRow(
+                        stats = gameStats,
+                        tint = Color.White.copy(alpha = 0.55f),
+                        onDark = true,
+                        animate = animateStats,
+                    )
                 }
 
                 // Top-left: rating for recommendations, compatibility badge otherwise
@@ -329,11 +351,11 @@ internal fun GridViewCard(
                     }
                 }
 
-                // Top-right: discount for recommendations, source icon otherwise
+                // Top-right: "matches N of your games" for recommendations, source icon otherwise
                 if (appInfo.isRecommended) {
-                    appInfo.recDiscount?.let { discount ->
-                        RecDiscountPill(
-                            discount = discount,
+                    if (appInfo.recSeedCount >= 2) {
+                        RecSimilarBadge(
+                            count = appInfo.recSeedCount,
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(top = topIconPadding, end = topIconPadding),
@@ -422,16 +444,27 @@ private fun RecRatingPill(rating: Int, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun RecDiscountPill(discount: String, modifier: Modifier = Modifier) {
-    Text(
-        text = discount,
-        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-        color = Color.White,
+private fun RecSimilarBadge(count: Int, modifier: Modifier = Modifier) {
+    Row(
         modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(Color(0xFF4CAF50))
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.55f))
             .padding(horizontal = 6.dp, vertical = 3.dp),
-    )
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.ArrowUpward,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(12.dp),
+        )
+        Text(
+            text = "$count",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = Color.White,
+            modifier = Modifier.padding(start = 3.dp),
+        )
+    }
 }
 
 /**

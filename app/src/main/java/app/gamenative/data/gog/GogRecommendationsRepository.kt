@@ -225,12 +225,12 @@ object GogRecommendationsRepository {
             val d = product.details!!
             val price = product.pricing?.price
             val priceLabel = price?.let { formatCents(it.finalPrice) }
-            val discountLabel = price?.let {
-                if (it.basePrice > it.finalPrice && it.basePrice > 0) {
-                    "-${100 - (it.finalPrice * 100 / it.basePrice)}%"
-                } else {
-                    null
-                }
+            val discounted = price != null && price.basePrice > price.finalPrice && price.basePrice > 0
+            val basePriceLabel = if (discounted) formatCents(price!!.basePrice) else null
+            val discountLabel = if (discounted) {
+                "-${100 - (price!!.finalPrice * 100 / price.basePrice)}%"
+            } else {
+                null
             }
             val seedList = seeds.toList()
             val because = when {
@@ -246,9 +246,11 @@ object GogRecommendationsRepository {
                 storeUrl = d.storeUrl,
                 affiliateUrl = CJ_CLICK + URLEncoder.encode(d.storeUrl, "UTF-8"),
                 priceLabel = priceLabel,
+                basePriceLabel = basePriceLabel,
                 discountLabel = discountLabel,
                 becausePlayed = because,
                 score = score,
+                seedCount = seedList.size,
             )
         }
     }

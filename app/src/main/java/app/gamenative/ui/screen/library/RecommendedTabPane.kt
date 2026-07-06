@@ -111,4 +111,6 @@ private fun GogRecCard.toLibraryItem(index: Int): LibraryItem = LibraryItem(
     recRating = rating,
     recDiscount = discountLabel,
     recPrice = priceLabel,
+    recBasePrice = basePriceLabel,
+    recSeedCount = seedCount,
 )

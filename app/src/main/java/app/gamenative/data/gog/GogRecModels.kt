@@ -126,8 +126,10 @@ data class GogRecCard(
     val storeUrl: String,
     val affiliateUrl: String,
     val priceLabel: String?,
+    val basePriceLabel: String?,
     val discountLabel: String?,
     val becausePlayed: String,
     val score: Double,
     val rating: Int? = null,
+    val seedCount: Int = 0,
 )
