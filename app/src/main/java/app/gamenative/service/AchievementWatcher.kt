@@ -23,7 +23,7 @@ class AchievementWatcher(
     private val displayNameMap: Map<String, String>,
     private val iconUrlMap: Map<String, String?>,
     private val configDirectory: String?,
-    private val context: Context
+    context: Context
 ) {
     private val observers = mutableListOf<FileObserver>()
     private val notifiedNames = mutableSetOf<String>()
@@ -31,7 +31,8 @@ class AchievementWatcher(
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var uploadJob: Job? = null
 
-    private val achievementSoundPlayer: MediaPlayer? = MediaPlayer.create(context, R.raw.achievement_pop)
+    private val soundLock = Any()
+    private val achievementSoundPlayer: MediaPlayer? = MediaPlayer.create(context.applicationContext, R.raw.achievement_pop)
 
     fun start() {
         // Snapshot all currently earned achievements so we don't notify for
@@ -75,7 +76,9 @@ class AchievementWatcher(
         observers.forEach { it.stopWatching() }
         observers.clear()
         scope.cancel()
-        achievementSoundPlayer?.release()
+        synchronized(soundLock) {
+            achievementSoundPlayer?.release()
+        }
         Timber.tag("achievements").d("AchievementWatcher stopped")
     }
 
@@ -112,14 +115,16 @@ class AchievementWatcher(
     /** Plays the unlock sound, restarting it from the beginning if a prior unlock is still playing. */
     private fun playUnlockSound() {
         val player = achievementSoundPlayer ?: return
-        try {
-            if (player.isPlaying) {
-                player.seekTo(0)
-            } else {
-                player.start()
+        synchronized(soundLock) {
+            try {
+                if (player.isPlaying) {
+                    player.seekTo(0)
+                } else {
+                    player.start()
+                }
+            } catch (e: Exception) {
+                Timber.tag("achievements").w(e, "Failed to play achievement unlock sound")
             }
-        } catch (e: Exception) {
-            Timber.tag("achievements").w(e, "Failed to play achievement unlock sound")
         }
     }
 
