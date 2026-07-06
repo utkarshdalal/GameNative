@@ -33,7 +33,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.math.ln
 import timber.log.Timber
+
+private const val GPU_REVIEW_WEIGHT = 0.3
 
 @HiltViewModel
 class GogRecommendationsViewModel @Inject constructor(
@@ -114,9 +117,15 @@ class GogRecommendationsViewModel @Inject constructor(
         val gpuAll = GpuGameStatsCache.getAll()
         val deviceForRec = mapOf(GameSource.GOG to statsForNames(deviceAll, names))
         val gpuForRec = mapOf(GameSource.GOG to statsForNames(gpuAll, names))
+        val gpuReviews = gpuForRec[GameSource.GOG].orEmpty()
 
-        _state.update {
-            it.copy(
+        _state.update { state ->
+            val reranked = state.cards.sortedByDescending { card ->
+                val fiveStar = gpuReviews[card.title]?.fiveStarReviews ?: 0
+                card.score * (1.0 + GPU_REVIEW_WEIGHT * ln(1.0 + fiveStar.toDouble()))
+            }
+            state.copy(
+                cards = reranked,
                 compatibilityMap = compatibilityMap,
                 deviceGameStats = deviceForRec,
                 gpuGameStats = gpuForRec,
