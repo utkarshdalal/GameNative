@@ -254,7 +254,7 @@ public abstract class ProcessHelper {
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
-                    output.append("Error: Process timeout after 5 seconds");
+                    output.append("Error: Process timeout after ").append(timeoutSeconds).append(" seconds");
                 }
             } else {
                 process.waitFor();
