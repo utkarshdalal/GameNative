@@ -41,6 +41,7 @@ data class GogProductDetail(
     @SerialName("release_date") val releaseDate: String? = null,
     val images: GogProductImages? = null,
     val description: GogProductDescription? = null,
+    val videos: List<GogProductVideo> = emptyList(),
 )
 
 @Serializable
@@ -52,6 +53,32 @@ data class GogProductImages(
 data class GogProductDescription(
     val lead: String = "",
     val full: String = "",
+)
+
+@Serializable
+data class GogProductVideo(
+    @SerialName("video_url") val videoUrl: String = "",
+)
+
+@Serializable
+data class GogAverageRating(
+    val value: Double = 0.0,
+    val count: Int = 0,
+)
+
+@Serializable
+data class GogV2Game(
+    @SerialName("_embedded") val embedded: GogV2Embedded? = null,
+)
+
+@Serializable
+data class GogV2Embedded(
+    val developers: List<GogNamedRef> = emptyList(),
+)
+
+@Serializable
+data class GogNamedRef(
+    val name: String = "",
 )
 
 /**

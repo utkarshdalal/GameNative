@@ -1,6 +1,8 @@
 package app.gamenative.ui.screen.library.components
 
 import android.view.ViewGroup
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,7 +31,6 @@ import androidx.media3.ui.PlayerView
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 
-@OptIn(UnstableApi::class)
 @Composable
 internal fun VideoHero(
     videoUrl: String?,
@@ -37,8 +38,12 @@ internal fun VideoHero(
     contentDescription: String,
     modifier: Modifier = Modifier,
 ) {
-    if (videoUrl == null) {
-        CoilImage(
+    val youTubeId = remember(videoUrl) { videoUrl?.let(::extractYouTubeId) }
+
+    when {
+        youTubeId != null -> YouTubeHero(youTubeId, fallbackImageUrl, contentDescription, modifier)
+        videoUrl != null -> ExoVideoHero(videoUrl, fallbackImageUrl, contentDescription, modifier)
+        else -> CoilImage(
             imageModel = { fallbackImageUrl },
             imageOptions = ImageOptions(
                 contentDescription = contentDescription,
@@ -46,9 +51,17 @@ internal fun VideoHero(
             ),
             modifier = modifier,
         )
-        return
     }
+}
 
+@OptIn(UnstableApi::class)
+@Composable
+private fun ExoVideoHero(
+    videoUrl: String,
+    fallbackImageUrl: String,
+    contentDescription: String,
+    modifier: Modifier,
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var showFallback by remember(videoUrl) { mutableStateOf(true) }
@@ -128,4 +141,103 @@ internal fun VideoHero(
             )
         }
     }
+}
+
+@Composable
+private fun YouTubeHero(
+    videoId: String,
+    fallbackImageUrl: String,
+    contentDescription: String,
+    modifier: Modifier,
+) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
+    var showFallback by remember(videoId) { mutableStateOf(true) }
+
+    val webView = remember(videoId) {
+        WebView(context).apply {
+            settings.javaScriptEnabled = true
+            settings.mediaPlaybackRequiresUserGesture = false
+            settings.domStorageEnabled = true
+            setBackgroundColor(android.graphics.Color.BLACK)
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            )
+            webViewClient = object : WebViewClient() {
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    showFallback = false
+                }
+            }
+            loadDataWithBaseURL(
+                "https://www.youtube-nocookie.com",
+                youTubeEmbedHtml(videoId),
+                "text/html",
+                "utf-8",
+                null,
+            )
+        }
+    }
+
+    DisposableEffect(webView, lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> webView.onPause()
+                Lifecycle.Event.ON_RESUME -> webView.onResume()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            webView.destroy()
+        }
+    }
+
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        CoilImage(
+            imageModel = { fallbackImageUrl },
+            imageOptions = ImageOptions(
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+            ),
+            modifier = Modifier
+                .fillMaxSize()
+                .blur(20.dp),
+        )
+
+        AndroidView(factory = { webView }, modifier = Modifier.fillMaxSize())
+
+        if (showFallback) {
+            CoilImage(
+                imageModel = { fallbackImageUrl },
+                imageOptions = ImageOptions(
+                    contentDescription = contentDescription,
+                    contentScale = ContentScale.Crop,
+                ),
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+}
+
+private fun youTubeEmbedHtml(videoId: String): String =
+    """
+    <html><body style="margin:0;padding:0;background:#000;overflow:hidden">
+    <iframe style="position:absolute;top:0;left:0;width:100%;height:100%;border:0"
+      src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&mute=1&controls=0&loop=1&playlist=$videoId&modestbranding=1&playsinline=1&rel=0&fs=0&disablekb=1"
+      allow="autoplay; encrypted-media" frameborder="0"></iframe>
+    </body></html>
+    """.trimIndent()
+
+private fun extractYouTubeId(url: String): String? {
+    val patterns = listOf(
+        Regex("""youtube(?:-nocookie)?\.com/embed/([\w-]{11})"""),
+        Regex("""youtu\.be/([\w-]{11})"""),
+        Regex("""[?&]v=([\w-]{11})"""),
+    )
+    for (pattern in patterns) {
+        pattern.find(url)?.let { return it.groupValues[1] }
+    }
+    return null
 }

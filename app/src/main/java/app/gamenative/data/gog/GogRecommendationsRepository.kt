@@ -85,42 +85,57 @@ object GogRecommendationsRepository {
     suspend fun getRecommendedGame(productId: String): RecommendedGame? = withContext(Dispatchers.IO) {
         val id = productId.toLongOrNull() ?: return@withContext null
         val card = cache?.firstOrNull { it.productId == id } ?: return@withContext null
-        val detail = fetchProductDetail(id)
+
+        val (detail, rating, developer) = coroutineScope {
+            val d = async { fetchProductDetail(id) }
+            val r = async { fetchAverageRating(id) }
+            val dev = async { fetchDeveloper(id) }
+            Triple(d.await(), r.await(), dev.await())
+        }
 
         val heroImage = detail?.images?.background
             ?.let { if (it.startsWith("//")) "https:$it" else it }
             ?: card.heroImage
-        val descriptionHtml = detail?.description?.lead?.takeIf { it.isNotBlank() }
-            ?: detail?.description?.full.orEmpty()
+        val descriptionHtml = detail?.description?.let { it.lead.ifBlank { it.full } }.orEmpty()
+        val video = detail?.videos?.firstOrNull()?.videoUrl?.takeIf { it.isNotBlank() }
 
         RecommendedGame(
             id = productId,
             name = card.title,
-            developer = "",
+            developer = developer.orEmpty(),
             description = stripHtml(descriptionHtml),
             heroImageUrl = heroImage,
             capsuleImageUrl = card.capsuleImage,
             iconUrl = null,
-            videoUrl = null,
+            videoUrl = video,
             releaseDate = detail?.releaseDate?.substringBefore("T"),
-            reviewScore = null,
-            reviewCount = null,
+            reviewScore = rating?.let { Math.round(it.value * 20).toInt() },
+            reviewCount = rating?.count,
             affiliateUrl = card.affiliateUrl,
             tags = emptyList(),
         )
     }
 
-    private fun fetchProductDetail(productId: Long): GogProductDetail? {
+    private fun fetchProductDetail(productId: Long): GogProductDetail? =
+        getJson("https://api.gog.com/products/$productId?expand=description,videos")
+
+    private fun fetchAverageRating(productId: Long): GogAverageRating? =
+        getJson("https://reviews.gog.com/v1/products/$productId/averageRating")
+
+    private fun fetchDeveloper(productId: Long): String? =
+        getJson<GogV2Game>("https://api.gog.com/v2/games/$productId?locale=en-US")
+            ?.embedded?.developers?.firstOrNull()?.name?.takeIf { it.isNotBlank() }
+
+    private inline fun <reified T> getJson(url: String): T? {
         return try {
-            val url = "https://api.gog.com/products/$productId?expand=description"
             val request = Request.Builder().url(url).build()
             Net.http.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return null
                 val body = response.body?.string() ?: return null
-                json.decodeFromString<GogProductDetail>(body)
+                json.decodeFromString<T>(body)
             }
         } catch (e: Exception) {
-            Timber.tag("GogRec").w(e, "Product detail fetch failed for $productId")
+            Timber.tag("GogRec").w(e, "Fetch failed: $url")
             null
         }
     }
