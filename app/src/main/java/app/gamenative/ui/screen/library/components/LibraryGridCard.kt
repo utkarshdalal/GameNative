@@ -288,31 +288,26 @@ internal fun GridViewCard(
                             modifier = Modifier.weight(1f),
                         )
 
-                        if (appInfo.isRecommended) {
-                            if (appInfo.recPrice != null) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(start = 6.dp),
-                                ) {
-                                    appInfo.recBasePrice?.let { base ->
-                                        Text(
-                                            text = base,
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                textDecoration = TextDecoration.LineThrough,
-                                            ),
-                                            color = Color.White.copy(alpha = 0.6f),
-                                        )
-                                    }
-                                    Text(
-                                        text = appInfo.recPrice,
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = Color.White,
-                                        modifier = if (appInfo.recBasePrice != null) Modifier.padding(start = 5.dp) else Modifier,
-                                    )
-                                }
+                        GridStatusIcons(appInfo = appInfo)
+                    }
+
+                    if (appInfo.isRecommended && appInfo.recPrice != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            appInfo.recBasePrice?.let { base ->
+                                Text(
+                                    text = base,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        textDecoration = TextDecoration.LineThrough,
+                                    ),
+                                    color = Color.White.copy(alpha = 0.6f),
+                                )
                             }
-                        } else {
-                            GridStatusIcons(appInfo = appInfo)
+                            Text(
+                                text = appInfo.recPrice,
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White,
+                                modifier = if (appInfo.recBasePrice != null) Modifier.padding(start = 6.dp) else Modifier,
+                            )
                         }
                     }
 
