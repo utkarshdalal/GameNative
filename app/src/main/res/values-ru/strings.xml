@@ -1084,6 +1084,7 @@ https://gamenative.app
     <string name="settings_save_logcat_subtitle">Сохраняет снимок logcat только для PID этого приложения</string>
     <string name="settings_save_logcat_title">Сохранить logcat</string>
     <string name="settings_achievement_show_notification">Показывать уведомления о достижениях</string>
+    <string name="settings_achievement_play_sound">Воспроизводить звук достижений</string>
     <string name="settings_saving_restarting">Сохранение настроек и перезагрузка…</string>
     <string name="settings_select_language">Выберите язык</string>
     <string name="settings_subtitle">Настройте ваш опыт</string>

@@ -1229,6 +1229,7 @@
     <string name="settings_save_logcat_subtitle">Gemmer et snapshot af logcat kun for denne apps PID</string>
     <string name="settings_save_logcat_title">Gem logcat</string>
     <string name="settings_achievement_show_notification">Vis præstationsmeddelelser</string>
+    <string name="settings_achievement_play_sound">Afspil præstationslyd</string>
 
     <!-- Misc additions -->
     <string name="calculating_space_requirements">Beregner pladskrav...</string>

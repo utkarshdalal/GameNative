@@ -487,6 +487,7 @@
     <string name="settings_save_logcat_subtitle">この app\'s PID のみの logcat のスナップショットを保存します</string>
     <string name="settings_save_logcat_title">ログキャットを保存する</string>
     <string name="settings_achievement_show_notification">達成通知を表示する</string>
+    <string name="settings_achievement_play_sound">達成サウンドを再生する</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[CALL/RET オペコードのフラグの処理<br /><br />
         <b>0</b> : CALL/RET をフラグを必要としなかったかのように扱います (高速、不安定)<br />
         <b>1</b> : ほとんどの RET にはフラグが必要ですが、ほとんどの CALLS には必要ありません<br />

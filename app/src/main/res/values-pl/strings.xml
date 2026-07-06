@@ -474,6 +474,7 @@
     <string name="settings_save_logcat_subtitle">Zapisuje migawkę logcat tylko dla PID tej aplikacji</string>
     <string name="settings_save_logcat_title">Zapisz logcat</string>
     <string name="settings_achievement_show_notification">Pokaż powiadomienia o osiągnięciach</string>
+    <string name="settings_achievement_play_sound">Odtwarzaj dźwięk osiągnięć</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Obsługa flag w instrukcjach CALL/RET<br /><br />

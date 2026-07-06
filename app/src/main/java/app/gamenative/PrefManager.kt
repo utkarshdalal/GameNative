@@ -1353,6 +1353,11 @@ object PrefManager {
         get() = getPref(ACHIEVEMENT_SHOW_NOTIFICATION, true)
         set(value) { setPref(ACHIEVEMENT_SHOW_NOTIFICATION, value) }
 
+    private val ACHIEVEMENT_PLAY_SOUND = booleanPreferencesKey("achievement_play_sound")
+    var achievementPlaySound: Boolean
+        get() = getPref(ACHIEVEMENT_PLAY_SOUND, true)
+        set(value) { setPref(ACHIEVEMENT_PLAY_SOUND, value) }
+
     private val ACHIEVEMENT_NOTIFICATION_POSITION = stringPreferencesKey("achievement_notification_position")
     var achievementNotificationPosition: String
         get() = getPref(ACHIEVEMENT_NOTIFICATION_POSITION, "bottom_right")

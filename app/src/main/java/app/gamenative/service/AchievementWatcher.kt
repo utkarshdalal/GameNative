@@ -97,8 +97,10 @@ class AchievementWatcher(
                 val displayName = displayNameMap[name] ?: name
                 val iconUrl = iconUrlMap[name]
 
-                if(PrefManager.achievementShowNotification) {
+                if (PrefManager.achievementShowNotification) {
                     AchievementNotificationManager.show(displayName, iconUrl)
+                }
+                if (PrefManager.achievementPlaySound) {
                     playUnlockSound()
                 }
                 Timber.tag("achievements").i("Achievement unlocked: $name ($displayName)")
