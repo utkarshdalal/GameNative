@@ -13,6 +13,9 @@ import app.gamenative.PrefManager
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.gog.GogRecommendationsRepository
+import app.gamenative.data.gog.GogSeedCollector
+import app.gamenative.service.gog.GOGAuthManager
 import app.gamenative.data.LibraryPlayHistory
 import app.gamenative.data.SteamApp
 import app.gamenative.events.AndroidEvent
@@ -140,6 +143,22 @@ class LibraryViewModel @Inject constructor(
     }
 
     init {
+        if (PrefManager.showRecommendations) {
+            viewModelScope.launch(Dispatchers.IO) {
+                runCatching {
+                    val owned = GogSeedCollector.collect(
+                        context,
+                        libraryPlayHistoryDao,
+                        gogGameDao,
+                        epicGameDao,
+                        amazonGameDao,
+                    )
+                    val userId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
+                    GogRecommendationsRepository.getRecommendations(context, owned, userId)
+                }
+            }
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             if (gpuName != "Unknown GPU") {
                 DeviceGameStatsCache.refreshIfStale(

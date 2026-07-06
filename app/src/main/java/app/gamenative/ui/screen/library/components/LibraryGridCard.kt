@@ -293,13 +293,6 @@ internal fun GridViewCard(
 
                     if (appInfo.isRecommended && (appInfo.recPrice != null || appInfo.recDiscount != null)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            appInfo.recPrice?.let { price ->
-                                Text(
-                                    text = price,
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = Color.White,
-                                )
-                            }
                             appInfo.recBasePrice?.let { base ->
                                 Text(
                                     text = base,
@@ -307,7 +300,14 @@ internal fun GridViewCard(
                                         textDecoration = TextDecoration.LineThrough,
                                     ),
                                     color = Color.White.copy(alpha = 0.6f),
-                                    modifier = Modifier.padding(start = 6.dp),
+                                )
+                            }
+                            appInfo.recPrice?.let { price ->
+                                Text(
+                                    text = price,
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White,
+                                    modifier = if (appInfo.recBasePrice != null) Modifier.padding(start = 6.dp) else Modifier,
                                 )
                             }
                             appInfo.recDiscount?.let { discount ->
@@ -353,9 +353,10 @@ internal fun GridViewCard(
 
                 // Top-right: "matches N of your games" for recommendations, source icon otherwise
                 if (appInfo.isRecommended) {
-                    if (appInfo.recSeedCount >= 2) {
+                    if (!appInfo.recSeedIconUrl.isNullOrBlank() || appInfo.recSeedCount >= 2) {
                         RecSimilarBadge(
-                            count = appInfo.recSeedCount,
+                            iconUrl = appInfo.recSeedIconUrl,
+                            extraCount = (appInfo.recSeedCount - 1).coerceAtLeast(0),
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(top = topIconPadding, end = topIconPadding),
@@ -444,26 +445,38 @@ private fun RecRatingPill(rating: Int, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun RecSimilarBadge(count: Int, modifier: Modifier = Modifier) {
+private fun RecSimilarBadge(iconUrl: String?, extraCount: Int, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
             .background(Color.Black.copy(alpha = 0.55f))
-            .padding(horizontal = 6.dp, vertical = 3.dp),
+            .padding(horizontal = 4.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = Icons.Rounded.ArrowUpward,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(12.dp),
-        )
-        Text(
-            text = "$count",
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-            color = Color.White,
-            modifier = Modifier.padding(start = 3.dp),
-        )
+        if (!iconUrl.isNullOrBlank()) {
+            CoilImage(
+                imageModel = { iconUrl },
+                imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Rounded.ArrowUpward,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(12.dp),
+            )
+        }
+        if (extraCount > 0) {
+            Text(
+                text = "+$extraCount",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                color = Color.White,
+                modifier = Modifier.padding(start = 3.dp, end = 2.dp),
+            )
+        }
     }
 }
 

@@ -193,14 +193,30 @@ internal fun RecommendedGameScreen(
                 .fillMaxWidth()
                 .padding(16.dp),
         ) {
-            game.becausePlayed?.let { because ->
+            if (game.becauseGames.isNotEmpty()) {
                 Text(
-                    text = because,
+                    text = "Because you played",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+                Text(
+                    text = game.becauseGames.joinToString(", "),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 14.dp),
                 )
+            } else {
+                game.becausePlayed?.let { because ->
+                    Text(
+                        text = because,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 14.dp),
+                    )
+                }
             }
 
             // Review score

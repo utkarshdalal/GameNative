@@ -248,7 +248,7 @@ private fun CompactLibraryTabBar(
                                 indication = null,
                                 onClick = { onTabSelected(tab) },
                             )
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                            .padding(horizontal = if (tab.icon != null) 8.dp else 14.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         val count = tabCounts[tab]
@@ -689,7 +689,7 @@ private fun TabItem(
                 indication = null,
                 onClick = onClick,
             )
-            .padding(horizontal = 20.dp, vertical = 10.dp),
+            .padding(horizontal = if (tab.icon != null) 10.dp else 20.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
         if (tab.icon != null) {

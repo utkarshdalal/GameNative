@@ -35,7 +35,7 @@ object GogRecommendationsRepository {
     @Volatile
     private var cacheAt: Long = 0
 
-    private data class Seed(val gogId: String, val name: String, val weight: Double)
+    private data class Seed(val gogId: String, val name: String, val weight: Double, val iconUrl: String?)
 
     suspend fun getRecommendations(
         context: Context,
@@ -68,7 +68,7 @@ object GogRecommendationsRepository {
                 if (ownedGogIds.contains(p.productId.toString())) continue
                 val a = agg.getOrPut(p.productId) { Aggregate(p) }
                 a.score += seed.weight * p.rating
-                a.seeds.add(seed.name)
+                if (!a.seeds.containsKey(seed.name)) a.seeds[seed.name] = seed.iconUrl
             }
         }
 
@@ -135,6 +135,7 @@ object GogRecommendationsRepository {
                 screenshots = screenshots,
                 videos = videos,
                 becausePlayed = card.becausePlayed.takeIf { it.isNotBlank() },
+                becauseGames = card.seedNames,
             )
         }
     }
@@ -182,7 +183,7 @@ object GogRecommendationsRepository {
     }
 
     private fun selectSeeds(map: GogMap, owned: List<OwnedGameRef>): List<Seed> {
-        data class Candidate(val gogId: String, val name: String, val playtime: Long, val lastPlayed: Long)
+        data class Candidate(val gogId: String, val name: String, val playtime: Long, val lastPlayed: Long, val iconUrl: String?)
 
         return owned.mapNotNull { ref ->
             val gogId = ref.gogId
@@ -190,13 +191,13 @@ object GogRecommendationsRepository {
                 ?: ref.epicNamespace?.let { GogMapRepository.epicGogId(map, it) }
                 ?: GogMapRepository.titleGogId(map, ref.name)
                 ?: return@mapNotNull null
-            Candidate(gogId, ref.name, ref.playtime, ref.lastPlayed)
+            Candidate(gogId, ref.name, ref.playtime, ref.lastPlayed, ref.iconUrl)
         }
             .groupBy { it.gogId }
             .map { (_, list) -> list.maxWithOrNull(compareBy({ it.lastPlayed }, { it.playtime }))!! }
             .sortedWith(compareByDescending<Candidate> { it.lastPlayed }.thenByDescending { it.playtime })
             .take(MAX_SEEDS)
-            .mapIndexed { index, c -> Seed(c.gogId, c.name, weight = (MAX_SEEDS - index).toDouble()) }
+            .mapIndexed { index, c -> Seed(c.gogId, c.name, weight = (MAX_SEEDS - index).toDouble(), iconUrl = c.iconUrl) }
     }
 
     private fun fetchStrategy(strategy: String, gogId: String, userId: String?): List<GogRecProduct> {
@@ -219,7 +220,7 @@ object GogRecommendationsRepository {
 
     private class Aggregate(private val product: GogRecProduct) {
         var score = 0.0
-        val seeds = LinkedHashSet<String>()
+        val seeds = LinkedHashMap<String, String?>()
 
         fun toCard(): GogRecCard {
             val d = product.details!!
@@ -232,7 +233,7 @@ object GogRecommendationsRepository {
             } else {
                 null
             }
-            val seedList = seeds.toList()
+            val seedList = seeds.keys.toList()
             val because = when {
                 seedList.isEmpty() -> ""
                 seedList.size == 1 -> "Because you played ${seedList[0]}"
@@ -251,6 +252,8 @@ object GogRecommendationsRepository {
                 becausePlayed = because,
                 score = score,
                 seedCount = seedList.size,
+                seedIconUrl = seeds.values.firstOrNull { !it.isNullOrBlank() },
+                seedNames = seedList,
             )
         }
     }

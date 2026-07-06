@@ -115,6 +115,7 @@ data class OwnedGameRef(
     val epicNamespace: String? = null,
     val playtime: Long = 0,
     val lastPlayed: Long = 0,
+    val iconUrl: String? = null,
 )
 
 /** A single recommendation tile, ready for the UI. */
@@ -132,4 +133,6 @@ data class GogRecCard(
     val score: Double,
     val rating: Int? = null,
     val seedCount: Int = 0,
+    val seedIconUrl: String? = null,
+    val seedNames: List<String> = emptyList(),
 )

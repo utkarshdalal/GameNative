@@ -42,6 +42,7 @@ data class LibraryItem(
     val recPrice: String? = null,
     val recBasePrice: String? = null,
     val recSeedCount: Int = 0,
+    val recSeedIconUrl: String? = null,
 ) {
     val clientIconUrl: String
         get() = when (gameSource) {

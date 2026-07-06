@@ -20,4 +20,5 @@ data class RecommendedGame(
     val screenshots: List<String> = emptyList(),
     val videos: List<String> = emptyList(),
     val becausePlayed: String? = null,
+    val becauseGames: List<String> = emptyList(),
 )

@@ -8,6 +8,7 @@ import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.gog.GogRecCard
 import app.gamenative.data.gog.GogRecommendationsRepository
+import app.gamenative.data.gog.GogSeedCollector
 import app.gamenative.data.gog.OwnedGameRef
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.EpicGameDao
@@ -142,43 +143,6 @@ class GogRecommendationsViewModel @Inject constructor(
         else -> GameCompatibilityStatus.UNKNOWN
     }
 
-    private suspend fun collectOwnedGames(): List<OwnedGameRef> {
-        val refs = mutableListOf<OwnedGameRef>()
-        val history = libraryPlayHistoryDao.getAll().first().associate { it.appId to it.lastPlayed }
-
-        val steamId = PrefManager.steamUserSteamId64
-        if (steamId != 0L) {
-            runCatching { SteamService.getOwnedGames(steamId) }.getOrNull()?.forEach { g ->
-                refs += OwnedGameRef(
-                    name = g.name,
-                    steamAppId = g.appId,
-                    playtime = g.playtimeForever.toLong(),
-                    lastPlayed = history["STEAM_${g.appId}"] ?: (g.rtimeLastPlayed.toLong() * 1000L),
-                )
-            }
-        }
-
-        runCatching { gogGameDao.getAllAsList() }.getOrNull()?.forEach { g ->
-            refs += OwnedGameRef(name = g.title, gogId = g.id, playtime = g.playTime, lastPlayed = g.lastPlayed)
-        }
-
-        runCatching { epicGameDao.getAllAsList() }.getOrNull()?.forEach { g ->
-            refs += OwnedGameRef(
-                name = g.title,
-                epicNamespace = g.namespace.takeIf { it.isNotBlank() },
-                playtime = g.playTime,
-                lastPlayed = g.lastPlayed,
-            )
-        }
-
-        runCatching { amazonGameDao.getAllAsList() }.getOrNull()?.forEach { g ->
-            refs += OwnedGameRef(name = g.title, playtime = g.playTimeMinutes, lastPlayed = g.lastPlayed)
-        }
-
-        runCatching { CustomGameScanner.scanAsLibraryItems() }.getOrNull()?.forEach { item ->
-            refs += OwnedGameRef(name = item.name, lastPlayed = history[item.appId] ?: 0L)
-        }
-
-        return refs
-    }
+    private suspend fun collectOwnedGames(): List<OwnedGameRef> =
+        GogSeedCollector.collect(context, libraryPlayHistoryDao, gogGameDao, epicGameDao, amazonGameDao)
 }
