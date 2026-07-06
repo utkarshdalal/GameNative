@@ -44,11 +44,14 @@ fun RecommendedTabPane(
     val items = remember(state.cards) {
         state.cards.mapIndexed { index, card -> card.toLibraryItem(index) }
     }
-    val recState = remember(items) {
+    val recState = remember(items, state.compatibilityMap, state.deviceGameStats, state.gpuGameStats) {
         LibraryState(
             appInfoList = items,
             totalAppsInFilter = items.size,
             appInfoSortType = EnumSet.of(AppFilter.GAME),
+            compatibilityMap = state.compatibilityMap,
+            deviceGameStats = state.deviceGameStats,
+            gpuGameStats = state.gpuGameStats,
         )
     }
 
