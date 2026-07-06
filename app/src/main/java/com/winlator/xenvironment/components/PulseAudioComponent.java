@@ -218,7 +218,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
         envVars.put("TMPDIR", XEnvironment.getTmpDir(context));
         envVars.put("PULSE_SERVER", socketConfig.path);
 
-        return ProcessHelper.execWithOutput(workingDir + "/pactl " + command, envVars.toStringArray(), workingDir, true);
+        return ProcessHelper.execWithOutput(workingDir + "/pactl " + command, envVars.toStringArray(), workingDir, true, 5);
     }
 
     private boolean updateSink(boolean suspend) {
