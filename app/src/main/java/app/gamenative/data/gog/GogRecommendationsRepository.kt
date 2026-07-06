@@ -1,7 +1,6 @@
 package app.gamenative.data.gog
 
 import android.content.Context
-import app.gamenative.data.OwnedGames
 import app.gamenative.utils.Net
 import java.net.URLEncoder
 import kotlinx.coroutines.Dispatchers
@@ -38,8 +37,7 @@ object GogRecommendationsRepository {
 
     suspend fun getRecommendations(
         context: Context,
-        ownedSteam: List<OwnedGames>,
-        playHistory: Map<String, Long>,
+        owned: List<OwnedGameRef>,
         userId: String?,
         forceRefresh: Boolean = false,
     ): List<GogRecCard> = withContext(Dispatchers.IO) {
@@ -50,7 +48,7 @@ object GogRecommendationsRepository {
         }
 
         val map = GogMapRepository.getMap(context) ?: return@withContext emptyList()
-        val seeds = selectSeeds(map, ownedSteam, playHistory)
+        val seeds = selectSeeds(map, owned)
         if (seeds.isEmpty()) return@withContext emptyList()
 
         val perSeed = coroutineScope {
@@ -78,20 +76,19 @@ object GogRecommendationsRepository {
         cards
     }
 
-    private fun selectSeeds(
-        map: GogMap,
-        owned: List<OwnedGames>,
-        playHistory: Map<String, Long>,
-    ): List<Seed> {
-        data class Candidate(val gogId: String, val name: String, val playtime: Int, val lastPlayed: Long)
+    private fun selectSeeds(map: GogMap, owned: List<OwnedGameRef>): List<Seed> {
+        data class Candidate(val gogId: String, val name: String, val playtime: Long, val lastPlayed: Long)
 
-        return owned.mapNotNull { game ->
-            val gogId = GogMapRepository.steamGogId(map, game.appId) ?: return@mapNotNull null
-            val lastPlayed = playHistory["STEAM_${game.appId}"] ?: (game.rtimeLastPlayed.toLong() * 1000L)
-            Candidate(gogId, game.name, game.playtimeForever, lastPlayed)
+        return owned.mapNotNull { ref ->
+            val gogId = ref.gogId
+                ?: ref.steamAppId?.let { GogMapRepository.steamGogId(map, it) }
+                ?: ref.epicNamespace?.let { GogMapRepository.epicGogId(map, it) }
+                ?: GogMapRepository.titleGogId(map, ref.name)
+                ?: return@mapNotNull null
+            Candidate(gogId, ref.name, ref.playtime, ref.lastPlayed)
         }
             .groupBy { it.gogId }
-            .map { (_, list) -> list.maxByOrNull { it.playtime }!! }
+            .map { (_, list) -> list.maxWithOrNull(compareBy({ it.lastPlayed }, { it.playtime }))!! }
             .sortedWith(compareByDescending<Candidate> { it.lastPlayed }.thenByDescending { it.playtime })
             .take(MAX_SEEDS)
             .mapIndexed { index, c -> Seed(c.gogId, c.name, weight = (MAX_SEEDS - index).toDouble()) }

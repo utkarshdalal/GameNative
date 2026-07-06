@@ -36,6 +36,19 @@ data class GogRecPrice(
     @SerialName("final_price") val finalPrice: Int = 0,
 )
 
+/**
+ * A game the user owns/played, from any source. Resolved to a GOG seed via (in order) a direct
+ * GOG id, Steam appid, Epic namespace, then a normalized-title fallback.
+ */
+data class OwnedGameRef(
+    val name: String,
+    val gogId: String? = null,
+    val steamAppId: Int? = null,
+    val epicNamespace: String? = null,
+    val playtime: Long = 0,
+    val lastPlayed: Long = 0,
+)
+
 /** A single recommendation tile, ready for the UI. */
 data class GogRecCard(
     val productId: Long,

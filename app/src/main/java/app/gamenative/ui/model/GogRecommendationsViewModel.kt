@@ -6,9 +6,14 @@ import androidx.lifecycle.viewModelScope
 import app.gamenative.PrefManager
 import app.gamenative.data.gog.GogRecCard
 import app.gamenative.data.gog.GogRecommendationsRepository
+import app.gamenative.data.gog.OwnedGameRef
+import app.gamenative.db.dao.AmazonGameDao
+import app.gamenative.db.dao.EpicGameDao
+import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.db.dao.LibraryPlayHistoryDao
 import app.gamenative.service.SteamService
 import app.gamenative.service.gog.GOGAuthManager
+import app.gamenative.utils.CustomGameScanner
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -24,6 +29,9 @@ import timber.log.Timber
 @HiltViewModel
 class GogRecommendationsViewModel @Inject constructor(
     private val libraryPlayHistoryDao: LibraryPlayHistoryDao,
+    private val gogGameDao: GOGGameDao,
+    private val epicGameDao: EpicGameDao,
+    private val amazonGameDao: AmazonGameDao,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -48,15 +56,11 @@ class GogRecommendationsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _state.update { it.copy(loading = true, error = false) }
             try {
-                val steamId = PrefManager.steamUserSteamId64
-                val owned = if (steamId != 0L) SteamService.getOwnedGames(steamId) else emptyList()
-                val playHistory = libraryPlayHistoryDao.getAll().first()
-                    .associate { it.appId to it.lastPlayed }
+                val owned = collectOwnedGames()
                 val userId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
                 val cards = GogRecommendationsRepository.getRecommendations(
                     context = context,
-                    ownedSteam = owned,
-                    playHistory = playHistory,
+                    owned = owned,
                     userId = userId,
                 )
                 _state.update { it.copy(loading = false, cards = cards) }
@@ -65,5 +69,45 @@ class GogRecommendationsViewModel @Inject constructor(
                 _state.update { it.copy(loading = false, error = true) }
             }
         }
+    }
+
+    private suspend fun collectOwnedGames(): List<OwnedGameRef> {
+        val refs = mutableListOf<OwnedGameRef>()
+        val history = libraryPlayHistoryDao.getAll().first().associate { it.appId to it.lastPlayed }
+
+        val steamId = PrefManager.steamUserSteamId64
+        if (steamId != 0L) {
+            runCatching { SteamService.getOwnedGames(steamId) }.getOrNull()?.forEach { g ->
+                refs += OwnedGameRef(
+                    name = g.name,
+                    steamAppId = g.appId,
+                    playtime = g.playtimeForever.toLong(),
+                    lastPlayed = history["STEAM_${g.appId}"] ?: (g.rtimeLastPlayed.toLong() * 1000L),
+                )
+            }
+        }
+
+        runCatching { gogGameDao.getAllAsList() }.getOrNull()?.forEach { g ->
+            refs += OwnedGameRef(name = g.title, gogId = g.id, playtime = g.playTime, lastPlayed = g.lastPlayed)
+        }
+
+        runCatching { epicGameDao.getAllAsList() }.getOrNull()?.forEach { g ->
+            refs += OwnedGameRef(
+                name = g.title,
+                epicNamespace = g.namespace.takeIf { it.isNotBlank() },
+                playtime = g.playTime,
+                lastPlayed = g.lastPlayed,
+            )
+        }
+
+        runCatching { amazonGameDao.getAllAsList() }.getOrNull()?.forEach { g ->
+            refs += OwnedGameRef(name = g.title, playtime = g.playTimeMinutes, lastPlayed = g.lastPlayed)
+        }
+
+        runCatching { CustomGameScanner.scanAsLibraryItems() }.getOrNull()?.forEach { item ->
+            refs += OwnedGameRef(name = item.name, lastPlayed = history[item.appId] ?: 0L)
+        }
+
+        return refs
     }
 }
