@@ -13,6 +13,15 @@ enum class LibraryTab(
     val showAmazon: Boolean,
     val installedOnly: Boolean,
 ) {
+    RECOMMENDED(
+        labelResId = R.string.tab_recommended,
+        showCustom = false,
+        showSteam = false,
+        showGoG = false,
+        showEpic = false,
+        showAmazon = false,
+        installedOnly = false,
+    ),
     ALL(
         labelResId = R.string.tab_all,
         showCustom = true,

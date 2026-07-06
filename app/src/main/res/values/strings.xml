@@ -106,6 +106,8 @@
     <string name="downloads_cancel_confirm">Cancel download and delete files for %1$s?</string>
 
     <!-- Library Tabs -->
+    <string name="tab_recommended">Recommended</string>
+    <string name="gog_rec_empty">Play some Steam games or sign in to Steam to get GOG recommendations.</string>
     <string name="tab_all">All</string>
     <string name="tab_steam">Steam</string>
     <string name="tab_gog">GOG</string>

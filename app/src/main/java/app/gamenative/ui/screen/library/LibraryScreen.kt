@@ -881,6 +881,12 @@ private fun LibraryScreenContent(
             // Use Box to allow content to scroll behind the tab bar
             Box(modifier = Modifier.fillMaxSize()) {
                 // When on Steam/GOG/Epic/Amazon tab and not logged in, or LOCAL tab with no custom games, show splash
+                if (state.currentTab == LibraryTab.RECOMMENDED) {
+                    RecommendedTabPane(
+                        modifier = Modifier.fillMaxSize(),
+                        topPadding = 72.dp,
+                    )
+                } else {
                 val showEmptyStateSplash = when (state.currentTab) {
                     LibraryTab.STEAM -> !SteamUtils.hasStoredCredentials() && !state.isLoading
                     LibraryTab.GOG -> !GOGService.hasStoredCredentials(context)
@@ -957,6 +963,7 @@ private fun LibraryScreenContent(
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
+                }
                 }
 
                 // Top overlay: Tab bar OR Search bar
