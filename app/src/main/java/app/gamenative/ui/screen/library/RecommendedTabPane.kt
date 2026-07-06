@@ -108,4 +108,7 @@ private fun GogRecCard.toLibraryItem(index: Int): LibraryItem = LibraryItem(
     gameSource = GameSource.GOG,
     isRecommended = true,
     recommendedGameId = productId.toString(),
+    recRating = rating,
+    recDiscount = discountLabel,
+    recPrice = priceLabel,
 )

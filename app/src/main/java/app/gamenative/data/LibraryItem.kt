@@ -37,6 +37,9 @@ data class LibraryItem(
     val isInstalled: Boolean = false,
     val isRecommended: Boolean = false,
     val recommendedGameId: String = "",
+    val recRating: Int? = null,
+    val recDiscount: String? = null,
+    val recPrice: String? = null,
 ) {
     val clientIconUrl: String
         get() = when (gameSource) {

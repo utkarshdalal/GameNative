@@ -129,4 +129,5 @@ data class GogRecCard(
     val discountLabel: String?,
     val becausePlayed: String,
     val score: Double,
+    val rating: Int? = null,
 )

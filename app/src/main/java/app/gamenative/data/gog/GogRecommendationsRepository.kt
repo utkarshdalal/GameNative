@@ -24,6 +24,7 @@ object GogRecommendationsRepository {
     private const val CJ_CLICK = "https://www.anrdoezrs.net/click-101723120-15554897?url="
     private const val MAX_SEEDS = 8
     private const val PER_SEED_LIMIT = 20
+    private const val MAX_CARDS = 60
     private const val CACHE_TTL_MS = 24L * 60 * 60 * 1000
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -71,7 +72,15 @@ object GogRecommendationsRepository {
             }
         }
 
-        val cards = agg.values.sortedByDescending { it.score }.map { it.toCard() }
+        val ranked = agg.values.sortedByDescending { it.score }.map { it.toCard() }.take(MAX_CARDS)
+        val cards = coroutineScope {
+            ranked.map { card ->
+                async {
+                    val rating = fetchAverageRating(card.productId)?.let { Math.round(it.value * 20).toInt() }
+                    card.copy(rating = rating)
+                }
+            }.awaitAll()
+        }
         cache = cards
         cacheAt = System.currentTimeMillis()
         cards

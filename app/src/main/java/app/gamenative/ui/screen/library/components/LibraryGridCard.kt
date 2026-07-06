@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Face4
 import androidx.compose.material3.Card
@@ -288,31 +289,57 @@ internal fun GridViewCard(
                         GridStatusIcons(appInfo = appInfo)
                     }
 
-                    GameStatsRow(
-                        stats = gameStats,
-                        tint = Color.White.copy(alpha = 0.55f),
-                        onDark = true,
-                        animate = animateStats,
-                    )
+                    if (appInfo.isRecommended) {
+                        appInfo.recPrice?.let { price ->
+                            Text(
+                                text = price,
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White,
+                            )
+                        }
+                    } else {
+                        GameStatsRow(
+                            stats = gameStats,
+                            tint = Color.White.copy(alpha = 0.55f),
+                            onDark = true,
+                            animate = animateStats,
+                        )
+                    }
                 }
 
-                // Compatibility / Recommended badge (top left)
-                val badgeStatus = if (appInfo.isRecommended) {
-                    GameCompatibilityStatus.RECOMMENDED
+                // Top-left: rating for recommendations, compatibility badge otherwise
+                if (appInfo.isRecommended) {
+                    appInfo.recRating?.let { rating ->
+                        RecRatingPill(
+                            rating = rating,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(top = topOverlayPadding, start = topOverlayPadding),
+                        )
+                    }
                 } else {
-                    compatibilityStatus
-                }
-                badgeStatus?.let { status ->
-                    CompatibilityBadge(
-                        status = status,
-                        showLabel = true,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(top = topOverlayPadding, start = topOverlayPadding),
-                    )
+                    compatibilityStatus?.let { status ->
+                        CompatibilityBadge(
+                            status = status,
+                            showLabel = true,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(top = topOverlayPadding, start = topOverlayPadding),
+                        )
+                    }
                 }
 
-                if (!appInfo.isRecommended) {
+                // Top-right: discount for recommendations, source icon otherwise
+                if (appInfo.isRecommended) {
+                    appInfo.recDiscount?.let { discount ->
+                        RecDiscountPill(
+                            discount = discount,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = topIconPadding, end = topIconPadding),
+                        )
+                    }
+                } else {
                     GameSourceIcon(
                         gameSource = appInfo.gameSource,
                         modifier = Modifier
@@ -363,6 +390,48 @@ private fun CapsuleFallbackBackdrop(
                 ),
         )
     }
+}
+
+@Composable
+private fun RecRatingPill(rating: Int, modifier: Modifier = Modifier) {
+    val color = when {
+        rating >= 70 -> Color(0xFF4CAF50)
+        rating >= 40 -> Color(0xFFB9A074)
+        else -> Color(0xFFE57373)
+    }
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.55f))
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Star,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(12.dp),
+        )
+        Text(
+            text = "$rating%",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = Color.White,
+            modifier = Modifier.padding(start = 3.dp),
+        )
+    }
+}
+
+@Composable
+private fun RecDiscountPill(discount: String, modifier: Modifier = Modifier) {
+    Text(
+        text = discount,
+        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+        color = Color.White,
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color(0xFF4CAF50))
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+    )
 }
 
 /**
