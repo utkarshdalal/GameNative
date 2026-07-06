@@ -292,7 +292,7 @@ internal fun GridViewCard(
                         GridStatusIcons(appInfo = appInfo)
                     }
 
-                    if (appInfo.isRecommended && appInfo.recPrice != null) {
+                    if (appInfo.isRecommended && appInfo.recStoreCard && appInfo.recPrice != null) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             appInfo.recBasePrice?.let { base ->
                                 Text(
@@ -320,8 +320,8 @@ internal fun GridViewCard(
                     )
                 }
 
-                // Top-left: rating for recommendations, compatibility badge otherwise
-                if (appInfo.isRecommended) {
+                // Top-left: GOG rating (store rec), Recommended/compatibility badge otherwise
+                if (appInfo.isRecommended && appInfo.recStoreCard) {
                     val productId = appInfo.recommendedGameId.toLongOrNull()
                     val rating by produceState(initialValue = appInfo.recRating, productId) {
                         if (value == null && productId != null) {
@@ -337,7 +337,12 @@ internal fun GridViewCard(
                         )
                     }
                 } else {
-                    compatibilityStatus?.let { status ->
+                    val badgeStatus = if (appInfo.isRecommended) {
+                        GameCompatibilityStatus.RECOMMENDED
+                    } else {
+                        compatibilityStatus
+                    }
+                    badgeStatus?.let { status ->
                         CompatibilityBadge(
                             status = status,
                             showLabel = true,
@@ -348,8 +353,8 @@ internal fun GridViewCard(
                     }
                 }
 
-                // Top-right: "matches N of your games" for recommendations, source icon otherwise
-                if (appInfo.isRecommended) {
+                // Top-right: seed-game badge (store rec), source icon for normal cards
+                if (appInfo.isRecommended && appInfo.recStoreCard) {
                     if (!appInfo.recSeedIconUrl.isNullOrBlank() || appInfo.recSeedCount >= 2) {
                         RecSimilarBadge(
                             iconUrl = appInfo.recSeedIconUrl,
@@ -359,7 +364,7 @@ internal fun GridViewCard(
                                 .padding(top = topOverlayPadding, end = topOverlayPadding),
                         )
                     }
-                } else {
+                } else if (!appInfo.isRecommended) {
                     GameSourceIcon(
                         gameSource = appInfo.gameSource,
                         modifier = Modifier
