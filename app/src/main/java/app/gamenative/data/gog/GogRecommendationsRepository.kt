@@ -26,6 +26,7 @@ object GogRecommendationsRepository {
     private const val PER_SEED_LIMIT = 30
     private const val MAX_CARDS = 100
     private const val HERO_POOL = 10
+    private const val RATING_NONE = -1
     private const val CACHE_TTL_MS = 24L * 60 * 60 * 1000
     private val STRATEGIES = listOf("purchased_together", "similar")
 
@@ -82,18 +83,19 @@ object GogRecommendationsRepository {
             }
         }
 
-        val ranked = agg.values.sortedByDescending { it.score }.map { it.toCard() }.take(MAX_CARDS)
-        val cards = coroutineScope {
-            ranked.map { card ->
-                async {
-                    val rating = fetchAverageRating(card.productId)?.let { Math.round(it.value * 20).toInt() }
-                    card.copy(rating = rating)
-                }
-            }.awaitAll()
-        }
+        val cards = agg.values.sortedByDescending { it.score }.map { it.toCard() }.take(MAX_CARDS)
         cache = cards
         cacheAt = System.currentTimeMillis()
         cards
+    }
+
+    private val ratingCache = java.util.concurrent.ConcurrentHashMap<Long, Int>()
+
+    suspend fun getRating(productId: Long): Int? = withContext(Dispatchers.IO) {
+        ratingCache[productId]?.let { return@withContext it.takeIf { r -> r != RATING_NONE } }
+        val rating = fetchAverageRating(productId)?.let { Math.round(it.value * 20).toInt() }
+        ratingCache[productId] = rating ?: RATING_NONE
+        rating
     }
 
     /**

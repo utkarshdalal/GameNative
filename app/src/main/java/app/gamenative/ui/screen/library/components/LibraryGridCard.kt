@@ -59,6 +59,7 @@ import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.gog.GogRecommendationsRepository
 import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.data.GameCardStats
@@ -321,9 +322,15 @@ internal fun GridViewCard(
 
                 // Top-left: rating for recommendations, compatibility badge otherwise
                 if (appInfo.isRecommended) {
-                    appInfo.recRating?.let { rating ->
+                    val productId = appInfo.recommendedGameId.toLongOrNull()
+                    val rating by produceState(initialValue = appInfo.recRating, productId) {
+                        if (value == null && productId != null) {
+                            value = GogRecommendationsRepository.getRating(productId)
+                        }
+                    }
+                    rating?.let {
                         RecRatingPill(
-                            rating = rating,
+                            rating = it,
                             modifier = Modifier
                                 .align(Alignment.TopStart)
                                 .padding(top = topOverlayPadding, start = topOverlayPadding),
