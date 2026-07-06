@@ -88,6 +88,22 @@ data class GogNamedRef(
     val name: String = "",
 )
 
+@Serializable
+data class GamesdbNode(
+    val game: GamesdbGame? = null,
+)
+
+@Serializable
+data class GamesdbGame(
+    val summary: GamesdbLocalized? = null,
+)
+
+@Serializable
+data class GamesdbLocalized(
+    @SerialName("en-US") val enUS: String = "",
+    @SerialName("*") val fallback: String = "",
+)
+
 /**
  * A game the user owns/played, from any source. Resolved to a GOG seed via (in order) a direct
  * GOG id, Steam appid, Epic namespace, then a normalized-title fallback.

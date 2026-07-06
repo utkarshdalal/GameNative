@@ -86,43 +86,48 @@ object GogRecommendationsRepository {
         val id = productId.toLongOrNull() ?: return@withContext null
         val card = cache?.firstOrNull { it.productId == id } ?: return@withContext null
 
-        val (detail, rating, v2) = coroutineScope {
-            val d = async { fetchProductDetail(id) }
-            val r = async { fetchAverageRating(id) }
-            val v = async { fetchV2Game(id) }
-            Triple(d.await(), r.await(), v.await())
+        coroutineScope {
+            val detailD = async { fetchProductDetail(id) }
+            val ratingD = async { fetchAverageRating(id) }
+            val v2D = async { fetchV2Game(id) }
+            val summaryD = async { fetchGamesdbSummary(id) }
+            val detail = detailD.await()
+            val rating = ratingD.await()
+            val v2 = v2D.await()
+            val gdbSummary = summaryD.await()
+
+            val heroImage = detail?.images?.background
+                ?.let { if (it.startsWith("//")) "https:$it" else it }
+                ?: card.heroImage
+            val htmlDesc = detail?.description?.let { it.full.ifBlank { it.lead } }.orEmpty()
+            val description = gdbSummary?.takeIf { it.isNotBlank() } ?: stripHtml(htmlDesc)
+            val videos = detail?.videos.orEmpty().map { it.videoUrl }.filter { it.isNotBlank() }
+            val screenshots = detail?.screenshots.orEmpty()
+                .map { it.formatterTemplateUrl }
+                .filter { it.isNotBlank() }
+                .map { it.replace("{formatter}", "ggvgl_2x") }
+            val developer = v2?.embedded?.developers?.firstOrNull()?.name.orEmpty()
+            val tags = v2?.embedded?.tags.orEmpty().map { it.name }.filter { it.isNotBlank() }
+
+            RecommendedGame(
+                id = productId,
+                name = card.title,
+                developer = developer,
+                description = description,
+                heroImageUrl = heroImage,
+                capsuleImageUrl = card.capsuleImage,
+                iconUrl = null,
+                videoUrl = videos.firstOrNull(),
+                releaseDate = detail?.releaseDate?.substringBefore("T"),
+                reviewScore = rating?.let { Math.round(it.value * 20).toInt() },
+                reviewCount = rating?.count,
+                affiliateUrl = card.affiliateUrl,
+                tags = tags,
+                screenshots = screenshots,
+                videos = videos,
+                becausePlayed = card.becausePlayed.takeIf { it.isNotBlank() },
+            )
         }
-
-        val heroImage = detail?.images?.background
-            ?.let { if (it.startsWith("//")) "https:$it" else it }
-            ?: card.heroImage
-        val descriptionHtml = detail?.description?.let { it.full.ifBlank { it.lead } }.orEmpty()
-        val videos = detail?.videos.orEmpty().map { it.videoUrl }.filter { it.isNotBlank() }
-        val screenshots = detail?.screenshots.orEmpty()
-            .map { it.formatterTemplateUrl }
-            .filter { it.isNotBlank() }
-            .map { it.replace("{formatter}", "ggvgl_2x") }
-        val developer = v2?.embedded?.developers?.firstOrNull()?.name.orEmpty()
-        val tags = v2?.embedded?.tags.orEmpty().map { it.name }.filter { it.isNotBlank() }
-
-        RecommendedGame(
-            id = productId,
-            name = card.title,
-            developer = developer,
-            description = stripHtml(descriptionHtml),
-            heroImageUrl = heroImage,
-            capsuleImageUrl = card.capsuleImage,
-            iconUrl = null,
-            videoUrl = videos.firstOrNull(),
-            releaseDate = detail?.releaseDate?.substringBefore("T"),
-            reviewScore = rating?.let { Math.round(it.value * 20).toInt() },
-            reviewCount = rating?.count,
-            affiliateUrl = card.affiliateUrl,
-            tags = tags,
-            screenshots = screenshots,
-            videos = videos,
-            becausePlayed = card.becausePlayed.takeIf { it.isNotBlank() },
-        )
     }
 
     private fun fetchProductDetail(productId: Long): GogProductDetail? =
@@ -133,6 +138,13 @@ object GogRecommendationsRepository {
 
     private fun fetchV2Game(productId: Long): GogV2Game? =
         getJson("https://api.gog.com/v2/games/$productId?locale=en-US")
+
+    private fun fetchGamesdbSummary(productId: Long): String? {
+        val summary = getJson<GamesdbNode>(
+            "https://gamesdb.gog.com/platforms/gog/external_releases/$productId",
+        )?.game?.summary ?: return null
+        return summary.enUS.ifBlank { summary.fallback }.takeIf { it.isNotBlank() }
+    }
 
     private inline fun <reified T> getJson(url: String): T? {
         return try {

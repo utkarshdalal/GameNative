@@ -226,16 +226,28 @@ private fun youTubeEmbedHtml(videoId: String): String =
     """
     <html><head><style>
       html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
-      .wrap{position:absolute;top:0;left:0;right:0;bottom:0}
-      iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;pointer-events:none}
-      .block{position:absolute;top:0;left:0;width:100%;height:100%;z-index:2;background:transparent}
+      #player,#player iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0}
+      .block{position:absolute;top:0;left:0;width:100%;height:100%;z-index:2}
     </style></head>
-    <body><div class="wrap">
-      <iframe
-        src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&mute=1&controls=0&loop=1&playlist=$videoId&modestbranding=1&playsinline=1&rel=0&fs=0&disablekb=1&iv_load_policy=3"
-        allow="autoplay; encrypted-media" frameborder="0"></iframe>
+    <body>
+      <div id="player"></div>
       <div class="block"></div>
-    </div></body></html>
+      <script>
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+        function onYouTubeIframeAPIReady() {
+          new YT.Player('player', {
+            videoId: '$videoId',
+            playerVars: {
+              autoplay: 1, mute: 1, controls: 0, loop: 1, playlist: '$videoId',
+              modestbranding: 1, rel: 0, iv_load_policy: 3, fs: 0, disablekb: 1, playsinline: 1
+            },
+            events: { onReady: function (e) { e.target.mute(); e.target.playVideo(); } }
+          });
+        }
+      </script>
+    </body></html>
     """.trimIndent()
 
 private fun extractYouTubeId(url: String): String? {
