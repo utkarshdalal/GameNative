@@ -42,6 +42,12 @@ data class GogProductDetail(
     val images: GogProductImages? = null,
     val description: GogProductDescription? = null,
     val videos: List<GogProductVideo> = emptyList(),
+    val screenshots: List<GogProductScreenshot> = emptyList(),
+)
+
+@Serializable
+data class GogProductScreenshot(
+    @SerialName("formatter_template_url") val formatterTemplateUrl: String = "",
 )
 
 @Serializable
@@ -74,6 +80,7 @@ data class GogV2Game(
 @Serializable
 data class GogV2Embedded(
     val developers: List<GogNamedRef> = emptyList(),
+    val tags: List<GogNamedRef> = emptyList(),
 )
 
 @Serializable

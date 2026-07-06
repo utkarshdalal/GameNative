@@ -37,12 +37,13 @@ internal fun VideoHero(
     fallbackImageUrl: String,
     contentDescription: String,
     modifier: Modifier = Modifier,
+    active: Boolean = true,
 ) {
     val youTubeId = remember(videoUrl) { videoUrl?.let(::extractYouTubeId) }
 
     when {
-        youTubeId != null -> YouTubeHero(youTubeId, fallbackImageUrl, contentDescription, modifier)
-        videoUrl != null -> ExoVideoHero(videoUrl, fallbackImageUrl, contentDescription, modifier)
+        active && youTubeId != null -> YouTubeHero(youTubeId, fallbackImageUrl, contentDescription, modifier)
+        active && videoUrl != null -> ExoVideoHero(videoUrl, fallbackImageUrl, contentDescription, modifier)
         else -> CoilImage(
             imageModel = { fallbackImageUrl },
             imageOptions = ImageOptions(
@@ -223,11 +224,18 @@ private fun YouTubeHero(
 
 private fun youTubeEmbedHtml(videoId: String): String =
     """
-    <html><body style="margin:0;padding:0;background:#000;overflow:hidden">
-    <iframe style="position:absolute;top:0;left:0;width:100%;height:100%;border:0"
-      src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&mute=1&controls=0&loop=1&playlist=$videoId&modestbranding=1&playsinline=1&rel=0&fs=0&disablekb=1"
-      allow="autoplay; encrypted-media" frameborder="0"></iframe>
-    </body></html>
+    <html><head><style>
+      html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
+      .wrap{position:absolute;top:0;left:0;right:0;bottom:0}
+      iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;pointer-events:none}
+      .block{position:absolute;top:0;left:0;width:100%;height:100%;z-index:2;background:transparent}
+    </style></head>
+    <body><div class="wrap">
+      <iframe
+        src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&mute=1&controls=0&loop=1&playlist=$videoId&modestbranding=1&playsinline=1&rel=0&fs=0&disablekb=1&iv_load_policy=3"
+        allow="autoplay; encrypted-media" frameborder="0"></iframe>
+      <div class="block"></div>
+    </div></body></html>
     """.trimIndent()
 
 private fun extractYouTubeId(url: String): String? {

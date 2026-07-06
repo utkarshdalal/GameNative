@@ -17,4 +17,7 @@ data class RecommendedGame(
     val reviewCount: Int? = null,
     val affiliateUrl: String,
     val tags: List<String> = emptyList(),
+    val screenshots: List<String> = emptyList(),
+    val videos: List<String> = emptyList(),
+    val becausePlayed: String? = null,
 )

@@ -86,33 +86,42 @@ object GogRecommendationsRepository {
         val id = productId.toLongOrNull() ?: return@withContext null
         val card = cache?.firstOrNull { it.productId == id } ?: return@withContext null
 
-        val (detail, rating, developer) = coroutineScope {
+        val (detail, rating, v2) = coroutineScope {
             val d = async { fetchProductDetail(id) }
             val r = async { fetchAverageRating(id) }
-            val dev = async { fetchDeveloper(id) }
-            Triple(d.await(), r.await(), dev.await())
+            val v = async { fetchV2Game(id) }
+            Triple(d.await(), r.await(), v.await())
         }
 
         val heroImage = detail?.images?.background
             ?.let { if (it.startsWith("//")) "https:$it" else it }
             ?: card.heroImage
-        val descriptionHtml = detail?.description?.let { it.lead.ifBlank { it.full } }.orEmpty()
-        val video = detail?.videos?.firstOrNull()?.videoUrl?.takeIf { it.isNotBlank() }
+        val descriptionHtml = detail?.description?.let { it.full.ifBlank { it.lead } }.orEmpty()
+        val videos = detail?.videos.orEmpty().map { it.videoUrl }.filter { it.isNotBlank() }
+        val screenshots = detail?.screenshots.orEmpty()
+            .map { it.formatterTemplateUrl }
+            .filter { it.isNotBlank() }
+            .map { it.replace("{formatter}", "ggvgl_2x") }
+        val developer = v2?.embedded?.developers?.firstOrNull()?.name.orEmpty()
+        val tags = v2?.embedded?.tags.orEmpty().map { it.name }.filter { it.isNotBlank() }
 
         RecommendedGame(
             id = productId,
             name = card.title,
-            developer = developer.orEmpty(),
+            developer = developer,
             description = stripHtml(descriptionHtml),
             heroImageUrl = heroImage,
             capsuleImageUrl = card.capsuleImage,
             iconUrl = null,
-            videoUrl = video,
+            videoUrl = videos.firstOrNull(),
             releaseDate = detail?.releaseDate?.substringBefore("T"),
             reviewScore = rating?.let { Math.round(it.value * 20).toInt() },
             reviewCount = rating?.count,
             affiliateUrl = card.affiliateUrl,
-            tags = emptyList(),
+            tags = tags,
+            screenshots = screenshots,
+            videos = videos,
+            becausePlayed = card.becausePlayed.takeIf { it.isNotBlank() },
         )
     }
 
@@ -122,9 +131,8 @@ object GogRecommendationsRepository {
     private fun fetchAverageRating(productId: Long): GogAverageRating? =
         getJson("https://reviews.gog.com/v1/products/$productId/averageRating")
 
-    private fun fetchDeveloper(productId: Long): String? =
-        getJson<GogV2Game>("https://api.gog.com/v2/games/$productId?locale=en-US")
-            ?.embedded?.developers?.firstOrNull()?.name?.takeIf { it.isNotBlank() }
+    private fun fetchV2Game(productId: Long): GogV2Game? =
+        getJson("https://api.gog.com/v2/games/$productId?locale=en-US")
 
     private inline fun <reified T> getJson(url: String): T? {
         return try {

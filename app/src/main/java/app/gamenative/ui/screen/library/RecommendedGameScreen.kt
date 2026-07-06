@@ -30,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -41,11 +42,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import app.gamenative.R
 import app.gamenative.data.RecommendedGame
 import app.gamenative.ui.screen.library.components.VideoHero
 import app.gamenative.PrefManager
 import com.posthog.PostHog
+import com.skydoves.landscapist.ImageOptions
+import com.skydoves.landscapist.coil.CoilImage
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -55,6 +62,14 @@ internal fun RecommendedGameScreen(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+
+    val media = remember(game) {
+        val list = mutableListOf<Pair<Boolean, String>>()
+        game.videos.ifEmpty { listOfNotNull(game.videoUrl) }.forEach { list += true to it }
+        game.screenshots.take(10).forEach { list += false to it }
+        list
+    }
+    val pagerState = rememberPagerState(pageCount = { media.size.coerceAtLeast(1) })
 
     Column(
         modifier = Modifier
@@ -69,12 +84,36 @@ internal fun RecommendedGameScreen(
                 .height(280.dp)
                 .clipToBounds(),
         ) {
-            VideoHero(
-                videoUrl = game.videoUrl,
-                fallbackImageUrl = game.heroImageUrl,
-                contentDescription = game.name,
-                modifier = Modifier.fillMaxSize(),
-            )
+            if (media.isEmpty()) {
+                VideoHero(
+                    videoUrl = null,
+                    fallbackImageUrl = game.heroImageUrl,
+                    contentDescription = game.name,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                    val item = media[page]
+                    if (item.first) {
+                        VideoHero(
+                            videoUrl = item.second,
+                            fallbackImageUrl = game.heroImageUrl,
+                            contentDescription = game.name,
+                            active = page == pagerState.currentPage,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        CoilImage(
+                            imageModel = { item.second },
+                            imageOptions = ImageOptions(
+                                contentDescription = game.name,
+                                contentScale = ContentScale.Crop,
+                            ),
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+            }
 
             // Gradient overlay
             Box(
@@ -129,6 +168,23 @@ internal fun RecommendedGameScreen(
                     color = Color.White.copy(alpha = 0.8f),
                 )
             }
+
+            if (media.size > 1) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = "${pagerState.currentPage + 1}/${media.size}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                    )
+                }
+            }
         }
 
         // Content section
@@ -137,6 +193,16 @@ internal fun RecommendedGameScreen(
                 .fillMaxWidth()
                 .padding(16.dp),
         ) {
+            game.becausePlayed?.let { because ->
+                Text(
+                    text = because,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 14.dp),
+                )
+            }
+
             // Review score
             if (game.reviewScore != null) {
                 val scoreColor = when {
