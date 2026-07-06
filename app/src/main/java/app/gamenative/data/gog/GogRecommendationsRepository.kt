@@ -24,7 +24,7 @@ object GogRecommendationsRepository {
     private const val CJ_CLICK = "https://www.anrdoezrs.net/click-101723120-15554897?url="
     private const val MAX_SEEDS = 12
     private const val PER_SEED_LIMIT = 30
-    private const val MAX_CARDS = 100
+    private const val MAX_CARDS = 200
     private const val HERO_POOL = 10
     private const val RATING_NONE = -1
     private const val CACHE_TTL_MS = 24L * 60 * 60 * 1000
