@@ -36,6 +36,24 @@ data class GogRecPrice(
     @SerialName("final_price") val finalPrice: Int = 0,
 )
 
+@Serializable
+data class GogProductDetail(
+    @SerialName("release_date") val releaseDate: String? = null,
+    val images: GogProductImages? = null,
+    val description: GogProductDescription? = null,
+)
+
+@Serializable
+data class GogProductImages(
+    val background: String? = null,
+)
+
+@Serializable
+data class GogProductDescription(
+    val lead: String = "",
+    val full: String = "",
+)
+
 /**
  * A game the user owns/played, from any source. Resolved to a GOG seed via (in order) a direct
  * GOG id, Steam appid, Epic namespace, then a normalized-title fallback.
@@ -53,7 +71,8 @@ data class OwnedGameRef(
 data class GogRecCard(
     val productId: Long,
     val title: String,
-    val imageUrl: String,
+    val capsuleImage: String,
+    val heroImage: String,
     val storeUrl: String,
     val affiliateUrl: String,
     val priceLabel: String?,

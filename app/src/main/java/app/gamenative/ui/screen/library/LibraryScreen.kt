@@ -883,8 +883,12 @@ private fun LibraryScreenContent(
                 // When on Steam/GOG/Epic/Amazon tab and not logged in, or LOCAL tab with no custom games, show splash
                 if (state.currentTab == LibraryTab.RECOMMENDED) {
                     RecommendedTabPane(
+                        currentPaneType = currentPaneType,
+                        onNavigate = { item ->
+                            selectedAppId = item.appId
+                            selectedLibraryItem = item
+                        },
                         modifier = Modifier.fillMaxSize(),
-                        topPadding = 72.dp,
                     )
                 } else {
                 val showEmptyStateSplash = when (state.currentTab) {

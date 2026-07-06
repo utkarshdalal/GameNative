@@ -1,6 +1,7 @@
 package app.gamenative.data.gog
 
 import android.content.Context
+import app.gamenative.data.RecommendedGame
 import app.gamenative.utils.Net
 import java.net.URLEncoder
 import kotlinx.coroutines.Dispatchers
@@ -76,6 +77,66 @@ object GogRecommendationsRepository {
         cards
     }
 
+    /**
+     * Builds a full [RecommendedGame] for a tapped recommendation, enriched with description /
+     * hero image / release date from api.gog.com. Returns null if the id isn't a cached GOG rec
+     * (so the caller can fall back to the daily recommendation).
+     */
+    suspend fun getRecommendedGame(productId: String): RecommendedGame? = withContext(Dispatchers.IO) {
+        val id = productId.toLongOrNull() ?: return@withContext null
+        val card = cache?.firstOrNull { it.productId == id } ?: return@withContext null
+        val detail = fetchProductDetail(id)
+
+        val heroImage = detail?.images?.background
+            ?.let { if (it.startsWith("//")) "https:$it" else it }
+            ?: card.heroImage
+        val descriptionHtml = detail?.description?.lead?.takeIf { it.isNotBlank() }
+            ?: detail?.description?.full.orEmpty()
+
+        RecommendedGame(
+            id = productId,
+            name = card.title,
+            developer = "",
+            description = stripHtml(descriptionHtml),
+            heroImageUrl = heroImage,
+            capsuleImageUrl = card.capsuleImage,
+            iconUrl = null,
+            videoUrl = null,
+            releaseDate = detail?.releaseDate?.substringBefore("T"),
+            reviewScore = null,
+            reviewCount = null,
+            affiliateUrl = card.affiliateUrl,
+            tags = emptyList(),
+        )
+    }
+
+    private fun fetchProductDetail(productId: Long): GogProductDetail? {
+        return try {
+            val url = "https://api.gog.com/products/$productId?expand=description"
+            val request = Request.Builder().url(url).build()
+            Net.http.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val body = response.body?.string() ?: return null
+                json.decodeFromString<GogProductDetail>(body)
+            }
+        } catch (e: Exception) {
+            Timber.tag("GogRec").w(e, "Product detail fetch failed for $productId")
+            null
+        }
+    }
+
+    private fun stripHtml(html: String): String {
+        if (html.isBlank()) return ""
+        return html
+            .replace(Regex("<[^>]*>"), " ")
+            .replace("&nbsp;", " ")
+            .replace("&amp;", "&")
+            .replace("&#39;", "'")
+            .replace("&quot;", "\"")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+    }
+
     private fun selectSeeds(map: GogMap, owned: List<OwnedGameRef>): List<Seed> {
         data class Candidate(val gogId: String, val name: String, val playtime: Long, val lastPlayed: Long)
 
@@ -136,7 +197,8 @@ object GogRecommendationsRepository {
             return GogRecCard(
                 productId = product.productId,
                 title = d.title,
-                imageUrl = d.imageHorizontalUrl.ifBlank { d.imageUrl },
+                capsuleImage = d.imageUrl.ifBlank { d.imageHorizontalUrl },
+                heroImage = d.imageHorizontalUrl.ifBlank { d.imageUrl },
                 storeUrl = d.storeUrl,
                 affiliateUrl = CJ_CLICK + URLEncoder.encode(d.storeUrl, "UTF-8"),
                 priceLabel = priceLabel,

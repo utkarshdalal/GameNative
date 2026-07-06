@@ -15,6 +15,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.RecommendationRepository
 import app.gamenative.data.RecommendedGame
+import app.gamenative.data.gog.GogRecommendationsRepository
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.screen.library.AppScreen
@@ -55,7 +56,8 @@ internal fun LibraryDetailPane(
                 mutableStateOf<RecommendedGame?>(null)
             }
             LaunchedEffect(libraryItem.recommendedGameId) {
-                game = RecommendationRepository.getCurrentRecommendation(context)
+                game = GogRecommendationsRepository.getRecommendedGame(libraryItem.recommendedGameId)
+                    ?: RecommendationRepository.getCurrentRecommendation(context)
                 if (game != null && PrefManager.usageAnalyticsEnabled) {
                     PostHog.capture(
                         event = "recommendation_opened",
