@@ -143,22 +143,6 @@ class LibraryViewModel @Inject constructor(
     }
 
     init {
-        if (PrefManager.showRecommendations) {
-            viewModelScope.launch(Dispatchers.IO) {
-                runCatching {
-                    val owned = GogSeedCollector.collect(
-                        context,
-                        libraryPlayHistoryDao,
-                        gogGameDao,
-                        epicGameDao,
-                        amazonGameDao,
-                    )
-                    val userId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
-                    GogRecommendationsRepository.getRecommendations(context, owned, userId)
-                }
-            }
-        }
-
         viewModelScope.launch(Dispatchers.IO) {
             if (gpuName != "Unknown GPU") {
                 DeviceGameStatsCache.refreshIfStale(
@@ -256,7 +240,22 @@ class LibraryViewModel @Inject constructor(
         PluviaApp.events.on<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
 
         viewModelScope.launch(Dispatchers.IO) {
-            cachedRecommendation = RecommendationRepository.getCurrentRecommendation(context)
+            cachedRecommendation = if (PrefManager.showRecommendations) {
+                runCatching {
+                    val owned = GogSeedCollector.collect(
+                        context,
+                        libraryPlayHistoryDao,
+                        gogGameDao,
+                        epicGameDao,
+                        amazonGameDao,
+                    )
+                    val userId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
+                    val daySeed = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
+                    GogRecommendationsRepository.getDailyHero(context, owned, userId, daySeed)
+                }.getOrNull() ?: RecommendationRepository.getCurrentRecommendation(context)
+            } else {
+                RecommendationRepository.getCurrentRecommendation(context)
+            }
             if (cachedRecommendation != null) {
                 onFilterApps(paginationCurrentPage)
             }

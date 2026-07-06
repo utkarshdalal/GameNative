@@ -22,10 +22,12 @@ object GogRecommendationsRepository {
 
     private const val REC_BASE = "https://recommendations-api.gog.com/v1/recommendations"
     private const val CJ_CLICK = "https://www.anrdoezrs.net/click-101723120-15554897?url="
-    private const val MAX_SEEDS = 8
-    private const val PER_SEED_LIMIT = 20
-    private const val MAX_CARDS = 60
+    private const val MAX_SEEDS = 12
+    private const val PER_SEED_LIMIT = 30
+    private const val MAX_CARDS = 100
+    private const val HERO_POOL = 10
     private const val CACHE_TTL_MS = 24L * 60 * 60 * 1000
+    private val STRATEGIES = listOf("purchased_together", "similar")
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -53,19 +55,27 @@ object GogRecommendationsRepository {
         val seeds = selectSeeds(map, owned)
         if (seeds.isEmpty()) return@withContext emptyList()
 
+        val ownedGogIds = owned.mapNotNull { resolveGogId(map, it) }.toHashSet()
+        val ownedTitles = owned.asSequence()
+            .map { GogMapRepository.normalizeTitle(it.name) }
+            .filter { it.isNotBlank() }
+            .toHashSet()
+
         val perSeed = coroutineScope {
-            seeds.map { seed ->
-                async { seed to fetchStrategy("purchased_together", seed.gogId, userId) }
+            seeds.flatMap { seed ->
+                STRATEGIES.map { strategy ->
+                    async { seed to fetchStrategy(strategy, seed.gogId, userId) }
+                }
             }.awaitAll()
         }
 
-        val ownedGogIds = seeds.map { it.gogId }.toHashSet()
         val agg = HashMap<Long, Aggregate>()
         for ((seed, products) in perSeed) {
             for (p in products) {
                 val d = p.details ?: continue
                 if (!d.isAvailable || d.storeUrl.isBlank()) continue
                 if (ownedGogIds.contains(p.productId.toString())) continue
+                if (ownedTitles.contains(GogMapRepository.normalizeTitle(d.title))) continue
                 val a = agg.getOrPut(p.productId) { Aggregate(p) }
                 a.score += seed.weight * p.rating
                 if (!a.seeds.containsKey(seed.name)) a.seeds[seed.name] = seed.iconUrl
@@ -140,6 +150,19 @@ object GogRecommendationsRepository {
         }
     }
 
+    suspend fun getDailyHero(
+        context: Context,
+        owned: List<OwnedGameRef>,
+        userId: String?,
+        daySeed: Long,
+    ): RecommendedGame? = withContext(Dispatchers.IO) {
+        val cards = getRecommendations(context, owned, userId)
+        if (cards.isEmpty()) return@withContext null
+        val pool = minOf(HERO_POOL, cards.size)
+        val index = daySeed.mod(pool.toLong()).toInt()
+        getRecommendedGame(cards[index].productId.toString())
+    }
+
     private fun fetchProductDetail(productId: Long): GogProductDetail? =
         getJson("https://api.gog.com/products/$productId?expand=description,videos")
 
@@ -182,15 +205,17 @@ object GogRecommendationsRepository {
             .trim()
     }
 
+    private fun resolveGogId(map: GogMap, ref: OwnedGameRef): String? =
+        ref.gogId
+            ?: ref.steamAppId?.let { GogMapRepository.steamGogId(map, it) }
+            ?: ref.epicNamespace?.let { GogMapRepository.epicGogId(map, it) }
+            ?: GogMapRepository.titleGogId(map, ref.name)
+
     private fun selectSeeds(map: GogMap, owned: List<OwnedGameRef>): List<Seed> {
         data class Candidate(val gogId: String, val name: String, val playtime: Long, val lastPlayed: Long, val iconUrl: String?)
 
         return owned.mapNotNull { ref ->
-            val gogId = ref.gogId
-                ?: ref.steamAppId?.let { GogMapRepository.steamGogId(map, it) }
-                ?: ref.epicNamespace?.let { GogMapRepository.epicGogId(map, it) }
-                ?: GogMapRepository.titleGogId(map, ref.name)
-                ?: return@mapNotNull null
+            val gogId = resolveGogId(map, ref) ?: return@mapNotNull null
             Candidate(gogId, ref.name, ref.playtime, ref.lastPlayed, ref.iconUrl)
         }
             .groupBy { it.gogId }
