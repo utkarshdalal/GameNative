@@ -2018,4 +2018,10 @@
     <string name="featured_status_out_now_body">Jetzt verfügbar</string>
     <string name="tab_recommended">Empfohlen</string>
     <string name="gog_rec_empty">Füge Spiele hinzu oder spiele welche, um GOG-Empfehlungen basierend auf deiner Bibliothek zu erhalten.</string>
+    <string name="steam_collections_removed">Eine gespeicherte Sammlung wurde in Steam entfernt und wird nicht mehr gefiltert.</string>
+    <string name="steam_collections_title">Steam-Sammlungen</string>
+    <string name="steam_collections_loading">Sammlungen werden geladen…</string>
+    <string name="steam_collections_offline">Es werden die zuletzt synchronisierten Sammlungen angezeigt. Zum Aktualisieren verbinden.</string>
+    <string name="steam_collections_clear">Löschen</string>
+    <string name="steam_collections_smart_unsupported">Es werden nur Standardsammlungen angezeigt. Intelligente Sammlungen werden noch nicht unterstützt.</string>
 </resources>

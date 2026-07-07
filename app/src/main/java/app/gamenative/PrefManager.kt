@@ -869,6 +869,28 @@ object PrefManager {
             setPref(LIBRARY_SORT_KEY, value.key)
         }
 
+    private val LIBRARY_STEAM_COLLECTIONS_CACHE = stringPreferencesKey("library_steam_collections_cache")
+    var librarySteamCollectionsCache: String
+        get() = getPref(LIBRARY_STEAM_COLLECTIONS_CACHE, "")
+        set(value) { setPref(LIBRARY_STEAM_COLLECTIONS_CACHE, value) }
+
+    private val LIBRARY_STEAM_COLLECTIONS_SKIPPED_DYNAMIC = booleanPreferencesKey("library_steam_collections_skipped_dynamic")
+    var librarySteamCollectionsSkippedDynamic: Boolean
+        get() = getPref(LIBRARY_STEAM_COLLECTIONS_SKIPPED_DYNAMIC, false)
+        set(value) { setPref(LIBRARY_STEAM_COLLECTIONS_SKIPPED_DYNAMIC, value) }
+
+    private val LIBRARY_STEAM_COLLECTIONS = stringPreferencesKey("library_steam_collections")
+    private const val COLLECTION_ID_SEPARATOR = "" // unit separator; cannot appear in a collection id
+    var librarySteamCollections: Set<String>
+        get() {
+            val raw = getPref(LIBRARY_STEAM_COLLECTIONS, "")
+            if (raw.isEmpty()) return emptySet()
+            return raw.split(COLLECTION_ID_SEPARATOR).filter { it.isNotEmpty() }.toSet()
+        }
+        set(value) {
+            setPref(LIBRARY_STEAM_COLLECTIONS, value.joinToString(COLLECTION_ID_SEPARATOR))
+        }
+
     /**
      * Get or Set the last known Persona State. See [EPersonaState]
      */

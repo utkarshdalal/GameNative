@@ -2096,4 +2096,10 @@
     <string name="featured_status_out_now_body">现在可用</string>
     <string name="tab_recommended">推荐</string>
     <string name="gog_rec_empty">添加或试玩一些游戏，即可根据你的游戏库获得 GOG 推荐。</string>
+    <string name="steam_collections_removed">已保存的收藏集已在 Steam 中移除，不再用于筛选。</string>
+    <string name="steam_collections_title">Steam 收藏集</string>
+    <string name="steam_collections_loading">正在加载收藏集…</string>
+    <string name="steam_collections_offline">正在显示上次同步的收藏集。请连接以更新。</string>
+    <string name="steam_collections_clear">清除</string>
+    <string name="steam_collections_smart_unsupported">仅显示标准收藏集。智能收藏集尚不受支持。</string>
 </resources>

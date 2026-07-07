@@ -1948,4 +1948,10 @@
     <string name="featured_status_out_now_body">Tilgængelig nu</string>
     <string name="tab_recommended">Anbefalet</string>
     <string name="gog_rec_empty">Tilføj eller spil nogle spil for at få GOG-anbefalinger baseret på dit bibliotek.</string>
+    <string name="steam_collections_removed">En gemt samling blev fjernet i Steam og filtreres ikke længere.</string>
+    <string name="steam_collections_title">Steam-samlinger</string>
+    <string name="steam_collections_loading">Indlæser samlinger…</string>
+    <string name="steam_collections_offline">Viser senest synkroniserede samlinger. Opret forbindelse for at opdatere.</string>
+    <string name="steam_collections_clear">Ryd</string>
+    <string name="steam_collections_smart_unsupported">Kun standardsamlinger vises. Smarte samlinger understøttes ikke endnu.</string>
 </resources>

@@ -2076,4 +2076,10 @@
     <string name="featured_status_out_now_body">Dostępne teraz</string>
     <string name="tab_recommended">Polecane</string>
     <string name="gog_rec_empty">Dodaj lub zagraj w kilka gier, aby otrzymać rekomendacje GOG na podstawie Twojej biblioteki.</string>
+    <string name="steam_collections_removed">Zapisana kolekcja została usunięta w Steam i nie jest już filtrowana.</string>
+    <string name="steam_collections_title">Kolekcje Steam</string>
+    <string name="steam_collections_loading">Wczytywanie kolekcji…</string>
+    <string name="steam_collections_offline">Wyświetlanie ostatnio zsynchronizowanych kolekcji. Połącz się, aby zaktualizować.</string>
+    <string name="steam_collections_clear">Wyczyść</string>
+    <string name="steam_collections_smart_unsupported">Wyświetlane są tylko standardowe kolekcje. Kolekcje inteligentne nie są jeszcze obsługiwane.</string>
 </resources>

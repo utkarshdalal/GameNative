@@ -117,6 +117,12 @@
     <string name="tab_local">Custom</string>
     <string name="library_tab_with_count">%1$s (%2$d)</string>
     <string name="library_search_close">Close search</string>
+    <string name="steam_collections_removed">A saved collection was removed in Steam and is no longer filtered.</string>
+    <string name="steam_collections_title">Steam collections</string>
+    <string name="steam_collections_loading">Loading collections…</string>
+    <string name="steam_collections_offline">Showing last synced collections. Connect to update.</string>
+    <string name="steam_collections_clear">Clear</string>
+    <string name="steam_collections_smart_unsupported">Only standard collections are shown. Smart collections aren\'t supported yet.</string>
     <string name="default_user_name">User</string>
 
     <!-- Custom Games -->

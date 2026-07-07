@@ -2087,4 +2087,10 @@
     <string name="featured_status_out_now_body">現在可用</string>
     <string name="tab_recommended">推薦</string>
     <string name="gog_rec_empty">新增或試玩一些遊戲，即可根據你的遊戲庫獲得 GOG 推薦。</string>
+    <string name="steam_collections_removed">已儲存的收藏已在 Steam 中移除，不再用於篩選。</string>
+    <string name="steam_collections_title">Steam 收藏</string>
+    <string name="steam_collections_loading">正在載入收藏…</string>
+    <string name="steam_collections_offline">正在顯示上次同步的收藏。請連線以更新。</string>
+    <string name="steam_collections_clear">清除</string>
+    <string name="steam_collections_smart_unsupported">僅顯示標準收藏。智慧型收藏尚不支援。</string>
 </resources>

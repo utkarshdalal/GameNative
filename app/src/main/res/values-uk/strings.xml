@@ -2072,4 +2072,10 @@
     <string name="featured_status_out_now_body">Доступно зараз</string>
     <string name="tab_recommended">Рекомендовані</string>
     <string name="gog_rec_empty">Додайте або пограйте в ігри, щоб отримати рекомендації GOG на основі вашої бібліотеки.</string>
+    <string name="steam_collections_removed">Збережену колекцію було видалено в Steam, і вона більше не фільтрується.</string>
+    <string name="steam_collections_title">Колекції Steam</string>
+    <string name="steam_collections_loading">Завантаження колекцій…</string>
+    <string name="steam_collections_offline">Показано останні синхронізовані колекції. Підключіться, щоб оновити.</string>
+    <string name="steam_collections_clear">Очистити</string>
+    <string name="steam_collections_smart_unsupported">Показано лише звичайні колекції. Розумні колекції ще не підтримуються.</string>
 </resources>

@@ -2004,4 +2004,10 @@ https://gamenative.app
     <string name="featured_status_out_now_body">Доступно сейчас</string>
     <string name="tab_recommended">Рекомендации</string>
     <string name="gog_rec_empty">Добавьте или поиграйте в игры, чтобы получить рекомендации GOG на основе вашей библиотеки.</string>
+    <string name="steam_collections_removed">Сохранённая коллекция была удалена в Steam и больше не используется для фильтрации.</string>
+    <string name="steam_collections_title">Коллекции Steam</string>
+    <string name="steam_collections_loading">Загрузка коллекций…</string>
+    <string name="steam_collections_offline">Показаны последние синхронизированные коллекции. Подключитесь для обновления.</string>
+    <string name="steam_collections_clear">Очистить</string>
+    <string name="steam_collections_smart_unsupported">Показаны только обычные коллекции. Умные коллекции пока не поддерживаются.</string>
 </resources>

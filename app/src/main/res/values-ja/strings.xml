@@ -2035,4 +2035,10 @@
     <string name="featured_status_out_now_body">現在利用可能</string>
     <string name="tab_recommended">おすすめ</string>
     <string name="gog_rec_empty">ゲームを追加またはプレイすると、ライブラリに基づいたGOGのおすすめが表示されます。</string>
+    <string name="steam_collections_removed">保存されたコレクションが Steam で削除されたため、フィルターから除外されました。</string>
+    <string name="steam_collections_title">Steam コレクション</string>
+    <string name="steam_collections_loading">コレクションを読み込み中…</string>
+    <string name="steam_collections_offline">最後に同期されたコレクションを表示しています。更新するには接続してください。</string>
+    <string name="steam_collections_clear">クリア</string>
+    <string name="steam_collections_smart_unsupported">標準コレクションのみ表示されます。スマートコレクションはまだ対応していません。</string>
 </resources>
