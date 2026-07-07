@@ -29,6 +29,8 @@ enum class AppOptionMenuType(@StringRes val title: Int) {
     ForceUploadLocal(R.string.option_force_upload_local),
     FetchSteamGridDBImages(R.string.option_fetch_game_images),
     TestGraphics(R.string.option_test_graphics),
+    PlayWithDiagnostics(R.string.option_play_with_diagnostics),
+    ShareDiagnostics(R.string.option_share_diagnostics),
     ManageGameContent(R.string.option_manage_dlc),
     ManageWorkshop(R.string.option_manage_workshop),
     ChangeBranch(R.string.change_branch),

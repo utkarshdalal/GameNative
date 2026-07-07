@@ -1371,6 +1371,7 @@ fun PluviaMain(
                             viewModel.setLaunchedAppId(appId)
                             viewModel.setBootToContainer(asContainer)
                             viewModel.setTestGraphics(false)
+                            viewModel.setDiagnostics(false)
                             viewModel.setOffline(isOffline)
                             preLaunchApp(
                                 context = context,
@@ -1388,6 +1389,7 @@ fun PluviaMain(
                             viewModel.setLaunchedAppId(appId)
                             viewModel.setBootToContainer(true)
                             viewModel.setTestGraphics(true)
+                            viewModel.setDiagnostics(false)
                             viewModel.setOffline(isOffline)
                             preLaunchApp(
                                 context = context,
@@ -1399,6 +1401,25 @@ fun PluviaMain(
                                 onSuccess = viewModel::launchApp,
                                 isOffline = isOffline,
                                 bootToContainer = true,
+                            )
+                        },
+                        onPlayWithDiagnostics = { appId ->
+                            trackGameLaunched(appId)
+                            viewModel.setLaunchedAppId(appId)
+                            viewModel.setBootToContainer(false)
+                            viewModel.setTestGraphics(false)
+                            viewModel.setDiagnostics(true)
+                            viewModel.setOffline(isOffline)
+                            preLaunchApp(
+                                context = context,
+                                appId = appId,
+                                setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                                setLoadingProgress = viewModel::setLoadingDialogProgress,
+                                setLoadingMessage = viewModel::setLoadingDialogMessage,
+                                setMessageDialogState = { msgDialogState = it },
+                                onSuccess = viewModel::launchApp,
+                                isOffline = isOffline,
+                                bootToContainer = false,
                             )
                         },
                         onClickExit = {
@@ -1458,6 +1479,7 @@ fun PluviaMain(
                         appId = state.launchedAppId,
                         bootToContainer = state.bootToContainer,
                         testGraphics = state.testGraphics,
+                        diagnostics = state.diagnostics,
                         isOffline = xServerIsOffline,
                         registerBackAction = { cb ->
                             Timber.d("registerBackAction called: $cb")

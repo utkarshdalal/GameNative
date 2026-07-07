@@ -36,6 +36,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +61,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringArrayResource
@@ -1245,8 +1253,33 @@ fun ContainerConfigDialog(
                         stringResource(R.string.container_config_tab_drives),
                         stringResource(R.string.container_config_tab_advanced)
                     )
+
+                    // Let controller shoulder buttons cycle through the tabs: R1/R2
+                    // forward, L1/L2 back (both wrap). The handler lives on the content
+                    // container (not a focusable wrapper, which would break up/down
+                    // traversal), so it fires whenever focus is anywhere in the tabs or
+                    // content below.
+                    val firstTabFocusRequester = remember { FocusRequester() }
+                    // Seed focus onto the first tab when the dialog opens so the gamepad
+                    // can navigate immediately instead of needing a button press first.
+                    LaunchedEffect(Unit) { runCatching { firstTabFocusRequester.requestFocus() } }
+
                     Column(
                         modifier = Modifier
+                            .onPreviewKeyEvent { event ->
+                                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                when (event.key) {
+                                    Key.ButtonR1, Key.ButtonR2 -> {
+                                        selectedTab = (selectedTab + 1) % tabs.size
+                                        true
+                                    }
+                                    Key.ButtonL1, Key.ButtonL2 -> {
+                                        selectedTab = (selectedTab - 1 + tabs.size) % tabs.size
+                                        true
+                                    }
+                                    else -> false
+                                }
+                            }
                             .padding(
                                 top = PaddingUtils.statusBarAwarePadding().calculateTopPadding() + paddingValues.calculateTopPadding(),
                                 bottom = 32.dp + paddingValues.calculateBottomPadding(),
@@ -1261,6 +1294,11 @@ fun ContainerConfigDialog(
                                     selected = selectedTab == index,
                                     onClick = { selectedTab = index },
                                     text = { Text(text = label) },
+                                    modifier = if (index == 0) {
+                                        Modifier.focusRequester(firstTabFocusRequester)
+                                    } else {
+                                        Modifier
+                                    },
                                 )
                             }
                         }
@@ -1384,7 +1422,20 @@ internal fun ExecutablePathDropdown(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(),
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                // A focused text field also swallows the center/enter (gamepad A) key,
+                // so the anchor never opens via controller. Intercept it here and toggle
+                // the menu. (Up/down focus-escape is handled in NoExtractOutlinedTextField.)
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when (event.key) {
+                        Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.Spacebar, Key.ButtonA -> {
+                            expanded = !expanded
+                            true
+                        }
+                        else -> false
+                    }
+                },
             singleLine = true
         )
 

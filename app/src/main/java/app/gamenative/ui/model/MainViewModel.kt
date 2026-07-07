@@ -457,6 +457,10 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(testGraphics = value) }
     }
 
+    fun setDiagnostics(value: Boolean) {
+        _state.update { it.copy(diagnostics = value) }
+    }
+
     fun launchApp(context: Context, appId: String) {
         // Show booting splash before launching the app
         viewModelScope.launch {

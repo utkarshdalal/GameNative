@@ -3,9 +3,8 @@ package com.winlator.renderer;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.Build;
 import android.view.Surface;
-import android.view.SurfaceControl;
+
 import app.gamenative.R;
 import android.graphics.Rect;
 import timber.log.Timber;
@@ -27,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ASurfaceRenderer implements WindowManager.OnWindowModificationListener,
@@ -135,6 +135,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     }
 
     private int pendingPresentSerial = 0;
+    private AtomicInteger skipFPSCount = new AtomicInteger(0);
     public void setPendingPresentSerial(int serial) {
         pendingPresentSerial = serial;
     }
@@ -261,6 +262,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 return;
             }
         }
+        skipFPSCount.set(0);
         surfaceInitialized = nativeInit(surface, xServer.screenInfo.width, xServer.screenInfo.height);
         if (surfaceInitialized) {
             NATIVE_CONTEXT_GENERATION.incrementAndGet();
@@ -303,6 +305,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             nativeDestroy();
             surfaceInitialized = false;
         }
+        skipFPSCount.set(0);
         windowSurfaces.clear();
         cachedDesktopDst = null;
     }
@@ -464,7 +467,12 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                     int acquireFence = g.consumeAcquireFence();
                     // Disable swap R/B in cpu path as it is handled with drawable
                     nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot(), sfCompatMode);
-                    if (hudRef != null) hudRef.update();
+                    if (hudRef != null && skipFPSCount.get() >= 1) {
+                        hudRef.update();
+                        skipFPSCount.set(0);
+                    } else {
+                        skipFPSCount.incrementAndGet();
+                    }
                 }
             }
         }

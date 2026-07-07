@@ -169,6 +169,16 @@ public abstract class GPUInformation {
         return r.contains("adreno") && r.matches(".*\\b8(4[0-9]|5[0-9])\\b.*");
     }
 
+    /**
+     * Detects the Adreno A12 family (e.g. renderer "Adreno (TM) A12").
+     * A12 is a distinct family from the numeric 8-Elite parts (84x/85x), so its
+     * alphanumeric model token cannot collide with the numeric family regexes.
+     */
+    public static boolean isAdrenoA12(Context context) {
+        String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
+        return r.contains("adreno") && r.matches(".*\\ba12\\b.*");
+    }
+
     public static boolean isTurnipCapable(Context context) {
         String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
         // match “adreno 610…699” or “adreno 710…799”

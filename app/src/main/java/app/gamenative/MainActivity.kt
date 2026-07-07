@@ -2,6 +2,7 @@ package app.gamenative
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -135,6 +136,14 @@ class MainActivity : ComponentActivity() {
     private var orientationSensorListener: OrientationEventListener? = null
     private var desiredSystemUiVisible: Boolean = false
 
+    // Cover-art image loader; held so we can drop its GPU-backed bitmap cache when
+    // the library is backgrounded (e.g. while a game is running) to free memory.
+    private var appImageLoader: ImageLoader? = null
+
+    private fun releaseImageCaches() {
+        appImageLoader?.memoryCache?.clear()
+    }
+
     override fun attachBaseContext(newBase: Context) {
         // Initialize PrefManager to read language setting
         PrefManager.init(newBase)
@@ -241,6 +250,7 @@ class MainActivity : ComponentActivity() {
                         add(AnimatedPngDecoder.Factory())
                     }
                     .build()
+                    .also { appImageLoader = it }
             }
 
             CompositionLocalProvider(LocalCoilImageLoader provides imageLoader) {
@@ -426,12 +436,29 @@ class MainActivity : ComponentActivity() {
     }
 
     // Add cleanup when app is backgrounded
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        // TRIM_MEMORY_UI_HIDDEN fires when the app's UI goes fully hidden; the higher
+        // levels fire under system memory pressure. In all these cases free the
+        // cover-art cache so the running game has more headroom.
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+            releaseImageCaches()
+        }
+    }
+
     override fun onStop() {
         super.onStop()
         orientationSensorListener?.disable()
         orientationSensorListener = null
         // enable auto-stop behavior if backgrounded
         SteamService.autoStopWhenIdle = true
+
+        // Library UI is no longer visible (e.g. a game is now in the foreground) —
+        // drop the cover-art bitmap cache so its GPU memory is reclaimed for the game.
+        // Not on a config change (rotation), where we want to keep it warm.
+        if (!isChangingConfigurations && hasReadyGameLifecycleState("stop")) {
+            releaseImageCaches()
+        }
 
         Timber.d(
             "onStop - Index: %d, Connected: %b, Logged-In: %b, Changing-Config: %b, Keep Alive: %b, Is Importing: %b",

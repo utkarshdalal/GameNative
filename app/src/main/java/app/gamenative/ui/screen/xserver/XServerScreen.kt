@@ -313,6 +313,7 @@ fun XServerScreen(
     appId: String,
     bootToContainer: Boolean,
     testGraphics: Boolean = false,
+    diagnostics: Boolean = false,
     isOffline: Boolean = false,
     registerBackAction: ( ( ) -> Unit ) -> Unit,
     navigateBack: () -> Unit,
@@ -2101,6 +2102,7 @@ fun XServerScreen(
                                 appId,
                                 bootToContainer,
                                 testGraphics,
+                                diagnostics,
                                 xServerState,
                                 envVars,
                                 container,
@@ -3215,6 +3217,7 @@ private fun setupXEnvironment(
     appId: String,
     bootToContainer: Boolean,
     testGraphics: Boolean,
+    diagnostics: Boolean,
     xServerState: MutableState<XServerState>,
     envVars: EnvVars,
     container: Container?,
@@ -3269,13 +3272,22 @@ private fun setupXEnvironment(
     val enableBox86Logs = WinlatorPrefManager.getBoolean("enable_box86_64_logs", false)
     val wineDebugChannels = PrefManager.wineDebugChannels
     // explicitly enable or disable Wine debug channels
-    envVars.put(
-        "WINEDEBUG",
-        if (enableWineDebug && wineDebugChannels.isNotEmpty())
-            "+" + wineDebugChannels.replace(",", ",+")
-        else
-            "-all",
-    )
+    if (diagnostics) {
+        envVars.put("WRAPPER_DIAG", "1")
+        envVars.put("WRAPPER_DIAG_APPID", appId)
+        envVars.put("WRAPPER_LOG_LEVEL", "info")
+        envVars.put("VKD3D_DEBUG", "warn")
+        envVars.put("DXVK_LOG_LEVEL", "info")
+        envVars.put("WINEDEBUG", "+vulkan")
+    } else {
+        envVars.put(
+            "WINEDEBUG",
+            if (enableWineDebug && wineDebugChannels.isNotEmpty())
+                "+" + wineDebugChannels.replace(",", ",+")
+            else
+                "-all",
+        )
+    }
     // capture debug output to file if either Wine or Box86/64 logging is enabled
     var logFile: File? = null
     val captureLogs = enableWineDebug || enableBox86Logs
@@ -3593,19 +3605,36 @@ private fun setupXEnvironment(
     }
 
     if (gameSource == GameSource.STEAM) {
+        Timber.tag("achievements").d("Setting up achievements for Steam appID=$appId...")
         val gameIdInt = ContainerUtils.extractGameIdFromContainerId(appId)
-        val achAppId = SteamService.cachedAchievementsAppId
-        if (gameIdInt != null && achAppId != null) {
+        val configDirectory = gameIdInt?.let { SteamService.findSteamSettingsDir(context, it) }
+        var cachedAchAppId = SteamService.cachedAchievementsAppId
+
+        if (gameIdInt != null && configDirectory != null) {
+            // Re-generate achievements (it should keep the already existing ones if they're there).
+            if (cachedAchAppId != gameIdInt && SteamService.isLoggedIn) {
+                try {
+                    runBlocking {
+                        SteamService.generateAchievements(gameIdInt, configDirectory)
+                        // Update reference to new value set by generateAchievements
+                        cachedAchAppId = SteamService.cachedAchievementsAppId
+                    }
+                } catch (e: Exception) {
+                    Timber.tag("achievements").e(e, "Failed to refresh achievement cache for appId=$gameIdInt")
+                }
+            }
+
             val watchDirs = SteamService.getGseSaveDirs(context, gameIdInt)
-            val configDirectory = SteamService.findSteamSettingsDir(context, gameIdInt)
-            val displayNameMap = SteamService.cachedAchievements?.associate { ach ->
+            val cachedAchievements = SteamService.cachedAchievements
+                .takeIf { cachedAchAppId == gameIdInt }
+            val displayNameMap = cachedAchievements?.associate { ach ->
                 ach.name to (ach.displayName?.get(container.language)
                     ?: ach.displayName?.get("english")
                     ?: ach.name)
             } ?: emptyMap()
             val iconUrlMap = SteamService.cachedAchievements?.associate { ach ->
                 ach.name to ach.icon?.let {
-                    "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$achAppId/$it"
+                    "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$cachedAchAppId/$it"
                 }
             } ?: emptyMap()
             PluviaApp.achievementWatcher = AchievementWatcher(
@@ -3615,6 +3644,8 @@ private fun setupXEnvironment(
                 iconUrlMap = iconUrlMap,
                 configDirectory = configDirectory,
             ).also { it.start() }
+        } else {
+            Timber.tag("achievements").w("Skipping achievement watcher, no steam_settings dir found for appId=$appId")
         }
     }
 
@@ -5207,6 +5238,13 @@ private suspend fun extractGraphicsDriverFiles(
         envVars.put("GALLIUM_DRIVER", "zink")
         envVars.put("LIBGL_KOPPER_DISABLE", "true")
 
+        if (currentWrapperVersion.lowercase(Locale.getDefault()).contains("turnip")
+            && GPUInformation.isAdreno710_720_732(context)) {
+            var tuDebug = envVars.get("TU_DEBUG").replace("sysmem", "gmem")
+            if (!tuDebug.contains("gmem")) tuDebug = (if (tuDebug.isEmpty()) "" else "$tuDebug,") + "gmem"
+            envVars.put("TU_DEBUG", tuDebug)
+        }
+
         // 1. Get the main WRAPPER selection (e.g., "Wrapper-v2") from the class field.
         val mainWrapperSelection: String = graphicsDriver
 
@@ -5283,18 +5321,23 @@ private suspend fun extractGraphicsDriverFiles(
         val disablePresentWait = graphicsDriverConfig.get("disablePresentWait")
         envVars.put("WRAPPER_DISABLE_PRESENT_WAIT", disablePresentWait)
 
+        val isWrapperGamenative = graphicsDriver.equals("wrapper-gamenative", ignoreCase = true)
+        val vendorId = GPUInformation.getVendorID(null, null)
+        val isAdreno = vendorId == 0x5143
+        val isXclipse = vendorId == 0x144D
+        val excludeBcnCompute = isAdreno || (isWrapperGamenative && isXclipse)
         val bcnEmulation = graphicsDriverConfig.get("bcnEmulation")
         val bcnEmulationType = graphicsDriverConfig.get("bcnEmulationType")
         when (bcnEmulation) {
             "auto" -> {
-                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
+                if (bcnEmulationType.equals("compute") && !excludeBcnCompute) {
                     envVars.put("ENABLE_BCN_COMPUTE", "1");
                     envVars.put("BCN_COMPUTE_AUTO", "1");
                 }
                 envVars.put("WRAPPER_EMULATE_BCN", "3");
             }
             "full" -> {
-                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
+                if (bcnEmulationType.equals("compute") && !excludeBcnCompute) {
                     envVars.put("ENABLE_BCN_COMPUTE", "1");
                     envVars.put("BCN_COMPUTE_AUTO", "0");
                 }
@@ -5306,6 +5349,12 @@ private suspend fun extractGraphicsDriverFiles(
 
         val bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache")
         envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache)
+
+        val transcoder = graphicsDriverConfig.get("transcoder", "cpu")
+        envVars.put("WRAPPER_BCN_GPU", if (transcoder.equals("gpu", ignoreCase = true)) "1" else "0")
+
+        val wrapperQuality = graphicsDriverConfig.get("quality", "low")
+        envVars.put("WRAPPER_ASTC_BLOCK", if (wrapperQuality.equals("high", ignoreCase = true)) "4x4" else "8x8")
 
         if (!vkbasaltConfig.isEmpty()) {
             envVars.put("ENABLE_VKBASALT", "1")
