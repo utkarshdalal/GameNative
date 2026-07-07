@@ -249,6 +249,16 @@ object BestConfigService {
             filteredJson.put("graphicsDriverVersion", ContainerUtils.WRAPPER_ADRENO_A12)
         }
 
+        if (BuildConfig.XR_BUILD) {
+            val kvs = KeyValueSet(filteredJson.optString("graphicsDriverConfig", ""))
+            val isTurnip = filteredJson.optString("graphicsDriverVersion", "").contains("turnip", ignoreCase = true) ||
+                kvs.get("version").contains("turnip", ignoreCase = true)
+            if (isTurnip) {
+                kvs.put("adrenotoolsTurnip", "0")
+                filteredJson.put("graphicsDriverConfig", kvs.toString())
+            }
+        }
+
         return filteredJson
     }
 

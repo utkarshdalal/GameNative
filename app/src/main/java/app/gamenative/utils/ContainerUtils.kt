@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import android.content.Context
 import android.os.Build
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
@@ -14,6 +15,7 @@ import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import com.winlator.core.DefaultVersion
 import com.winlator.core.FileUtils
+import com.winlator.core.KeyValueSet
 import com.winlator.core.GPUInformation
 import com.winlator.core.envvars.EnvVars
 import com.winlator.core.WineRegistryEditor
@@ -925,6 +927,12 @@ object ContainerUtils {
             applyBestConfigMapToContainerData(containerData, bestConfigMap)
         } else {
             containerData
+        }
+
+        if (BuildConfig.XR_BUILD) {
+            val kvs = KeyValueSet(containerData.graphicsDriverConfig)
+            kvs.put("adrenotoolsTurnip", "0")
+            containerData = containerData.copy(graphicsDriverConfig = kvs.toString())
         }
 
         if (Build.MANUFACTURER.equals("samsung", ignoreCase = true) && GPUInformation.isAdreno740(context)) {
