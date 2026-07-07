@@ -28,6 +28,7 @@ internal fun LibraryDetailPane(
     libraryItem: LibraryItem?,
     onClickPlay: (Boolean) -> Unit,
     onTestGraphics: () -> Unit,
+    onPlayWithDiagnostics: () -> Unit,
     onBack: () -> Unit,
 ) {
     Surface {
@@ -76,6 +77,7 @@ internal fun LibraryDetailPane(
                 libraryItem = libraryItem,
                 onClickPlay = onClickPlay,
                 onTestGraphics = onTestGraphics,
+                onPlayWithDiagnostics = onPlayWithDiagnostics,
                 onBack = onBack,
             )
         }
@@ -101,6 +103,7 @@ private fun Preview_LibraryDetailPane() {
             ),
             onClickPlay = { },
             onTestGraphics = { },
+            onPlayWithDiagnostics = { },
             onBack = { },
         )
     }

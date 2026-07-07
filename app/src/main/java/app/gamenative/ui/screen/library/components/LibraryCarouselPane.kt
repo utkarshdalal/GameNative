@@ -505,6 +505,7 @@ internal fun LibraryCarouselPane(
                                             gameStats = state.statsFor(item),
                                             showFocusGlow = false,
                                             enableFocusScale = false,
+                                            animateStats = stepsFromCenter == 0,
                                         )
                                     }
                                 }

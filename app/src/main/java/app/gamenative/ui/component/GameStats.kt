@@ -48,7 +48,7 @@ private fun statEntries(stats: GameCardStats?): List<StatEntry> = listOf(
 
 /**
  * Compact horizontal row of device play stats shown under a card's title. Auto-scrolls (marquee)
- * when the values are too wide to fit the card. Renders nothing when [stats] is null.
+ * when [animate] is true and the values are too wide to fit the card. Renders nothing when [stats] is null.
  *
  * @param tint Color for icons and text.
  * @param onDark When true, text gets a subtle shadow for legibility over images.
@@ -60,11 +60,12 @@ fun GameStatsRow(
     tint: Color,
     modifier: Modifier = Modifier,
     onDark: Boolean = false,
+    animate: Boolean = true,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .basicMarquee(),
+            .then(if (animate) Modifier.basicMarquee() else Modifier),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {

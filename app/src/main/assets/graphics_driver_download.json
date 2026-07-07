@@ -108,6 +108,11 @@
       "url": "https://downloads.gamenative.app/graphics_driver/wrapper-v2.tzst"
     },
     {
+      "id": "wrapper-gamenative",
+      "name": "wrapper-gamenative.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/wrapper-gamenative.tzst"
+    },
+    {
       "id": "wrapper-legacy",
       "name": "wrapper-legacy.tzst",
       "url": "https://downloads.gamenative.app/graphics_driver/wrapper-legacy.tzst"

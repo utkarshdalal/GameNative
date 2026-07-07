@@ -23,6 +23,7 @@ fun HomeScreen(
     onClickExit: () -> Unit,
     onClickPlay: (String, Boolean) -> Unit,
     onTestGraphics: (String) -> Unit,
+    onPlayWithDiagnostics: (String) -> Unit,
     onLogout: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onGoOnline: () -> Unit,
@@ -43,6 +44,7 @@ fun HomeScreen(
         HomeDestination.Library -> HomeLibraryScreen(
             onClickPlay = onClickPlay,
             onTestGraphics = onTestGraphics,
+            onPlayWithDiagnostics = onPlayWithDiagnostics,
             onNavigateRoute = onNavigateRoute,
             onLogout = onLogout,
             onGoOnline = onGoOnline,
@@ -53,6 +55,7 @@ fun HomeScreen(
             onBack = { viewModel.onDestination(HomeDestination.Library) },
             onClickPlay = onClickPlay,
             onTestGraphics = onTestGraphics,
+            onPlayWithDiagnostics = onPlayWithDiagnostics,
         )
     }
 }
@@ -72,6 +75,7 @@ private fun Preview_HomeScreenContent() {
             onChat = {},
             onClickPlay = { _, _ -> },
             onTestGraphics = { },
+            onPlayWithDiagnostics = { },
             onLogout = {},
             onNavigateRoute = {},
             onClickExit = {},

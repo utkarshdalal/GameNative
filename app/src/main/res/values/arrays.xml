@@ -26,6 +26,7 @@
     <string-array name="bionic_graphics_driver_entries">
         <item>Wrapper</item>
         <item>Wrapper-v2</item>
+        <item>Wrapper-gamenative</item>
         <item>Wrapper-leegao</item>
         <item>Wrapper-legacy</item>
     </string-array>

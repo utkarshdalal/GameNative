@@ -73,6 +73,7 @@ internal fun AppItem(
     gameStats: GameCardStats? = null,
     showFocusGlow: Boolean = true,
     enableFocusScale: Boolean = true,
+    animateStats: Boolean = true,
 ) {
     val context = LocalContext.current
     var hideText by remember { mutableStateOf(true) }
@@ -146,6 +147,7 @@ internal fun AppItem(
             gameStats = gameStats,
             showFocusGlow = showFocusGlow,
             context = context,
+            animateStats = animateStats,
         )
     }
 }

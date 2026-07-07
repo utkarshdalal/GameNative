@@ -70,6 +70,40 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                 },
             )
+            // Wrapper-gamenative only: BCn transcoder (CPU/GPU) and texture quality (low/high).
+            // Both are stored in graphicsDriverConfig and turned into WRAPPER_* env vars on boot.
+            if (config.graphicsDriver.equals("wrapper-gamenative", ignoreCase = true)) {
+                val transcoderValue = KeyValueSet(config.graphicsDriverConfig).get("transcoder", "cpu")
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.transcoder)) },
+                    value = if (transcoderValue.equals("gpu", ignoreCase = true)) 1 else 0,
+                    items = listOf(
+                        stringResource(R.string.transcoder_cpu),
+                        stringResource(R.string.transcoder_gpu),
+                    ),
+                    onItemSelected = { idx ->
+                        val cfg = KeyValueSet(config.graphicsDriverConfig)
+                        cfg.put("transcoder", if (idx == 1) "gpu" else "cpu")
+                        state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
+                    },
+                )
+                val qualityValue = KeyValueSet(config.graphicsDriverConfig).get("quality", "low")
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.wrapper_quality)) },
+                    value = if (qualityValue.equals("high", ignoreCase = true)) 1 else 0,
+                    items = listOf(
+                        stringResource(R.string.wrapper_quality_low),
+                        stringResource(R.string.wrapper_quality_high),
+                    ),
+                    onItemSelected = { idx ->
+                        val cfg = KeyValueSet(config.graphicsDriverConfig)
+                        cfg.put("quality", if (idx == 1) "high" else "low")
+                        state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
+                    },
+                )
+            }
             DxWrapperSection(state)
             // Bionic: Exposed Vulkan Extensions (same UI as Vortek)
             SettingsMultiListDropdown(

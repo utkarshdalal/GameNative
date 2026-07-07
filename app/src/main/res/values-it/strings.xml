@@ -1657,4 +1657,14 @@
     <string name="nexus_file_version_prefix">Versione %1$s</string>
     <string name="nexus_file_category_default">File</string>
     <string name="nexus_recommended">Consigliato</string>
+    <string name="transcoder">Transcodificatore</string>
+    <string name="wrapper_quality">Qualità</string>
+    <string name="transcoder_cpu">CPU (predefinito)</string>
+    <string name="transcoder_gpu">GPU (sperimentale, può essere più veloce)</string>
+    <string name="wrapper_quality_low">Bassa (immagini più morbide, usa meno RAM)</string>
+    <string name="wrapper_quality_high">Alta (immagini più nitide, usa più RAM)</string>
+    <string name="option_play_with_diagnostics">Esecuzione diagnostica</string>
+    <string name="option_share_diagnostics">Condividi diagnostica</string>
+    <string name="diagnostics_share_title">Condividi il log di diagnostica</string>
+    <string name="diagnostics_share_none">Nessun log di diagnostica. Usa prima \"Esecuzione diagnostica\".</string>
 </resources>

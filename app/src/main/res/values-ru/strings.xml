@@ -1592,4 +1592,14 @@ https://gamenative.app
     <string name="nexus_file_version_prefix">Версия %1$s</string>
     <string name="nexus_file_category_default">Файл</string>
     <string name="nexus_recommended">Рекомендуется</string>
+    <string name="transcoder">Транскодер</string>
+    <string name="wrapper_quality">Качество</string>
+    <string name="transcoder_cpu">CPU (по умолчанию)</string>
+    <string name="transcoder_gpu">GPU (экспериментально, может быть быстрее)</string>
+    <string name="wrapper_quality_low">Низкое (более мягкое изображение, меньше ОЗУ)</string>
+    <string name="wrapper_quality_high">Высокое (более чёткое изображение, больше ОЗУ)</string>
+    <string name="option_play_with_diagnostics">Диагностический запуск</string>
+    <string name="option_share_diagnostics">Поделиться диагностикой</string>
+    <string name="diagnostics_share_title">Поделиться журналом диагностики</string>
+    <string name="diagnostics_share_none">Журнала диагностики пока нет. Сначала используйте \"Диагностический запуск\".</string>
 </resources>

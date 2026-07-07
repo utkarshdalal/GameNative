@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.library
 
 import android.content.Intent
 import android.content.res.Configuration
+import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import app.gamenative.ui.util.SnackbarManager
@@ -56,9 +57,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -117,6 +120,7 @@ fun HomeLibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
     onClickPlay: (String, Boolean) -> Unit,
     onTestGraphics: (String) -> Unit,
+    onPlayWithDiagnostics: (String) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
@@ -138,6 +142,7 @@ fun HomeLibraryScreen(
         onRefresh = viewModel::onRefresh,
         onClickPlay = onClickPlay,
         onTestGraphics = onTestGraphics,
+        onPlayWithDiagnostics = onPlayWithDiagnostics,
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
         onGoOnline = onGoOnline,
@@ -153,6 +158,14 @@ fun HomeLibraryScreen(
     )
 }
 
+private fun isGameControllerConnected(): Boolean =
+    InputDevice.getDeviceIds().any { id ->
+        val device = InputDevice.getDevice(id) ?: return@any false
+        val sources = device.sources
+        sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
+            sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
+    }
+
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun LibraryScreenContent(
@@ -166,6 +179,7 @@ private fun LibraryScreenContent(
     onSearchQuery: (String) -> Unit,
     onClickPlay: (String, Boolean) -> Unit,
     onTestGraphics: (String) -> Unit,
+    onPlayWithDiagnostics: (String) -> Unit,
     onRefresh: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
@@ -354,8 +368,16 @@ private fun LibraryScreenContent(
     fun preferredContentFocusIndex(): Int =
         if (currentPaneType == PaneType.CAROUSEL) currentCarouselFocusTargetIndex() else firstVisibleContentIndex()
 
+    val inputModeManager = LocalInputModeManager.current
+    fun ensureKeyboardInputMode() {
+        if (isGameControllerConnected()) {
+            inputModeManager.requestInputMode(InputMode.Keyboard)
+        }
+    }
+
     fun requestGridFocusOrDefer() {
         if (state.appInfoList.isEmpty()) return
+        ensureKeyboardInputMode()
         try {
             gridFirstItemFocusRequester.requestFocus()
             pendingGridFocusRequest = false
@@ -367,6 +389,7 @@ private fun LibraryScreenContent(
 
     fun requestCarouselFocusOrDefer(targetListIndex: Int = currentCarouselFocusTargetIndex()) {
         if (state.appInfoList.isEmpty()) return
+        ensureKeyboardInputMode()
         carouselFocusTargetListIndex = targetListIndex.coerceIn(0, state.appInfoList.lastIndex)
         try {
             carouselFocusRequester.requestFocus()
@@ -388,6 +411,7 @@ private fun LibraryScreenContent(
     }
 
     fun requestRootFocusSafe() {
+        ensureKeyboardInputMode()
         try {
             rootFocusRequester.requestFocus()
         } catch (_: IllegalStateException) {}
@@ -1004,6 +1028,11 @@ private fun LibraryScreenContent(
                         onTestGraphics(libraryItem.appId)
                     }
                 },
+                onPlayWithDiagnostics = {
+                    selectedLibraryItem?.let { libraryItem ->
+                        onPlayWithDiagnostics(libraryItem.appId)
+                    }
+                },
             )
         }
 
@@ -1239,6 +1268,7 @@ private fun Preview_LibraryScreenContent() {
             },
             onClickPlay = { _, _ -> },
             onTestGraphics = { },
+            onPlayWithDiagnostics = { },
             onRefresh = { },
             onNavigateRoute = {},
             onLogout = {},
