@@ -561,6 +561,7 @@ internal fun AppScreenContent(
     isDownloading: Boolean,
     downloadProgress: Float,
     hasPartialDownload: Boolean,
+    hasLeftoverInstall: Boolean = false,
     isUpdatePending: Boolean,
     downloadInfo: app.gamenative.data.DownloadInfo? = null,
     onDownloadInstallClick: () -> Unit,
@@ -948,10 +949,10 @@ internal fun AppScreenContent(
                             onClick = { optionsMenuVisible = true },
                         )
 
-                        if (isInstalled || hasPartialDownload) {
+                        if (isInstalled || hasPartialDownload || hasLeftoverInstall) {
                             ActionIconButton(
                                 icon = Icons.Default.Delete,
-                                contentDescription = if (isInstalled) stringResource(R.string.uninstall) else stringResource(R.string.delete_app),
+                                contentDescription = if (isInstalled || hasLeftoverInstall) stringResource(R.string.uninstall) else stringResource(R.string.delete_app),
                                 onClick = onDeleteDownloadClick,
                             )
                         }
