@@ -45,6 +45,7 @@ import app.gamenative.workshop.compatibility.WorkshopCompatibilityOverride
 import app.gamenative.workshop.compatibility.WorkshopCompatibilityRegistry
 import app.gamenative.workshop.compatibility.WorkshopExposureMode
 import okhttp3.Request
+import org.json.JSONArray
 import org.json.JSONObject
 import org.tukaani.xz.LZMAInputStream
 import timber.log.Timber
@@ -74,6 +75,7 @@ object WorkshopManager {
     private const val RAIN_WORLD_APP_ID = 312520
     private const val RAIN_WORLD_MODS_PATH = "RainWorld_Data/StreamingAssets/mods"
     private const val RAIN_WORLD_ENABLED_MODS_PATH = "RainWorld_Data/StreamingAssets/enabledMods.txt"
+    private const val ONI_APP_ID = 457140
     private const val MAX_PAGES = 50
     private const val PAGE_SIZE = 100
     private var workshopTypesPatched = false
@@ -576,6 +578,7 @@ object WorkshopManager {
             Timber.tag(TAG).d("Skipping ZIP extraction for appId $appId (game reads .zip directly)")
             return
         }
+        val normalizeEntryPaths = appId == ONI_APP_ID
         var extractedCount = 0
 
         workshopContentDir.listFiles()?.forEach { itemDir ->
@@ -609,7 +612,8 @@ object WorkshopManager {
                 java.util.zip.ZipInputStream(zipFile.inputStream().buffered()).use { zis ->
                     var entry = zis.nextEntry
                     while (entry != null) {
-                        val outFile = File(itemDir, entry.name)
+                        val entryName = if (normalizeEntryPaths) entry.name.replace('\\', '/') else entry.name
+                        val outFile = File(itemDir, entryName)
                         // Guard against zip-slip (path traversal)
                         if (!outFile.canonicalPath.startsWith(itemDir.canonicalPath + File.separator)) {
                             Timber.tag(TAG).w("Skipping zip entry with path traversal: ${entry.name}")
@@ -638,6 +642,40 @@ object WorkshopManager {
         }
         if (extractedCount > 0) {
             Timber.tag(TAG).i("Extracted $extractedCount ZIP workshop mods")
+        }
+    }
+
+    private fun normalizeExtractedWorkshopPaths(workshopContentDir: File) {
+        if (!workshopContentDir.exists()) return
+        var normalizedCount = 0
+        workshopContentDir.listFiles()?.forEach { itemDir ->
+            if (!itemDir.isDirectory) return@forEach
+            val root = itemDir.toPath()
+            val rootCanonical = itemDir.canonicalPath + File.separator
+            itemDir.walkBottomUp().forEach { entry ->
+                if (entry == itemDir) return@forEach
+                val source = entry.toPath()
+                val relative = runCatching { root.relativize(source).toString() }.getOrNull()
+                    ?: return@forEach
+                if ('\\' !in relative || !Files.exists(source, LinkOption.NOFOLLOW_LINKS)) return@forEach
+
+                val target = File(itemDir, relative.replace('\\', '/'))
+                if (!target.canonicalPath.startsWith(rootCanonical)) return@forEach
+                if (target.exists()) {
+                    if (entry.isDirectory && entry.list()?.isEmpty() == true) entry.delete()
+                    return@forEach
+                }
+                target.parentFile?.mkdirs()
+                runCatching {
+                    Files.move(source, target.toPath())
+                    normalizedCount++
+                }.onFailure { e ->
+                    Timber.tag(TAG).w(e, "Failed to normalize Workshop path ${entry.absolutePath}")
+                }
+            }
+        }
+        if (normalizedCount > 0) {
+            Timber.tag(TAG).i("Normalized $normalizedCount extracted Workshop path(s)")
         }
     }
 
@@ -1414,6 +1452,189 @@ object WorkshopManager {
             Timber.tag(TAG).d("Cleared global mod_images at ${globalModImages.absolutePath}")
         }
     }
+
+    private fun configureOniWorkshopMods(
+        winePrefix: String,
+        workshopContentDir: File,
+        modDirs: List<File>,
+        items: List<WorkshopItem>,
+    ) {
+        val modsRoot = File(wineUserHome(winePrefix), "Documents/Klei/OxygenNotIncluded/mods")
+        val localModsDir = File(modsRoot, "Local")
+        val steamModsDir = File(modsRoot, "Steam")
+        val activeIds = items.map { it.publishedFileId }.toSet()
+        val activeItemDirs = modDirs.mapNotNull { dir ->
+            dir.name.toLongOrNull()
+                ?.takeIf { it in activeIds }
+                ?.let { it to dir }
+        }.toMap()
+        val localNamesById = activeItemDirs.mapValues { (_, dir) ->
+            oniLocalModName(dir)
+        }
+
+        modsRoot.mkdirs()
+        val modsJsonFile = File(modsRoot, "mods.json")
+        val previousManagedIds = listOf(modsRoot, localModsDir, steamModsDir)
+            .flatMap { cleanupOniManagedEntries(it, workshopContentDir) }
+            .toSet()
+
+        val result = if (activeItemDirs.isNotEmpty()) {
+            WorkshopSymlinker().sync(
+                WorkshopModPathStrategy.CopyIntoDir(localModsDir),
+                activeItemDirs,
+                workshopContentDir,
+                localNamesById,
+            )
+        } else {
+            null
+        }
+        writeOniModsJson(
+            modsJsonFile,
+            activeItemDirs,
+            items,
+            localNamesById,
+            previousManagedIds,
+        )
+        clearGlobalWorkshopMetadata(workshopContentDir)
+        val message = result?.let {
+            "ONI Workshop mods configured in ${localModsDir.absolutePath}: " +
+                "created=${it.created} skipped=${it.skipped} errors=${it.errors.size}"
+        } ?: "Cleared ONI Workshop mods in ${modsRoot.absolutePath}"
+        Timber.tag(TAG).i(message)
+    }
+
+    private fun writeOniModsJson(
+        modsJsonFile: File,
+        activeItemDirs: Map<Long, File>,
+        items: List<WorkshopItem>,
+        localNamesById: Map<Long, String>,
+        previousManagedIds: Set<String>,
+    ) {
+        val existing = readOniModsJson(modsJsonFile)
+        val existingMods = existing.optJSONArray("mods")
+        val currentManagedIds = localNamesById.values.toSet()
+        val existingById = mutableMapOf<String, JSONObject>()
+        val preservedMods = mutableListOf<JSONObject>()
+
+        if (existingMods != null) {
+            for (i in 0 until existingMods.length()) {
+                val entry = existingMods.optJSONObject(i) ?: continue
+                val entryId = oniModEntryId(entry)
+                if (entryId != null) existingById.putIfAbsent(entryId, entry)
+                if (
+                    entryId == null ||
+                    (entryId !in previousManagedIds && entryId !in currentManagedIds)
+                ) {
+                    preservedMods.add(entry)
+                }
+            }
+        }
+
+        val itemsById = items.associateBy { it.publishedFileId }
+        val mods = JSONArray()
+        preservedMods.forEach { mods.put(it) }
+        activeItemDirs.keys.sorted().forEach { id ->
+            val item = itemsById[id]
+            val modDir = activeItemDirs[id]
+            val localName = localNamesById[id] ?: id.toString()
+            val staticId = modDir?.let { readOniYamlValue(File(it, "mod.yaml"), "staticID") }
+                ?: localName
+            val existingEntry = existingById[localName] ?: existingById[staticId]
+            mods.put(buildOniModEntry(id, modDir, item, localName, staticId, existingEntry))
+        }
+
+        val output = JSONObject()
+            .put("version", existing.optInt("version", 1))
+            .put("mods", mods)
+        if (mods.length() == 0 && (!modsJsonFile.isFile || modsJsonFile.delete())) return
+        modsJsonFile.parentFile?.mkdirs()
+        modsJsonFile.writeText(output.toString(2))
+    }
+
+    private fun buildOniModEntry(
+        id: Long,
+        modDir: File?,
+        item: WorkshopItem?,
+        localName: String,
+        staticId: String,
+        existingEntry: JSONObject?,
+    ): JSONObject {
+        val entry = existingEntry?.let { JSONObject(it.toString()) } ?: JSONObject()
+        val label = existingEntry?.optJSONObject("label")?.let { JSONObject(it.toString()) } ?: JSONObject()
+        label
+            .put("distribution_platform", 0)
+            .put("id", localName)
+            .put(
+                "title",
+                item?.title ?: label.optString("title").takeIf { it.isNotBlank() } ?: id.toString()
+            )
+            .put(
+                "version",
+                (item?.timeUpdated
+                    ?: label.optLong("version", 0L).takeIf { it > 0L }
+                    ?: modDir?.lastModified()?.div(1000)
+                    ?: 0L).toInt()
+            )
+        entry.put("label", label)
+        if (!entry.has("status")) entry.put("status", 1)
+        if (!entry.has("enabled")) entry.put("enabled", true)
+        if (!entry.has("enabledForDlc")) entry.put("enabledForDlc", JSONArray().put(""))
+        if (!entry.has("crash_count")) entry.put("crash_count", 0)
+        if (!entry.has("reinstall_path")) entry.put("reinstall_path", JSONObject.NULL)
+        entry.put("staticID", staticId)
+        return entry
+    }
+
+    private fun readOniModsJson(file: File): JSONObject =
+        runCatching {
+            if (file.isFile) JSONObject(file.readText()) else JSONObject()
+        }.getOrElse { e ->
+            Timber.tag(TAG).w(e, "Failed to read ONI mods.json at ${file.absolutePath}")
+            JSONObject()
+        }
+
+    private fun oniModEntryId(entry: JSONObject): String? =
+        entry.optString("staticID").trim().takeIf { it.isNotEmpty() }
+            ?: entry.optJSONObject("label")
+            ?.optString("id")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+
+    private fun oniLocalModName(modDir: File): String =
+        readOniYamlValue(File(modDir, "mod.yaml"), "staticID")
+            ?: modDir.name
+
+    private fun readOniYamlValue(file: File, key: String): String? =
+        runCatching {
+            Regex("""(?m)^\s*${Regex.escape(key)}\s*:\s*["']?([^"'\r\n#]+)""")
+                .find(file.readText())
+                ?.groupValues?.get(1)
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+        }.getOrNull()
+
+    private fun cleanupOniManagedEntries(dir: File, workshopContentDir: File): Set<String> {
+        if (!dir.isDirectory) return emptySet()
+        val managedNames = mutableSetOf<String>()
+        dir.listFiles()?.forEach { entry ->
+            if (!isOniManagedEntry(entry, workshopContentDir)) return@forEach
+            managedNames += entry.name
+            runCatching {
+                val path = entry.toPath()
+                if (Files.isSymbolicLink(path)) Files.deleteIfExists(path) else entry.deleteRecursively()
+            }.onFailure { e ->
+                Timber.tag(TAG).w(e, "Failed to remove ONI Workshop entry ${entry.absolutePath}")
+            }
+        }
+        return managedNames
+    }
+
+    private fun isOniManagedEntry(entry: File, workshopContentDir: File): Boolean =
+        when {
+            Files.isSymbolicLink(entry.toPath()) -> isWorkshopContentSymlink(entry, workshopContentDir)
+            entry.isDirectory -> File(entry, ".gamenative_workshop").isFile
+            else -> false
+        }
 
     /**
      * Removes workshop-owned symlinks and copies from the game tree.
@@ -2345,6 +2566,10 @@ object WorkshopManager {
         }
 
         if (!workshopContentDir.exists()) {
+            if (appId == ONI_APP_ID && winePrefix.isNotEmpty() && items.isEmpty()) {
+                configureOniWorkshopMods(winePrefix, workshopContentDir, emptyList(), items)
+                return
+            }
             Timber.tag(TAG).d("Workshop content dir doesn't exist yet, skipping symlink config")
             return
         }
@@ -2380,6 +2605,11 @@ object WorkshopManager {
                     File(workshopContentDir, "${dir.name}.partial").deleteRecursively()
                 }
             }
+        }
+
+        if (appId == ONI_APP_ID && winePrefix.isNotEmpty()) {
+            configureOniWorkshopMods(winePrefix, workshopContentDir, modDirs.orEmpty(), items)
+            return
         }
 
         if (modDirs.isNullOrEmpty()) {
@@ -3736,9 +3966,19 @@ object WorkshopManager {
         enabledIds: Set<Long>,
     ): Boolean {
         val isSlayTheSpire = appId == SlayTheSpireModTheSpireCompatibility.APP_ID
+        val isOni = appId == ONI_APP_ID
         if (enabledIds.isEmpty()) {
             if (isSlayTheSpire) {
                 cleanupDisabledWorkshopArtifactsForApp(context, appId)
+            } else if (isOni) {
+                val winePrefix = getContainerWinePrefix(context, appId)
+                configureSymlinksForApp(
+                    context,
+                    appId,
+                    emptyList(),
+                    winePrefix,
+                    getWorkshopContentDir(winePrefix, appId),
+                )
             }
             return false
         }
@@ -3750,6 +3990,8 @@ object WorkshopManager {
             Timber.tag(TAG).w("No local Workshop payloads found for appId=$appId")
             if (isSlayTheSpire) {
                 cleanupDisabledWorkshopArtifactsForApp(context, appId)
+            } else if (isOni) {
+                configureSymlinksForApp(context, appId, emptyList(), winePrefix, workshopContentDir)
             }
             return false
         }
@@ -3777,6 +4019,9 @@ object WorkshopManager {
         extractCkmFiles(workshopContentDir)
         restoreZipPayloadNames(workshopContentDir)
         extractZipMods(workshopContentDir)
+        if (workshopContentDir.name.toIntOrNull() == ONI_APP_ID) {
+            normalizeExtractedWorkshopPaths(workshopContentDir)
+        }
         decompressLzmaFiles(workshopContentDir) { completed, total ->
             onStatus?.invoke("Decompressing ($completed/$total)…")
         }
