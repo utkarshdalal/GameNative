@@ -46,9 +46,9 @@ object BionicSteamAssetsDependency : LaunchDependency {
     private val LSTEAMCLIENT_ARCHIVE_BY_WINE = mapOf(
         "proton-9.0-x86_64" to "lsteamclient-x86_64-proton9.tzst",
         "proton-9.0-arm64ec" to "lsteamclient-arm64ec-proton9.tzst",
-        "proton-10.0-4-x86_64-1" to "lsteamclient-x86_64.tzst",
         "proton-10.0-arm64ec-2" to "lsteamclient-arm64ec.tzst",
-        "proton-10.0-4-arm64ec-1" to "lsteamclient-arm64ec.tzst",
+        "proton-10.0-4-x86_64-1" to "lsteamclient-x86_64-proton10-4.tzst",
+        "proton-10.0-4-arm64ec-1" to "lsteamclient-arm64ec-proton10-4.tzst",
         "proton-11.0-1-x86_64-1" to "lsteamclient-x86_64-proton11.tzst",
         "proton-11.0-1-arm64ec-1" to "lsteamclient-arm64ec-proton11.tzst",
     )
