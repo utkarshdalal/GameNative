@@ -317,6 +317,15 @@ abstract class BaseAppScreen {
     }
 
     /**
+     * Check if a stale install record remains even though the game is not actually installed
+     * (e.g. its files went missing after a storage switch). Such a record blocks reinstall
+     * until it is cleaned up, so sources that can detect it should expose a delete action.
+     */
+    open fun hasLeftoverInstall(context: Context, libraryItem: LibraryItem): Boolean {
+        return false
+    }
+
+    /**
      * Check if an update is pending (synchronous version, returns false by default)
      * Override isUpdatePendingSuspend for async checks
      */
@@ -985,6 +994,9 @@ abstract class BaseAppScreen {
         var hasPartialDownloadState by remember(libraryItem.appId) {
             mutableStateOf(hasPartialDownload(context, libraryItem))
         }
+        var hasLeftoverInstallState by remember(libraryItem.appId) {
+            mutableStateOf(hasLeftoverInstall(context, libraryItem))
+        }
 
         val uiScope = rememberCoroutineScope()
 
@@ -995,6 +1007,7 @@ abstract class BaseAppScreen {
             isDownloadingState = currentlyDownloading
             downloadProgressState = getDownloadProgress(context, libraryItem)
             hasPartialDownloadState = hasPartialDownload(context, libraryItem)
+            hasLeftoverInstallState = hasLeftoverInstall(context, libraryItem)
             if (includeUpdatePending) {
                 isUpdatePendingState = isUpdatePendingSuspend(context, libraryItem)
             }
@@ -1259,6 +1272,7 @@ abstract class BaseAppScreen {
             isDownloading = isDownloadingState,
             downloadProgress = downloadProgressState,
             hasPartialDownload = hasPartialDownloadState,
+            hasLeftoverInstall = hasLeftoverInstallState,
             isUpdatePending = isUpdatePendingState,
             downloadInfo = downloadInfo,
             onDownloadInstallClick = {
