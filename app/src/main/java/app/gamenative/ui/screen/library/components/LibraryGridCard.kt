@@ -134,13 +134,13 @@ internal fun GridViewCard(
         modifier = modifier
             .padding(vertical = 4.dp)
             .scale(scale)
-            .then(focusHaloModifier)
-            .focusRing(interactionSource, cardShape),
+            .then(focusHaloModifier),
     ) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(aspectRatio)
+                .focusRing(interactionSource, cardShape)
                 .clickable(
                     onClick = onClick,
                     interactionSource = interactionSource,
