@@ -619,21 +619,19 @@ class LibraryViewModel @Inject constructor(
                 }
                 .toList()
 
-            // Filter Steam apps first (no pagination yet)
-            // Note: Don't sort individual lists - we'll sort the combined list for consistent ordering
+            // Filter Steam apps first (no pagination yet). Don't sort here - the combined
+            // list is fully re-sorted below, so a pre-sort is wasted work.
             val filteredSteamApps: List<SteamApp> = steamFilteredBeforeCompatibility
                 .asSequence()
                 .filter { item -> passesCompatibleFilter(item.name) }
                 .filter { item -> passesStatsFilters(currentState, GameSource.STEAM, item.name) }
-                .sortedWith(
-                    compareByDescending<SteamApp> {
-                        downloadDirectorySet.contains(SteamService.getAppDirName(it))
-                    }.thenBy { it.name.lowercase() },
-                )
                 .toList()
 
             // Map Steam apps to UI items
-            data class LibraryEntry(val item: LibraryItem, val isInstalled: Boolean, val lastPlayed: Long = 0L)
+            data class LibraryEntry(val item: LibraryItem, val isInstalled: Boolean, val lastPlayed: Long = 0L) {
+                // Precomputed once so sort comparators don't allocate a lowercase copy per comparison
+                val sortName: String = item.name.lowercase()
+            }
 
             fun lastPlayedFor(appId: String): Long = playHistoryByAppId[appId] ?: 0L
 
@@ -853,6 +851,12 @@ class LibraryViewModel @Inject constructor(
             // ALL tab uses user preferences, other tabs override with their presets
             // Use captured currentState (not _state.value) to avoid TOCTOU race
             val currentTab = currentState.currentTab
+
+            // Credential checks hit storage; do each once per run instead of per usage below
+            val hasGOGCredentials = GOGService.hasStoredCredentials(context)
+            val hasEpicCredentials = EpicService.hasStoredCredentials(context)
+            val hasAmazonCredentials = AmazonService.hasStoredCredentials(context)
+
             val includeSteam = if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
                 currentState.showSteamInLibrary
             } else {
@@ -868,57 +872,57 @@ class LibraryViewModel @Inject constructor(
                 currentState.showGOGInLibrary
             } else {
                 currentTab.showGoG
-            }) && GOGService.hasStoredCredentials(context)
+            }) && hasGOGCredentials
 
             val includeEpic = (if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
                 currentState.showEpicInLibrary
             } else {
                 currentTab.showEpic
-            }) && EpicService.hasStoredCredentials(context)
+            }) && hasEpicCredentials
 
             val includeAmazon = (if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
                 currentState.showAmazonInLibrary
             } else {
                 currentTab.showAmazon
-            }) && AmazonService.hasStoredCredentials(context)
+            }) && hasAmazonCredentials
 
             // Combine both lists and apply sort option
             val sortComparator: Comparator<LibraryEntry> = when (currentState.currentSortOption) {
                 SortOption.INSTALLED_FIRST -> compareBy<LibraryEntry> { entry ->
                     if (entry.isInstalled) 0 else 1
-                }.thenBy { it.item.name.lowercase() }
+                }.thenBy { it.sortName }
 
-                SortOption.NAME_ASC -> compareBy { it.item.name.lowercase() }
+                SortOption.NAME_ASC -> compareBy { it.sortName }
 
-                SortOption.NAME_DESC -> compareByDescending { it.item.name.lowercase() }
+                SortOption.NAME_DESC -> compareByDescending { it.sortName }
 
                 SortOption.RECENTLY_PLAYED -> LibrarySortUtils.recentlyPlayedComparator(
-                    name = { it.item.name },
+                    name = { it.sortName },
                     isInstalled = { it.isInstalled },
                     lastPlayed = { it.lastPlayed },
                 )
 
                 SortOption.SIZE_SMALLEST -> compareBy<LibraryEntry> { it.item.sizeBytes }
-                    .thenBy { it.item.name.lowercase() }
+                    .thenBy { it.sortName }
 
                 SortOption.SIZE_LARGEST -> compareByDescending<LibraryEntry> { it.item.sizeBytes }
-                    .thenBy { it.item.name.lowercase() }
+                    .thenBy { it.sortName }
 
                 SortOption.FPS_HIGH -> compareByDescending<LibraryEntry> {
                     currentState.statsFor(it.item)?.fps ?: -1
-                }.thenBy { it.item.name.lowercase() }
+                }.thenBy { it.sortName }
 
                 SortOption.RUNS_HIGH -> compareByDescending<LibraryEntry> {
                     currentState.statsFor(it.item)?.runsGpu ?: -1
-                }.thenBy { it.item.name.lowercase() }
+                }.thenBy { it.sortName }
 
                 SortOption.REVIEWS_HIGH -> compareByDescending<LibraryEntry> {
                     currentState.statsFor(it.item)?.reviewsDevice ?: -1
-                }.thenBy { it.item.name.lowercase() }
+                }.thenBy { it.sortName }
 
                 SortOption.REVIEWS_GPU_HIGH -> compareByDescending<LibraryEntry> {
                     currentState.statsFor(it.item)?.reviewsGpu ?: -1
-                }.thenBy { it.item.name.lowercase() }
+                }.thenBy { it.sortName }
             }
 
             ensureActive()
@@ -966,13 +970,13 @@ class LibraryViewModel @Inject constructor(
                     // Use user prefs + auth state only (not current tab) so badges stay stable across tab switches
                     allCount = (if (currentState.showSteamInLibrary) steamEntries.size else 0) +
                         (if (currentState.showCustomGamesInLibrary) customEntries.size else 0) +
-                        (if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0) +
-                        (if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0) +
-                        (if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0),
+                        (if (currentState.showGOGInLibrary && hasGOGCredentials) gogEntries.size else 0) +
+                        (if (currentState.showEpicInLibrary && hasEpicCredentials) epicEntries.size else 0) +
+                        (if (currentState.showAmazonInLibrary && hasAmazonCredentials) amazonEntries.size else 0),
                     steamCount = if (currentState.showSteamInLibrary) steamEntries.size else 0,
-                    gogCount = if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0,
-                    epicCount = if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0,
-                    amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
+                    gogCount = if (currentState.showGOGInLibrary && hasGOGCredentials) gogEntries.size else 0,
+                    epicCount = if (currentState.showEpicInLibrary && hasEpicCredentials) epicEntries.size else 0,
+                    amazonCount = if (currentState.showAmazonInLibrary && hasAmazonCredentials) amazonEntries.size else 0,
                     localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
                 )
             }
