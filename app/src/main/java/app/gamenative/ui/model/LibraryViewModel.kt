@@ -114,6 +114,10 @@ class LibraryViewModel @Inject constructor(
     // in-flight filter job to avoid duplicate operations
     private var filterJob: Job? = null
 
+    // in-flight pagination slice job; cancelled by newer page changes and by full rebuilds
+    // so a slow slice can't overwrite the UI with a stale page or pre-rebuild data
+    private var pageJob: Job? = null
+
     // Check size of cache to avoid duplication
     private val steamSizeCache = ConcurrentHashMap<String, Long>()
 
@@ -392,14 +396,19 @@ class LibraryViewModel @Inject constructor(
             return
         }
         paginationCurrentPage = toPage
-        viewModelScope.launch(Dispatchers.Default) {
-            val pagedList = applyPagination(cached, toPage, _state.value)
-            fetchCompatibilityForPage(pagedList.map { it.name })
-            _state.update {
-                it.copy(
-                    appInfoList = pagedList,
-                    currentPaginationPage = toPage + 1, // visual display is not 0 indexed
-                )
+        synchronized(this) {
+            pageJob?.cancel()
+            pageJob = viewModelScope.launch(Dispatchers.Default) {
+                val pagedList = applyPagination(cached, toPage, _state.value)
+                // Don't commit if a newer page change or a full rebuild superseded this job
+                ensureActive()
+                fetchCompatibilityForPage(pagedList.map { it.name })
+                _state.update {
+                    it.copy(
+                        appInfoList = pagedList,
+                        currentPaginationPage = toPage + 1, // visual display is not 0 indexed
+                    )
+                }
             }
         }
     }
@@ -553,9 +562,11 @@ class LibraryViewModel @Inject constructor(
 
     private fun onFilterApps(paginationPage: Int = 0): Job = synchronized(this) {
         Timber.tag("LibraryViewModel").d("onFilterApps - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
-        // Invalidate cache and current running job
+        // Invalidate cache and current running jobs, including any in-flight pagination
+        // slice that would otherwise commit results from the pre-rebuild list
         cachedFilteredLibrary = null
         filterJob?.cancel()
+        pageJob?.cancel()
         viewModelScope.launch(Dispatchers.IO) {
             _state.update { it.copy(isLoading = true) }
 
