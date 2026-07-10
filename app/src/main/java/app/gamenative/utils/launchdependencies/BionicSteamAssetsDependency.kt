@@ -31,7 +31,9 @@ import java.io.File
 object BionicSteamAssetsDependency : LaunchDependency {
     private const val STEAM_EXE = "steam.exe"
     private const val STEAM_EXE_PROTON11 = "steam-proton11.exe"
-    private const val BIONIC_STEAM_ARCHIVE = "steam-androidarm64.tzst"
+    private const val BIONIC_STEAM_VERSION = "20260709"
+    private const val BIONIC_STEAM_ARCHIVE = "steam-androidarm64-$BIONIC_STEAM_VERSION.tzst"
+    private const val BIONIC_STEAM_MARKER = ".bionic_steam_version"
     private const val STEAMCLIENT_DLLS_ARCHIVE = "steamclient-dlls-20260619.tzst"
     private const val LSTEAMCLIENT_DLL = "lsteamclient.dll"
     private const val LIBSTEAMCLIENT_SO = "libsteamclient.so"
@@ -122,6 +124,16 @@ object BionicSteamAssetsDependency : LaunchDependency {
     private fun libsteamclientSo(imageFs: ImageFs): File =
         File(imageFs.libDir, LIBSTEAMCLIENT_SO)
 
+    private fun bionicSteamMarker(imageFs: ImageFs): File =
+        File(imageFs.filesDir, BIONIC_STEAM_MARKER)
+
+    private fun bionicSteamInstalled(imageFs: ImageFs): Boolean {
+        val marker = bionicSteamMarker(imageFs)
+        return marker.exists() &&
+            marker.readText().trim() == BIONIC_STEAM_VERSION &&
+            libsteamclientSo(imageFs).exists()
+    }
+
     /**
      * Extracts the active Proton's lsteamclient archive (downloaded by [install])
      * into that Proton's install tree, then copies the PE DLLs into the container
@@ -167,7 +179,7 @@ object BionicSteamAssetsDependency : LaunchDependency {
         if (!File(filesDir, steamExeAssetFor(container)).exists()) return false
         if (!File(filesDir, CACERT_PEM).exists()) return false
         if (!File(filesDir, STEAMCLIENT_DLLS_ARCHIVE).exists()) return false
-        if (!libsteamclientSo(imageFs).exists()) return false
+        if (!bionicSteamInstalled(imageFs)) return false
         // Only ensures the archive is downloaded. The extract into the Proton tree
         // + copy into the prefix happen every boot in extractLsteamclientIntoPrefix
         // (always overwriting), so they aren't cached here.
@@ -249,11 +261,10 @@ object BionicSteamAssetsDependency : LaunchDependency {
             }
         }
 
-        // 4. bionic Android libsteamclient.so.
-        val nativeLib = libsteamclientSo(imageFs)
-        if (!withContext(Dispatchers.IO) { nativeLib.exists() }) {
-            val bionicArchiveCache = File(filesDir, BIONIC_STEAM_ARCHIVE)
-            if (!withContext(Dispatchers.IO) { bionicArchiveCache.exists() }) {
+        // 4. bionic Android libsteamclient.so (+ sibling libs), version-gated.
+        val bionicArchiveCache = File(filesDir, BIONIC_STEAM_ARCHIVE)
+        if (!withContext(Dispatchers.IO) { bionicSteamInstalled(imageFs) }) {
+            suspend fun fetchBionicArchive() {
                 callbacks.setLoadingMessage("Downloading $BIONIC_STEAM_ARCHIVE")
                 withContext(Dispatchers.IO) {
                     SteamService.downloadFile(
@@ -264,17 +275,31 @@ object BionicSteamAssetsDependency : LaunchDependency {
                     ).await()
                 }
             }
+            if (!withContext(Dispatchers.IO) { bionicArchiveCache.exists() }) fetchBionicArchive()
 
             callbacks.setLoadingMessage("Extracting bionic Steam client")
             callbacks.setLoadingProgress(LOADING_PROGRESS_UNKNOWN)
+            var extracted = withContext(Dispatchers.IO) {
+                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, bionicArchiveCache, imageFs.rootDir)
+            }
+            if (!extracted) {
+                withContext(Dispatchers.IO) { bionicArchiveCache.delete() }
+                fetchBionicArchive()
+                extracted = withContext(Dispatchers.IO) {
+                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, bionicArchiveCache, imageFs.rootDir)
+                }
+            }
+            if (!extracted) {
+                throw IllegalStateException("Failed to extract $BIONIC_STEAM_ARCHIVE into ${imageFs.rootDir.absolutePath}")
+            }
+
             withContext(Dispatchers.IO) {
-                val ok = TarCompressorUtils.extract(
-                    TarCompressorUtils.Type.ZSTD,
-                    bionicArchiveCache,
-                    imageFs.rootDir,
-                )
-                if (!ok) {
-                    throw IllegalStateException("Failed to extract $BIONIC_STEAM_ARCHIVE into ${imageFs.rootDir.absolutePath}")
+                val marker = bionicSteamMarker(imageFs)
+                val tmp = File(marker.parentFile, "$BIONIC_STEAM_MARKER.tmp")
+                tmp.writeText(BIONIC_STEAM_VERSION)
+                if (!tmp.renameTo(marker)) {
+                    tmp.copyTo(marker, overwrite = true)
+                    tmp.delete()
                 }
             }
         }
