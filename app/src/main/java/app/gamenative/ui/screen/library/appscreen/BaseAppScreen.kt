@@ -1300,7 +1300,7 @@ abstract class BaseAppScreen {
                 }
             },
             onBack = onBack,
-            optionsMenu = optionsMenu.toTypedArray(),
+            optionsMenu = optionsMenu,
         )
 
         if (showReadiness && launchActivity != null) {

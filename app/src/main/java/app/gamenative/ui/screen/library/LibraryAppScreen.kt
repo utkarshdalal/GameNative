@@ -569,7 +569,7 @@ internal fun AppScreenContent(
     onDeleteDownloadClick: () -> Unit,
     onUpdateClick: () -> Unit,
     onBack: () -> Unit = {},
-    vararg optionsMenu: AppMenuOption,
+    optionsMenu: List<AppMenuOption>,
 ) {
     val context = LocalContext.current
     // reactive — recomposes when network state changes
@@ -1329,7 +1329,7 @@ private fun Preview_AppScreen() {
                         optionType = it,
                         onClick = { },
                     )
-                }.toTypedArray(),
+                },
             )
         }
     }
