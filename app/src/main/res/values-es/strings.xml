@@ -2050,4 +2050,21 @@
     <string name="toast_no_buttons_to_copy_appearance">No hay otros controles disponibles para copiar la apariencia</string>
     <string name="toast_copied_button_appearance">Apariencia del control copiada</string>
     <string name="toast_applied_button_appearance">Apariencia aplicada a todos los controles</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Control de rendimiento</string>
+    <string name="power_control_info">Controla el escalado de frecuencia de la CPU y la configuración del gobernador. Requiere el servicio PServer.</string>
+    <string name="power_control_driver">Controlador: %s</string>
+    <string name="power_control_profiles">Perfiles de rendimiento</string>
+    <string name="power_control_governor">Gobernador de CPU</string>
+    <string name="power_control_current_frequencies">Frecuencias actuales</string>
+    <string name="power_control_frequencies">Configuración de frecuencia</string>
+    <string name="power_control_cpu_min_freq">Frecuencia mínima de CPU</string>
+    <string name="power_control_cpu_max_freq">Frecuencia máxima de CPU</string>
+    <string name="power_control_gpu_freq">Frecuencia de GPU</string>
+    <string name="power_control_gpu_min_power">Potencia mínima de GPU</string>
+    <string name="power_control_gpu_max_power">Potencia máxima de GPU</string>
+    <string name="power_control_available_frequencies">Frecuencias disponibles</string>
+    <string name="power_control_pserver_required">PServer no disponible</string>
+    <string name="power_control_pserver_required_desc">Esta función requiere el servicio PServer (disponible en dispositivos AYN y Retroid). Puede ver la configuración actual pero no puede realizar cambios sin PServer.</string>
 </resources>

@@ -2053,4 +2053,21 @@
     <string name="toast_no_buttons_to_copy_appearance">Nu există alte controale de la care să copiezi aspectul</string>
     <string name="toast_copied_button_appearance">Aspectul controlului a fost copiat</string>
     <string name="toast_applied_button_appearance">Aspectul a fost aplicat tuturor controalelor</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Control performanță</string>
+    <string name="power_control_info">Controlează scalarea frecvenței CPU și setările guvernatorului. Necesită serviciul PServer.</string>
+    <string name="power_control_driver">Driver: %s</string>
+    <string name="power_control_profiles">Profile de performanță</string>
+    <string name="power_control_governor">Guvernator CPU</string>
+    <string name="power_control_current_frequencies">Frecvențe curente</string>
+    <string name="power_control_frequencies">Setări frecvență</string>
+    <string name="power_control_cpu_min_freq">Frecvență minimă CPU</string>
+    <string name="power_control_cpu_max_freq">Frecvență maximă CPU</string>
+    <string name="power_control_gpu_freq">Frecvență GPU</string>
+    <string name="power_control_gpu_min_power">Putere minimă GPU</string>
+    <string name="power_control_gpu_max_power">Putere maximă GPU</string>
+    <string name="power_control_available_frequencies">Frecvențe disponibile</string>
+    <string name="power_control_pserver_required">PServer indisponibil</string>
+    <string name="power_control_pserver_required_desc">Această funcție necesită serviciul PServer (disponibil pe dispozitivele AYN și Retroid). Poți vizualiza setările curente, dar nu poți face modificări fără PServer.</string>
 </resources>

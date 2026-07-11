@@ -1992,4 +1992,21 @@
     <string name="toast_no_buttons_to_copy_appearance">Keine anderen Steuerungen zum Kopieren der Darstellung verfügbar</string>
     <string name="toast_copied_button_appearance">Steuerungsdarstellung kopiert</string>
     <string name="toast_applied_button_appearance">Darstellung auf alle Steuerungen angewendet</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Leistungssteuerung</string>
+    <string name="power_control_info">Steuert CPU-Frequenzskalierung und Governor-Einstellungen. Erfordert den PServer-Dienst.</string>
+    <string name="power_control_driver">Treiber: %s</string>
+    <string name="power_control_profiles">Leistungsprofile</string>
+    <string name="power_control_governor">CPU-Governor</string>
+    <string name="power_control_current_frequencies">Aktuelle Frequenzen</string>
+    <string name="power_control_frequencies">Frequenzeinstellungen</string>
+    <string name="power_control_cpu_min_freq">Minimale CPU-Frequenz</string>
+    <string name="power_control_cpu_max_freq">Maximale CPU-Frequenz</string>
+    <string name="power_control_gpu_freq">GPU-Frequenz</string>
+    <string name="power_control_gpu_min_power">Minimale GPU-Leistung</string>
+    <string name="power_control_gpu_max_power">Maximale GPU-Leistung</string>
+    <string name="power_control_available_frequencies">Verfügbare Frequenzen</string>
+    <string name="power_control_pserver_required">PServer nicht verfügbar</string>
+    <string name="power_control_pserver_required_desc">Diese Funktion erfordert den PServer-Dienst (verfügbar auf AYN- und Retroid-Geräten). Sie können die aktuellen Einstellungen anzeigen, aber ohne PServer keine Änderungen vornehmen.</string>
 </resources>

@@ -95,6 +95,7 @@ import java.util.EnumSet
 import app.gamenative.externaldisplay.ExternalDisplayInputController
 import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
+import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicService
@@ -2113,6 +2114,10 @@ fun XServerScreen(
                                 onGameLaunchError,
                                 isOffline
                             )
+
+                            // Start performance driver after environment is set up
+                            PowerManager.start()
+
                             if (!PluviaApp.isActivityInForeground && !neverSuspend) {
                                 PluviaApp.xEnvironment?.onPause()
                                 if (manualResumeMode) {

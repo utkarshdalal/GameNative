@@ -2050,4 +2050,21 @@
     <string name="toast_no_buttons_to_copy_appearance">Brak innych elementów do skopiowania wyglądu</string>
     <string name="toast_copied_button_appearance">Skopiowano wygląd elementu</string>
     <string name="toast_applied_button_appearance">Zastosowano wygląd do wszystkich elementów</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Kontrola wydajności</string>
+    <string name="power_control_info">Kontroluje skalowanie częstotliwości procesora i ustawienia regulatora. Wymaga usługi PServer.</string>
+    <string name="power_control_driver">Sterownik: %s</string>
+    <string name="power_control_profiles">Profile wydajności</string>
+    <string name="power_control_governor">Regulator CPU</string>
+    <string name="power_control_current_frequencies">Bieżące częstotliwości</string>
+    <string name="power_control_frequencies">Ustawienia częstotliwości</string>
+    <string name="power_control_cpu_min_freq">Minimalna częstotliwość CPU</string>
+    <string name="power_control_cpu_max_freq">Maksymalna częstotliwość CPU</string>
+    <string name="power_control_gpu_freq">Częstotliwość GPU</string>
+    <string name="power_control_gpu_min_power">Minimalna moc GPU</string>
+    <string name="power_control_gpu_max_power">Maksymalna moc GPU</string>
+    <string name="power_control_available_frequencies">Dostępne częstotliwości</string>
+    <string name="power_control_pserver_required">PServer niedostępny</string>
+    <string name="power_control_pserver_required_desc">Ta funkcja wymaga usługi PServer (dostępnej na urządzeniach AYN i Retroid). Możesz przeglądać bieżące ustawienia, ale nie możesz wprowadzać zmian bez PServer.</string>
 </resources>

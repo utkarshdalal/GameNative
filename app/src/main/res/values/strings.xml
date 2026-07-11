@@ -2050,4 +2050,21 @@
     <string name="game_launch_tip_23">Tip: If you have a Mali GPU, please use System Drivers.</string>
     <string name="game_launch_tip_24">Tip: Getting a blank screen? Try using the \"%s\" option in the menu to check if your drivers are working correctly.</string>
     <string name="game_launch_tip_25">Tip: Use Proton x86-64 if you can\'t click the mouse in games.</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Power Control</string>
+    <string name="power_control_info">Control CPU frequency scaling and governor settings. Requires PServer service.</string>
+    <string name="power_control_driver">Driver: %s</string>
+    <string name="power_control_profiles">Power Profiles</string>
+    <string name="power_control_governor">CPU Governor</string>
+    <string name="power_control_current_frequencies">Current Frequencies</string>
+    <string name="power_control_frequencies">Frequency Settings</string>
+    <string name="power_control_cpu_min_freq">Min CPU Frequency</string>
+    <string name="power_control_cpu_max_freq">Max CPU Frequency</string>
+    <string name="power_control_gpu_freq">GPU Frequency</string>
+    <string name="power_control_gpu_min_power">Min GPU Power</string>
+    <string name="power_control_gpu_max_power">Max GPU Power</string>
+    <string name="power_control_available_frequencies">Available Frequencies</string>
+    <string name="power_control_pserver_required">PServer Not Available</string>
+    <string name="power_control_pserver_required_desc">This feature requires PServer service (available on AYN and Retroid devices). You can view current settings but cannot make changes without PServer.</string>
 </resources>

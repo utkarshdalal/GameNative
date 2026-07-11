@@ -2050,4 +2050,21 @@
     <string name="toast_no_buttons_to_copy_appearance">모양을 복사할 다른 컨트롤이 없습니다</string>
     <string name="toast_copied_button_appearance">컨트롤 모양을 복사했습니다</string>
     <string name="toast_applied_button_appearance">모든 컨트롤에 모양을 적용했습니다</string>
+
+    <!-- Power Control -->
+    <string name="power_control">성능 제어</string>
+    <string name="power_control_info">CPU 주파수 스케일링 및 거버너 설정을 제어합니다. PServer 서비스가 필요합니다.</string>
+    <string name="power_control_driver">드라이버: %s</string>
+    <string name="power_control_profiles">성능 프로필</string>
+    <string name="power_control_governor">CPU 거버너</string>
+    <string name="power_control_current_frequencies">현재 주파수</string>
+    <string name="power_control_frequencies">주파수 설정</string>
+    <string name="power_control_cpu_min_freq">최소 CPU 주파수</string>
+    <string name="power_control_cpu_max_freq">최대 CPU 주파수</string>
+    <string name="power_control_gpu_freq">GPU 주파수</string>
+    <string name="power_control_gpu_min_power">최소 GPU 파워</string>
+    <string name="power_control_gpu_max_power">최대 GPU 파워</string>
+    <string name="power_control_available_frequencies">사용 가능한 주파수</string>
+    <string name="power_control_pserver_required">PServer를 사용할 수 없음</string>
+    <string name="power_control_pserver_required_desc">이 기능을 사용하려면 PServer 서비스가 필요합니다(AYN 및 Retroid 기기에서 사용 가능). 현재 설정을 볼 수 있지만 PServer 없이는 변경할 수 없습니다.</string>
 </resources>

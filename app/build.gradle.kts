@@ -410,6 +410,9 @@ dependencies {
 
     implementation("com.auth0.android:jwtdecode:2.0.2")
 
+    // Samsung Performance SDK
+    implementation(files("src/main/lib/perfsdk-v1.0.0.jar"))
+
     "modernXrImplementation"("com.meta.horizon.platform.sdk:core-kotlin:0.2.2")
     "modernXrImplementation"("com.meta.horizon.platform.sdk:iap-kotlin:0.2.2")
 }

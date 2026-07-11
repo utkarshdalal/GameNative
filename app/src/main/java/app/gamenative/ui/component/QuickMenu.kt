@@ -4,8 +4,6 @@ import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -56,6 +54,7 @@ import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -88,6 +87,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.powercontrol.PowerManager
+import app.gamenative.ui.component.quickMenus.PowerControlQuickMenuTab
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.theme.PluviaTheme
@@ -118,6 +119,7 @@ private object QuickMenuTab {
     const val EFFECTS = 2
     const val CONTROLLER = 3
     const val TOOLS = 4
+    const val POWER = 5
 }
 
 data class QuickMenuItem(
@@ -339,11 +341,15 @@ fun QuickMenu(
         )
     }
 
+    val isPowerControlAvailable = remember { PowerManager.isPServerAvailable() }
+
     var selectedTab by rememberSaveable {
         mutableIntStateOf(
-            if (PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable)
-                QuickMenuTab.HUD
-            else PrefManager.quickMenuLastTab
+            when {
+                PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable -> QuickMenuTab.HUD
+                PrefManager.quickMenuLastTab == QuickMenuTab.POWER && !isPowerControlAvailable -> QuickMenuTab.HUD
+                else -> PrefManager.quickMenuLastTab
+            }
         )
     }
     val selectedTabLabelResId = when (selectedTab) {
@@ -351,6 +357,7 @@ fun QuickMenu(
         QuickMenuTab.LSFG -> R.string.lsfg_tab_title
         QuickMenuTab.EFFECTS -> R.string.screen_effects
         QuickMenuTab.TOOLS -> R.string.task_manager
+        QuickMenuTab.POWER -> R.string.power_control
         else -> R.string.quick_menu_tab_controller
     }
 
@@ -363,11 +370,13 @@ fun QuickMenu(
     val hudTabFocusRequester = remember { FocusRequester() }
     val controllerTabFocusRequester = remember { FocusRequester() }
     val toolsTabFocusRequester = remember { FocusRequester() }
+    val powerTabFocusRequester = remember { FocusRequester() }
     val hudItemFocusRequester = remember { FocusRequester() }
     val effectsItemFocusRequester = remember { FocusRequester() }
     val controllerItemFocusRequester = remember { FocusRequester() }
     val toolsItemFocusRequester = remember { FocusRequester() }
     val lsfgItemFocusRequester = remember { FocusRequester() }
+    val powerItemFocusRequester = remember { FocusRequester() }
 
     val visibleState = remember { MutableTransitionState(false) }
     visibleState.targetState = isVisible
@@ -520,6 +529,20 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = controllerTabFocusRequester,
                                 )
+                                if (isPowerControlAvailable) {
+                                    QuickMenuTabButton(
+                                        icon = Icons.Default.BatteryChargingFull,
+                                        contentDescriptionResId = R.string.power_control,
+                                        selected = selectedTab == QuickMenuTab.POWER,
+                                        accentColor = PluviaTheme.colors.accentPurple,
+                                        onSelected = {
+                                            selectedTab = QuickMenuTab.POWER
+                                            PrefManager.quickMenuLastTab = selectedTab
+                                        },
+                                        modifier = Modifier.width(56.dp),
+                                        focusRequester = powerTabFocusRequester,
+                                    )
+                                }
                                 QuickMenuTabButton(
                                     icon = Icons.Default.BarChart,
                                     contentDescriptionResId = R.string.task_manager,
@@ -645,6 +668,13 @@ fun QuickMenu(
                                         }
                                     }
 
+                                    QuickMenuTab.POWER -> {
+                                        PowerControlQuickMenuTab(
+                                            focusRequester = powerItemFocusRequester,
+                                            modifier = Modifier.fillMaxSize(),
+                                        )
+                                    }
+
                                     QuickMenuTab.TOOLS -> {
                                         ToolsQuickMenuTab(
                                             processes = wineProcesses,
@@ -713,6 +743,7 @@ fun QuickMenu(
                         QuickMenuTab.HUD -> hudItemFocusRequester.requestFocus()
                         QuickMenuTab.LSFG -> lsfgItemFocusRequester.requestFocus()
                         QuickMenuTab.EFFECTS -> effectsItemFocusRequester.requestFocus()
+                        QuickMenuTab.POWER -> powerItemFocusRequester.requestFocus()
                         QuickMenuTab.TOOLS -> toolsItemFocusRequester.requestFocus()
                         else -> controllerItemFocusRequester.requestFocus()
                     }
