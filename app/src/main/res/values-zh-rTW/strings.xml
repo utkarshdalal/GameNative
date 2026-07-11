@@ -2163,4 +2163,21 @@
     <string name="local_mod_copied_progress">已複製 %1$s，共 %2$s</string>
     <string name="nexus_invalid_source_metadata">此受管理模組的來源資訊不完整，無法重試。</string>
     <string name="nexus_archive_memory_error">此壓縮檔需要的記憶體超過 Android 允許的上限。請在更新 GameNative 後重試，或選擇較小的檔案。</string>
+
+    <!-- Power Control -->
+    <string name="power_control">效能控制</string>
+    <string name="power_control_info">控制CPU頻率調節和調速器設定。需要PServer服務。</string>
+    <string name="power_control_driver">驅動程式：%s</string>
+    <string name="power_control_profiles">效能設定檔</string>
+    <string name="power_control_governor">CPU調速器</string>
+    <string name="power_control_current_frequencies">目前頻率</string>
+    <string name="power_control_frequencies">頻率設定</string>
+    <string name="power_control_cpu_min_freq">最低CPU頻率</string>
+    <string name="power_control_cpu_max_freq">最高CPU頻率</string>
+    <string name="power_control_gpu_freq">GPU頻率</string>
+    <string name="power_control_gpu_min_power">最低GPU功率</string>
+    <string name="power_control_gpu_max_power">最高GPU功率</string>
+    <string name="power_control_available_frequencies">可用頻率</string>
+    <string name="power_control_pserver_required">PServer不可用</string>
+    <string name="power_control_pserver_required_desc">此功能需要PServer服務（適用於AYN和Retroid裝置）。您可以檢視目前設定，但無法在沒有PServer的情況下進行變更。</string>
 </resources>

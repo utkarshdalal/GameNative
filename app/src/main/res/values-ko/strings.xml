@@ -2152,4 +2152,21 @@
     <string name="local_mod_copied_progress">%2$s 중 %1$s 복사됨</string>
     <string name="nexus_invalid_source_metadata">이 관리 모드에는 원본 정보가 부족하여 다시 시도할 수 없습니다.</string>
     <string name="nexus_archive_memory_error">이 압축 파일에는 Android 허용량보다 많은 메모리가 필요합니다. GameNative를 업데이트한 후 다시 시도하거나 더 작은 파일을 선택하세요.</string>
+
+    <!-- Power Control -->
+    <string name="power_control">성능 제어</string>
+    <string name="power_control_info">CPU 주파수 스케일링 및 거버너 설정을 제어합니다. PServer 서비스가 필요합니다.</string>
+    <string name="power_control_driver">드라이버: %s</string>
+    <string name="power_control_profiles">성능 프로필</string>
+    <string name="power_control_governor">CPU 거버너</string>
+    <string name="power_control_current_frequencies">현재 주파수</string>
+    <string name="power_control_frequencies">주파수 설정</string>
+    <string name="power_control_cpu_min_freq">최소 CPU 주파수</string>
+    <string name="power_control_cpu_max_freq">최대 CPU 주파수</string>
+    <string name="power_control_gpu_freq">GPU 주파수</string>
+    <string name="power_control_gpu_min_power">최소 GPU 파워</string>
+    <string name="power_control_gpu_max_power">최대 GPU 파워</string>
+    <string name="power_control_available_frequencies">사용 가능한 주파수</string>
+    <string name="power_control_pserver_required">PServer를 사용할 수 없음</string>
+    <string name="power_control_pserver_required_desc">이 기능을 사용하려면 PServer 서비스가 필요합니다(AYN 및 Retroid 기기에서 사용 가능). 현재 설정을 볼 수 있지만 PServer 없이는 변경할 수 없습니다.</string>
 </resources>

@@ -2154,4 +2154,21 @@
     <string name="local_mod_copied_progress">Скопійовано %1$s із %2$s</string>
     <string name="nexus_invalid_source_metadata">Цей керований мод має неповні відомості про джерело, тому повторити операцію неможливо.</string>
     <string name="nexus_archive_memory_error">Архів потребує більше пам’яті, ніж дозволено Android. Повторіть спробу після оновлення GameNative або виберіть менший файл.</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Керування продуктивністю</string>
+    <string name="power_control_info">Керує масштабуванням частоти процесора та налаштуваннями регулятора. Потрібна служба PServer.</string>
+    <string name="power_control_driver">Драйвер: %s</string>
+    <string name="power_control_profiles">Профілі продуктивності</string>
+    <string name="power_control_governor">Регулятор ЦП</string>
+    <string name="power_control_current_frequencies">Поточні частоти</string>
+    <string name="power_control_frequencies">Налаштування частоти</string>
+    <string name="power_control_cpu_min_freq">Мінімальна частота ЦП</string>
+    <string name="power_control_cpu_max_freq">Максимальна частота ЦП</string>
+    <string name="power_control_gpu_freq">Частота ГП</string>
+    <string name="power_control_gpu_min_power">Мінімальна потужність ГП</string>
+    <string name="power_control_gpu_max_power">Максимальна потужність ГП</string>
+    <string name="power_control_available_frequencies">Доступні частоти</string>
+    <string name="power_control_pserver_required">PServer недоступний</string>
+    <string name="power_control_pserver_required_desc">Ця функція потребує служби PServer (доступна на пристроях AYN та Retroid). Ви можете переглядати поточні налаштування, але не можете вносити зміни без PServer.</string>
 </resources>

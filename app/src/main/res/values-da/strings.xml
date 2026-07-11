@@ -2026,4 +2026,21 @@
     <string name="local_mod_copied_progress">Kopieret %1$s af %2$s</string>
     <string name="nexus_invalid_source_metadata">Dette administrerede mod har ufuldstændige kildeoplysninger og kan ikke prøves igen.</string>
     <string name="nexus_archive_memory_error">Arkivet kræver mere hukommelse, end Android tillader. Prøv igen efter en opdatering af GameNative, eller vælg en mindre fil.</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Ydeevnekontrol</string>
+    <string name="power_control_info">Styrer CPU-frekvensskalering og governor-indstillinger. Kræver PServer-tjenesten.</string>
+    <string name="power_control_driver">Driver: %s</string>
+    <string name="power_control_profiles">Ydeevneprofiler</string>
+    <string name="power_control_governor">CPU-governor</string>
+    <string name="power_control_current_frequencies">Aktuelle frekvenser</string>
+    <string name="power_control_frequencies">Frekvensindstillinger</string>
+    <string name="power_control_cpu_min_freq">Minimum CPU-frekvens</string>
+    <string name="power_control_cpu_max_freq">Maksimum CPU-frekvens</string>
+    <string name="power_control_gpu_freq">GPU-frekvens</string>
+    <string name="power_control_gpu_min_power">Minimum GPU-effekt</string>
+    <string name="power_control_gpu_max_power">Maksimum GPU-effekt</string>
+    <string name="power_control_available_frequencies">Tilgængelige frekvenser</string>
+    <string name="power_control_pserver_required">PServer ikke tilgængelig</string>
+    <string name="power_control_pserver_required_desc">Denne funktion kræver PServer-tjenesten (tilgængelig på AYN- og Retroid-enheder). Du kan se de aktuelle indstillinger, men kan ikke foretage ændringer uden PServer.</string>
 </resources>

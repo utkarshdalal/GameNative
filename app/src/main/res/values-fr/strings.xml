@@ -2156,4 +2156,21 @@
     <string name="local_mod_copied_progress">%1$s copiés sur %2$s</string>
     <string name="nexus_invalid_source_metadata">Les informations de source de ce mod géré sont incomplètes et l’opération ne peut pas être relancée.</string>
     <string name="nexus_archive_memory_error">L’archive nécessite plus de mémoire qu’Android ne l’autorise. Réessayez après avoir mis GameNative à jour ou choisissez un fichier plus petit.</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Contrôle des performances</string>
+    <string name="power_control_info">Contrôle la mise à l\'échelle de la fréquence du processeur et les paramètres du gouverneur. Nécessite le service PServer.</string>
+    <string name="power_control_driver">Pilote : %s</string>
+    <string name="power_control_profiles">Profils de performance</string>
+    <string name="power_control_governor">Gouverneur CPU</string>
+    <string name="power_control_current_frequencies">Fréquences actuelles</string>
+    <string name="power_control_frequencies">Paramètres de fréquence</string>
+    <string name="power_control_cpu_min_freq">Fréquence CPU minimale</string>
+    <string name="power_control_cpu_max_freq">Fréquence CPU maximale</string>
+    <string name="power_control_gpu_freq">Fréquence GPU</string>
+    <string name="power_control_gpu_min_power">Puissance GPU minimale</string>
+    <string name="power_control_gpu_max_power">Puissance GPU maximale</string>
+    <string name="power_control_available_frequencies">Fréquences disponibles</string>
+    <string name="power_control_pserver_required">PServer non disponible</string>
+    <string name="power_control_pserver_required_desc">Cette fonctionnalité nécessite le service PServer (disponible sur les appareils AYN et Retroid). Vous pouvez afficher les paramètres actuels mais ne pouvez pas les modifier sans PServer.</string>
 </resources>

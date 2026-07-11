@@ -2111,4 +2111,21 @@
     <string name="local_mod_copied_progress">%2$s 中 %1$s をコピー済み</string>
     <string name="nexus_invalid_source_metadata">この管理対象 Mod はソース情報が不完全なため、再試行できません。</string>
     <string name="nexus_archive_memory_error">このアーカイブには Android の上限を超えるメモリが必要です。GameNative を更新してから再試行するか、より小さいファイルを選択してください。</string>
+
+    <!-- Power Control -->
+    <string name="power_control">パフォーマンス制御</string>
+    <string name="power_control_info">CPU周波数スケーリングとガバナー設定を制御します。PServerサービスが必要です。</string>
+    <string name="power_control_driver">ドライバー：%s</string>
+    <string name="power_control_profiles">パフォーマンスプロファイル</string>
+    <string name="power_control_governor">CPUガバナー</string>
+    <string name="power_control_current_frequencies">現在の周波数</string>
+    <string name="power_control_frequencies">周波数設定</string>
+    <string name="power_control_cpu_min_freq">最小CPU周波数</string>
+    <string name="power_control_cpu_max_freq">最大CPU周波数</string>
+    <string name="power_control_gpu_freq">GPU周波数</string>
+    <string name="power_control_gpu_min_power">最小GPUパワー</string>
+    <string name="power_control_gpu_max_power">最大GPUパワー</string>
+    <string name="power_control_available_frequencies">利用可能な周波数</string>
+    <string name="power_control_pserver_required">PServerが利用できません</string>
+    <string name="power_control_pserver_required_desc">この機能にはPServerサービスが必要です（AYNおよびRetroidデバイスで利用可能）。現在の設定を表示できますが、PServerなしでは変更できません。</string>
 </resources>

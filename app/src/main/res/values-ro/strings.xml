@@ -2159,4 +2159,21 @@
     <string name="local_mod_copied_progress">S-au copiat %1$s din %2$s</string>
     <string name="nexus_invalid_source_metadata">Acest mod gestionat are informații incomplete despre sursă și operația nu poate fi reîncercată.</string>
     <string name="nexus_archive_memory_error">Arhiva necesită mai multă memorie decât permite Android. Încearcă din nou după actualizarea GameNative sau alege un fișier mai mic.</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Control performanță</string>
+    <string name="power_control_info">Controlează scalarea frecvenței CPU și setările guvernatorului. Necesită serviciul PServer.</string>
+    <string name="power_control_driver">Driver: %s</string>
+    <string name="power_control_profiles">Profile de performanță</string>
+    <string name="power_control_governor">Guvernator CPU</string>
+    <string name="power_control_current_frequencies">Frecvențe curente</string>
+    <string name="power_control_frequencies">Setări frecvență</string>
+    <string name="power_control_cpu_min_freq">Frecvență minimă CPU</string>
+    <string name="power_control_cpu_max_freq">Frecvență maximă CPU</string>
+    <string name="power_control_gpu_freq">Frecvență GPU</string>
+    <string name="power_control_gpu_min_power">Putere minimă GPU</string>
+    <string name="power_control_gpu_max_power">Putere maximă GPU</string>
+    <string name="power_control_available_frequencies">Frecvențe disponibile</string>
+    <string name="power_control_pserver_required">PServer indisponibil</string>
+    <string name="power_control_pserver_required_desc">Această funcție necesită serviciul PServer (disponibil pe dispozitivele AYN și Retroid). Poți vizualiza setările curente, dar nu poți face modificări fără PServer.</string>
 </resources>
