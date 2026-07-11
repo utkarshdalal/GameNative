@@ -10,12 +10,27 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:node="remove" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
 
+    <!-- Lets the XR activity reassert itself as the foreground task so HorizonOS reliably grants it
+         immersive input focus after the flat->immersive handoff (else controller buttons stay dead). -->
+    <uses-permission android:name="android.permission.REORDER_TASKS" />
+
     <uses-feature android:name="android.hardware.vr.headtracking" android:required="false" />
     <uses-feature android:name="com.oculus.feature.PASSTHROUGH" android:required="false" />
     <uses-feature android:name="oculus.software.handtracking" android:required="false" />
     <uses-feature android:name="oculus.software.overlay_keyboard" android:required="false" />
 
     <application>
+
+        <!--
+          Show the system loading screen against passthrough (the user's room) instead of the
+          default black void while the VR activity spins up its OpenXR session. Only applies before
+          our first submitted frame; libxr starts its own passthrough layer once init() runs, so the
+          handoff to in-app passthrough is seamless. "contextual" = passthrough only when the user's
+          home environment is already in passthrough (Meta gives no unconditional-force option).
+        -->
+        <meta-data
+            android:name="com.oculus.ossplash.background"
+            android:value="passthrough-contextual" />
 
         <!--
           XR host activities, in the MAIN process (no android:process). Declared as immersive VR

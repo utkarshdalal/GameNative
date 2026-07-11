@@ -28,6 +28,12 @@ object XrMenuBridge {
     @JvmField
     var menuOpen: Boolean = false
 
+    /** Whether the performance HUD is enabled — render the overlay (which captures the HUD view) even
+     *  while the menu is closed and the game is running, so the HUD shows on the quad during play. */
+    @Volatile
+    @JvmField
+    var hudVisible: Boolean = false
+
     /** Send a nav key (android.view.KeyEvent.KEYCODE_*) into the menu. Must be run on the UI thread. */
     @Volatile
     @JvmField

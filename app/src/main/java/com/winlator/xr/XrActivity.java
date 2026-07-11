@@ -196,6 +196,20 @@ public class XrActivity extends MainActivity {
         xrPaused = false;
         lastResumeMs = android.os.SystemClock.elapsedRealtime();
         xrController = new XrController();
+        reclaimImmersiveFocus();
+    }
+
+    // Reassert this activity as the foreground task. On HorizonOS an immersive VR activity only gets
+    // OpenXR input focus (XR_SESSION_STATE_FOCUSED -> controller buttons work) while it is the top
+    // immersive app; the flat->immersive handoff sometimes leaves it merely VISIBLE (axes/mouse track
+    // but buttons are dead). Bringing our own task to front is a best-effort nudge to win that grant.
+    private void reclaimImmersiveFocus() {
+        try {
+            android.app.ActivityManager am =
+                    (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+            if (am != null) am.moveTaskToFront(getTaskId(), 0);
+        } catch (Throwable ignored) {
+        }
     }
 
     @Override
@@ -265,6 +279,7 @@ public class XrActivity extends MainActivity {
         if (editText != null) {
             editText.setVisibility(View.GONE);
         }
+        if (hasFocus && xrSessionActive) reclaimImmersiveFocus();
     }
 
     public synchronized void closeSession() {

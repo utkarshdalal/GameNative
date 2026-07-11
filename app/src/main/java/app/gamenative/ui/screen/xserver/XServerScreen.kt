@@ -50,7 +50,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import app.gamenative.MainActivity
@@ -583,7 +582,12 @@ fun XServerScreen(
     }
 
     LaunchedEffect(xServerView?.renderer) {
-        val screenEffectsConfig = loadScreenEffectsConfig(container)
+        // Screen effects (esp. FSR scaling) are meaningless in XR, and the XR GL present path
+        // (PresentExtension -> Drawable.copyArea) crashes on the FSR pixmap/target size mismatch
+        // (copyArea bounds-checks the destination but not the source). Force effects off in XR.
+        val screenEffectsConfig =
+            if (app.gamenative.BuildConfig.XR_BUILD) app.gamenative.ui.util.ScreenEffectsConfig()
+            else loadScreenEffectsConfig(container)
         when (val renderer = xServerView?.renderer) {
             is VulkanRenderer -> applyScreenEffectsConfig(renderer, screenEffectsConfig)
             is GLRenderer -> applyScreenEffectsConfig(renderer, screenEffectsConfig)
@@ -990,38 +994,6 @@ fun XServerScreen(
         showQuickMenu = false
     }
 
-    // XR: publish the QuickMenu bridge so the VR controller can open/drive the REAL Compose menu
-    // (rendered onto the quad by XrRenderer) instead of the fork's XrDialog. Opening it pauses the
-    // game via the QuickMenu's own onAnimationComplete -> pauseForOverlayIfAllowed.
-    if (app.gamenative.BuildConfig.XR_BUILD) {
-        // rememberUpdatedState so the long-lived toggle Runnable reads the CURRENT menu state / dismiss
-        // lambda each time it runs, instead of the stale values captured when DisposableEffect first ran.
-        val menuIsOpen = rememberUpdatedState(showQuickMenu)
-        val dismissMenu = rememberUpdatedState(dismissOverlayMenu)
-        LaunchedEffect(showQuickMenu) {
-            app.gamenative.ui.XrMenuBridge.menuOpen = showQuickMenu
-            android.util.Log.i("XrDiag", "bridge menuOpen=$showQuickMenu")
-        }
-        DisposableEffect(Unit) {
-            app.gamenative.ui.XrMenuBridge.toggleMenu = Runnable {
-                android.util.Log.i("XrDiag", "toggle run: menuIsOpen=${menuIsOpen.value}")
-                if (menuIsOpen.value) dismissMenu.value.invoke() else showQuickMenu = true
-            }
-            app.gamenative.ui.XrMenuBridge.sendKey = java.util.function.IntConsumer { keyCode ->
-                gameRoot?.let { root ->
-                    root.dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode))
-                    root.dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode))
-                }
-            }
-            onDispose {
-                app.gamenative.ui.XrMenuBridge.toggleMenu = null
-                app.gamenative.ui.XrMenuBridge.sendKey = null
-                app.gamenative.ui.XrMenuBridge.overlayView = null
-                app.gamenative.ui.XrMenuBridge.menuOpen = false
-            }
-        }
-    }
-
     LaunchedEffect(showQuickMenu, quickMenuToolsVisible, xServerView) {
         if (!showQuickMenu || !quickMenuToolsVisible) {
             quickMenuWineProcesses = emptyList()
@@ -1315,6 +1287,31 @@ fun XServerScreen(
         }, 100)
 
         showQuickMenu = true
+    }
+
+    // XR: publish the QuickMenu bridge so the VR controller drives the REAL Compose menu. Route the
+    // toggle through the app's own gameBack (single source of truth: it releases pointer capture,
+    // rescans controllers and toggles showQuickMenu) so the VR open/close path can't fight the
+    // back-button path. sendKey routes controller nav into the focused menu item, which lives under
+    // the shared root view (AndroidComposeView), not the game FrameLayout.
+    if (app.gamenative.BuildConfig.XR_BUILD) {
+        LaunchedEffect(showQuickMenu) { app.gamenative.ui.XrMenuBridge.menuOpen = showQuickMenu }
+        DisposableEffect(Unit) {
+            app.gamenative.ui.XrMenuBridge.toggleMenu = Runnable { gameBack() }
+            app.gamenative.ui.XrMenuBridge.sendKey = java.util.function.IntConsumer { keyCode ->
+                gameRoot?.rootView?.let { root ->
+                    root.dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode))
+                    root.dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode))
+                }
+            }
+            onDispose {
+                app.gamenative.ui.XrMenuBridge.toggleMenu = null
+                app.gamenative.ui.XrMenuBridge.sendKey = null
+                app.gamenative.ui.XrMenuBridge.overlayView = null
+                app.gamenative.ui.XrMenuBridge.menuOpen = false
+                app.gamenative.ui.XrMenuBridge.hudVisible = false
+            }
+        }
     }
 
     DisposableEffect(Unit) {

@@ -97,14 +97,18 @@ public class XrController {
                 if (getButtonClicked(buttons, primaryDown)) instance.runOnUiThread(() -> sendKey.accept(KeyEvent.KEYCODE_DPAD_DOWN));
                 if (getButtonClicked(buttons, primaryLeft)) instance.runOnUiThread(() -> sendKey.accept(KeyEvent.KEYCODE_DPAD_LEFT));
                 if (getButtonClicked(buttons, primaryRight)) instance.runOnUiThread(() -> sendKey.accept(KeyEvent.KEYCODE_DPAD_RIGHT));
-                if (getButtonClicked(buttons, primaryTrigger)) instance.runOnUiThread(() -> sendKey.accept(KeyEvent.KEYCODE_DPAD_CENTER));
+                // Activate the focused item: most items are .clickable/.selectable (Compose activates
+                // those on DPAD_CENTER/ENTER); the sliders lock/adjust on BUTTON_A. Send both to cover all.
+                if (getButtonClicked(buttons, primaryTrigger)) instance.runOnUiThread(() -> {
+                    sendKey.accept(KeyEvent.KEYCODE_DPAD_CENTER);
+                    sendKey.accept(KeyEvent.KEYCODE_BUTTON_A);
+                });
             }
             System.arraycopy(buttons, 0, lastButtons, 0, buttons.length);
             return false;
         } else if (getButtonClicked(buttons, primaryPress)) {
             final Runnable toggle = XrMenuBridge.toggleMenu;
             if (toggle != null) {
-                android.util.Log.i("XrDiag", "MENU: toggling QuickMenu");
                 instance.runOnUiThread(toggle);
             }
         }

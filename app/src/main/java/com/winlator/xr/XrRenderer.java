@@ -179,9 +179,15 @@ public class XrRenderer extends GLRenderer {
         }
 
         if (xrFrameStarted) {
-            renderFPSCounter();
             renderDialog();
-            if (XrMenuBridge.menuOpen) renderOverlay();
+            // Show the real Compose booting splash on the quad until the game paints its first
+            // window. rootView capture (published as overlayView) picks up the splash overlay but
+            // not the empty GL surface, so during boot this IS the splash. Reuses the QuickMenu
+            // overlay path verbatim; once a window is renderable this stops on its own.
+            if (XrMenuBridge.menuOpen || renderableWindows.isEmpty()) renderOverlay();
+            // Draw the performance overlay LAST so it stays on top of both the game and the booting
+            // splash — drawn earlier, either would otherwise cover it and it wouldn't be visible.
+            renderFPSCounter();
             xrFrameReady = false;
             XrActivity.getInstance().endFrame();
             xServerView.requestRender();
@@ -236,6 +242,14 @@ public class XrRenderer extends GLRenderer {
             scale /= (float)Math.min(displayMetrics.widthPixels, displayMetrics.heightPixels);
         }
         return scale;
+    }
+
+    // Sets `xform` to the same letterbox mapping the desktop is drawn with: it fits the 16:9
+    // screenInfo into the square swapchain (full width, vertically centered band). Used only for the
+    // boot splash so it matches the game's on-quad region; the QuickMenu deliberately does NOT use it.
+    private void letterboxTransform(float[] xform) {
+        XForm.makeTransform(xform, viewTransformation.sceneOffsetX, viewTransformation.sceneOffsetY,
+                viewTransformation.sceneScaleX, viewTransformation.sceneScaleY, 0);
     }
 
     private void renderAER(Drawable drawable, ShaderMaterial material, boolean shouldUpdate, int targetFBO) {
@@ -306,11 +320,36 @@ public class XrRenderer extends GLRenderer {
         bgrMaterial.use();
         GLES20.glUniform2f(bgrMaterial.getUniformLocation("viewSize"), xServer.screenInfo.width, xServer.screenInfo.height);
         quadVertices.bind(bgrMaterial.programId);
-        XForm.identity(tmpXForm2);
         try (XLock lock = xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
-            // The capture is the whole decorView (transparent where the game SurfaceView is, opaque
-            // where the QuickMenu overlay is), so map it to the full quad like the game window.
-            renderDrawable(overlayDrawable, 0, 0, bgrMaterial, true, 1, 1);
+            if (renderableWindows.isEmpty()) {
+                // Boot splash (no game window yet): draw through the desktop's own letterbox transform
+                // so the splash lands in the game's 16:9 region instead of stretching to the full
+                // (square) swapchain. Boot-only — the QuickMenu path below must NOT use this transform
+                // (its vertical offset pushes the menu down / off, which reads as a blank menu).
+                letterboxTransform(tmpXForm2);
+                float sx = xServer.screenInfo.width / (float) overlayDrawable.width;
+                float sy = xServer.screenInfo.height / (float) overlayDrawable.height;
+                renderDrawable(overlayDrawable, 0, 0, bgrMaterial, false, sx, sy);
+            } else {
+                // QuickMenu / HUD (game running): render onto the SAME rectangle the game window
+                // occupies on the quad, so the menu is the same size/position as the game instead of
+                // stretched to the full square. The captured decorView covers the same area as the game.
+                XForm.identity(tmpXForm2);
+                float tw = xServer.screenInfo.width;
+                float th = xServer.screenInfo.height;
+                float rectW = tw, rectH = th, offX = 0, offY = 0;
+                RenderableWindow win = renderableWindows.get(renderableWindows.size() - 1);
+                float ww = win.getWidth(), wh = win.getHeight();
+                if (ww > 0 && wh > 0) {
+                    rectH = Math.min(th, (tw / ww) * wh);
+                    rectW = (rectH / wh) * ww;
+                    offX = (tw - rectW) * 0.5f;
+                    offY = (th - rectH) * 0.5f;
+                }
+                float sx = rectW / (float) overlayDrawable.width;
+                float sy = rectH / (float) overlayDrawable.height;
+                renderDrawable(overlayDrawable, (int) offX, (int) offY, bgrMaterial, false, sx, sy);
+            }
         }
         quadVertices.disable();
     }
@@ -338,7 +377,9 @@ public class XrRenderer extends GLRenderer {
     }
 
     private void renderFPSCounter() {
-        if (renderableWindows.isEmpty() || XrActivity.isSBS) {
+        // NOTE: intentionally NOT skipped while renderableWindows is empty — we want the overlay
+        // visible during boot (on top of the splash) as well as in-game. Still skipped in SBS.
+        if (XrActivity.isSBS) {
             return;
         }
 
