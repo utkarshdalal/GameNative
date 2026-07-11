@@ -31,6 +31,7 @@ import com.winlator.inputcontrols.ControlElement
 import com.winlator.widget.InputControlsView
 
 internal data class ControlAppearance(
+    val scale: Float,
     val color: Int,
     val activeColor: Int,
     val activeColorCustom: Boolean,
@@ -39,6 +40,7 @@ internal data class ControlAppearance(
     val shooterLookThrough: Boolean
 ) {
     fun applyTo(element: ControlElement) {
+        element.setScale(scale)
         element.setButtonColor(color)
         element.setButtonActiveColor(activeColor, activeColorCustom)
         element.setButtonOpacity(opacity)
@@ -48,6 +50,7 @@ internal data class ControlAppearance(
 
     companion object {
         fun capture(element: ControlElement) = ControlAppearance(
+            scale = element.scale,
             color = element.buttonColor,
             activeColor = element.buttonActiveColor,
             activeColorCustom = element.hasCustomButtonActiveColor(),
@@ -599,13 +602,14 @@ internal fun showCopyAppearanceDialog(
     }
 
     val names = controls.map { element ->
+        val scale = String.format(java.util.Locale.US, "%.2fx", element.scale)
         val label = if (!element.text.isNullOrEmpty()) {
             element.text
         } else {
             val binding = element.getBindingAt(0)
             if (binding != null && binding != com.winlator.inputcontrols.Binding.NONE) binding.toString().take(15) else context.getString(R.string.binding_none)
         }
-        "${element.type.name.replace("_", " ")} - ${rgbToHex(element.buttonColor)} - $label"
+        "${element.type.name.replace("_", " ")} - $scale - ${rgbToHex(element.buttonColor)} - $label"
     }.toTypedArray()
 
     android.app.AlertDialog.Builder(context)

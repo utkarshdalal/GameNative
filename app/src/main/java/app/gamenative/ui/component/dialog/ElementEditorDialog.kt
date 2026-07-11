@@ -218,6 +218,7 @@ fun ElementEditorDialog(
     }
 
     fun currentAppearance() = ControlAppearance(
+        scale = currentScale,
         color = currentButtonColor,
         activeColor = currentButtonActiveColor,
         activeColorCustom = currentButtonActiveColorCustom,
@@ -390,16 +391,6 @@ fun ElementEditorDialog(
             ) {
                 // Appearance Section
                 SettingsGroup(title = { Text(stringResource(R.string.appearance)) }) {
-                    // Scale/Size - click to enter adjustment mode
-                    SettingsMenuLink(
-                        colors = settingsTileColors(),
-                        title = { Text(stringResource(R.string.size)) },
-                        subtitle = { Text(stringResource(R.string.size_subtitle, currentScale)) },
-                        onClick = {
-                            showSizeAdjuster = true
-                        }
-                    )
-
                     // Text/Label - only for BUTTON type
                     if (element.type == ControlElement.Type.BUTTON) {
                         SettingsTextField(
@@ -890,6 +881,15 @@ fun ElementEditorDialog(
                         )
                     }
 
+                    SettingsMenuLink(
+                        colors = settingsTileColors(),
+                        title = { Text(stringResource(R.string.size)) },
+                        subtitle = { Text(stringResource(R.string.size_subtitle, currentScale)) },
+                        onClick = {
+                            showSizeAdjuster = true
+                        }
+                    )
+
                     val strokeWidthItems = listOf(
                         stringResource(R.string.control_stroke_width_thin),
                         stringResource(R.string.control_stroke_width_default),
@@ -943,6 +943,7 @@ fun ElementEditorDialog(
                         OutlinedButton(
                             onClick = {
                                 showCopyAppearanceDialog(context, element, view) { appearance ->
+                                    currentScale = appearance.scale
                                     currentButtonColor = appearance.color
                                     currentButtonColorText = rgbToHex(appearance.color)
                                     currentButtonActiveColor = appearance.activeColor
@@ -985,8 +986,11 @@ fun ElementEditorDialog(
                                 currentButtonActiveColorText = rgbToHex(ControlElement.DEFAULT_BUTTON_ACTIVE_COLOR)
                                 currentButtonOpacityInherited = true
                                 currentButtonOpacity = view.overlayOpacity
+                                currentScale = 1.0f
+                                element.setScale(1.0f)
                                 currentButtonStrokeScale = ControlElement.DEFAULT_BUTTON_STROKE_SCALE
                                 currentShooterLookThrough = true
+                                view.invalidate()
                                 hasUnsavedChanges = true
                             },
                             modifier = Modifier.weight(1f),
