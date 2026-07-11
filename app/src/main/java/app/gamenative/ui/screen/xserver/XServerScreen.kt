@@ -50,6 +50,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import app.gamenative.MainActivity
@@ -475,6 +476,10 @@ fun XServerScreen(
         mutableStateOf(app.gamenative.data.TouchGestureConfig.fromJson(container.getGestureConfig()))
     }
     fun shouldShowMouseCursor(): Boolean {
+        // In an XR session the controller aims via the mouse cursor (XrController maps aim -> mouse),
+        // so it must always be visible — otherwise you can't tell where you're pointing. The default
+        // touchscreenMode=true on XR builds would otherwise hide it.
+        if (com.winlator.xr.XrActivity.isEnabled()) return !container.isDisableMouseInput
         return !container.isDisableMouseInput &&
             (!container.isTouchscreenMode || currentGestureConfig.showCursorInTouchscreenMode)
     }
@@ -983,6 +988,38 @@ fun XServerScreen(
         shouldForceResumeOnMenuClose = keyboardRequestedFromOverlay && manualResumeMode && !keepPausedForEditor
         keyboardRequestedFromOverlay = false
         showQuickMenu = false
+    }
+
+    // XR: publish the QuickMenu bridge so the VR controller can open/drive the REAL Compose menu
+    // (rendered onto the quad by XrRenderer) instead of the fork's XrDialog. Opening it pauses the
+    // game via the QuickMenu's own onAnimationComplete -> pauseForOverlayIfAllowed.
+    if (app.gamenative.BuildConfig.XR_BUILD) {
+        // rememberUpdatedState so the long-lived toggle Runnable reads the CURRENT menu state / dismiss
+        // lambda each time it runs, instead of the stale values captured when DisposableEffect first ran.
+        val menuIsOpen = rememberUpdatedState(showQuickMenu)
+        val dismissMenu = rememberUpdatedState(dismissOverlayMenu)
+        LaunchedEffect(showQuickMenu) {
+            app.gamenative.ui.XrMenuBridge.menuOpen = showQuickMenu
+            android.util.Log.i("XrDiag", "bridge menuOpen=$showQuickMenu")
+        }
+        DisposableEffect(Unit) {
+            app.gamenative.ui.XrMenuBridge.toggleMenu = Runnable {
+                android.util.Log.i("XrDiag", "toggle run: menuIsOpen=${menuIsOpen.value}")
+                if (menuIsOpen.value) dismissMenu.value.invoke() else showQuickMenu = true
+            }
+            app.gamenative.ui.XrMenuBridge.sendKey = java.util.function.IntConsumer { keyCode ->
+                gameRoot?.let { root ->
+                    root.dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode))
+                    root.dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode))
+                }
+            }
+            onDispose {
+                app.gamenative.ui.XrMenuBridge.toggleMenu = null
+                app.gamenative.ui.XrMenuBridge.sendKey = null
+                app.gamenative.ui.XrMenuBridge.overlayView = null
+                app.gamenative.ui.XrMenuBridge.menuOpen = false
+            }
+        }
     }
 
     LaunchedEffect(showQuickMenu, quickMenuToolsVisible, xServerView) {
@@ -1714,7 +1751,9 @@ fun XServerScreen(
             // VirGL passthrough). Default to the legacy GL renderer for all
             // other containers as well. Uncheck the per-container useLegacyRenderer
             // setting to switch to the Vulkan renderer.
-            val useGLRenderer = container.graphicsDriver == "virgl" || container.displayRenderer.equals("gl", true)
+            // XrRenderer extends the GL renderer, so an active XR session must use the GL path.
+            val useGLRenderer = container.graphicsDriver == "virgl" || container.displayRenderer.equals("gl", true) ||
+                (app.gamenative.BuildConfig.XR_BUILD && com.winlator.xr.XrActivity.isEnabled())
             val xServerViewInstance: XServerRendererView = if (useGLRenderer) {
                 XServerViewGL(context, xServerToUse)
             } else {
@@ -1888,6 +1927,7 @@ fun XServerScreen(
                             if (!xServerState.value.winStarted && window.isApplicationWindow()) {
                                 if (shouldShowMouseCursor()) renderer?.setCursorVisible(true)
                                 xServerState.value.winStarted = true
+                                maybeHandOffToXr(context, container)
                             }
                             if (frameRatingWindowId == -1 && window.isApplicationWindow()) {
                                 refreshFrameRatingTracking("content-update")
@@ -2345,6 +2385,9 @@ fun XServerScreen(
         },
         update = { view ->
             gameRoot = view
+            // Capture the ROOT view (decorView), not this game-only FrameLayout — the QuickMenu is a
+            // Compose sibling of this AndroidView, so it only lives under the shared root, not here.
+            if (app.gamenative.BuildConfig.XR_BUILD) app.gamenative.ui.XrMenuBridge.overlayView = view.rootView
         },
         onRelease = { view ->
             gameRoot = null
@@ -3993,6 +4036,19 @@ private fun getSteamlessTarget(
         'D'
     }
     return "$drive:\\${executablePath}"
+}
+
+/**
+ * Called once the game's first window renders. The game already booted inside the XR activity as
+ * a flat 2D panel (so the booting splash was visible in the room). Now that the game is actually
+ * running, flip the OpenXR session on so XrRenderer creates the session and goes immersive
+ * in-place — no activity swap, no re-attach. No-op off-headset or outside the XR activity.
+ */
+private fun maybeHandOffToXr(context: Context, container: Container) {
+    if (!app.gamenative.BuildConfig.XR_BUILD) return
+    if (!com.winlator.xr.XrActivity.isEnabled()) return
+    Timber.i("Game window is up — entering immersive XR for ${container.id}")
+    com.winlator.xr.XrActivity.xrSessionActive = true
 }
 
 private fun exit(

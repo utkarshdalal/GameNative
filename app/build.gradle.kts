@@ -328,6 +328,9 @@ dependencies {
     // Chrome Custom Tabs for GOG OAuth
     implementation("androidx.browser:browser:1.8.0")
 
+    // XR: SharedPreferences access from com.winlator.xr
+    implementation("androidx.preference:preference:1.2.1")
+
     // JavaSteam
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {

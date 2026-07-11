@@ -217,6 +217,22 @@
     <string name="toggle_orientation">Toggle Orientation</string>
     <string name="task_manager">Task Manager</string>
     <string name="magnifier">Magnifier</string>
+    <string name="reshade">ReShade</string>
+    <!-- XR -->
+    <string name="light_gun_mouse">Use light gun / laser pointer mouse mapping</string>
+    <string name="left_handed_mouse">Use left-handed mouse mapping</string>
+    <string name="controller_as_mouse">Use XR controller as mouse</string>
+    <string name="use_pt">Use passthrough</string>
+    <string name="use_curved_screen">Use curved screen</string>
+    <string name="use_immersive_mode">3DoF immersive mode (experimental)</string>
+    <string name="use_sbs">Map side-by-side 3D render to left and right eye</string>
+    <string name="use_reshade">Inject Reshade SuperDepth3D</string>
+    <string name="use_reshade_desc">Supported only in DirectX 9 and higher</string>
+    <string name="force_dxgi">Inject Reshade with forced DXGI</string>
+    <string name="force_dxgi_desc">This could resolve compatibility issues</string>
+    <string name="use_trackir">Inject TrackIR emulation</string>
+    <string name="use_trackir_desc">Camera tracking for racing/simulator games</string>
+    <string name="to_apply_close">To apply the change, close this dialog</string>
     <string name="logs">Logs</string>
     <string name="exit_game">Exit</string>
     <string name="exit">Exit Game</string>

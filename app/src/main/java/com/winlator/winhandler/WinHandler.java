@@ -146,6 +146,13 @@ public class WinHandler {
         this.controllerManager = ControllerManager.getInstance();
         this.activity = xServerView.getContext();
         this.currentControllerId = -1;
+        instance = this;
+    }
+
+    private static WinHandler instance = null;
+
+    public static WinHandler getInstance() {
+        return instance;
     }
 
     public void refreshControllerMappings() {

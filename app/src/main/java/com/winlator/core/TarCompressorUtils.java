@@ -233,4 +233,74 @@ public abstract class TarCompressorUtils {
         }
         return null;
     }
+
+    public enum Status {UNKNOWN, NONE, PARTIAL, FULL}
+
+    public static Status isExtracted(Type type, Context context, String assetFile, File destination) {
+        try {
+            return isExtracted(type, context.getAssets().open(assetFile), destination);
+        }
+        catch (IOException e) {
+            return Status.UNKNOWN;
+        }
+    }
+
+    public static Status isExtracted(Type type, InputStream source, File destination) {
+        if (source == null) return Status.UNKNOWN;
+        try (InputStream inStream = getCompressorInputStream(type, source);
+             ArchiveInputStream tar = new TarArchiveInputStream(inStream)) {
+            TarArchiveEntry entry;
+            boolean existing = false;
+            boolean incomplete = false;
+            while ((entry = (TarArchiveEntry)tar.getNextEntry()) != null) {
+                if (!tar.canReadEntryData(entry)) continue;
+                File file = new File(destination, entry.getName());
+
+                if (!file.exists()) {
+                    incomplete = true;
+                } else {
+                    existing = true;
+                }
+            }
+
+            tar.close();
+            if (incomplete) {
+                return existing ? Status.PARTIAL : Status.NONE;
+            } else {
+                return Status.FULL;
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+            return Status.UNKNOWN;
+        }
+    }
+
+    public static boolean remove(Type type, Context context, String assetFile, File destination) {
+        try {
+            return remove(type, context.getAssets().open(assetFile), destination);
+        }
+        catch (IOException e) {
+            return false;
+        }
+    }
+
+    public static boolean remove(Type type, InputStream source, File destination) {
+        if (source == null) return false;
+        try (InputStream inStream = getCompressorInputStream(type, source);
+             ArchiveInputStream tar = new TarArchiveInputStream(inStream)) {
+            TarArchiveEntry entry;
+            while ((entry = (TarArchiveEntry)tar.getNextEntry()) != null) {
+                if (!tar.canReadEntryData(entry)) continue;
+                File file = new File(destination, entry.getName());
+                FileUtils.delete(file);
+            }
+            tar.close();
+            return true;
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

@@ -10,4 +10,49 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:node="remove" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
 
+    <uses-feature android:name="android.hardware.vr.headtracking" android:required="false" />
+    <uses-feature android:name="com.oculus.feature.PASSTHROUGH" android:required="false" />
+    <uses-feature android:name="oculus.software.handtracking" android:required="false" />
+    <uses-feature android:name="oculus.software.overlay_keyboard" android:required="false" />
+
+    <application>
+
+        <!--
+          XR host activities, in the MAIN process (no android:process). Declared as immersive VR
+          activities via the VR intent-filter. This is REQUIRED for stability: without it Horizon
+          treats them as 2D panels and its PanelAppsManager culls them the moment they lose panel
+          visibility (which happens as soon as they go immersive), destroying the session. Launched
+          programmatically via XrActivity.openIntent (explicit intent) once cloud-sync is done.
+        -->
+        <activity
+            android:name="com.winlator.xr.runtime.MetaQuest"
+            android:configChanges="density|orientation|screenSize|keyboard|keyboardHidden|uiMode"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:resizeableActivity="false"
+            android:screenOrientation="landscape"
+            android:theme="@style/AppThemeFullscreen">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="com.oculus.intent.category.VR" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.winlator.xr.runtime.Pico"
+            android:configChanges="density|orientation|screenSize|keyboard|keyboardHidden|uiMode"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:resizeableActivity="false"
+            android:screenOrientation="landscape"
+            android:theme="@style/AppThemeFullscreen">
+            <meta-data
+                android:name="pvr.app.type"
+                android:value="vr" />
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="com.oculus.intent.category.VR" />
+            </intent-filter>
+        </activity>
+    </application>
+
 </manifest>

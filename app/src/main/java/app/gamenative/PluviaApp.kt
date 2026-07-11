@@ -210,6 +210,11 @@ class PluviaApp : SplitCompatApplication() {
         @Volatile
         var isActivityInForeground: Boolean = true
 
+        // Set while the flat activity hands the running game off to the XR activity.
+        // Tells MainActivity.onDestroy NOT to tear the game down during the swap.
+        @Volatile
+        var handingOffToXr: Boolean = false
+
         // Active runtime suspend policy for the current in-game session.
         var activeSuspendPolicy: String = Container.SUSPEND_POLICY_MANUAL
             private set

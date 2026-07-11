@@ -111,8 +111,14 @@ public class Drawable extends XResource {
         this.data = data;
     }
 
-    private short getStride() {
+    public short getStride() {
         return texture instanceof NativeTexture ? ((NativeTexture)texture).getStride() : width;
+    }
+
+    public void drawBitmap(Bitmap bitmap) {
+        fromBitmap(bitmap, data);
+        texture.setNeedsUpdate(true);
+        if (onDrawListener != null) onDrawListener.run();
     }
 
     public Runnable getOnDrawListener() {

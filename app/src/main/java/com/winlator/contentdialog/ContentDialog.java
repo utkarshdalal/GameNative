@@ -1,6 +1,5 @@
 package com.winlator.contentdialog;
 
-import android.app.Dialog;
 import android.content.Context;
 import android.util.SparseBooleanArray;
 import android.view.LayoutInflater;
@@ -18,13 +17,17 @@ import androidx.annotation.NonNull;
 import app.gamenative.R;
 import com.winlator.core.AppUtils;
 import com.winlator.core.Callback;
+import com.winlator.xr.ui.XrContentDialog;
 
 import java.util.ArrayList;
 
-public class ContentDialog extends Dialog {
+// Extends XrContentDialog (not Dialog) so that in an XR session the dialog registers itself as a
+// renderable in-VR instance (XrContentDialog.instances) and exposes getDrawable() for the quad.
+// Off-headset it behaves like a normal Dialog. Without this, XrDialog.show() pops a flat Android
+// dialog that is invisible in immersive VR.
+public class ContentDialog extends XrContentDialog {
     private Runnable onConfirmCallback;
     private Runnable onCancelCallback;
-    private final View contentView;
 
     public ContentDialog(@NonNull Context context) {
         this(context, 0);

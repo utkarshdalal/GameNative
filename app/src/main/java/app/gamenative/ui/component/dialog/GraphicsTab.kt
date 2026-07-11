@@ -385,27 +385,31 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
 @Composable
 private fun DxWrapperSection(state: ContainerConfigState) {
     val config = state.config.value
-    SettingsListDropdown(
-        colors = settingsTileColorsAlt(),
-        title = { Text(text = stringResource(R.string.display_renderer)) },
-        value = state.displayRendererIndex.value,
-        items = state.displayRenderers,
-        onItemSelected = {
-            state.displayRendererIndex.value = it
-            state.config.value = config.copy(displayRenderer = StringUtils.parseIdentifier(state.displayRenderers[it]))
-        },
-    )
-    // Show color correction toggle only for ASurfaceRenderer (SurfaceFlinger)
-    if (StringUtils.parseIdentifier(state.displayRenderers.getOrNull(state.displayRendererIndex.value).orEmpty()) == "surfaceflinger") {
-        SettingsSwitch(
+    // XR builds composite the desktop onto a VR quad via the GL-based XrRenderer, so the
+    // renderer choice is forced to GL and the picker (and its SurfaceFlinger option) is hidden.
+    if (!app.gamenative.BuildConfig.XR_BUILD) {
+        SettingsListDropdown(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.sf_compat_mode)) },
-            subtitle = { Text(text = stringResource(R.string.sf_compat_mode_description)) },
-            state = config.sfCompatMode,
-            onCheckedChange = {
-                state.config.value = config.copy(sfCompatMode = it)
+            title = { Text(text = stringResource(R.string.display_renderer)) },
+            value = state.displayRendererIndex.value,
+            items = state.displayRenderers,
+            onItemSelected = {
+                state.displayRendererIndex.value = it
+                state.config.value = config.copy(displayRenderer = StringUtils.parseIdentifier(state.displayRenderers[it]))
             },
         )
+        // Show color correction toggle only for ASurfaceRenderer (SurfaceFlinger)
+        if (StringUtils.parseIdentifier(state.displayRenderers.getOrNull(state.displayRendererIndex.value).orEmpty()) == "surfaceflinger") {
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.sf_compat_mode)) },
+                subtitle = { Text(text = stringResource(R.string.sf_compat_mode_description)) },
+                state = config.sfCompatMode,
+                onCheckedChange = {
+                    state.config.value = config.copy(sfCompatMode = it)
+                },
+            )
+        }
     }
     SettingsListDropdown(
         colors = settingsTileColors(),

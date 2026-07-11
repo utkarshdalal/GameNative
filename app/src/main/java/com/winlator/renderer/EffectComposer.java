@@ -65,7 +65,7 @@ public class EffectComposer {
         int outputWidth = renderer.getSurfaceWidth();
         int outputHeight = renderer.getSurfaceHeight();
         if (effects.isEmpty() || outputWidth <= 0 || outputHeight <= 0) {
-            renderer.drawScene();
+            renderer.drawFrame();
             return;
         }
 
@@ -93,7 +93,7 @@ public class EffectComposer {
         if (scaledScene) {
             renderer.setRenderTargetSizeOverride(sceneWidth, sceneHeight);
         }
-        renderer.drawScene();
+        renderer.drawFrame();
         if (scaledScene) {
             renderer.clearRenderTargetSizeOverride();
         }

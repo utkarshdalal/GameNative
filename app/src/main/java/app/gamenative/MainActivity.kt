@@ -59,7 +59,7 @@ import okio.Path.Companion.toOkioPath
 import timber.log.Timber
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+open class MainActivity : ComponentActivity() {
 
     companion object {
         private var totalIndex = 0
@@ -306,7 +306,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         // emit before super so Compose DisposableEffects (which unregister
         // listeners during super.onDestroy's lifecycle transition) still fire
-        if (!isChangingConfigurations) {
+        if (!isChangingConfigurations && !PluviaApp.handingOffToXr) {
             PluviaApp.events.emit(AndroidEvent.ActivityDestroyed)
 
             // if exit() didn't run (listener already unregistered, race, etc.)
@@ -315,6 +315,11 @@ class MainActivity : ComponentActivity() {
                 Timber.w("onDestroy: keepAlive still set after ActivityDestroyed — forcing cleanup")
                 PluviaApp.shutdownEnvironment()
             }
+        } else if (PluviaApp.handingOffToXr) {
+            // Handing the running game to the XR activity: keep the environment alive.
+            // Consume the flag so a later (real) destroy of the XR activity cleans up normally.
+            Timber.i("onDestroy: XR handoff in progress — preserving running game")
+            PluviaApp.handingOffToXr = false
         }
 
         super.onDestroy()
@@ -415,6 +420,13 @@ class MainActivity : ComponentActivity() {
         PluviaApp.isActivityInForeground = false
         if (hasReadyGameLifecycleState("pause")) {
             when {
+                com.winlator.xr.XrActivity.isEnabled() -> {
+                    // Immersive XR: Android fires onPause when the VR activity takes over the
+                    // compositor, but it's still the active foreground app. Suspending the guest
+                    // here freezes the game (SIGSTOP) and, under manual suspend policy, it never
+                    // resumes — leaving an empty quad. Don't suspend while an XR session is live.
+                    Timber.d("Game pause skipped — XR session active")
+                }
                 PluviaApp.isNeverSuspendMode() -> {
                     Timber.d("Game pause skipped due to suspend policy=never")
                 }

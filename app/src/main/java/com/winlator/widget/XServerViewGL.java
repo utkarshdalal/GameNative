@@ -7,6 +7,8 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 import com.winlator.renderer.GLRenderer;
+import com.winlator.xr.XrActivity;
+import com.winlator.xr.XrRenderer;
 import com.winlator.xserver.Drawable;
 import com.winlator.xserver.XServer;
 
@@ -30,7 +32,9 @@ public class XServerViewGL extends GLSurfaceView implements XServerRendererView 
         setEGLConfigChooser(8, 8, 8, 8, 0, 0);
         setPreserveEGLContextOnPause(true);
         this.xServer = xServer;
-        renderer = new GLRenderer(this, xServer);
+        // In an active XR session the desktop is composited onto a VR quad, which
+        // requires the XrRenderer subclass. Everywhere else use the flat GLRenderer.
+        renderer = XrActivity.isEnabled() ? new XrRenderer(this, xServer) : new GLRenderer(this, xServer);
         setRenderer(renderer);
         setRenderMode(RENDERMODE_WHEN_DIRTY);
     }

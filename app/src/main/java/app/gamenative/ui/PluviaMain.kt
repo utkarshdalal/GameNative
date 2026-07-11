@@ -387,6 +387,22 @@ fun PluviaMain(
         }
     }
 
+    // Bridge used by the XR activity to bring the already-running game forward after the
+    // flat->XR handoff. The XR activity has a FRESH viewModel, so we must point its
+    // launchedAppId at the running game before navigating — otherwise XServerScreen renders an
+    // empty container (blank quad). The environment is process-scoped, so XServerScreen sees the
+    // live env and re-attaches instead of rebooting. Not cleared on dispose: the XR activity
+    // nulls the stale value itself and waits for its own composition to republish.
+    LaunchedEffect(Unit) {
+        PlayBridge.onClickPlay = { appId, asContainer ->
+            viewModel.setLaunchedAppId(appId)
+            viewModel.setBootToContainer(asContainer)
+            if (navController.currentDestination?.route != PluviaScreen.XServer.route) {
+                navController.navigate(PluviaScreen.XServer.route)
+            }
+        }
+    }
+
     // process pending launch request from cold start (event bus has no replay)
     LaunchedEffect(Unit) {
         MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
@@ -480,7 +496,21 @@ fun PluviaMain(
         viewModel.uiEvent.collect { event ->
             when (event) {
                 MainViewModel.MainUiEvent.LaunchApp -> {
-                    navController.navigate(PluviaScreen.XServer.route)
+                    if (app.gamenative.BuildConfig.XR_BUILD &&
+                        com.winlator.xr.XrActivity.shouldRunInXR &&
+                        com.winlator.xr.XrActivity.isSupported() &&
+                        !com.winlator.xr.XrActivity.isEnabled()
+                    ) {
+                        // XR: cloud-sync + conflict dialogs already ran (and were visible) in this
+                        // flat activity. Now hand off to the XR activity as a 2D PANEL so the
+                        // booting splash shows in the room, and the game boots fresh inside it
+                        // (env not set up yet -> no re-attach). It goes immersive at winStarted.
+                        com.winlator.xr.XrActivity.openIntent(
+                            context, state.launchedAppId, state.bootToContainer, true,
+                        )
+                    } else {
+                        navController.navigate(PluviaScreen.XServer.route)
+                    }
                 }
 
                 is MainViewModel.MainUiEvent.ExternalGameLaunch -> {

@@ -4,6 +4,7 @@ import android.os.Environment;
 import android.util.Log;
 
 import com.winlator.box86_64.Box86_64Preset;
+import com.winlator.xserver.XKeycode;
 import com.winlator.core.DefaultVersion;
 import com.winlator.core.envvars.EnvVars;
 import com.winlator.core.FileUtils;
@@ -758,6 +759,24 @@ public class Container {
             data.put("suspendPolicy", suspendPolicy);
             data.put("portraitMode", portraitMode);
 
+            // XR config
+            data.put("xrButtonA", xrButtonA);
+            data.put("xrButtonB", xrButtonB);
+            data.put("xrButtonX", xrButtonX);
+            data.put("xrButtonY", xrButtonY);
+            data.put("xrButtonGrip", xrButtonGrip);
+            data.put("xrButtonTrigger", xrButtonTrigger);
+            data.put("xrThumbstickDown", xrThumbstickDown);
+            data.put("xrThumbstickUp", xrThumbstickUp);
+            data.put("xrThumbstickLeft", xrThumbstickLeft);
+            data.put("xrThumbstickRight", xrThumbstickRight);
+            data.put("xrCPULevel", xrCPULevel);
+            data.put("xrGPULevel", xrGPULevel);
+            data.put("xrRefreshRate", xrRefreshRate);
+            data.put("xrUseReshade", xrUseReshade);
+            data.put("xrForceDCGI", xrForceDCGI);
+            data.put("xrUseTrackIR", xrUseTrackIR);
+
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
         }
@@ -973,6 +992,54 @@ public class Container {
                     break;
                 case "portraitMode":
                     this.portraitMode = data.getBoolean(key);
+                    break;
+                case "xrButtonA":
+                    setXrButtonA(data.getInt(key));
+                    break;
+                case "xrButtonB":
+                    setXrButtonB(data.getInt(key));
+                    break;
+                case "xrButtonX":
+                    setXrButtonX(data.getInt(key));
+                    break;
+                case "xrButtonY":
+                    setXrButtonY(data.getInt(key));
+                    break;
+                case "xrButtonGrip":
+                    setXrButtonGrip(data.getInt(key));
+                    break;
+                case "xrButtonTrigger":
+                    setXrButtonTrigger(data.getInt(key));
+                    break;
+                case "xrThumbstickDown":
+                    setXrThumbstickDown(data.getInt(key));
+                    break;
+                case "xrThumbstickUp":
+                    setXrThumbstickUp(data.getInt(key));
+                    break;
+                case "xrThumbstickLeft":
+                    setXrThumbstickLeft(data.getInt(key));
+                    break;
+                case "xrThumbstickRight":
+                    setXrThumbstickRight(data.getInt(key));
+                    break;
+                case "xrCPULevel":
+                    setXrCPULevel(data.getInt(key));
+                    break;
+                case "xrGPULevel":
+                    setXrGPULevel(data.getInt(key));
+                    break;
+                case "xrRefreshRate":
+                    setXrRefreshRate(data.getInt(key));
+                    break;
+                case "xrUseReshade":
+                    this.xrUseReshade = data.getBoolean(key);
+                    break;
+                case "xrForceDCGI":
+                    this.xrForceDCGI = data.getBoolean(key);
+                    break;
+                case "xrUseTrackIR":
+                    this.xrUseTrackIR = data.getBoolean(key);
                     break;
             }
         }
@@ -1201,4 +1268,66 @@ public class Container {
     public void setUseDRI3(boolean useDRI3) {
         this.useDRI3 = useDRI3;
     }
+
+    // ----- XR configuration -----
+    public static final int DEFAULT_XR_BUTTON_A = XKeycode.KEY_A.getId();
+    public static final int DEFAULT_XR_BUTTON_B = XKeycode.KEY_B.getId();
+    public static final int DEFAULT_XR_BUTTON_X = XKeycode.KEY_X.getId();
+    public static final int DEFAULT_XR_BUTTON_Y = XKeycode.KEY_Y.getId();
+    public static final int DEFAULT_XR_BUTTON_GRIP = XKeycode.KEY_SPACE.getId();
+    public static final int DEFAULT_XR_BUTTON_TRIGGER = XKeycode.KEY_ENTER.getId();
+    public static final int DEFAULT_XR_THUMBSTICK_UP = XKeycode.KEY_UP.getId();
+    public static final int DEFAULT_XR_THUMBSTICK_DOWN = XKeycode.KEY_DOWN.getId();
+    public static final int DEFAULT_XR_THUMBSTICK_LEFT = XKeycode.KEY_LEFT.getId();
+    public static final int DEFAULT_XR_THUMBSTICK_RIGHT = XKeycode.KEY_RIGHT.getId();
+
+    private int xrButtonA = DEFAULT_XR_BUTTON_A;
+    private int xrButtonB = DEFAULT_XR_BUTTON_B;
+    private int xrButtonX = DEFAULT_XR_BUTTON_X;
+    private int xrButtonY = DEFAULT_XR_BUTTON_Y;
+    private int xrButtonGrip = DEFAULT_XR_BUTTON_GRIP;
+    private int xrButtonTrigger = DEFAULT_XR_BUTTON_TRIGGER;
+    private int xrThumbstickUp = DEFAULT_XR_THUMBSTICK_UP;
+    private int xrThumbstickDown = DEFAULT_XR_THUMBSTICK_DOWN;
+    private int xrThumbstickLeft = DEFAULT_XR_THUMBSTICK_LEFT;
+    private int xrThumbstickRight = DEFAULT_XR_THUMBSTICK_RIGHT;
+    private int xrCPULevel = 75;
+    private int xrGPULevel = 75;
+    private int xrRefreshRate = 72;
+    private boolean xrUseReshade = false;
+    private boolean xrForceDCGI = false;
+    private boolean xrUseTrackIR = false;
+
+    public int getXrButtonA() { return xrButtonA; }
+    public void setXrButtonA(int value) { this.xrButtonA = value; }
+    public int getXrButtonB() { return xrButtonB; }
+    public void setXrButtonB(int value) { this.xrButtonB = value; }
+    public int getXrButtonX() { return xrButtonX; }
+    public void setXrButtonX(int value) { this.xrButtonX = value; }
+    public int getXrButtonY() { return xrButtonY; }
+    public void setXrButtonY(int value) { this.xrButtonY = value; }
+    public int getXrButtonGrip() { return xrButtonGrip; }
+    public void setXrButtonGrip(int value) { this.xrButtonGrip = value; }
+    public int getXrButtonTrigger() { return xrButtonTrigger; }
+    public void setXrButtonTrigger(int value) { this.xrButtonTrigger = value; }
+    public int getXrThumbstickDown() { return xrThumbstickDown; }
+    public void setXrThumbstickDown(int value) { this.xrThumbstickDown = value; }
+    public int getXrThumbstickUp() { return xrThumbstickUp; }
+    public void setXrThumbstickUp(int value) { this.xrThumbstickUp = value; }
+    public int getXrThumbstickLeft() { return xrThumbstickLeft; }
+    public void setXrThumbstickLeft(int value) { this.xrThumbstickLeft = value; }
+    public int getXrThumbstickRight() { return xrThumbstickRight; }
+    public void setXrThumbstickRight(int value) { this.xrThumbstickRight = value; }
+    public int getXrCPULevel() { return xrCPULevel; }
+    public void setXrCPULevel(int xrCPULevel) { this.xrCPULevel = xrCPULevel; }
+    public int getXrGPULevel() { return xrGPULevel; }
+    public void setXrGPULevel(int xrGPULevel) { this.xrGPULevel = xrGPULevel; }
+    public int getXrRefreshRate() { return xrRefreshRate; }
+    public void setXrRefreshRate(int xrRefreshRate) { this.xrRefreshRate = xrRefreshRate; }
+    public boolean isXrUseReshade() { return xrUseReshade; }
+    public void setXrUseReshade(boolean xrUseReshade) { this.xrUseReshade = xrUseReshade; }
+    public boolean isXrForceDCGI() { return xrForceDCGI; }
+    public void setXrForceDCGI(boolean xrForceDCGI) { this.xrForceDCGI = xrForceDCGI; }
+    public boolean isXrUseTrackIR() { return xrUseTrackIR; }
+    public void setXrUseTrackIR(boolean xrUseTrackIR) { this.xrUseTrackIR = xrUseTrackIR; }
 }
