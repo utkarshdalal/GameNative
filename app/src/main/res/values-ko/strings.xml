@@ -434,13 +434,13 @@
     <string name="button_y">Y 버튼</string>
     <string name="button_y_subtitle">위쪽 페이스 버튼</string>
     <string name="shoulder_buttons">숄더 버튼</string>
-    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">왼쪽 범퍼</string>
-    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">오른쪽 범퍼</string>
-    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">왼쪽 트리거</string>
-    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">오른쪽 트리거</string>
     <string name="menu_buttons">메뉴 버튼</string>
     <string name="button_start">Start / Options</string>

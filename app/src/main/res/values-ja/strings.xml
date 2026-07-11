@@ -449,13 +449,13 @@
     <string name="button_y">Yボタン</string>
     <string name="button_y_subtitle">天面ボタン</string>
     <string name="shoulder_buttons">肩ボタン</string>
-    <string name="button_l1">L1/LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">左バンパー</string>
-    <string name="button_r1">R1/RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">右バンパー</string>
-    <string name="button_l2">L2/LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">左トリガー</string>
-    <string name="button_r2">R2/RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">右トリガー</string>
     <string name="menu_buttons">メニューボタン</string>
     <string name="button_start">スタート/オプション</string>
