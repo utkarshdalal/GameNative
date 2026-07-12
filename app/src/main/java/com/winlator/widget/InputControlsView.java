@@ -20,7 +20,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
-import android.util.Log;
 import android.util.SparseArray;
 
 import androidx.compose.ui.input.pointer.PointerIcon;
@@ -42,13 +41,11 @@ import com.winlator.xserver.XServer;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class InputControlsView extends View {
-    private static final String TAG = "InputControlsView";
     private static final long SHOOTER_SPRINT_TAP_DURATION_MS = 120;
     public static final float DEFAULT_OVERLAY_OPACITY = 0.4f;
     private boolean editMode = false;
@@ -66,10 +63,6 @@ public class InputControlsView extends View {
     private float overlayOpacity = DEFAULT_OVERLAY_OPACITY;
     private TouchpadView touchpadView;
     private XServer xServer;
-    private boolean winHandlerMethodsResolved = false;
-    private Method sendGamepadStateMethod;
-    private Method sendVirtualGamepadStateMethod;
-    private Method sendVirtualGamepadStateWithSlotMethod;
     private final Bitmap[] icons = new Bitmap[40];
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
@@ -688,8 +681,8 @@ public class InputControlsView extends View {
         WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
         if (winHandler != null && profile != null) {
             GamepadState state = profile.getGamepadState();
-            sendGamepadStateCompat(winHandler);
-            sendVirtualGamepadStateCompat(winHandler, state);
+            winHandler.sendGamepadState();
+            winHandler.sendVirtualGamepadState(state);
         }
     }
 
@@ -1283,63 +1276,11 @@ public class InputControlsView extends View {
             WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
             if (winHandler != null) {
                 GamepadState state = profile.getGamepadState();
-                sendGamepadStateCompat(winHandler);
-                sendVirtualGamepadStateCompat(winHandler, state);
+                winHandler.sendGamepadState();
+                winHandler.sendVirtualGamepadState(state);
             }
         }
         return true;
-    }
-
-    private void sendGamepadStateCompat(WinHandler winHandler) {
-        ensureWinHandlerMethodsResolved(winHandler);
-        invokeWinHandlerMethod(sendGamepadStateMethod, winHandler);
-    }
-
-    private void sendVirtualGamepadStateCompat(WinHandler winHandler, GamepadState state) {
-        ensureWinHandlerMethodsResolved(winHandler);
-        if (invokeWinHandlerMethod(sendVirtualGamepadStateWithSlotMethod, winHandler, state, 0)) {
-            return;
-        }
-        invokeWinHandlerMethod(sendVirtualGamepadStateMethod, winHandler, state);
-    }
-
-    private void ensureWinHandlerMethodsResolved(WinHandler winHandler) {
-        if (winHandlerMethodsResolved) return;
-
-        Class<?> handlerClass = winHandler.getClass();
-        sendGamepadStateMethod = findWinHandlerMethod(handlerClass, "sendGamepadState");
-        sendVirtualGamepadStateWithSlotMethod = findWinHandlerMethod(
-                handlerClass,
-                "sendVirtualGamepadState",
-                GamepadState.class,
-                int.class
-        );
-        sendVirtualGamepadStateMethod = findWinHandlerMethod(
-                handlerClass,
-                "sendVirtualGamepadState",
-                GamepadState.class
-        );
-        winHandlerMethodsResolved = true;
-    }
-
-    private Method findWinHandlerMethod(Class<?> handlerClass, String methodName, Class<?>... parameterTypes) {
-        try {
-            return handlerClass.getMethod(methodName, parameterTypes);
-        } catch (NoSuchMethodException ignored) {
-            return null;
-        }
-    }
-
-    private boolean invokeWinHandlerMethod(Method method, WinHandler winHandler, Object... args) {
-        if (method == null) return false;
-
-        try {
-            method.invoke(winHandler, args);
-            return true;
-        } catch (ReflectiveOperationException | RuntimeException e) {
-            Log.w(TAG, "Failed to call WinHandler." + method.getName(), e);
-            return false;
-        }
     }
 
     public boolean onKeyEvent(KeyEvent event) {

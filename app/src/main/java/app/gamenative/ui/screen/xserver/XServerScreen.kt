@@ -2947,7 +2947,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
                     icView.setVisibility(View.VISIBLE)
                     icView.requestFocus()
                     icView.invalidate()
-                    winHandler.refreshControllerMappingsCompat()
+                    winHandler.refreshControllerMappings()
                 }
             } else {
                 // View has dimensions but elements not loaded - load them now
@@ -2958,7 +2958,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
                 icView.setVisibility(View.VISIBLE)
                 icView.requestFocus()
                 icView.invalidate()
-                winHandler.refreshControllerMappingsCompat()
+                winHandler.refreshControllerMappings()
             }
         } else {
             // Elements already loaded with valid dimensions - just show
@@ -2968,7 +2968,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
             icView.setVisibility(View.VISIBLE)
             icView.requestFocus()
             icView.invalidate()
-            winHandler.refreshControllerMappingsCompat()
+            winHandler.refreshControllerMappings()
         }
     }
 
@@ -2989,7 +2989,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
 
 
         // Tell WinHandler to update its internal state.
-        winHandler.refreshControllerMappingsCompat()
+        winHandler.refreshControllerMappings()
     }
 }
 
@@ -2997,7 +2997,7 @@ private fun hideInputControls() {
     PluviaApp.inputControlsView?.setShowTouchscreenControls(false)
     PluviaApp.inputControlsView?.setVisibility(View.GONE)
     PluviaApp.inputControlsView?.setProfile(null)
-    PluviaApp.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsCompat()
+    PluviaApp.xServerView?.getxServer()?.winHandler?.refreshControllerMappings()
 
     PluviaApp.touchpadView?.setSensitivity(1.0f)
     PluviaApp.touchpadView?.setPointerButtonLeftEnabled(true)
@@ -3009,26 +3009,6 @@ private fun hideInputControls() {
         }
     }
     PluviaApp.inputControlsView?.invalidate()
-}
-
-private fun WinHandler.refreshControllerMappingsCompat() {
-    val hotplugRefreshMethod = runCatching {
-        javaClass.getMethod("refreshControllerMappingsForHotplug")
-    }.getOrNull()
-
-    if (hotplugRefreshMethod != null) {
-        val hotplugRefreshSucceeded = runCatching {
-            hotplugRefreshMethod.invoke(this)
-        }.onFailure {
-            Timber.w(it, "Failed to refresh controller mappings through hotplug-aware API")
-        }.isSuccess
-
-        if (hotplugRefreshSucceeded) {
-            return
-        }
-    }
-
-    refreshControllerMappings()
 }
 
 /**
