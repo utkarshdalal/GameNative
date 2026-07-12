@@ -83,14 +83,10 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
     }
 
     public void onPause() {
-        GuestProgramLauncherComponent guestProgramLauncherComponent = getComponent(GuestProgramLauncherComponent.class);
-        if (guestProgramLauncherComponent != null) guestProgramLauncherComponent.suspendProcess();
-        GlibcProgramLauncherComponent glibcProgramLauncherComponent = getComponent(GlibcProgramLauncherComponent.class);
-        if (glibcProgramLauncherComponent != null) glibcProgramLauncherComponent.suspendProcess();
-        BionicProgramLauncherComponent bionicProgramLauncherComponent = getComponent(BionicProgramLauncherComponent.class);
-        if (bionicProgramLauncherComponent != null) bionicProgramLauncherComponent.suspendProcess();
+        // Pause game processes FIRST
+        pauseGameProcesses();
 
-        // Pause audio components
+        // Then pause audio components
         PulseAudioComponent pulseAudioComponent = getComponent(PulseAudioComponent.class);
         if (pulseAudioComponent != null) pulseAudioComponent.pause();
         ALSAServerComponent alsaServerComponent = getComponent(ALSAServerComponent.class);
@@ -105,6 +101,19 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
         if (alsaServerComponent != null) alsaServerComponent.resume();
 
         // Then resume game processes
+        resumeGameProcesses();
+    }
+
+    public void pauseGameProcesses() {
+        GuestProgramLauncherComponent guestProgramLauncherComponent = getComponent(GuestProgramLauncherComponent.class);
+        if (guestProgramLauncherComponent != null) guestProgramLauncherComponent.suspendProcess();
+        GlibcProgramLauncherComponent glibcProgramLauncherComponent = getComponent(GlibcProgramLauncherComponent.class);
+        if (glibcProgramLauncherComponent != null) glibcProgramLauncherComponent.suspendProcess();
+        BionicProgramLauncherComponent bionicProgramLauncherComponent = getComponent(BionicProgramLauncherComponent.class);
+        if (bionicProgramLauncherComponent != null) bionicProgramLauncherComponent.suspendProcess();
+    }
+
+    public void resumeGameProcesses() {
         GuestProgramLauncherComponent guestProgramLauncherComponent = getComponent(GuestProgramLauncherComponent.class);
         if (guestProgramLauncherComponent != null) guestProgramLauncherComponent.resumeProcess();
         GlibcProgramLauncherComponent glibcProgramLauncherComponent = getComponent(GlibcProgramLauncherComponent.class);

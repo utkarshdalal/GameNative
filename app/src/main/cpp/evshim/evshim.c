@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <limits.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <stdarg.h>
@@ -17,6 +18,7 @@
 #include <SDL2/SDL.h>
 #include <android/log.h>
 #include <sys/stat.h>
+#include <time.h>
 
 static int g_debug_enabled = 0;
 #define LOGI(...) dprintf(STDOUT_FILENO, __VA_ARGS__)
@@ -237,6 +239,18 @@ static void *vjoy_updater(void *arg)
 
     uint32_t last_seq = atomic_load_explicit(&s->seq, memory_order_acquire);
 
+    struct timespec ts;
+    struct timespec *tsp = NULL;
+    const char *to = getenv("EVSHIM_FUTEX_TIMEOUT_MS");
+    if (to && *to) {
+        long ms = atol(to);
+        if (ms > 0) {
+            ts.tv_sec  = ms / 1000;
+            ts.tv_nsec = (ms % 1000) * 1000000L;
+            tsp = &ts;
+        }
+    }
+
     for (;;) {
         struct gamepad_io snap;
 
@@ -254,7 +268,7 @@ static void *vjoy_updater(void *arg)
             continue;
         }
 
-        syscall(SYS_futex, &s->seq, FUTEX_WAIT, last_seq, NULL, NULL, 0);
+        syscall(SYS_futex, &s->seq, FUTEX_WAIT, last_seq, tsp, NULL, 0);
     }
 
     return NULL;
@@ -373,5 +387,6 @@ JNIEXPORT void JNICALL
 Java_com_winlator_winhandler_WinHandler_rumbleTeardown(JNIEnv *env, jclass cls, jint idx)
 {
     if (idx < 0 || idx >= MAX_GAMEPADS || !shm[idx]) return;
-    syscall(SYS_futex, &shm[idx]->rumble_seq, FUTEX_WAKE, 1, NULL, NULL, 0);
+    atomic_fetch_add_explicit(&shm[idx]->rumble_seq, 1u, memory_order_release);
+    syscall(SYS_futex, &shm[idx]->rumble_seq, FUTEX_WAKE, INT_MAX, NULL, NULL, 0);
 }

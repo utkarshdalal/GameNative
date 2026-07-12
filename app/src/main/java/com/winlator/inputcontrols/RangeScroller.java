@@ -16,6 +16,7 @@ public class RangeScroller {
     private float lastPosition;
     private long touchTime;
     private Binding binding = Binding.NONE;
+    private int activeIndex = -1;
     private boolean isActionDown = false;
     private boolean scrolling = false;
     private Timer timer;
@@ -46,13 +47,21 @@ public class RangeScroller {
         return new byte[]{from, to};
     }
 
-    private Binding getBindingByPosition(float x, float y) {
+    public int getActiveIndex() {
+        return activeIndex;
+    }
+
+    private int getIndexByPosition(float x, float y) {
         Rect boundingBox = element.getBoundingBox();
         ControlElement.Range range = element.getRange();
         float offset = element.getOrientation() == 0 ? x - boundingBox.left - currentOffset : y - boundingBox.top - currentOffset;
         int index = (int)Math.floor((offset / getElementSize()) % range.max);
         if (index < 0) index = range.max + index;
+        return index;
+    }
 
+    private Binding getBindingByIndex(int index) {
+        ControlElement.Range range = element.getRange();
         switch (range) {
             case FROM_A_TO_Z:
                 return Binding.valueOf("KEY_"+((char)(65 + index)));
@@ -83,10 +92,12 @@ public class RangeScroller {
 
         scrolling = false;
         isActionDown = true;
-        binding = getBindingByPosition(x, y);
+        activeIndex = getIndexByPosition(x, y);
+        binding = getBindingByIndex(activeIndex);
         touchTime = System.currentTimeMillis();
         lastPosition = element.getOrientation() == 0 ? x : y;
         element.setBinding(Binding.NONE);
+        inputControlsView.invalidate();
 
         timer = new Timer(true);
         timer.schedule(new TimerTask() {
@@ -106,7 +117,9 @@ public class RangeScroller {
 
             if (Math.abs(deltaPosition) >= TouchpadView.MAX_TAP_TRAVEL_DISTANCE) {
                 scrolling = true;
+                activeIndex = -1;
                 destroyTimer();
+                inputControlsView.invalidate();
             }
 
             if (scrolling) {
@@ -133,5 +146,7 @@ public class RangeScroller {
             else inputControlsView.handleInputEvent(binding, false);
         }
         isActionDown = false;
+        activeIndex = -1;
+        inputControlsView.invalidate();
     }
 }

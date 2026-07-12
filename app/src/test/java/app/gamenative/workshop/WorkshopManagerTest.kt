@@ -11,6 +11,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+import kotlinx.coroutines.runBlocking
 import kotlin.io.path.createTempDirectory
 
 class WorkshopManagerTest {
@@ -58,6 +61,15 @@ class WorkshopManagerTest {
         val file = File(dir, fileName)
         file.parentFile?.mkdirs()
         file.writeText("content")
+    }
+
+    private fun writeZipPayload(file: File, entryName: String = "inside.txt") {
+        file.parentFile?.mkdirs()
+        ZipOutputStream(file.outputStream()).use { zip ->
+            zip.putNextEntry(ZipEntry(entryName))
+            zip.write("content".toByteArray())
+            zip.closeEntry()
+        }
     }
 
     private fun useSteamWorkshopContentDir(appId: Int = 331470) {
@@ -570,5 +582,70 @@ class WorkshopManagerTest {
         WorkshopManager.fixItemFileNames(items, workshopContentDir)
 
         assertTrue(File(dir, "my_mod.vpk").exists())
+    }
+
+    @Test
+    fun fixFileExtensions_preservesKnownZipContainerPayloadExtensions() {
+        val dir = File(workshopContentDir, "111").apply { mkdirs() }
+        val jarFile = File(dir, "mod.jar")
+        val groFile = File(dir, "mod.gro")
+        writeZipPayload(jarFile)
+        writeZipPayload(groFile)
+
+        WorkshopManager.fixFileExtensions(workshopContentDir)
+
+        assertTrue(jarFile.exists())
+        assertTrue(groFile.exists())
+        assertFalse(File(dir, "mod.jar.zip").exists())
+        assertFalse(File(dir, "mod.gro.zip").exists())
+    }
+
+    @Test
+    fun runPostProcessing_restoresZipPayloadNamesBeforeExtraction() = runBlocking {
+        useSteamWorkshopContentDir(646570)
+        val slayDir = File(workshopContentDir, "111").apply { mkdirs() }
+        writeZipPayload(File(slayDir, "mod.jar.zip"))
+
+        WorkshopManager.runPostProcessing(
+            downloadedItems = null,
+            allItems = emptyList(),
+            workshopContentDir = workshopContentDir,
+        )
+
+        assertTrue(File(slayDir, "mod.jar").exists())
+        assertFalse(File(slayDir, "mod.jar.zip").exists())
+        assertFalse(File(slayDir, "inside.txt").exists())
+        assertFalse(File(slayDir, ".zip_extracted").exists())
+
+        useSteamWorkshopContentDir(564310)
+        val seriousSamDir = File(workshopContentDir, "222").apply { mkdirs() }
+        writeZipPayload(File(seriousSamDir, "mod.gro.zip"))
+
+        WorkshopManager.runPostProcessing(
+            downloadedItems = null,
+            allItems = emptyList(),
+            workshopContentDir = workshopContentDir,
+        )
+
+        assertTrue(File(seriousSamDir, "mod.gro").exists())
+        assertFalse(File(seriousSamDir, "mod.gro.zip").exists())
+        assertFalse(File(seriousSamDir, "inside.txt").exists())
+        assertFalse(File(seriousSamDir, ".zip_extracted").exists())
+    }
+
+    @Test
+    fun extractZipMods_skipsZipExtractionForZipPayloadGames() {
+        listOf(646570, 564310).forEachIndexed { index, appId ->
+            useSteamWorkshopContentDir(appId)
+            val itemDir = File(workshopContentDir, (300 + index).toString()).apply { mkdirs() }
+            val zipFile = File(itemDir, "payload.zip")
+            writeZipPayload(zipFile)
+
+            WorkshopManager.extractZipMods(workshopContentDir)
+
+            assertTrue(zipFile.exists())
+            assertFalse(File(itemDir, "inside.txt").exists())
+            assertFalse(File(itemDir, ".zip_extracted").exists())
+        }
     }
 }

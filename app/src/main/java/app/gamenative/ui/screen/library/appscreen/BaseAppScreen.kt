@@ -22,18 +22,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
+import app.gamenative.mods.ModContainerResolver
+import app.gamenative.mods.NexusModManager
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.DiagnosticsLog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
@@ -69,11 +74,13 @@ internal suspend fun installMissingComponentsForConfig(
     configJson: kotlinx.serialization.json.JsonObject,
     matchType: String,
     uiScope: CoroutineScope,
+    matchedGpu: String = "",
 ): Boolean {
     val missingRequests = BestConfigService.resolveMissingManifestInstallRequests(
         context,
         configJson,
         matchType,
+        matchedGpu,
     )
     if (missingRequests.isEmpty()) return true
 
@@ -137,6 +144,7 @@ abstract class BaseAppScreen {
         private val importConfigRequests = mutableStateMapOf<String, Boolean>()
         private val exportSavesRequests = mutableStateMapOf<String, Boolean>()
         private val importSavesRequests = mutableStateMapOf<String, Boolean>()
+        private val manageModsRequests = mutableStateMapOf<String, Boolean>()
         private val knownConfigInstallStates = mutableStateMapOf<Int, KnownConfigInstallState>()
 
         fun showInstallDialog(appId: String, state: app.gamenative.ui.component.dialog.state.MessageDialogState) {
@@ -197,6 +205,18 @@ abstract class BaseAppScreen {
 
         fun shouldImportSaves(appId: String): Boolean {
             return importSavesRequests[appId] == true
+        }
+
+        fun requestManageMods(appId: String) {
+            manageModsRequests[appId] = true
+        }
+
+        fun clearManageModsRequest(appId: String) {
+            manageModsRequests.remove(appId)
+        }
+
+        fun shouldManageMods(appId: String): Boolean {
+            return manageModsRequests[appId] == true
         }
 
         // missing components that prevent config from being applied
@@ -310,6 +330,15 @@ abstract class BaseAppScreen {
     open fun hasPartialDownload(context: Context, libraryItem: LibraryItem): Boolean {
         val progress = getDownloadProgress(context, libraryItem)
         return progress > 0f && progress < 1f
+    }
+
+    /**
+     * Check if a stale install record remains even though the game is not actually installed
+     * (e.g. its files went missing after a storage switch). Such a record blocks reinstall
+     * until it is cleaned up, so sources that can detect it should expose a delete action.
+     */
+    open fun hasLeftoverInstall(context: Context, libraryItem: LibraryItem): Boolean {
+        return false
     }
 
     /**
@@ -429,6 +458,47 @@ abstract class BaseAppScreen {
             onClick = {
                 onTestGraphicsClick(context, libraryItem, onTestGraphics)
             },
+        )
+    }
+
+    @Composable
+    protected open fun getPlayWithDiagnosticsOption(
+        context: Context,
+        libraryItem: LibraryItem,
+        onPlayWithDiagnostics: () -> Unit,
+    ): AppMenuOption? {
+        return AppMenuOption(
+            AppOptionMenuType.PlayWithDiagnostics,
+            onClick = { onPlayWithDiagnostics() },
+        )
+    }
+
+    @Composable
+    protected open fun getShareDiagnosticsOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        if (!DiagnosticsLog.exists(context, libraryItem.appId)) return null
+        return AppMenuOption(
+            AppOptionMenuType.ShareDiagnostics,
+            onClick = { shareDiagnostics(context, libraryItem) },
+        )
+    }
+
+    private fun shareDiagnostics(context: Context, libraryItem: LibraryItem) {
+        val file = DiagnosticsLog.file(context, libraryItem.appId)
+        if (!file.exists()) {
+            SnackbarManager.show(context.getString(R.string.diagnostics_share_none))
+            return
+        }
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(
+            Intent.createChooser(intent, context.getString(R.string.diagnostics_share_title)),
         )
     }
 
@@ -572,6 +642,33 @@ abstract class BaseAppScreen {
             getExportSavesOption(context, libraryItem),
             getImportSavesOption(context, libraryItem),
         )
+    }
+
+    @Composable
+    protected open fun getManageModsOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption = AppMenuOption(
+        optionType = AppOptionMenuType.ManageMods,
+        onClick = {
+            requestManageMods(libraryItem.appId)
+        },
+    )
+
+    protected suspend fun cleanupNexusModsForApp(
+        context: Context,
+        libraryItem: LibraryItem,
+        gameRootDir: File?,
+    ) {
+        runCatching {
+            NexusModManager.deleteInstallsForApp(
+                context = context,
+                appId = libraryItem.appId,
+                gameRootDir = gameRootDir,
+            )
+        }.onFailure { error ->
+            Timber.w(error, "Failed to clean Nexus mods for app %s", libraryItem.appId)
+        }
     }
 
     /**
@@ -731,6 +828,7 @@ abstract class BaseAppScreen {
                 configJson = bestConfig.bestConfig,
                 matchType = bestConfig.matchType,
                 uiScope = uiScope,
+                matchedGpu = bestConfig.matchedGpu,
             )
             if (!installsOk) return
 
@@ -744,6 +842,7 @@ abstract class BaseAppScreen {
                 matchType = matchType,
                 applyKnownConfig = true,
                 storeMatch = bestConfig.matchedStore.equals(libraryItem.gameSource.name, ignoreCase = true),
+                matchedGpu = bestConfig.matchedGpu,
             )
             val missingComponents = BestConfigService.consumeLastMissingComponents()
 
@@ -756,6 +855,7 @@ abstract class BaseAppScreen {
                                 context, configJson, matchType, true,
                                 storeMatch = bestConfig.matchedStore.equals(libraryItem.gameSource.name, ignoreCase = true),
                                 forceApply = true,
+                                matchedGpu = bestConfig.matchedGpu,
                             )
                             if (forced != null && forced.isNotEmpty()) {
                                 val c = ContainerUtils.getOrCreateContainer(context, appId)
@@ -839,6 +939,7 @@ abstract class BaseAppScreen {
         onBack: () -> Unit,
         onClickPlay: (Boolean) -> Unit,
         onTestGraphics: () -> Unit,
+        onPlayWithDiagnostics: () -> Unit,
         exportFrontendLauncher: ActivityResultLauncher<String>,
     ): List<AppMenuOption> {
         val isInstalled = isInstalled(context, libraryItem)
@@ -851,6 +952,8 @@ abstract class BaseAppScreen {
             // Options only available when game is installed
             getRunContainerOption(context, libraryItem, onClickPlay)?.let { menuOptions.add(it) }
             getTestGraphicsOption(context, libraryItem, onTestGraphics)?.let { menuOptions.add(it) }
+            getPlayWithDiagnosticsOption(context, libraryItem, onPlayWithDiagnostics)?.let { menuOptions.add(it) }
+            getShareDiagnosticsOption(context, libraryItem)?.let { menuOptions.add(it) }
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
@@ -862,6 +965,10 @@ abstract class BaseAppScreen {
 
         // Add any source-specific options
         menuOptions.addAll(getSourceSpecificMenuOptions(context, libraryItem, onEditContainer, onBack, onClickPlay, isInstalled))
+
+        if (isInstalled) {
+            menuOptions.add(getManageModsOption(context, libraryItem))
+        }
 
         // Add config-related options (export/import) after source-specific options,
         // so container-related items appear as:
@@ -892,11 +999,26 @@ abstract class BaseAppScreen {
         libraryItem: LibraryItem,
         onClickPlay: (Boolean) -> Unit,
         onTestGraphics: () -> Unit,
+        onPlayWithDiagnostics: () -> Unit,
         onBack: () -> Unit,
     ) {
         val context = LocalContext.current
-        val displayInfo = getGameDisplayInfo(context, libraryItem)
+        val displayInfoBase = getGameDisplayInfo(context, libraryItem)
         val appId = libraryItem.appId
+
+        // Fetch HLTB stats asynchronously (best-effort)
+        var hltbStats by remember(displayInfoBase.name) {
+            mutableStateOf<app.gamenative.utils.HltbService.Stats?>(null)
+        }
+        LaunchedEffect(displayInfoBase.name) {
+            if (displayInfoBase.name.isNotBlank())
+                hltbStats = try {
+                    app.gamenative.utils.HltbService.getStats(displayInfoBase.name)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) { null }
+        }
+        val displayInfo = displayInfoBase.copy(hltbStats = hltbStats)
 
         // Use composable state for values that change over time
         var isInstalledState by remember(libraryItem.appId) {
@@ -919,6 +1041,9 @@ abstract class BaseAppScreen {
         var hasPartialDownloadState by remember(libraryItem.appId) {
             mutableStateOf(hasPartialDownload(context, libraryItem))
         }
+        var hasLeftoverInstallState by remember(libraryItem.appId) {
+            mutableStateOf(hasLeftoverInstall(context, libraryItem))
+        }
 
         val uiScope = rememberCoroutineScope()
 
@@ -929,6 +1054,7 @@ abstract class BaseAppScreen {
             isDownloadingState = currentlyDownloading
             downloadProgressState = getDownloadProgress(context, libraryItem)
             hasPartialDownloadState = hasPartialDownload(context, libraryItem)
+            hasLeftoverInstallState = hasLeftoverInstall(context, libraryItem)
             if (includeUpdatePending) {
                 isUpdatePendingState = isUpdatePendingSuspend(context, libraryItem)
             }
@@ -1152,7 +1278,18 @@ abstract class BaseAppScreen {
             }
         }
 
-        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, exportFrontendLauncher)
+        var manageModsRequested by remember(appId) {
+            mutableStateOf(shouldManageMods(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldManageMods(appId) }
+                .collect { shouldRequest ->
+                    manageModsRequested = shouldRequest
+                }
+        }
+
+        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, onPlayWithDiagnostics, exportFrontendLauncher)
 
         // Get download info based on game source for progress tracking
         val downloadInfo = when (libraryItem.gameSource) {
@@ -1182,6 +1319,9 @@ abstract class BaseAppScreen {
             }
         }
 
+        val launchActivity = context as? android.app.Activity
+        var showReadiness by remember { mutableStateOf(false) }
+
         // Render the common UI
         app.gamenative.ui.screen.library.AppScreenContent(
             displayInfo = displayInfo,
@@ -1190,13 +1330,18 @@ abstract class BaseAppScreen {
             isDownloading = isDownloadingState,
             downloadProgress = downloadProgressState,
             hasPartialDownload = hasPartialDownloadState,
+            hasLeftoverInstall = hasLeftoverInstallState,
             isUpdatePending = isUpdatePendingState,
             downloadInfo = downloadInfo,
             onDownloadInstallClick = {
-                onDownloadInstallClick(context, libraryItem, onClickPlay)
-                uiScope.launch {
-                    delay(100)
-                    performStateRefresh(true)
+                if (app.gamenative.launch.LaunchReadiness.pending) {
+                    showReadiness = true
+                } else {
+                    onDownloadInstallClick(context, libraryItem, onClickPlay)
+                    uiScope.launch {
+                        delay(100)
+                        performStateRefresh(true)
+                    }
                 }
             },
             onPauseResumeClick = {
@@ -1213,8 +1358,21 @@ abstract class BaseAppScreen {
                 }
             },
             onBack = onBack,
-            optionsMenu = optionsMenu.toTypedArray(),
+            optionsMenu = optionsMenu,
         )
+
+        if (showReadiness && launchActivity != null) {
+            app.gamenative.launch.LaunchReadiness.Prompt(launchActivity) {
+                showReadiness = false
+                if (!app.gamenative.launch.LaunchReadiness.pending) {
+                    onDownloadInstallClick(context, libraryItem, onClickPlay)
+                    uiScope.launch {
+                        delay(100)
+                        performStateRefresh(true)
+                    }
+                }
+            }
+        }
 
         // Show container config dialog if needed
         if (showConfigDialog) {
@@ -1225,6 +1383,18 @@ abstract class BaseAppScreen {
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
+                },
+            )
+        }
+
+        if (manageModsRequested) {
+            NexusModsDialog(
+                visible = true,
+                libraryItem = libraryItem,
+                gameRootDir = getInstallPath(context, libraryItem)?.let { File(it) },
+                winePrefix = ModContainerResolver.getWinePrefix(context, libraryItem.appId),
+                onDismissRequest = {
+                    clearManageModsRequest(appId)
                 },
             )
         }

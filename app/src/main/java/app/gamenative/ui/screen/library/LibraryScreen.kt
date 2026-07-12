@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.library
 
 import android.content.Intent
 import android.content.res.Configuration
+import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import app.gamenative.ui.util.SnackbarManager
@@ -56,9 +57,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -66,6 +69,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
 import app.gamenative.R
@@ -116,6 +120,7 @@ fun HomeLibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
     onClickPlay: (String, Boolean) -> Unit,
     onTestGraphics: (String) -> Unit,
+    onPlayWithDiagnostics: (String) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
@@ -137,6 +142,7 @@ fun HomeLibraryScreen(
         onRefresh = viewModel::onRefresh,
         onClickPlay = onClickPlay,
         onTestGraphics = onTestGraphics,
+        onPlayWithDiagnostics = onPlayWithDiagnostics,
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
         onGoOnline = onGoOnline,
@@ -152,6 +158,14 @@ fun HomeLibraryScreen(
     )
 }
 
+private fun isGameControllerConnected(): Boolean =
+    InputDevice.getDeviceIds().any { id ->
+        val device = InputDevice.getDevice(id) ?: return@any false
+        val sources = device.sources
+        sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
+            sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
+    }
+
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun LibraryScreenContent(
@@ -165,6 +179,7 @@ private fun LibraryScreenContent(
     onSearchQuery: (String) -> Unit,
     onClickPlay: (String, Boolean) -> Unit,
     onTestGraphics: (String) -> Unit,
+    onPlayWithDiagnostics: (String) -> Unit,
     onRefresh: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
@@ -330,6 +345,10 @@ private fun LibraryScreenContent(
     var previousAppCount by remember { mutableIntStateOf(state.appInfoList.size) }
     var controllerBootstrapNeeded by remember { mutableStateOf(true) }
     var rootHasFocus by remember { mutableStateOf(false) }
+    // True while focus lives in the top tab bar. The delayed focus-restoration effects below must
+    // not yank focus back to the grid when the user has moved up into the tab bar (the action
+    // buttons would otherwise light up for ~100ms and then lose focus).
+    var tabBarHasFocus by remember { mutableStateOf(false) }
     var lastBootstrapAtMs by remember { mutableLongStateOf(0L) }
 
     fun firstVisibleContentIndex(): Int {
@@ -353,8 +372,16 @@ private fun LibraryScreenContent(
     fun preferredContentFocusIndex(): Int =
         if (currentPaneType == PaneType.CAROUSEL) currentCarouselFocusTargetIndex() else firstVisibleContentIndex()
 
+    val inputModeManager = LocalInputModeManager.current
+    fun ensureKeyboardInputMode() {
+        if (isGameControllerConnected()) {
+            inputModeManager.requestInputMode(InputMode.Keyboard)
+        }
+    }
+
     fun requestGridFocusOrDefer() {
         if (state.appInfoList.isEmpty()) return
+        ensureKeyboardInputMode()
         try {
             gridFirstItemFocusRequester.requestFocus()
             pendingGridFocusRequest = false
@@ -366,6 +393,7 @@ private fun LibraryScreenContent(
 
     fun requestCarouselFocusOrDefer(targetListIndex: Int = currentCarouselFocusTargetIndex()) {
         if (state.appInfoList.isEmpty()) return
+        ensureKeyboardInputMode()
         carouselFocusTargetListIndex = targetListIndex.coerceIn(0, state.appInfoList.lastIndex)
         try {
             carouselFocusRequester.requestFocus()
@@ -387,6 +415,7 @@ private fun LibraryScreenContent(
     }
 
     fun requestRootFocusSafe() {
+        ensureKeyboardInputMode()
         try {
             rootFocusRequester.requestFocus()
         } catch (_: IllegalStateException) {}
@@ -493,6 +522,9 @@ private fun LibraryScreenContent(
         // Brief delay to let list populate after tab change
         kotlinx.coroutines.delay(150)
 
+        // The user may have moved focus up into the tab bar during the delay; don't yank it back.
+        if (tabBarHasFocus) return@LaunchedEffect
+
         if (state.appInfoList.isEmpty()) {
             // Empty tab - focus root so bumpers still work
             requestRootFocusSafe()
@@ -569,10 +601,10 @@ private fun LibraryScreenContent(
         val listBecameNonEmpty = previousAppCount == 0 && currentCount > 0
         val listBecameEmpty = previousAppCount > 0 && currentCount == 0
 
-        if (listBecameNonEmpty && selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
+        if (listBecameNonEmpty && selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching && !tabBarHasFocus) {
             requestContentFocusOrDefer()
         }
-        if (listBecameEmpty && selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
+        if (listBecameEmpty && selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching && !tabBarHasFocus) {
             // Empty tabs can drop focused children; re-anchor focus at the root so bumper nav keeps working.
             requestRootFocusSafe()
         }
@@ -604,33 +636,28 @@ private fun LibraryScreenContent(
 
     // Global key/motion bootstrap path for cases where Compose focus was lost by touch mode.
     // This runs at the app event bus layer, independent of current Compose focus target.
-    DisposableEffect(
-        selectedAppId,
-        isSystemMenuOpen,
-        state.isOptionsPanelOpen,
-        state.isSearching,
-        state.appInfoList.size,
-        state.currentTab,
-    ) {
-        val canBootstrapContentFocus: () -> Boolean = {
-            val now = SystemClock.uptimeMillis()
-            selectedAppId == null &&
-                !isSystemMenuOpen &&
-                !state.isOptionsPanelOpen &&
-                !state.isSearching &&
-                state.appInfoList.isNotEmpty() &&
-                controllerBootstrapNeeded &&
-                !rootHasFocus &&
-                (now - lastBootstrapAtMs) > 250L
-        }
-        val canNavigateTabsWithoutFocus: () -> Boolean = {
-            selectedAppId == null &&
-                !isSystemMenuOpen &&
-                !state.isOptionsPanelOpen &&
-                !state.isSearching &&
-                !rootHasFocus
-        }
+    // Helper functions defined in composable scope to capture latest state on each recomposition.
+    val canBootstrapContentFocus: () -> Boolean = {
+        val now = SystemClock.uptimeMillis()
+        selectedAppId == null &&
+            !isSystemMenuOpen &&
+            !state.isOptionsPanelOpen &&
+            !state.isSearching &&
+            state.appInfoList.isNotEmpty() &&
+            controllerBootstrapNeeded &&
+            !rootHasFocus &&
+            !tabBarHasFocus &&
+            (now - lastBootstrapAtMs) > 250L
+    }
+    val canNavigateTabsWithoutFocus: () -> Boolean = {
+        selectedAppId == null &&
+            !isSystemMenuOpen &&
+            !state.isOptionsPanelOpen &&
+            !state.isSearching &&
+            !rootHasFocus
+    }
 
+    DisposableEffect(Unit) {
         val onGlobalKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = { androidEvent ->
             val event = androidEvent.event
             if (event.action != KeyEvent.ACTION_DOWN) {
@@ -740,7 +767,10 @@ private fun LibraryScreenContent(
                         !isSystemMenuOpen &&
                         !state.isSearching &&
                         state.appInfoList.isNotEmpty() &&
-                        controllerBootstrapNeeded
+                        controllerBootstrapNeeded &&
+                        // Don't pull focus to the grid while the user is on the tab bar (D-pad
+                        // up/left/right and analog nudges aren't consumed by the bar otherwise).
+                        !tabBarHasFocus
 
                     when (keyCode) {
                         // Navigation keys should bootstrap focus even before any item is selected.
@@ -821,7 +851,7 @@ private fun LibraryScreenContent(
 
                         // X button - add custom game
                         KeyEvent.KEYCODE_BUTTON_X -> {
-                            if (selectedAppId == null && !state.isSearching && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
+                            if (!BuildConfig.MODERN_ANDROID && selectedAppId == null && !state.isSearching && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
                                 onAddCustomGameClick()
                                 true
                             } else {
@@ -988,7 +1018,16 @@ private fun LibraryScreenContent(
                         onNextTab = onNextTab,
                         modifier = Modifier
                             .align(Alignment.TopCenter)
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                tabBarHasFocus = focusState.hasFocus
+                                // Cancel any deferred grid-focus so the retry loop can't pull focus
+                                // back off a tab-bar button the user just landed on.
+                                if (focusState.hasFocus) {
+                                    pendingGridFocusRequest = false
+                                    pendingCarouselFocusRequest = false
+                                }
+                            },
                     )
                 }
             }
@@ -1007,6 +1046,11 @@ private fun LibraryScreenContent(
                 onTestGraphics = {
                     selectedLibraryItem?.let { libraryItem ->
                         onTestGraphics(libraryItem.appId)
+                    }
+                },
+                onPlayWithDiagnostics = {
+                    selectedLibraryItem?.let { libraryItem ->
+                        onPlayWithDiagnostics(libraryItem.appId)
                     }
                 },
             )
@@ -1049,12 +1093,17 @@ private fun LibraryScreenContent(
                         labelResId = R.string.search,
                         onClick = { onIsSearching(true) },
                     ),
-                    GamepadAction(
-                        button = GamepadButton.X,
-                        labelResId = R.string.action_add_game,
-                        onClick = onAddCustomGameClick,
-                    ),
-                )
+                ) + if (!BuildConfig.MODERN_ANDROID) {
+                    listOf(
+                        GamepadAction(
+                            button = GamepadButton.X,
+                            labelResId = R.string.action_add_game,
+                            onClick = onAddCustomGameClick,
+                        ),
+                    )
+                } else {
+                    emptyList()
+                }
             }
 
             GamepadActionBar(
@@ -1239,6 +1288,7 @@ private fun Preview_LibraryScreenContent() {
             },
             onClickPlay = { _, _ -> },
             onTestGraphics = { },
+            onPlayWithDiagnostics = { },
             onRefresh = { },
             onNavigateRoute = {},
             onLogout = {},

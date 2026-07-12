@@ -54,19 +54,6 @@ public abstract class ProcessHelper {
         Process.sendSignal(pid, SIGKILL);
     }
 
-    public static int getPid(java.lang.Process process) {
-        try {
-            Field pidField = process.getClass().getDeclaredField("pid");
-            pidField.setAccessible(true);
-            int pid = pidField.getInt(process);
-            pidField.setAccessible(false);
-            return pid;
-        } catch (Exception e) {
-            Log.e("ProcessHelper", "Failed to get PID from process: " + e);
-            return -1;
-        }
-    }
-
     public static void terminateAllWineProcesses() {
         for (String process : listRunningWineProcesses()) {
             terminateProcess(Integer.parseInt(process));
@@ -207,10 +194,22 @@ public abstract class ProcessHelper {
     //                         the main thread reads stdout. This keeps stdout clean for callers
     //                         such as SteamTokenLogin
     public static String execWithOutput(String command, String[] envp, File workingDir, boolean includeStderr) {
+        return execWithOutput(command, envp, workingDir, includeStderr, -1);
+    }
+
+    public static String execWithOutput(String command, String[] envp, File workingDir, boolean includeStderr, int timeoutSeconds) {
         StringBuilder output = new StringBuilder();
+        final StringBuilder stdoutBuf = new StringBuilder();
+        final StringBuilder stderrBuf = new StringBuilder();
+        Thread stdoutDrainer = null;
         Thread stderrDrainer = null;
         try {
             if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
+
+            if (BuildConfig.DEBUG) {
+                Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            }
+
             ProcessBuilder pb = new ProcessBuilder(splitCommand(command));
             Map<String, String> env = pb.environment();
             env.clear();
@@ -221,45 +220,65 @@ public abstract class ProcessHelper {
                 }
             }
             if (workingDir != null) pb.directory(workingDir);
-            pb.redirectErrorStream(includeStderr); // merge only when caller wants stderr
 
             java.lang.Process process = pb.start();
 
-            // When not merging, drain stderr on a daemon thread to prevent pipe-buffer deadlock.
-            // SteamTokenLogin uses this when calling includeStderr=false
-            if (!includeStderr) {
-                final InputStream stderrStream = process.getErrorStream();
-                stderrDrainer = new Thread(() -> {
+            final InputStream stdoutStream = process.getInputStream();
+            stdoutDrainer = new Thread(() -> {
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(stdoutStream))) {
+                    String l;
+                    while ((l = r.readLine()) != null) stdoutBuf.append(l).append("\n");
+                } catch (IOException ignored) {}
+            }, "stdout-drainer");
+            stdoutDrainer.setDaemon(true);
+            stdoutDrainer.start();
+
+            final InputStream stderrStream = process.getErrorStream();
+            stderrDrainer = new Thread(() -> {
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(stderrStream))) {
+                    String l;
+                    while ((l = r.readLine()) != null) {
+                        if (includeStderr) stderrBuf.append(l).append("\n");
+                    }
+                } catch (IOException ignored) {}
+            }, "stderr-drainer");
+            stderrDrainer.setDaemon(true);
+            stderrDrainer.start();
+
+            if (timeoutSeconds > 0) {
+                boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+                if (!finished) {
+                    process.destroyForcibly();
                     try {
-                        byte[] buf = new byte[4096];
-                        while (stderrStream.read(buf) != -1) {
-                            if (Thread.currentThread().isInterrupted())
-                            break;
-                        }
-                    } catch (IOException ignored) {}
-                }, "stderr-drainer");
-                stderrDrainer.setDaemon(true); // won't block app shutdown if something goes wrong
-                stderrDrainer.start();
+                        process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    output.append("Error: Process timeout after ").append(timeoutSeconds).append(" seconds");
+                }
+            } else {
+                process.waitFor();
             }
 
-            // Read stdout (or the merged stream) inline; EOF arrives after the process exits.
-            try (BufferedReader r = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String l;
-                while ((l = r.readLine()) != null) output.append(l).append("\n");
+            try { stdoutStream.close(); } catch (IOException ignored) {}
+            try { stderrStream.close(); } catch (IOException ignored) {}
+
+            stdoutDrainer.join(5_000);
+            if (stdoutDrainer.isAlive()) {
+                stdoutDrainer.interrupt();
             }
 
-            // Process has already exited (we drained its stdout to EOF).
-            // waitFor() reaps the OS process-table entry.
-            process.waitFor();
-
-            if (stderrDrainer != null) {
-                stderrDrainer.join(5_000); // bounded wait; daemon thread is reaped on JVM exit anyway
+            stderrDrainer.join(5_000);
+            if (stderrDrainer.isAlive()) {
+                stderrDrainer.interrupt();
             }
+
+            output.append(stdoutBuf);
+            if (includeStderr) output.append(stderrBuf);
         } catch (Exception e) {
             output.append("Error: ").append(e.getMessage());
         }
 
-        // Format output: trim trailing whitespace/newlines
         return output.toString().trim();
     }
 
@@ -286,7 +305,11 @@ public abstract class ProcessHelper {
         java.lang.Process process = null;
         try {
             if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
-            Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+
+            if (BuildConfig.DEBUG) {
+                Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            }
+
             process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
 
             Field pidField = process.getClass().getDeclaredField("pid");
@@ -314,8 +337,12 @@ public abstract class ProcessHelper {
 
     public static java.lang.Process startProcess(String command, String[] envp, File workingDir) {
         try {
-            Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
             if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
+
+            if (BuildConfig.DEBUG) {
+                Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            }
+
             java.lang.Process process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
             if (!debugCallbacks.isEmpty()) {
                 createDebugThread(process.getInputStream());
@@ -326,44 +353,6 @@ public abstract class ProcessHelper {
         } catch (Exception e) {
             Log.e("ProcessHelper", "Failed to execute command: " + e);
             return null;
-        }
-    }
-
-    public static String execWithOutput(String command, String[] envp, File workingDir) {
-        StringBuilder output = new StringBuilder();
-        java.lang.Process process = null;
-        try {
-            Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
-            if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
-            process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
-
-            // Drain stderr in background to prevent blocking
-            java.lang.Process finalProcess = process;
-            Executors.newSingleThreadExecutor().execute(() -> {
-                try (BufferedReader errReader = new BufferedReader(new InputStreamReader(finalProcess.getErrorStream()))) {
-                    while (errReader.readLine() != null) { /* discard */ }
-                } catch (IOException ignored) {}
-            });
-
-
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    output.append(line).append("\n");
-                }
-            }
-
-            if (!process.waitFor(5, TimeUnit.SECONDS)) {
-                process.destroyForcibly();
-            }
-
-            return output.toString();
-        } catch (Exception e) {
-            Log.e("ProcessHelper", "Failed to execute command with output: " + e);
-            if (process != null) {
-                process.destroyForcibly();
-            }
-            return "";
         }
     }
 
@@ -603,7 +592,7 @@ public abstract class ProcessHelper {
             }
         });
 
-        String procFile = BuildConfig.MODERN_ANDROID ? "/cmdline" : "/stat";
+        String procFile = "/cmdline";
         for (int index = 0; index < allPids.length; index++){
             String data = "";
             try (

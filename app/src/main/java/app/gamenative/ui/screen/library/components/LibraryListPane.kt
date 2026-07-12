@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -51,6 +52,7 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.component.Scrollbar
 import app.gamenative.ui.data.LibraryState
+import app.gamenative.ui.data.statsFor
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
@@ -255,7 +257,8 @@ internal fun LibraryListPane(
                                 key = { listIndex -> state.appInfoList[listIndex].appId },
                             ) { listIndex ->
                                 val item = state.appInfoList[listIndex]
-                                var isVisible by remember(item.index) { mutableStateOf(false) }
+                                val animateFade = remember(item.index) { !listState.isScrollInProgress }
+                                var isVisible by remember(item.index) { mutableStateOf(!animateFade) }
                                 val alpha by animateFloatAsState(
                                     targetValue = if (isVisible) 1f else 0f,
                                     animationSpec = spring(
@@ -265,12 +268,14 @@ internal fun LibraryListPane(
                                     label = "fadeIn",
                                 )
 
-                                LaunchedEffect(item.index) {
-                                    delay((item.index % 8) * 30L)
-                                    isVisible = true
+                                if (animateFade) {
+                                    LaunchedEffect(item.index) {
+                                        delay((item.index % 8) * 30L)
+                                        isVisible = true
+                                    }
                                 }
 
-                                Box(modifier = Modifier.alpha(alpha)) {
+                                Box(modifier = Modifier.graphicsLayer { this.alpha = alpha }) {
                                     val appItemModifier = if (firstGridItemFocusRequester != null &&
                                         focusTargetListIndex != null &&
                                         listIndex == focusTargetListIndex
@@ -291,6 +296,7 @@ internal fun LibraryListPane(
                                         onFocus = { targetOfScroll = item.index },
                                         imageRefreshCounter = state.imageRefreshCounter,
                                         compatibilityStatus = state.compatibilityMap[item.name],
+                                        gameStats = state.statsFor(item),
                                     )
                                 }
                             }

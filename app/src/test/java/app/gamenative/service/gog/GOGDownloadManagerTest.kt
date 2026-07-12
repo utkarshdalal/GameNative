@@ -314,4 +314,255 @@ class GOGDownloadManagerTest {
             productId = null,
         )
     }
+
+    // ===== Chunk Decompression Tests =====
+
+    @Test
+    fun decompressChunkToFile_compressedChunk_writesCorrectly() {
+        val tempDir = Files.createTempDirectory("gog-chunk-test").toFile()
+
+        // Arrange: Create compressed chunk
+        val originalData = "Hello World! This is test data for compression.".toByteArray()
+        val compressedData = compressTestData(originalData)
+        val chunkFile = File(tempDir, "chunk.bin")
+        chunkFile.writeBytes(compressedData)
+
+        val outputFile = File(tempDir, "output.bin")
+        val chunk = app.gamenative.service.gog.api.FileChunk(
+            compressedMd5 = "test-md5",
+            md5 = calculateTestMd5(originalData),
+            size = originalData.size.toLong(),
+            compressedSize = compressedData.size.toLong()
+        )
+
+        // Act
+        val result = testDecompressChunkToFile(chunkFile, chunk, outputFile, 0)
+
+        // Assert
+        assertTrue("Decompression should succeed", result.isSuccess)
+        assertTrue("Output file should exist", outputFile.exists())
+        assertEquals("Output size should match", originalData.size.toLong(), outputFile.length())
+        assertEquals("Content should match", originalData.decodeToString(), outputFile.readBytes().decodeToString())
+
+        tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun decompressChunkToFile_uncompressedChunk_copiesDirectly() {
+        val tempDir = Files.createTempDirectory("gog-chunk-test").toFile()
+
+        // Arrange: Create uncompressed chunk (compressedSize = null)
+        val originalData = "Uncompressed data".toByteArray()
+        val chunkFile = File(tempDir, "chunk.bin")
+        chunkFile.writeBytes(originalData)
+
+        val outputFile = File(tempDir, "output.bin")
+        val chunk = app.gamenative.service.gog.api.FileChunk(
+            compressedMd5 = "test-md5",
+            md5 = calculateTestMd5(originalData),
+            size = originalData.size.toLong(),
+            compressedSize = null // Indicates uncompressed
+        )
+
+        // Act
+        val result = testDecompressChunkToFile(chunkFile, chunk, outputFile, 0)
+
+        // Assert
+        assertTrue("Copy should succeed", result.isSuccess)
+        assertTrue("Output file should exist", outputFile.exists())
+        assertEquals("Output size should match", originalData.size.toLong(), outputFile.length())
+        assertEquals("Content should match", originalData.decodeToString(), outputFile.readBytes().decodeToString())
+
+        tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun decompressChunkToFile_nonZeroOffset_writesAtCorrectPosition() {
+        val tempDir = Files.createTempDirectory("gog-chunk-test").toFile()
+
+        // Arrange: Pre-create file with some data
+        val existingData = "AAAA".toByteArray()
+        val newData = "BBBB".toByteArray()
+        val compressedNewData = compressTestData(newData)
+
+        val outputFile = File(tempDir, "output.bin")
+        java.io.RandomAccessFile(outputFile.path, "rw").use {
+            it.setLength(8) // Pre-allocate 8 bytes
+            it.write(existingData) // Write first 4 bytes
+        }
+
+        val chunkFile = File(tempDir, "chunk.bin")
+        chunkFile.writeBytes(compressedNewData)
+
+        val chunk = app.gamenative.service.gog.api.FileChunk(
+            compressedMd5 = "test-md5",
+            md5 = calculateTestMd5(newData),
+            size = newData.size.toLong(),
+            compressedSize = compressedNewData.size.toLong()
+        )
+
+        // Act: Write at offset 4
+        val result = testDecompressChunkToFile(chunkFile, chunk, outputFile, 4)
+
+        // Assert
+        assertTrue("Decompression should succeed", result.isSuccess)
+        val finalContent = outputFile.readBytes()
+        assertEquals("First 4 bytes should be unchanged", "AAAA", finalContent.sliceArray(0..3).decodeToString())
+        assertEquals("Next 4 bytes should be new data", "BBBB", finalContent.sliceArray(4..7).decodeToString())
+
+        tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun decompressChunkToFile_sizeMismatch_fails() {
+        val tempDir = Files.createTempDirectory("gog-chunk-test").toFile()
+
+        // Arrange: Compressed data with wrong expected size
+        val originalData = "Short".toByteArray()
+        val compressedData = compressTestData(originalData)
+        val chunkFile = File(tempDir, "chunk.bin")
+        chunkFile.writeBytes(compressedData)
+
+        val outputFile = File(tempDir, "output.bin")
+        val actualMd5 = calculateTestMd5(originalData)
+        val chunk = app.gamenative.service.gog.api.FileChunk(
+            compressedMd5 = "test-md5",
+            md5 = actualMd5, // Correct MD5 so size check is reached
+            size = 999L, // Wrong expected size
+            compressedSize = compressedData.size.toLong()
+        )
+
+        // Act
+        val result = testDecompressChunkToFile(chunkFile, chunk, outputFile, 0)
+
+        // Assert
+        assertTrue("Should fail on size mismatch", result.isFailure)
+        val errorMsg = result.exceptionOrNull()?.message ?: ""
+        assertTrue("Error should mention size mismatch, got: $errorMsg", errorMsg.contains("size", ignoreCase = true))
+
+        tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun decompressChunkToFile_md5Mismatch_fails() {
+        val tempDir = Files.createTempDirectory("gog-chunk-test").toFile()
+
+        // Arrange: Valid compressed data but wrong MD5
+        val originalData = "Test data".toByteArray()
+        val compressedData = compressTestData(originalData)
+        val chunkFile = File(tempDir, "chunk.bin")
+        chunkFile.writeBytes(compressedData)
+
+        val outputFile = File(tempDir, "output.bin")
+        val chunk = app.gamenative.service.gog.api.FileChunk(
+            compressedMd5 = "test-md5",
+            md5 = "wrong-md5-hash", // Wrong MD5
+            size = originalData.size.toLong(),
+            compressedSize = compressedData.size.toLong()
+        )
+
+        // Act
+        val result = testDecompressChunkToFile(chunkFile, chunk, outputFile, 0)
+
+        // Assert
+        assertTrue("Should fail on MD5 mismatch", result.isFailure)
+        assertTrue("Error should mention MD5", result.exceptionOrNull()?.message?.contains("MD5", ignoreCase = true) == true)
+
+        tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun decompressChunkToFile_emptyMd5_failsValidation() {
+        val tempDir = Files.createTempDirectory("gog-chunk-test").toFile()
+
+        // Arrange: Compressed chunk with empty MD5 string
+        val originalData = "Test data".toByteArray()
+        val compressedData = compressTestData(originalData)
+        val chunkFile = File(tempDir, "chunk.bin")
+        chunkFile.writeBytes(compressedData)
+
+        val outputFile = File(tempDir, "output.bin")
+        val chunk = app.gamenative.service.gog.api.FileChunk(
+            compressedMd5 = "test-md5",
+            md5 = "", // Empty MD5 still validates (won't match actual hash)
+            size = originalData.size.toLong(),
+            compressedSize = compressedData.size.toLong()
+        )
+
+        // Act
+        val result = testDecompressChunkToFile(chunkFile, chunk, outputFile, 0)
+
+        // Assert
+        assertTrue("Should fail because empty MD5 doesn't match actual hash", result.isFailure)
+        assertTrue("Error should mention MD5", result.exceptionOrNull()?.message?.contains("MD5", ignoreCase = true) == true)
+
+        tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun decompressChunkToFile_corruptedZlibData_fails() {
+        val tempDir = Files.createTempDirectory("gog-chunk-test").toFile()
+
+        // Arrange: Invalid zlib data
+        val corruptedData = byteArrayOf(0x78.toByte(), 0x9C.toByte(), 0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte())
+        val chunkFile = File(tempDir, "chunk.bin")
+        chunkFile.writeBytes(corruptedData)
+
+        val outputFile = File(tempDir, "output.bin")
+        val chunk = app.gamenative.service.gog.api.FileChunk(
+            compressedMd5 = "test-md5",
+            md5 = "any-md5",
+            size = 100L,
+            compressedSize = corruptedData.size.toLong()
+        )
+
+        // Act
+        val result = testDecompressChunkToFile(chunkFile, chunk, outputFile, 0)
+
+        // Assert
+        assertTrue("Should fail on corrupted data", result.isFailure)
+
+        tempDir.deleteRecursively()
+    }
+
+    // Helper functions for chunk decompression tests
+
+    private fun compressTestData(data: ByteArray): ByteArray {
+        val deflater = java.util.zip.Deflater()
+        try {
+            deflater.setInput(data)
+            deflater.finish()
+
+            val buffer = ByteArray(data.size * 2 + 100)
+            var totalCompressed = 0
+
+            while (!deflater.finished()) {
+                val count = deflater.deflate(buffer, totalCompressed, buffer.size - totalCompressed)
+                totalCompressed += count
+                if (count == 0 && !deflater.finished()) {
+                    throw IllegalStateException("Deflater stuck")
+                }
+            }
+
+            return buffer.copyOf(totalCompressed)
+        } finally {
+            deflater.end()
+        }
+    }
+
+    private fun calculateTestMd5(data: ByteArray): String {
+        val digest = java.security.MessageDigest.getInstance("MD5")
+        val hash = digest.digest(data)
+        return hash.joinToString("") { "%02x".format(it) }
+    }
+
+    private fun testDecompressChunkToFile(
+        chunkFile: File,
+        chunk: app.gamenative.service.gog.api.FileChunk,
+        outputFile: File,
+        writeOffset: Long
+    ): Result<Unit> {
+        // Now that decompressChunkToFile is internal, we can call it directly
+        return manager.decompressChunkToFile(chunkFile, chunk, outputFile, writeOffset)
+    }
 }

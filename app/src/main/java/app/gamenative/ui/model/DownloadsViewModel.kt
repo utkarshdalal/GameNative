@@ -231,7 +231,7 @@ class DownloadsViewModel @Inject constructor(
                         appId = libraryAppId,
                         name = game.title,
                         iconHash = game.iconUrl.ifEmpty { game.imageUrl },
-                        capsuleImageUrl = game.iconUrl.ifEmpty { game.imageUrl },
+                        capsuleImageUrl = game.verticalCoverUrl.ifEmpty { game.iconUrl.ifEmpty { game.imageUrl } },
                         headerImageUrl = game.imageUrl.ifEmpty { game.iconUrl },
                         heroImageUrl = game.imageUrl.ifEmpty { game.iconUrl },
                         gameSource = GameSource.GOG,

@@ -1262,8 +1262,7 @@ object EpicCloudSavesManager {
             }
         }
 
-        // resolve against on-disk casing to avoid creating duplicate dirs (e.g. locallow vs LocalLow)
-        // supersedes PR #701
+        // Resolve against on-disk casing to avoid creating duplicate dirs (e.g. locallow vs LocalLow).
         val joinedPath = normalizedParts.joinToString("/")
         val resolved = FileUtils.resolveCaseInsensitive(File("/"), joinedPath)
         // guard against path traversal escaping the wine prefix

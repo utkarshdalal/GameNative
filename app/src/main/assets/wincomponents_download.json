@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-27",
+  "components": [
+    {
+      "id": "direct3d",
+      "name": "direct3d.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/direct3d.tzst"
+    },
+    {
+      "id": "directsound",
+      "name": "directsound.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/directsound.tzst"
+    },
+    {
+      "id": "directmusic",
+      "name": "directmusic.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/directmusic.tzst"
+    },
+    {
+      "id": "directshow",
+      "name": "directshow.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/directshow.tzst"
+    },
+    {
+      "id": "directplay",
+      "name": "directplay.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/directplay.tzst"
+    },
+    {
+      "id": "vcrun2010",
+      "name": "vcrun2010.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/vcrun2010.tzst"
+    },
+    {
+      "id": "wmdecoder",
+      "name": "wmdecoder.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/wmdecoder.tzst"
+    },
+    {
+      "id": "opengl",
+      "name": "opengl.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/opengl.tzst"
+    },
+    {
+      "id": "openal",
+      "name": "openal.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/openal.tzst"
+    },
+    {
+      "id": "xaudio",
+      "name": "xaudio.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/xaudio.tzst"
+    },
+    {
+      "id": "ddraw",
+      "name": "ddraw.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/ddraw.tzst"
+    }
+  ]
+}

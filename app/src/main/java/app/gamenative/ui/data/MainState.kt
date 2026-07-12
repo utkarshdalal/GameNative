@@ -20,8 +20,10 @@ data class MainState(
     val launchedAppId: String = "",
     val bootToContainer: Boolean = false,
     val testGraphics: Boolean = false,
+    val diagnostics: Boolean = false,
     val showBootingSplash: Boolean = false,
     val bootingSplashText: String = "Booting...",
+    val bootingSplashHeroImageUrl: String = "",
 
     // Connection state for background reconnection
     // Default to DISCONNECTED - service will start and set to CONNECTING

@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.22.1)
 Project(Pluvia)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -Wno-unused-function -Wimplicit-function-declaration")
+set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -s")
 
 #add_subdirectory(proot)
 add_subdirectory(virglrenderer)
@@ -11,7 +12,6 @@ add_subdirectory(extras/adrenotools)
 
 add_library(winlator SHARED
             winlator/drawable.c
-            winlator/gpu_image.c
             winlator/sysvshared_memory.c
             winlator/xconnector_epoll.c
             winlator/alsa_client.c
@@ -25,6 +25,8 @@ target_link_libraries(winlator
                       EGL
                       GLESv2
                       GLESv3)
+
+target_link_options(winlator PRIVATE -Wl,-z,max-page-size=16384)
 
 
 add_custom_command(
@@ -62,3 +64,5 @@ target_link_libraries(vulkan_renderer
                       adrenotools
                       dl
                       atomic)
+
+target_link_options(vulkan_renderer PRIVATE -Wl,-z,max-page-size=16384)

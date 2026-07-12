@@ -1,7 +1,5 @@
 package com.winlator.xenvironment;
 
-import static com.winlator.core.FileUtils.chmod;
-
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.util.Log;
@@ -12,6 +10,8 @@ import app.gamenative.enums.Marker;
 import app.gamenative.service.SteamService;
 import app.gamenative.utils.ContainerUtils;
 import app.gamenative.utils.MarkerUtils;
+import app.gamenative.utils.downloader.ContainerFilesDownloaderKt;
+import app.gamenative.utils.downloader.ProgressCallback;
 
 // import com.winlator.MainActivity;
 // import com.winlator.R;
@@ -23,7 +23,6 @@ import com.winlator.container.ContainerManager;
 import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
 import com.winlator.core.Callback;
-import com.winlator.core.DefaultVersion;
 import com.winlator.core.FileUtils;
 // import com.winlator.core.PreloaderDialog;
 import com.winlator.core.TarCompressorUtils;
@@ -39,7 +38,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
@@ -128,7 +126,7 @@ public abstract class ImageFsInstaller {
             String imagefsFile = containerVariant.equals(Container.GLIBC) ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
             File downloaded = new File(imageFs.getFilesDir(), imagefsFile);
 
-            
+
             boolean success = false;
 
             if (Arrays.asList(context.getAssets().list("")).contains(imagefsFile) == true){
@@ -207,15 +205,40 @@ public abstract class ImageFsInstaller {
 
         ensureBionicLib(ctx, imagefs);
 
-        final String EXTRAS_TAR = "extras.tzst";          // ➊  add this to assets/
-        // ➋  Unpack straight into imagefs, preserving relative paths.
-        try (InputStream in  = ctx.getAssets().open(EXTRAS_TAR)) {
-            TarCompressorUtils.extract(
-                    TarCompressorUtils.Type.ZSTD,      // you said .tzst
-                    in, imagefs);                      // helper already exists in the project
-        } catch (IOException e) {
-            Log.e("ImageFsInstaller", "extras deploy failed", e);
-            return;
+        // Extract extras.tzst - download from server for modern variant, use bundled assets for legacy
+        if (app.gamenative.BuildConfig.MODERN_ANDROID) {
+            try {
+                // Modern variant: download and extract
+                java.io.File extrasFile = ContainerFilesDownloaderKt.ensureContainerFileAvailableBlocking(
+                    ctx,
+                    "extras",
+                    new ProgressCallback() {
+                        @Override
+                        public void onProgress(float progress) {
+                            Log.d("ImageFsInstaller", "Downloading extras.tzst: " + (int)(progress * 100) + "%");
+                        }
+                    }
+                );
+
+                if (extrasFile != null && extrasFile.exists()) {
+                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, extrasFile, imagefs);
+                } else {
+                    Log.e("ImageFsInstaller", "Failed to download extras.tzst");
+                    return;
+                }
+            } catch (Exception e) {
+                Log.e("ImageFsInstaller", "extras download/extract failed", e);
+                return;
+            }
+        } else {
+            // Legacy variant: use bundled assets
+            final String EXTRAS_TAR = "extras.tzst";
+            try (InputStream in = ctx.getAssets().open(EXTRAS_TAR)) {
+                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, in, imagefs);
+            } catch (IOException e) {
+                Log.e("ImageFsInstaller", "extras deploy failed", e);
+                return;
+            }
         }
 
         // ➌  Make sure the new libs are world-readable / executable

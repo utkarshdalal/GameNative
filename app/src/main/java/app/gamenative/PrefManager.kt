@@ -23,6 +23,7 @@ import com.materialkolor.PaletteStyle
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.container.Container
 import com.winlator.core.DefaultVersion
+import com.winlator.xenvironment.components.PulseAudioComponent
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import java.util.EnumSet
 import kotlinx.coroutines.CoroutineScope
@@ -203,6 +204,24 @@ object PrefManager {
             setPref(RENDERER_PRESENT_MODE, value)
         }
 
+    private val DISPLAY_RENDERER_MODE = stringPreferencesKey("display_renderer_mode")
+    var displayRendererMode: String
+        get() {
+            val stored = getPref(DISPLAY_RENDERER_MODE, "")
+            if (stored.isNotEmpty()) return stored
+            return if (getPref(USE_LEGACY_RENDERER, false)) "gl" else "vulkan"
+        }
+        set(value) {
+            setPref(DISPLAY_RENDERER_MODE, value)
+        }
+
+    private val SF_COMPAT_MODE = booleanPreferencesKey("sf_compat_mode")
+    var sfCompatMode: Boolean
+        get() = getPref(SF_COMPAT_MODE, true)
+        set(value) {
+            setPref(SF_COMPAT_MODE, value)
+        }
+
     private val USE_LEGACY_RENDERER = booleanPreferencesKey("use_legacy_renderer")
     var useLegacyRenderer: Boolean
         get() = getPref(USE_LEGACY_RENDERER, false)
@@ -299,6 +318,13 @@ object PrefManager {
         get() = getPref(AUDIO_DRIVER, Container.DEFAULT_AUDIO_DRIVER)
         set(value) {
             setPref(AUDIO_DRIVER, value)
+        }
+
+    private val PULSEAUDIO_LOW_LATENCY = booleanPreferencesKey("pulseaudio_low_latency")
+    var pulseaudioLowLatency: Boolean
+        get() = getPref(PULSEAUDIO_LOW_LATENCY, false)
+        set(value) {
+            setPref(PULSEAUDIO_LOW_LATENCY, value)
         }
 
     private val WIN_COMPONENTS = stringPreferencesKey("wincomponents")
@@ -517,7 +543,7 @@ object PrefManager {
         set(value) {
             setPref(EPIC_OFFLINE_MODE, value)
         }
-    
+
 
     private val USE_LEGACY_DRM = booleanPreferencesKey("use_legacy_drm")
     var useLegacyDRM: Boolean
@@ -1117,6 +1143,15 @@ object PrefManager {
             setPref(SHOW_ADD_CUSTOM_GAME_DIALOG, value)
         }
 
+
+    // Import the custom game as a Steam game
+    private val IMPORT_CUSTOM_GAME_AS_STEAM_GAME = booleanPreferencesKey("import_custom_game_as_steam_game")
+    var importCustomGameAsSteamGame: Boolean
+        get() = getPref(IMPORT_CUSTOM_GAME_AS_STEAM_GAME, false)
+        set(value) {
+            setPref(IMPORT_CUSTOM_GAME_AS_STEAM_GAME, value)
+        }
+
     // Whether to download games only over Wi-Fi.
     private val DOWNLOAD_ON_WIFI_ONLY = booleanPreferencesKey("download_on_wifi_only")
     var downloadOnWifiOnly: Boolean
@@ -1273,6 +1308,30 @@ object PrefManager {
             setPref(GAME_COMPATIBILITY_CACHE, value)
         }
 
+    // HLTB cache (JSON string)
+    private val HLTB_CACHE = stringPreferencesKey("hltb_cache")
+    var hltbCache: String
+        get() = getPref(HLTB_CACHE, "{}")
+        set(value) {
+            setPref(HLTB_CACHE, value)
+        }
+
+    // Device-wide game stats cache (JSON string)
+    private val DEVICE_GAME_STATS_CACHE = stringPreferencesKey("device_game_stats_cache")
+    var deviceGameStatsCache: String
+        get() = getPref(DEVICE_GAME_STATS_CACHE, "{}")
+        set(value) {
+            setPref(DEVICE_GAME_STATS_CACHE, value)
+        }
+
+    // GPU-wide game stats cache (JSON string)
+    private val GPU_GAME_STATS_CACHE = stringPreferencesKey("gpu_game_stats_cache")
+    var gpuGameStatsCache: String
+        get() = getPref(GPU_GAME_STATS_CACHE, "{}")
+        set(value) {
+            setPref(GPU_GAME_STATS_CACHE, value)
+        }
+
     /* Security / Attestation */
     private val KEY_ATTESTATION_AVAILABLE = booleanPreferencesKey("key_attestation_available")
     var keyAttestationAvailable: Boolean
@@ -1308,4 +1367,43 @@ object PrefManager {
     var usageAnalyticsEnabled: Boolean
         get() = getPref(USAGE_ANALYTICS_ENABLED, true)
         set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
+
+    private val NEXUS_API_KEY_ENC = byteArrayPreferencesKey("nexus_api_key_enc")
+    var nexusApiKey: String
+        get() {
+            val encryptedBytes = getPref(NEXUS_API_KEY_ENC, ByteArray(0))
+            return if (encryptedBytes.isEmpty()) {
+                ""
+            } else {
+                runCatching { String(Crypto.decrypt(encryptedBytes)) }
+                    .onFailure {
+                        Timber.w(it, "Failed to decrypt Nexus API key; clearing saved key")
+                        removePref(NEXUS_API_KEY_ENC)
+                    }
+                    .getOrDefault("")
+            }
+        }
+        set(value) {
+            if (value.isBlank()) {
+                removePref(NEXUS_API_KEY_ENC)
+            } else {
+                runCatching { Crypto.encrypt(value.toByteArray()) }
+                    .onSuccess { setPref(NEXUS_API_KEY_ENC, it) }
+                    .onFailure {
+                        Timber.w(it, "Failed to encrypt Nexus API key; clearing saved key")
+                        removePref(NEXUS_API_KEY_ENC)
+                    }
+            }
+        }
+
+    private val NEXUS_LAST_PLACEMENT_JSON = stringPreferencesKey("nexus_last_placement_json")
+    var nexusLastPlacementJson: String
+        get() = getPref(NEXUS_LAST_PLACEMENT_JSON, "{}")
+        set(value) {
+            if (value.isBlank() || value == "{}") {
+                removePref(NEXUS_LAST_PLACEMENT_JSON)
+            } else {
+                setPref(NEXUS_LAST_PLACEMENT_JSON, value)
+            }
+        }
 }

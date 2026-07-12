@@ -16,10 +16,13 @@ data class TouchGestureConfig(
     // 2. Drag (box selection) — customizable pan/drag action
     val dragEnabled: Boolean = true,
     val dragAction: String = PAN_LEFT_CLICK_DRAG,
+    val holdMouseButtonWhileTouchingEnabled: Boolean = false,
+    val holdMouseButtonWhileTouchingAction: String = ACTION_LEFT_CLICK,
 
     // 3. Long Press — customizable action, disabled by default
     val longPressEnabled: Boolean = false,
     val longPressAction: String = ACTION_RIGHT_CLICK,
+    val longPressMouseBehavior: String = MOUSE_BEHAVIOR_HOLD,
     val longPressDelay: Int = DEFAULT_DELAY_MS,
 
     // 4. Double-Tap — fixed action: Double Left Click
@@ -41,6 +44,7 @@ data class TouchGestureConfig(
     // 8. Two-Finger Hold — customizable action + delay
     val twoFingerHoldEnabled: Boolean = true,
     val twoFingerHoldAction: String = ACTION_MIDDLE_CLICK,
+    val twoFingerHoldMouseBehavior: String = MOUSE_BEHAVIOR_HOLD,
     val twoFingerHoldDelay: Int = DEFAULT_DELAY_MS,
 
     // 9. Three-Finger Tap — customizable action
@@ -54,6 +58,7 @@ data class TouchGestureConfig(
     // 11. Three-Finger Hold — customizable action + delay
     val threeFingerHoldEnabled: Boolean = true,
     val threeFingerHoldAction: String = ACTION_KEY_ESC,
+    val threeFingerHoldMouseBehavior: String = MOUSE_BEHAVIOR_HOLD,
     val threeFingerHoldDelay: Int = DEFAULT_DELAY_MS,
 
     // 12. Click highlight circle
@@ -61,9 +66,13 @@ data class TouchGestureConfig(
 
     // 13. Gesture debug overlay text (Tap, 2F Drag, etc.)
     val showGestureDebugOverlay: Boolean = false,
+    val showCursorInTouchscreenMode: Boolean = false,
 
     // 14. Gesture threshold (px) for two-finger gesture lock-in
     val gestureThreshold: Int = DEFAULT_GESTURE_THRESHOLD,
+
+    // 15. Movement mode used by mouse-button drag gestures
+    val mouseDragMovementMode: String = MOUSE_DRAG_MOVEMENT_DIRECT,
 ) {
 
     // ── Serialisation ────────────────────────────────────────────────────
@@ -74,8 +83,17 @@ data class TouchGestureConfig(
             put(KEY_TAP_ACTION, tapAction)
             put(KEY_DRAG_ENABLED, dragEnabled)
             put(KEY_DRAG_ACTION, dragAction)
+            put(
+                KEY_HOLD_MOUSE_BUTTON_WHILE_TOUCHING_ENABLED,
+                holdMouseButtonWhileTouchingEnabled,
+            )
+            put(
+                KEY_HOLD_MOUSE_BUTTON_WHILE_TOUCHING_ACTION,
+                holdMouseButtonWhileTouchingAction,
+            )
             put(KEY_LONG_PRESS_ENABLED, longPressEnabled)
             put(KEY_LONG_PRESS_ACTION, longPressAction)
+            put(KEY_LONG_PRESS_MOUSE_BEHAVIOR, longPressMouseBehavior)
             put(KEY_LONG_PRESS_DELAY, longPressDelay)
             put(KEY_DOUBLE_TAP_ENABLED, doubleTapEnabled)
             put(KEY_DOUBLE_TAP_DELAY, doubleTapDelay)
@@ -87,6 +105,7 @@ data class TouchGestureConfig(
             put(KEY_TWO_FINGER_TAP_ACTION, twoFingerTapAction)
             put(KEY_TWO_FINGER_HOLD_ENABLED, twoFingerHoldEnabled)
             put(KEY_TWO_FINGER_HOLD_ACTION, twoFingerHoldAction)
+            put(KEY_TWO_FINGER_HOLD_MOUSE_BEHAVIOR, twoFingerHoldMouseBehavior)
             put(KEY_TWO_FINGER_HOLD_DELAY, twoFingerHoldDelay)
             put(KEY_THREE_FINGER_TAP_ENABLED, threeFingerTapEnabled)
             put(KEY_THREE_FINGER_TAP_ACTION, threeFingerTapAction)
@@ -94,10 +113,13 @@ data class TouchGestureConfig(
             put(KEY_THREE_FINGER_DRAG_ACTION, threeFingerDragAction)
             put(KEY_THREE_FINGER_HOLD_ENABLED, threeFingerHoldEnabled)
             put(KEY_THREE_FINGER_HOLD_ACTION, threeFingerHoldAction)
+            put(KEY_THREE_FINGER_HOLD_MOUSE_BEHAVIOR, threeFingerHoldMouseBehavior)
             put(KEY_THREE_FINGER_HOLD_DELAY, threeFingerHoldDelay)
             put(KEY_SHOW_CLICK_HIGHLIGHT, showClickHighlight)
             put(KEY_SHOW_GESTURE_DEBUG_OVERLAY, showGestureDebugOverlay)
+            put(KEY_SHOW_CURSOR_IN_TOUCHSCREEN_MODE, showCursorInTouchscreenMode)
             put(KEY_GESTURE_THRESHOLD, gestureThreshold)
+            put(KEY_MOUSE_DRAG_MOVEMENT_MODE, mouseDragMovementMode)
         }.toString()
     }
 
@@ -112,14 +134,24 @@ data class TouchGestureConfig(
         const val ACTION_RIGHT_CLICK = "right_click"
         const val ACTION_MIDDLE_CLICK = "middle_click"
 
+        const val MOUSE_BEHAVIOR_HOLD = "hold"
+        const val MOUSE_BEHAVIOR_CLICK = "click"
+
+        const val MOUSE_DRAG_MOVEMENT_DIRECT = "direct"
+        const val MOUSE_DRAG_MOVEMENT_RELATIVE = "relative"
+
         // ── Special actions ──────────────────────────────────────────────
         const val ACTION_SHOW_KEYBOARD = "show_keyboard"
         const val ACTION_KEY_ESC = "key_ESC"
+        const val ACTION_KEY_TILDE = "key_TILDE"
 
         // ── Action identifiers: two-finger drag (pan) ───────────────────
         const val PAN_WASD = "wasd"
+        const val PAN_INVERTED_WASD = "inverted_wasd"
         const val PAN_ARROW_KEYS = "arrow_keys"
+        const val PAN_INVERTED_ARROW_KEYS = "inverted_arrow_keys"
         const val PAN_MIDDLE_MOUSE = "middle_mouse_pan"
+        const val PAN_INVERTED_MIDDLE_MOUSE = "inverted_middle_mouse_pan"
         const val PAN_LEFT_CLICK_DRAG = "left_click_drag"
         const val PAN_RIGHT_CLICK_DRAG = "right_click_drag"
 
@@ -133,8 +165,13 @@ data class TouchGestureConfig(
         private const val KEY_TAP_ACTION = "tapAction"
         private const val KEY_DRAG_ENABLED = "dragEnabled"
         private const val KEY_DRAG_ACTION = "dragAction"
+        private const val KEY_HOLD_MOUSE_BUTTON_WHILE_TOUCHING_ENABLED =
+            "holdMouseButtonWhileTouchingEnabled"
+        private const val KEY_HOLD_MOUSE_BUTTON_WHILE_TOUCHING_ACTION =
+            "holdMouseButtonWhileTouchingAction"
         private const val KEY_LONG_PRESS_ENABLED = "longPressEnabled"
         private const val KEY_LONG_PRESS_ACTION = "longPressAction"
+        private const val KEY_LONG_PRESS_MOUSE_BEHAVIOR = "longPressMouseBehavior"
         private const val KEY_LONG_PRESS_DELAY = "longPressDelay"
         private const val KEY_DOUBLE_TAP_ENABLED = "doubleTapEnabled"
         private const val KEY_DOUBLE_TAP_DELAY = "doubleTapDelay"
@@ -146,6 +183,7 @@ data class TouchGestureConfig(
         private const val KEY_TWO_FINGER_TAP_ACTION = "twoFingerTapAction"
         private const val KEY_TWO_FINGER_HOLD_ENABLED = "twoFingerHoldEnabled"
         private const val KEY_TWO_FINGER_HOLD_ACTION = "twoFingerHoldAction"
+        private const val KEY_TWO_FINGER_HOLD_MOUSE_BEHAVIOR = "twoFingerHoldMouseBehavior"
         private const val KEY_TWO_FINGER_HOLD_DELAY = "twoFingerHoldDelay"
         private const val KEY_THREE_FINGER_TAP_ENABLED = "threeFingerTapEnabled"
         private const val KEY_THREE_FINGER_TAP_ACTION = "threeFingerTapAction"
@@ -153,10 +191,13 @@ data class TouchGestureConfig(
         private const val KEY_THREE_FINGER_DRAG_ACTION = "threeFingerDragAction"
         private const val KEY_THREE_FINGER_HOLD_ENABLED = "threeFingerHoldEnabled"
         private const val KEY_THREE_FINGER_HOLD_ACTION = "threeFingerHoldAction"
+        private const val KEY_THREE_FINGER_HOLD_MOUSE_BEHAVIOR = "threeFingerHoldMouseBehavior"
         private const val KEY_THREE_FINGER_HOLD_DELAY = "threeFingerHoldDelay"
         private const val KEY_SHOW_CLICK_HIGHLIGHT = "showClickHighlight"
         private const val KEY_SHOW_GESTURE_DEBUG_OVERLAY = "showGestureDebugOverlay"
+        private const val KEY_SHOW_CURSOR_IN_TOUCHSCREEN_MODE = "showCursorInTouchscreenMode"
         private const val KEY_GESTURE_THRESHOLD = "gestureThreshold"
+        private const val KEY_MOUSE_DRAG_MOVEMENT_MODE = "mouseDragMovementMode"
 
         /**
          * Compatibility-safe defaults for existing (pre-overhaul) configs.
@@ -182,8 +223,19 @@ data class TouchGestureConfig(
                     tapAction = obj.optString(KEY_TAP_ACTION, ACTION_LEFT_CLICK),
                     dragEnabled = obj.optBoolean(KEY_DRAG_ENABLED, true),
                     dragAction = obj.optString(KEY_DRAG_ACTION, PAN_LEFT_CLICK_DRAG),
+                    holdMouseButtonWhileTouchingEnabled = obj.optBoolean(
+                        KEY_HOLD_MOUSE_BUTTON_WHILE_TOUCHING_ENABLED,
+                        false,
+                    ),
+                    holdMouseButtonWhileTouchingAction = obj.optString(
+                        KEY_HOLD_MOUSE_BUTTON_WHILE_TOUCHING_ACTION,
+                        ACTION_LEFT_CLICK,
+                    ),
                     longPressEnabled = obj.optBoolean(KEY_LONG_PRESS_ENABLED, false),
                     longPressAction = obj.optString(KEY_LONG_PRESS_ACTION, ACTION_RIGHT_CLICK),
+                    longPressMouseBehavior = normalizeMouseBehavior(
+                        obj.optString(KEY_LONG_PRESS_MOUSE_BEHAVIOR, MOUSE_BEHAVIOR_HOLD)
+                    ),
                     longPressDelay = obj.optInt(KEY_LONG_PRESS_DELAY, DEFAULT_DELAY_MS),
                     doubleTapEnabled = obj.optBoolean(KEY_DOUBLE_TAP_ENABLED, true),
                     doubleTapDelay = obj.optInt(KEY_DOUBLE_TAP_DELAY, DEFAULT_DELAY_MS),
@@ -195,6 +247,9 @@ data class TouchGestureConfig(
                     twoFingerTapAction = obj.optString(KEY_TWO_FINGER_TAP_ACTION, ACTION_RIGHT_CLICK),
                     twoFingerHoldEnabled = obj.optBoolean(KEY_TWO_FINGER_HOLD_ENABLED, false),
                     twoFingerHoldAction = obj.optString(KEY_TWO_FINGER_HOLD_ACTION, ACTION_MIDDLE_CLICK),
+                    twoFingerHoldMouseBehavior = normalizeMouseBehavior(
+                        obj.optString(KEY_TWO_FINGER_HOLD_MOUSE_BEHAVIOR, MOUSE_BEHAVIOR_HOLD)
+                    ),
                     twoFingerHoldDelay = obj.optInt(KEY_TWO_FINGER_HOLD_DELAY, DEFAULT_DELAY_MS),
                     threeFingerTapEnabled = obj.optBoolean(KEY_THREE_FINGER_TAP_ENABLED, false),
                     threeFingerTapAction = obj.optString(KEY_THREE_FINGER_TAP_ACTION, ACTION_SHOW_KEYBOARD),
@@ -202,10 +257,17 @@ data class TouchGestureConfig(
                     threeFingerDragAction = obj.optString(KEY_THREE_FINGER_DRAG_ACTION, PAN_ARROW_KEYS),
                     threeFingerHoldEnabled = obj.optBoolean(KEY_THREE_FINGER_HOLD_ENABLED, false),
                     threeFingerHoldAction = obj.optString(KEY_THREE_FINGER_HOLD_ACTION, ACTION_KEY_ESC),
+                    threeFingerHoldMouseBehavior = normalizeMouseBehavior(
+                        obj.optString(KEY_THREE_FINGER_HOLD_MOUSE_BEHAVIOR, MOUSE_BEHAVIOR_HOLD)
+                    ),
                     threeFingerHoldDelay = obj.optInt(KEY_THREE_FINGER_HOLD_DELAY, DEFAULT_DELAY_MS),
                     showClickHighlight = obj.optBoolean(KEY_SHOW_CLICK_HIGHLIGHT, false),
                     showGestureDebugOverlay = obj.optBoolean(KEY_SHOW_GESTURE_DEBUG_OVERLAY, false),
+                    showCursorInTouchscreenMode = obj.optBoolean(KEY_SHOW_CURSOR_IN_TOUCHSCREEN_MODE, false),
                     gestureThreshold = obj.optInt(KEY_GESTURE_THRESHOLD, DEFAULT_GESTURE_THRESHOLD),
+                    mouseDragMovementMode = normalizeMouseDragMovementMode(
+                        obj.optString(KEY_MOUSE_DRAG_MOVEMENT_MODE, MOUSE_DRAG_MOVEMENT_DIRECT),
+                    ),
                 )
             } catch (_: Exception) {
                 compatibilityDefaults()
@@ -219,13 +281,33 @@ data class TouchGestureConfig(
             ACTION_MIDDLE_CLICK,
         )
 
+        private fun normalizeMouseBehavior(value: String): String {
+            return if (value == MOUSE_BEHAVIOR_CLICK) MOUSE_BEHAVIOR_CLICK else MOUSE_BEHAVIOR_HOLD
+        }
+
+        fun normalizeMouseDragMovementMode(mode: String?): String {
+            return if (mode == MOUSE_DRAG_MOVEMENT_RELATIVE) {
+                MOUSE_DRAG_MOVEMENT_RELATIVE
+            } else {
+                MOUSE_DRAG_MOVEMENT_DIRECT
+            }
+        }
+
         /** Ordered list of pan/camera-drag actions. */
         val PAN_ACTIONS = listOf(
             PAN_ARROW_KEYS,
+            PAN_INVERTED_ARROW_KEYS,
             PAN_WASD,
+            PAN_INVERTED_WASD,
             PAN_MIDDLE_MOUSE,
+            PAN_INVERTED_MIDDLE_MOUSE,
             PAN_LEFT_CLICK_DRAG,
             PAN_RIGHT_CLICK_DRAG,
+        )
+
+        val MOUSE_DRAG_MOVEMENT_MODES = listOf(
+            MOUSE_DRAG_MOVEMENT_DIRECT,
+            MOUSE_DRAG_MOVEMENT_RELATIVE,
         )
 
         /** Ordered list of zoom/pinch actions. */

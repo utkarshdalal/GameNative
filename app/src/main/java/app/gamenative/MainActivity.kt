@@ -2,8 +2,10 @@ package app.gamenative
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Color.TRANSPARENT
 import android.os.Build
@@ -64,6 +66,12 @@ class MainActivity : ComponentActivity() {
 
         private var currentOrientationChangeValue: Int = 0
         private var availableOrientations: EnumSet<Orientation> = EnumSet.of(Orientation.UNSPECIFIED)
+
+        fun isHeadset(context: Context): Boolean =
+            context.packageManager.hasSystemFeature("android.hardware.vr.headtracking") ||
+                Build.MANUFACTURER.equals("Oculus", true) ||
+                Build.MANUFACTURER.equals("Meta", true) ||
+                Build.MANUFACTURER.equals("Pico", true)
 
         // Store pending launch request to be processed after UI is ready
         @Volatile
@@ -128,6 +136,14 @@ class MainActivity : ComponentActivity() {
     private var orientationSensorListener: OrientationEventListener? = null
     private var desiredSystemUiVisible: Boolean = false
 
+    // Cover-art image loader; held so we can drop its GPU-backed bitmap cache when
+    // the library is backgrounded (e.g. while a game is running) to free memory.
+    private var appImageLoader: ImageLoader? = null
+
+    private fun releaseImageCaches() {
+        appImageLoader?.memoryCache?.clear()
+    }
+
     override fun attachBaseContext(newBase: Context) {
         // Initialize PrefManager to read language setting
         PrefManager.init(newBase)
@@ -145,6 +161,20 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+
+        app.gamenative.launch.installLaunchReadiness(applicationContext, lifecycleScope)
+
+        if (isHeadset(this)) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            android.view.InputDevice.getDeviceIds().forEach { id ->
+                val d = android.view.InputDevice.getDevice(id) ?: return@forEach
+                val axes = d.motionRanges.joinToString(",") { mr -> "axis=${mr.axis}(min=${mr.min},max=${mr.max})" }
+                Timber.tag("HeadsetInput").i(
+                    "id=$id name='${d.name}' sources=0x%08x vendor=0x%04x product=0x%04x isGamepad=%b axes=[$axes]",
+                    d.sources, d.vendorId, d.productId, d.sources and android.view.InputDevice.SOURCE_GAMEPAD == android.view.InputDevice.SOURCE_GAMEPAD
+                )
+            }
+        }
 
         // stale keepAlive from a prior crash/swipe — no container is actually running
         if (SteamService.keepAlive && PluviaApp.xEnvironment == null) {
@@ -180,7 +210,7 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(Unit) {
-                if (!hasNotificationPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (!BuildConfig.MODERN_XR && !hasNotificationPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
@@ -220,6 +250,7 @@ class MainActivity : ComponentActivity() {
                         add(AnimatedPngDecoder.Factory())
                     }
                     .build()
+                    .also { appImageLoader = it }
             }
 
             CompositionLocalProvider(LocalCoilImageLoader provides imageLoader) {
@@ -334,6 +365,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         PluviaApp.isActivityInForeground = true
+
+        lifecycleScope.launch { app.gamenative.launch.LaunchReadiness.refresh() }
         // Re-apply immersive mode to ensure fullscreen persists
         if (!desiredSystemUiVisible) {
             applyImmersiveMode()
@@ -403,12 +436,29 @@ class MainActivity : ComponentActivity() {
     }
 
     // Add cleanup when app is backgrounded
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        // TRIM_MEMORY_UI_HIDDEN fires when the app's UI goes fully hidden; the higher
+        // levels fire under system memory pressure. In all these cases free the
+        // cover-art cache so the running game has more headroom.
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+            releaseImageCaches()
+        }
+    }
+
     override fun onStop() {
         super.onStop()
         orientationSensorListener?.disable()
         orientationSensorListener = null
         // enable auto-stop behavior if backgrounded
         SteamService.autoStopWhenIdle = true
+
+        // Library UI is no longer visible (e.g. a game is now in the foreground) —
+        // drop the cover-art bitmap cache so its GPU memory is reclaimed for the game.
+        // Not on a config change (rotation), where we want to keep it warm.
+        if (!isChangingConfigurations && hasReadyGameLifecycleState("stop")) {
+            releaseImageCaches()
+        }
 
         Timber.d(
             "onStop - Index: %d, Connected: %b, Logged-In: %b, Changing-Config: %b, Keep Alive: %b, Is Importing: %b",
@@ -580,6 +630,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun setOrientationTo(orientation: Int, conformTo: EnumSet<Orientation>) {
+        if (isHeadset(this)) {
+            if (requestedOrientation != ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE) {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            }
+            return
+        }
         // Log.d("MainActivity$index", "Setting orientation to conform")
 
         // reverse direction of orientation

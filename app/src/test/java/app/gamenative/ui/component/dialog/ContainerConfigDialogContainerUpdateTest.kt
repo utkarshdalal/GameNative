@@ -129,7 +129,7 @@ class ContainerConfigDialogContainerUpdateTest {
             .put("vkd3dFeatureLevel", "12_0")
             .toString()
 
-        val winComponents = "direct3d=0,directsound=0,directmusic=1,directshow=1,directplay=1,vcrun2010=0,wmdecoder=0,opengl=1"
+        val winComponents = "direct3d=0,directsound=0,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=0,wmdecoder=0,opengl=1"
 
         val mutated = ContainerData(
             name = "Test Bionic Container",
@@ -167,6 +167,7 @@ class ContainerConfigDialogContainerUpdateTest {
             touchscreenMode = true,
             shooterMode = false,
             gestureConfig = "{\"longPressEnabled\":true,\"twoFingerTapAction\":\"middle_click\"}",
+            shooterConfig = "{\"buttonLookThroughEnabled\":false,\"movementZoneSplit\":0.6}",
             startupSelection = Container.STARTUP_SELECTION_AGGRESSIVE,
             cpuList = "0,2,4,6",
             cpuListWoW64 = "1,3,5,7",
@@ -208,6 +209,7 @@ class ContainerConfigDialogContainerUpdateTest {
         assertEquals(mutated.touchscreenMode, container.isTouchscreenMode)
         assertEquals(mutated.shooterMode, container.isShooterMode)
         assertEquals(mutated.gestureConfig, container.gestureConfig)
+        assertEquals(mutated.shooterConfig, container.shooterConfig)
 
         // Steam type
         assertEquals(mutated.steamType, container.getSteamType())
@@ -272,7 +274,7 @@ class ContainerConfigDialogContainerUpdateTest {
             .put("vkd3dFeatureLevel", "12_1")
             .toString()
 
-        val winComponents = "direct3d=0,directsound=0,directmusic=1,directshow=1,directplay=1,vcrun2010=0,wmdecoder=0,opengl=1"
+        val winComponents = "direct3d=0,directsound=0,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=0,wmdecoder=0,opengl=1"
 
         val mutated = ContainerData(
             name = "Test Glibc Container",
@@ -310,6 +312,7 @@ class ContainerConfigDialogContainerUpdateTest {
             touchscreenMode = true,
             shooterMode = false,
             gestureConfig = "{\"longPressEnabled\":true,\"twoFingerTapAction\":\"middle_click\"}",
+            shooterConfig = "{\"buttonLookThroughEnabled\":false,\"movementZoneSplit\":0.6}",
             startupSelection = Container.STARTUP_SELECTION_AGGRESSIVE,
             cpuList = "0,2,4,6",
             cpuListWoW64 = "1,3,5,7",
@@ -352,6 +355,7 @@ class ContainerConfigDialogContainerUpdateTest {
         assertEquals(mutated.touchscreenMode, container.isTouchscreenMode)
         assertEquals(mutated.shooterMode, container.isShooterMode)
         assertEquals(mutated.gestureConfig, container.gestureConfig)
+        assertEquals(mutated.shooterConfig, container.shooterConfig)
 
         // Steam type
         assertEquals(mutated.steamType, container.getSteamType())
@@ -575,7 +579,7 @@ class ContainerConfigDialogContainerUpdateTest {
 
     @Test
     fun winComponents_areAppliedCorrectly() {
-        val winComponents = "direct3d=0,directsound=0,directmusic=1,directshow=1,directplay=1,vcrun2010=0,wmdecoder=0,opengl=1"
+        val winComponents = "direct3d=0,directsound=0,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=0,wmdecoder=0,opengl=1"
 
         val containerData = ContainerData(
             wincomponents = winComponents

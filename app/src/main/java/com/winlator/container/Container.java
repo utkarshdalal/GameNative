@@ -41,11 +41,12 @@ public class Container {
     public static final String DEFAULT_AUDIO_DRIVER = "pulseaudio";
     public static final String DEFAULT_EMULATOR = "FEXCore";
     public static final String DEFAULT_DXWRAPPER = "dxvk";
+    public static final String DEFAULT_DISPLAY_RENDERER = "vulkan";
     public static final String DEFAULT_DDRAWRAPPER = "none";
     public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.DXVK + ",framerate=0,maxDeviceMemory=0,async=" + DefaultVersion.ASYNC + ",asyncCache=" + DefaultVersion.ASYNC_CACHE + ",vkd3dVersion=" + DefaultVersion.VKD3D + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";;
     public static final String DEFAULT_GRAPHICSDRIVERCONFIG = "vulkanVersion=1.3" + ",version=" + DefaultVersion.WRAPPER + ",blacklistedExtensions=" + ",maxDeviceMemory=0" + ",presentMode=mailbox" + ",syncFrame=0" + ",disablePresentWait=0" + ",resourceType=auto" + ",bcnEmulation=auto" + ",bcnEmulationType=compute" + ",bcnEmulationCache=0" + ",gpuName=Device";
-    public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0";
-    public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=0";
+    public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0";
+    public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=0";
     public static final String[] MEDIACONV_ENV_VARS = {
             "MEDIACONV_AUDIO_DUMP_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/audio.dmp",
             "MEDIACONV_VIDEO_DUMP_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/video.dmp",
@@ -81,10 +82,10 @@ public class Container {
     private String dxwrapperConfig = DEFAULT_DXWRAPPERCONFIG;
     private String graphicsDriverConfig = DEFAULT_GRAPHICSDRIVERCONFIG;
     private String rendererPresentMode = "fifo";
-    private boolean useLegacyRenderer = false;
+    private String displayRenderer = Container.DEFAULT_DISPLAY_RENDERER;
+    private boolean sfCompatMode = true;
     private String wincomponents = DEFAULT_WINCOMPONENTS;
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
-    private String pulseaudioSuspendBehavior = PulseAudioComponent.SUSPEND_BEHAVIOR_THREAD;
     private boolean pulseaudioLowLatency = false;
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
@@ -130,12 +131,14 @@ public class Container {
     private byte dinputMapperType = 1;  // 1=standard, 2=XInput mapper
     // Disable external mouse input
     private boolean disableMouseInput = false;
-    // Touchscreen mode
-    private boolean touchscreenMode = false;
+    // Touchscreen mode (defaults on for XR builds)
+    private boolean touchscreenMode = app.gamenative.BuildConfig.XR_BUILD;
     // Shooter mode
     private boolean shooterMode = true;
     // Serialised JSON gesture configuration (used when touchscreenMode is true)
     private String gestureConfig = "";
+    // Serialised JSON shooter mode configuration (used when shooterMode is true)
+    private String shooterConfig = "";
     // External display input handling
     private String externalDisplayMode = DEFAULT_EXTERNAL_DISPLAY_MODE;
     // Swap game/input between internal and external displays
@@ -265,9 +268,13 @@ public class Container {
 
     public void setRendererPresentMode(String v) { this.rendererPresentMode = v != null ? v : "fifo"; }
 
-    public boolean isUseLegacyRenderer() { return useLegacyRenderer; }
+    public String getDisplayRenderer() { return displayRenderer; }
 
-    public void setUseLegacyRenderer(boolean v) { this.useLegacyRenderer = v; }
+    public void setDisplayRenderer(String v) { this.displayRenderer = v; }
+
+    public boolean getSfCompatMode() { return sfCompatMode; }
+
+    public void setSfCompatMode(boolean v) { this.sfCompatMode = v; }
 
     public String getDXWrapperConfig() {
         return dxwrapperConfig;
@@ -283,14 +290,6 @@ public class Container {
 
     public void setAudioDriver(String audioDriver) {
         this.audioDriver = audioDriver;
-    }
-
-    public String getPulseaudioSuspendBehavior() {
-        return pulseaudioSuspendBehavior != null ? pulseaudioSuspendBehavior : PulseAudioComponent.SUSPEND_BEHAVIOR_THREAD;
-    }
-
-    public void setPulseaudioSuspendBehavior(String pulseaudioSuspendBehavior) {
-        this.pulseaudioSuspendBehavior = pulseaudioSuspendBehavior;
     }
 
     public boolean getPulseaudioLowLatency() {
@@ -686,11 +685,11 @@ public class Container {
             data.put("graphicsDriverVersion", graphicsDriverVersion); // Ensure this is added
             if (!graphicsDriverConfig.isEmpty()) data.put("graphicsDriverConfig", graphicsDriverConfig);
             data.put("rendererPresentMode", rendererPresentMode);
-            data.put("useLegacyRenderer", useLegacyRenderer);
+            data.put("displayRendererMode", displayRenderer);
+            data.put("sfCompatMode", sfCompatMode);
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
             data.put("audioDriver", audioDriver);
-            data.put("pulseaudioSuspendBehavior", pulseaudioSuspendBehavior);
             data.put("pulseaudioLowLatency", pulseaudioLowLatency);
             data.put("wincomponents", wincomponents);
             data.put("drives", drives);
@@ -728,6 +727,10 @@ public class Container {
             // Gesture configuration JSON
             if (gestureConfig != null && !gestureConfig.isEmpty()) {
                 data.put("gestureConfig", gestureConfig);
+            }
+            // Shooter mode configuration JSON
+            if (shooterConfig != null && !shooterConfig.isEmpty()) {
+                data.put("shooterConfig", shooterConfig);
             }
             data.put("externalDisplayMode", externalDisplayMode);
             data.put("externalDisplaySwap", externalDisplaySwap);
@@ -804,8 +807,11 @@ public class Container {
                 case "rendererPresentMode" :
                     setRendererPresentMode(data.getString(key));
                     break;
-                case "useLegacyRenderer" :
-                    setUseLegacyRenderer(data.getBoolean(key));
+                case "displayRendererMode" :
+                    setDisplayRenderer(data.getString(key));
+                    break;
+                case "sfCompatMode" :
+                    setSfCompatMode(data.getBoolean(key));
                     break;
                 case "wincomponents" :
                     setWinComponents(data.getString(key));
@@ -890,9 +896,6 @@ public class Container {
                 case "audioDriver" :
                     setAudioDriver(data.getString(key));
                     break;
-                case "pulseaudioSuspendBehavior" :
-                    setPulseaudioSuspendBehavior(data.getString(key));
-                    break;
                 case "pulseaudioLowLatency" :
                     setPulseaudioLowLatency(data.getBoolean(key));
                     break;
@@ -937,6 +940,9 @@ public class Container {
                     break;
                 case "gestureConfig" :
                     setGestureConfig(data.optString(key, ""));
+                    break;
+                case "shooterConfig" :
+                    setShooterConfig(data.optString(key, ""));
                     break;
                 case "externalDisplayMode" :
                     setExternalDisplayMode(data.getString(key));
@@ -984,6 +990,12 @@ public class Container {
 
     public static void checkObsoleteOrMissingProperties(JSONObject data) {
         try {
+            if (!data.has("displayRendererMode") && data.has("useLegacyRenderer")) {
+                boolean legacy = data.optBoolean("useLegacyRenderer", false);
+                data.put("displayRendererMode", legacy ? "gl" : DEFAULT_DISPLAY_RENDERER);
+            }
+            data.remove("useLegacyRenderer");
+
             if (data.has("dxcomponents")) {
                 data.put("wincomponents", data.getString("dxcomponents"));
                 data.remove("dxcomponents");
@@ -1007,6 +1019,10 @@ public class Container {
                 else if (graphicsDriver.equals("llvmpipe")) {
                     data.put("graphicsDriver", "virgl");
                 }
+            }
+
+            if (!data.has("wincomponents")) {
+                data.put("wincomponents", DEFAULT_WINCOMPONENTS);
             }
 
             KeyValueSet wincomponents1 = new KeyValueSet(DEFAULT_WINCOMPONENTS);
@@ -1167,6 +1183,15 @@ public class Container {
 
     public void setGestureConfig(String gestureConfig) {
         this.gestureConfig = gestureConfig != null ? gestureConfig : "";
+    }
+
+    // Shooter mode configuration JSON
+    public String getShooterConfig() {
+        return shooterConfig != null ? shooterConfig : "";
+    }
+
+    public void setShooterConfig(String shooterConfig) {
+        this.shooterConfig = shooterConfig != null ? shooterConfig : "";
     }
 
     // External display mode

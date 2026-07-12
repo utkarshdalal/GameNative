@@ -9,13 +9,17 @@ import app.gamenative.service.epic.manifest.EpicManifest
 import app.gamenative.service.epic.manifest.FileManifest
 import app.gamenative.service.epic.manifest.FileManifestList
 import app.gamenative.service.epic.manifest.ManifestMeta
+import app.gamenative.utils.FileUtils
+import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
+import org.junit.rules.TemporaryFolder
 
 /**
  * Tests for Epic Cloud Saves manifest & chunk correctness.
@@ -25,6 +29,9 @@ import java.nio.ByteOrder
  * and verified manually.
  */
 class EpicCloudSavesTest {
+
+    @get:Rule
+    val tmpDir = TemporaryFolder()
 
     // -------------------------------------------------------------------------
     // Rolling hash — test vectors produced by Legendary's get_hash()
@@ -74,6 +81,34 @@ class EpicCloudSavesTest {
     // -------------------------------------------------------------------------
     // CustomFields — read/write round-trip must be symmetric and include version byte
     // -------------------------------------------------------------------------
+
+    @Test
+    fun `absolute cloud save path resolves LocalLow using on-disk casing`() {
+        val wineUserDir = tmpDir.newFolder("prefix", "drive_c", "users", "xuser")
+        val saveDir = File(wineUserDir, "AppData/LocalLow/ZAUM Studio/Disco Elysium/SaveGames").apply {
+            mkdirs()
+        }
+
+        val metadataPath = File(wineUserDir, "AppData/locallow/ZAUM Studio/Disco Elysium/SaveGames")
+            .absolutePath
+            .replace('\\', '/')
+
+        val resolved = FileUtils.resolveCaseInsensitive(File("/"), metadataPath)
+
+        assertEquals(saveDir.absolutePath, resolved.absolutePath)
+        assertTrue(resolved.exists())
+    }
+
+    @Test
+    fun `resolveCaseInsensitive keeps matching after an unmatched parent segment`() {
+        val base = tmpDir.newFolder("base")
+        val deep = File(base, "Existing/Nested/LocalLow").apply { mkdirs() }
+
+        val resolved = FileUtils.resolveCaseInsensitive(base, "existing/nested/locallow")
+
+        assertEquals(deep.absolutePath, resolved.absolutePath)
+        assertTrue(resolved.exists())
+    }
 
     @Test
     fun `CustomFields round-trips through write then read`() {

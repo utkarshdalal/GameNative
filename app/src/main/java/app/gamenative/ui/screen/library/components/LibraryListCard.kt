@@ -35,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +45,9 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.CompatibilityBadge
+import app.gamenative.ui.component.GameStatsRow
+import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.data.GameCardStats
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +66,7 @@ internal fun ListViewCard(
     onFocusChanged: (Boolean) -> Unit,
     isRefreshing: Boolean,
     compatibilityStatus: GameCompatibilityStatus?,
+    gameStats: GameCardStats?,
     context: Context,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -74,16 +77,22 @@ internal fun ListViewCard(
         if (isItemFocused) onFocus()
     }
 
-    Card(
+    val shape = RoundedCornerShape(14.dp)
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable(
-                onClick = onClick,
-                interactionSource = interactionSource,
-                indication = null,
-            ),
-        shape = RoundedCornerShape(14.dp),
+            .focusRing(interactionSource, shape),
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    onClick = onClick,
+                    interactionSource = interactionSource,
+                    indication = null,
+                ),
+            shape = shape,
         colors = CardDefaults.cardColors(
             containerColor = if (isFocused) {
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
@@ -92,15 +101,6 @@ internal fun ListViewCard(
             },
         ),
         border = when {
-            isFocused -> BorderStroke(
-                2.dp,
-                Brush.horizontalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.tertiary,
-                    ),
-                ),
-            )
             appInfo.isRecommended -> BorderStroke(
                 1.dp,
                 MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
@@ -180,6 +180,11 @@ internal fun ListViewCard(
                         }
                     }
                 }
+
+                GameStatsRow(
+                    stats = gameStats,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                )
             }
 
             val badgeStatus = if (appInfo.isRecommended) {
@@ -194,6 +199,7 @@ internal fun ListViewCard(
                 )
             }
         }
+    }
     }
 }
 

@@ -19,6 +19,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.READ_LOGS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" tools:node="remove" />
 
     <queries>
         <intent>
@@ -49,6 +54,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
+            android:screenOrientation="${screenOrientation}"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
             android:theme="@style/Theme.Pluvia">
@@ -137,6 +143,12 @@
 
         <service
             android:name=".service.amazon.AmazonService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <service
+            android:name=".service.NexusModImportService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
