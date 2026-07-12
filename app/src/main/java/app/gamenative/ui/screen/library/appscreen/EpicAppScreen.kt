@@ -488,8 +488,12 @@ class EpicAppScreen : BaseAppScreen() {
         showDeletingDialog = true
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                val gameRootDir = getInstallPath(context, libraryItem)?.let(::File)
                 val result = EpicService.deleteGame(context, libraryItem.gameId)
                 DownloadService.invalidateCache()
+                if (result.isSuccess) {
+                    cleanupNexusModsForApp(context, libraryItem, gameRootDir)
+                }
 
                 withContext(Dispatchers.Main) {
                     if (result.isSuccess) {

@@ -147,6 +147,12 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <service
+            android:name=".service.NexusModImportService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!--
             Handles the Exit action on foreground-service notifications.
             See app.gamenative.service.NotificationActionReceiver for the rationale —

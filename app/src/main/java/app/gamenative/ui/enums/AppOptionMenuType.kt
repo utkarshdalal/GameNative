@@ -33,5 +33,6 @@ enum class AppOptionMenuType(@StringRes val title: Int) {
     ShareDiagnostics(R.string.option_share_diagnostics),
     ManageGameContent(R.string.option_manage_dlc),
     ManageWorkshop(R.string.option_manage_workshop),
+    ManageMods(R.string.option_manage_mods),
     ChangeBranch(R.string.change_branch),
 }

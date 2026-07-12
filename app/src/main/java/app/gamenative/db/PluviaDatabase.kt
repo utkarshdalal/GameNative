@@ -18,12 +18,18 @@ import app.gamenative.data.SteamUnlockedBranch
 import app.gamenative.data.GOGGame
 import app.gamenative.data.EpicGame
 import app.gamenative.data.AmazonGame
+import app.gamenative.data.ModInstall
+import app.gamenative.data.ModOverwriteManifest
+import app.gamenative.data.ModPlacementRecipe
+import app.gamenative.data.ModProfile
+import app.gamenative.data.ModProfileInstallState
 import app.gamenative.db.converters.AppConverter
 import app.gamenative.db.converters.ByteArrayConverter
 import app.gamenative.db.converters.FriendConverter
 import app.gamenative.db.converters.LicenseConverter
 import app.gamenative.db.converters.UserFileInfoListConverter
 import app.gamenative.db.converters.GOGConverter
+import app.gamenative.db.dao.ModDao
 import app.gamenative.db.dao.ChangeNumbersDao
 import app.gamenative.db.dao.FileChangeListsDao
 import app.gamenative.db.dao.LibraryPlayHistoryDao
@@ -57,8 +63,13 @@ const val DATABASE_NAME = "pluvia.db"
         AmazonGame::class,
         DownloadingAppInfo::class,
         SteamUnlockedBranch::class,
+        ModInstall::class,
+        ModProfile::class,
+        ModProfileInstallState::class,
+        ModPlacementRecipe::class,
+        ModOverwriteManifest::class,
     ],
-    version = 23,
+    version = 24,
     // For db migration, visit https://developer.android.com/training/data-storage/room/migrating-db-versions for more information
     exportSchema = true, // It is better to handle db changes carefully, as GN is getting much more users.
     autoMigrations = [
@@ -120,4 +131,6 @@ abstract class PluviaDatabase : RoomDatabase() {
     abstract fun downloadingAppInfoDao(): DownloadingAppInfoDao
 
     abstract fun steamUnlockedBranchDao(): SteamUnlockedBranchDao
+
+    abstract fun modDao(): ModDao
 }

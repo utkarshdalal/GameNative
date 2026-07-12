@@ -1260,9 +1260,13 @@ class SteamAppScreen : BaseAppScreen() {
                             CoroutineScope(Dispatchers.IO).launch {
                                 try {
                                     val installedAppInfo = getInstalledApp(libraryItem.gameId)
+                                    val gameRootDir = getInstallPath(context, libraryItem)?.let(::File)
 
                                     val success = SteamService.deleteApp(gameId)
                                     DownloadService.invalidateCache()
+                                    if (success) {
+                                        cleanupNexusModsForApp(context, libraryItem, gameRootDir)
+                                    }
                                     withContext(Dispatchers.Main) {
                                         ContainerUtils.deleteContainer(context, libraryItem.appId)
                                     }
