@@ -195,7 +195,9 @@ internal class RadialMenuOverlayView(context: Context) : View(context) {
         textPaint.color = readableTextColor(primaryColor)
         textPaint.textSize = textSizePx
         textPaint.isFakeBoldText = active
-        val label = fitLabel(slot.displayLabel.take(14), radiusPx * 0.62f)
+        val sliceWidth = 2f * textRadiusPx * sin(Math.toRadians((sweep * 0.5f).toDouble())).toFloat()
+        val maxLabelWidth = min(radiusPx * 0.62f, (sliceWidth - 8f * density).coerceAtLeast(24f * density))
+        val label = fitLabel(slot.displayLabel.take(14), maxLabelWidth)
         canvas.drawText(label, textX, centeredTextBaseline(textY, textPaint), textPaint)
     }
 

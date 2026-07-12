@@ -255,13 +255,18 @@ class RadialMenuCoordinator(
     }
 
     override fun onRadialMenuButtonStateChanged(isDown: Boolean) {
-        if (isDown) openCentered() else close(commit = true)
+        onRadialMenuButtonStateChanged(isDown, commit = true)
+    }
+
+    fun onRadialMenuButtonStateChanged(isDown: Boolean, commit: Boolean) {
+        if (isDown) openCentered() else close(commit)
     }
 
     fun onRadialMenuVectorChanged(x: Float, y: Float) {
         if (!isVisible()) return
         val magnitude = sqrt(x * x + y * y)
         if (magnitude < 0.25f) {
+            overlayView.setSelectedIndex(-1)
             return
         }
         updateSelection(
@@ -324,15 +329,15 @@ class RadialMenuCoordinator(
                 ?: allProfiles.firstOrNull()
             if (sourceProfile != null) {
                 profile = try {
-                    manager.duplicateProfile(sourceProfile).also { duplicate ->
-                        duplicate.setName("${gameNameProvider()} - Controls")
-                        duplicate.save()
-                        container.putExtra("profileId", duplicate.id.toString())
-                        container.saveData()
-                    }
+                    val duplicate = manager.duplicateProfile(sourceProfile)
+                    duplicate.setName("${gameNameProvider()} - Controls")
+                    duplicate.save()
+                    container.putExtra("profileId", duplicate.id.toString())
+                    container.saveData()
+                    duplicate
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to auto-create controls profile for ${container.name}")
-                    sourceProfile
+                    null
                 }
             }
         }
@@ -510,6 +515,9 @@ class RadialMenuCoordinator(
         val view = inputControlsView
         if (view?.profile != null) {
             view.handleInputEvent(binding, isActionDown, offset)
+            if (binding.isGamepad) {
+                sendCurrentGamepadState(view.profile)
+            }
             return
         }
 
@@ -591,6 +599,14 @@ class RadialMenuCoordinator(
             }
         }
 
+        winHandler?.currentController?.state?.copy(state)
+        winHandler?.sendGamepadState()
+        winHandler?.sendVirtualGamepadState(state)
+    }
+
+    private fun sendCurrentGamepadState(profile: ControlsProfile?) {
+        val state = profile?.gamepadState ?: return
+        val winHandler = xServer.winHandler ?: PluviaApp.xServerView?.getxServer()?.winHandler
         winHandler?.currentController?.state?.copy(state)
         winHandler?.sendGamepadState()
         winHandler?.sendVirtualGamepadState(state)

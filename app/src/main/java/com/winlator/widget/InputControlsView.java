@@ -1282,6 +1282,9 @@ public class InputControlsView extends View {
                 case MotionEvent.ACTION_CANCEL:
                     if (actionMasked == MotionEvent.ACTION_CANCEL) {
                         handleRadialMenuTouchUp(radialMenuTouchPointerId, false);
+                        for (ControlElement element : profile.getElements()) {
+                            if (element.cancelRadialMenuTouch()) handled = true;
+                        }
                     }
                     // Shooter mode intercept
                     if (shooterModeActive || containerShooterModeRuntime) {

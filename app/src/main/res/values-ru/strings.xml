@@ -1982,14 +1982,14 @@ https://gamenative.app
     <string name="radial_menu_settings_title">Радиальное меню</string>
     <string name="radial_menu_cancel">Отмена</string>
     <string name="radial_menu_slot_count">Слоты</string>
-    <string name="radial_menu_slot_count_subtitle">Включено слотов: %1$d</string>
+    <string name="radial_menu_slot_count_subtitle">Активных слотов: %1$d</string>
     <string name="radial_menu_decrease_slots">Уменьшить число слотов</string>
     <string name="radial_menu_increase_slots">Увеличить число слотов</string>
     <string name="radial_menu_slots">Слоты колеса</string>
     <string name="radial_menu_slot_title">Слот %1$d</string>
     <string name="radial_menu_slot_label_hint">Метка</string>
-    <string name="radial_menu_slot_binding">Назначение слота %1$d</string>
-    <string name="radial_menu_slot_binding_summary">Назначение: %1$s</string>
+    <string name="radial_menu_slot_binding">Привязка слота %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Привязка: %1$s</string>
     <string name="radial_menu_preset_common">Общие</string>
     <string name="radial_menu_preset_weapons">Оружие</string>
     <string name="gesture_action_open_radial_menu">Открыть радиальное меню</string>

@@ -2059,9 +2059,9 @@
     <string name="radial_menu_increase_slots">슬롯 늘리기</string>
     <string name="radial_menu_slots">휠 슬롯</string>
     <string name="radial_menu_slot_title">슬롯 %1$d</string>
-    <string name="radial_menu_slot_label_hint">라벨</string>
-    <string name="radial_menu_slot_binding">슬롯 %1$d 할당</string>
-    <string name="radial_menu_slot_binding_summary">할당: %1$s</string>
+    <string name="radial_menu_slot_label_hint">레이블</string>
+    <string name="radial_menu_slot_binding">슬롯 %1$d 바인딩</string>
+    <string name="radial_menu_slot_binding_summary">바인딩: %1$s</string>
     <string name="radial_menu_preset_common">일반</string>
     <string name="radial_menu_preset_weapons">무기</string>
     <string name="gesture_action_open_radial_menu">방사형 메뉴 열기</string>

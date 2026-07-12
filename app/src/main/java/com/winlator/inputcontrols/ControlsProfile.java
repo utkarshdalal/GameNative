@@ -160,7 +160,8 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             JSONArray radialMenusJSONArray = new JSONArray();
             if (!radialMenusLoaded && file.isFile()) {
                 JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
-                if (profileJSONObject.has("radialMenus")) radialMenusJSONArray = profileJSONObject.getJSONArray("radialMenus");
+                JSONArray storedRadialMenus = profileJSONObject.optJSONArray("radialMenus");
+                if (storedRadialMenus != null) radialMenusJSONArray = storedRadialMenus;
             }
             else {
                 for (RadialMenu menu : radialMenus) {

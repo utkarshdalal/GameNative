@@ -1122,6 +1122,7 @@ fun XServerScreen(
                             // Apply the new profile to InputControlsView
                             PluviaApp.inputControlsView?.setProfile(activeProfile)
                             PluviaApp.radialMenuCoordinator?.setProfile(activeProfile)
+                            physicalControllerHandler?.setProfile(activeProfile)
                         } catch (e: Exception) {
                             Timber.e(e, "Failed to auto-create profile for container %s", container.name)
                             // Fallback to existing profile
@@ -2164,7 +2165,7 @@ fun XServerScreen(
             PluviaApp.inputControlsManager = InputControlsManager(context)
             RadialMenuCoordinator.install(
                 context = context,
-                host = frameLayout,
+                host = mainRoot,
                 anchor = view,
                 container = container,
                 xServer = xServerView.getxServer(),
@@ -2231,7 +2232,9 @@ fun XServerScreen(
                         onShowKeyboard = {
                             PluviaApp.inputControlsView?.triggerShowKeyboard()
                         },
-                        onRadialMenuButtonStateChanged = radialMenuCoordinator?.let { it::onRadialMenuButtonStateChanged },
+                        onRadialMenuButtonStateChanged = radialMenuCoordinator?.let { coordinator ->
+                            { isDown, commit -> coordinator.onRadialMenuButtonStateChanged(isDown, commit) }
+                        },
                         onRadialMenuVectorChanged = radialMenuCoordinator?.let { it::onRadialMenuVectorChanged },
                     )
                     radialMenuCoordinator?.bindPhysicalControllerHandler(physicalControllerHandler)

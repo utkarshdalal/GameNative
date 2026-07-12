@@ -2064,7 +2064,7 @@
     <string name="radial_menu_slot_label_hint">Libellé</string>
     <string name="radial_menu_slot_binding">Action de l’emplacement %1$d</string>
     <string name="radial_menu_slot_binding_summary">Action : %1$s</string>
-    <string name="radial_menu_preset_common">Courant</string>
+    <string name="radial_menu_preset_common">Commun</string>
     <string name="radial_menu_preset_weapons">Armes</string>
     <string name="gesture_action_open_radial_menu">Ouvrir le menu radial</string>
 </resources>

@@ -1077,6 +1077,7 @@ public class ControlElement {
 
         for (byte i = 0; i < directionalStates.length && i < bindings.length; i++) {
             if (bindings[i] == Binding.OPEN_RADIAL_MENU && directionalStates[i]) {
+                releaseActiveDirectionalStates();
                 radialMenuTouchActive = true;
                 inputControlsView.handleRadialMenuTouchDown(pointerId, x, y);
                 inputControlsView.invalidate();
@@ -1085,6 +1086,13 @@ public class ControlElement {
         }
 
         return false;
+    }
+
+    private void releaseActiveDirectionalStates() {
+        for (byte i = 0; i < states.length && i < bindings.length; i++) {
+            if (states[i]) inputControlsView.handleInputEvent(getBindingAt(i), false);
+            states[i] = false;
+        }
     }
 
     public boolean handleTouchDown(int pointerId, float x, float y) {
@@ -1250,7 +1258,7 @@ public class ControlElement {
         if (pointerId == currentPointerId) {
             if (radialMenuTouchActive) {
                 radialMenuTouchActive = false;
-                Arrays.fill(states, false);
+                releaseActiveDirectionalStates();
                 inputControlsView.handleRadialMenuTouchUp(pointerId, true);
                 if (currentPosition != null) currentPosition = null;
                 currentPointerId = -1;
@@ -1261,7 +1269,9 @@ public class ControlElement {
             if (type == Type.BUTTON) {
                 if (isRadialMenuButton()) {
                     inputControlsView.handleRadialMenuTouchUp(pointerId, true);
+                    currentPointerId = -1;
                     inputControlsView.invalidate();
+                    return true;
                 }
                 else if (isKeepButtonPressedAfterMinTime() && touchTime != null) {
                     selected = (System.currentTimeMillis() - (long)touchTime) > BUTTON_MIN_TIME_TO_KEEP_PRESSED;
@@ -1310,5 +1320,17 @@ public class ControlElement {
             return true;
         }
         return false;
+    }
+
+    public boolean cancelRadialMenuTouch() {
+        if (currentPointerId == -1 || (!radialMenuTouchActive && !isRadialMenuButton())) return false;
+
+        if (radialMenuTouchActive) releaseActiveDirectionalStates();
+        radialMenuTouchActive = false;
+        inputControlsView.handleRadialMenuTouchUp(currentPointerId, false);
+        if (currentPosition != null) currentPosition = null;
+        currentPointerId = -1;
+        inputControlsView.invalidate();
+        return true;
     }
 }
