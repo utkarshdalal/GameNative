@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -130,8 +131,15 @@ private fun TwoFactorTextField(
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    LaunchedEffect(true) {
-        focusRequester.requestFocus()
+    LaunchedEffect(Unit) {
+        // Node may not be placed on the first frame; retry until requestFocus() takes.
+        repeat(5) {
+            try {
+                if (focusRequester.requestFocus()) return@LaunchedEffect
+            } catch (_: IllegalStateException) {
+            }
+            delay(32)
+        }
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {

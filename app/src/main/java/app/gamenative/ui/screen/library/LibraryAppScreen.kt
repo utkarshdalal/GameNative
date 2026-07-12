@@ -132,6 +132,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -594,8 +595,16 @@ internal fun AppScreenContent(
         scrollState.animateScrollTo(0)
     }
 
-    LaunchedEffect(Unit) {
-        playButtonFocusRequester.requestFocus()
+    LaunchedEffect(displayInfo.appId) {
+        // Node may not be placed on the first frame, and requestFocus() returns false until it is;
+        // retry until it takes so the controller lands on Play (re-runs when switching games).
+        repeat(5) {
+            try {
+                if (playButtonFocusRequester.requestFocus()) return@LaunchedEffect
+            } catch (_: IllegalStateException) {
+            }
+            delay(32)
+        }
     }
 
     // Button state calculations (needed by key event handler)
