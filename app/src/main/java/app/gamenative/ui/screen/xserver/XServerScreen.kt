@@ -2997,7 +2997,6 @@ private fun hideInputControls() {
     PluviaApp.inputControlsView?.setShowTouchscreenControls(false)
     PluviaApp.inputControlsView?.setVisibility(View.GONE)
     PluviaApp.inputControlsView?.setProfile(null)
-    ControllerManager.getInstance().autoAssignConnectedDevicesCompat()
     PluviaApp.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsCompat()
 
     PluviaApp.touchpadView?.setSensitivity(1.0f)
@@ -3030,38 +3029,6 @@ private fun WinHandler.refreshControllerMappingsCompat() {
     }
 
     refreshControllerMappings()
-}
-
-private fun ControllerManager.autoAssignConnectedDevicesCompat() {
-    val autoAssignMethod = runCatching {
-        javaClass.getMethod("autoAssignConnectedDevices")
-    }.getOrNull()
-
-    if (autoAssignMethod != null) {
-        val autoAssignSucceeded = runCatching {
-            autoAssignMethod.invoke(this)
-        }.onFailure {
-            Timber.w(it, "Failed to auto-assign connected controllers")
-        }.isSuccess
-
-        if (autoAssignSucceeded) {
-            return
-        }
-    }
-
-    scanForDevices()
-    getDetectedDevices().forEach { device ->
-        if (getSlotForDevice(device.id) >= 0) {
-            return@forEach
-        }
-
-        val freeSlot = (0 until 4).firstOrNull { slot ->
-            getAssignedDeviceForSlot(slot) == null
-        } ?: return
-
-        setSlotEnabled(freeSlot, true)
-        assignDeviceToSlot(freeSlot, device)
-    }
 }
 
 /**
