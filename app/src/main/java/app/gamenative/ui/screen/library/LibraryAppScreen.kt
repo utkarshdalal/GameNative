@@ -4,6 +4,30 @@ package app.gamenative.ui.screen.library
 
 import android.content.Intent
 import android.content.res.Configuration
+import android.annotation.SuppressLint
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.displayCutoutPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import app.gamenative.ui.component.InfoCard
+import app.gamenative.ui.component.topbar.BackButton
+import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.screen.library.components.ambient.AmbientDownloadOverlay
 import android.content.ActivityNotFoundException
 import android.net.Uri
@@ -115,6 +139,7 @@ import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.data.AppMenuOption
+import app.gamenative.ui.data.DownloadDisplayDetails
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.internal.fakeAppInfo
@@ -340,80 +365,6 @@ private fun ActionIconButton(
     }
 }
 
-/**
- * Info card for game details with optional status indicator
- */
-@Composable
-private fun InfoCard(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    statusColor: Color? = null,
-    isCompact: Boolean = false,
-    focusableForNavigation: Boolean = false,
-) {
-    var isFocused by remember { mutableStateOf(false) }
-    val interactionSource = remember { MutableInteractionSource() }
-    val bringIntoViewRequester = remember { BringIntoViewRequester() }
-    val scope = rememberCoroutineScope()
-    val cardModifier = if (focusableForNavigation) {
-        modifier
-            .bringIntoViewRequester(bringIntoViewRequester)
-            .onFocusChanged { state ->
-                isFocused = state.isFocused
-                if (state.isFocused) {
-                    scope.launch { bringIntoViewRequester.bringIntoView() }
-                }
-            }
-            .focusable(interactionSource = interactionSource)
-            .focusRing(interactionSource, RoundedCornerShape(16.dp), width = 2.dp)
-    } else {
-        modifier
-    }
-
-    Surface(
-        modifier = cardModifier,
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shadowElevation = 2.dp,
-    ) {
-        Column(
-            modifier = Modifier.padding(if (isCompact) 14.dp else 18.dp),
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium,
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (statusColor != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .background(statusColor, CircleShape),
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                }
-                Text(
-                    text = value,
-                    style = if (isCompact) {
-                        MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                    } else {
-                        MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                    },
-                    color = if (statusColor != null) statusColor else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
 @Composable
 private fun HltbInfoBar(
     stats: HltbService.Stats,
@@ -556,21 +507,24 @@ private fun formatBytes(bytes: Long): String {
 internal fun AppScreenContent(
     modifier: Modifier = Modifier,
     displayInfo: GameDisplayInfo,
-    isInstalled: Boolean,
-    isValidToDownload: Boolean,
-    isDownloading: Boolean,
-    downloadProgress: Float,
-    hasPartialDownload: Boolean,
-    hasLeftoverInstall: Boolean = false,
-    isUpdatePending: Boolean,
+    downloadDisplayDetails: DownloadDisplayDetails,
     downloadInfo: app.gamenative.data.DownloadInfo? = null,
     onDownloadInstallClick: () -> Unit,
     onPauseResumeClick: () -> Unit,
     onDeleteDownloadClick: () -> Unit,
     onUpdateClick: () -> Unit,
     onBack: () -> Unit = {},
+    achievements: List<Achievement>? = null,
     optionsMenu: List<AppMenuOption>,
 ) {
+    // Unpacked so the body below is unchanged; bundling the params avoids a Compose VerifyError.
+    val isInstalled = downloadDisplayDetails.isInstalled
+    val isValidToDownload = downloadDisplayDetails.isValidToDownload
+    val isDownloading = downloadDisplayDetails.isDownloading
+    val downloadProgress = downloadDisplayDetails.downloadProgress
+    val hasPartialDownload = downloadDisplayDetails.hasPartialDownload
+    val hasLeftoverInstall = downloadDisplayDetails.hasLeftoverInstall
+    val isUpdatePending = downloadDisplayDetails.isUpdatePending
     val context = LocalContext.current
     // reactive — recomposes when network state changes
     val hasInternet by NetworkMonitor.hasInternet.collectAsState()
@@ -1160,6 +1114,11 @@ internal fun AppScreenContent(
                     }
                 }
 
+                // Achievements
+                if (!achievements.isNullOrEmpty()) {
+                    AchievementsRow(achievements = achievements)
+                }
+
             }
         }
 
@@ -1278,6 +1237,279 @@ fun GameMigrationDialog(
     )
 }
 
+
+// Shared grayscale filter for locked achievement icons.
+private val grayMatrix = ColorMatrix().apply { setToSaturation(0f) }
+
+private fun Achievement.previewIconUrl(): String? =
+    if (isUnlocked) icon.ifEmpty { iconGray } else iconGray ?: icon.ifEmpty { null }
+
+@SuppressLint("UnusedBoxWithConstraintsScope")
+@Composable
+private fun AchievementsRow(
+    achievements: List<Achievement>,
+) {
+    // Temporarily this is Steam. We can expand later for other storefronts as they become available.
+    val unlockedCount = achievements.count { it.isUnlocked }
+    val totalCount = achievements.size
+    var showDialog by remember { mutableStateOf(false) }
+
+    val sortedAchievements = achievements.sortedWith(
+        compareByDescending<Achievement> { it.isUnlocked }
+            .thenByDescending { it.unlockTimestamp },
+    )
+
+    Spacer(modifier = Modifier.height(10.dp))
+
+    InfoCard(
+        label = stringResource(R.string.achievements),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 36.dp),
+        isCompact = true,
+        onClick = { showDialog = true },
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // Icons fill all space left over after the count claims its natural width.
+            // BoxWithConstraints then tells us exactly how many 48dp icons (+ 8dp gaps) fit.
+            BoxWithConstraints(modifier = Modifier.weight(1f)) {
+                val iconSize = 48.dp
+                val spacing = 8.dp
+                val fit = ((maxWidth + spacing) / (iconSize + spacing))
+                    .toInt()
+                    .coerceIn(1, sortedAchievements.size)
+                val total = sortedAchievements.size
+                // Reserve the last slot for a "+N" stack when more achievements exist than fit.
+                val showStack = total > fit
+                val iconCount = if (showStack) (fit - 1).coerceAtLeast(0) else fit
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                    sortedAchievements.take(iconCount).forEach { ach ->
+                        val iconUrl = ach.previewIconUrl()
+                        CoilImage(
+                            imageModel = { iconUrl ?: "" },
+                            imageOptions = ImageOptions(
+                                contentScale = ContentScale.Crop,
+                                contentDescription = ach.displayName ?: ach.name,
+                                colorFilter = if (ach.isUnlocked) null else ColorFilter.colorMatrix(grayMatrix),
+                            ),
+                            modifier = Modifier
+                                .size(iconSize)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                        )
+                    }
+                    if (showStack) {
+                        val next = sortedAchievements[iconCount]
+                        val nextUrl = next.previewIconUrl()
+                        Box(
+                            modifier = Modifier
+                                .size(iconSize)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CoilImage(
+                                imageModel = { nextUrl ?: "" },
+                                imageOptions = ImageOptions(
+                                    contentScale = ContentScale.Crop,
+                                    colorFilter = ColorFilter.colorMatrix(grayMatrix),
+                                ),
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.55f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "+${total - iconCount}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = "$unlockedCount / $totalCount",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    // Give them a star for getting 100% completion
+                    if (totalCount >= 1 && unlockedCount == totalCount) {
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = stringResource(R.string.achievements_complete),
+                            tint = Color(0xFFFFD700),
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+                Text(
+                    text = stringResource(R.string.achievements_total),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+
+    if (showDialog) {
+        AchievementsDialog(
+            achievements = sortedAchievements,
+            onDismiss = { showDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun AchievementsDialog(
+    achievements: List<Achievement>,
+    onDismiss: () -> Unit,
+) {
+
+    // Dialog destinations don't animate; fade/slide the content in and play the exit before
+    // dismissing, matching the screenshot gallery.
+    val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
+    LaunchedEffect(visibleState.isIdle) {
+        if (visibleState.isIdle && !visibleState.currentState) onDismiss()
+    }
+    val dismiss = { visibleState.targetState = false }
+
+    Dialog(
+        onDismissRequest = dismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        // Drop the window dim so the entrance animation has no scrim flash.
+        val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+        SideEffect { dialogWindow?.setDimAmount(0f) }
+
+        AnimatedVisibility(
+            visibleState = visibleState,
+            enter = fadeIn(animationSpec = tween(200)) +
+                slideInVertically(animationSpec = tween(200)) { it / 12 },
+            exit = fadeOut(animationSpec = tween(150)) +
+                slideOutVertically(animationSpec = tween(150)) { it / 12 },
+        ) {
+        Surface(
+            color = MaterialTheme.colorScheme.background,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .displayCutoutPadding()
+                    .navigationBarsPadding(),
+            ) {
+                // Header: back + title, mirroring the screenshot gallery.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    BackButton(onClick = dismiss)
+                    Text(
+                        text = stringResource(R.string.achievements_all_title),
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(achievements) { ach ->
+                        val iconUrl = ach.previewIconUrl()
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                CoilImage(
+                                    imageModel = { iconUrl ?: "" },
+                                    imageOptions = ImageOptions(
+                                        contentScale = ContentScale.Crop,
+                                        contentDescription = ach.displayName ?: ach.name,
+                                        colorFilter = if (ach.isUnlocked) null else ColorFilter.colorMatrix(grayMatrix),
+                                    ),
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceContainer),
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = ach.displayName ?: ach.name ?: "",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    if (!ach.description.isNullOrEmpty()) {
+                                        Text(
+                                            text = ach.description!!,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                    val unlockedAt = ach.getFormattedUnlockDateTime()
+                                    if (ach.isUnlocked && unlockedAt != null) {
+                                        Text(
+                                            text = stringResource(R.string.achievements_unlocked_at, unlockedAt.first, unlockedAt.second),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = PluviaTheme.colors.statusInstalled,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        }
+    }
+}
+
+
 /***********
  * PREVIEW *
  ***********/
@@ -1313,12 +1545,14 @@ private fun Preview_AppScreen() {
         Surface {
             AppScreenContent(
                 displayInfo = displayInfo,
-                isInstalled = false,
-                isValidToDownload = true,
-                isDownloading = isDownloading,
-                downloadProgress = .50f,
-                hasPartialDownload = false,
-                isUpdatePending = false,
+                downloadDisplayDetails = DownloadDisplayDetails(
+                    isInstalled = false,
+                    isValidToDownload = true,
+                    isDownloading = isDownloading,
+                    downloadProgress = .50f,
+                    hasPartialDownload = false,
+                    isUpdatePending = false,
+                ),
                 downloadInfo = null,
                 onDownloadInstallClick = { isDownloading = !isDownloading },
                 onPauseResumeClick = { },

@@ -2035,4 +2035,10 @@
     <string name="featured_status_out_now_body">現在利用可能</string>
     <string name="tab_recommended">おすすめ</string>
     <string name="gog_rec_empty">ゲームを追加またはプレイすると、ライブラリに基づいたGOGのおすすめが表示されます。</string>
+    <!-- Steam achievements -->
+    <string name="achievements">実績</string>
+    <string name="achievements_all_title">すべての実績</string>
+    <string name="achievements_unlocked_at">%1$s %2$s に解除</string>
+    <string name="achievements_complete">すべての実績を解除しました</string>
+    <string name="achievements_total">合計</string>
 </resources>

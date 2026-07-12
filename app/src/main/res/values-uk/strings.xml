@@ -2072,4 +2072,10 @@
     <string name="featured_status_out_now_body">Доступно зараз</string>
     <string name="tab_recommended">Рекомендовані</string>
     <string name="gog_rec_empty">Додайте або пограйте в ігри, щоб отримати рекомендації GOG на основі вашої бібліотеки.</string>
+    <!-- Steam achievements -->
+    <string name="achievements">Досягнення</string>
+    <string name="achievements_all_title">Всі досягнення</string>
+    <string name="achievements_unlocked_at">Розблоковано %1$s о %2$s</string>
+    <string name="achievements_complete">Усі досягнення розблоковано</string>
+    <string name="achievements_total">Усього</string>
 </resources>

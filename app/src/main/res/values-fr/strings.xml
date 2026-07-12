@@ -2078,4 +2078,10 @@
     <string name="featured_status_out_now_body">Disponible maintenant</string>
     <string name="tab_recommended">Recommandés</string>
     <string name="gog_rec_empty">Ajoutez ou lancez des jeux pour obtenir des recommandations GOG basées sur votre bibliothèque.</string>
+    <!-- Steam achievements -->
+    <string name="achievements">Succès</string>
+    <string name="achievements_all_title">Tous les succès</string>
+    <string name="achievements_unlocked_at">Débloqué le %1$s à %2$s</string>
+    <string name="achievements_complete">Tous les succès débloqués</string>
+    <string name="achievements_total">Total</string>
 </resources>

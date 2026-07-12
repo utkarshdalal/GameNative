@@ -2079,4 +2079,10 @@
     <string name="featured_status_out_now_body">Acum disponibil</string>
     <string name="tab_recommended">Recomandate</string>
     <string name="gog_rec_empty">Adaugă sau joacă câteva jocuri pentru a primi recomandări GOG pe baza bibliotecii tale.</string>
+    <!-- Steam achievements -->
+	<string name="achievements">Realizări</string>
+	<string name="achievements_all_title">Toate realizările</string>
+	<string name="achievements_unlocked_at">Deblocat pe %1$s la %2$s</string>
+    <string name="achievements_complete">Toate realizările deblocate</string>
+    <string name="achievements_total">Total</string>
 </resources>

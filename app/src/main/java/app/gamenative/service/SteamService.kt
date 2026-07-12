@@ -10,6 +10,7 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.IBinder
 import android.util.Base64
+import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.util.SnackbarManager
 import androidx.room.withTransaction
 import app.gamenative.BuildConfig
@@ -156,6 +157,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import timber.log.Timber
 import app.gamenative.data.DownloadingAppInfo
@@ -3077,6 +3079,53 @@ class SteamService : Service(), IChallengeUrlChanged {
             } catch (e: Exception) {
                 Timber.e(e, "Failed to check DLC ownership via PICS batch for ${dlcAppIds.size} appIds")
                 return emptySet()
+            }
+        }
+
+        suspend fun fetchAchievementsForDisplay(appId: Int): List<Achievement>? {
+            if (!isConnected) return null
+            return try {
+                withTimeout(15_000) {
+                val steamUser = instance?._steamUser ?: return@withTimeout null
+                val userStats = instance?._steamUserStats?.getUserStats(appId, steamUser.steamID!!)?.await() ?: return@withTimeout null
+                val baseIconUrl = SteamUtils.getBaseAchievementIconUrl(appId)
+                val appLanguage = SteamUtils.steamLanguageForAppLocale()
+                val localized = userStats.getExpandedAchievements(appLanguage)
+                // Parse the English schema lazily: only achievements missing a localized name or
+                // description need it, so fully-localized games never pay for the extra parse.
+                val englishByName by lazy {
+                    if (appLanguage == "english") {
+                        emptyMap()
+                    } else {
+                        userStats.getExpandedAchievements("english").associateBy { it.name }
+                    }
+                }
+                localized.map { block ->
+                    fun english() = englishByName[block.name]
+                    Achievement(
+                        displayName = block.displayName?.takeIf { it.isNotBlank() }
+                            ?: english()?.displayName?.takeIf { it.isNotBlank() }
+                            ?: block.name ?: "",
+                        name = block.name,
+                        isUnlocked = block.isUnlocked,
+                        description = block.description?.takeIf { it.isNotBlank() }
+                            ?: english()?.description?.takeIf { it.isNotBlank() }
+                            ?: "",
+                        unlockTimestamp = block.unlockTimestamp,
+                        hidden = block.hidden,
+                        icon = if (!block.icon.isNullOrEmpty()) "$baseIconUrl${block.icon}" else "",
+                        iconGray = if (!block.iconGray.isNullOrEmpty()) "$baseIconUrl${block.iconGray}" else null,
+                    )
+                }
+                }
+            } catch (e: TimeoutCancellationException) {
+                Timber.w("fetchAchievementsForDisplay timed out for appId=$appId")
+                null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "fetchAchievementsForDisplay failed for appId=$appId")
+                null
             }
         }
 

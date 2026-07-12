@@ -2096,4 +2096,10 @@
     <string name="featured_status_out_now_body">现在可用</string>
     <string name="tab_recommended">推荐</string>
     <string name="gog_rec_empty">添加或试玩一些游戏，即可根据你的游戏库获得 GOG 推荐。</string>
+    <!-- Steam achievements -->
+    <string name="achievements">成就</string>
+    <string name="achievements_all_title">所有成就</string>
+    <string name="achievements_unlocked_at">%1$s %2$s 解锁</string>
+    <string name="achievements_complete">所有成就已解锁</string>
+    <string name="achievements_total">总数</string>
 </resources>

@@ -34,6 +34,7 @@ import app.gamenative.mods.NexusModManager
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
+import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.util.ContainerConfigTransfer
@@ -1044,6 +1045,9 @@ abstract class BaseAppScreen {
         var hasLeftoverInstallState by remember(libraryItem.appId) {
             mutableStateOf(hasLeftoverInstall(context, libraryItem))
         }
+        var achievementsState by remember(libraryItem.appId) {
+            mutableStateOf<List<Achievement>?>(null)
+        }
 
         val uiScope = rememberCoroutineScope()
 
@@ -1068,6 +1072,30 @@ abstract class BaseAppScreen {
 
         LaunchedEffect(libraryItem.appId) {
             performStateRefresh(true)
+        }
+
+        LaunchedEffect(libraryItem.appId) {
+            if (getGameSource(libraryItem) == GameSource.STEAM) {
+                // null = fetch failed (an empty list means the game has no achievements); retry a
+                // few times so a transient Steam error doesn't silently drop the section.
+                repeat(3) { attempt ->
+                    val result = try {
+                        withContext(Dispatchers.IO) {
+                            app.gamenative.service.SteamService.fetchAchievementsForDisplay(getGameId(libraryItem))
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to fetch achievements for ${getGameId(libraryItem)}")
+                        null
+                    }
+                    if (result != null) {
+                        achievementsState = result
+                        return@LaunchedEffect
+                    }
+                    if (attempt < 2) delay(2000)
+                }
+            }
         }
 
         var showConfigDialog by androidx.compose.runtime.remember {
@@ -1325,13 +1353,15 @@ abstract class BaseAppScreen {
         // Render the common UI
         app.gamenative.ui.screen.library.AppScreenContent(
             displayInfo = displayInfo,
-            isInstalled = isInstalledState,
-            isValidToDownload = isValidToDownloadState,
-            isDownloading = isDownloadingState,
-            downloadProgress = downloadProgressState,
-            hasPartialDownload = hasPartialDownloadState,
-            hasLeftoverInstall = hasLeftoverInstallState,
-            isUpdatePending = isUpdatePendingState,
+            downloadDisplayDetails = app.gamenative.ui.data.DownloadDisplayDetails(
+                isInstalled = isInstalledState,
+                isValidToDownload = isValidToDownloadState,
+                isDownloading = isDownloadingState,
+                downloadProgress = downloadProgressState,
+                hasPartialDownload = hasPartialDownloadState,
+                hasLeftoverInstall = hasLeftoverInstallState,
+                isUpdatePending = isUpdatePendingState,
+            ),
             downloadInfo = downloadInfo,
             onDownloadInstallClick = {
                 if (app.gamenative.launch.LaunchReadiness.pending) {
@@ -1358,6 +1388,7 @@ abstract class BaseAppScreen {
                 }
             },
             onBack = onBack,
+            achievements = achievementsState,
             optionsMenu = optionsMenu,
         )
 
