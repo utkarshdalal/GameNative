@@ -141,11 +141,29 @@ internal class RadialMenuOverlayView(context: Context) : View(context) {
     }
 
     private fun drawSlice(canvas: Canvas, startAngle: Float, sweep: Float, active: Boolean) {
+        if (sweep >= 359.9f) {
+            drawFullRing(canvas, active)
+            return
+        }
+
         slicePath.rewind()
+        slicePath.fillType = Path.FillType.WINDING
         slicePath.arcTo(arcBounds, startAngle, sweep)
         slicePath.arcTo(innerArcBounds, startAngle + sweep, -sweep)
         slicePath.close()
 
+        drawSlicePath(canvas, active)
+    }
+
+    private fun drawFullRing(canvas: Canvas, active: Boolean) {
+        slicePath.rewind()
+        slicePath.fillType = Path.FillType.EVEN_ODD
+        slicePath.addOval(arcBounds, Path.Direction.CW)
+        slicePath.addOval(innerArcBounds, Path.Direction.CW)
+        drawSlicePath(canvas, active)
+    }
+
+    private fun drawSlicePath(canvas: Canvas, active: Boolean) {
         fillPaint.color = if (active) {
             scaledAlphaColor(secondaryColor, 1.15f)
         } else {
