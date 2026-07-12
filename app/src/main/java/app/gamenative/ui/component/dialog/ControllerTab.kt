@@ -51,13 +51,6 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
                 state.config.value = config.copy(dinputMapperType = if (index == 0) 1 else 2)
             },
         )
-        SettingsSwitch(
-            colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.shooter_mode_toggle)) },
-            subtitle = { Text(text = stringResource(R.string.shooter_mode_toggle_description)) },
-            state = config.shooterMode,
-            onCheckedChange = { state.config.value = config.copy(shooterMode = it) },
-        )
         SettingsListDropdown(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.external_display_input)) },
