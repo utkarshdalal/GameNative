@@ -1736,7 +1736,7 @@
     <string name="nexus_bethesda_game">Bethesda гра</string>
     <string name="nexus_plugin_load_order_description">Контролює порядок завантаження файлів плагіна Bethesda у грі. Це окремо від пріоритету файлу мод. Майстри повинні завантажуватися перед плагінами, які від них залежать.</string>
     <string name="nexus_no_plugin_files">У встановлених модах не знайдено файлів плагінів.</string>
-    <string name="nexus_search_plugins">Плагіни пошуку Показано</string>
+    <string name="nexus_search_plugins">Пошук плагінів</string>
     <string name="nexus_plugins_shown">Показано плагінів: %1$d з %2$d</string>
     <string name="nexus_no_plugins_match">Немає плагінів, які відповідають вашому пошуку.</string>
     <string name="nexus_missing_short">Відсутній: %1$s</string>
@@ -1746,8 +1746,8 @@
     <string name="nexus_more_plugins">Додаткові плагіни: %1$d</string>
     <string name="nexus_plugin_missing_with_sidecars">Цей увімкнений плагін відсутній у папці гри. Застосувати замовлення можна відновити. Відсутні відповідні архівні файли: %1$s</string>
     <string name="nexus_plugin_missing_file">Цей увімкнений плагін відсутній у папці гри. Застосувати замовлення можна відновити.</string>
-    <string name="nexus_plugin_missing_sidecars">Відповідні архівні файли відсутні в папці гри: %1$s Інсталятор</string>
-    <string name="nexus_fomod_installer">FOMOD</string>
+    <string name="nexus_plugin_missing_sidecars">Відповідні архівні файли відсутні в папці гри: %1$s</string>
+    <string name="nexus_fomod_installer">FOMOD інсталятор</string>
     <string name="nexus_configure">Налаштувати</string>
     <string name="nexus_fomod_step_option_count">Кроки: %1$d, варіанти: %2$d</string>
     <string name="nexus_fomod_required_mappings">%1$d необхідні відображення файлів</string>
@@ -1787,7 +1787,7 @@
     <string name="nexus_placement_automatic">Автоматичний</string>
     <string name="nexus_placement_preset">Попереднє налаштування</string>
     <string name="nexus_placement_last_used">Останнє використання</string>
-    <string name="nexus_placement_custom">Custom</string>
+    <string name="nexus_placement_custom">Власне</string>
     <string name="nexus_automatic_placement">Автоматичне розміщення</string>
     <string name="nexus_preset_placement">Попереднє розміщення</string>
     <string name="nexus_last_used_placement">Останнє використане розміщення</string>
@@ -1897,8 +1897,8 @@
     <string name="nexus_changed_disabled_files_left_in_place">; змінені вимкнені файли залишено на місці: %1$d</string>
     <string name="nexus_cleaned_old_temp_files">Очищено %1$s від старих тимчасових файлів моду</string>
     <string name="nexus_not_enough_storage_import">Недостатньо пам\'яті. Потрібно приблизно %1$s, доступний %2$s.</string>
-    <string name="nexus_starting_named_file">Починаючи з %1$s Імпортований мод</string>
-    <string name="nexus_nexus_mod_imported">Nexus</string>
+    <string name="nexus_starting_named_file">Починаючи з %1$s</string>
+    <string name="nexus_nexus_mod_imported">Мод Nexus імпортовано</string>
     <string name="nexus_collection_manual_external_entry">Ручний або зовнішній збір</string>
     <string name="nexus_collection_mod_fallback_name">Nexus mod %1$d</string>
     <string name="nexus_collection_mod_resolve_failed">Не вдалося вирішити цей мод колекції</string>
@@ -1948,9 +1948,9 @@
     <string name="nexus_scan_placement_conflicts_failed">Не вдалося сканувати конфлікти розміщення</string>
     <string name="nexus_validating_api_key">Перевірка ключа Nexus API</string>
     <string name="nexus_connected_nexus_user">Підключено до Nexus як %1$s</string>
-    <string name="nexus_api_key_validation_failed">Nexus API перевірка ключа не вдалася Модифікацію</string>
-    <string name="nexus_mod_deleted">видалено Модифікацію</string>
-    <string name="nexus_mod_deleted_with_skipped">видалено; %1$d змінені файли залишилися на місці</string>
+    <string name="nexus_api_key_validation_failed">Не вдалося перевірити ключ API Nexus</string>
+    <string name="nexus_mod_deleted">Мод видалено</string>
+    <string name="nexus_mod_deleted_with_skipped">Мод видалено; %1$d змінених файлів залишилися на місці</string>
     <string name="nexus_fomod_mappings_need_manual_placement">%1$d FOMOD відображення файлів потребує ручного розміщення</string>
     <string name="nexus_fomod_choices_added">FOMOD вибір додано</string>
     <string name="nexus_progress_unknown">невідомо</string>

@@ -1834,8 +1834,8 @@
     <string name="nexus_scanning">Escaneo</string>
     <string name="nexus_issue_count">Problemas: %1$d</string>
     <string name="nexus_idle">Inactivo</string>
-    <string name="nexus_default_profile">Predeterminado Modificaciones</string>
-    <string name="nexus_summary_bar">%1$d | %2$d habilitado | %3$s | %4$s</string>
+    <string name="nexus_default_profile">Predeterminado</string>
+    <string name="nexus_summary_bar">%1$d mods | %2$d habilitados | %3$s | %4$s</string>
     <string name="nexus_storage_cleanup_title">Limpieza de almacenamiento</string>
     <string name="nexus_scan">Escanear</string>
     <string name="nexus_storage_cleanup_description">Muestra el almacenamiento utilizado por las descargas de mods Nexus, el caché extraído y las copias de seguridad para este juego.</string>
@@ -1956,7 +1956,7 @@
     <string name="nexus_mod_deleted">Mod eliminado</string>
     <string name="nexus_mod_deleted_with_skipped">Mod eliminado; %1$d los archivos modificados se dejaron en su lugar</string>
     <string name="nexus_fomod_mappings_need_manual_placement">Asignaciones de archivos FOMOD que necesitan colocación manual: %1$d</string>
-    <string name="nexus_fomod_choices_added">FOMOD</string>
+    <string name="nexus_fomod_choices_added">Opciones FOMOD añadidas</string>
     <string name="nexus_progress_unknown">desconocido</string>
     <string name="nexus_game_directory_root">Directorio de juegos</string>
     <string name="nexus_downloaded_progress">%1$s / %2$s descargado</string>
