@@ -1992,4 +1992,19 @@
     <string name="toast_no_buttons_to_copy_appearance">Keine anderen Steuerungen zum Kopieren der Darstellung verfügbar</string>
     <string name="toast_copied_button_appearance">Steuerungsdarstellung kopiert</string>
     <string name="toast_applied_button_appearance">Darstellung auf alle Steuerungen angewendet</string>
+    <string name="radial_menu">Radialmenü</string>
+    <string name="radial_menu_settings_title">Radialmenü</string>
+    <string name="radial_menu_cancel">Abbrechen</string>
+    <string name="radial_menu_slot_count">Slots</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d Slots aktiviert</string>
+    <string name="radial_menu_decrease_slots">Slots verringern</string>
+    <string name="radial_menu_increase_slots">Slots erhöhen</string>
+    <string name="radial_menu_slots">Menü-Slots</string>
+    <string name="radial_menu_slot_title">Slot %1$d</string>
+    <string name="radial_menu_slot_label_hint">Beschriftung</string>
+    <string name="radial_menu_slot_binding">Belegung für Slot %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Belegung: %1$s</string>
+    <string name="radial_menu_preset_common">Allgemein</string>
+    <string name="radial_menu_preset_weapons">Waffen</string>
+    <string name="gesture_action_open_radial_menu">Radialmenü öffnen</string>
 </resources>

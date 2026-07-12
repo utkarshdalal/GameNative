@@ -2050,4 +2050,19 @@
     <string name="toast_no_buttons_to_copy_appearance">Brak innych elementów do skopiowania wyglądu</string>
     <string name="toast_copied_button_appearance">Skopiowano wygląd elementu</string>
     <string name="toast_applied_button_appearance">Zastosowano wygląd do wszystkich elementów</string>
+    <string name="radial_menu">Menu radialne</string>
+    <string name="radial_menu_settings_title">Menu radialne</string>
+    <string name="radial_menu_cancel">Anuluj</string>
+    <string name="radial_menu_slot_count">Sloty</string>
+    <string name="radial_menu_slot_count_subtitle">Włączone sloty: %1$d</string>
+    <string name="radial_menu_decrease_slots">Zmniejsz liczbę slotów</string>
+    <string name="radial_menu_increase_slots">Zwiększ liczbę slotów</string>
+    <string name="radial_menu_slots">Sloty koła</string>
+    <string name="radial_menu_slot_title">Slot %1$d</string>
+    <string name="radial_menu_slot_label_hint">Etykieta</string>
+    <string name="radial_menu_slot_binding">Przypisanie slotu %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Przypisanie: %1$s</string>
+    <string name="radial_menu_preset_common">Typowe</string>
+    <string name="radial_menu_preset_weapons">Bronie</string>
+    <string name="gesture_action_open_radial_menu">Otwórz menu radialne</string>
 </resources>

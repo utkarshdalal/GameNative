@@ -2053,4 +2053,19 @@
     <string name="toast_no_buttons_to_copy_appearance">Nu există alte controale de la care să copiezi aspectul</string>
     <string name="toast_copied_button_appearance">Aspectul controlului a fost copiat</string>
     <string name="toast_applied_button_appearance">Aspectul a fost aplicat tuturor controalelor</string>
+    <string name="radial_menu">Meniu radial</string>
+    <string name="radial_menu_settings_title">Meniu radial</string>
+    <string name="radial_menu_cancel">Anulează</string>
+    <string name="radial_menu_slot_count">Sloturi</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d sloturi activate</string>
+    <string name="radial_menu_decrease_slots">Scade numărul de sloturi</string>
+    <string name="radial_menu_increase_slots">Crește numărul de sloturi</string>
+    <string name="radial_menu_slots">Sloturi ale roții</string>
+    <string name="radial_menu_slot_title">Slot %1$d</string>
+    <string name="radial_menu_slot_label_hint">Etichetă</string>
+    <string name="radial_menu_slot_binding">Asociere slot %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Asociere: %1$s</string>
+    <string name="radial_menu_preset_common">Comune</string>
+    <string name="radial_menu_preset_weapons">Arme</string>
+    <string name="gesture_action_open_radial_menu">Deschide meniul radial</string>
 </resources>

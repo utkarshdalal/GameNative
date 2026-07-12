@@ -2061,4 +2061,19 @@
     <string name="toast_no_buttons_to_copy_appearance">沒有其他可複製外觀的控制項</string>
     <string name="toast_copied_button_appearance">已複製控制項外觀</string>
     <string name="toast_applied_button_appearance">已將外觀套用到所有控制項</string>
+    <string name="radial_menu">徑向選單</string>
+    <string name="radial_menu_settings_title">徑向選單</string>
+    <string name="radial_menu_cancel">取消</string>
+    <string name="radial_menu_slot_count">槽位</string>
+    <string name="radial_menu_slot_count_subtitle">已啟用 %1$d 個槽位</string>
+    <string name="radial_menu_decrease_slots">減少槽位</string>
+    <string name="radial_menu_increase_slots">增加槽位</string>
+    <string name="radial_menu_slots">轉盤槽位</string>
+    <string name="radial_menu_slot_title">槽位 %1$d</string>
+    <string name="radial_menu_slot_label_hint">標籤</string>
+    <string name="radial_menu_slot_binding">槽位 %1$d 綁定</string>
+    <string name="radial_menu_slot_binding_summary">綁定：%1$s</string>
+    <string name="radial_menu_preset_common">常用</string>
+    <string name="radial_menu_preset_weapons">武器</string>
+    <string name="gesture_action_open_radial_menu">開啟徑向選單</string>
 </resources>

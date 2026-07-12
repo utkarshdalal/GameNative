@@ -2050,4 +2050,19 @@
     <string name="toast_no_buttons_to_copy_appearance">No hay otros controles disponibles para copiar la apariencia</string>
     <string name="toast_copied_button_appearance">Apariencia del control copiada</string>
     <string name="toast_applied_button_appearance">Apariencia aplicada a todos los controles</string>
+    <string name="radial_menu">Menú radial</string>
+    <string name="radial_menu_settings_title">Menú radial</string>
+    <string name="radial_menu_cancel">Cancelar</string>
+    <string name="radial_menu_slot_count">Ranuras</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d ranuras activadas</string>
+    <string name="radial_menu_decrease_slots">Disminuir ranuras</string>
+    <string name="radial_menu_increase_slots">Aumentar ranuras</string>
+    <string name="radial_menu_slots">Ranuras de la rueda</string>
+    <string name="radial_menu_slot_title">Ranura %1$d</string>
+    <string name="radial_menu_slot_label_hint">Etiqueta</string>
+    <string name="radial_menu_slot_binding">Asignación de ranura %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Asignación: %1$s</string>
+    <string name="radial_menu_preset_common">Común</string>
+    <string name="radial_menu_preset_weapons">Armas</string>
+    <string name="gesture_action_open_radial_menu">Abrir menú radial</string>
 </resources>

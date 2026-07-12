@@ -2009,4 +2009,19 @@
     <string name="toast_no_buttons_to_copy_appearance">外観をコピーできる他のコントロールがありません</string>
     <string name="toast_copied_button_appearance">コントロールの外観をコピーしました</string>
     <string name="toast_applied_button_appearance">すべてのコントロールに外観を適用しました</string>
+    <string name="radial_menu">ラジアルメニュー</string>
+    <string name="radial_menu_settings_title">ラジアルメニュー</string>
+    <string name="radial_menu_cancel">キャンセル</string>
+    <string name="radial_menu_slot_count">スロット</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d 個のスロットが有効</string>
+    <string name="radial_menu_decrease_slots">スロットを減らす</string>
+    <string name="radial_menu_increase_slots">スロットを増やす</string>
+    <string name="radial_menu_slots">ホイールスロット</string>
+    <string name="radial_menu_slot_title">スロット %1$d</string>
+    <string name="radial_menu_slot_label_hint">ラベル</string>
+    <string name="radial_menu_slot_binding">スロット %1$d の割り当て</string>
+    <string name="radial_menu_slot_binding_summary">割り当て: %1$s</string>
+    <string name="radial_menu_preset_common">一般</string>
+    <string name="radial_menu_preset_weapons">武器</string>
+    <string name="gesture_action_open_radial_menu">ラジアルメニューを開く</string>
 </resources>

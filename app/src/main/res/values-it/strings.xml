@@ -2043,4 +2043,19 @@
     <string name="toast_no_buttons_to_copy_appearance">Nessun altro controllo disponibile da cui copiare aspetto</string>
     <string name="toast_copied_button_appearance">Aspetto del controllo copiato</string>
     <string name="toast_applied_button_appearance">Aspetto applicato a tutti i controlli</string>
+    <string name="radial_menu">Menu radiale</string>
+    <string name="radial_menu_settings_title">Menu radiale</string>
+    <string name="radial_menu_cancel">Annulla</string>
+    <string name="radial_menu_slot_count">Slot</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d slot abilitati</string>
+    <string name="radial_menu_decrease_slots">Riduci slot</string>
+    <string name="radial_menu_increase_slots">Aumenta slot</string>
+    <string name="radial_menu_slots">Slot della ruota</string>
+    <string name="radial_menu_slot_title">Slot %1$d</string>
+    <string name="radial_menu_slot_label_hint">Etichetta</string>
+    <string name="radial_menu_slot_binding">Assegnazione slot %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Assegnazione: %1$s</string>
+    <string name="radial_menu_preset_common">Comune</string>
+    <string name="radial_menu_preset_weapons">Armi</string>
+    <string name="gesture_action_open_radial_menu">Apri menu radiale</string>
 </resources>

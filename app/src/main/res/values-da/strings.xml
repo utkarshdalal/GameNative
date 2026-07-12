@@ -1922,4 +1922,19 @@
     <string name="toast_no_buttons_to_copy_appearance">Ingen andre kontroller at kopiere udseende fra</string>
     <string name="toast_copied_button_appearance">Kontroludseende kopieret</string>
     <string name="toast_applied_button_appearance">Udseende anvendt på alle kontroller</string>
+    <string name="radial_menu">Radialmenu</string>
+    <string name="radial_menu_settings_title">Radialmenu</string>
+    <string name="radial_menu_cancel">Annuller</string>
+    <string name="radial_menu_slot_count">Pladser</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d pladser aktiveret</string>
+    <string name="radial_menu_decrease_slots">Reducer pladser</string>
+    <string name="radial_menu_increase_slots">Forøg pladser</string>
+    <string name="radial_menu_slots">Hjulpladser</string>
+    <string name="radial_menu_slot_title">Plads %1$d</string>
+    <string name="radial_menu_slot_label_hint">Etiket</string>
+    <string name="radial_menu_slot_binding">Tilknytning for plads %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Tilknytning: %1$s</string>
+    <string name="radial_menu_preset_common">Almindelige</string>
+    <string name="radial_menu_preset_weapons">Våben</string>
+    <string name="gesture_action_open_radial_menu">Åbn radialmenu</string>
 </resources>

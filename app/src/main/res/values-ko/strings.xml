@@ -2050,4 +2050,19 @@
     <string name="toast_no_buttons_to_copy_appearance">모양을 복사할 다른 컨트롤이 없습니다</string>
     <string name="toast_copied_button_appearance">컨트롤 모양을 복사했습니다</string>
     <string name="toast_applied_button_appearance">모든 컨트롤에 모양을 적용했습니다</string>
+    <string name="radial_menu">방사형 메뉴</string>
+    <string name="radial_menu_settings_title">방사형 메뉴</string>
+    <string name="radial_menu_cancel">취소</string>
+    <string name="radial_menu_slot_count">슬롯</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d개 슬롯 활성화됨</string>
+    <string name="radial_menu_decrease_slots">슬롯 줄이기</string>
+    <string name="radial_menu_increase_slots">슬롯 늘리기</string>
+    <string name="radial_menu_slots">휠 슬롯</string>
+    <string name="radial_menu_slot_title">슬롯 %1$d</string>
+    <string name="radial_menu_slot_label_hint">라벨</string>
+    <string name="radial_menu_slot_binding">슬롯 %1$d 할당</string>
+    <string name="radial_menu_slot_binding_summary">할당: %1$s</string>
+    <string name="radial_menu_preset_common">일반</string>
+    <string name="radial_menu_preset_weapons">무기</string>
+    <string name="gesture_action_open_radial_menu">방사형 메뉴 열기</string>
 </resources>

@@ -1922,4 +1922,19 @@
     <string name="toast_no_buttons_to_copy_appearance">Nenhum outro controle disponível para copiar aparência</string>
     <string name="toast_copied_button_appearance">Aparência do controle copiada</string>
     <string name="toast_applied_button_appearance">Aparência aplicada a todos os controles</string>
+    <string name="radial_menu">Menu radial</string>
+    <string name="radial_menu_settings_title">Menu radial</string>
+    <string name="radial_menu_cancel">Cancelar</string>
+    <string name="radial_menu_slot_count">Espaços</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d espaços ativados</string>
+    <string name="radial_menu_decrease_slots">Diminuir espaços</string>
+    <string name="radial_menu_increase_slots">Aumentar espaços</string>
+    <string name="radial_menu_slots">Espaços da roda</string>
+    <string name="radial_menu_slot_title">Espaço %1$d</string>
+    <string name="radial_menu_slot_label_hint">Rótulo</string>
+    <string name="radial_menu_slot_binding">Atribuição do espaço %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Atribuição: %1$s</string>
+    <string name="radial_menu_preset_common">Comum</string>
+    <string name="radial_menu_preset_weapons">Armas</string>
+    <string name="gesture_action_open_radial_menu">Abrir menu radial</string>
 </resources>
