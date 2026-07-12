@@ -83,6 +83,7 @@ public class ControlElement {
     private int currentPointerId = -1;
     private final Rect boundingBox = new Rect();
     private boolean[] states = new boolean[4];
+    private boolean radialMenuTouchActive = false;
     private boolean boundingBoxNeedsUpdate = true;
     private String text = "";
     private byte iconId;
@@ -315,7 +316,7 @@ public class ControlElement {
     }
 
     public boolean isShooterLookThrough() {
-        return shooterLookThrough;
+        return shooterLookThrough && !isRadialMenuButton();
     }
 
     public void setShooterLookThrough(boolean shooterLookThrough) {
@@ -1063,11 +1064,39 @@ public class ControlElement {
         return !toggleSwitch && (binding == Binding.GAMEPAD_BUTTON_L3 || binding == Binding.GAMEPAD_BUTTON_R3);
     }
 
+    private boolean isRadialMenuButton() {
+        return type == Type.BUTTON && (getBindingAt(0) == Binding.OPEN_RADIAL_MENU || getBindingAt(1) == Binding.OPEN_RADIAL_MENU);
+    }
+
+    private boolean handleRadialMenuDirectionalMove(int pointerId, boolean[] directionalStates, float x, float y) {
+        if (radialMenuTouchActive) {
+            inputControlsView.handleRadialMenuTouchMove(pointerId, x, y);
+            inputControlsView.invalidate();
+            return true;
+        }
+
+        for (byte i = 0; i < directionalStates.length && i < bindings.length; i++) {
+            if (bindings[i] == Binding.OPEN_RADIAL_MENU && directionalStates[i]) {
+                radialMenuTouchActive = true;
+                inputControlsView.handleRadialMenuTouchDown(pointerId, x, y);
+                inputControlsView.invalidate();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public boolean handleTouchDown(int pointerId, float x, float y) {
         if (currentPointerId == -1 && containsPoint(x, y)) {
             currentPointerId = pointerId;
             inputControlsView.invalidate();
             if (type == Type.BUTTON) {
+                if (isRadialMenuButton()) {
+                    inputControlsView.handleRadialMenuTouchDown(pointerId, x, y);
+                    inputControlsView.invalidate();
+                    return true;
+                }
                 if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
                 if (!toggleSwitch || !selected) {
                     inputControlsView.handleInputEvent(getBindingAt(0), true);
@@ -1096,6 +1125,11 @@ public class ControlElement {
     }
 
     public boolean handleTouchMove(int pointerId, float x, float y) {
+        if (pointerId == currentPointerId && isRadialMenuButton()) {
+            inputControlsView.handleRadialMenuTouchMove(pointerId, x, y);
+            return true;
+        }
+
         if (pointerId == currentPointerId && (type == Type.BUTTON || type == Type.SHOOTER_MODE)) {
             return true;
         }
@@ -1135,6 +1169,7 @@ public class ControlElement {
                 currentPosition.x = boundingBox.left + deltaX * radius + radius;
                 currentPosition.y = boundingBox.top + deltaY * radius + radius;
                 final boolean[] states = {deltaY <= -STICK_DEAD_ZONE, deltaX >= STICK_DEAD_ZONE, deltaY >= STICK_DEAD_ZONE, deltaX <= -STICK_DEAD_ZONE};
+                if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
 
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
@@ -1155,6 +1190,7 @@ public class ControlElement {
             }
             else if (type == Type.TRACKPAD) {
                 final boolean[] states = {deltaY <= -TRACKPAD_MIN_SPEED, deltaX >= TRACKPAD_MIN_SPEED, deltaY >= TRACKPAD_MIN_SPEED, deltaX <= -TRACKPAD_MIN_SPEED};
+                if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
                 int cursorDx = 0;
                 int cursorDy = 0;
 
@@ -1188,6 +1224,7 @@ public class ControlElement {
             }
             else {
                 final boolean[] states = {deltaY <= -DPAD_DEAD_ZONE, deltaX >= DPAD_DEAD_ZONE, deltaY >= DPAD_DEAD_ZONE, deltaX <= -DPAD_DEAD_ZONE};
+                if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
 
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
@@ -1211,8 +1248,22 @@ public class ControlElement {
 
     public boolean handleTouchUp(int pointerId) {
         if (pointerId == currentPointerId) {
+            if (radialMenuTouchActive) {
+                radialMenuTouchActive = false;
+                Arrays.fill(states, false);
+                inputControlsView.handleRadialMenuTouchUp(pointerId, true);
+                if (currentPosition != null) currentPosition = null;
+                currentPointerId = -1;
+                inputControlsView.invalidate();
+                return true;
+            }
+
             if (type == Type.BUTTON) {
-                if (isKeepButtonPressedAfterMinTime() && touchTime != null) {
+                if (isRadialMenuButton()) {
+                    inputControlsView.handleRadialMenuTouchUp(pointerId, true);
+                    inputControlsView.invalidate();
+                }
+                else if (isKeepButtonPressedAfterMinTime() && touchTime != null) {
                     selected = (System.currentTimeMillis() - (long)touchTime) > BUTTON_MIN_TIME_TO_KEEP_PRESSED;
                     if (!selected) {
                         inputControlsView.handleInputEvent(getBindingAt(0), false);

@@ -162,6 +162,13 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     // Show keyboard callback (wired from XServerScreen)
     private Runnable showKeyboardCallback;
+    private OpenRadialMenuCallback openRadialMenuCallback;
+    private float radialMenuGestureX;
+    private float radialMenuGestureY;
+
+    public interface OpenRadialMenuCallback {
+        void onOpenRadialMenu(float viewX, float viewY);
+    }
 
     // Click highlight listener + debug gesture logger
     public interface ClickHighlightListener {
@@ -199,6 +206,11 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             removeCallbacks(gestureRefreshRunnable);
             gestureRefreshRunnable = null;
         }
+    }
+
+    private void setRadialMenuGesturePoint(float viewX, float viewY) {
+        radialMenuGestureX = viewX;
+        radialMenuGestureY = viewY;
     }
 
     @Override
@@ -733,6 +745,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         flushPendingHoldClickRelease();
         finishHoldMouseButtonTouch();
 
+        setRadialMenuGesturePoint(event.getX(actionIndex), event.getY(actionIndex));
         float[] pt = XForm.transformPoint(xform, event.getX(actionIndex), event.getY(actionIndex));
         int x = (int) pt[0];
         int y = (int) pt[1];
@@ -796,6 +809,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         if (gestureConfig.getLongPressEnabled()) {
             longPressRunnable = () -> {
                 longPressTriggered = true;
+                setRadialMenuGesturePoint(touchDownRawX, touchDownRawY);
                 longPressActionHeld = injectHoldAction(
                         gestureConfig.getLongPressAction(),
                         gestureConfig.getLongPressMouseBehavior());
@@ -843,6 +857,9 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 twoFingerLastY0 = event.getY(idx0);
                 twoFingerLastX1 = event.getX(idx1);
                 twoFingerLastY1 = event.getY(idx1);
+                setRadialMenuGesturePoint(
+                        (twoFingerLastX0 + twoFingerLastX1) / 2f,
+                        (twoFingerLastY0 + twoFingerLastY1) / 2f);
                 pinchLastDistance = (float) Math.hypot(
                         event.getX(idx0) - event.getX(idx1),
                         event.getY(idx0) - event.getY(idx1));
@@ -852,6 +869,9 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 twoFingerHoldRunnable = () -> {
                     twoFingerHoldTriggered = true;
                     twoFingerTapPossible = false;
+                    setRadialMenuGesturePoint(
+                            (twoFingerLastX0 + twoFingerLastX1) / 2f,
+                            (twoFingerLastY0 + twoFingerLastY1) / 2f);
                     twoFingerHoldActionHeld = injectHoldAction(
                             gestureConfig.getTwoFingerHoldAction(),
                             gestureConfig.getTwoFingerHoldMouseBehavior());
@@ -868,6 +888,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         // After a multi-finger gesture, ignore single-finger movement until all fingers lift
         if (multiFingerGestureUsed) return;
 
+        setRadialMenuGesturePoint(event.getX(pointerIndex), event.getY(pointerIndex));
         float[] pt = XForm.transformPoint(xform, event.getX(pointerIndex), event.getY(pointerIndex));
         int x = (int) pt[0];
         int y = (int) pt[1];
@@ -972,6 +993,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
         float midX = (x0 + x1) / 2f;
         float midY = (y0 + y1) / 2f;
+        setRadialMenuGesturePoint(midX, midY);
         float lastMidX = (twoFingerLastX0 + twoFingerLastX1) / 2f;
         float lastMidY = (twoFingerLastY0 + twoFingerLastY1) / 2f;
         float dx = midX - lastMidX;
@@ -1103,6 +1125,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             float midY = (twoFingerLastY0 + twoFingerLastY1) / 2f;
             float[] pt = XForm.transformPoint(xform, midX, midY);
             moveCursorTo((int) pt[0], (int) pt[1]);
+            setRadialMenuGesturePoint(midX, midY);
             injectClick(gestureConfig.getTwoFingerTapAction());
             injectRelease(gestureConfig.getTwoFingerTapAction());
             notifyHighlight(midX, midY);
@@ -1188,6 +1211,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             }
             String tapAction = gestureConfig.getTapAction();
             moveCursorTo((int) pt[0], (int) pt[1]);
+            setRadialMenuGesturePoint(event.getX(actionIndex), event.getY(actionIndex));
             injectClick(tapAction);
             notifyHighlight(event.getX(actionIndex), event.getY(actionIndex));
             notifyGesture("Tap");
@@ -1302,6 +1326,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             if (validCount < 3) return; // Can't proceed without all 3 pointers
             threeFingerLastMidX = sumX / 3f;
             threeFingerLastMidY = sumY / 3f;
+            setRadialMenuGesturePoint(threeFingerLastMidX, threeFingerLastMidY);
         }
 
         // Schedule three-finger hold
@@ -1309,6 +1334,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             threeFingerHoldRunnable = () -> {
                 threeFingerHoldTriggered = true;
                 threeFingerTapPossible = false;
+                setRadialMenuGesturePoint(threeFingerLastMidX, threeFingerLastMidY);
                 threeFingerHoldActionHeld = injectHoldAction(
                         gestureConfig.getThreeFingerHoldAction(),
                         gestureConfig.getThreeFingerHoldMouseBehavior());
@@ -1340,6 +1366,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
         float midX = sumX / 3f;
         float midY = sumY / 3f;
+        setRadialMenuGesturePoint(midX, midY);
         float dx = midX - threeFingerLastMidX;
         float dy = midY - threeFingerLastMidY;
         float frameDelta = (float) Math.hypot(dx, dy);
@@ -1395,6 +1422,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             threeFingerHoldTriggered = false;
         } else if (threeFingerTapPossible && !threeFingerDragging
                 && gestureConfig.getThreeFingerTapEnabled()) {
+            setRadialMenuGesturePoint(threeFingerLastMidX, threeFingerLastMidY);
             injectClick(gestureConfig.getThreeFingerTapAction());
             injectRelease(gestureConfig.getThreeFingerTapAction());
             notifyHighlight(threeFingerLastMidX, threeFingerLastMidY);
@@ -1506,6 +1534,13 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             notifyGesture("Keyboard");
             return false;
         }
+        if (TouchGestureConfig.ACTION_OPEN_RADIAL_MENU.equals(action)) {
+            if (openRadialMenuCallback != null) {
+                openRadialMenuCallback.onOpenRadialMenu(radialMenuGestureX, radialMenuGestureY);
+            }
+            notifyGesture("Radial Menu");
+            return false;
+        }
         if (TouchGestureConfig.ACTION_KEY_TILDE.equals(action)) {
             Binding.KEY_TILDE.inject(xServer, true);
             return true;
@@ -1533,6 +1568,9 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private void injectRelease(String action) {
         if (action == null) return;
         if (TouchGestureConfig.ACTION_SHOW_KEYBOARD.equals(action)) {
+            return; // One-shot action, no release needed
+        }
+        if (TouchGestureConfig.ACTION_OPEN_RADIAL_MENU.equals(action)) {
             return; // One-shot action, no release needed
         }
         if (TouchGestureConfig.ACTION_KEY_TILDE.equals(action)) {
@@ -2135,6 +2173,10 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     public void setShowKeyboardCallback(Runnable callback) {
         this.showKeyboardCallback = callback;
+    }
+
+    public void setOpenRadialMenuCallback(OpenRadialMenuCallback callback) {
+        this.openRadialMenuCallback = callback;
     }
 
     public void setClickHighlightListener(ClickHighlightListener listener) {

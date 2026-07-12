@@ -23,7 +23,9 @@ class PhysicalControllerHandler(
     private var profile: ControlsProfile?,
     private val xServer: XServer?,
     private val onOpenNavigationMenu: (() -> Unit)? = null,
-    private val onShowKeyboard: (() -> Unit)? = null
+    private val onShowKeyboard: (() -> Unit)? = null,
+    private val onRadialMenuButtonStateChanged: ((Boolean) -> Unit)? = null,
+    private val onRadialMenuVectorChanged: ((Float, Float) -> Unit)? = null,
 ) {
     companion object {
         private const val SCROLL_REPEAT_INTERVAL_MS = 90L
@@ -41,6 +43,8 @@ class PhysicalControllerHandler(
 
     // Tracks whether SHOW_KEYBOARD is currently held, so onShowKeyboard fires once per press (rising edge only)
     private var showKeyboardPressed = false
+    private var radialMenuPressed = false
+    private var radialMenuOpenedFromMotion = false
 
     private fun releaseActiveAxes() {
         val controller = profile?.getController("*") ?: return
@@ -55,6 +59,7 @@ class PhysicalControllerHandler(
     fun setProfile(profile: ControlsProfile?) {
         releaseActiveAxes()
         clearScrollRepeats()
+        closeRadialMenuIfOpen()
         this.profile = profile
         Log.d(TAG, "PhysicalControllerHandler: Profile set to ${profile?.name}")
 
@@ -76,6 +81,7 @@ class PhysicalControllerHandler(
         mouseMoveOffset.set(0f, 0f)
         clearScrollRepeats()
         showKeyboardPressed = false
+        closeRadialMenuIfOpen()
     }
 
     /**
@@ -87,6 +93,14 @@ class PhysicalControllerHandler(
             val controller = profile?.getController(event.deviceId)
             if (controller != null) {
                 val controllerBinding = controller.getControllerBinding(event.keyCode)
+                if (radialMenuPressed && controllerBinding?.binding == Binding.OPEN_RADIAL_MENU) {
+                    handleInputEvent(controllerBinding.binding, event.action == KeyEvent.ACTION_DOWN)
+                    return true
+                }
+                if (radialMenuPressed && handleRadialMenuNavigationKey(event)) {
+                    return true
+                }
+
                 if (controllerBinding != null) {
                     // Some controllers emit BOTH a digital KeyEvent for L2/R2 and an analog axis value in MotionEvent.
                     // If this physical key is mapped to a virtual trigger AND the device exposes trigger axes,
@@ -140,13 +154,22 @@ class PhysicalControllerHandler(
         if (profile != null) {
             val controller = profile?.getController(event.deviceId)
             if (controller != null && controller.updateStateFromMotionEvent(event)) {
+                if (radialMenuPressed) {
+                    updateRadialMenuVector(controller)
+                    if (radialMenuOpenedFromMotion && !isRadialMenuMotionOpenerPressed(controller)) {
+                        handleInputEvent(Binding.OPEN_RADIAL_MENU, false, 0f, fromMotion = true)
+                    }
+                    return true
+                }
+
                 // Process trigger buttons (L2/R2)
                 var controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_L2)
                 if (controllerBinding != null) {
                     handleInputEvent(
                         controllerBinding.binding,
                         controller.state.triggerL > 0f,
-                        controller.state.triggerL
+                        controller.state.triggerL,
+                        fromMotion = true,
                     )
                 }
 
@@ -155,7 +178,8 @@ class PhysicalControllerHandler(
                     handleInputEvent(
                         controllerBinding.binding,
                         controller.state.triggerR > 0f,
-                        controller.state.triggerR
+                        controller.state.triggerR,
+                        fromMotion = true,
                     )
                 }
 
@@ -288,24 +312,24 @@ class PhysicalControllerHandler(
                 // always send press (gamepad bindings need continuous offset updates)
                 activeAxisBindings.add(activeKey)
                 controller.getControllerBinding(activeKey)?.let {
-                    handleInputEvent(it.binding, true, values[i])
+                    handleInputEvent(it.binding, true, values[i], fromMotion = true)
                 }
                 // release opposite direction (if it was active)
                 if (activeAxisBindings.remove(oppositeKey)) {
                     controller.getControllerBinding(oppositeKey)?.let {
-                        handleInputEvent(it.binding, false, 0f)
+                        handleInputEvent(it.binding, false, 0f, fromMotion = true)
                     }
                 }
             } else {
                 // release both directions only if they were active
                 if (activeAxisBindings.remove(posKeyCode)) {
                     controller.getControllerBinding(posKeyCode)?.let {
-                        handleInputEvent(it.binding, false, 0f)
+                        handleInputEvent(it.binding, false, 0f, fromMotion = true)
                     }
                 }
                 if (activeAxisBindings.remove(negKeyCode)) {
                     controller.getControllerBinding(negKeyCode)?.let {
-                        handleInputEvent(it.binding, false, 0f)
+                        handleInputEvent(it.binding, false, 0f, fromMotion = true)
                     }
                 }
             }
@@ -318,8 +342,25 @@ class PhysicalControllerHandler(
      */
     // offset: analog axis value for presses; must be 0f for releases (triggers use offset > 0f
     // to determine pressed state, sticks gate on isActionDown, everything else ignores offset)
-    private fun handleInputEvent(binding: Binding, isActionDown: Boolean, offset: Float = 0f) {
+    private fun handleInputEvent(
+        binding: Binding,
+        isActionDown: Boolean,
+        offset: Float = 0f,
+        fromMotion: Boolean = false,
+    ) {
         if (binding == Binding.NONE) return
+
+        if (binding == Binding.OPEN_RADIAL_MENU) {
+            if (radialMenuPressed != isActionDown) {
+                radialMenuPressed = isActionDown
+                radialMenuOpenedFromMotion = isActionDown && fromMotion
+                onRadialMenuButtonStateChanged?.invoke(isActionDown)
+                if (!isActionDown) onRadialMenuVectorChanged?.invoke(0f, 0f)
+            } else if (!isActionDown) {
+                radialMenuOpenedFromMotion = false
+            }
+            return
+        }
 
         if (binding.isGamepad) {
             val winHandler = xServer?.winHandler
@@ -442,5 +483,85 @@ class PhysicalControllerHandler(
                 }
             }
         }
+    }
+
+    private fun closeRadialMenuIfOpen() {
+        if (!radialMenuPressed) return
+        radialMenuPressed = false
+        radialMenuOpenedFromMotion = false
+        onRadialMenuVectorChanged?.invoke(0f, 0f)
+        onRadialMenuButtonStateChanged?.invoke(false)
+    }
+
+    private fun handleRadialMenuNavigationKey(event: KeyEvent): Boolean {
+        if (event.action != KeyEvent.ACTION_DOWN) {
+            return when (event.keyCode) {
+                KeyEvent.KEYCODE_DPAD_UP,
+                KeyEvent.KEYCODE_DPAD_DOWN,
+                KeyEvent.KEYCODE_DPAD_LEFT,
+                KeyEvent.KEYCODE_DPAD_RIGHT,
+                -> true
+                else -> false
+            }
+        }
+        val vector = when (event.keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> 0f to -1f
+            KeyEvent.KEYCODE_DPAD_DOWN -> 0f to 1f
+            KeyEvent.KEYCODE_DPAD_LEFT -> -1f to 0f
+            KeyEvent.KEYCODE_DPAD_RIGHT -> 1f to 0f
+            else -> return false
+        }
+        onRadialMenuVectorChanged?.invoke(vector.first, vector.second)
+        return true
+    }
+
+    private fun updateRadialMenuVector(controller: ExternalController) {
+        var x = controller.state.thumbLX
+        var y = controller.state.thumbLY
+        if (Math.abs(x) <= ControlElement.STICK_DEAD_ZONE && Math.abs(y) <= ControlElement.STICK_DEAD_ZONE) {
+            x = controller.state.thumbRX
+            y = controller.state.thumbRY
+        }
+        if (Math.abs(x) <= ControlElement.STICK_DEAD_ZONE && Math.abs(y) <= ControlElement.STICK_DEAD_ZONE) {
+            x = controller.state.dPadX.toFloat()
+            y = controller.state.dPadY.toFloat()
+        }
+        if (Math.abs(x) <= ControlElement.STICK_DEAD_ZONE && Math.abs(y) <= ControlElement.STICK_DEAD_ZONE) {
+            onRadialMenuVectorChanged?.invoke(0f, 0f)
+        } else {
+            onRadialMenuVectorChanged?.invoke(x, y)
+        }
+    }
+
+    private fun isRadialMenuMotionOpenerPressed(controller: ExternalController): Boolean {
+        val axes = intArrayOf(
+            MotionEvent.AXIS_X,
+            MotionEvent.AXIS_Y,
+            MotionEvent.AXIS_Z,
+            MotionEvent.AXIS_RZ,
+            MotionEvent.AXIS_HAT_X,
+            MotionEvent.AXIS_HAT_Y,
+        )
+        val values = floatArrayOf(
+            controller.state.thumbLX,
+            controller.state.thumbLY,
+            controller.state.thumbRX,
+            controller.state.thumbRY,
+            controller.state.dPadX.toFloat(),
+            controller.state.dPadY.toFloat(),
+        )
+
+        for (i in axes.indices) {
+            if (Math.abs(values[i]) <= ControlElement.STICK_DEAD_ZONE) continue
+            val keyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
+            if (controller.getControllerBinding(keyCode)?.binding == Binding.OPEN_RADIAL_MENU) {
+                return true
+            }
+        }
+
+        return (controller.state.triggerL > 0f &&
+            controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_L2)?.binding == Binding.OPEN_RADIAL_MENU) ||
+            (controller.state.triggerR > 0f &&
+                controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_R2)?.binding == Binding.OPEN_RADIAL_MENU)
     }
 }
