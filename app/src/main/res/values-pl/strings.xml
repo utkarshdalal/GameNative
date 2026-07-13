@@ -2370,4 +2370,8 @@
     <string name="faster_external_loading_subtitle">Może znacznie przyspieszyć uruchamianie gier z pamięci zewnętrznej, ale może powodować problemy w niektórych grach</string>
     <string name="disable_libredirect_title">Wyłącz libredirect</string>
     <string name="disable_libredirect_subtitle">Może poprawić wydajność, ale może też powodować nieoczekiwane problemy</string>
+    <string name="binding_mode_simultaneous">Jednocześnie</string>
+    <string name="binding_mode_sequence">Sekwencja</string>
+    <string name="binding_sequence_delay_ms">Opóźnienie sekwencji (ms)</string>
+    <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
 </resources>

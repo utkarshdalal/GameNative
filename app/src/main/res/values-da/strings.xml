@@ -2236,4 +2236,8 @@
     <string name="faster_external_loading_subtitle">Kan gøre spilstart fra eksternt lager markant hurtigere, men kan give problemer i nogle spil</string>
     <string name="disable_libredirect_title">Deaktiver libredirect</string>
     <string name="disable_libredirect_subtitle">Kan forbedre ydeevnen, men kan også give uventede problemer</string>
+    <string name="binding_mode_simultaneous">Samtidig</string>
+    <string name="binding_mode_sequence">Sekvens</string>
+    <string name="binding_sequence_delay_ms">Sekvensforsinkelse (ms)</string>
+    <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
 </resources>

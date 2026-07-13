@@ -2367,4 +2367,8 @@
     <string name="power_control_strategy_conservative">Conservative</string>
     <string name="power_control_strategy_conservative_desc">AdjustsGradual gradually with a focus on stability</string>
     <string name="xr_refresh_rate">VR Refresh Rate</string>
+    <string name="binding_mode_simultaneous">Simultaneous</string>
+    <string name="binding_mode_sequence">Sequence</string>
+    <string name="binding_sequence_delay_ms">Sequence delay (ms)</string>
+    <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
 </resources>

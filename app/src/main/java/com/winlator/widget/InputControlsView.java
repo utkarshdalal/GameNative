@@ -30,6 +30,7 @@ import androidx.core.graphics.ColorUtils;
 import app.gamenative.R;
 import app.gamenative.data.ShooterModeConfig;
 import com.winlator.inputcontrols.Binding;
+import com.winlator.inputcontrols.BindingCombo;
 import com.winlator.inputcontrols.ControlElement;
 import com.winlator.inputcontrols.ControlsProfile;
 import com.winlator.inputcontrols.ExternalController;
@@ -44,12 +45,16 @@ import com.winlator.xserver.XServer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class InputControlsView extends View {
     private static final long SHOOTER_SPRINT_TAP_DURATION_MS = 120;
     public static final float DEFAULT_OVERLAY_OPACITY = 0.4f;
+    private static final int SEQUENCE_PRESS_MS = 80;
     private boolean editMode = false;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
@@ -57,6 +62,8 @@ public class InputControlsView extends View {
     private final Point cursor = new Point();
     private boolean readyToDraw = false;
     private boolean moveCursor = false;
+    private final Set<BindingCombo> activeSequenceCombos = Collections.newSetFromMap(new IdentityHashMap<>());
+    private int sequenceGeneration = 0;
     private int snappingSize;
     private float offsetX;
     private float offsetY;
@@ -333,6 +340,8 @@ public class InputControlsView extends View {
 
     public synchronized void setProfile(ControlsProfile profile) {
         cancelTouchRouting();
+        sequenceGeneration++;
+        activeSequenceCombos.clear();
         if (profile != null) {
             this.profile = profile;
             deselectAllElements();
@@ -431,13 +440,13 @@ public class InputControlsView extends View {
         for (byte i = 0; i < axes.length; i++) {
             if (Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE) {
                 controllerBinding = controller.getControllerBinding(ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i])));
-                if (controllerBinding != null) handleInputEvent(controllerBinding.getBinding(), true, values[i]);
+                if (controllerBinding != null) handleInputEvent(controllerBinding.getBindingCombo(), true, values[i]);
             }
             else {
                 controllerBinding = controller.getControllerBinding(ExternalControllerBinding.getKeyCodeForAxis(axes[i], (byte) 1));
-                if (controllerBinding != null) handleInputEvent(controllerBinding.getBinding(), false, values[i]);
+                if (controllerBinding != null) handleInputEvent(controllerBinding.getBindingCombo(), false, values[i]);
                 controllerBinding = controller.getControllerBinding(ExternalControllerBinding.getKeyCodeForAxis(axes[i], (byte)-1));
-                if (controllerBinding != null) handleInputEvent(controllerBinding.getBinding(), false, values[i]);
+                if (controllerBinding != null) handleInputEvent(controllerBinding.getBindingCombo(), false, values[i]);
             }
         }
     }
@@ -1196,10 +1205,10 @@ public class InputControlsView extends View {
             if (controller != null && controller.updateStateFromMotionEvent(event)) {
                 ExternalControllerBinding controllerBinding;
                 controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_L2);
-                if (controllerBinding != null) handleInputEvent(controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_L2));
+                if (controllerBinding != null) handleInputEvent(controllerBinding.getBindingCombo(), controller.state.isPressed(ExternalController.IDX_BUTTON_L2));
 
                 controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_R2);
-                if (controllerBinding != null) handleInputEvent(controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_R2));
+                if (controllerBinding != null) handleInputEvent(controllerBinding.getBindingCombo(), controller.state.isPressed(ExternalController.IDX_BUTTON_R2));
 
                 processJoystickInput(controller);
                 return true;
@@ -1396,10 +1405,10 @@ public class InputControlsView extends View {
                 if (controllerBinding != null) {
                     int action = event.getAction();
                     if (action == KeyEvent.ACTION_DOWN) {
-                        handleInputEvent(controllerBinding.getBinding(), true);
+                        handleInputEvent(controllerBinding.getBindingCombo(), true);
                     }
                     else if (action == KeyEvent.ACTION_UP) {
-                        handleInputEvent(controllerBinding.getBinding(), false);
+                        handleInputEvent(controllerBinding.getBindingCombo(), false);
                     }
                     return true;
                 }
@@ -1410,6 +1419,48 @@ public class InputControlsView extends View {
 
     public void handleInputEvent(Binding binding, boolean isActionDown) {
         handleInputEvent(binding, isActionDown, 0);
+    }
+
+    public void handleInputEvent(BindingCombo bindingCombo, boolean isActionDown) {
+        handleInputEvent(bindingCombo, isActionDown, 0);
+    }
+
+    public void handleInputEvent(BindingCombo bindingCombo, boolean isActionDown, float offset) {
+        if (bindingCombo == null || bindingCombo.isEmpty()) return;
+        if (bindingCombo.isSequence()) {
+            if (isActionDown) {
+                if (activeSequenceCombos.add(bindingCombo)) performBindingSequence(bindingCombo, offset);
+            }
+            else {
+                activeSequenceCombos.remove(bindingCombo);
+            }
+            return;
+        }
+
+        if (isActionDown) {
+            for (Binding binding : bindingCombo.getBindings()) {
+                handleInputEvent(binding, true, offset);
+            }
+        }
+        else {
+            java.util.List<Binding> bindings = bindingCombo.getBindings();
+            for (int i = bindings.size() - 1; i >= 0; i--) {
+                handleInputEvent(bindings.get(i), false, offset);
+            }
+        }
+    }
+
+    private void performBindingSequence(BindingCombo bindingCombo, float offset) {
+        final int generation = sequenceGeneration;
+        long delay = 0;
+        for (Binding binding : bindingCombo.getBindings()) {
+            postDelayed(() -> {
+                if (generation != sequenceGeneration) return;
+                handleInputEvent(binding, true, offset);
+                postDelayed(() -> handleInputEvent(binding, false, 0), SEQUENCE_PRESS_MS);
+            }, delay);
+            delay += bindingCombo.getSequenceDelayMs();
+        }
     }
 
     public void handleInputEvent(Binding binding, boolean isActionDown, float offset) {

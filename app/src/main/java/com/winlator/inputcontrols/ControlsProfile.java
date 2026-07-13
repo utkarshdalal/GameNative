@@ -283,7 +283,20 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     JSONObject controllerBindingJSONObject = controllerBindingsJSONArray.getJSONObject(j);
                     ExternalControllerBinding controllerBinding = new ExternalControllerBinding();
                     controllerBinding.setKeyCode(controllerBindingJSONObject.getInt("keyCode"));
-                    controllerBinding.setBinding(Binding.fromString(controllerBindingJSONObject.getString("binding")));
+                    if (controllerBindingJSONObject.has("bindings")) {
+                        BindingCombo.Mode mode = BindingCombo.Mode.fromJsonName(
+                                controllerBindingJSONObject.optString("bindingMode", BindingCombo.Mode.SIMULTANEOUS.getJsonName()));
+                        int delayMs = controllerBindingJSONObject.optInt(
+                                "bindingDelayMs",
+                                BindingCombo.DEFAULT_SEQUENCE_DELAY_MS);
+                        controllerBinding.setBindingCombo(BindingCombo.fromJsonArray(
+                                controllerBindingJSONObject.optJSONArray("bindings"),
+                                mode,
+                                delayMs));
+                    }
+                    else {
+                        controllerBinding.setBinding(Binding.fromString(controllerBindingJSONObject.getString("binding")));
+                    }
                     controller.addControllerBinding(controllerBinding);
                 }
                 controllers.add(controller);
@@ -365,9 +378,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 JSONArray bindingsJSONArray = elementJSONObject.getJSONArray("bindings");
                 element.setBindingCount(Math.max(bindingsJSONArray.length(), 4));
                 for (int j = 0; j < bindingsJSONArray.length(); j++) {
-                    Binding binding = Binding.fromString(bindingsJSONArray.getString(j));
-                    element.setBindingAt(j, binding);
-                    if (!binding.isGamepad()) hasGamepadBinding = false;
+                    BindingCombo binding = BindingCombo.fromJsonValue(bindingsJSONArray.get(j));
+                    element.setBindingComboAt(j, binding);
+                    if (!binding.isGamepadOnly()) hasGamepadBinding = false;
                 }
 
                 if (!virtualGamepad && hasGamepadBinding) virtualGamepad = true;

@@ -26,6 +26,7 @@ import com.winlator.xserver.XKeycode;
 import com.winlator.xserver.XServer;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class TouchpadView extends View implements View.OnCapturedPointerListener {
     private static final byte MAX_FINGERS = 4;
@@ -54,6 +55,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private int lastTouchedPosX;
     private int lastTouchedPosY;
     private static final Byte CLICK_DELAYED_TIME = 50;
+    private static final int SEQUENCE_PRESS_MS = 80;
     private static final Byte EFFECTIVE_TOUCH_DISTANCE = 20;
     private float resolutionScale;
     private static final int UPDATE_FORM_DELAYED_TIME = 50;
@@ -63,6 +65,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private String delayedPressAction;
     private Runnable pendingHoldClickRelease;
     private String pendingHoldClickReleaseAction;
+    private final ArrayList<String> activeSequenceActions = new ArrayList<>();
+    private int actionSequenceGeneration;
 
     private boolean pressExecuted;
     private final boolean capturePointerOnExternalMouse;
@@ -90,6 +94,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private boolean dragButtonPressed;
     private boolean holdMouseButtonTouchActive;
     private String holdMouseButtonTouchAction;
+    private ArrayList<String> activePanModifierActions;
 
     // Two-finger tracking
     private boolean twoFingerDragging;
@@ -1006,7 +1011,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             // direction on their next move frame).
             if (isClickDragAction(dragAction)) {
                 if (useRelativeMouseDragMovement()) {
-                    pressClickDragButton(buttonForClickDragAction(dragAction));
+                    pressClickDragAction(dragAction);
                 } else {
                     performClickDragAt(event.getX(pointerIndex), event.getY(pointerIndex), dragAction);
                 }
@@ -1310,6 +1315,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         cancelLongPressTimer();
         cancelTwoFingerHoldTimer();
         cancelThreeFingerHoldTimer();
+        cancelActionSequences();
         stopGestureRefresh();
         flushPendingHoldClickRelease();
         // A tap's release is normally scheduled via delayedPress so we can
@@ -1601,6 +1607,18 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     private boolean injectClick(String action) {
         if (action == null) return false;
+        ArrayList<String> parts = actionParts(action);
+        if (parts.size() > 1) {
+            if (isActionSequence(action)) {
+                performActionSequence(parts, actionSequenceDelayMs(action));
+                return false;
+            }
+            boolean held = false;
+            for (String part : parts) {
+                if (injectClick(part)) held = true;
+            }
+            return held;
+        }
         if (TouchGestureConfig.ACTION_SHOW_KEYBOARD.equals(action)) {
             if (showKeyboardCallback != null) showKeyboardCallback.run();
             notifyGesture("Keyboard");
@@ -1639,6 +1657,14 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     private void injectRelease(String action) {
         if (action == null) return;
+        if (isActionSequence(action)) return;
+        ArrayList<String> parts = actionParts(action);
+        if (parts.size() > 1) {
+            for (int i = parts.size() - 1; i >= 0; i--) {
+                injectRelease(parts.get(i));
+            }
+            return;
+        }
         if (TouchGestureConfig.ACTION_SHOW_KEYBOARD.equals(action)) {
             return; // One-shot action, no release needed
         }
@@ -1690,9 +1716,109 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private boolean isMouseClickAction(String action) {
-        return TouchGestureConfig.ACTION_LEFT_CLICK.equals(action)
-                || TouchGestureConfig.ACTION_RIGHT_CLICK.equals(action)
-                || TouchGestureConfig.ACTION_MIDDLE_CLICK.equals(action);
+        String primaryAction = primaryAction(action);
+        return TouchGestureConfig.ACTION_LEFT_CLICK.equals(primaryAction)
+                || TouchGestureConfig.ACTION_RIGHT_CLICK.equals(primaryAction)
+                || TouchGestureConfig.ACTION_MIDDLE_CLICK.equals(primaryAction);
+    }
+
+    private ArrayList<String> actionParts(String action) {
+        ArrayList<String> parts = new ArrayList<>();
+        if (action == null || action.isEmpty()) return parts;
+        boolean isSequence = isActionSequence(action);
+        boolean isCombo = action.startsWith(TouchGestureConfig.ACTION_COMBO_PREFIX);
+        if (!isSequence && !isCombo) {
+            parts.add(action);
+            return parts;
+        }
+        String value = action.substring(isSequence
+                ? TouchGestureConfig.ACTION_SEQUENCE_PREFIX.length()
+                : TouchGestureConfig.ACTION_COMBO_PREFIX.length());
+        if (isSequence) {
+            int delaySeparator = value.indexOf(':');
+            if (delaySeparator > 0 && isDigits(value.substring(0, delaySeparator))) {
+                value = value.substring(delaySeparator + 1);
+            }
+        }
+        String[] split = value.split("\\|");
+        for (String part : split) {
+            if (part == null || part.isEmpty() || parts.contains(part)) continue;
+            parts.add(part);
+        }
+        if (!isSequence) {
+            Collections.sort(parts, (a, b) -> Integer.compare(actionComboSortGroup(a), actionComboSortGroup(b)));
+        }
+        while (parts.size() > TouchGestureConfig.MAX_ACTION_COMBO_SIZE) parts.remove(parts.size() - 1);
+        return parts;
+    }
+
+    private String primaryAction(String action) {
+        ArrayList<String> parts = actionParts(action);
+        return parts.isEmpty() ? action : parts.get(parts.size() - 1);
+    }
+
+    private int actionComboSortGroup(String action) {
+        if ("key_CTRL_L".equals(action) || "key_CTRL_R".equals(action)
+                || "key_SHIFT_L".equals(action) || "key_SHIFT_R".equals(action)
+                || "key_ALT_L".equals(action) || "key_ALT_R".equals(action)) {
+            return 0;
+        }
+        return 1;
+    }
+
+    private boolean isActionSequence(String action) {
+        return action != null && action.startsWith(TouchGestureConfig.ACTION_SEQUENCE_PREFIX);
+    }
+
+    private boolean isDigits(String value) {
+        if (value == null || value.isEmpty()) return false;
+        for (int i = 0; i < value.length(); i++) {
+            if (!Character.isDigit(value.charAt(i))) return false;
+        }
+        return true;
+    }
+
+    private int actionSequenceDelayMs(String action) {
+        if (!isActionSequence(action)) return TouchGestureConfig.DEFAULT_ACTION_SEQUENCE_DELAY_MS;
+        String value = action.substring(TouchGestureConfig.ACTION_SEQUENCE_PREFIX.length());
+        int separator = value.indexOf(':');
+        if (separator <= 0 || !isDigits(value.substring(0, separator))) {
+            return TouchGestureConfig.DEFAULT_ACTION_SEQUENCE_DELAY_MS;
+        }
+        try {
+            int delayMs = Integer.parseInt(value.substring(0, separator));
+            return Math.max(
+                    TouchGestureConfig.MIN_ACTION_SEQUENCE_DELAY_MS,
+                    Math.min(TouchGestureConfig.MAX_ACTION_SEQUENCE_DELAY_MS, delayMs));
+        } catch (NumberFormatException e) {
+            return TouchGestureConfig.DEFAULT_ACTION_SEQUENCE_DELAY_MS;
+        }
+    }
+
+    private void performActionSequence(ArrayList<String> parts, int sequenceDelayMs) {
+        final int generation = actionSequenceGeneration;
+        int delay = 0;
+        for (String part : parts) {
+            postDelayed(() -> {
+                if (generation != actionSequenceGeneration) return;
+                if (injectClick(part)) {
+                    activeSequenceActions.add(part);
+                    postDelayed(() -> {
+                        if (generation != actionSequenceGeneration) return;
+                        if (activeSequenceActions.remove(part)) injectRelease(part);
+                    }, SEQUENCE_PRESS_MS);
+                }
+            }, delay);
+            delay += sequenceDelayMs;
+        }
+    }
+
+    private void cancelActionSequences() {
+        actionSequenceGeneration++;
+        for (int i = activeSequenceActions.size() - 1; i >= 0; i--) {
+            injectRelease(activeSequenceActions.get(i));
+        }
+        activeSequenceActions.clear();
     }
 
     private XKeycode actionToKeycode(String action) {
@@ -1756,6 +1882,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private void performPanAction(float dx, float dy, String action) {
+        pressPanComboModifiers(action);
+        action = primaryAction(action);
         switch (action) {
             case TouchGestureConfig.PAN_MIDDLE_MOUSE:
                 performMiddleMousePan(dx, dy);
@@ -1785,8 +1913,9 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private boolean isClickDragAction(String action) {
-        return TouchGestureConfig.PAN_LEFT_CLICK_DRAG.equals(action)
-                || TouchGestureConfig.PAN_RIGHT_CLICK_DRAG.equals(action);
+        String primaryAction = primaryAction(action);
+        return TouchGestureConfig.PAN_LEFT_CLICK_DRAG.equals(primaryAction)
+                || TouchGestureConfig.PAN_RIGHT_CLICK_DRAG.equals(primaryAction);
     }
 
     private boolean useRelativeMouseDragMovement() {
@@ -1794,12 +1923,12 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private Pointer.Button buttonForClickDragAction(String action) {
-        return TouchGestureConfig.PAN_RIGHT_CLICK_DRAG.equals(action)
+        return TouchGestureConfig.PAN_RIGHT_CLICK_DRAG.equals(primaryAction(action))
                 ? Pointer.Button.BUTTON_RIGHT : Pointer.Button.BUTTON_LEFT;
     }
 
     private void performClickDragAt(float rawX, float rawY, String action) {
-        pressClickDragButton(buttonForClickDragAction(action));
+        pressClickDragAction(action);
         float[] pt = XForm.transformPoint(xform, rawX, rawY);
         moveCursorTo((int) pt[0], (int) pt[1]);
     }
@@ -1818,8 +1947,13 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private void performClickDragWithRelativeMovement(float dx, float dy, String action) {
-        pressClickDragButton(buttonForClickDragAction(action));
+        pressClickDragAction(action);
         moveCursorByRelativeDelta(dx, dy);
+    }
+
+    private void pressClickDragAction(String action) {
+        pressPanComboModifiers(action);
+        pressClickDragButton(buttonForClickDragAction(action));
     }
 
     private void pressClickDragButton(Pointer.Button button) {
@@ -1894,11 +2028,40 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         releaseTwoFingerMiddleButton();
         releaseClickDragButtons();
         resetRelativeDragRemainder();
+        releasePanComboModifiers();
     }
 
     private void resetRelativeDragRemainder() {
         relativeDragRemainderX = 0;
         relativeDragRemainderY = 0;
+    }
+
+    private void pressPanComboModifiers(String action) {
+        if (isActionSequence(action)) {
+            releasePanComboModifiers();
+            return;
+        }
+        ArrayList<String> parts = actionParts(action);
+        if (parts.size() <= 1) {
+            releasePanComboModifiers();
+            return;
+        }
+
+        ArrayList<String> modifiers = new ArrayList<>(parts);
+        modifiers.remove(modifiers.size() - 1);
+        if (activePanModifierActions != null && activePanModifierActions.equals(modifiers)) return;
+
+        releasePanComboModifiers();
+        activePanModifierActions = modifiers;
+        for (String modifier : activePanModifierActions) injectClick(modifier);
+    }
+
+    private void releasePanComboModifiers() {
+        if (activePanModifierActions == null) return;
+        for (int i = activePanModifierActions.size() - 1; i >= 0; i--) {
+            injectRelease(activePanModifierActions.get(i));
+        }
+        activePanModifierActions = null;
     }
 
     private void performKeyPan(float dx, float dy, XKeycode leftKey, XKeycode rightKey, XKeycode upKey, XKeycode downKey) {
