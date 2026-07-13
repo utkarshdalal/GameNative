@@ -94,7 +94,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.screen.library.components.LibraryCarouselPane
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import app.gamenative.ui.screen.library.components.LibraryListPane
-import app.gamenative.ui.screen.library.components.RecommendationDisclosure
+import app.gamenative.ui.screen.library.components.RecommendationDisclosureDialog
 import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
 import app.gamenative.ui.screen.library.components.LibrarySearchBar
 import app.gamenative.ui.screen.library.components.LibrarySourceNotLoggedInSplash
@@ -905,17 +905,12 @@ private fun LibraryScreenContent(
                             modifier = Modifier.fillMaxSize(),
                         )
                     } else {
-                        RecommendationDisclosure(
-                            onAccept = {
+                        Box(modifier = Modifier.fillMaxSize())
+                        RecommendationDisclosureDialog(
+                            onContinue = {
                                 PrefManager.recDisclosureShown = true
                                 recDisclosureShown = true
                             },
-                            onDecline = {
-                                PrefManager.showRecommendations = false
-                                PluviaApp.events.emit(AndroidEvent.RecommendationToggleChanged)
-                                onTabChanged(LibraryTab.ALL)
-                            },
-                            modifier = Modifier.fillMaxSize(),
                         )
                     }
                 } else {
