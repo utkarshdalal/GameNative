@@ -1093,13 +1093,16 @@ class LibraryViewModel @Inject constructor(
                     amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
                     localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
                     steamCollectionCounts = steamCollectionCounts,
+                    // Count favourites across every source the Favourites tab actually shows (all
+                    // sources, gated only by credentials), so the badge matches the tab contents
+                    // even when a source is hidden from the library through user preferences.
                     favouritesCount = FavouritesUtils.count(
                         buildList {
-                            if (currentState.showSteamInLibrary) addAll(steamEntries)
-                            if (currentState.showCustomGamesInLibrary) addAll(customEntries)
-                            if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) addAll(gogEntries)
-                            if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) addAll(epicEntries)
-                            if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) addAll(amazonEntries)
+                            addAll(steamEntries)
+                            addAll(customEntries)
+                            if (GOGService.hasStoredCredentials(context)) addAll(gogEntries)
+                            if (EpicService.hasStoredCredentials(context)) addAll(epicEntries)
+                            if (AmazonService.hasStoredCredentials(context)) addAll(amazonEntries)
                         },
                         favouriteIds,
                     ) { it.item.appId },
