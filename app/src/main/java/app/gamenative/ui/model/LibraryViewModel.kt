@@ -14,6 +14,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.FavouritesManager
+import app.gamenative.data.FavouritesUtils
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.gog.GogRecommendationsRepository
@@ -1001,7 +1002,7 @@ class LibraryViewModel @Inject constructor(
                 if (includeAmazon && !steamCollectionSelected) addAll(amazonEntries)
             }.let { entries ->
                 if (currentTab == app.gamenative.ui.enums.LibraryTab.FAVOURITES) {
-                    entries.filter { it.item.appId in favouriteIds }
+                    FavouritesUtils.filter(entries, favouriteIds) { it.item.appId }
                 } else {
                     entries
                 }
@@ -1092,13 +1093,16 @@ class LibraryViewModel @Inject constructor(
                     amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
                     localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
                     steamCollectionCounts = steamCollectionCounts,
-                    favouritesCount = buildList {
-                        if (currentState.showSteamInLibrary) addAll(steamEntries)
-                        if (currentState.showCustomGamesInLibrary) addAll(customEntries)
-                        if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) addAll(gogEntries)
-                        if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) addAll(epicEntries)
-                        if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) addAll(amazonEntries)
-                    }.count { it.item.appId in favouriteIds },
+                    favouritesCount = FavouritesUtils.count(
+                        buildList {
+                            if (currentState.showSteamInLibrary) addAll(steamEntries)
+                            if (currentState.showCustomGamesInLibrary) addAll(customEntries)
+                            if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) addAll(gogEntries)
+                            if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) addAll(epicEntries)
+                            if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) addAll(amazonEntries)
+                        },
+                        favouriteIds,
+                    ) { it.item.appId },
                 )
             }
         }

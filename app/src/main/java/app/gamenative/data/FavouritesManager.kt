@@ -26,9 +26,9 @@ object FavouritesManager {
 
     fun setFavourite(appId: String, favourite: Boolean) {
         val current = _favourites.value
-        if (favourite == current.contains(appId)) return
+        val updated = FavouritesUtils.apply(current, appId, favourite)
+        if (updated == current) return
 
-        val updated = if (favourite) current + appId else current - appId
         _favourites.value = updated
         PrefManager.favouriteAppIds = updated
     }
