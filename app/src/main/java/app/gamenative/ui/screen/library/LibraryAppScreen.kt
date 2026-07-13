@@ -1497,6 +1497,28 @@ private fun AchievementsDialog(
                                             style = MaterialTheme.typography.labelSmall,
                                             color = PluviaTheme.colors.statusInstalled,
                                         )
+                                    } else if (ach.hasProgress) {
+                                        val current = ach.progressCurrent ?: 0f
+                                        val max = ach.progressMax ?: 1f
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            LinearProgressIndicator(
+                                                progress = { (current / max).coerceIn(0f, 1f) },
+                                                modifier = Modifier.weight(1f),
+                                                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                                                gapSize = 0.dp,
+                                                drawStopIndicator = {},
+                                            )
+                                            Text(
+                                                text = "${current.toInt()} / ${max.toInt()}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                softWrap = false,
+                                            )
+                                        }
                                     }
                                 }
                             }

@@ -3115,6 +3115,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                         hidden = block.hidden,
                         icon = if (!block.icon.isNullOrEmpty()) "$baseIconUrl${block.icon}" else "",
                         iconGray = if (!block.iconGray.isNullOrEmpty()) "$baseIconUrl${block.iconGray}" else null,
+                        progressCurrent = block.progressCurrent,
+                        progressMax = block.progressMax,
                     )
                 }
                 }
