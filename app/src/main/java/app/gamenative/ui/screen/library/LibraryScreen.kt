@@ -911,6 +911,7 @@ private fun LibraryScreenContent(
                                 PrefManager.recDisclosureShown = true
                                 recDisclosureShown = true
                             },
+                            onDismiss = { onTabChanged(LibraryTab.ALL) },
                         )
                     }
                 } else {
