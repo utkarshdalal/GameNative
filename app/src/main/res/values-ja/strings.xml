@@ -2009,4 +2009,8 @@
     <string name="toast_no_buttons_to_copy_appearance">外観をコピーできる他のコントロールがありません</string>
     <string name="toast_copied_button_appearance">コントロールの外観をコピーしました</string>
     <string name="toast_applied_button_appearance">すべてのコントロールに外観を適用しました</string>
+    <string name="rec_disclosure_title">ゲームのおすすめ</string>
+    <string name="rec_disclosure_body">パーソナライズされたおすすめのため、プレイしたゲームを GOG と共有します。設定でいつでもオフにできます。</string>
+    <string name="rec_disclosure_allow">許可</string>
+    <string name="rec_disclosure_not_now">後で</string>
 </resources>

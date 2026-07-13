@@ -253,8 +253,9 @@ class LibraryViewModel @Inject constructor(
                         epicGameDao,
                         amazonGameDao,
                     )
+                    val userId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
                     val daySeed = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
-                    GogRecommendationsRepository.getDailyHero(context, owned, daySeed)
+                    GogRecommendationsRepository.getDailyHero(context, owned, userId, daySeed)
                 }.getOrNull() ?: RecommendationRepository.getCurrentRecommendation(context)
             } else {
                 RecommendationRepository.getCurrentRecommendation(context)

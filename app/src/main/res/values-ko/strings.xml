@@ -2050,4 +2050,8 @@
     <string name="toast_no_buttons_to_copy_appearance">모양을 복사할 다른 컨트롤이 없습니다</string>
     <string name="toast_copied_button_appearance">컨트롤 모양을 복사했습니다</string>
     <string name="toast_applied_button_appearance">모든 컨트롤에 모양을 적용했습니다</string>
+    <string name="rec_disclosure_title">게임 추천</string>
+    <string name="rec_disclosure_body">맞춤 추천을 위해 플레이한 게임을 GOG와 공유합니다. 설정에서 언제든지 끌 수 있습니다.</string>
+    <string name="rec_disclosure_allow">허용</string>
+    <string name="rec_disclosure_not_now">나중에</string>
 </resources>

@@ -51,6 +51,7 @@ object GogRecommendationsRepository {
     suspend fun getRecommendations(
         context: Context,
         owned: List<OwnedGameRef>,
+        userId: String?,
         forceRefresh: Boolean = false,
     ): List<GogRecCard> = withContext(Dispatchers.IO) {
         if (!forceRefresh) {
@@ -72,7 +73,7 @@ object GogRecommendationsRepository {
         val perSeed = coroutineScope {
             seeds.flatMap { seed ->
                 STRATEGIES.map { strategy ->
-                    async { seed to fetchStrategy(strategy, seed.gogId) }
+                    async { seed to fetchStrategy(strategy, seed.gogId, userId) }
                 }
             }.awaitAll()
         }
@@ -119,21 +120,25 @@ object GogRecommendationsRepository {
             val ratingD = async { fetchAverageRating(id) }
             val v2D = async { fetchV2Game(id) }
             val summaryD = async { fetchGamesdbSummary(id) }
+            val steamD = async { fetchSteamMedia(id, card.title) }
             val detail = detailD.await()
             val rating = ratingD.await()
             val v2 = v2D.await()
             val gdbSummary = summaryD.await()
+            val steam = steamD.await()
 
             val heroImage = detail?.images?.background
                 ?.let { if (it.startsWith("//")) "https:$it" else it }
                 ?: card.heroImage
             val htmlDesc = detail?.description?.let { it.full.ifBlank { it.lead } }.orEmpty()
             val description = stripHtml(gdbSummary?.takeIf { it.isNotBlank() } ?: htmlDesc)
-            val videos = detail?.videos.orEmpty().map { it.videoUrl }.filter { it.isNotBlank() }
-            val screenshots = detail?.screenshots.orEmpty()
+            val gogVideos = detail?.videos.orEmpty().map { it.videoUrl }.filter { it.isNotBlank() }
+            val gogScreenshots = detail?.screenshots.orEmpty()
                 .map { it.formatterTemplateUrl }
                 .filter { it.isNotBlank() }
                 .map { it.replace("{formatter}", "ggvgl_2x") }
+            val videos = steam?.videoUrl?.let { listOf(it) } ?: gogVideos
+            val screenshots = steam?.screenshots?.takeIf { it.isNotEmpty() } ?: gogScreenshots
             val developer = v2?.embedded?.developers?.firstOrNull()?.name.orEmpty()
             val tags = v2?.embedded?.tags.orEmpty().map { it.name }.filter { it.isNotBlank() }
 
@@ -162,9 +167,10 @@ object GogRecommendationsRepository {
     suspend fun getDailyHero(
         context: Context,
         owned: List<OwnedGameRef>,
+        userId: String?,
         daySeed: Long,
     ): RecommendedGame? = withContext(Dispatchers.IO) {
-        val cards = getRecommendations(context, owned)
+        val cards = getRecommendations(context, owned, userId)
         if (cards.isEmpty()) return@withContext null
         val pool = minOf(HERO_POOL, cards.size)
         val index = daySeed.mod(pool.toLong()).toInt()
@@ -179,6 +185,52 @@ object GogRecommendationsRepository {
 
     private fun fetchV2Game(productId: Long): GogV2Game? =
         getJson("https://api.gog.com/v2/games/$productId?locale=en-US")
+
+    private data class SteamMedia(val videoUrl: String?, val screenshots: List<String>)
+
+    private fun searchSteamAppId(title: String): String? {
+        return try {
+            val term = URLEncoder.encode(title, "UTF-8")
+            val request = Request.Builder()
+                .url("https://store.steampowered.com/api/storesearch/?term=$term&cc=us&l=english")
+                .header("User-Agent", "Mozilla/5.0")
+                .build()
+            Net.http.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val body = (response.body?.string() ?: return null).removePrefix("﻿")
+                val items = json.decodeFromString<SteamSearchResponse>(body).items
+                val norm = GogMapRepository.normalizeTitle(title)
+                items.firstOrNull { GogMapRepository.normalizeTitle(it.name) == norm }?.id?.toString()
+            }
+        } catch (e: Exception) {
+            Timber.tag("GogRec").w(e, "Steam search failed for $title")
+            null
+        }
+    }
+
+    private fun fetchSteamMedia(productId: Long, title: String): SteamMedia? {
+        val appId = GogMapRepository.steamAppIdForGog(productId.toString())
+            ?: searchSteamAppId(title)
+            ?: return null
+        return try {
+            val request = Request.Builder()
+                .url("https://store.steampowered.com/api/appdetails?appids=$appId&cc=us&l=english")
+                .header("User-Agent", "Mozilla/5.0")
+                .build()
+            Net.http.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val body = (response.body?.string() ?: return null).removePrefix("﻿")
+                val data = json.decodeFromString<Map<String, SteamAppEnvelope>>(body)[appId]
+                    ?.takeIf { it.success }?.data ?: return null
+                val video = data.movies.firstOrNull()?.hls?.takeIf { it.isNotBlank() }
+                val screenshots = data.screenshots.map { it.pathFull }.filter { it.isNotBlank() }
+                if (video == null && screenshots.isEmpty()) null else SteamMedia(video, screenshots)
+            }
+        } catch (e: Exception) {
+            Timber.tag("GogRec").w(e, "Steam media fetch failed for appId $appId")
+            null
+        }
+    }
 
     private fun fetchGamesdbSummary(productId: Long): String? {
         val summary = getJson<GamesdbNode>(
@@ -233,9 +285,12 @@ object GogRecommendationsRepository {
             .mapIndexed { index, c -> Seed(c.gogId, c.name, weight = (MAX_SEEDS - index).toDouble(), iconUrl = c.iconUrl) }
     }
 
-    private fun fetchStrategy(strategy: String, gogId: String): List<GogRecProduct> {
+    private fun fetchStrategy(strategy: String, gogId: String, userId: String?): List<GogRecProduct> {
         return try {
-            val url = "$REC_BASE/$strategy/$gogId?country_code=$LOCALE_COUNTRY&currency=$LOCALE_CURRENCY&limit=$PER_SEED_LIMIT"
+            val url = buildString {
+                append("$REC_BASE/$strategy/$gogId?country_code=$LOCALE_COUNTRY&currency=$LOCALE_CURRENCY&limit=$PER_SEED_LIMIT")
+                if (!userId.isNullOrBlank()) append("&user_id=$userId")
+            }
             val request = Request.Builder().url(url).build()
             Net.http.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return emptyList()

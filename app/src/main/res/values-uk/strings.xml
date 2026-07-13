@@ -2046,4 +2046,8 @@
     <string name="toast_no_buttons_to_copy_appearance">Немає інших елементів для копіювання вигляду</string>
     <string name="toast_copied_button_appearance">Вигляд елемента скопійовано</string>
     <string name="toast_applied_button_appearance">Вигляд застосовано до всіх елементів</string>
+    <string name="rec_disclosure_title">Рекомендації ігор</string>
+    <string name="rec_disclosure_body">Для персональних рекомендацій ми надаємо ігри, у які ви граєте, сервісу GOG. Вимкнути можна будь-коли в Налаштуваннях.</string>
+    <string name="rec_disclosure_allow">Дозволити</string>
+    <string name="rec_disclosure_not_now">Не зараз</string>
 </resources>

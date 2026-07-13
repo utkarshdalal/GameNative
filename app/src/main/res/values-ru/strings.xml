@@ -1978,4 +1978,8 @@ https://gamenative.app
     <string name="toast_no_buttons_to_copy_appearance">Нет других элементов для копирования внешнего вида</string>
     <string name="toast_copied_button_appearance">Внешний вид элемента скопирован</string>
     <string name="toast_applied_button_appearance">Внешний вид применен ко всем элементам</string>
+    <string name="rec_disclosure_title">Рекомендации игр</string>
+    <string name="rec_disclosure_body">Для персональных рекомендаций мы передаём игры, в которые вы играете, сервису GOG. Отключить можно в любой момент в Настройках.</string>
+    <string name="rec_disclosure_allow">Разрешить</string>
+    <string name="rec_disclosure_not_now">Не сейчас</string>
 </resources>

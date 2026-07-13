@@ -2053,4 +2053,8 @@
     <string name="toast_no_buttons_to_copy_appearance">Nu există alte controale de la care să copiezi aspectul</string>
     <string name="toast_copied_button_appearance">Aspectul controlului a fost copiat</string>
     <string name="toast_applied_button_appearance">Aspectul a fost aplicat tuturor controalelor</string>
+    <string name="rec_disclosure_title">Recomandări de jocuri</string>
+    <string name="rec_disclosure_body">Pentru recomandări personalizate, partajăm jocurile pe care le joci cu GOG. Poți dezactiva oricând din Setări.</string>
+    <string name="rec_disclosure_allow">Permite</string>
+    <string name="rec_disclosure_not_now">Nu acum</string>
 </resources>

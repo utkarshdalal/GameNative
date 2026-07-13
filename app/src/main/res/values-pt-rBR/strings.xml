@@ -1922,4 +1922,8 @@
     <string name="toast_no_buttons_to_copy_appearance">Nenhum outro controle disponível para copiar aparência</string>
     <string name="toast_copied_button_appearance">Aparência do controle copiada</string>
     <string name="toast_applied_button_appearance">Aparência aplicada a todos os controles</string>
+    <string name="rec_disclosure_title">Recomendações de jogos</string>
+    <string name="rec_disclosure_body">Para recomendações personalizadas, compartilhamos os jogos que você joga com a GOG. Desative quando quiser nas Configurações.</string>
+    <string name="rec_disclosure_allow">Permitir</string>
+    <string name="rec_disclosure_not_now">Agora não</string>
 </resources>

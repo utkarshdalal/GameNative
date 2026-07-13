@@ -1992,4 +1992,8 @@
     <string name="toast_no_buttons_to_copy_appearance">Keine anderen Steuerungen zum Kopieren der Darstellung verfügbar</string>
     <string name="toast_copied_button_appearance">Steuerungsdarstellung kopiert</string>
     <string name="toast_applied_button_appearance">Darstellung auf alle Steuerungen angewendet</string>
+    <string name="rec_disclosure_title">Spielempfehlungen</string>
+    <string name="rec_disclosure_body">Für personalisierte Empfehlungen teilen wir die von dir gespielten Spiele mit GOG. Jederzeit in den Einstellungen deaktivierbar.</string>
+    <string name="rec_disclosure_allow">Zulassen</string>
+    <string name="rec_disclosure_not_now">Nicht jetzt</string>
 </resources>

@@ -1922,4 +1922,8 @@
     <string name="toast_no_buttons_to_copy_appearance">Ingen andre kontroller at kopiere udseende fra</string>
     <string name="toast_copied_button_appearance">Kontroludseende kopieret</string>
     <string name="toast_applied_button_appearance">Udseende anvendt på alle kontroller</string>
+    <string name="rec_disclosure_title">Spilanbefalinger</string>
+    <string name="rec_disclosure_body">For personlige anbefalinger deler vi de spil, du spiller, med GOG. Slå fra når som helst i Indstillinger.</string>
+    <string name="rec_disclosure_allow">Tillad</string>
+    <string name="rec_disclosure_not_now">Ikke nu</string>
 </resources>

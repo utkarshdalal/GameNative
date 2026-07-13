@@ -2050,4 +2050,8 @@
     <string name="toast_no_buttons_to_copy_appearance">Brak innych elementów do skopiowania wyglądu</string>
     <string name="toast_copied_button_appearance">Skopiowano wygląd elementu</string>
     <string name="toast_applied_button_appearance">Zastosowano wygląd do wszystkich elementów</string>
+    <string name="rec_disclosure_title">Polecane gry</string>
+    <string name="rec_disclosure_body">Aby zapewnić spersonalizowane rekomendacje, udostępniamy ograne przez Ciebie gry serwisowi GOG. Możesz to wyłączyć w Ustawieniach.</string>
+    <string name="rec_disclosure_allow">Zezwól</string>
+    <string name="rec_disclosure_not_now">Nie teraz</string>
 </resources>

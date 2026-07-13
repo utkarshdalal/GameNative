@@ -69,6 +69,18 @@ object GogMapRepository {
 
     fun titleGogId(map: GogMap, name: String): String? = map.title[normalizeTitle(name)]
 
+    fun cachedMap(): GogMap? = cached
+
+    @Volatile
+    private var steamReverse: Map<String, String>? = null
+
+    fun steamAppIdForGog(gogId: String): String? {
+        val reverse = steamReverse
+            ?: cached?.steam?.entries?.associate { (appId, gid) -> gid to appId }?.also { steamReverse = it }
+            ?: return null
+        return reverse[gogId]
+    }
+
     private fun download(file: File): GogMap? {
         return try {
             val request = Request.Builder().url(MAP_URL).build()

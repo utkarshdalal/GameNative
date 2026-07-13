@@ -2061,4 +2061,8 @@
     <string name="toast_no_buttons_to_copy_appearance">沒有其他可複製外觀的控制項</string>
     <string name="toast_copied_button_appearance">已複製控制項外觀</string>
     <string name="toast_applied_button_appearance">已將外觀套用到所有控制項</string>
+    <string name="rec_disclosure_title">遊戲推薦</string>
+    <string name="rec_disclosure_body">為提供個人化推薦，我們會將你玩過的遊戲分享給 GOG。可隨時在設定中關閉。</string>
+    <string name="rec_disclosure_allow">允許</string>
+    <string name="rec_disclosure_not_now">暫不</string>
 </resources>

@@ -99,6 +99,39 @@ data class GamesdbGame(
 )
 
 @Serializable
+data class SteamSearchResponse(
+    val items: List<SteamSearchItem> = emptyList(),
+)
+
+@Serializable
+data class SteamSearchItem(
+    val id: Long = 0,
+    val name: String = "",
+)
+
+@Serializable
+data class SteamAppEnvelope(
+    val success: Boolean = false,
+    val data: SteamAppData? = null,
+)
+
+@Serializable
+data class SteamAppData(
+    val movies: List<SteamMovie> = emptyList(),
+    val screenshots: List<SteamScreenshot> = emptyList(),
+)
+
+@Serializable
+data class SteamMovie(
+    @SerialName("hls_h264") val hls: String = "",
+)
+
+@Serializable
+data class SteamScreenshot(
+    @SerialName("path_full") val pathFull: String = "",
+)
+
+@Serializable
 data class GamesdbLocalized(
     @SerialName("en-US") val enUS: String = "",
     @SerialName("*") val fallback: String = "",

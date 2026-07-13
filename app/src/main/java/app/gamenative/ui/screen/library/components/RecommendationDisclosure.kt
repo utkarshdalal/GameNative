@@ -18,7 +18,7 @@ fun RecommendationDisclosureDialog(
         text = { Text(text = stringResource(R.string.rec_disclosure_body)) },
         confirmButton = {
             TextButton(onClick = onContinue) {
-                Text(text = stringResource(R.string.rec_disclosure_continue))
+                Text(text = stringResource(R.string.rec_disclosure_allow))
             }
         },
         dismissButton = {

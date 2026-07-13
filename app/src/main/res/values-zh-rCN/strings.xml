@@ -2070,4 +2070,8 @@
     <string name="toast_no_buttons_to_copy_appearance">没有其他可复制外观的控件</string>
     <string name="toast_copied_button_appearance">已复制控件外观</string>
     <string name="toast_applied_button_appearance">已将外观应用到所有控件</string>
+    <string name="rec_disclosure_title">游戏推荐</string>
+    <string name="rec_disclosure_body">为提供个性化推荐，我们会将你玩过的游戏分享给 GOG。可随时在设置中关闭。</string>
+    <string name="rec_disclosure_allow">允许</string>
+    <string name="rec_disclosure_not_now">暂不</string>
 </resources>
