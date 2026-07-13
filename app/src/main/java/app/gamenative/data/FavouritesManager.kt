@@ -4,6 +4,7 @@ import app.gamenative.PrefManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.updateAndGet
 
 /**
  * Keeps track of which games the user has marked as favourite.
@@ -25,11 +26,11 @@ object FavouritesManager {
     fun toggle(appId: String) = setFavourite(appId, !isFavourite(appId))
 
     fun setFavourite(appId: String, favourite: Boolean) {
-        val current = _favourites.value
-        val updated = FavouritesUtils.apply(current, appId, favourite)
-        if (updated == current) return
-
-        _favourites.value = updated
-        PrefManager.favouriteAppIds = updated
+        val updated = _favourites.updateAndGet { current ->
+            FavouritesUtils.apply(current, appId, favourite)
+        }
+        if (PrefManager.favouriteAppIds != updated) {
+            PrefManager.favouriteAppIds = updated
+        }
     }
 }
