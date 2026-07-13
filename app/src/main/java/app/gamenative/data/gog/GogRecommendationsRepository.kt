@@ -30,6 +30,14 @@ object GogRecommendationsRepository {
     private const val CACHE_TTL_MS = 24L * 60 * 60 * 1000
     private val STRATEGIES = listOf("purchased_together", "similar")
 
+    private val LOCALE_COUNTRY: String = java.util.Locale.getDefault().country.takeIf { it.length == 2 } ?: "US"
+    private val LOCALE_CURRENCY: String = runCatching {
+        java.util.Currency.getInstance(java.util.Locale.getDefault()).currencyCode
+    }.getOrDefault("USD")
+    private val CURRENCY_SYMBOL: String = runCatching {
+        java.util.Currency.getInstance(LOCALE_CURRENCY).symbol
+    }.getOrDefault("$")
+
     private val json = Json { ignoreUnknownKeys = true }
 
     @Volatile
@@ -121,7 +129,7 @@ object GogRecommendationsRepository {
                 ?.let { if (it.startsWith("//")) "https:$it" else it }
                 ?: card.heroImage
             val htmlDesc = detail?.description?.let { it.full.ifBlank { it.lead } }.orEmpty()
-            val description = gdbSummary?.takeIf { it.isNotBlank() } ?: stripHtml(htmlDesc)
+            val description = stripHtml(gdbSummary?.takeIf { it.isNotBlank() } ?: htmlDesc)
             val videos = detail?.videos.orEmpty().map { it.videoUrl }.filter { it.isNotBlank() }
             val screenshots = detail?.screenshots.orEmpty()
                 .map { it.formatterTemplateUrl }
@@ -230,7 +238,7 @@ object GogRecommendationsRepository {
     private fun fetchStrategy(strategy: String, gogId: String, userId: String?): List<GogRecProduct> {
         return try {
             val url = buildString {
-                append("$REC_BASE/$strategy/$gogId?country_code=US&currency=USD&limit=$PER_SEED_LIMIT")
+                append("$REC_BASE/$strategy/$gogId?country_code=$LOCALE_COUNTRY&currency=$LOCALE_CURRENCY&limit=$PER_SEED_LIMIT")
                 if (!userId.isNullOrBlank()) append("&user_id=$userId")
             }
             val request = Request.Builder().url(url).build()
@@ -287,6 +295,6 @@ object GogRecommendationsRepository {
 
     private fun formatCents(cents: Int): String {
         if (cents <= 0) return "Free"
-        return "$" + String.format("%.2f", cents / 100.0)
+        return CURRENCY_SYMBOL + String.format("%.2f", cents / 100.0)
     }
 }

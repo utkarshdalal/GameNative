@@ -228,22 +228,41 @@ private fun youTubeEmbedHtml(videoId: String): String =
       html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
       #player,#player iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0}
       .block{position:absolute;top:0;left:0;width:100%;height:100%;z-index:2}
+      #toggle{position:absolute;left:12px;bottom:12px;width:44px;height:44px;z-index:3;
+        display:flex;align-items:center;justify-content:center;border-radius:50%;
+        background:rgba(0,0,0,0.55);-webkit-tap-highlight-color:transparent}
+      #toggle svg{width:22px;height:22px;fill:#fff}
     </style></head>
     <body>
       <div id="player"></div>
       <div class="block"></div>
+      <div id="toggle" onclick="toggleVideo()"></div>
       <script>
+        var ytPlayer;
+        var PAUSE='<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
+        var PLAY='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+        function setIcon(){
+          if(!ytPlayer||!ytPlayer.getPlayerState) return;
+          document.getElementById('toggle').innerHTML = (ytPlayer.getPlayerState()===1)?PAUSE:PLAY;
+        }
+        function toggleVideo(){
+          if(!ytPlayer) return;
+          if(ytPlayer.getPlayerState()===1) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
+        }
         var tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
         document.head.appendChild(tag);
         function onYouTubeIframeAPIReady() {
-          new YT.Player('player', {
+          ytPlayer = new YT.Player('player', {
             videoId: '$videoId',
             playerVars: {
               autoplay: 1, mute: 1, controls: 0, loop: 1, playlist: '$videoId',
               modestbranding: 1, rel: 0, iv_load_policy: 3, fs: 0, disablekb: 1, playsinline: 1
             },
-            events: { onReady: function (e) { e.target.mute(); e.target.playVideo(); } }
+            events: {
+              onReady: function (e) { e.target.mute(); e.target.playVideo(); setIcon(); },
+              onStateChange: setIcon
+            }
           });
         }
       </script>
