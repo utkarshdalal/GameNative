@@ -198,6 +198,11 @@ internal fun ListViewCard(
                     showLabel = true,
                 )
             }
+
+            FavouriteStarButton(
+                appId = appInfo.appId,
+                iconSize = 22,
+            )
         }
     }
     }

@@ -2142,4 +2142,9 @@
     <string name="steam_invite_joined">あなたのゲームに参加中</string>
     <string name="steam_invite_online">オンライン</string>
     <string name="steam_invite_offline">オフライン</string>
+    <string name="tab_favourites">お気に入り</string>
+    <string name="option_add_to_favourites">お気に入りに追加</string>
+    <string name="option_remove_from_favourites">お気に入りから削除</string>
+    <string name="favourite_add">お気に入りに追加</string>
+    <string name="favourite_remove">お気に入りから削除</string>
 </resources>

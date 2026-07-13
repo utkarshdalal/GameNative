@@ -1073,6 +1073,7 @@ private fun LibraryScreenContent(
                         currentTab = state.currentTab,
                         tabCounts = mapOf(
                             LibraryTab.ALL to state.allCount,
+                            LibraryTab.FAVOURITES to state.favouritesCount,
                             LibraryTab.STEAM to state.steamCount,
                             LibraryTab.GOG to state.gogCount,
                             LibraryTab.EPIC to state.epicCount,

@@ -2185,4 +2185,9 @@
     <string name="steam_invite_joined">У вашій грі</string>
     <string name="steam_invite_online">У мережі</string>
     <string name="steam_invite_offline">Не в мережі</string>
+    <string name="tab_favourites">Вибране</string>
+    <string name="option_add_to_favourites">Додати до вибраного</string>
+    <string name="option_remove_from_favourites">Видалити з вибраного</string>
+    <string name="favourite_add">Додати до вибраного</string>
+    <string name="favourite_remove">Видалити з вибраного</string>
 </resources>

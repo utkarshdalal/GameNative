@@ -367,6 +367,15 @@ internal fun GridViewCard(
                             .padding(top = topIconPadding, end = topIconPadding),
                         iconSize = if (isCapsule) 14 else 12,
                     )
+
+                    FavouriteStarButton(
+                        appId = appInfo.appId,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 2.dp, bottom = 2.dp),
+                        iconSize = if (isCapsule) 18 else 20,
+                        onImage = true,
+                    )
                 }
             }
         }

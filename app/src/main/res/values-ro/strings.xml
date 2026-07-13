@@ -2190,4 +2190,9 @@
     <string name="steam_invite_joined">În jocul tău</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
+    <string name="tab_favourites">Favorite</string>
+    <string name="option_add_to_favourites">Adaugă la favorite</string>
+    <string name="option_remove_from_favourites">Elimină de la favorite</string>
+    <string name="favourite_add">Adaugă la favorite</string>
+    <string name="favourite_remove">Elimină de la favorite</string>
 </resources>

@@ -13,6 +13,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
+import app.gamenative.data.FavouritesManager
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.gog.GogRecommendationsRepository
@@ -72,6 +73,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -177,6 +179,16 @@ class LibraryViewModel @Inject constructor(
             if (usesStats(_state.value)) {
                 onFilterApps(paginationCurrentPage)
             }
+        }
+
+        // Re-filter whenever the set of favourite games changes, so the Favourites tab and the
+        // tab badge stay in sync as the user stars or unstars games.
+        viewModelScope.launch(Dispatchers.IO) {
+            FavouritesManager.favourites
+                .drop(1)
+                .collect {
+                    onFilterApps(paginationCurrentPage)
+                }
         }
 
         @OptIn(ExperimentalCoroutinesApi::class)
@@ -979,12 +991,20 @@ class LibraryViewModel @Inject constructor(
             // sources can't match it — keep them out of the combined list (and their tab counts).
             val steamCollectionSelected = allowedSteamAppIds != null
 
+            val favouriteIds = FavouritesManager.favourites.value
+
             val combined = buildList {
                 if (includeSteam) addAll(steamEntries)
                 if (includeOpen && !steamCollectionSelected) addAll(customEntries)
                 if (includeGOG && !steamCollectionSelected) addAll(gogEntries)
                 if (includeEpic && !steamCollectionSelected) addAll(epicEntries)
                 if (includeAmazon && !steamCollectionSelected) addAll(amazonEntries)
+            }.let { entries ->
+                if (currentTab == app.gamenative.ui.enums.LibraryTab.FAVOURITES) {
+                    entries.filter { it.item.appId in favouriteIds }
+                } else {
+                    entries
+                }
             }.sortedWith(sortComparator).mapIndexed { idx, entry ->
                 entry.item.copy(index = idx, isInstalled = entry.isInstalled)
             }
@@ -1072,6 +1092,13 @@ class LibraryViewModel @Inject constructor(
                     amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
                     localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
                     steamCollectionCounts = steamCollectionCounts,
+                    favouritesCount = buildList {
+                        if (currentState.showSteamInLibrary) addAll(steamEntries)
+                        if (currentState.showCustomGamesInLibrary) addAll(customEntries)
+                        if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) addAll(gogEntries)
+                        if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) addAll(epicEntries)
+                        if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) addAll(amazonEntries)
+                    }.count { it.item.appId in favouriteIds },
                 )
             }
         }

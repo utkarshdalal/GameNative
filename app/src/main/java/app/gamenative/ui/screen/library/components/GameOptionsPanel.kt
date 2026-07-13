@@ -54,6 +54,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.HorizontalDivider
@@ -351,6 +353,8 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.ManageWorkshop -> Icons.Default.Build
         AppOptionMenuType.ManageMods -> Icons.Default.Extension
         AppOptionMenuType.ChangeBranch -> Icons.AutoMirrored.Filled.CallSplit
+        AppOptionMenuType.AddToFavourites -> Icons.Filled.StarOutline
+        AppOptionMenuType.RemoveFromFavourites -> Icons.Filled.Star
     }
 }
 
@@ -368,6 +372,8 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.RunContainer,
             AppOptionMenuType.CreateShortcut,
             AppOptionMenuType.ExportFrontend,
+            AppOptionMenuType.AddToFavourites,
+            AppOptionMenuType.RemoveFromFavourites,
             -> quickActions.add(option)
 
             // Game Management

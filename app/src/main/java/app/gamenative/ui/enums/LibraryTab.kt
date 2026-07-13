@@ -36,6 +36,15 @@ enum class LibraryTab(
         showAmazon = true,
         installedOnly = false,
     ),
+    FAVOURITES(
+        labelResId = R.string.tab_favourites,
+        showCustom = true,
+        showSteam = true,
+        showGoG = true,
+        showEpic = true,
+        showAmazon = true,
+        installedOnly = false,
+    ),
     STEAM(
         labelResId = R.string.tab_steam,
         showCustom = false,

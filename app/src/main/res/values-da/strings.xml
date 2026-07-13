@@ -2057,4 +2057,9 @@
     <string name="steam_invite_joined">I dit spil</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
+    <string name="tab_favourites">Favoritter</string>
+    <string name="option_add_to_favourites">Føj til favoritter</string>
+    <string name="option_remove_from_favourites">Fjern fra favoritter</string>
+    <string name="favourite_add">Føj til favoritter</string>
+    <string name="favourite_remove">Fjern fra favoritter</string>
 </resources>
