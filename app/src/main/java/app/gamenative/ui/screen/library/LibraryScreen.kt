@@ -910,6 +910,7 @@ private fun LibraryScreenContent(
                             onContinue = {
                                 PrefManager.recDisclosureShown = true
                                 recDisclosureShown = true
+                                PluviaApp.events.emit(AndroidEvent.RecommendationToggleChanged)
                             },
                             onDismiss = { onTabChanged(LibraryTab.ALL) },
                         )

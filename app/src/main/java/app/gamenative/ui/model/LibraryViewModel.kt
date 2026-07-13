@@ -101,7 +101,7 @@ class LibraryViewModel @Inject constructor(
     }
 
     private val onRecommendationToggleChanged: (AndroidEvent.RecommendationToggleChanged) -> Unit = {
-        onFilterApps(paginationCurrentPage)
+        refreshRecommendationHero()
     }
 
     // How many items loaded on one page of results
@@ -239,6 +239,10 @@ class LibraryViewModel @Inject constructor(
         PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
         PluviaApp.events.on<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
 
+        refreshRecommendationHero()
+    }
+
+    private fun refreshRecommendationHero() {
         viewModelScope.launch(Dispatchers.IO) {
             cachedRecommendation = if (PrefManager.showRecommendations && PrefManager.recDisclosureShown) {
                 runCatching {
@@ -255,9 +259,7 @@ class LibraryViewModel @Inject constructor(
             } else {
                 RecommendationRepository.getCurrentRecommendation(context)
             }
-            if (cachedRecommendation != null) {
-                onFilterApps(paginationCurrentPage)
-            }
+            onFilterApps(paginationCurrentPage)
         }
     }
 
