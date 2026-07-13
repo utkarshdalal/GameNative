@@ -2082,7 +2082,9 @@
     <string name="achievements_unlocked_at">%1$s %2$s에 달성</string>
     <string name="achievements_complete">모든 업적 달성</string>
     <string name="achievements_total">총계</string>
-    <string name="achievements_hidden_remaining">숨겨진 도전 과제 %1$d개 남음</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="other">숨겨진 도전 과제 %1$d개 남음</item>
+    </plurals>
     <string name="achievements_hidden_subtitle">각 도전 과제의 세부 정보는 잠금 해제 시 공개됩니다</string>
     <string name="achievements_reveal_title">숨겨진 도전 과제를 표시할까요?</string>
     <string name="achievements_reveal_message">남은 비밀 도전 과제와 세부 정보를 지금만 표시합니다. 기억되지 않습니다.</string>

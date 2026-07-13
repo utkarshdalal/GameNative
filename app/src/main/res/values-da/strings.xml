@@ -1954,7 +1954,10 @@
     <string name="achievements_unlocked_at">Låst op den %1$s kl. %2$s</string>
     <string name="achievements_complete">Alle præstationer låst op</string>
     <string name="achievements_total">I alt</string>
-    <string name="achievements_hidden_remaining">%1$d skjulte præstationer tilbage</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">%1$d skjult præstation tilbage</item>
+        <item quantity="other">%1$d skjulte præstationer tilbage</item>
+    </plurals>
     <string name="achievements_hidden_subtitle">Detaljerne for hver præstation afsløres, når den låses op</string>
     <string name="achievements_reveal_title">Afslør skjulte præstationer?</string>
     <string name="achievements_reveal_message">Dette viser de resterende hemmelige præstationer og deres detaljer nu. Det huskes ikke.</string>

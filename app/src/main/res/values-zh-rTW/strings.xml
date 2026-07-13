@@ -2093,7 +2093,9 @@
     <string name="achievements_unlocked_at">%1$s %2$s 解鎖</string>
     <string name="achievements_complete">所有成就已解鎖</string>
     <string name="achievements_total">總數</string>
-    <string name="achievements_hidden_remaining">還有 %1$d 個隱藏成就</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="other">還有 %1$d 個隱藏成就</item>
+    </plurals>
     <string name="achievements_hidden_subtitle">每個成就的詳細資訊將在解鎖後揭曉</string>
     <string name="achievements_reveal_title">顯示隱藏成就？</string>
     <string name="achievements_reveal_message">暫時顯示剩餘的隱藏成就及其詳情，不會被記住。</string>

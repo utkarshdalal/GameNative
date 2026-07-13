@@ -2084,7 +2084,10 @@
     <string name="achievements_unlocked_at">Débloqué le %1$s à %2$s</string>
     <string name="achievements_complete">Tous les succès débloqués</string>
     <string name="achievements_total">Total</string>
-    <string name="achievements_hidden_remaining">%1$d succès cachés restants</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">%1$d succès caché restant</item>
+        <item quantity="other">%1$d succès cachés restants</item>
+    </plurals>
     <string name="achievements_hidden_subtitle">Les détails de chaque succès seront révélés une fois débloqués</string>
     <string name="achievements_reveal_title">Révéler les succès cachés ?</string>
     <string name="achievements_reveal_message">Affiche pour le moment les succès cachés restants et leurs détails. Ce choix ne sera pas mémorisé.</string>

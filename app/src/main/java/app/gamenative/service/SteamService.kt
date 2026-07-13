@@ -3088,6 +3088,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 withTimeout(15_000) {
                 val steamUser = instance?._steamUser ?: return@withTimeout null
                 val userStats = instance?._steamUserStats?.getUserStats(appId, steamUser.steamID!!)?.await() ?: return@withTimeout null
+                // Failed fetch (e.g. transient CM error): return null so the caller can retry.
+                if (userStats.result != EResult.OK) return@withTimeout null
                 val baseIconUrl = SteamUtils.getBaseAchievementIconUrl(appId)
                 val appLanguage = SteamUtils.steamLanguageForAppLocale()
                 val localized = userStats.getExpandedAchievements(appLanguage)

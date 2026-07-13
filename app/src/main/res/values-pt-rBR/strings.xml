@@ -1954,7 +1954,10 @@
     <string name="achievements_unlocked_at">Desbloqueado em %1$s às %2$s</string>
     <string name="achievements_complete">Todas as conquistas desbloqueadas</string>
     <string name="achievements_total">Total</string>
-    <string name="achievements_hidden_remaining">%1$d conquistas ocultas restantes</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">%1$d conquista oculta restante</item>
+        <item quantity="other">%1$d conquistas ocultas restantes</item>
+    </plurals>
     <string name="achievements_hidden_subtitle">Os detalhes de cada conquista serão revelados após o desbloqueio</string>
     <string name="achievements_reveal_title">Revelar conquistas ocultas?</string>
     <string name="achievements_reveal_message">Mostra por enquanto as conquistas secretas restantes e seus detalhes. Não é lembrado.</string>

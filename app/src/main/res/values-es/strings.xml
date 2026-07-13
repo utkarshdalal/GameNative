@@ -2082,7 +2082,10 @@
     <string name="achievements_unlocked_at">Desbloqueado el %1$s a las %2$s</string>
     <string name="achievements_complete">Todos los logros desbloqueados</string>
     <string name="achievements_total">Total</string>
-    <string name="achievements_hidden_remaining">%1$d logros ocultos restantes</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">%1$d logro oculto restante</item>
+        <item quantity="other">%1$d logros ocultos restantes</item>
+    </plurals>
     <string name="achievements_hidden_subtitle">Los detalles de cada logro se revelarán al desbloquearlo</string>
     <string name="achievements_reveal_title">¿Mostrar logros ocultos?</string>
     <string name="achievements_reveal_message">Esto muestra por ahora los logros secretos restantes y sus detalles. No se recuerda.</string>

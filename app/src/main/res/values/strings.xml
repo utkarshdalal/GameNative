@@ -2083,7 +2083,10 @@
     <string name="achievements_unlocked_at">Unlocked on %1$s at %2$s</string>
     <string name="achievements_complete">All achievements unlocked</string>
     <string name="achievements_total">Total</string>
-    <string name="achievements_hidden_remaining">%1$d hidden achievements remaining</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">%1$d hidden achievement remaining</item>
+        <item quantity="other">%1$d hidden achievements remaining</item>
+    </plurals>
     <string name="achievements_hidden_subtitle">The details of each achievement will be revealed once unlocked</string>
     <string name="achievements_reveal_title">Reveal hidden achievements?</string>
     <string name="achievements_reveal_message">This shows the remaining secret achievements and their details for now. It is not remembered.</string>

@@ -2024,7 +2024,10 @@
     <string name="achievements_unlocked_at">Freigeschaltet am %1$s um %2$s</string>
     <string name="achievements_complete">Alle Erfolge freigeschaltet</string>
     <string name="achievements_total">Gesamt</string>
-    <string name="achievements_hidden_remaining">%1$d verborgene Errungenschaften übrig</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">%1$d verborgene Errungenschaft übrig</item>
+        <item quantity="other">%1$d verborgene Errungenschaften übrig</item>
+    </plurals>
     <string name="achievements_hidden_subtitle">Die Details jeder Errungenschaft werden nach dem Freischalten angezeigt</string>
     <string name="achievements_reveal_title">Verborgene Errungenschaften anzeigen?</string>
     <string name="achievements_reveal_message">Dies zeigt vorübergehend die verbleibenden geheimen Errungenschaften und ihre Details an. Es wird nicht gespeichert.</string>
