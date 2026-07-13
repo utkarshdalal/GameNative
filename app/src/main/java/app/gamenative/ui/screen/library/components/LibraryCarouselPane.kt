@@ -181,6 +181,17 @@ private fun interpolateByDistance(
 }
 
 /**
+ * The layout-derived inputs a card's tilt transform depends on. Held behind a [derivedStateOf] so that
+ * a measure pass which doesn't actually move this card (e.g. the centered card's marquee re-measuring
+ * its text every frame) produces an equal value and does not invalidate the card's graphicsLayer.
+ */
+private data class CarouselTiltInput(
+    val distanceFromCenterPx: Float,
+    val viewportSpanPx: Float,
+    val isFirstItemAtStart: Boolean,
+)
+
+/**
  * Wraps a carousel card and applies its draw-order [zIndex] (centered card on top). This is the only
  * place that reacts to the live [centeredIndex]; keeping it in a thin wrapper means a center change
  * recomposes just this box, while [content] — which captures only stable values — is skipped. Do not
@@ -412,6 +423,23 @@ internal fun LibraryCarouselPane(
                         ) { listIndex ->
                             val item = state.appInfoList[listIndex]
 
+                            val tiltInputState = remember(listIndex) {
+                                derivedStateOf {
+                                    val layoutInfo = listState.layoutInfo
+                                    val vc = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
+                                    val span = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset)
+                                        .toFloat().coerceAtLeast(1f)
+                                    val vi = layoutInfo.visibleItemsInfo.firstOrNull { it.index == listIndex }
+                                    val ic = if (vi != null) vi.offset + vi.size / 2f else vc
+                                    CarouselTiltInput(
+                                        distanceFromCenterPx = ic - vc,
+                                        viewportSpanPx = span,
+                                        isFirstItemAtStart = listIndex == 0 &&
+                                            layoutInfo.visibleItemsInfo.firstOrNull()?.index == 0,
+                                    )
+                                }
+                            }
+
                             val appItemModifier = Modifier
                                 .fillMaxSize()
                                 .then(
@@ -439,14 +467,9 @@ internal fun LibraryCarouselPane(
                                         .width(cardWidth)
                                         .height(cardHeight + badgeReservedHeight)
                                         .graphicsLayer {
-                                            val layoutInfo = listState.layoutInfo
-                                            val vc = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
-                                            val span = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset)
-                                                .toFloat().coerceAtLeast(1f)
-                                            val vi = layoutInfo.visibleItemsInfo.firstOrNull { it.index == listIndex }
-                                            val ic = if (vi != null) vi.offset + vi.size / 2f else vc
-
-                                            val distanceFromCenter = ic - vc
+                                            val tiltInput = tiltInputState.value
+                                            val distanceFromCenter = tiltInput.distanceFromCenterPx
+                                            val span = tiltInput.viewportSpanPx
                                             val normalizedDistance = (distanceFromCenter / span).coerceIn(-1f, 1f)
                                             val itemStepDistancePx = (carouselItemSlotWidthPx + carouselItemSpacingPx).coerceAtLeast(1f)
                                             val distanceInSteps = abs(distanceFromCenter) / itemStepDistancePx
@@ -479,7 +502,7 @@ internal fun LibraryCarouselPane(
                                                 val tiltInfluence = if (CAROUSEL_TILT_ANGLE > 0.1f) tiltAngle / CAROUSEL_TILT_ANGLE else 1f
                                                 val baseOffsetRatio = CAROUSEL_SIDE_OFFSET_RATIO + (distanceInSteps * CAROUSEL_STEP_OFFSET_RATIO)
                                                 val baseShift = direction * cardWidthPx * baseOffsetRatio * tiltInfluence
-                                                val edgeOffset = if (listIndex == 0 && layoutInfo.visibleItemsInfo.firstOrNull()?.index == 0) {
+                                                val edgeOffset = if (tiltInput.isFirstItemAtStart) {
                                                     firstTileOffsetPx
                                                 } else {
                                                     0f
