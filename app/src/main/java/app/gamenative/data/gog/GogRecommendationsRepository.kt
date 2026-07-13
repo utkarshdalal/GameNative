@@ -51,7 +51,6 @@ object GogRecommendationsRepository {
     suspend fun getRecommendations(
         context: Context,
         owned: List<OwnedGameRef>,
-        userId: String?,
         forceRefresh: Boolean = false,
     ): List<GogRecCard> = withContext(Dispatchers.IO) {
         if (!forceRefresh) {
@@ -73,7 +72,7 @@ object GogRecommendationsRepository {
         val perSeed = coroutineScope {
             seeds.flatMap { seed ->
                 STRATEGIES.map { strategy ->
-                    async { seed to fetchStrategy(strategy, seed.gogId, userId) }
+                    async { seed to fetchStrategy(strategy, seed.gogId) }
                 }
             }.awaitAll()
         }
@@ -163,10 +162,9 @@ object GogRecommendationsRepository {
     suspend fun getDailyHero(
         context: Context,
         owned: List<OwnedGameRef>,
-        userId: String?,
         daySeed: Long,
     ): RecommendedGame? = withContext(Dispatchers.IO) {
-        val cards = getRecommendations(context, owned, userId)
+        val cards = getRecommendations(context, owned)
         if (cards.isEmpty()) return@withContext null
         val pool = minOf(HERO_POOL, cards.size)
         val index = daySeed.mod(pool.toLong()).toInt()
@@ -235,12 +233,9 @@ object GogRecommendationsRepository {
             .mapIndexed { index, c -> Seed(c.gogId, c.name, weight = (MAX_SEEDS - index).toDouble(), iconUrl = c.iconUrl) }
     }
 
-    private fun fetchStrategy(strategy: String, gogId: String, userId: String?): List<GogRecProduct> {
+    private fun fetchStrategy(strategy: String, gogId: String): List<GogRecProduct> {
         return try {
-            val url = buildString {
-                append("$REC_BASE/$strategy/$gogId?country_code=$LOCALE_COUNTRY&currency=$LOCALE_CURRENCY&limit=$PER_SEED_LIMIT")
-                if (!userId.isNullOrBlank()) append("&user_id=$userId")
-            }
+            val url = "$REC_BASE/$strategy/$gogId?country_code=$LOCALE_COUNTRY&currency=$LOCALE_CURRENCY&limit=$PER_SEED_LIMIT"
             val request = Request.Builder().url(url).build()
             Net.http.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return emptyList()

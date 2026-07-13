@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
@@ -28,6 +29,7 @@ import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.model.GogRecommendationsViewModel
 import app.gamenative.ui.screen.library.components.LibraryCarouselPane
 import app.gamenative.ui.screen.library.components.LibraryListPane
+import com.posthog.PostHog
 import java.util.EnumSet
 
 @Composable
@@ -39,7 +41,15 @@ fun RecommendedTabPane(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) { viewModel.loadIfNeeded() }
+    LaunchedEffect(Unit) {
+        viewModel.loadIfNeeded()
+        if (PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(
+                event = "recommendation_tab_opened",
+                properties = mapOf("\$set" to mapOf("recommendation_enabled" to true)),
+            )
+        }
+    }
 
     val items = remember(state.cards) {
         state.cards.mapIndexed { index, card -> card.toLibraryItem(index) }

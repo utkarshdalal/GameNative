@@ -76,11 +76,9 @@ class GogRecommendationsViewModel @Inject constructor(
             _state.update { it.copy(loading = true, error = false) }
             try {
                 val owned = collectOwnedGames()
-                val userId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
                 val cards = GogRecommendationsRepository.getRecommendations(
                     context = context,
                     owned = owned,
-                    userId = userId,
                 )
                 _state.update { it.copy(loading = false, cards = cards) }
                 loadStats(cards.map { it.title })
