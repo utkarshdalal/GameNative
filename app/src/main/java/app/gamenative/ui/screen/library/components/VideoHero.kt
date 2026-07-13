@@ -32,6 +32,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -78,7 +79,11 @@ private fun ExoVideoHero(
 
     val exoPlayer = remember(videoUrl) {
         ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(videoUrl))
+            val item = MediaItem.Builder()
+                .setUri(videoUrl)
+                .apply { if (videoUrl.contains(".m3u8")) setMimeType(MimeTypes.APPLICATION_M3U8) }
+                .build()
+            setMediaItem(item)
             repeatMode = Player.REPEAT_MODE_ALL
             volume = 0f
             playWhenReady = true
@@ -204,7 +209,7 @@ private fun YouTubeHero(
                         }
                     }
                     loadDataWithBaseURL(
-                        "https://www.youtube.com",
+                        "https://www.gamenative.app",
                         youTubeEmbedHtml(videoId),
                         "text/html",
                         "utf-8",

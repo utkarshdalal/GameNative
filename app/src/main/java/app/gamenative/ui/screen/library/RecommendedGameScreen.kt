@@ -157,11 +157,11 @@ internal fun RecommendedGameScreen(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val subtitleText = if (game.releaseDate != null) {
-                    "${game.developer} • ${game.releaseDate}"
-                } else {
-                    game.developer
-                }
+                val releaseDate = game.releaseDate?.let { formatReleaseDate(it) }
+                val subtitleText = listOfNotNull(
+                    game.developer.ifBlank { null },
+                    releaseDate,
+                ).joinToString(" • ")
                 Text(
                     text = subtitleText,
                     style = MaterialTheme.typography.bodyLarge,
@@ -366,4 +366,16 @@ internal fun RecommendedGameScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
+}
+
+private fun formatReleaseDate(raw: String): String? = try {
+    val input = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+    val parsed = input.parse(raw.take(10))
+    if (parsed != null) {
+        java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(parsed)
+    } else {
+        raw
+    }
+} catch (e: Exception) {
+    raw
 }
