@@ -1998,7 +1998,7 @@
     <string name="lsfg_installing">Downloading Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Reduces quality for higher throughput</string>
     <string name="rec_disclosure_title">Game recommendations</string>
-    <string name="rec_disclosure_body">These use the games you play — shared with GOG — to suggest games you might like. Store links are affiliate links. You can turn this off in Settings.</string>
+    <string name="rec_disclosure_body">These use the games you play — shared with GOG — to suggest games you might like. You can turn this off in Settings.</string>
     <string name="rec_disclosure_continue">Continue</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Suggests GOG games based on what you play. When on, the games you play — and your GOG account if signed in — are shared with GOG to generate picks, and store links are affiliate links that help support GameNative.</string>
