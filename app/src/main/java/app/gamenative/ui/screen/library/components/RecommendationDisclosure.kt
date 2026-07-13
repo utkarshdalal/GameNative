@@ -23,7 +23,7 @@ fun RecommendationDisclosureDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = stringResource(R.string.rec_disclosure_no))
+                Text(text = stringResource(R.string.rec_disclosure_not_now))
             }
         },
     )
