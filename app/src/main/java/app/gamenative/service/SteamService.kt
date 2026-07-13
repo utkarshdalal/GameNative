@@ -75,7 +75,9 @@ import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.networking.steam3.ProtocolTypes
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesFamilygroupsSteamclient
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesParentalSteamclient
 import `in`.dragonbra.javasteam.rpc.service.FamilyGroups
+import `in`.dragonbra.javasteam.rpc.service.Parental
 import `in`.dragonbra.javasteam.steam.authentication.AuthPollResult
 import `in`.dragonbra.javasteam.steam.authentication.AuthSessionDetails
 import `in`.dragonbra.javasteam.steam.authentication.AuthenticationException
@@ -243,6 +245,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     private var _steamCloud: SteamCloud? = null
     private var _steamUserStats: SteamUserStats? = null
     private var _steamFamilyGroups: FamilyGroups? = null
+    private var _steamParental: Parental? = null
 
     private var _loginResult: LoginResult = LoginResult.Failed
 
@@ -279,6 +282,17 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     // The current shared family group the logged in user is joined to.
     private var familyGroupMembers: ArrayList<Int> = arrayListOf()
+
+    sealed class ParentalState {
+        data object Loading : ParentalState()
+        data object Unrestricted : ParentalState()
+        data class Restricted(val allowedAppIds: Set<Int>) : ParentalState()
+    }
+
+    @Volatile
+    private var parentalState: ParentalState = PrefManager.parentalAllowedAppIds.let { cached ->
+        if (cached != null) ParentalState.Restricted(cached) else ParentalState.Loading
+    }
 
     private val appTokens: ConcurrentHashMap<Int, Long> = ConcurrentHashMap()
 
@@ -532,6 +546,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         val familyMembers: List<Int>
             get() = instance?.familyGroupMembers ?: emptyList()
+
+        val parentalControlState: ParentalState
+            get() = instance?.parentalState ?: ParentalState.Loading
 
         val isLoginInProgress: Boolean
             get() = instance?._loginResult == LoginResult.InProgress
@@ -3492,6 +3509,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             _unifiedFriends = SteamUnifiedFriends(this)
             _steamFamilyGroups = steamClient!!.getHandler<SteamUnifiedMessages>()!!.createService<FamilyGroups>()
+            _steamParental = steamClient!!.getHandler<SteamUnifiedMessages>()!!.createService<Parental>()
 
             // subscribe to the callbacks we are interested in
             with(callbackSubscriptions) {
@@ -3632,6 +3650,11 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         _unifiedFriends?.close()
         _unifiedFriends = null
+        _steamFamilyGroups = null
+        _steamParental = null
+
+        familyGroupMembers.clear()
+        parentalState = ParentalState.Loading
 
         reconnectJob?.cancel()
         offlineAchievementSyncJob?.cancel()
@@ -3771,6 +3794,42 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 familyGroupMembers.add(accountID)
                             }
                         }
+
+                    }
+                }
+
+                // fetch parental controls to restrict visible games
+                scope.launch {
+                    val sessionSteamId = steamClient?.steamID ?: return@launch
+                    val request = SteammessagesParentalSteamclient.CParental_GetParentalSettings_Request.newBuilder().apply {
+                        steamid = sessionSteamId.convertToUInt64()
+                    }.build()
+
+                    _steamParental!!.getParentalSettings(request).await().let {
+                        // verify session is still the same after await
+                        if (steamClient?.steamID != sessionSteamId) return@launch
+
+                        if (it.result != EResult.OK) {
+                            Timber.w("Failed to load parental settings.")
+                            return@launch
+                        }
+
+                        val settings = it.body.settings
+                        if (!settings.isEnabled) {
+                            Timber.i("Parental controls not enabled.")
+                            parentalState = ParentalState.Unrestricted
+                            PrefManager.parentalAllowedAppIds = null
+                        } else {
+                            val allowed = (settings.applistBaseList + settings.applistCustomList)
+                                .filter { app -> app.isAllowed }
+                                .map { app -> app.appid }
+                                .toSet()
+
+                            parentalState = ParentalState.Restricted(allowed)
+                            PrefManager.parentalAllowedAppIds = allowed
+                            Timber.i("Parental controls: ${allowed.size} allowed apps.")
+                        }
+                        PluviaApp.events.emit(AndroidEvent.AllowedAppsLoaded)
                     }
                 }
 

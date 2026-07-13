@@ -91,6 +91,10 @@ class LibraryViewModel @Inject constructor(
         onFilterApps(paginationCurrentPage)
     }
 
+    private val onAllowedAppsLoaded: (AndroidEvent.AllowedAppsLoaded) -> Unit = {
+        onFilterApps(paginationCurrentPage)
+    }
+
     private val onCustomGameImagesFetched: (AndroidEvent.CustomGameImagesFetched) -> Unit = {
         // Increment refresh counter and refresh the library list to pick up newly fetched images
         _state.update { it.copy(imageRefreshCounter = it.imageRefreshCounter + 1) }
@@ -235,6 +239,7 @@ class LibraryViewModel @Inject constructor(
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
         PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
         PluviaApp.events.on<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
+        PluviaApp.events.on<AndroidEvent.AllowedAppsLoaded, Unit>(onAllowedAppsLoaded)
 
         viewModelScope.launch(Dispatchers.IO) {
             cachedRecommendation = RecommendationRepository.getCurrentRecommendation(context)
@@ -249,6 +254,7 @@ class LibraryViewModel @Inject constructor(
         PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
         PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
         PluviaApp.events.off<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
+        PluviaApp.events.off<AndroidEvent.AllowedAppsLoaded, Unit>(onAllowedAppsLoaded)
         super.onCleared()
     }
 
@@ -505,6 +511,14 @@ class LibraryViewModel @Inject constructor(
                 return status == GameCompatibilityStatus.COMPATIBLE || status == GameCompatibilityStatus.GPU_COMPATIBLE
             }
 
+            // Filter Steam apps first (no pagination yet)
+            // Note: Don't sort individual lists - we'll sort the combined list for consistent ordering
+            val allowedApps = when (val state = SteamService.parentalControlState) {
+                is SteamService.ParentalState.Restricted -> state.allowedAppIds
+                is SteamService.ParentalState.Loading -> PrefManager.parentalAllowedAppIds
+                is SteamService.ParentalState.Unrestricted -> null
+            }
+
             val steamFilteredBeforeCompatibility: List<SteamApp> = appList
                 .asSequence()
                 .filter { item ->
@@ -515,11 +529,15 @@ class LibraryViewModel @Inject constructor(
                         } ?: emptyList()
                     }.let { owners ->
                         if (owners.isEmpty()) {
-                            true // no owner info ⇒ don’t filter the item out
+                            true // no owner info ⇒ don't filter the item out
                         } else {
                             owners.any { item.ownerAccountId.contains(it) }
                         }
                     }
+                }
+                .filter { item ->
+                    // parental controls: null = unrestricted, non-null = only allowed apps
+                    allowedApps?.contains(item.id) ?: true
                 }
                 .filter { item ->
                     currentFilter.any { item.type == it }
