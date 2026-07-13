@@ -240,7 +240,7 @@ class LibraryViewModel @Inject constructor(
         PluviaApp.events.on<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
 
         viewModelScope.launch(Dispatchers.IO) {
-            cachedRecommendation = if (PrefManager.showRecommendations) {
+            cachedRecommendation = if (PrefManager.showRecommendations && PrefManager.recDisclosureShown) {
                 runCatching {
                     val owned = GogSeedCollector.collect(
                         context,
