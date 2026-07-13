@@ -2,7 +2,7 @@ package app.gamenative.ui.enums
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
@@ -26,7 +26,7 @@ enum class LibraryTab(
         showEpic = false,
         showAmazon = false,
         installedOnly = false,
-        icon = Icons.Rounded.Star,
+        icon = Icons.Rounded.Explore,
     ),
     ALL(
         labelResId = R.string.tab_all,
