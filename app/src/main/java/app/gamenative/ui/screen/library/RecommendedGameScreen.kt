@@ -58,6 +58,8 @@ import com.skydoves.landscapist.coil.CoilImage
 @Composable
 internal fun RecommendedGameScreen(
     game: RecommendedGame,
+    recRank: Int = -1,
+    recSource: String = "",
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -288,6 +290,9 @@ internal fun RecommendedGameScreen(
                                 "game_name" to game.name,
                                 "game_id" to game.id,
                                 "affiliate_url" to game.affiliateUrl,
+                                "rank" to recRank,
+                                "source" to recSource,
+                                "because_played" to (game.becausePlayed ?: ""),
                             ),
                         )
                     }

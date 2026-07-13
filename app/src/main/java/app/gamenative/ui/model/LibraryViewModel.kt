@@ -900,6 +900,7 @@ class LibraryViewModel @Inject constructor(
                     iconHash = rec.iconUrl ?: rec.capsuleImageUrl,
                     isRecommended = true,
                     recommendedGameId = rec.id,
+                    recSource = "hero",
                     gameSource = GameSource.STEAM,
                 )
                 pagedList = listOf(recItem) + pagedList.map { it.copy(index = it.index + 1) }

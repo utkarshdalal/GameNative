@@ -22,7 +22,9 @@ object GogRecommendationsRepository {
 
     private const val REC_BASE = "https://recommendations-api.gog.com/v1/recommendations"
     private const val CJ_CLICK = "https://www.anrdoezrs.net/click-101723120-15554897?url="
-    private const val MAX_SEEDS = 12
+    private const val FIXED_SEEDS = 12
+    private const val ROTATING_SEEDS = 6
+    private const val ROTATING_WEIGHT = 6.0
     private const val PER_SEED_LIMIT = 30
     private const val MAX_CARDS = 200
     private const val HERO_POOL = 10
@@ -46,22 +48,26 @@ object GogRecommendationsRepository {
     @Volatile
     private var cacheAt: Long = 0
 
+    @Volatile
+    private var cacheDay: Long = -1
+
     private data class Seed(val gogId: String, val name: String, val weight: Double, val iconUrl: String?)
 
     suspend fun getRecommendations(
         context: Context,
         owned: List<OwnedGameRef>,
         userId: String?,
+        daySeed: Long,
         forceRefresh: Boolean = false,
     ): List<GogRecCard> = withContext(Dispatchers.IO) {
         if (!forceRefresh) {
             cache?.let {
-                if (System.currentTimeMillis() - cacheAt in 0..CACHE_TTL_MS) return@withContext it
+                if (cacheDay == daySeed && System.currentTimeMillis() - cacheAt in 0..CACHE_TTL_MS) return@withContext it
             }
         }
 
         val map = GogMapRepository.getMap(context) ?: return@withContext emptyList()
-        val seeds = selectSeeds(map, owned)
+        val seeds = selectSeeds(map, owned, daySeed)
         if (seeds.isEmpty()) return@withContext emptyList()
 
         val ownedGogIds = owned.mapNotNull { resolveGogId(map, it) }.toHashSet()
@@ -94,6 +100,7 @@ object GogRecommendationsRepository {
         val cards = agg.values.sortedByDescending { it.score }.map { it.toCard() }.take(MAX_CARDS)
         cache = cards
         cacheAt = System.currentTimeMillis()
+        cacheDay = daySeed
         cards
     }
 
@@ -170,7 +177,7 @@ object GogRecommendationsRepository {
         userId: String?,
         daySeed: Long,
     ): RecommendedGame? = withContext(Dispatchers.IO) {
-        val cards = getRecommendations(context, owned, userId)
+        val cards = getRecommendations(context, owned, userId, daySeed)
         if (cards.isEmpty()) return@withContext null
         val pool = minOf(HERO_POOL, cards.size)
         val index = daySeed.mod(pool.toLong()).toInt()
@@ -271,18 +278,24 @@ object GogRecommendationsRepository {
             ?: ref.epicNamespace?.let { GogMapRepository.epicGogId(map, it) }
             ?: GogMapRepository.titleGogId(map, ref.name)
 
-    private fun selectSeeds(map: GogMap, owned: List<OwnedGameRef>): List<Seed> {
+    private fun selectSeeds(map: GogMap, owned: List<OwnedGameRef>, daySeed: Long): List<Seed> {
         data class Candidate(val gogId: String, val name: String, val playtime: Long, val lastPlayed: Long, val iconUrl: String?)
 
-        return owned.mapNotNull { ref ->
+        val ranked = owned.mapNotNull { ref ->
             val gogId = resolveGogId(map, ref) ?: return@mapNotNull null
             Candidate(gogId, ref.name, ref.playtime, ref.lastPlayed, ref.iconUrl)
         }
             .groupBy { it.gogId }
             .map { (_, list) -> list.maxWithOrNull(compareBy({ it.lastPlayed }, { it.playtime }))!! }
             .sortedWith(compareByDescending<Candidate> { it.lastPlayed }.thenByDescending { it.playtime })
-            .take(MAX_SEEDS)
-            .mapIndexed { index, c -> Seed(c.gogId, c.name, weight = (MAX_SEEDS - index).toDouble(), iconUrl = c.iconUrl) }
+
+        val fixed = ranked.take(FIXED_SEEDS)
+            .mapIndexed { index, c -> Seed(c.gogId, c.name, weight = (FIXED_SEEDS - index).toDouble(), iconUrl = c.iconUrl) }
+        val rotating = ranked.drop(FIXED_SEEDS)
+            .shuffled(java.util.Random(daySeed))
+            .take(ROTATING_SEEDS)
+            .map { c -> Seed(c.gogId, c.name, weight = ROTATING_WEIGHT, iconUrl = c.iconUrl) }
+        return fixed + rotating
     }
 
     private fun fetchStrategy(strategy: String, gogId: String, userId: String?): List<GogRecProduct> {

@@ -81,6 +81,7 @@ class GogRecommendationsViewModel @Inject constructor(
                     context = context,
                     owned = owned,
                     userId = userId,
+                    daySeed = System.currentTimeMillis() / (24L * 60 * 60 * 1000),
                 )
                 _state.update { it.copy(loading = false, cards = cards) }
                 loadStats(cards.map { it.title })

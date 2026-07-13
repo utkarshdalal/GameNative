@@ -9,9 +9,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -54,6 +57,37 @@ fun RecommendedTabPane(
     val items = remember(state.cards) {
         state.cards.mapIndexed { index, card -> card.toLibraryItem(index) }
     }
+
+    // Batched impression tracking: accumulate which cards actually scrolled into view and
+    // emit a single summary event when the tab leaves composition, rather than one event per card.
+    val gridState = rememberLazyGridState()
+    val listState = rememberLazyListState()
+    val seenIndices = remember { mutableSetOf<Int>() }
+    val currentCards by rememberUpdatedState(state.cards)
+
+    LaunchedEffect(gridState) {
+        snapshotFlow { gridState.layoutInfo.visibleItemsInfo.map { it.index } }
+            .collect { seenIndices.addAll(it) }
+    }
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.map { it.index } }
+            .collect { seenIndices.addAll(it) }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            if (PrefManager.usageAnalyticsEnabled && seenIndices.isNotEmpty()) {
+                val gameIds = seenIndices.sorted().mapNotNull { currentCards.getOrNull(it)?.productId }
+                PostHog.capture(
+                    event = "recommendation_tab_viewed",
+                    properties = mapOf(
+                        "impressed_count" to seenIndices.size,
+                        "max_rank" to (seenIndices.maxOrNull() ?: -1),
+                        "game_ids" to gameIds,
+                    ),
+                )
+            }
+        }
+    }
     val recState = remember(items, state.compatibilityMap, state.deviceGameStats, state.gpuGameStats) {
         LibraryState(
             appInfoList = items,
@@ -85,7 +119,7 @@ fun RecommendedTabPane(
             currentPaneType == PaneType.CAROUSEL -> {
                 LibraryCarouselPane(
                     state = recState,
-                    listState = rememberLazyListState(),
+                    listState = listState,
                     onPageChange = {},
                     onNavigate = { appId -> items.find { it.appId == appId }?.let(onNavigate) },
                     onRefresh = { viewModel.refresh() },
@@ -96,7 +130,7 @@ fun RecommendedTabPane(
             else -> {
                 LibraryListPane(
                     state = recState,
-                    listState = rememberLazyGridState(),
+                    listState = gridState,
                     currentLayout = currentPaneType,
                     onPageChange = {},
                     onNavigate = { appId -> items.find { it.appId == appId }?.let(onNavigate) },
@@ -125,4 +159,5 @@ private fun GogRecCard.toLibraryItem(index: Int): LibraryItem = LibraryItem(
     recSeedCount = seedCount,
     recSeedIconUrl = seedIconUrl,
     recStoreCard = true,
+    recSource = "tab",
 )

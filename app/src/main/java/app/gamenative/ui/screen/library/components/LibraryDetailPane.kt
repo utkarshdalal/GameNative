@@ -64,6 +64,10 @@ internal fun LibraryDetailPane(
                         properties = mapOf(
                             "game_name" to (game?.name ?: ""),
                             "game_id" to (game?.id ?: ""),
+                            "rank" to libraryItem.index,
+                            "source" to libraryItem.recSource,
+                            "seed_count" to libraryItem.recSeedCount,
+                            "because_played" to (game?.becausePlayed ?: ""),
                         ),
                     )
                 }
@@ -71,6 +75,8 @@ internal fun LibraryDetailPane(
             game?.let { rec ->
                 RecommendedGameScreen(
                     game = rec,
+                    recRank = libraryItem.index,
+                    recSource = libraryItem.recSource,
                     onBack = onBack,
                 )
             }
