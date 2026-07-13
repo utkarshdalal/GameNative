@@ -62,6 +62,7 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.data.gog.GogRecommendationsRepository
 import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.component.GameStatsRow
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.GameCardStats
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.theme.PluviaTheme
@@ -124,12 +125,14 @@ internal fun GridViewCard(
     } else {
         Modifier
     }
-    val focusBorderBrush = Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.tertiary,
-        ),
-    )
+    val cardShape = RoundedCornerShape(12.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isItemFocused by interactionSource.collectIsFocusedAsState()
+
+    LaunchedEffect(isItemFocused) {
+        onFocusChanged(isItemFocused)
+        if (isItemFocused) onFocus()
+    }
 
     Box(
         modifier = modifier
@@ -137,29 +140,21 @@ internal fun GridViewCard(
             .scale(scale)
             .then(focusHaloModifier),
     ) {
-        val interactionSource = remember { MutableInteractionSource() }
-        val isItemFocused by interactionSource.collectIsFocusedAsState()
-
-        LaunchedEffect(isItemFocused) {
-            onFocusChanged(isItemFocused)
-            if (isItemFocused) onFocus()
-        }
-
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(aspectRatio)
+                .focusRing(interactionSource, cardShape)
                 .clickable(
                     onClick = onClick,
                     interactionSource = interactionSource,
                     indication = null,
                 ),
-            shape = RoundedCornerShape(12.dp),
+            shape = cardShape,
             colors = CardDefaults.cardColors(
                 containerColor = Color.Transparent,
             ),
             border = when {
-                isFocused -> BorderStroke(2.dp, focusBorderBrush)
                 appInfo.isRecommended -> BorderStroke(
                     1.dp,
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),

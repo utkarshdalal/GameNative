@@ -385,6 +385,11 @@ class SteamAppScreen : BaseAppScreen() {
         return downloadInfo?.getProgress() ?: 0f
     }
 
+    override fun hasLeftoverInstall(context: Context, libraryItem: LibraryItem): Boolean {
+        val gameId = libraryItem.gameId
+        return SteamService.getInstalledApp(gameId) != null && !SteamService.isAppInstalled(gameId)
+    }
+
     override fun hasPartialDownload(context: Context, libraryItem: LibraryItem): Boolean {
         // Use Steam's more accurate check that looks for marker files
         return SteamService.hasPartialDownload(libraryItem.gameId)
@@ -581,8 +586,8 @@ class SteamAppScreen : BaseAppScreen() {
                     dismissBtnText = context.getString(R.string.no),
                 ),
             )
-        } else if (isInstalled) {
-            // Show uninstall dialog when installed
+        } else if (isInstalled || SteamService.getInstalledApp(gameId) != null) {
+            // Show uninstall dialog when installed, or to clean up a leftover install record
             showUninstallDialog(libraryItem.appId)
         }
     }
@@ -1255,9 +1260,13 @@ class SteamAppScreen : BaseAppScreen() {
                             CoroutineScope(Dispatchers.IO).launch {
                                 try {
                                     val installedAppInfo = getInstalledApp(libraryItem.gameId)
+                                    val gameRootDir = getInstallPath(context, libraryItem)?.let(::File)
 
                                     val success = SteamService.deleteApp(gameId)
                                     DownloadService.invalidateCache()
+                                    if (success) {
+                                        cleanupNexusModsForApp(context, libraryItem, gameRootDir)
+                                    }
                                     withContext(Dispatchers.Main) {
                                         ContainerUtils.deleteContainer(context, libraryItem.appId)
                                     }

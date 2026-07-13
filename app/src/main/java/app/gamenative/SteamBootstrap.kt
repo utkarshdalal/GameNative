@@ -8,6 +8,32 @@ import java.io.File
 
 object SteamBootstrap {
 
+    sealed class ProcessStatus {
+        data object Init : ProcessStatus()
+        data class Failed(val reason: String) : ProcessStatus()
+        data object Ready : ProcessStatus()
+        data object Closed : ProcessStatus()
+
+        companion object {
+            fun fromString(value: String): ProcessStatus {
+                return when {
+                    value == "INIT" -> Init
+                    value.startsWith("FAILED:") -> Failed(value.substringAfter("FAILED:"))
+                    value == "READY" -> Ready
+                    value == "CLOSED" -> Closed
+                    else -> Init
+                }
+            }
+        }
+
+        override fun toString(): String = when (this) {
+            is Init -> "INIT"
+            is Failed -> "FAILED:$reason"
+            is Ready -> "READY"
+            is Closed -> "CLOSED"
+        }
+    }
+
     @Volatile
     private var initialized: Boolean = false
 
@@ -100,7 +126,11 @@ object SteamBootstrap {
         val hostBin = File(cfg.context.applicationInfo.nativeLibraryDir, "libsteambootstrap.so")
         if (!hostBin.exists()) return
 
-        val readyFile = File(cfg.context.cacheDir, "sb_host_ready").apply { delete() }
+        val readyFile = File(cfg.context.cacheDir, "sb_host_ready").apply {
+            delete()
+            writeText("INIT")
+        }
+        
         val logFile = File(cfg.context.cacheDir, "sb_host.log")
 
         val pb = ProcessBuilder(
@@ -127,12 +157,35 @@ object SteamBootstrap {
         val deadline = System.currentTimeMillis() + 60_000
         while (System.currentTimeMillis() < deadline) {
             if (!proc.isAlive) return
-            when (runCatching { readyFile.readText().trim() }.getOrNull()) {
-                "READY" -> return
-                null, "" -> {}
-                else -> return
+
+            val status = getProcessStatus()
+            when (status) {
+                is ProcessStatus.Ready -> return
+                is ProcessStatus.Failed, is ProcessStatus.Closed -> return
+                is ProcessStatus.Init -> {}
             }
+
             try { Thread.sleep(100) } catch (_: InterruptedException) { return }
+        }
+    }
+
+    fun getProcessStatus(): ProcessStatus {
+        val cfg = hostCfg ?: return ProcessStatus.Init
+        val readyFile = File(cfg.context.cacheDir, "sb_host_ready")
+
+        if (!readyFile.exists()) {
+            return if (hostProcess?.isAlive == true) {
+                ProcessStatus.Init
+            } else {
+                ProcessStatus.Closed
+            }
+        }
+
+        val content = runCatching { readyFile.readText().trim() }.getOrNull() ?: ""
+        return if (content.isEmpty()) {
+            ProcessStatus.Init
+        } else {
+            ProcessStatus.fromString(content)
         }
     }
 

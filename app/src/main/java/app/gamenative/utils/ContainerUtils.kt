@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import android.content.Context
 import android.os.Build
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
@@ -14,6 +15,7 @@ import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import com.winlator.core.DefaultVersion
 import com.winlator.core.FileUtils
+import com.winlator.core.KeyValueSet
 import com.winlator.core.GPUInformation
 import com.winlator.core.envvars.EnvVars
 import com.winlator.core.WineRegistryEditor
@@ -287,6 +289,8 @@ object ContainerUtils {
         val shooterMode = container.isShooterMode()
         // Read gesture configuration JSON
         val gestureConfig = container.getGestureConfig()
+        // Read shooter mode configuration JSON
+        val shooterConfig = container.getShooterConfig()
         val externalDisplayMode = container.getExternalDisplayMode()
         val externalDisplaySwap = container.isExternalDisplaySwap()
 
@@ -345,6 +349,7 @@ object ContainerUtils {
             touchscreenMode = touchscreenMode,
             shooterMode = shooterMode,
             gestureConfig = gestureConfig,
+            shooterConfig = shooterConfig,
             externalDisplayMode = externalDisplayMode,
             externalDisplaySwap = externalDisplaySwap,
             csmt = csmt,
@@ -523,6 +528,7 @@ object ContainerUtils {
         container.setTouchscreenMode(containerData.touchscreenMode)
         container.setShooterMode(containerData.shooterMode)
         container.setGestureConfig(containerData.gestureConfig)
+        container.setShooterConfig(containerData.shooterConfig)
         container.setExternalDisplayMode(containerData.externalDisplayMode)
         container.setExternalDisplaySwap(containerData.externalDisplaySwap)
         container.setForceDlc(containerData.forceDlc)
@@ -925,6 +931,12 @@ object ContainerUtils {
             applyBestConfigMapToContainerData(containerData, bestConfigMap)
         } else {
             containerData
+        }
+
+        if (BuildConfig.XR_BUILD) {
+            val kvs = KeyValueSet(containerData.graphicsDriverConfig)
+            kvs.put("adrenotoolsTurnip", "0")
+            containerData = containerData.copy(graphicsDriverConfig = kvs.toString())
         }
 
         if (Build.MANUFACTURER.equals("samsung", ignoreCase = true) && GPUInformation.isAdreno740(context)) {

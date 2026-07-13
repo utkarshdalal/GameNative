@@ -29,7 +29,10 @@ import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
+import app.gamenative.mods.ModContainerResolver
+import app.gamenative.mods.NexusModManager
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
@@ -141,6 +144,7 @@ abstract class BaseAppScreen {
         private val importConfigRequests = mutableStateMapOf<String, Boolean>()
         private val exportSavesRequests = mutableStateMapOf<String, Boolean>()
         private val importSavesRequests = mutableStateMapOf<String, Boolean>()
+        private val manageModsRequests = mutableStateMapOf<String, Boolean>()
         private val knownConfigInstallStates = mutableStateMapOf<Int, KnownConfigInstallState>()
 
         fun showInstallDialog(appId: String, state: app.gamenative.ui.component.dialog.state.MessageDialogState) {
@@ -201,6 +205,18 @@ abstract class BaseAppScreen {
 
         fun shouldImportSaves(appId: String): Boolean {
             return importSavesRequests[appId] == true
+        }
+
+        fun requestManageMods(appId: String) {
+            manageModsRequests[appId] = true
+        }
+
+        fun clearManageModsRequest(appId: String) {
+            manageModsRequests.remove(appId)
+        }
+
+        fun shouldManageMods(appId: String): Boolean {
+            return manageModsRequests[appId] == true
         }
 
         // missing components that prevent config from being applied
@@ -314,6 +330,15 @@ abstract class BaseAppScreen {
     open fun hasPartialDownload(context: Context, libraryItem: LibraryItem): Boolean {
         val progress = getDownloadProgress(context, libraryItem)
         return progress > 0f && progress < 1f
+    }
+
+    /**
+     * Check if a stale install record remains even though the game is not actually installed
+     * (e.g. its files went missing after a storage switch). Such a record blocks reinstall
+     * until it is cleaned up, so sources that can detect it should expose a delete action.
+     */
+    open fun hasLeftoverInstall(context: Context, libraryItem: LibraryItem): Boolean {
+        return false
     }
 
     /**
@@ -619,6 +644,33 @@ abstract class BaseAppScreen {
         )
     }
 
+    @Composable
+    protected open fun getManageModsOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption = AppMenuOption(
+        optionType = AppOptionMenuType.ManageMods,
+        onClick = {
+            requestManageMods(libraryItem.appId)
+        },
+    )
+
+    protected suspend fun cleanupNexusModsForApp(
+        context: Context,
+        libraryItem: LibraryItem,
+        gameRootDir: File?,
+    ) {
+        runCatching {
+            NexusModManager.deleteInstallsForApp(
+                context = context,
+                appId = libraryItem.appId,
+                gameRootDir = gameRootDir,
+            )
+        }.onFailure { error ->
+            Timber.w(error, "Failed to clean Nexus mods for app %s", libraryItem.appId)
+        }
+    }
+
     /**
      * Get Create Shortcut menu option. Subclasses can override to customize behavior.
      */
@@ -893,9 +945,6 @@ abstract class BaseAppScreen {
         val isInstalled = isInstalled(context, libraryItem)
         val menuOptions = mutableListOf<AppMenuOption>()
 
-        val isGamenativeWrapper = runCatching { loadContainerData(context, libraryItem).graphicsDriver }
-            .getOrNull()?.equals("wrapper-gamenative", ignoreCase = true) == true
-
         // Always available: Edit Container
         menuOptions.add(getEditContainerOption(context, libraryItem, onEditContainer))
 
@@ -903,10 +952,8 @@ abstract class BaseAppScreen {
             // Options only available when game is installed
             getRunContainerOption(context, libraryItem, onClickPlay)?.let { menuOptions.add(it) }
             getTestGraphicsOption(context, libraryItem, onTestGraphics)?.let { menuOptions.add(it) }
-            if (isGamenativeWrapper) {
-                getPlayWithDiagnosticsOption(context, libraryItem, onPlayWithDiagnostics)?.let { menuOptions.add(it) }
-                getShareDiagnosticsOption(context, libraryItem)?.let { menuOptions.add(it) }
-            }
+            getPlayWithDiagnosticsOption(context, libraryItem, onPlayWithDiagnostics)?.let { menuOptions.add(it) }
+            getShareDiagnosticsOption(context, libraryItem)?.let { menuOptions.add(it) }
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
@@ -918,6 +965,10 @@ abstract class BaseAppScreen {
 
         // Add any source-specific options
         menuOptions.addAll(getSourceSpecificMenuOptions(context, libraryItem, onEditContainer, onBack, onClickPlay, isInstalled))
+
+        if (isInstalled) {
+            menuOptions.add(getManageModsOption(context, libraryItem))
+        }
 
         // Add config-related options (export/import) after source-specific options,
         // so container-related items appear as:
@@ -990,6 +1041,9 @@ abstract class BaseAppScreen {
         var hasPartialDownloadState by remember(libraryItem.appId) {
             mutableStateOf(hasPartialDownload(context, libraryItem))
         }
+        var hasLeftoverInstallState by remember(libraryItem.appId) {
+            mutableStateOf(hasLeftoverInstall(context, libraryItem))
+        }
 
         val uiScope = rememberCoroutineScope()
 
@@ -1000,6 +1054,7 @@ abstract class BaseAppScreen {
             isDownloadingState = currentlyDownloading
             downloadProgressState = getDownloadProgress(context, libraryItem)
             hasPartialDownloadState = hasPartialDownload(context, libraryItem)
+            hasLeftoverInstallState = hasLeftoverInstall(context, libraryItem)
             if (includeUpdatePending) {
                 isUpdatePendingState = isUpdatePendingSuspend(context, libraryItem)
             }
@@ -1223,6 +1278,17 @@ abstract class BaseAppScreen {
             }
         }
 
+        var manageModsRequested by remember(appId) {
+            mutableStateOf(shouldManageMods(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldManageMods(appId) }
+                .collect { shouldRequest ->
+                    manageModsRequested = shouldRequest
+                }
+        }
+
         val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, onPlayWithDiagnostics, exportFrontendLauncher)
 
         // Get download info based on game source for progress tracking
@@ -1264,6 +1330,7 @@ abstract class BaseAppScreen {
             isDownloading = isDownloadingState,
             downloadProgress = downloadProgressState,
             hasPartialDownload = hasPartialDownloadState,
+            hasLeftoverInstall = hasLeftoverInstallState,
             isUpdatePending = isUpdatePendingState,
             downloadInfo = downloadInfo,
             onDownloadInstallClick = {
@@ -1291,7 +1358,7 @@ abstract class BaseAppScreen {
                 }
             },
             onBack = onBack,
-            optionsMenu = optionsMenu.toTypedArray(),
+            optionsMenu = optionsMenu,
         )
 
         if (showReadiness && launchActivity != null) {
@@ -1316,6 +1383,18 @@ abstract class BaseAppScreen {
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
+                },
+            )
+        }
+
+        if (manageModsRequested) {
+            NexusModsDialog(
+                visible = true,
+                libraryItem = libraryItem,
+                gameRootDir = getInstallPath(context, libraryItem)?.let { File(it) },
+                winePrefix = ModContainerResolver.getWinePrefix(context, libraryItem.appId),
+                onDismissRequest = {
+                    clearManageModsRequest(appId)
                 },
             )
         }

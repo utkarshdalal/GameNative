@@ -45,6 +45,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.io.File
 
 /** Amazon-specific [BaseAppScreen] implementation. */
 class AmazonAppScreen : BaseAppScreen() {
@@ -353,8 +354,12 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
         showDeletingDialog = true
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                val gameRootDir = getInstallPath(context, libraryItem)?.let(::File)
                 val result = AmazonService.deleteGame(context, productId)
                 DownloadService.invalidateCache()
+                if (result.isSuccess) {
+                    cleanupNexusModsForApp(context, libraryItem, gameRootDir)
+                }
                 withContext(Dispatchers.Main) {
                     if (result.isSuccess) {
                         Timber.tag(TAG).i("Uninstall succeeded for $productId")

@@ -436,7 +436,7 @@ fun GLScreenEffectsTabContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        ScreenEffectActionRow(
+        AccentActionRow(
             title = stringResource(R.string.screen_effects_reset),
             icon = Icons.Default.RestartAlt,
             accentColor = PluviaTheme.colors.accentPurple,
@@ -675,7 +675,7 @@ fun ScreenEffectsTabContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        ScreenEffectActionRow(
+        AccentActionRow(
             title = stringResource(R.string.screen_effects_reset),
             icon = Icons.Default.RestartAlt,
             accentColor = PluviaTheme.colors.accentPurple,
@@ -945,7 +945,7 @@ fun ScreenEffectsPanel(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    ScreenEffectActionRow(
+                    AccentActionRow(
                         title = stringResource(R.string.screen_effects_reset),
                         icon = Icons.Default.RestartAlt,
                         accentColor = PluviaTheme.colors.accentPurple,
@@ -1372,83 +1372,6 @@ private fun ScreenEffectRadioIndicator(selected: Boolean, accentColor: Color) {
                     .background(accentColor),
             )
         }
-    }
-}
-
-@Composable
-private fun ScreenEffectActionRow(
-    title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    accentColor: Color,
-    onClick: () -> Unit,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(
-                if (isFocused) {
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            accentColor.copy(alpha = 0.16f),
-                            accentColor.copy(alpha = 0.08f),
-                        ),
-                    )
-                } else {
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f),
-                        ),
-                    )
-                },
-            )
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        width = 2.dp,
-                        color = accentColor.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(14.dp),
-                    )
-                } else {
-                    Modifier
-                },
-            )
-            .selectable(
-                selected = isFocused,
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(accentColor.copy(alpha = if (isFocused) 0.24f else 0.16f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = accentColor,
-                modifier = Modifier.size(22.dp),
-            )
-        }
-
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
-        )
     }
 }
 

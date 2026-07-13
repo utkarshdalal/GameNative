@@ -403,9 +403,13 @@ class GOGAppScreen : BaseAppScreen() {
         showDeletingDialog = true
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                val gameRootDir = getInstallPath(context, libraryItem)?.let(::File)
                 // Delegate to GOGService which calls GOGManager.deleteGame
                 val result = GOGService.deleteGame(context, libraryItem)
                 DownloadService.invalidateCache()
+                if (result.isSuccess) {
+                    cleanupNexusModsForApp(context, libraryItem, gameRootDir)
+                }
 
                 withContext(Dispatchers.Main) {
                     if (result.isSuccess) {

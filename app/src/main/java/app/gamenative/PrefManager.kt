@@ -1367,4 +1367,43 @@ object PrefManager {
     var usageAnalyticsEnabled: Boolean
         get() = getPref(USAGE_ANALYTICS_ENABLED, true)
         set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
+
+    private val NEXUS_API_KEY_ENC = byteArrayPreferencesKey("nexus_api_key_enc")
+    var nexusApiKey: String
+        get() {
+            val encryptedBytes = getPref(NEXUS_API_KEY_ENC, ByteArray(0))
+            return if (encryptedBytes.isEmpty()) {
+                ""
+            } else {
+                runCatching { String(Crypto.decrypt(encryptedBytes)) }
+                    .onFailure {
+                        Timber.w(it, "Failed to decrypt Nexus API key; clearing saved key")
+                        removePref(NEXUS_API_KEY_ENC)
+                    }
+                    .getOrDefault("")
+            }
+        }
+        set(value) {
+            if (value.isBlank()) {
+                removePref(NEXUS_API_KEY_ENC)
+            } else {
+                runCatching { Crypto.encrypt(value.toByteArray()) }
+                    .onSuccess { setPref(NEXUS_API_KEY_ENC, it) }
+                    .onFailure {
+                        Timber.w(it, "Failed to encrypt Nexus API key; clearing saved key")
+                        removePref(NEXUS_API_KEY_ENC)
+                    }
+            }
+        }
+
+    private val NEXUS_LAST_PLACEMENT_JSON = stringPreferencesKey("nexus_last_placement_json")
+    var nexusLastPlacementJson: String
+        get() = getPref(NEXUS_LAST_PLACEMENT_JSON, "{}")
+        set(value) {
+            if (value.isBlank() || value == "{}") {
+                removePref(NEXUS_LAST_PLACEMENT_JSON)
+            } else {
+                setPref(NEXUS_LAST_PLACEMENT_JSON, value)
+            }
+        }
 }

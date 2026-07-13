@@ -49,7 +49,7 @@ You can clear all locally stored data at any time by:
 - Clearing app data through your device settings
 - Uninstalling the application
 
-We do not retain your personal information on our own servers. If you believe we hold any data associated with you — for example, support correspondence — you can request its deletion by emailing support@gamenative.app, and we will action verified requests.
+We do not retain your personal information on our own servers. If you believe we hold any data associated with you — for example, support correspondence — you can request its deletion by emailing support[at]gamenative[dot]app, and we will action verified requests.
 
 ## Changes to Privacy Policy
 
@@ -57,7 +57,7 @@ We reserve the right to update this privacy policy at any time. Any changes will
 
 ## Contact Information
 
-For questions about this privacy policy or GameNative's privacy practices, please contact us at support@gamenative.app.
+For questions about this privacy policy or GameNative's privacy practices, please contact us at support[at]gamenative[dot]app.
 
 ## Age Requirements
 

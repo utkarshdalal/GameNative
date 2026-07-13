@@ -194,6 +194,10 @@ public abstract class ProcessHelper {
     //                         the main thread reads stdout. This keeps stdout clean for callers
     //                         such as SteamTokenLogin
     public static String execWithOutput(String command, String[] envp, File workingDir, boolean includeStderr) {
+        return execWithOutput(command, envp, workingDir, includeStderr, -1);
+    }
+
+    public static String execWithOutput(String command, String[] envp, File workingDir, boolean includeStderr, int timeoutSeconds) {
         StringBuilder output = new StringBuilder();
         final StringBuilder stdoutBuf = new StringBuilder();
         final StringBuilder stderrBuf = new StringBuilder();
@@ -241,15 +245,19 @@ public abstract class ProcessHelper {
             stderrDrainer.setDaemon(true);
             stderrDrainer.start();
 
-            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                try {
-                    process.waitFor(5, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+            if (timeoutSeconds > 0) {
+                boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+                if (!finished) {
+                    process.destroyForcibly();
+                    try {
+                        process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    output.append("Error: Process timeout after ").append(timeoutSeconds).append(" seconds");
                 }
-                output.append("Error: Process timeout after 5 seconds");
+            } else {
+                process.waitFor();
             }
 
             try { stdoutStream.close(); } catch (IOException ignored) {}

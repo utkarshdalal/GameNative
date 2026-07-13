@@ -514,6 +514,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                                     // Remove from manual folders list and invalidate cache
                                     withContext(Dispatchers.IO) {
                                         val folderPath = CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
+                                        cleanupNexusModsForApp(context, libraryItem, folderPath?.let(::File))
                                         if (folderPath != null) {
                                             val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
                                             manualFolders.remove(folderPath)

@@ -1,14 +1,11 @@
 package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -19,9 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -164,6 +159,7 @@ fun TouchGestureSettingsDialog(
                     DelayTextField(
                         label = stringResource(R.string.gesture_double_tap_delay),
                         value = config.doubleTapDelay,
+                        valueRange = 0..5000,
                         onValueChange = { config = config.copy(doubleTapDelay = it) },
                     )
                 }
@@ -187,6 +183,7 @@ fun TouchGestureSettingsDialog(
                     DelayTextField(
                         label = stringResource(R.string.gesture_long_press_delay),
                         value = config.longPressDelay,
+                        valueRange = 0..5000,
                         onValueChange = { config = config.copy(longPressDelay = it) },
                     )
                 }
@@ -247,6 +244,7 @@ fun TouchGestureSettingsDialog(
                     DelayTextField(
                         label = stringResource(R.string.gesture_two_finger_hold_delay),
                         value = config.twoFingerHoldDelay,
+                        valueRange = 0..5000,
                         onValueChange = { config = config.copy(twoFingerHoldDelay = it) },
                     )
                 }
@@ -325,6 +323,7 @@ fun TouchGestureSettingsDialog(
                     DelayTextField(
                         label = stringResource(R.string.gesture_three_finger_hold_delay),
                         value = config.threeFingerHoldDelay,
+                        valueRange = 0..5000,
                         onValueChange = { config = config.copy(threeFingerHoldDelay = it) },
                     )
                 }
@@ -357,6 +356,7 @@ fun TouchGestureSettingsDialog(
                 DelayTextField(
                     label = stringResource(R.string.gesture_threshold),
                     value = config.gestureThreshold,
+                    valueRange = 0..200,
                     onValueChange = { config = config.copy(gestureThreshold = it) },
                 )
 
@@ -405,99 +405,6 @@ fun TouchGestureSettingsDialog(
 }
 
 // ── Helper composables / functions ───────────────────────────────────────
-
-/**
- * One uniform row for a toggleable gesture: a [GestureBlock] containing a [SettingsSwitch]
- * with title + dynamic subtitle, plus an optional [GestureSubSettings] block that only renders
- * when [enabled] is true.
- *
- * @param title          The gesture's display name (e.g. "Tap").
- * @param subtitle       The current action / hint shown beneath the title; auto-dimmed when disabled.
- * @param enabled        Current on/off state.
- * @param onEnabledChange Callback when the user toggles the switch.
- * @param expandedContent Optional sub-settings shown when [enabled] is true (e.g. action picker, delay field).
- */
-@Composable
-private fun GestureRow(
-    title: String,
-    subtitle: String,
-    enabled: Boolean,
-    onEnabledChange: (Boolean) -> Unit,
-    expandedContent: (@Composable ColumnScope.() -> Unit)? = null,
-) {
-    GestureBlock {
-        SettingsSwitch(
-            colors = settingsTileColorsAlt(),
-            title = { Text(title) },
-            subtitle = {
-                Text(
-                    text = subtitle,
-                    color = if (!enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else Color.Unspecified,
-                )
-            },
-            state = enabled,
-            onCheckedChange = onEnabledChange,
-        )
-        if (enabled && expandedContent != null) {
-            GestureSubSettings { expandedContent() }
-        }
-    }
-}
-
-@Composable
-private fun GestureBlock(content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = PluviaBackground,
-        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaBorder.copy(alpha = 0.55f)),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-            content()
-        }
-    }
-}
-
-@Composable
-private fun GestureSubSettings(content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .offset(y = (-6).dp)
-            .padding(start = 12.dp, end = 10.dp, bottom = 4.dp),
-    ) {
-        content()
-    }
-}
-
-@Composable
-private fun DelayTextField(
-    label: String,
-    value: Int,
-    onValueChange: (Int) -> Unit,
-) {
-    var text by remember(value) { mutableStateOf(value.toString()) }
-
-    NoExtractOutlinedTextField(
-        value = text,
-        onValueChange = { newText ->
-            // Allow only digits
-            val filtered = newText.filter { it.isDigit() }
-            text = filtered
-            filtered.toIntOrNull()?.let { onValueChange(it) }
-        },
-        label = { Text(label) },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        singleLine = true,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 0.dp),
-    )
-}
 
 @Composable
 private fun MouseHoldBehaviorPicker(
@@ -648,15 +555,13 @@ private fun mouseDragMovementModeLabel(mode: String): String = when (mode) {
 
 // ── Categorized action picker for tap/hold gestures ─────────────────────
 
-private data class ActionCategory(val header: String, val actions: List<Pair<String, String>>)
-
 @Composable
-private fun buildActionCategories(): List<ActionCategory> {
-    val special = ActionCategory(
+private fun buildActionCategories(): List<SettingsActionCategory> {
+    val special = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_special),
         actions = listOf(ACTION_SHOW_KEYBOARD to stringResource(R.string.gesture_action_show_keyboard))
     )
-    val mouse = ActionCategory(
+    val mouse = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_mouse),
         actions = listOf(
             ACTION_LEFT_CLICK to stringResource(R.string.gesture_action_left_click),
@@ -664,7 +569,7 @@ private fun buildActionCategories(): List<ActionCategory> {
             ACTION_MIDDLE_CLICK to stringResource(R.string.gesture_action_middle_click),
         )
     )
-    val commonGame = ActionCategory(
+    val commonGame = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_common_game),
         actions = listOf(
             "key_ESC" to "ESC", "key_SPACE" to "SPACE", "key_E" to "E", "key_Q" to "Q",
@@ -672,7 +577,7 @@ private fun buildActionCategories(): List<ActionCategory> {
             "key_I" to "I", "key_M" to "M", "key_R" to "R",
         )
     )
-    val navigationEditing = ActionCategory(
+    val navigationEditing = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_navigation_editing),
         actions = keyActionsOf(
             Binding.KEY_UP,
@@ -689,7 +594,7 @@ private fun buildActionCategories(): List<ActionCategory> {
             Binding.KEY_PRTSCN,
         )
     )
-    val symbols = ActionCategory(
+    val symbols = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_symbols),
         actions = keyActionsOf(
             Binding.KEY_BRACKET_LEFT,
@@ -706,15 +611,15 @@ private fun buildActionCategories(): List<ActionCategory> {
             Binding.KEY_EQUAL,
         )
     )
-    val letters = ActionCategory(
+    val letters = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_letters),
         actions = ('A'..'Z').map { "key_$it" to it.toString() }
     )
-    val numbers = ActionCategory(
+    val numbers = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_numbers),
         actions = (0..9).map { "key_$it" to it.toString() }
     )
-    val numpad = ActionCategory(
+    val numpad = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_numpad),
         actions = keyActionsOf(
             Binding.KEY_KP_DIVIDE,
@@ -734,11 +639,11 @@ private fun buildActionCategories(): List<ActionCategory> {
             Binding.KEY_KP_9,
         )
     )
-    val functionKeys = ActionCategory(
+    val functionKeys = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_function_keys),
         actions = (1..12).map { "key_F$it" to "F$it" }
     )
-    val modifiersLocks = ActionCategory(
+    val modifiersLocks = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_modifiers_locks),
         actions = keyActionsOf(
             Binding.KEY_SHIFT_L,
@@ -770,86 +675,14 @@ private fun TapHoldActionPicker(
     currentAction: String,
     onActionSelected: (String) -> Unit,
 ) {
-    var showDialog by remember { mutableStateOf(false) }
-    val label = tapHoldActionLabel(currentAction)
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 1.dp)
-            .clickable { showDialog = true },
-        shape = RoundedCornerShape(10.dp),
-        color = PluviaSurfaceElevated,
-        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaBorder.copy(alpha = 0.5f)),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(stringResource(R.string.gesture_action_label))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(label, color = MaterialTheme.colorScheme.primary)
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-
-    if (showDialog) {
-        val categories = buildActionCategories()
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            containerColor = PluviaBackground,
-            title = { Text(stringResource(R.string.gesture_action_label)) },
-            text = {
-                LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                    categories.forEach { category ->
-                        item {
-                            Text(
-                                text = category.header,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
-                            )
-                        }
-                        items(category.actions) { (actionKey, actionLabel) ->
-                            val isSelected = actionKey == currentAction
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onActionSelected(actionKey)
-                                        showDialog = false
-                                    },
-                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                                else PluviaSurface,
-                            ) {
-                                Text(
-                                    text = actionLabel,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDialog = false }) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-            },
-        )
-    }
+    CategorizedActionPicker(
+        currentValue = currentAction,
+        currentLabel = tapHoldActionLabel(currentAction),
+        rowLabel = stringResource(R.string.gesture_action_label),
+        dialogTitle = stringResource(R.string.gesture_action_label),
+        categories = buildActionCategories(),
+        onValueSelected = onActionSelected,
+    )
 }
 
 @Composable

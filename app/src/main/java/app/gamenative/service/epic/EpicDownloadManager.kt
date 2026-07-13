@@ -880,6 +880,9 @@ class EpicDownloadManager @Inject constructor(
             val downloadedChunkIds = newKeySet<String>()
             val pendingChunks = AtomicInteger(chunkQueue.size)
 
+            // Calculate total expected installed size once (sum of all file sizes)
+            val totalExpectedSize = files.sumOf { it.fileSize }
+
             chunkQueue.forEach { chunkInfo ->
                 chunkUsageCounts[chunkInfo.guidStr] = AtomicInteger(
                     files.sumOf { file -> file.chunkParts.count { chunk -> chunk.guidStr == chunkInfo.guidStr } }
@@ -1027,7 +1030,15 @@ class EpicDownloadManager @Inject constructor(
 
                 val chunksAdded = mutableListOf<String>()
 
-                files.forEach { file ->
+                // Sort files by total chunk usage (lowest first) - files with less-shared chunks complete faster and free cache sooner
+                val sortedFiles = files.sortedBy { file ->
+                    file.chunkParts.sumOf { chunk ->
+                        chunkUsageCounts[chunk.guidStr]?.get() ?: 0
+                    }
+                }
+                Timber.tag("EPIC").d("Processing ${sortedFiles.size} files sorted by chunk usage (least shared first)")
+
+                sortedFiles.forEach { file ->
                     if (!downloadInfo.isActive()) {
                         Timber.tag("EPIC").w("Download cancelled during file iteration")
                         return@launch
@@ -1075,7 +1086,16 @@ class EpicDownloadManager @Inject constructor(
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
 
-                Timber.tag("EPIC").d("Waiting for $currentPendingChunks pending chunks to complete")
+                // Calculate storage usage stats (only scan cache dir, not entire install dir)
+                val chunkCacheSize = calculateDirectorySize(chunkCacheDir)
+
+                Timber.tag("EPIC").d(
+                    """Waiting for $currentPendingChunks pending chunks
+                    |  Cache: ${chunkCacheSize / 1_000_000}MB
+                    |  Game files: ${totalExpectedSize / 1_000_000}MB
+                    |  Total disk: ${(chunkCacheSize + totalExpectedSize) / 1_000_000}MB
+                    """.trimMargin()
+                )
 
                 if (currentPendingChunks == lastPendingChunks) {
                     samePendingChunksAttempts++
@@ -1097,8 +1117,8 @@ class EpicDownloadManager @Inject constructor(
                     samePendingChunksAttempts = 0
                 }
 
-                // Wait for 1 second to recheck
-                delay(1000)
+                // Wait for 5 seconds to recheck (not too quick due to added stats causing IO)
+                delay(5000)
 
                 currentPendingChunks = pendingChunks.get()
             }
@@ -1255,7 +1275,7 @@ class EpicDownloadManager @Inject constructor(
         }
 
         if (isRoot) {
-            val totalSize = calculateTotalSize(dir)
+            val totalSize = calculateDirectorySize(dir)
             val fileCount = countFiles(dir)
             Timber.tag("Epic").i("=== Summary ===")
             Timber.tag("Epic").i("Total files: $fileCount")
@@ -1277,20 +1297,38 @@ class EpicDownloadManager @Inject constructor(
     }
 
     /**
-     * Calculate total size of a directory recursively
-     */
-    private fun calculateTotalSize(dir: File): Long {
-        if (!dir.exists()) return 0
-        if (dir.isFile) return dir.length()
-        return dir.listFiles()?.sumOf { calculateTotalSize(it) } ?: 0
-    }
-
-    /**
      * Count total number of files in a directory recursively
      */
     private fun countFiles(dir: File): Int {
         if (!dir.exists()) return 0
         if (dir.isFile) return 1
         return dir.listFiles()?.sumOf { countFiles(it) } ?: 0
+    }
+
+    /**
+     * Total size under [directory]. Symlinks are skipped to avoid double-counting.
+     */
+    private fun calculateDirectorySize(directory: File): Long {
+        var size = 0L
+        try {
+            if (!directory.exists() || !directory.isDirectory) {
+                return 0L
+            }
+
+            val files = directory.listFiles() ?: return 0L
+            for (file in files) {
+                if (java.nio.file.Files.isSymbolicLink(file.toPath())) {
+                    continue
+                }
+                size += if (file.isDirectory) {
+                    calculateDirectorySize(file)
+                } else {
+                    file.length()
+                }
+            }
+        } catch (e: Exception) {
+            Timber.tag("Epic").w(e, "Error calculating directory size for ${directory.name}")
+        }
+        return size
     }
 }

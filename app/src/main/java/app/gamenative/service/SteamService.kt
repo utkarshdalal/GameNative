@@ -932,11 +932,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             hasSteamUnlockedBranch: Boolean = false,
         ): Map<Int, DepotInfo> {
             val dlcAppIdsWithSingleDepots = getDlcAppIdsWithSingleDepot(depots)
-            val eligible = eligibleDepots(depots, preferredLanguage, ownedDlc, licensedDepotIds)
+            val effectiveLanguage = SteamUtils.effectiveDepotLanguage(
+                depots, preferredLanguage, ownedDlc, licensedDepotIds, hasSteamUnlockedBranch,
+            )
+            val eligible = eligibleDepots(depots, effectiveLanguage, ownedDlc, licensedDepotIds)
             val has64Bit = eligible.any { it.osArch == OSArch.Arch64 }
             val hasNonDeckWin = eligible.any { !it.steamDeck && it.isWindowsCompatible }
             return depots.filter { (_, depot) ->
-                filterForDownloadableDepots(depot, has64Bit, hasNonDeckWin, preferredLanguage,
+                filterForDownloadableDepots(depot, has64Bit, hasNonDeckWin, effectiveLanguage,
                     ownedDlc, licensedDepotIds,
                     dlcAppIdsWithSingleDepots = dlcAppIdsWithSingleDepots
                 )
@@ -1005,18 +1008,25 @@ class SteamService : Service(), IChallengeUrlChanged {
             val map = getMainAppDepots(appId, preferredLanguage).toMutableMap()
 
             // parent app's arch applies to DLC arch selection
-            val has64Bit = eligibleDepots(appInfo.depots, preferredLanguage, ownedDlc, licensedDepots)
+            val mainLanguage = SteamUtils.effectiveDepotLanguage(
+                appInfo.depots, preferredLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch,
+            )
+            val has64Bit = eligibleDepots(appInfo.depots, mainLanguage, ownedDlc, licensedDepots)
                 .any { it.osArch == OSArch.Arch64 }
 
             val indirectDlcApps = getDownloadableDlcAppsOf(appId).orEmpty()
             indirectDlcApps.forEach { dlcApp ->
                 val dlcAppIdsWithSingleDepots = getDlcAppIdsWithSingleDepot(dlcApp.depots)
                 val dlcLicensedDepots = getLicensedDepotIds(dlcApp.id)
-                val dlcEligible = eligibleDepots(dlcApp.depots, preferredLanguage, null, dlcLicensedDepots)
+                // Resolve the DLC's own language too, so DLC that omits the container language installs.
+                val dlcLanguage = SteamUtils.effectiveDepotLanguage(
+                    dlcApp.depots, preferredLanguage, null, dlcLicensedDepots, hasSteamUnlockedBranch,
+                )
+                val dlcEligible = eligibleDepots(dlcApp.depots, dlcLanguage, null, dlcLicensedDepots)
                 val dlcHasNonDeckWin = dlcEligible.any { !it.steamDeck && it.isWindowsCompatible }
                 dlcApp.depots
                     .filter { (_, depot) ->
-                        filterForDownloadableDepots(depot, has64Bit, dlcHasNonDeckWin, preferredLanguage,
+                        filterForDownloadableDepots(depot, has64Bit, dlcHasNonDeckWin, dlcLanguage,
                             null, dlcLicensedDepots, hasSteamUnlockedBranch,
                             dlcAppIdsWithSingleDepots = dlcAppIdsWithSingleDepots
                         )
@@ -4004,40 +4014,41 @@ class SteamService : Service(), IChallengeUrlChanged {
         scope.launch {
             db.withTransaction {
                 // Send off an event if we change states.
-                if (callback.friendId == steamClient!!.steamID) {
-                    val avatarHash = callback.avatarHash.toHexString()
-                    val playerName = callback.playerName
+                val userSteamId = steamClient?.steamID ?: return@withTransaction
+                if(callback.friendId != userSteamId) return@withTransaction
 
-                    // When connected, callback may return Offline due to missing Status flag in request.
-                    // Trust PrefManager.personaState (user's chosen state) in that case.
-                    val state = if (callback.personaState == EPersonaState.Offline && isConnected) {
-                        PrefManager.personaState
-                    } else {
-                        callback.personaState
-                    }
+                val avatarHash = callback.avatarHash.toHexString()
+                val playerName = callback.playerName
 
-                    Timber.d(
-                        "Local persona state received: ${callback.playerName}, state=$state, gameAppId=${callback.gamePlayedAppId}, gameName=${callback.gameName}",
-                    )
-
-                    // Update local state flow
-                    _localPersona.update {
-                        it.copy(
-                            avatarHash = avatarHash,
-                            name = playerName,
-                            state = state,
-                            gameAppID = callback.gamePlayedAppId,
-                            gameName = appDao.findApp(callback.gamePlayedAppId)?.name ?: callback.gameName,
-                        )
-                    }
-
-                    // Cache local persona
-                    PrefManager.steamUserAvatarHash = avatarHash
-                    PrefManager.steamUserName = playerName
-
-                    val event = SteamEvent.PersonaStateReceived(localPersona.value)
-                    PluviaApp.events.emit(event)
+                // When connected, callback may return Offline due to missing Status flag in request.
+                // Trust PrefManager.personaState (user's chosen state) in that case.
+                val state = if (callback.personaState == EPersonaState.Offline && isConnected) {
+                    PrefManager.personaState
+                } else {
+                    callback.personaState
                 }
+
+                Timber.d(
+                    "Local persona state received: ${callback.playerName}, state=$state, gameAppId=${callback.gamePlayedAppId}, gameName=${callback.gameName}",
+                )
+
+                // Update local state flow
+                _localPersona.update {
+                    it.copy(
+                        avatarHash = avatarHash,
+                        name = playerName,
+                        state = state,
+                        gameAppID = callback.gamePlayedAppId,
+                        gameName = appDao.findApp(callback.gamePlayedAppId)?.name ?: callback.gameName,
+                    )
+                }
+
+                // Cache local persona
+                PrefManager.steamUserAvatarHash = avatarHash
+                PrefManager.steamUserName = playerName
+
+                val event = SteamEvent.PersonaStateReceived(localPersona.value)
+                PluviaApp.events.emit(event)
             }
         }
     }
@@ -4056,14 +4067,16 @@ class SteamService : Service(), IChallengeUrlChanged {
                 //      from family sharing... We really can't test this as there is a 1-year cooldown.
                 //      Then 'findStaleLicences' will find these now invalid items to remove.
 
-                // Store raw licenses for DepotDownloader - each license in its own row
+                // Chunk the input to reduce memory pressures for very large items.
                 licenses = callback.licenseList
                 cachedLicenseDao.deleteAll()
-                val cachedLicenses = callback.licenseList.map { license ->
-                    CachedLicense(licenseJson = LicenseSerializer.serializeLicense(license))
+                callback.licenseList.chunked(500).forEach { chunk ->
+                    cachedLicenseDao.insertAll(
+                        chunk.map { license ->
+                            CachedLicense(licenseJson = LicenseSerializer.serializeLicense(license))
+                        },
+                    )
                 }
-                cachedLicenseDao.insertAll(cachedLicenses)
-
                 val licensesToAdd = callback.licenseList
                     .groupBy { it.packageID }
                     .map { licensesEntry ->
@@ -4096,7 +4109,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 if (licensesToAdd.isNotEmpty()) {
                     Timber.i("Adding ${licensesToAdd.size} licenses")
-                    licenseDao.insertAll(licensesToAdd)
+                    licensesToAdd.chunked(500).forEach { chunk ->
+                        licenseDao.insertAll(chunk)
+                    }
                 }
 
                 val licensesToRemove = licenseDao.findStaleLicences(
