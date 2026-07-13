@@ -2085,4 +2085,10 @@
 	<string name="achievements_unlocked_at">Deblocat pe %1$s la %2$s</string>
     <string name="achievements_complete">Toate realizările deblocate</string>
     <string name="achievements_total">Total</string>
+    <string name="achievements_hidden_remaining">%1$d realizări ascunse rămase</string>
+    <string name="achievements_hidden_subtitle">Detaliile fiecărei realizări vor fi dezvăluite după deblocare</string>
+    <string name="achievements_reveal_title">Afișezi realizările ascunse?</string>
+    <string name="achievements_reveal_message">Afișează temporar realizările secrete rămase și detaliile lor. Nu este memorat.</string>
+    <string name="achievements_reveal_confirm">Afișează</string>
+    <string name="achievements_locked">Blocat</string>
 </resources>

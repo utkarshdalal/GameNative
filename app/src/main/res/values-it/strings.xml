@@ -2075,4 +2075,10 @@
     <string name="achievements_unlocked_at">Sbloccato il %1$s alle %2$s</string>
     <string name="achievements_complete">Tutti i traguardi sbloccati</string>
     <string name="achievements_total">Totale</string>
+    <string name="achievements_hidden_remaining">%1$d obiettivi nascosti rimanenti</string>
+    <string name="achievements_hidden_subtitle">I dettagli di ogni obiettivo verranno rivelati una volta sbloccati</string>
+    <string name="achievements_reveal_title">Mostrare gli obiettivi nascosti?</string>
+    <string name="achievements_reveal_message">Mostra temporaneamente gli obiettivi segreti rimanenti e i loro dettagli. Non verrà memorizzato.</string>
+    <string name="achievements_reveal_confirm">Mostra</string>
+    <string name="achievements_locked">Bloccato</string>
 </resources>

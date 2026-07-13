@@ -2041,4 +2041,10 @@
     <string name="achievements_unlocked_at">%1$s %2$s に解除</string>
     <string name="achievements_complete">すべての実績を解除しました</string>
     <string name="achievements_total">合計</string>
+    <string name="achievements_hidden_remaining">隠し実績 残り%1$d個</string>
+    <string name="achievements_hidden_subtitle">各実績の詳細は解除すると表示されます</string>
+    <string name="achievements_reveal_title">隠し実績を表示しますか？</string>
+    <string name="achievements_reveal_message">残りの隠し実績とその詳細を一時的に表示します。記憶されません。</string>
+    <string name="achievements_reveal_confirm">表示</string>
+    <string name="achievements_locked">未解除</string>
 </resources>

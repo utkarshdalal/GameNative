@@ -2082,4 +2082,10 @@
     <string name="achievements_unlocked_at">Odblokowano %1$s o %2$s</string>
     <string name="achievements_complete">Wszystkie osiągnięcia odblokowane</string>
     <string name="achievements_total">Razem</string>
+    <string name="achievements_hidden_remaining">Pozostało ukrytych osiągnięć: %1$d</string>
+    <string name="achievements_hidden_subtitle">Szczegóły każdego osiągnięcia zostaną ujawnione po odblokowaniu</string>
+    <string name="achievements_reveal_title">Pokazać ukryte osiągnięcia?</string>
+    <string name="achievements_reveal_message">Tymczasowo pokazuje pozostałe sekretne osiągnięcia i ich szczegóły. Nie zostanie zapamiętane.</string>
+    <string name="achievements_reveal_confirm">Pokaż</string>
+    <string name="achievements_locked">Zablokowane</string>
 </resources>

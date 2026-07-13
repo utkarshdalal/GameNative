@@ -4,7 +4,6 @@ package app.gamenative.ui.screen.library
 
 import android.content.Intent
 import android.content.res.Configuration
-import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.ColorFilter
@@ -79,6 +79,7 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
@@ -91,6 +92,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -125,7 +127,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.NetworkMonitor
@@ -157,6 +162,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -1244,7 +1250,240 @@ private val grayMatrix = ColorMatrix().apply { setToSaturation(0f) }
 private fun Achievement.previewIconUrl(): String? =
     if (isUnlocked) icon.ifEmpty { iconGray } else iconGray ?: icon.ifEmpty { null }
 
-@SuppressLint("UnusedBoxWithConstraintsScope")
+// A still-locked secret achievement, whose details Steam keeps hidden.
+private val Achievement.isHiddenLocked: Boolean
+    get() = hidden && !isUnlocked
+
+// Achievement icon, grayed while locked. Pass masked = true to hide the art of a secret achievement.
+@Composable
+private fun AchievementIcon(ach: Achievement, size: Dp, corner: Dp, masked: Boolean = false) {
+    val box = Modifier
+        .size(size)
+        .clip(RoundedCornerShape(corner))
+        .background(MaterialTheme.colorScheme.surfaceContainer)
+    if (masked) {
+        Box(box, contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.Filled.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(size / 2),
+            )
+        }
+    } else {
+        val iconUrl = ach.previewIconUrl()
+        CoilImage(
+            imageModel = { iconUrl ?: "" },
+            imageOptions = ImageOptions(
+                contentScale = ContentScale.Crop,
+                contentDescription = ach.displayName ?: ach.name,
+                colorFilter = if (ach.isUnlocked) null else ColorFilter.colorMatrix(grayMatrix),
+            ),
+            modifier = box,
+        )
+    }
+}
+
+// Progress bar plus "current / max" for stat-linked achievements.
+@Composable
+private fun AchievementProgressBar(current: Float, max: Float, textStyle: TextStyle) {
+    val fraction = if (max > 0f) (current / max).coerceIn(0f, 1f) else 0f
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        LinearProgressIndicator(
+            progress = { fraction },
+            modifier = Modifier.weight(1f),
+            trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+            gapSize = 0.dp,
+            drawStopIndicator = {},
+        )
+        Text(
+            text = "${current.toInt()} / ${max.toInt()}",
+            style = textStyle,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
+}
+
+// Focusable, clickable achievement row.
+@Composable
+private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = null, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    Surface(
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusRing(interactionSource, shape),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            AchievementIcon(ach = ach, size = 40.dp, corner = 6.dp)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = ach.displayName ?: ach.name ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (!ach.description.isNullOrEmpty()) {
+                    Text(
+                        text = ach.description!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                val unlockedAt = ach.getFormattedUnlockDateTime()
+                if (ach.isUnlocked && unlockedAt != null) {
+                    Text(
+                        text = stringResource(R.string.achievements_unlocked_at, unlockedAt.first, unlockedAt.second),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = PluviaTheme.colors.statusInstalled,
+                    )
+                } else if (ach.hasProgress) {
+                    AchievementProgressBar(
+                        current = ach.progressCurrent ?: 0f,
+                        max = ach.progressMax ?: 0f,
+                        textStyle = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Collapsed row standing in for still-locked secret achievements.
+@Composable
+private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    Surface(
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusRing(interactionSource, shape),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "+$count",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.achievements_hidden_remaining, count),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = stringResource(R.string.achievements_hidden_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+// Full details for one achievement.
+@Composable
+private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+        },
+        icon = {
+            AchievementIcon(ach = ach, size = 64.dp, corner = 10.dp)
+        },
+        title = {
+            Text(
+                text = ach.displayName ?: ach.name ?: "",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (!ach.description.isNullOrEmpty()) {
+                    Text(
+                        text = ach.description!!,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                val unlockedAt = ach.getFormattedUnlockDateTime()
+                if (ach.isUnlocked && unlockedAt != null) {
+                    Text(
+                        text = stringResource(R.string.achievements_unlocked_at, unlockedAt.first, unlockedAt.second),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = PluviaTheme.colors.statusInstalled,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else if (ach.hasProgress) {
+                    AchievementProgressBar(
+                        current = ach.progressCurrent ?: 0f,
+                        max = ach.progressMax ?: 0f,
+                        textStyle = MaterialTheme.typography.labelMedium,
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.achievements_locked),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        },
+    )
+}
+
 @Composable
 private fun AchievementsRow(
     achievements: List<Achievement>,
@@ -1287,23 +1526,15 @@ private fun AchievementsRow(
                 val iconCount = if (showStack) (fit - 1).coerceAtLeast(0) else fit
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
                     sortedAchievements.take(iconCount).forEach { ach ->
-                        val iconUrl = ach.previewIconUrl()
-                        CoilImage(
-                            imageModel = { iconUrl ?: "" },
-                            imageOptions = ImageOptions(
-                                contentScale = ContentScale.Crop,
-                                contentDescription = ach.displayName ?: ach.name,
-                                colorFilter = if (ach.isUnlocked) null else ColorFilter.colorMatrix(grayMatrix),
-                            ),
-                            modifier = Modifier
-                                .size(iconSize)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                        AchievementIcon(
+                            ach = ach,
+                            size = iconSize,
+                            corner = 8.dp,
+                            masked = ach.isHiddenLocked,
                         )
                     }
                     if (showStack) {
                         val next = sortedAchievements[iconCount]
-                        val nextUrl = next.previewIconUrl()
                         Box(
                             modifier = Modifier
                                 .size(iconSize)
@@ -1311,14 +1542,17 @@ private fun AchievementsRow(
                                 .background(MaterialTheme.colorScheme.surfaceContainer),
                             contentAlignment = Alignment.Center,
                         ) {
-                            CoilImage(
-                                imageModel = { nextUrl ?: "" },
-                                imageOptions = ImageOptions(
-                                    contentScale = ContentScale.Crop,
-                                    colorFilter = ColorFilter.colorMatrix(grayMatrix),
-                                ),
-                                modifier = Modifier.fillMaxSize(),
-                            )
+                            if (!next.isHiddenLocked) {
+                                val nextUrl = next.previewIconUrl()
+                                CoilImage(
+                                    imageModel = { nextUrl ?: "" },
+                                    imageOptions = ImageOptions(
+                                        contentScale = ContentScale.Crop,
+                                        colorFilter = ColorFilter.colorMatrix(grayMatrix),
+                                    ),
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -1392,6 +1626,24 @@ private fun AchievementsDialog(
     }
     val dismiss = { visibleState.targetState = false }
 
+    // Reveal is session-only, not remembered.
+    var revealHidden by remember { mutableStateOf(false) }
+    var showRevealConfirm by remember { mutableStateOf(false) }
+    var detailAchievement by remember { mutableStateOf<Achievement?>(null) }
+    // Keep focus on the freshly revealed achievements instead of jumping to the list top.
+    val revealedFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(revealHidden) {
+        if (revealHidden) {
+            repeat(5) {
+                try {
+                    if (revealedFocusRequester.requestFocus()) return@LaunchedEffect
+                } catch (_: IllegalStateException) {
+                }
+                delay(32)
+            }
+        }
+    }
+
     Dialog(
         onDismissRequest = dismiss,
         properties = DialogProperties(
@@ -1447,79 +1699,23 @@ private fun AchievementsDialog(
                     contentPadding = PaddingValues(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(achievements) { ach ->
-                        val iconUrl = ach.previewIconUrl()
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                CoilImage(
-                                    imageModel = { iconUrl ?: "" },
-                                    imageOptions = ImageOptions(
-                                        contentScale = ContentScale.Crop,
-                                        contentDescription = ach.displayName ?: ach.name,
-                                        colorFilter = if (ach.isUnlocked) null else ColorFilter.colorMatrix(grayMatrix),
-                                    ),
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceContainer),
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = ach.displayName ?: ach.name ?: "",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                    if (!ach.description.isNullOrEmpty()) {
-                                        Text(
-                                            text = ach.description!!,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                    val unlockedAt = ach.getFormattedUnlockDateTime()
-                                    if (ach.isUnlocked && unlockedAt != null) {
-                                        Text(
-                                            text = stringResource(R.string.achievements_unlocked_at, unlockedAt.first, unlockedAt.second),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = PluviaTheme.colors.statusInstalled,
-                                        )
-                                    } else if (ach.hasProgress) {
-                                        val current = ach.progressCurrent ?: 0f
-                                        val max = ach.progressMax ?: 1f
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        ) {
-                                            LinearProgressIndicator(
-                                                progress = { (current / max).coerceIn(0f, 1f) },
-                                                modifier = Modifier.weight(1f),
-                                                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                                                gapSize = 0.dp,
-                                                drawStopIndicator = {},
-                                            )
-                                            Text(
-                                                text = "${current.toInt()} / ${max.toInt()}",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                maxLines = 1,
-                                                softWrap = false,
-                                            )
-                                        }
-                                    }
+                    // Secret achievements collapse into one row until revealed.
+                    val (hiddenLocked, visibleAchievements) = achievements.partition { it.isHiddenLocked }
+                    items(visibleAchievements) { ach ->
+                        AchievementRow(ach) { detailAchievement = ach }
+                    }
+                    if (hiddenLocked.isNotEmpty()) {
+                        if (revealHidden) {
+                            itemsIndexed(hiddenLocked) { index, ach ->
+                                AchievementRow(
+                                    ach = ach,
+                                    focusRequester = if (index == 0) revealedFocusRequester else null,
+                                ) { detailAchievement = ach }
+                            }
+                        } else {
+                            item {
+                                HiddenAchievementsSummary(count = hiddenLocked.size) {
+                                    showRevealConfirm = true
                                 }
                             }
                         }
@@ -1528,6 +1724,28 @@ private fun AchievementsDialog(
             }
         }
         }
+    }
+
+    if (showRevealConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRevealConfirm = false },
+            title = { Text(stringResource(R.string.achievements_reveal_title)) },
+            text = { Text(stringResource(R.string.achievements_reveal_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    revealHidden = true
+                    showRevealConfirm = false
+                }) { Text(stringResource(R.string.achievements_reveal_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRevealConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+    detailAchievement?.let { ach ->
+        AchievementDetailDialog(ach) { detailAchievement = null }
     }
 }
 

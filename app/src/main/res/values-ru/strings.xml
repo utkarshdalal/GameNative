@@ -2010,4 +2010,10 @@ https://gamenative.app
     <string name="achievements_unlocked_at">Разблокировано %1$s в %2$s</string>
     <string name="achievements_complete">Все достижения разблокированы</string>
     <string name="achievements_total">Всего</string>
+    <string name="achievements_hidden_remaining">Осталось скрытых достижений: %1$d</string>
+    <string name="achievements_hidden_subtitle">Подробности каждого достижения будут раскрыты после разблокировки</string>
+    <string name="achievements_reveal_title">Показать скрытые достижения?</string>
+    <string name="achievements_reveal_message">Временно показывает оставшиеся секретные достижения и их детали. Это не запоминается.</string>
+    <string name="achievements_reveal_confirm">Показать</string>
+    <string name="achievements_locked">Заблокировано</string>
 </resources>

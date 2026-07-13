@@ -2078,4 +2078,10 @@
     <string name="achievements_unlocked_at">Розблоковано %1$s о %2$s</string>
     <string name="achievements_complete">Усі досягнення розблоковано</string>
     <string name="achievements_total">Усього</string>
+    <string name="achievements_hidden_remaining">Залишилось прихованих досягнень: %1$d</string>
+    <string name="achievements_hidden_subtitle">Деталі кожного досягнення буде розкрито після розблокування</string>
+    <string name="achievements_reveal_title">Показати приховані досягнення?</string>
+    <string name="achievements_reveal_message">Тимчасово показує решту секретних досягнень та їхні деталі. Це не запам’ятовується.</string>
+    <string name="achievements_reveal_confirm">Показати</string>
+    <string name="achievements_locked">Заблоковано</string>
 </resources>
