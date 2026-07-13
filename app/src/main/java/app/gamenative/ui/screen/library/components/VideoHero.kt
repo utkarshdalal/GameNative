@@ -4,8 +4,18 @@ import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.OptIn
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -153,71 +163,99 @@ private fun YouTubeHero(
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
-    var showFallback by remember(videoId) { mutableStateOf(true) }
-
-    val webView = remember(videoId) {
-        WebView(context).apply {
-            settings.javaScriptEnabled = true
-            settings.mediaPlaybackRequiresUserGesture = false
-            settings.domStorageEnabled = true
-            setBackgroundColor(android.graphics.Color.BLACK)
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-            )
-            webViewClient = object : WebViewClient() {
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    showFallback = false
-                }
-            }
-            loadDataWithBaseURL(
-                "https://www.youtube-nocookie.com",
-                youTubeEmbedHtml(videoId),
-                "text/html",
-                "utf-8",
-                null,
-            )
-        }
-    }
-
-    DisposableEffect(webView, lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_PAUSE -> webView.onPause()
-                Lifecycle.Event.ON_RESUME -> webView.onResume()
-                else -> {}
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            webView.destroy()
-        }
-    }
+    var started by remember(videoId) { mutableStateOf(false) }
+    var isPlaying by remember(videoId) { mutableStateOf(true) }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         CoilImage(
-            imageModel = { fallbackImageUrl },
+            imageModel = { "https://img.youtube.com/vi/$videoId/hqdefault.jpg" },
             imageOptions = ImageOptions(
-                contentDescription = null,
+                contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
             ),
-            modifier = Modifier
-                .fillMaxSize()
-                .blur(20.dp),
+            failure = {
+                CoilImage(
+                    imageModel = { fallbackImageUrl },
+                    imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+                    modifier = Modifier.fillMaxSize(),
+                )
+            },
+            modifier = Modifier.fillMaxSize(),
         )
 
-        AndroidView(factory = { webView }, modifier = Modifier.fillMaxSize())
-
-        if (showFallback) {
-            CoilImage(
-                imageModel = { fallbackImageUrl },
-                imageOptions = ImageOptions(
+        if (!started) {
+            IconButton(
+                onClick = {
+                    started = true
+                    isPlaying = true
+                },
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), CircleShape),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
                     contentDescription = contentDescription,
-                    contentScale = ContentScale.Crop,
-                ),
-                modifier = Modifier.fillMaxSize(),
-            )
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp),
+                )
+            }
+        } else {
+            val webView = remember(videoId) {
+                WebView(context).apply {
+                    settings.javaScriptEnabled = true
+                    settings.mediaPlaybackRequiresUserGesture = false
+                    settings.domStorageEnabled = true
+                    setBackgroundColor(android.graphics.Color.BLACK)
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
+                    loadDataWithBaseURL(
+                        "https://www.youtube-nocookie.com",
+                        youTubeEmbedHtml(videoId),
+                        "text/html",
+                        "utf-8",
+                        null,
+                    )
+                }
+            }
+
+            DisposableEffect(webView, lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    when (event) {
+                        Lifecycle.Event.ON_PAUSE -> webView.onPause()
+                        Lifecycle.Event.ON_RESUME -> webView.onResume()
+                        else -> {}
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                    webView.destroy()
+                }
+            }
+
+            AndroidView(factory = { webView }, modifier = Modifier.fillMaxSize())
+
+            IconButton(
+                onClick = {
+                    isPlaying = !isPlaying
+                    webView.evaluateJavascript(if (isPlaying) "playVideo()" else "pauseVideo()", null)
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(12.dp)
+                    .size(40.dp)
+                    .background(Color.Black.copy(alpha = 0.55f), CircleShape),
+            ) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
         }
     }
 }
@@ -228,27 +266,14 @@ private fun youTubeEmbedHtml(videoId: String): String =
       html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
       #player,#player iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0}
       .block{position:absolute;top:0;left:0;width:100%;height:100%;z-index:2}
-      #toggle{position:absolute;left:12px;bottom:12px;width:44px;height:44px;z-index:3;
-        display:flex;align-items:center;justify-content:center;border-radius:50%;
-        background:rgba(0,0,0,0.55);-webkit-tap-highlight-color:transparent}
-      #toggle svg{width:22px;height:22px;fill:#fff}
     </style></head>
     <body>
       <div id="player"></div>
       <div class="block"></div>
-      <div id="toggle" onclick="toggleVideo()"></div>
       <script>
         var ytPlayer;
-        var PAUSE='<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
-        var PLAY='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
-        function setIcon(){
-          if(!ytPlayer||!ytPlayer.getPlayerState) return;
-          document.getElementById('toggle').innerHTML = (ytPlayer.getPlayerState()===1)?PAUSE:PLAY;
-        }
-        function toggleVideo(){
-          if(!ytPlayer) return;
-          if(ytPlayer.getPlayerState()===1) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
-        }
+        function pauseVideo(){ if(ytPlayer&&ytPlayer.pauseVideo) ytPlayer.pauseVideo(); }
+        function playVideo(){ if(ytPlayer&&ytPlayer.playVideo) ytPlayer.playVideo(); }
         var tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
         document.head.appendChild(tag);
@@ -259,10 +284,7 @@ private fun youTubeEmbedHtml(videoId: String): String =
               autoplay: 1, mute: 1, controls: 0, loop: 1, playlist: '$videoId',
               modestbranding: 1, rel: 0, iv_load_policy: 3, fs: 0, disablekb: 1, playsinline: 1
             },
-            events: {
-              onReady: function (e) { e.target.mute(); e.target.playVideo(); setIcon(); },
-              onStateChange: setIcon
-            }
+            events: { onReady: function (e) { e.target.mute(); e.target.playVideo(); } }
           });
         }
       </script>
