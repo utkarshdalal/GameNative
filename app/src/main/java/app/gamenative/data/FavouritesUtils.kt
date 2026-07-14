@@ -12,10 +12,6 @@ internal object FavouritesUtils {
     fun apply(current: Set<String>, appId: String, favourite: Boolean): Set<String> =
         if (favourite) current + appId else current - appId
 
-    /** Returns the favourites set with [appId] flipped on or off. */
-    fun toggle(current: Set<String>, appId: String): Set<String> =
-        apply(current, appId, appId !in current)
-
     /** Keeps only the [items] whose id (via [id]) is in [favourites], preserving order. */
     fun <T> filter(items: List<T>, favourites: Set<String>, id: (T) -> String): List<T> =
         items.filter { id(it) in favourites }

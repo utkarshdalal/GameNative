@@ -32,15 +32,6 @@ class FavouritesUtilsTest {
     }
 
     @Test
-    fun toggle_addsWhenMissingAndRemovesWhenPresent() {
-        val added = FavouritesUtils.toggle(setOf("a"), "b")
-        assertEquals(setOf("a", "b"), added)
-
-        val removed = FavouritesUtils.toggle(added, "b")
-        assertEquals(setOf("a"), removed)
-    }
-
-    @Test
     fun filter_keepsOnlyFavouritesAndPreservesOrder() {
         val games = listOf(
             Game(appId = "1", name = "First"),
