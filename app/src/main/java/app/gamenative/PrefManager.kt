@@ -1309,6 +1309,7 @@ object PrefManager {
             return try {
                 Json.decodeFromString<Set<String>>(value)
             } catch (e: Exception) {
+                Timber.w(e, "Failed to decode favourite app ids; falling back to empty set")
                 emptySet()
             }
         }
