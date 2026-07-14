@@ -7,7 +7,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 
 /**
@@ -41,21 +40,20 @@ object FavouritesManager {
     init {
         scope.launch {
             val stored = PrefManager.favouriteAppIds
-            val merged: Set<String>
-            val hadPendingEdits: Boolean
             synchronized(lock) {
-                hadPendingEdits = pendingEdits.isNotEmpty()
                 var result = stored
                 for ((appId, favourite) in pendingEdits) {
                     result = FavouritesUtils.apply(result, appId, favourite)
                 }
+                val hadPendingEdits = pendingEdits.isNotEmpty()
                 pendingEdits.clear()
                 loaded = true
-                merged = result
                 _favourites.value = result
-            }
-            if (hadPendingEdits && PrefManager.favouriteAppIds != merged) {
-                PrefManager.favouriteAppIds = merged
+                // Persist inside the lock so a concurrent toggle cannot be overwritten by a stale
+                // snapshot written after the lock is released.
+                if (hadPendingEdits) {
+                    PrefManager.favouriteAppIds = result
+                }
             }
         }
     }
@@ -67,19 +65,15 @@ object FavouritesManager {
 
     fun setFavourite(appId: String, favourite: Boolean) {
         synchronized(lock) {
-            if (!loaded) {
-                // The saved set has not loaded yet. Remember the intent and reflect it in the flow
-                // now for a responsive UI; persistence happens once the load merges it in.
+            val updated = FavouritesUtils.apply(_favourites.value, appId, favourite)
+            if (updated == _favourites.value) return
+            _favourites.value = updated
+            if (loaded) {
+                PrefManager.favouriteAppIds = updated
+            } else {
+                // Still loading: record the intent so the load replays it on top of the saved set.
                 pendingEdits[appId] = favourite
-                _favourites.value = FavouritesUtils.apply(_favourites.value, appId, favourite)
-                return
             }
-        }
-        val updated = _favourites.updateAndGet { current ->
-            FavouritesUtils.apply(current, appId, favourite)
-        }
-        if (PrefManager.favouriteAppIds != updated) {
-            PrefManager.favouriteAppIds = updated
         }
     }
 }
