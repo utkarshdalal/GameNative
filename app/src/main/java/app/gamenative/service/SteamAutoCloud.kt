@@ -488,18 +488,18 @@ object SteamAutoCloud {
             "$scheme${urlHost}$urlPath"
         }
 
-        val downloadFiles: (AppFileChangeList, CoroutineScope) -> Deferred<UserFilesDownloadResult> = { fileList, parentScope ->
+        val downloadFiles: (List<AppFileInfo>, AppFileChangeList, CoroutineScope) -> Deferred<UserFilesDownloadResult> = { filesToDownload, fileList, parentScope ->
             parentScope.async {
                 val filesDownloaded = AtomicInteger(0)
                 val bytesDownloaded = AtomicLong(0L)
-                val totalFiles = fileList.files.size
+                val totalFiles = filesToDownload.size
                 val parallelism = PrefManager.downloadSpeed.coerceAtLeast(1)
                 // A new client (and its Dispatcher thread pool) is created intentionally per sync,
                 // since cloud saves are downloaded at most once per game launch.
                 val downloadHttpClient = Net.httpForParallelDownloads(parallelism)
                 val semaphore = Semaphore(parallelism)
                 val completedFiles = AtomicInteger(0)
-                val totalRawBytes = fileList.files.sumOf { it.rawFileSize.toLong() }
+                val totalRawBytes = filesToDownload.sumOf { it.rawFileSize.toLong() }
                 // downloadedRawBytes tracks bytes as they stream in (per-chunk) for live progress.
                 // bytesDownloaded accumulates rawFileSize per completed file for final accounting.
                 val downloadedRawBytes = AtomicLong(0L)
@@ -514,7 +514,7 @@ object SteamAutoCloud {
 
                 try {
                     coroutineScope {
-                        fileList.files.map { file ->
+                        filesToDownload.map { file ->
                             async {
                                 semaphore.withPermit {
                                     val result = downloadSingleFile(
@@ -847,7 +847,7 @@ object SteamAutoCloud {
                     }.inWholeMicroseconds
 
                     microsecDownloadFiles = measureTime {
-                        val downloadInfo = downloadFiles(appFileListChange, parentScope).await()
+                        val downloadInfo = downloadFiles(appFileListChange.files, appFileListChange, parentScope).await()
                         filesDownloaded = downloadInfo.filesDownloaded
                         bytesDownloaded = downloadInfo.bytesDownloaded
                     }.inWholeMicroseconds
@@ -922,6 +922,38 @@ object SteamAutoCloud {
                         }
                     } else {
                         syncResult = SyncResult.UpdateFail
+                    }
+                }
+            }
+
+            // Download cloud files that were never synced to this device: present in the cloud
+            // manifest but absent from both disk and the pre-sync cache. An upload-only sync (e.g.
+            // Keep Local) advances our change number without downloading, orphaning cloud-only files.
+            // A file in the cache but missing from disk was deleted locally — left out of "known" on
+            // purpose so it propagates as a cloud delete rather than being resurrected. The pre-sync
+            // cachedFileList is used (not a fresh read) so an upload earlier in this sync can't hide
+            // such a delete. Callers run this only after any local upload, so a full local rescan is
+            // then the correct cache snapshot.
+            val reconcileNeverSyncedCloudFiles: (CoroutineScope) -> Deferred<Int> = { parentScope ->
+                parentScope.async {
+                    // Lowercased absolute paths, mirroring the silent-rehydrate comparison, since
+                    // Steam Cloud and wine may disagree on case.
+                    val knownKeys = (allLocalUserFiles + (cachedFileList?.userFileInfo ?: emptyList()))
+                        .map { it.getAbsPath(prefixToPath).toString().lowercase() }
+                        .toSet()
+                    val neverSynced = appFileListChange.files.filter {
+                        getFullFilePath(it, appFileListChange).toString().lowercase() !in knownKeys
+                    }
+
+                    if (neverSynced.isEmpty()) {
+                        0
+                    } else {
+                        Timber.i("Reconcile: downloading ${neverSynced.size} never-synced cloud file(s) for ${appInfo.id}")
+                        val downloadInfo = downloadFiles(neverSynced, appFileListChange, parentScope).await()
+                        filesDownloaded += downloadInfo.filesDownloaded
+                        bytesDownloaded += downloadInfo.bytesDownloaded
+                        steamInstance.fileChangeListsDao.insert(appInfo.id, getLocalUserFilesAsPrefixMap().values.flatten())
+                        downloadInfo.filesDownloaded
                     }
                 }
             }
@@ -1003,6 +1035,9 @@ object SteamAutoCloud {
                             SaveLocation.Local -> {
                                 // overwrite remote save with the local one
                                 uploadUserFiles(parentScope).await()
+                                // Keep-Local is upload-only; without this, cloud-only files this
+                                // device never had would be orphaned. Pull them down instead.
+                                reconcileNeverSyncedCloudFiles(parentScope).await()
                             }
 
                             SaveLocation.Remote -> {
@@ -1038,10 +1073,22 @@ object SteamAutoCloud {
                         Timber.i("Found local changes and no new cloud user files")
 
                         uploadUserFiles(parentScope).await()
-                    } else {
-                        Timber.i("No local changes and no new cloud user files, doing nothing...")
+                    }
 
-                        syncResult = SyncResult.UpToDate
+                    // Equal change numbers normally mean "cloud has nothing new", but an earlier
+                    // upload-only sync can leave cloud-only files that were never downloaded here.
+                    // Reconcile after any upload (the two file sets are disjoint: never-synced files
+                    // are by definition not on disk, so not local changes).
+                    val downloaded = reconcileNeverSyncedCloudFiles(parentScope).await()
+
+                    if (!hasLocalChanges) {
+                        if (downloaded > 0) {
+                            Timber.i("Downloaded $downloaded never-synced cloud file(s)")
+                            syncResult = SyncResult.Success
+                        } else {
+                            Timber.i("No local changes and no new cloud user files, doing nothing...")
+                            syncResult = SyncResult.UpToDate
+                        }
                     }
                 }.inWholeMicroseconds
             } else {

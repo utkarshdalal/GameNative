@@ -2810,4 +2810,264 @@ class SteamAutoCloudTest {
             rehydratedCn!!.changeNumber,
         )
     }
+
+    // ── Reconciliation of never-synced cloud files ───────────────────────
+    // The offline-first-boot bug: an upload-only sync stamps the local change
+    // number to match the cloud's without downloading, so cloud-only files are
+    // orphaned. With equal change numbers we must still pull down any cloud file
+    // that's absent from both disk and the cache.
+
+    /** Wire up the download pipeline (Cloud metadata + HTTP) for a single cloud file's content. */
+    private fun stubSingleFileDownload(content: ByteArray) {
+        val mockDownloadInfo = mock<FileDownloadInfo>()
+        whenever(mockDownloadInfo.urlHost).thenReturn("test.example.com")
+        whenever(mockDownloadInfo.urlPath).thenReturn("/download/file1")
+        whenever(mockDownloadInfo.useHttps).thenReturn(true)
+        whenever(mockDownloadInfo.requestHeaders).thenReturn(emptyList())
+        whenever(mockDownloadInfo.fileSize).thenReturn(content.size)
+        whenever(mockDownloadInfo.rawFileSize).thenReturn(content.size)
+        whenever(mockDownloadInfo.timestamp).thenReturn(Date())
+
+        every { mockSteamCloud.clientFileDownload(any(), any()) } returns
+            CompletableFuture.completedFuture(mockDownloadInfo)
+        every { mockSteamCloud.clientFileDownload(any(), any(), any(), any(), any()) } returns
+            CompletableFuture.completedFuture(mockDownloadInfo)
+
+        val mockHttpClient = mock<OkHttpClient>()
+        every { Net.httpForParallelDownloads(any()) } returns mockHttpClient
+        val mockCall = mock<Call>()
+        whenever(mockHttpClient.newCall(any())).thenReturn(mockCall)
+        whenever(mockCall.execute()).thenReturn(
+            Response.Builder()
+                .request(okhttp3.Request.Builder().url("https://test.example.com/download/file1").build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body(content.toResponseBody())
+                .build(),
+        )
+
+        val mockSteamClient = mockSteamService.steamClient!!
+        val mockConfig = mock<SteamConfiguration>()
+        whenever(mockSteamClient.configuration).thenReturn(mockConfig)
+        whenever(mockConfig.httpClient).thenReturn(mockHttpClient)
+    }
+
+    private fun cloudFile(filename: String, content: ByteArray): AppFileInfo {
+        val m = mock<AppFileInfo>()
+        whenever(m.filename).thenReturn(filename)
+        whenever(m.shaFile).thenReturn(sha1(content))
+        whenever(m.pathPrefixIndex).thenReturn(0)
+        whenever(m.timestamp).thenReturn(Date())
+        whenever(m.rawFileSize).thenReturn(content.size)
+        return m
+    }
+
+    private val saveGamesPrefix = "%WinMyDocuments%/My Games/TestGame/Steam/76561198025127569/SaveGames"
+
+    // ── Equal CN, cloud has a file this device never synced → download it ──
+    @Test
+    fun equalCn_cloudHasNeverSyncedFile_downloadsAndCaches() = runBlocking {
+        val cn = 5L
+        cacheCurrentLocalFiles(cn)
+
+        val orphanContent = "cloud-only save this device never had".toByteArray()
+        val orphan = cloudFile("OrphanSaveData.sav", orphanContent)
+
+        val changeList = makeCloudFileChangeList(cn, files = listOf(orphan), pathPrefixes = listOf(saveGamesPrefix))
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(changeList)
+        stubSingleFileDownload(orphanContent)
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.Success, result!!.syncResult)
+        assertEquals("orphaned cloud file should be downloaded", 1, result.filesDownloaded)
+
+        val downloaded = File(saveFilesDir, "OrphanSaveData.sav")
+        assertTrue("never-synced cloud file must land on disk", downloaded.exists())
+        assertEquals(orphanContent.contentToString(), downloaded.readBytes().contentToString())
+
+        // change number is unchanged (cloud didn't advance), and the file is now cached
+        val cnAfter = db.appChangeNumbersDao().getByAppId(steamAppId)
+        assertEquals("change number must stay equal", cn, cnAfter!!.changeNumber)
+        val cache = db.appFileChangeListsDao().getByAppId(steamAppId)!!.userFileInfo
+        assertTrue(
+            "downloaded file must be added to the cache so it isn't re-fetched next launch",
+            cache.any { it.filename.endsWith("OrphanSaveData.sav") },
+        )
+        assertEquals("cache should now hold the 5 original files plus the downloaded one", 6, cache.size)
+    }
+
+    // ── Equal CN, cache-known file deleted from disk → stays a delete, not resurrected ──
+    @Test
+    fun equalCn_cacheKnownFileMissingFromDisk_notReDownloaded() = runBlocking {
+        val cn = 5L
+        cacheCurrentLocalFiles(cn)
+
+        // user deleted this save locally; it's still in the cache
+        val deleted = File(saveFilesDir, "SaveData_0.sav")
+        assertTrue("precondition: file exists before delete", deleted.exists())
+        deleted.delete()
+
+        // cloud still lists it. A working download stub is wired up so that if the never-synced
+        // check mis-keys the path, reconcile downloads it and the filesDownloaded assertion fails
+        // fast — rather than blocking forever on an unstubbed download future.
+        val stillInCloud = cloudFile("SaveData_0.sav", "savedata0 content".toByteArray())
+        val changeList = makeCloudFileChangeList(cn, files = listOf(stillInCloud), pathPrefixes = listOf(saveGamesPrefix))
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(changeList)
+        stubSingleFileDownload("savedata0 content".toByteArray())
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals("locally-deleted file must not be re-downloaded", 0, result!!.filesDownloaded)
+        assertFalse("locally-deleted file must not be resurrected on disk", deleted.exists())
+    }
+
+    // ── Equal CN, cloud files already present on disk → nothing to do ──
+    @Test
+    fun equalCn_cloudFilesAlreadyOnDisk_upToDate() = runBlocking {
+        val cn = 5L
+        cacheCurrentLocalFiles(cn)
+
+        // cloud lists exactly the files already on disk. Correct path-keying means none are
+        // "never synced". A working download stub is wired up so a mis-key fails the download
+        // assertion fast instead of blocking forever on an unstubbed download future.
+        val onDisk = listOf(
+            cloudFile("AutoSaveData.sav", "autosave content".toByteArray()),
+            cloudFile("SaveData_0.sav", "savedata0 content".toByteArray()),
+            cloudFile("ContinueSaveData.sav", "continue content".toByteArray()),
+            cloudFile("SaveData_1.sav", "savedata1 content".toByteArray()),
+            cloudFile("SystemData_0.sav", "systemdata content".toByteArray()),
+        )
+        val changeList = makeCloudFileChangeList(cn, files = onDisk, pathPrefixes = listOf(saveGamesPrefix))
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(changeList)
+        stubSingleFileDownload("autosave content".toByteArray())
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.UpToDate, result!!.syncResult)
+        assertEquals("nothing to download", 0, result.filesDownloaded)
+    }
+
+    // ── Equal CN, mixed manifest: only the never-synced file is fetched (strict subset) ──
+    // Manifest has two files already on disk plus one orphan. Reconcile must download exactly
+    // the orphan and leave the on-disk files untouched — this exercises downloadFiles fetching
+    // a strict subset of the manifest, not all of it.
+    @Test
+    fun equalCn_mixedManifest_downloadsOnlyTheOrphan() = runBlocking {
+        val cn = 5L
+        cacheCurrentLocalFiles(cn)
+
+        val orphanContent = "the only cloud-only file".toByteArray()
+        // Two files that already exist on disk (from setUp) + one orphan that does not.
+        val manifest = listOf(
+            cloudFile("AutoSaveData.sav", "autosave content".toByteArray()),
+            cloudFile("SaveData_0.sav", "savedata0 content".toByteArray()),
+            cloudFile("OrphanSaveData.sav", orphanContent),
+        )
+        val changeList = makeCloudFileChangeList(cn, files = manifest, pathPrefixes = listOf(saveGamesPrefix))
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(changeList)
+        // The download stub serves orphanContent for ANY request, so if reconcile wrongly fetched
+        // an on-disk file it would both bump filesDownloaded and overwrite that file's content.
+        stubSingleFileDownload(orphanContent)
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.Success, result!!.syncResult)
+        assertEquals("exactly one (the orphan) should be downloaded", 1, result.filesDownloaded)
+
+        // orphan pulled down with its own content
+        val orphan = File(saveFilesDir, "OrphanSaveData.sav")
+        assertTrue("orphan must be downloaded", orphan.exists())
+        assertEquals(orphanContent.contentToString(), orphan.readBytes().contentToString())
+
+        // the two already-present files must be left exactly as they were (not re-fetched/overwritten)
+        assertEquals(
+            "AutoSaveData.sav must not be re-fetched",
+            "autosave content",
+            File(saveFilesDir, "AutoSaveData.sav").readText(),
+        )
+        assertEquals(
+            "SaveData_0.sav must not be re-fetched",
+            "savedata0 content",
+            File(saveFilesDir, "SaveData_0.sav").readText(),
+        )
+    }
+
+    // ── Root cause: Keep Local must still pull down cloud-only files, not orphan them ──
+    @Test
+    fun keepLocal_downloadsNeverSyncedCloudFiles() = runBlocking {
+        // db cleared (fresh) + local files exist + cloud ahead → conflict; user picks Keep Local
+        db.appChangeNumbersDao().deleteByAppId(steamAppId)
+        db.appFileChangeListsDao().deleteByAppId(steamAppId)
+        assertTrue("precondition: local save files exist", saveFilesDir.listFiles()!!.isNotEmpty())
+
+        val orphanContent = "PC-only save the phone never had".toByteArray()
+        val orphan = cloudFile("CloudOnlySaveData.sav", orphanContent)
+        val changeList = makeCloudFileChangeList(5, files = listOf(orphan), pathPrefixes = listOf(saveGamesPrefix))
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(changeList)
+        stubSingleFileDownload(orphanContent)
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.Local,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.Success, result!!.syncResult)
+        assertTrue("local saves should upload", result.uploadsCompleted)
+        assertTrue("local saves should upload", result.filesUploaded > 0)
+        assertEquals("cloud-only file must be pulled down, not orphaned", 1, result.filesDownloaded)
+        assertTrue(
+            "cloud-only file must land on disk",
+            File(saveFilesDir, "CloudOnlySaveData.sav").exists(),
+        )
+    }
+
 }
