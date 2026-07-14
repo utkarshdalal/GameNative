@@ -2056,4 +2056,23 @@
     <string name="rec_disclosure_body">Pour des recommandations personnalisées, nous partageons les jeux auxquels vous jouez avec GOG. Désactivable à tout moment dans les Paramètres.</string>
     <string name="rec_disclosure_allow">Autoriser</string>
     <string name="rec_disclosure_not_now">Pas maintenant</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Sponsorisé</string>
+    <string name="featured_action_wishlist">Liste de souhaits</string>
+    <string name="featured_action_wishlist_on">Ajouter sur %1$s</string>
+    <string name="featured_action_preorder">Précommander</string>
+    <string name="featured_action_preorder_on">Précommander sur %1$s</string>
+    <string name="featured_action_buy">Acheter</string>
+    <string name="featured_action_buy_on">Acheter sur %1$s</string>
+    <string name="featured_action_notify">Me prévenir</string>
+    <string name="featured_action_visit">En savoir plus</string>
+    <string name="featured_status_coming_soon_title">Bientôt disponible</string>
+    <string name="featured_status_coming_soon_body">Ajoutez-le à vos souhaits pour être averti dès sa sortie</string>
+    <string name="featured_status_early_access_title">Accès anticipé</string>
+    <string name="featured_status_early_access_body">Disponible dès maintenant en accès anticipé</string>
+    <string name="featured_status_preorder_title">Précommander</string>
+    <string name="featured_status_preorder_body">Précommandez pour être prêt au lancement</string>
+    <string name="featured_status_out_now_title">Disponible</string>
+    <string name="featured_status_out_now_body">Disponible maintenant</string>
 </resources>

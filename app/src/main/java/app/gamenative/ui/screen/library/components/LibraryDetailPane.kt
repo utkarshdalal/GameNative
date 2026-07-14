@@ -56,20 +56,35 @@ internal fun LibraryDetailPane(
                 mutableStateOf<RecommendedGame?>(null)
             }
             LaunchedEffect(libraryItem.recommendedGameId) {
-                game = GogRecommendationsRepository.getRecommendedGame(libraryItem.recommendedGameId)
-                    ?: RecommendationRepository.getCurrentRecommendation(context)
+                game = if (libraryItem.isFeatured) {
+                    RecommendationRepository.getFeaturedGame(context)
+                } else {
+                    GogRecommendationsRepository.getRecommendedGame(libraryItem.recommendedGameId)
+                        ?: RecommendationRepository.getCurrentRecommendation(context)
+                }
                 if (game != null && PrefManager.usageAnalyticsEnabled) {
-                    PostHog.capture(
-                        event = "recommendation_opened",
-                        properties = mapOf(
-                            "game_name" to (game?.name ?: ""),
-                            "game_id" to (game?.id ?: ""),
-                            "rank" to libraryItem.index,
-                            "source" to libraryItem.recSource,
-                            "seed_count" to libraryItem.recSeedCount,
-                            "because_played" to (game?.becausePlayed ?: ""),
-                        ),
-                    )
+                    if (libraryItem.isFeatured) {
+                        PostHog.capture(
+                            event = "featured_opened",
+                            properties = mapOf(
+                                "campaign_id" to (game?.id ?: ""),
+                                "game_name" to (game?.name ?: ""),
+                                "source" to libraryItem.recSource,
+                            ),
+                        )
+                    } else {
+                        PostHog.capture(
+                            event = "recommendation_opened",
+                            properties = mapOf(
+                                "game_name" to (game?.name ?: ""),
+                                "game_id" to (game?.id ?: ""),
+                                "rank" to libraryItem.index,
+                                "source" to libraryItem.recSource,
+                                "seed_count" to libraryItem.recSeedCount,
+                                "because_played" to (game?.becausePlayed ?: ""),
+                            ),
+                        )
+                    }
                 }
             }
             game?.let { rec ->

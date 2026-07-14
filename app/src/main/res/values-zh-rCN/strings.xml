@@ -2074,4 +2074,23 @@
     <string name="rec_disclosure_body">为提供个性化推荐，我们会将你玩过的游戏分享给 GOG。可随时在设置中关闭。</string>
     <string name="rec_disclosure_allow">允许</string>
     <string name="rec_disclosure_not_now">暂不</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">赞助</string>
+    <string name="featured_action_wishlist">愿望单</string>
+    <string name="featured_action_wishlist_on">在 %1$s 加入愿望单</string>
+    <string name="featured_action_preorder">预购</string>
+    <string name="featured_action_preorder_on">在 %1$s 预购</string>
+    <string name="featured_action_buy">购买</string>
+    <string name="featured_action_buy_on">在 %1$s 购买</string>
+    <string name="featured_action_notify">提醒我</string>
+    <string name="featured_action_visit">了解更多</string>
+    <string name="featured_status_coming_soon_title">即将推出</string>
+    <string name="featured_status_coming_soon_body">立即加入愿望单，发售时第一时间收到通知</string>
+    <string name="featured_status_early_access_title">抢先体验</string>
+    <string name="featured_status_early_access_body">抢先体验现已推出</string>
+    <string name="featured_status_preorder_title">立即预购</string>
+    <string name="featured_status_preorder_body">预购以在发售时做好准备</string>
+    <string name="featured_status_out_now_title">现已推出</string>
+    <string name="featured_status_out_now_body">现在可用</string>
 </resources>

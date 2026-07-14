@@ -2057,4 +2057,23 @@
     <string name="rec_disclosure_body">Pentru recomandări personalizate, partajăm jocurile pe care le joci cu GOG. Poți dezactiva oricând din Setări.</string>
     <string name="rec_disclosure_allow">Permite</string>
     <string name="rec_disclosure_not_now">Nu acum</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Sponsorizat</string>
+    <string name="featured_action_wishlist">Listă de dorințe</string>
+    <string name="featured_action_wishlist_on">Adaugă în listă pe %1$s</string>
+    <string name="featured_action_preorder">Precomandă</string>
+    <string name="featured_action_preorder_on">Precomandă pe %1$s</string>
+    <string name="featured_action_buy">Cumpără</string>
+    <string name="featured_action_buy_on">Cumpără pe %1$s</string>
+    <string name="featured_action_notify">Anunță-mă</string>
+    <string name="featured_action_visit">Află mai multe</string>
+    <string name="featured_status_coming_soon_title">În curând</string>
+    <string name="featured_status_coming_soon_body">Adaugă în lista de dorințe ca să fii anunțat la lansare</string>
+    <string name="featured_status_early_access_title">Acces timpuriu</string>
+    <string name="featured_status_early_access_body">Disponibil acum în acces timpuriu</string>
+    <string name="featured_status_preorder_title">Precomandă acum</string>
+    <string name="featured_status_preorder_body">Precomandă ca să fii pregătit la lansare</string>
+    <string name="featured_status_out_now_title">Disponibil acum</string>
+    <string name="featured_status_out_now_body">Acum disponibil</string>
 </resources>

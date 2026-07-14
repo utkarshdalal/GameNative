@@ -1926,4 +1926,23 @@
     <string name="rec_disclosure_body">For personlige anbefalinger deler vi de spil, du spiller, med GOG. Slå fra når som helst i Indstillinger.</string>
     <string name="rec_disclosure_allow">Tillad</string>
     <string name="rec_disclosure_not_now">Ikke nu</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Sponsoreret</string>
+    <string name="featured_action_wishlist">Ønskeliste</string>
+    <string name="featured_action_wishlist_on">Føj til ønskeliste på %1$s</string>
+    <string name="featured_action_preorder">Forudbestil</string>
+    <string name="featured_action_preorder_on">Forudbestil på %1$s</string>
+    <string name="featured_action_buy">Køb</string>
+    <string name="featured_action_buy_on">Køb på %1$s</string>
+    <string name="featured_action_notify">Giv mig besked</string>
+    <string name="featured_action_visit">Læs mere</string>
+    <string name="featured_status_coming_soon_title">Kommer snart</string>
+    <string name="featured_status_coming_soon_body">Føj til ønskelisten nu for at få besked, så snart det udkommer</string>
+    <string name="featured_status_early_access_title">Early Access</string>
+    <string name="featured_status_early_access_body">Tilgængelig nu i Early Access</string>
+    <string name="featured_status_preorder_title">Forudbestil nu</string>
+    <string name="featured_status_preorder_body">Forudbestil for at være klar ved lanceringen</string>
+    <string name="featured_status_out_now_title">Ude nu</string>
+    <string name="featured_status_out_now_body">Tilgængelig nu</string>
 </resources>

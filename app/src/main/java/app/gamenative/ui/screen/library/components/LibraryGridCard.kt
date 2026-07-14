@@ -307,16 +307,25 @@ internal fun GridViewCard(
                         }
                     }
 
-                    GameStatsRow(
-                        stats = gameStats,
-                        tint = Color.White.copy(alpha = 0.55f),
-                        onDark = true,
-                        animate = animateStats,
-                    )
+                    // Featured items are usually unreleased — no meaningful community stats to show.
+                    if (!appInfo.isFeatured) {
+                        GameStatsRow(
+                            stats = gameStats,
+                            tint = Color.White.copy(alpha = 0.55f),
+                            onDark = true,
+                            animate = animateStats,
+                        )
+                    }
                 }
 
-                // Top-left: GOG rating (store rec), Recommended/compatibility badge otherwise
-                if (appInfo.isRecommended && appInfo.recStoreCard) {
+                // Top-left: Featured badge, GOG rating (store rec), or Recommended/compat badge
+                if (appInfo.isFeatured) {
+                    FeaturedBadge(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(top = topOverlayPadding, start = topOverlayPadding),
+                    )
+                } else if (appInfo.isRecommended && appInfo.recStoreCard) {
                     val productId = appInfo.recommendedGameId.toLongOrNull()
                     val rating by produceState(initialValue = appInfo.recRating, productId) {
                         if (value == null && productId != null) {
@@ -408,6 +417,30 @@ private fun CapsuleFallbackBackdrop(
                         ),
                     ),
                 ),
+        )
+    }
+}
+
+@Composable
+private fun FeaturedBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFFFC107))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Star,
+            contentDescription = null,
+            tint = Color.Black,
+            modifier = Modifier.size(12.dp),
+        )
+        Text(
+            text = stringResource(R.string.featured_badge),
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = Color.Black,
+            modifier = Modifier.padding(start = 3.dp),
         )
     }
 }

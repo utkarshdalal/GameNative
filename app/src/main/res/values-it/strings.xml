@@ -2047,4 +2047,23 @@
     <string name="rec_disclosure_body">Per consigli personalizzati, condividiamo i giochi a cui giochi con GOG. Puoi disattivarlo in qualsiasi momento nelle Impostazioni.</string>
     <string name="rec_disclosure_allow">Consenti</string>
     <string name="rec_disclosure_not_now">Non ora</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Sponsorizzato</string>
+    <string name="featured_action_wishlist">Lista dei desideri</string>
+    <string name="featured_action_wishlist_on">Aggiungi ai desideri su %1$s</string>
+    <string name="featured_action_preorder">Preordina</string>
+    <string name="featured_action_preorder_on">Preordina su %1$s</string>
+    <string name="featured_action_buy">Acquista</string>
+    <string name="featured_action_buy_on">Acquista su %1$s</string>
+    <string name="featured_action_notify">Avvisami</string>
+    <string name="featured_action_visit">Scopri di più</string>
+    <string name="featured_status_coming_soon_title">In arrivo</string>
+    <string name="featured_status_coming_soon_body">Aggiungilo ai desideri per ricevere una notifica al lancio</string>
+    <string name="featured_status_early_access_title">Accesso anticipato</string>
+    <string name="featured_status_early_access_body">Disponibile ora in accesso anticipato</string>
+    <string name="featured_status_preorder_title">Preordina ora</string>
+    <string name="featured_status_preorder_body">Preordina per essere pronto al lancio</string>
+    <string name="featured_status_out_now_title">Disponibile ora</string>
+    <string name="featured_status_out_now_body">Ora disponibile</string>
 </resources>

@@ -1976,6 +1976,25 @@
     <string name="recommended_support_message">Purchasing through this link helps support the development of GameNative.</string>
     <string name="recommended_about_heading">About This Game</string>
     <string name="recommended_review_count">Based on %1$s reviews</string>
+
+    <!-- FeaturedItem (server-driven promoted slot) -->
+    <string name="featured_badge">Sponsored</string>
+    <string name="featured_action_wishlist">Wishlist</string>
+    <string name="featured_action_wishlist_on">Wishlist on %1$s</string>
+    <string name="featured_action_preorder">Pre-order</string>
+    <string name="featured_action_preorder_on">Pre-order on %1$s</string>
+    <string name="featured_action_buy">Buy</string>
+    <string name="featured_action_buy_on">Buy on %1$s</string>
+    <string name="featured_action_notify">Notify me</string>
+    <string name="featured_action_visit">Learn more</string>
+    <string name="featured_status_coming_soon_title">Coming Soon</string>
+    <string name="featured_status_coming_soon_body">Wishlist now to get notified the moment it launches</string>
+    <string name="featured_status_early_access_title">Early Access</string>
+    <string name="featured_status_early_access_body">Available now in Early Access</string>
+    <string name="featured_status_preorder_title">Pre-order Now</string>
+    <string name="featured_status_preorder_body">Pre-order to be ready at launch</string>
+    <string name="featured_status_out_now_title">Out Now</string>
+    <string name="featured_status_out_now_body">Available now</string>
     <string name="review_overwhelmingly_positive">Overwhelmingly Positive</string>
     <string name="review_very_positive">Very Positive</string>
     <string name="review_mostly_positive">Mostly Positive</string>

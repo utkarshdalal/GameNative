@@ -2054,4 +2054,23 @@
     <string name="rec_disclosure_body">맞춤 추천을 위해 플레이한 게임을 GOG와 공유합니다. 설정에서 언제든지 끌 수 있습니다.</string>
     <string name="rec_disclosure_allow">허용</string>
     <string name="rec_disclosure_not_now">나중에</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">스폰서</string>
+    <string name="featured_action_wishlist">위시리스트</string>
+    <string name="featured_action_wishlist_on">%1$s에서 위시리스트에 추가</string>
+    <string name="featured_action_preorder">예약 구매</string>
+    <string name="featured_action_preorder_on">%1$s에서 예약 구매</string>
+    <string name="featured_action_buy">구매</string>
+    <string name="featured_action_buy_on">%1$s에서 구매</string>
+    <string name="featured_action_notify">알림 받기</string>
+    <string name="featured_action_visit">자세히 보기</string>
+    <string name="featured_status_coming_soon_title">출시 예정</string>
+    <string name="featured_status_coming_soon_body">지금 위시리스트에 추가하고 출시되는 순간 알림을 받으세요</string>
+    <string name="featured_status_early_access_title">앞서 해보기</string>
+    <string name="featured_status_early_access_body">지금 앞서 해보기로 이용 가능</string>
+    <string name="featured_status_preorder_title">지금 예약 구매</string>
+    <string name="featured_status_preorder_body">예약 구매하고 출시에 대비하세요</string>
+    <string name="featured_status_out_now_title">출시됨</string>
+    <string name="featured_status_out_now_body">지금 이용 가능</string>
 </resources>

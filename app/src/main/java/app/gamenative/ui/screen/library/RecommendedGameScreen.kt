@@ -20,7 +20,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -28,6 +30,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -151,6 +154,30 @@ internal fun RecommendedGameScreen(
                     .align(Alignment.BottomStart)
                     .padding(16.dp),
             ) {
+                if (game.isFeatured) {
+                    Row(
+                        modifier = Modifier
+                            .padding(bottom = 8.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(FeaturedAmber)
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Star,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Text(
+                            text = stringResource(R.string.featured_badge),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black,
+                            modifier = Modifier.padding(start = 4.dp),
+                        )
+                    }
+                }
                 Text(
                     text = game.name,
                     style = MaterialTheme.typography.headlineMedium,
@@ -280,72 +307,148 @@ internal fun RecommendedGameScreen(
                 }
             }
 
-            // Buy button
-            Button(
-                onClick = {
-                    if (PrefManager.usageAnalyticsEnabled) {
-                        PostHog.capture(
-                            event = "recommendation_link_clicked",
-                            properties = mapOf(
-                                "game_name" to game.name,
-                                "game_id" to game.id,
-                                "affiliate_url" to game.affiliateUrl,
-                                "rank" to recRank,
-                                "source" to recSource,
-                                "because_played" to (game.becausePlayed ?: ""),
-                            ),
-                        )
+            if (game.isFeatured) {
+                // Status callout (e.g. "Coming Soon")
+                featuredStatusText(game.featuredStatus)?.let { (titleRes, bodyRes) ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = FeaturedAmber.copy(alpha = 0.12f),
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Notifications,
+                                contentDescription = null,
+                                tint = FeaturedAmber,
+                                modifier = Modifier.size(24.dp),
+                            )
+                            Column(modifier = Modifier.padding(start = 12.dp)) {
+                                Text(
+                                    text = stringResource(titleRes),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    text = stringResource(bodyRes),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                     }
-                    val browserIntent = Intent(Intent.ACTION_VIEW, game.affiliateUrl.toUri())
-                    context.startActivity(browserIntent)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.OpenInNew,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Text(
-                    text = stringResource(R.string.recommended_buy_button),
-                    modifier = Modifier.padding(start = 8.dp),
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
 
-            Spacer(modifier = Modifier.height(12.dp))
+                // Featured actions (wishlist / pre-order / etc.)
+                game.featuredCtas.forEach { action ->
+                    val onClick = {
+                        if (PrefManager.usageAnalyticsEnabled) {
+                            PostHog.capture(
+                                event = "featured_action_clicked",
+                                properties = mapOf(
+                                    "campaign_id" to game.id,
+                                    "action_label" to action.label,
+                                    "url" to action.url,
+                                    "source" to recSource,
+                                ),
+                            )
+                        }
+                        context.startActivity(Intent(Intent.ACTION_VIEW, action.url.toUri()))
+                    }
+                    if (action.primary) {
+                        Button(
+                            onClick = onClick,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Text(text = action.label, fontWeight = FontWeight.SemiBold)
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = onClick,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Text(text = action.label, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            } else {
+                // Buy button
+                Button(
+                    onClick = {
+                        if (PrefManager.usageAnalyticsEnabled) {
+                            PostHog.capture(
+                                event = "recommendation_link_clicked",
+                                properties = mapOf(
+                                    "game_name" to game.name,
+                                    "game_id" to game.id,
+                                    "affiliate_url" to game.affiliateUrl,
+                                    "rank" to recRank,
+                                    "source" to recSource,
+                                    "because_played" to (game.becausePlayed ?: ""),
+                                ),
+                            )
+                        }
+                        val browserIntent = Intent(Intent.ACTION_VIEW, game.affiliateUrl.toUri())
+                        context.startActivity(browserIntent)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.OpenInNew,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.recommended_buy_button),
+                        modifier = Modifier.padding(start = 8.dp),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
 
-            // Support message
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                ),
-                shape = RoundedCornerShape(12.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.recommended_support_message),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(12.dp),
-                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Support message
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.recommended_support_message),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(12.dp),
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
             // Description
-            Text(
-                text = stringResource(R.string.recommended_about_heading),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = game.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-            )
+            if (game.description.isNotBlank()) {
+                Text(
+                    text = stringResource(R.string.recommended_about_heading),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = game.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                )
+            }
 
             // Tags
             if (game.tags.isNotEmpty()) {
@@ -371,6 +474,17 @@ internal fun RecommendedGameScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
+}
+
+private val FeaturedAmber = Color(0xFFFFC107)
+
+/** Maps a featured status to a localized (title, body) callout, or null for none. */
+private fun featuredStatusText(status: String?): Pair<Int, Int>? = when (status?.uppercase()) {
+    "COMING_SOON" -> R.string.featured_status_coming_soon_title to R.string.featured_status_coming_soon_body
+    "EARLY_ACCESS" -> R.string.featured_status_early_access_title to R.string.featured_status_early_access_body
+    "PREORDER_OPEN" -> R.string.featured_status_preorder_title to R.string.featured_status_preorder_body
+    "OUT_NOW" -> R.string.featured_status_out_now_title to R.string.featured_status_out_now_body
+    else -> null
 }
 
 private fun formatReleaseDate(raw: String): String? = try {

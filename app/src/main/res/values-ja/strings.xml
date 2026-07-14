@@ -2013,4 +2013,23 @@
     <string name="rec_disclosure_body">パーソナライズされたおすすめのため、プレイしたゲームを GOG と共有します。設定でいつでもオフにできます。</string>
     <string name="rec_disclosure_allow">許可</string>
     <string name="rec_disclosure_not_now">後で</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">スポンサー</string>
+    <string name="featured_action_wishlist">ウィッシュリスト</string>
+    <string name="featured_action_wishlist_on">%1$s でウィッシュリストに追加</string>
+    <string name="featured_action_preorder">予約購入</string>
+    <string name="featured_action_preorder_on">%1$s で予約購入</string>
+    <string name="featured_action_buy">購入</string>
+    <string name="featured_action_buy_on">%1$s で購入</string>
+    <string name="featured_action_notify">通知を受け取る</string>
+    <string name="featured_action_visit">詳細を見る</string>
+    <string name="featured_status_coming_soon_title">近日公開</string>
+    <string name="featured_status_coming_soon_body">ウィッシュリストに追加すると、リリース時に通知されます</string>
+    <string name="featured_status_early_access_title">早期アクセス</string>
+    <string name="featured_status_early_access_body">早期アクセスで配信中</string>
+    <string name="featured_status_preorder_title">今すぐ予約購入</string>
+    <string name="featured_status_preorder_body">予約購入してリリースに備えよう</string>
+    <string name="featured_status_out_now_title">配信中</string>
+    <string name="featured_status_out_now_body">現在利用可能</string>
 </resources>

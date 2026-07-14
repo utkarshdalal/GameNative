@@ -1982,4 +1982,23 @@ https://gamenative.app
     <string name="rec_disclosure_body">Для персональных рекомендаций мы передаём игры, в которые вы играете, сервису GOG. Отключить можно в любой момент в Настройках.</string>
     <string name="rec_disclosure_allow">Разрешить</string>
     <string name="rec_disclosure_not_now">Не сейчас</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Спонсировано</string>
+    <string name="featured_action_wishlist">Список желаемого</string>
+    <string name="featured_action_wishlist_on">В список желаемого в %1$s</string>
+    <string name="featured_action_preorder">Предзаказ</string>
+    <string name="featured_action_preorder_on">Предзаказ в %1$s</string>
+    <string name="featured_action_buy">Купить</string>
+    <string name="featured_action_buy_on">Купить в %1$s</string>
+    <string name="featured_action_notify">Уведомить меня</string>
+    <string name="featured_action_visit">Подробнее</string>
+    <string name="featured_status_coming_soon_title">Скоро</string>
+    <string name="featured_status_coming_soon_body">Добавьте в список желаемого, чтобы получить уведомление о выходе</string>
+    <string name="featured_status_early_access_title">Ранний доступ</string>
+    <string name="featured_status_early_access_body">Уже доступно в раннем доступе</string>
+    <string name="featured_status_preorder_title">Оформить предзаказ</string>
+    <string name="featured_status_preorder_body">Оформите предзаказ, чтобы быть готовым к выходу</string>
+    <string name="featured_status_out_now_title">Уже вышло</string>
+    <string name="featured_status_out_now_body">Доступно сейчас</string>
 </resources>

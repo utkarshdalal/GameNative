@@ -1,6 +1,7 @@
 package app.gamenative.data
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 @Serializable
 data class RecommendedGame(
@@ -21,4 +22,15 @@ data class RecommendedGame(
     val videos: List<String> = emptyList(),
     val becausePlayed: String? = null,
     val becauseGames: List<String> = emptyList(),
+    // Populated only when this card is a server-driven featured (see FeaturedItem.kt).
+    @Transient val isFeatured: Boolean = false,
+    @Transient val featuredStatus: String? = null,
+    @Transient val featuredCtas: List<FeaturedCta> = emptyList(),
+)
+
+/** A resolved (localized) featured call-to-action shown on the detail screen. */
+data class FeaturedCta(
+    val label: String,
+    val url: String,
+    val primary: Boolean = false,
 )

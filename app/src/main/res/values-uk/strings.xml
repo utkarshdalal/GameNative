@@ -2050,4 +2050,23 @@
     <string name="rec_disclosure_body">Для персональних рекомендацій ми надаємо ігри, у які ви граєте, сервісу GOG. Вимкнути можна будь-коли в Налаштуваннях.</string>
     <string name="rec_disclosure_allow">Дозволити</string>
     <string name="rec_disclosure_not_now">Не зараз</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Спонсовано</string>
+    <string name="featured_action_wishlist">Список бажань</string>
+    <string name="featured_action_wishlist_on">До списку бажань у %1$s</string>
+    <string name="featured_action_preorder">Передзамовити</string>
+    <string name="featured_action_preorder_on">Передзамовити у %1$s</string>
+    <string name="featured_action_buy">Придбати</string>
+    <string name="featured_action_buy_on">Придбати у %1$s</string>
+    <string name="featured_action_notify">Сповістити мене</string>
+    <string name="featured_action_visit">Докладніше</string>
+    <string name="featured_status_coming_soon_title">Незабаром</string>
+    <string name="featured_status_coming_soon_body">Додайте до списку бажань, щоб отримати сповіщення про вихід</string>
+    <string name="featured_status_early_access_title">Ранній доступ</string>
+    <string name="featured_status_early_access_body">Уже доступно в ранньому доступі</string>
+    <string name="featured_status_preorder_title">Передзамовити зараз</string>
+    <string name="featured_status_preorder_body">Передзамовте, щоб бути готовим до виходу</string>
+    <string name="featured_status_out_now_title">Уже вийшло</string>
+    <string name="featured_status_out_now_body">Доступно зараз</string>
 </resources>

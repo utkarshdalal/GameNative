@@ -1996,4 +1996,23 @@
     <string name="rec_disclosure_body">Für personalisierte Empfehlungen teilen wir die von dir gespielten Spiele mit GOG. Jederzeit in den Einstellungen deaktivierbar.</string>
     <string name="rec_disclosure_allow">Zulassen</string>
     <string name="rec_disclosure_not_now">Nicht jetzt</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Gesponsert</string>
+    <string name="featured_action_wishlist">Wunschliste</string>
+    <string name="featured_action_wishlist_on">Auf %1$s auf die Wunschliste</string>
+    <string name="featured_action_preorder">Vorbestellen</string>
+    <string name="featured_action_preorder_on">Auf %1$s vorbestellen</string>
+    <string name="featured_action_buy">Kaufen</string>
+    <string name="featured_action_buy_on">Auf %1$s kaufen</string>
+    <string name="featured_action_notify">Benachrichtigen</string>
+    <string name="featured_action_visit">Mehr erfahren</string>
+    <string name="featured_status_coming_soon_title">Demnächst</string>
+    <string name="featured_status_coming_soon_body">Jetzt auf die Wunschliste setzen und zum Launch benachrichtigt werden</string>
+    <string name="featured_status_early_access_title">Early Access</string>
+    <string name="featured_status_early_access_body">Jetzt im Early Access verfügbar</string>
+    <string name="featured_status_preorder_title">Jetzt vorbestellen</string>
+    <string name="featured_status_preorder_body">Vorbestellen und zum Launch bereit sein</string>
+    <string name="featured_status_out_now_title">Jetzt erhältlich</string>
+    <string name="featured_status_out_now_body">Jetzt verfügbar</string>
 </resources>

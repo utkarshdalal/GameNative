@@ -2054,4 +2054,23 @@
     <string name="rec_disclosure_body">Aby zapewnić spersonalizowane rekomendacje, udostępniamy ograne przez Ciebie gry serwisowi GOG. Możesz to wyłączyć w Ustawieniach.</string>
     <string name="rec_disclosure_allow">Zezwól</string>
     <string name="rec_disclosure_not_now">Nie teraz</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Sponsorowane</string>
+    <string name="featured_action_wishlist">Lista życzeń</string>
+    <string name="featured_action_wishlist_on">Dodaj do listy życzeń na %1$s</string>
+    <string name="featured_action_preorder">Zamów przedpremierowo</string>
+    <string name="featured_action_preorder_on">Zamów przedpremierowo na %1$s</string>
+    <string name="featured_action_buy">Kup</string>
+    <string name="featured_action_buy_on">Kup na %1$s</string>
+    <string name="featured_action_notify">Powiadom mnie</string>
+    <string name="featured_action_visit">Dowiedz się więcej</string>
+    <string name="featured_status_coming_soon_title">Wkrótce</string>
+    <string name="featured_status_coming_soon_body">Dodaj do listy życzeń, aby otrzymać powiadomienie w dniu premiery</string>
+    <string name="featured_status_early_access_title">Wczesny dostęp</string>
+    <string name="featured_status_early_access_body">Dostępne teraz we wczesnym dostępie</string>
+    <string name="featured_status_preorder_title">Zamów teraz</string>
+    <string name="featured_status_preorder_body">Zamów przedpremierowo, aby być gotowym na premierę</string>
+    <string name="featured_status_out_now_title">Już dostępne</string>
+    <string name="featured_status_out_now_body">Dostępne teraz</string>
 </resources>
