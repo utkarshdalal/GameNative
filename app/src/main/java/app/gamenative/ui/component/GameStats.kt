@@ -22,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -51,7 +50,6 @@ private fun statEntries(stats: GameCardStats?): List<StatEntry> = listOf(
  * when [animate] is true and the values are too wide to fit the card. Renders nothing when [stats] is null.
  *
  * @param tint Color for icons and text.
- * @param onDark When true, text gets a subtle shadow for legibility over images.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -59,7 +57,6 @@ fun GameStatsRow(
     stats: GameCardStats?,
     tint: Color,
     modifier: Modifier = Modifier,
-    onDark: Boolean = false,
     animate: Boolean = true,
 ) {
     Row(
@@ -70,7 +67,7 @@ fun GameStatsRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         statEntries(stats).forEach { entry ->
-            StatItem(icon = entry.icon, value = entry.value, tint = tint, onDark = onDark)
+            StatItem(icon = entry.icon, value = entry.value, tint = tint)
         }
     }
 }
@@ -80,7 +77,6 @@ private fun StatItem(
     icon: ImageVector,
     value: String,
     tint: Color,
-    onDark: Boolean,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -95,7 +91,7 @@ private fun StatItem(
         val textStyle = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp)
         Text(
             text = value,
-            style = if (onDark) textStyle.copy(shadow = Shadow(color = Color.Black, blurRadius = 2f)) else textStyle,
+            style = textStyle,
             color = tint,
             fontWeight = FontWeight.Normal,
             maxLines = 1,

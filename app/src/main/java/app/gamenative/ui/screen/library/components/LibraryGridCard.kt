@@ -44,10 +44,8 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -272,11 +270,6 @@ internal fun GridViewCard(
                             text = appInfo.name,
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                shadow = Shadow(
-                                    color = Color.Black,
-                                    offset = Offset(1f, 1f),
-                                    blurRadius = 2f,
-                                ),
                             ),
                             color = Color.White,
                             maxLines = if (paneType == PaneType.GRID_CAPSULE) 2 else 1,
@@ -307,12 +300,10 @@ internal fun GridViewCard(
                         }
                     }
 
-                    // Featured items are usually unreleased — no meaningful community stats to show.
                     if (!appInfo.isFeatured) {
                         GameStatsRow(
                             stats = gameStats,
                             tint = Color.White.copy(alpha = 0.55f),
-                            onDark = true,
                             animate = animateStats,
                         )
                     }
