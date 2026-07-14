@@ -18,6 +18,7 @@ import app.gamenative.ui.component.dialog.RadialMenuSettingsContent
 import app.gamenative.ui.theme.PluviaTheme
 import com.winlator.container.Container
 import com.winlator.inputcontrols.Binding
+import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.InputControlsManager
@@ -403,14 +404,14 @@ class RadialMenuCoordinator(
         val slots = activeMenu()?.enabledSlots.orEmpty()
         val selectedIndex = overlayView.selectedIndex()
         val selectedBinding = if (commit && selectedIndex in slots.indices) {
-            slots[selectedIndex].binding
+            slots[selectedIndex].bindingCombo
         } else {
-            Binding.NONE
+            BindingCombo.none()
         }
         overlayView.hide()
         activeTouchPointerId = MotionEvent.INVALID_POINTER_ID
         inputControlSelectionActive = false
-        if (selectedBinding != Binding.NONE) dispatchBinding(selectedBinding)
+        if (!selectedBinding.isEmpty) dispatchBinding(selectedBinding)
     }
 
     private fun updateSelection(point: PointF) {
@@ -474,13 +475,33 @@ class RadialMenuCoordinator(
         return (((normalized + sweep / 2f) / sweep).toInt() % slots.size)
     }
 
-    private fun dispatchBinding(binding: Binding) {
-        if (binding == Binding.NONE || binding == Binding.OPEN_RADIAL_MENU) return
-        val offset = bindingOffset(binding)
-        applyBinding(binding, true, offset)
+    private fun dispatchBinding(bindingCombo: BindingCombo) {
+        if (bindingCombo.isEmpty || Binding.OPEN_RADIAL_MENU in bindingCombo.bindings) return
+
+        if (bindingCombo.isSequence) {
+            dispatchBindingSequence(bindingCombo)
+            return
+        }
+
+        for (binding in bindingCombo.bindings) {
+            applyBinding(binding, true, bindingOffset(binding))
+        }
         host.postDelayed({
-            applyBinding(binding, false, 0f)
+            bindingCombo.bindings.asReversed().forEach { binding ->
+                applyBinding(binding, false, 0f)
+            }
         }, 70L)
+    }
+
+    private fun dispatchBindingSequence(bindingCombo: BindingCombo) {
+        bindingCombo.bindings.forEachIndexed { index, binding ->
+            host.postDelayed({
+                applyBinding(binding, true, bindingOffset(binding))
+                host.postDelayed({
+                    applyBinding(binding, false, 0f)
+                }, 70L)
+            }, index * bindingCombo.sequenceDelayMs.toLong())
+        }
     }
 
     private fun bindingOffset(binding: Binding): Float {
