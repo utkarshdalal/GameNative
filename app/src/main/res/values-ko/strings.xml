@@ -2090,4 +2090,10 @@
     <string name="achievements_reveal_message">남은 비밀 도전 과제와 세부 정보를 지금만 표시합니다. 기억되지 않습니다.</string>
     <string name="achievements_reveal_confirm">표시</string>
     <string name="achievements_locked">잠김</string>
+    <string name="steam_collections_removed">저장된 컬렉션이 Steam에서 제거되어 더 이상 필터링되지 않습니다.</string>
+    <string name="steam_collections_title">Steam 컬렉션</string>
+    <string name="steam_collections_loading">컬렉션 불러오는 중…</string>
+    <string name="steam_collections_offline">마지막으로 동기화된 컬렉션을 표시하고 있습니다. 업데이트하려면 연결하세요.</string>
+    <string name="steam_collections_clear">지우기</string>
+    <string name="steam_collections_smart_unsupported">표준 컬렉션만 표시됩니다. 스마트 컬렉션은 아직 지원되지 않습니다.</string>
 </resources>

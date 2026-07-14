@@ -2110,4 +2110,10 @@
     <string name="achievements_reveal_message">暂时显示剩余的隐藏成就及其详情，不会被记住。</string>
     <string name="achievements_reveal_confirm">显示</string>
     <string name="achievements_locked">未解锁</string>
+    <string name="steam_collections_removed">已保存的收藏集已在 Steam 中移除，不再用于筛选。</string>
+    <string name="steam_collections_title">Steam 收藏集</string>
+    <string name="steam_collections_loading">正在加载收藏集…</string>
+    <string name="steam_collections_offline">正在显示上次同步的收藏集。请连接以更新。</string>
+    <string name="steam_collections_clear">清除</string>
+    <string name="steam_collections_smart_unsupported">仅显示标准收藏集。智能收藏集尚不受支持。</string>
 </resources>

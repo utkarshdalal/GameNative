@@ -2093,4 +2093,10 @@
     <string name="achievements_reveal_message">Affiche pour le moment les succès cachés restants et leurs détails. Ce choix ne sera pas mémorisé.</string>
     <string name="achievements_reveal_confirm">Révéler</string>
     <string name="achievements_locked">Verrouillé</string>
+    <string name="steam_collections_removed">Une collection enregistrée a été supprimée dans Steam et n\'est plus filtrée.</string>
+    <string name="steam_collections_title">Collections Steam</string>
+    <string name="steam_collections_loading">Chargement des collections…</string>
+    <string name="steam_collections_offline">Affichage des dernières collections synchronisées. Connectez-vous pour mettre à jour.</string>
+    <string name="steam_collections_clear">Effacer</string>
+    <string name="steam_collections_smart_unsupported">Seules les collections standard sont affichées. Les collections dynamiques ne sont pas encore prises en charge.</string>
 </resources>

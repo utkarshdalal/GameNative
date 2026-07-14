@@ -2091,4 +2091,10 @@
     <string name="achievements_reveal_message">Esto muestra por ahora los logros secretos restantes y sus detalles. No se recuerda.</string>
     <string name="achievements_reveal_confirm">Mostrar</string>
     <string name="achievements_locked">Bloqueado</string>
+    <string name="steam_collections_removed">Se eliminó una colección guardada en Steam y ya no se filtra.</string>
+    <string name="steam_collections_title">Colecciones de Steam</string>
+    <string name="steam_collections_loading">Cargando colecciones…</string>
+    <string name="steam_collections_offline">Mostrando las últimas colecciones sincronizadas. Conéctate para actualizar.</string>
+    <string name="steam_collections_clear">Borrar</string>
+    <string name="steam_collections_smart_unsupported">Solo se muestran las colecciones estándar. Las colecciones inteligentes aún no son compatibles.</string>
 </resources>

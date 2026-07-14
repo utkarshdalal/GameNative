@@ -127,6 +127,7 @@ fun HomeLibraryScreen(
     onGoOnline: () -> Unit,
     onDownloadsClick: () -> Unit = {},
     isOffline: Boolean = false,
+    isSteamConnected: Boolean = false,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -151,11 +152,14 @@ fun HomeLibraryScreen(
         onSourceToggle = viewModel::onSourceToggle,
         onAddCustomGameFolder = viewModel::addCustomGameFolder,
         onSortOptionChanged = viewModel::onSortOptionChanged,
+        onSteamCollectionToggle = viewModel::onSteamCollectionToggle,
+        onClearSteamCollections = viewModel::onClearSteamCollections,
         onOptionsPanelToggle = viewModel::onOptionsPanelToggle,
         onTabChanged = viewModel::onTabChanged,
         onPreviousTab = viewModel::onPreviousTab,
         onNextTab = viewModel::onNextTab,
         isOffline = isOffline,
+        isSteamConnected = isSteamConnected,
     )
 }
 
@@ -189,11 +193,14 @@ private fun LibraryScreenContent(
     onSourceToggle: (GameSource) -> Unit,
     onAddCustomGameFolder: (String) -> Unit,
     onSortOptionChanged: (SortOption) -> Unit,
+    onSteamCollectionToggle: (String) -> Unit,
+    onClearSteamCollections: () -> Unit,
     onOptionsPanelToggle: (Boolean) -> Unit,
     onTabChanged: (LibraryTab) -> Unit,
     onPreviousTab: () -> Unit,
     onNextTab: () -> Unit,
     isOffline: Boolean = false,
+    isSteamConnected: Boolean = false,
 ) {
     val context = LocalContext.current
     val lifecycleScope = LocalLifecycleOwner.current.lifecycleScope
@@ -1152,6 +1159,14 @@ private fun LibraryScreenContent(
                     PrefManager.libraryLayout = newPaneType
                     currentPaneType = newPaneType
                 },
+                steamCollections = state.steamCollections,
+                selectedSteamCollectionIds = state.selectedSteamCollectionIds,
+                steamCollectionCounts = state.steamCollectionCounts,
+                skippedDynamicCollections = state.skippedDynamicCollections,
+                isSteamConnected = isSteamConnected,
+                isOffline = isOffline,
+                onSteamCollectionToggle = onSteamCollectionToggle,
+                onClearSteamCollections = onClearSteamCollections,
             )
 
             // System menu (START) - renders on top of everything
@@ -1321,6 +1336,8 @@ private fun Preview_LibraryScreenContent() {
             onSourceToggle = {},
             onAddCustomGameFolder = {},
             onSortOptionChanged = {},
+            onSteamCollectionToggle = {},
+            onClearSteamCollections = {},
             onOptionsPanelToggle = { isOpen ->
                 state = state.copy(isOptionsPanelOpen = isOpen)
             },

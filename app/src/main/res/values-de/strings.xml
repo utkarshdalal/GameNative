@@ -2033,4 +2033,10 @@
     <string name="achievements_reveal_message">Dies zeigt vorübergehend die verbleibenden geheimen Errungenschaften und ihre Details an. Es wird nicht gespeichert.</string>
     <string name="achievements_reveal_confirm">Anzeigen</string>
     <string name="achievements_locked">Gesperrt</string>
+    <string name="steam_collections_removed">Eine gespeicherte Sammlung wurde in Steam entfernt und wird nicht mehr gefiltert.</string>
+    <string name="steam_collections_title">Steam-Sammlungen</string>
+    <string name="steam_collections_loading">Sammlungen werden geladen…</string>
+    <string name="steam_collections_offline">Es werden die zuletzt synchronisierten Sammlungen angezeigt. Zum Aktualisieren verbinden.</string>
+    <string name="steam_collections_clear">Löschen</string>
+    <string name="steam_collections_smart_unsupported">Es werden nur Standardsammlungen angezeigt. Intelligente Sammlungen werden noch nicht unterstützt.</string>
 </resources>
