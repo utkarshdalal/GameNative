@@ -1485,7 +1485,7 @@
     <string name="review_mostly_negative">Majoritar negativ</string>
     <string name="review_overwhelmingly_negative">Copleșitor de negativ</string>
     <string name="settings_interface_show_recommendations_title">Afișează recomandări de jocuri</string>
-    <string name="settings_interface_show_recommendations_subtitle">Afișează jocuri indie selectate în biblioteca ta. Păstrând această opțiune activată, sprijini dezvoltatorii indie și GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Afișează recomandări personalizate. Menținerea activă ajută la susținerea GameNative.</string>
      <string name="steam_save_export_success">Salvari exportate</string>
      <string name="steam_save_export_no_saves_found">Nu s-au găsit fișiere de salvare</string>
      <string name="steam_save_export_failed">Exportul salvărilor a eșuat: %s</string>
@@ -2076,4 +2076,6 @@
     <string name="featured_status_preorder_body">Precomandă ca să fii pregătit la lansare</string>
     <string name="featured_status_out_now_title">Disponibil acum</string>
     <string name="featured_status_out_now_body">Acum disponibil</string>
+    <string name="tab_recommended">Recomandate</string>
+    <string name="gog_rec_empty">Adaugă sau joacă câteva jocuri pentru a primi recomandări GOG pe baza bibliotecii tale.</string>
 </resources>

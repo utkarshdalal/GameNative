@@ -1484,7 +1484,7 @@
     <string name="review_mostly_negative">Plutôt négatif</string>
     <string name="review_overwhelmingly_negative">Extrêmement négatif</string>
     <string name="settings_interface_show_recommendations_title">Afficher les recommandations de jeux</string>
-    <string name="settings_interface_show_recommendations_subtitle">Affiche des jeux indés sélectionnés dans votre bibliothèque. Garder cette option activée aide à soutenir les développeurs indés et GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Affiche des recommandations personnalisées. Le laisser activé aide à soutenir GameNative.</string>
      <string name="steam_save_export_success">Sauvegardes exportées</string>
      <string name="steam_save_export_no_saves_found">Aucune sauvegarde trouvée</string>
      <string name="steam_save_export_failed">Échec de l\'exportation des sauvegardes : %s</string>
@@ -2075,4 +2075,6 @@
     <string name="featured_status_preorder_body">Précommandez pour être prêt au lancement</string>
     <string name="featured_status_out_now_title">Disponible</string>
     <string name="featured_status_out_now_body">Disponible maintenant</string>
+    <string name="tab_recommended">Recommandés</string>
+    <string name="gog_rec_empty">Ajoutez ou lancez des jeux pour obtenir des recommandations GOG basées sur votre bibliothèque.</string>
 </resources>

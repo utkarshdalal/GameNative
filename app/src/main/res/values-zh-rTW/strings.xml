@@ -1455,7 +1455,7 @@
     <string name="review_mostly_negative">大多負評</string>
     <string name="review_overwhelmingly_negative">壓倒性負評</string>
     <string name="settings_interface_show_recommendations_title">顯示遊戲推薦</string>
-    <string name="settings_interface_show_recommendations_subtitle">在遊戲庫中顯示精選獨立遊戲。保持開啟有助於支持獨立開發者和 GameNative。</string>
+    <string name="settings_interface_show_recommendations_subtitle">顯示個人化推薦。保持開啟有助於支持 GameNative。</string>
      <string name="steam_save_export_success">存檔已匯出</string>
      <string name="steam_save_export_no_saves_found">未找到存檔檔案</string>
      <string name="steam_save_export_failed">匯出存檔失敗：%s</string>
@@ -2084,4 +2084,6 @@
     <string name="featured_status_preorder_body">預購以在發售時做好準備</string>
     <string name="featured_status_out_now_title">現已推出</string>
     <string name="featured_status_out_now_body">現在可用</string>
+    <string name="tab_recommended">推薦</string>
+    <string name="gog_rec_empty">新增或試玩一些遊戲，即可根據你的遊戲庫獲得 GOG 推薦。</string>
 </resources>

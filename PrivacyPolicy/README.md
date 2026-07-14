@@ -29,9 +29,9 @@ GameNative does not build user profiles, track browsing activity, or sell data t
 
 ## Game Recommendations
 
-GameNative can suggest games you might like from GOG.com, based on the games you already play. This feature is optional and can be turned off at any time in **Settings → Interface → Show game recommendations**.
+GameNative can suggest games you might like from GOG.com, based on the games you already play. **We do not send any of your game or account information to GOG unless you explicitly opt in by accepting an in-app consent prompt.** Until you consent, nothing about the games you play is shared with GOG. You can turn the feature off again at any time in **Settings → Interface → Show game recommendations**.
 
-When recommendations are enabled:
+Once you have opted in:
 
 - The app looks at which games you play most and most recently on your device, and shares the corresponding game identifiers with GOG's recommendation service to generate suggestions.
 - If you are signed into GOG, your GOG account identifier is included, so recommendations can be tailored and games you already own can be excluded.

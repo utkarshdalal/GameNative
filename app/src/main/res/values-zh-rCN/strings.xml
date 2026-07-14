@@ -1453,7 +1453,7 @@
     <string name="review_mostly_negative">多半差评</string>
     <string name="review_overwhelmingly_negative">差评如潮</string>
     <string name="settings_interface_show_recommendations_title">显示游戏推荐</string>
-    <string name="settings_interface_show_recommendations_subtitle">在游戏库中显示精选独立游戏。保持开启有助于支持独立开发者和 GameNative。</string>
+    <string name="settings_interface_show_recommendations_subtitle">显示个性化推荐。保持开启有助于支持 GameNative。</string>
      <string name="steam_save_export_success">存档已导出</string>
      <string name="steam_save_export_no_saves_found">未找到存档文件</string>
      <string name="steam_save_export_failed">导出存档失败：%s</string>
@@ -2093,4 +2093,6 @@
     <string name="featured_status_preorder_body">预购以在发售时做好准备</string>
     <string name="featured_status_out_now_title">现已推出</string>
     <string name="featured_status_out_now_body">现在可用</string>
+    <string name="tab_recommended">推荐</string>
+    <string name="gog_rec_empty">添加或试玩一些游戏，即可根据你的游戏库获得 GOG 推荐。</string>
 </resources>

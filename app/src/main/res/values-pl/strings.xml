@@ -1482,7 +1482,7 @@
     <string name="review_mostly_negative">W większości negatywne</string>
     <string name="review_overwhelmingly_negative">Przytłaczająco negatywne</string>
     <string name="settings_interface_show_recommendations_title">Pokaż rekomendacje gier</string>
-    <string name="settings_interface_show_recommendations_subtitle">Wyświetla wyselekcjonowane gry indie w twojej bibliotece. Pozostawienie tego włączonego wspiera niezależnych deweloperów i GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Pokazuje spersonalizowane rekomendacje. Pozostawienie tej opcji włączonej wspiera GameNative.</string>
      <string name="steam_save_export_success">Zapisy wyeksportowane</string>
      <string name="steam_save_export_no_saves_found">Nie znaleziono plików zapisów</string>
      <string name="steam_save_export_failed">Nie udało się wyeksportować zapisów: %s</string>
@@ -2073,4 +2073,6 @@
     <string name="featured_status_preorder_body">Zamów przedpremierowo, aby być gotowym na premierę</string>
     <string name="featured_status_out_now_title">Już dostępne</string>
     <string name="featured_status_out_now_body">Dostępne teraz</string>
+    <string name="tab_recommended">Polecane</string>
+    <string name="gog_rec_empty">Dodaj lub zagraj w kilka gier, aby otrzymać rekomendacje GOG na podstawie Twojej biblioteki.</string>
 </resources>

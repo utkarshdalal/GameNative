@@ -1475,7 +1475,7 @@
     <string name="review_mostly_negative">Perlopiù negativo</string>
     <string name="review_overwhelmingly_negative">Estremamente negativo</string>
     <string name="settings_interface_show_recommendations_title">Mostra consigli di gioco</string>
-    <string name="settings_interface_show_recommendations_subtitle">Mostra giochi indie selezionati nella tua libreria. Mantenere attiva questa opzione aiuta a sostenere gli sviluppatori indie e GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Mostra consigli personalizzati. Tenerlo attivo aiuta a supportare GameNative.</string>
      <string name="steam_save_export_success">Salvataggi esportati</string>
      <string name="steam_save_export_no_saves_found">Nessun salvataggio trovato</string>
      <string name="steam_save_export_failed">Esportazione salvataggi fallita: %s</string>
@@ -2066,4 +2066,6 @@
     <string name="featured_status_preorder_body">Preordina per essere pronto al lancio</string>
     <string name="featured_status_out_now_title">Disponibile ora</string>
     <string name="featured_status_out_now_body">Ora disponibile</string>
+    <string name="tab_recommended">Consigliati</string>
+    <string name="gog_rec_empty">Aggiungi o gioca ad alcuni giochi per ricevere consigli GOG basati sulla tua libreria.</string>
 </resources>

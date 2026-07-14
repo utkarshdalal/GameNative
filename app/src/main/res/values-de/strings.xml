@@ -1424,7 +1424,7 @@
     <string name="review_mostly_negative">Größtenteils negativ</string>
     <string name="review_overwhelmingly_negative">Überwältigend negativ</string>
     <string name="settings_interface_show_recommendations_title">Spielempfehlungen anzeigen</string>
-    <string name="settings_interface_show_recommendations_subtitle">Zeigt kuratierte Indie-Spiele in deiner Bibliothek. Aktiviert lassen unterstützt Indie-Entwickler und GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Zeigt personalisierte Empfehlungen. Wenn du dies aktiviert lässt, unterstützt du GameNative.</string>
      <string name="steam_save_export_success">Spielstände exportiert</string>
      <string name="steam_save_export_no_saves_found">Keine Spielstände gefunden</string>
      <string name="steam_save_export_failed">Spielstände konnten nicht exportiert werden: %s</string>
@@ -2015,4 +2015,6 @@
     <string name="featured_status_preorder_body">Vorbestellen und zum Launch bereit sein</string>
     <string name="featured_status_out_now_title">Jetzt erhältlich</string>
     <string name="featured_status_out_now_body">Jetzt verfügbar</string>
+    <string name="tab_recommended">Empfohlen</string>
+    <string name="gog_rec_empty">Füge Spiele hinzu oder spiele welche, um GOG-Empfehlungen basierend auf deiner Bibliothek zu erhalten.</string>
 </resources>

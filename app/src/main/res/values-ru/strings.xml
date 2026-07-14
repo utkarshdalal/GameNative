@@ -1410,7 +1410,7 @@ https://gamenative.app
     <string name="review_mostly_negative">В основном отрицательные</string>
     <string name="review_overwhelmingly_negative">Крайне отрицательные</string>
     <string name="settings_interface_show_recommendations_title">Показывать рекомендации игр</string>
-    <string name="settings_interface_show_recommendations_subtitle">Показывает подобранные инди-игры в вашей библиотеке. Оставляя это включённым, вы поддерживаете инди-разработчиков и GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Показывает персональные рекомендации. Оставив это включённым, вы помогаете поддержать GameNative.</string>
      <string name="steam_save_export_success">Сохранения экспортированы</string>
      <string name="steam_save_export_no_saves_found">Сохранения не найдены</string>
      <string name="steam_save_export_failed">Не удалось экспортировать сохранения: %s</string>
@@ -2001,4 +2001,6 @@ https://gamenative.app
     <string name="featured_status_preorder_body">Оформите предзаказ, чтобы быть готовым к выходу</string>
     <string name="featured_status_out_now_title">Уже вышло</string>
     <string name="featured_status_out_now_body">Доступно сейчас</string>
+    <string name="tab_recommended">Рекомендации</string>
+    <string name="gog_rec_empty">Добавьте или поиграйте в игры, чтобы получить рекомендации GOG на основе вашей библиотеки.</string>
 </resources>

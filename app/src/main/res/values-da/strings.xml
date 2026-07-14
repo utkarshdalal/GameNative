@@ -1354,7 +1354,7 @@
     <string name="review_mostly_negative">Overvejende negativ</string>
     <string name="review_overwhelmingly_negative">Overvældende negativ</string>
     <string name="settings_interface_show_recommendations_title">Vis spilanbefalinger</string>
-    <string name="settings_interface_show_recommendations_subtitle">Vis udvalgte indie-spil i dit bibliotek. At holde dette aktiveret hjælper med at støtte indie-udviklere og GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Vis personlige anbefalinger. At holde dette slået til hjælper med at støtte GameNative.</string>
      <string name="steam_save_export_success">Gemte filer eksporteret</string>
      <string name="steam_save_export_no_saves_found">Ingen gemte filer fundet</string>
      <string name="steam_save_export_failed">Kunne ikke eksportere gemte filer: %s</string>
@@ -1945,4 +1945,6 @@
     <string name="featured_status_preorder_body">Forudbestil for at være klar ved lanceringen</string>
     <string name="featured_status_out_now_title">Ude nu</string>
     <string name="featured_status_out_now_body">Tilgængelig nu</string>
+    <string name="tab_recommended">Anbefalet</string>
+    <string name="gog_rec_empty">Tilføj eller spil nogle spil for at få GOG-anbefalinger baseret på dit bibliotek.</string>
 </resources>
