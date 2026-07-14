@@ -199,10 +199,12 @@ internal fun ListViewCard(
                 )
             }
 
-            FavouriteStarButton(
-                appId = appInfo.appId,
-                iconSize = 22,
-            )
+            if (!appInfo.isRecommended) {
+                FavouriteStarButton(
+                    appId = appInfo.appId,
+                    iconSize = 22,
+                )
+            }
         }
     }
     }
