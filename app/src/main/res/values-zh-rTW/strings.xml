@@ -2194,9 +2194,9 @@
     <string name="steam_invite_joined">在你的遊戲中</string>
     <string name="steam_invite_online">線上</string>
     <string name="steam_invite_offline">離線</string>
-    <string name="tab_favourites">收藏</string>
-    <string name="option_add_to_favourites">加入收藏</string>
-    <string name="option_remove_from_favourites">從收藏中移除</string>
-    <string name="favourite_add">加入收藏</string>
-    <string name="favourite_remove">從收藏中移除</string>
+    <string name="tab_favorites">收藏</string>
+    <string name="option_add_to_favorites">加入收藏</string>
+    <string name="option_remove_from_favorites">從收藏中移除</string>
+    <string name="favorite_add">加入收藏</string>
+    <string name="favorite_remove">從收藏中移除</string>
 </resources>

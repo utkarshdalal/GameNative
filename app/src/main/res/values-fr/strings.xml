@@ -2187,9 +2187,9 @@
     <string name="steam_invite_joined">Dans votre partie</string>
     <string name="steam_invite_online">En ligne</string>
     <string name="steam_invite_offline">Hors ligne</string>
-    <string name="tab_favourites">Favoris</string>
-    <string name="option_add_to_favourites">Ajouter aux favoris</string>
-    <string name="option_remove_from_favourites">Retirer des favoris</string>
-    <string name="favourite_add">Ajouter aux favoris</string>
-    <string name="favourite_remove">Retirer des favoris</string>
+    <string name="tab_favorites">Favoris</string>
+    <string name="option_add_to_favorites">Ajouter aux favoris</string>
+    <string name="option_remove_from_favorites">Retirer des favoris</string>
+    <string name="favorite_add">Ajouter aux favoris</string>
+    <string name="favorite_remove">Retirer des favoris</string>
 </resources>

@@ -368,7 +368,7 @@ internal fun GridViewCard(
                         iconSize = if (isCapsule) 14 else 12,
                     )
 
-                    FavouriteStarButton(
+                    FavoriteStarButton(
                         appId = appInfo.appId,
                         modifier = Modifier
                             .align(Alignment.BottomEnd)

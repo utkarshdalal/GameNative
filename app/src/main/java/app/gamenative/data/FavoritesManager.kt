@@ -10,9 +10,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * Keeps track of which games the user has marked as favourite.
+ * Keeps track of which games the user has marked as favorite.
  *
- * Favourites are stored as a set of [LibraryItem.appId] values, so they work across every source
+ * Favorites are stored as a set of [LibraryItem.appId] values, so they work across every source
  * (Steam, GOG, Epic, Amazon and custom games) without needing an account. The current set is
  * exposed as a [StateFlow] so the library list and the game cards update as soon as it changes,
  * while [PrefManager] keeps the values on disk between sessions.
@@ -21,15 +21,15 @@ import kotlinx.coroutines.launch
  * time a card or the detail menu is drawn) never blocks the UI on a disk read. Until the load
  * finishes the set is simply empty. If the user stars a game in that short window, the edit is
  * recorded and replayed on top of the loaded set, so an early toggle can never drop previously
- * saved favourites.
+ * saved favorites.
  */
-object FavouritesManager {
+object FavoritesManager {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private val _favourites = MutableStateFlow<Set<String>>(emptySet())
+    private val _favorites = MutableStateFlow<Set<String>>(emptySet())
 
-    /** The set of favourited app ids. Observe this to react to changes. */
-    val favourites: StateFlow<Set<String>> = _favourites.asStateFlow()
+    /** The set of favorited app ids. Observe this to react to changes. */
+    val favorites: StateFlow<Set<String>> = _favorites.asStateFlow()
 
     private val lock = Any()
     private var loaded = false
@@ -39,40 +39,40 @@ object FavouritesManager {
 
     init {
         scope.launch {
-            val stored = PrefManager.favouriteAppIds
+            val stored = PrefManager.favoriteAppIds
             synchronized(lock) {
                 var result = stored
-                for ((appId, favourite) in pendingEdits) {
-                    result = FavouritesUtils.apply(result, appId, favourite)
+                for ((appId, favorite) in pendingEdits) {
+                    result = FavoritesUtils.apply(result, appId, favorite)
                 }
                 val hadPendingEdits = pendingEdits.isNotEmpty()
                 pendingEdits.clear()
                 loaded = true
-                _favourites.value = result
+                _favorites.value = result
                 // Persist inside the lock so a concurrent toggle cannot be overwritten by a stale
                 // snapshot written after the lock is released.
                 if (hadPendingEdits) {
-                    PrefManager.favouriteAppIds = result
+                    PrefManager.favoriteAppIds = result
                 }
             }
         }
     }
 
-    fun isFavourite(appId: String): Boolean = _favourites.value.contains(appId)
+    fun isFavorite(appId: String): Boolean = _favorites.value.contains(appId)
 
-    /** Adds the game if it is not a favourite yet, or removes it if it already is. */
-    fun toggle(appId: String) = setFavourite(appId, !isFavourite(appId))
+    /** Adds the game if it is not a favorite yet, or removes it if it already is. */
+    fun toggle(appId: String) = setFavorite(appId, !isFavorite(appId))
 
-    fun setFavourite(appId: String, favourite: Boolean) {
+    fun setFavorite(appId: String, favorite: Boolean) {
         synchronized(lock) {
-            val updated = FavouritesUtils.apply(_favourites.value, appId, favourite)
-            if (updated == _favourites.value) return
-            _favourites.value = updated
+            val updated = FavoritesUtils.apply(_favorites.value, appId, favorite)
+            if (updated == _favorites.value) return
+            _favorites.value = updated
             if (loaded) {
-                PrefManager.favouriteAppIds = updated
+                PrefManager.favoriteAppIds = updated
             } else {
                 // Still loading: record the intent so the load replays it on top of the saved set.
-                pendingEdits[appId] = favourite
+                pendingEdits[appId] = favorite
             }
         }
     }

@@ -353,8 +353,8 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.ManageWorkshop -> Icons.Default.Build
         AppOptionMenuType.ManageMods -> Icons.Default.Extension
         AppOptionMenuType.ChangeBranch -> Icons.AutoMirrored.Filled.CallSplit
-        AppOptionMenuType.AddToFavourites -> Icons.Filled.StarOutline
-        AppOptionMenuType.RemoveFromFavourites -> Icons.Filled.Star
+        AppOptionMenuType.AddToFavorites -> Icons.Filled.StarOutline
+        AppOptionMenuType.RemoveFromFavorites -> Icons.Filled.Star
     }
 }
 
@@ -372,8 +372,8 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.RunContainer,
             AppOptionMenuType.CreateShortcut,
             AppOptionMenuType.ExportFrontend,
-            AppOptionMenuType.AddToFavourites,
-            AppOptionMenuType.RemoveFromFavourites,
+            AppOptionMenuType.AddToFavorites,
+            AppOptionMenuType.RemoveFromFavorites,
             -> quickActions.add(option)
 
             // Game Management

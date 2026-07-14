@@ -28,7 +28,7 @@ import androidx.core.net.toUri
 import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.GameSource
-import app.gamenative.data.FavouritesManager
+import app.gamenative.data.FavoritesManager
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.mods.ModContainerResolver
@@ -723,17 +723,17 @@ abstract class BaseAppScreen {
     }
 
     @Composable
-    private fun getFavouriteOption(libraryItem: LibraryItem): AppMenuOption {
-        val favourites by FavouritesManager.favourites.collectAsStateWithLifecycle()
-        val isFavourite = favourites.contains(libraryItem.appId)
+    private fun getFavoriteOption(libraryItem: LibraryItem): AppMenuOption {
+        val favorites by FavoritesManager.favorites.collectAsStateWithLifecycle()
+        val isFavorite = favorites.contains(libraryItem.appId)
         return AppMenuOption(
-            optionType = if (isFavourite) {
-                AppOptionMenuType.RemoveFromFavourites
+            optionType = if (isFavorite) {
+                AppOptionMenuType.RemoveFromFavorites
             } else {
-                AppOptionMenuType.AddToFavourites
+                AppOptionMenuType.AddToFavorites
             },
             onClick = {
-                FavouritesManager.toggle(libraryItem.appId)
+                FavoritesManager.toggle(libraryItem.appId)
             },
         )
     }
@@ -978,7 +978,7 @@ abstract class BaseAppScreen {
         }
 
         // Always available options
-        menuOptions.add(getFavouriteOption(libraryItem))
+        menuOptions.add(getFavoriteOption(libraryItem))
         menuOptions.add(getSubmitFeedbackOption(context, libraryItem))
         menuOptions.add(getGetSupportOption(context))
 

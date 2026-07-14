@@ -15,40 +15,40 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.R
-import app.gamenative.data.FavouritesManager
+import app.gamenative.data.FavoritesManager
 
 /**
- * A star button that shows whether a game is a favourite and toggles it when tapped.
+ * A star button that shows whether a game is a favorite and toggles it when tapped.
  *
- * It observes [FavouritesManager] directly, so it can be dropped onto any card or screen without
+ * It observes [FavoritesManager] directly, so it can be dropped onto any card or screen without
  * threading callbacks through the surrounding composables.
  *
  * @param onImage when true, the icon uses a light tint so it stays readable on top of cover art.
  */
 @Composable
-internal fun FavouriteStarButton(
+internal fun FavoriteStarButton(
     appId: String,
     modifier: Modifier = Modifier,
     iconSize: Int = 20,
     onImage: Boolean = false,
 ) {
-    val favourites by FavouritesManager.favourites.collectAsStateWithLifecycle()
-    val isFavourite = appId in favourites
+    val favorites by FavoritesManager.favorites.collectAsStateWithLifecycle()
+    val isFavorite = appId in favorites
 
     val tint = when {
-        isFavourite -> MaterialTheme.colorScheme.primary
+        isFavorite -> MaterialTheme.colorScheme.primary
         onImage -> Color.White.copy(alpha = 0.85f)
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     IconButton(
-        onClick = { FavouritesManager.toggle(appId) },
+        onClick = { FavoritesManager.toggle(appId) },
         modifier = modifier,
     ) {
         Icon(
-            imageVector = if (isFavourite) Icons.Filled.Star else Icons.Filled.StarOutline,
+            imageVector = if (isFavorite) Icons.Filled.Star else Icons.Filled.StarOutline,
             contentDescription = stringResource(
-                if (isFavourite) R.string.favourite_remove else R.string.favourite_add,
+                if (isFavorite) R.string.favorite_remove else R.string.favorite_add,
             ),
             tint = tint,
             modifier = Modifier.size(iconSize.dp),

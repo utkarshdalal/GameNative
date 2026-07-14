@@ -200,7 +200,7 @@ internal fun ListViewCard(
             }
 
             if (!appInfo.isRecommended) {
-                FavouriteStarButton(
+                FavoriteStarButton(
                     appId = appInfo.appId,
                     iconSize = 22,
                 )

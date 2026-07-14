@@ -1300,21 +1300,21 @@ object PrefManager {
             setPref(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))
         }
 
-    // Games the user has marked as favourite, stored as a set of LibraryItem.appId values so they
+    // Games the user has marked as favorite, stored as a set of LibraryItem.appId values so they
     // work across every source (Steam, GOG, Epic, Amazon, custom games) without needing an account.
-    private val FAVOURITE_APP_IDS = stringPreferencesKey("favourite_app_ids")
-    var favouriteAppIds: Set<String>
+    private val FAVORITE_APP_IDS = stringPreferencesKey("favorite_app_ids")
+    var favoriteAppIds: Set<String>
         get() {
-            val value = getPref(FAVOURITE_APP_IDS, "[]")
+            val value = getPref(FAVORITE_APP_IDS, "[]")
             return try {
                 Json.decodeFromString<Set<String>>(value)
             } catch (e: Exception) {
-                Timber.w(e, "Failed to decode favourite app ids; falling back to empty set")
+                Timber.w(e, "Failed to decode favorite app ids; falling back to empty set")
                 emptySet()
             }
         }
         set(value) {
-            setPref(FAVOURITE_APP_IDS, Json.encodeToString(value))
+            setPref(FAVORITE_APP_IDS, Json.encodeToString(value))
         }
 
     // Add new setting for Wine debug logging

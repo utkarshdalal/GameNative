@@ -13,8 +13,8 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
-import app.gamenative.data.FavouritesManager
-import app.gamenative.data.FavouritesUtils
+import app.gamenative.data.FavoritesManager
+import app.gamenative.data.FavoritesUtils
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.gog.GogRecommendationsRepository
@@ -182,10 +182,10 @@ class LibraryViewModel @Inject constructor(
             }
         }
 
-        // Re-filter whenever the set of favourite games changes, so the Favourites tab and the
+        // Re-filter whenever the set of favorite games changes, so the Favorites tab and the
         // tab badge stay in sync as the user stars or unstars games.
         viewModelScope.launch(Dispatchers.IO) {
-            FavouritesManager.favourites
+            FavoritesManager.favorites
                 .drop(1)
                 .collect {
                     onFilterApps(paginationCurrentPage)
@@ -992,7 +992,7 @@ class LibraryViewModel @Inject constructor(
             // sources can't match it — keep them out of the combined list (and their tab counts).
             val steamCollectionSelected = allowedSteamAppIds != null
 
-            val favouriteIds = FavouritesManager.favourites.value
+            val favoriteIds = FavoritesManager.favorites.value
 
             val combined = buildList {
                 if (includeSteam) addAll(steamEntries)
@@ -1001,8 +1001,8 @@ class LibraryViewModel @Inject constructor(
                 if (includeEpic && !steamCollectionSelected) addAll(epicEntries)
                 if (includeAmazon && !steamCollectionSelected) addAll(amazonEntries)
             }.let { entries ->
-                if (currentTab == app.gamenative.ui.enums.LibraryTab.FAVOURITES) {
-                    FavouritesUtils.filter(entries, favouriteIds) { it.item.appId }
+                if (currentTab == app.gamenative.ui.enums.LibraryTab.FAVORITES) {
+                    FavoritesUtils.filter(entries, favoriteIds) { it.item.appId }
                 } else {
                     entries
                 }
@@ -1093,10 +1093,10 @@ class LibraryViewModel @Inject constructor(
                     amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
                     localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
                     steamCollectionCounts = steamCollectionCounts,
-                    // Count favourites across every source the Favourites tab actually shows (all
+                    // Count favorites across every source the Favorites tab actually shows (all
                     // sources, gated only by credentials), so the badge matches the tab contents
                     // even when a source is hidden from the library through user preferences.
-                    favouritesCount = FavouritesUtils.count(
+                    favoritesCount = FavoritesUtils.count(
                         buildList {
                             addAll(steamEntries)
                             addAll(customEntries)
@@ -1104,7 +1104,7 @@ class LibraryViewModel @Inject constructor(
                             if (EpicService.hasStoredCredentials(context)) addAll(epicEntries)
                             if (AmazonService.hasStoredCredentials(context)) addAll(amazonEntries)
                         },
-                        favouriteIds,
+                        favoriteIds,
                     ) { it.item.appId },
                 )
             }

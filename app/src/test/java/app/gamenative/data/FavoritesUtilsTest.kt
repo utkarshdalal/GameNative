@@ -5,20 +5,20 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class FavouritesUtilsTest {
+class FavoritesUtilsTest {
 
     private data class Game(val appId: String, val name: String)
 
     @Test
-    fun apply_addsAppIdWhenFavouriteIsTrue() {
-        val result = FavouritesUtils.apply(setOf("a"), "b", favourite = true)
+    fun apply_addsAppIdWhenFavoriteIsTrue() {
+        val result = FavoritesUtils.apply(setOf("a"), "b", favorite = true)
 
         assertEquals(setOf("a", "b"), result)
     }
 
     @Test
-    fun apply_removesAppIdWhenFavouriteIsFalse() {
-        val result = FavouritesUtils.apply(setOf("a", "b"), "b", favourite = false)
+    fun apply_removesAppIdWhenFavoriteIsFalse() {
+        val result = FavoritesUtils.apply(setOf("a", "b"), "b", favorite = false)
 
         assertEquals(setOf("a"), result)
     }
@@ -27,50 +27,50 @@ class FavouritesUtilsTest {
     fun apply_isIdempotentWhenAlreadyInDesiredState() {
         val current = setOf("a")
 
-        assertEquals(current, FavouritesUtils.apply(current, "a", favourite = true))
-        assertEquals(current, FavouritesUtils.apply(current, "b", favourite = false))
+        assertEquals(current, FavoritesUtils.apply(current, "a", favorite = true))
+        assertEquals(current, FavoritesUtils.apply(current, "b", favorite = false))
     }
 
     @Test
-    fun filter_keepsOnlyFavouritesAndPreservesOrder() {
+    fun filter_keepsOnlyFavoritesAndPreservesOrder() {
         val games = listOf(
             Game(appId = "1", name = "First"),
             Game(appId = "2", name = "Second"),
             Game(appId = "3", name = "Third"),
         )
 
-        val result = FavouritesUtils.filter(games, favourites = setOf("3", "1")) { it.appId }
+        val result = FavoritesUtils.filter(games, favorites = setOf("3", "1")) { it.appId }
 
         assertEquals(listOf("First", "Third"), result.map { it.name })
     }
 
     @Test
-    fun filter_returnsEmptyWhenNothingIsFavourited() {
+    fun filter_returnsEmptyWhenNothingIsFavorited() {
         val games = listOf(Game(appId = "1", name = "First"))
 
-        val result = FavouritesUtils.filter(games, favourites = emptySet()) { it.appId }
+        val result = FavoritesUtils.filter(games, favorites = emptySet()) { it.appId }
 
         assertTrue(result.isEmpty())
     }
 
     @Test
-    fun count_matchesTheNumberOfFavouritedItems() {
+    fun count_matchesTheNumberOfFavoritedItems() {
         val games = listOf(
             Game(appId = "1", name = "First"),
             Game(appId = "2", name = "Second"),
             Game(appId = "3", name = "Third"),
         )
 
-        val count = FavouritesUtils.count(games, favourites = setOf("1", "3", "missing")) { it.appId }
+        val count = FavoritesUtils.count(games, favorites = setOf("1", "3", "missing")) { it.appId }
 
         assertEquals(2, count)
     }
 
     @Test
-    fun count_ignoresFavouriteIdsThatAreNotInTheList() {
+    fun count_ignoresFavoriteIdsThatAreNotInTheList() {
         val games = listOf(Game(appId = "1", name = "First"))
 
-        val count = FavouritesUtils.count(games, favourites = setOf("99")) { it.appId }
+        val count = FavoritesUtils.count(games, favorites = setOf("99")) { it.appId }
 
         assertEquals(0, count)
         assertFalse(count == games.size)

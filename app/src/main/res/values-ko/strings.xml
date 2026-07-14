@@ -2183,9 +2183,9 @@
     <string name="steam_invite_joined">내 게임에 참가 중</string>
     <string name="steam_invite_online">온라인</string>
     <string name="steam_invite_offline">오프라인</string>
-    <string name="tab_favourites">즐겨찾기</string>
-    <string name="option_add_to_favourites">즐겨찾기에 추가</string>
-    <string name="option_remove_from_favourites">즐겨찾기에서 제거</string>
-    <string name="favourite_add">즐겨찾기에 추가</string>
-    <string name="favourite_remove">즐겨찾기에서 제거</string>
+    <string name="tab_favorites">즐겨찾기</string>
+    <string name="option_add_to_favorites">즐겨찾기에 추가</string>
+    <string name="option_remove_from_favorites">즐겨찾기에서 제거</string>
+    <string name="favorite_add">즐겨찾기에 추가</string>
+    <string name="favorite_remove">즐겨찾기에서 제거</string>
 </resources>

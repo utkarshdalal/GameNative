@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">User Login</string>
     <string name="login_2fa">Two Factor</string>
@@ -109,7 +109,7 @@
     <string name="tab_recommended">Recommended</string>
     <string name="gog_rec_empty">Add or play some games to get GOG recommendations based on your library.</string>
     <string name="tab_all">All</string>
-    <string name="tab_favourites">Favourites</string>
+    <string name="tab_favorites">Favorites</string>
     <string name="tab_steam">Steam</string>
     <string name="tab_gog">GOG</string>
     <string name="tab_epic">Epic</string>
@@ -1628,10 +1628,10 @@
     <string name="option_reset_to_defaults">Reset container</string>
     <string name="option_get_support">Get support</string>
     <string name="option_submit_feedback">Submit feedback</string>
-    <string name="option_add_to_favourites">Add to favourites</string>
-    <string name="option_remove_from_favourites">Remove from favourites</string>
-    <string name="favourite_add">Add to favourites</string>
-    <string name="favourite_remove">Remove from favourites</string>
+    <string name="option_add_to_favorites">Add to favorites</string>
+    <string name="option_remove_from_favorites">Remove from favorites</string>
+    <string name="favorite_add">Add to favorites</string>
+    <string name="favorite_remove">Remove from favorites</string>
     <string name="option_reset_drm">Reset DRM</string>
     <string name="option_use_known_config">Use known config</string>
     <string name="option_import_saves">Import saves</string>
