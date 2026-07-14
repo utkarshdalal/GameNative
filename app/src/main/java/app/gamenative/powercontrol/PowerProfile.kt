@@ -2,12 +2,16 @@ package app.gamenative.powercontrol
 
 import app.gamenative.powercontrol.profiles.CpuGovernor
 import app.gamenative.powercontrol.profiles.PerformancePreset
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class PowerProfile(
-    val name: PerformancePreset,
-    val governor: CpuGovernor,
-    val minFreq: Long,
-    val maxFreq: Long
+    var name: String,
+    var governor: CpuGovernor,
+    var minCpuFreq: Long,
+    var maxCpuFreq: Long,
+    var minGpuPowerLevel: Int = 0,
+    var maxGpuPowerLevel: Int = 0
 )
 
 object PowerProfiles {
@@ -28,7 +32,11 @@ object PowerProfiles {
      * - Available frequencies: 307200 - 2016000 KHz (307 MHz - 2.02 GHz, 16 steps)
      * - Frequency steps: 307, 441, 556, 672, 787, 902, 1017, 1113, 1228, 1344, 1459, 1555, 1670, 1785, 1900, 2016 MHz
      */
-    fun getDefaultProfiles(availableGovernors: List<String>, availableFrequencies: List<Long>): List<PowerProfile> {
+    fun getDefaultProfiles(
+        availableGovernors: List<String>,
+        availableFrequencies: List<Long>,
+        maxGpuPowerLevel: Int = 0
+    ): List<PowerProfile> {
         if (availableFrequencies.isEmpty()) return emptyList()
 
         val minFreq = availableFrequencies.first()  // Odin 3: 384 MHz, RP6: 307 MHz
@@ -47,39 +55,110 @@ object PowerProfiles {
             maxFreq
         }
 
+        // GPU power level calculations (similar to CPU frequency tiers)
+        val lowGpuLevel = if (maxGpuPowerLevel > 4) {
+            maxGpuPowerLevel / 4  // 25%
+        } else {
+            0
+        }
+        val midGpuLevel = if (maxGpuPowerLevel > 0) {
+            maxGpuPowerLevel / 2  // 50%
+        } else {
+            0
+        }
+        val highGpuLevel = if (maxGpuPowerLevel > 4) {
+            (maxGpuPowerLevel * 3) / 4  // 75%
+        } else {
+            maxGpuPowerLevel
+        }
+
         return buildList {
             // Power Save - lowest frequency range with powersave governor
-            // Odin 3: 384 MHz - 960 MHz, RP6: 307 MHz - 672 MHz
+            // CPU: Odin 3: 384 MHz - 960 MHz, RP6: 307 MHz - 672 MHz
+            // GPU: 0 - 25% of max power level
             if (availableGovernors.contains(CpuGovernor.POWERSAVE.governorName)) {
-                add(PowerProfile(PerformancePreset.POWER_SAVE, CpuGovernor.POWERSAVE, minFreq, lowFreq))
+                add(PowerProfile(
+                    name = PerformancePreset.POWER_SAVE.displayName,
+                    governor = CpuGovernor.POWERSAVE,
+                    minCpuFreq = minFreq,
+                    maxCpuFreq = lowFreq,
+                    minGpuPowerLevel = 0,
+                    maxGpuPowerLevel = lowGpuLevel
+                ))
             }
 
             // Balanced - schedutil is best for modern devices, falls back to conservative or interactive
             // For gaming, start at midFreq (50%) to ensure adequate performance while saving battery
-            // Odin 3: 2227 MHz - 3532 MHz, RP6: 1344 MHz - 2016 MHz
+            // CPU: Odin 3: 2227 MHz - 3532 MHz, RP6: 1344 MHz - 2016 MHz
+            // GPU: 50% - 100% of max power level
             if (availableGovernors.contains(CpuGovernor.SCHEDUTIL.governorName)) {
-                add(PowerProfile(PerformancePreset.BALANCED, CpuGovernor.SCHEDUTIL, midFreq, maxFreq))
+                add(PowerProfile(
+                    name = PerformancePreset.BALANCED.displayName,
+                    governor = CpuGovernor.SCHEDUTIL,
+                    minCpuFreq = midFreq,
+                    maxCpuFreq = maxFreq,
+                    minGpuPowerLevel = midGpuLevel,
+                    maxGpuPowerLevel = maxGpuPowerLevel
+                ))
             } else if (availableGovernors.contains(CpuGovernor.CONSERVATIVE.governorName)) {
-                add(PowerProfile(PerformancePreset.BALANCED, CpuGovernor.CONSERVATIVE, midFreq, maxFreq))
+                add(PowerProfile(
+                    name = PerformancePreset.BALANCED.displayName,
+                    governor = CpuGovernor.CONSERVATIVE,
+                    minCpuFreq = midFreq,
+                    maxCpuFreq = maxFreq,
+                    minGpuPowerLevel = midGpuLevel,
+                    maxGpuPowerLevel = maxGpuPowerLevel
+                ))
             } else if (availableGovernors.contains(CpuGovernor.INTERACTIVE.governorName)) {
-                add(PowerProfile(PerformancePreset.BALANCED, CpuGovernor.INTERACTIVE, midFreq, maxFreq))
+                add(PowerProfile(
+                    name = PerformancePreset.BALANCED.displayName,
+                    governor = CpuGovernor.INTERACTIVE,
+                    minCpuFreq = midFreq,
+                    maxCpuFreq = maxFreq,
+                    minGpuPowerLevel = midGpuLevel,
+                    maxGpuPowerLevel = maxGpuPowerLevel
+                ))
             }
 
             // Performance - maximum performance with performance governor
-            // Odin 3: 2918 MHz - 3532 MHz, RP6: 1785 MHz - 2016 MHz
+            // CPU: Odin 3: 2918 MHz - 3532 MHz, RP6: 1785 MHz - 2016 MHz
+            // GPU: 75% - 100% of max power level
             if (availableGovernors.contains(CpuGovernor.PERFORMANCE.governorName)) {
-                add(PowerProfile(PerformancePreset.PERFORMANCE, CpuGovernor.PERFORMANCE, highFreq, maxFreq))
+                add(PowerProfile(
+                    name = PerformancePreset.PERFORMANCE.displayName,
+                    governor = CpuGovernor.PERFORMANCE,
+                    minCpuFreq = highFreq,
+                    maxCpuFreq = maxFreq,
+                    minGpuPowerLevel = highGpuLevel,
+                    maxGpuPowerLevel = maxGpuPowerLevel
+                ))
             }
 
             // On Demand - responsive but power-aware (legacy governor, not available on Odin 3 or RP6)
+            // CPU: Full range, GPU: Full range
             if (availableGovernors.contains(CpuGovernor.ONDEMAND.governorName)) {
-                add(PowerProfile(PerformancePreset.ON_DEMAND, CpuGovernor.ONDEMAND, minFreq, maxFreq))
+                add(PowerProfile(
+                    name = PerformancePreset.ON_DEMAND.displayName,
+                    governor = CpuGovernor.ONDEMAND,
+                    minCpuFreq = minFreq,
+                    maxCpuFreq = maxFreq,
+                    minGpuPowerLevel = 0,
+                    maxGpuPowerLevel = maxGpuPowerLevel
+                ))
             }
 
             // WALT (Window Assisted Load Tracking) - Qualcomm's scheduler-based governor
-            // Odin 3: 384 MHz - 3532 MHz, RP6: 307 MHz - 2016 MHz
+            // CPU: Odin 3: 384 MHz - 3532 MHz, RP6: 307 MHz - 2016 MHz
+            // GPU: Full range
             if (availableGovernors.contains(CpuGovernor.WALT.governorName)) {
-                add(PowerProfile(PerformancePreset.WALT, CpuGovernor.WALT, minFreq, maxFreq))
+                add(PowerProfile(
+                    name = PerformancePreset.WALT.displayName,
+                    governor = CpuGovernor.WALT,
+                    minCpuFreq = minFreq,
+                    maxCpuFreq = maxFreq,
+                    minGpuPowerLevel = 0,
+                    maxGpuPowerLevel = maxGpuPowerLevel
+                ))
             }
         }
     }

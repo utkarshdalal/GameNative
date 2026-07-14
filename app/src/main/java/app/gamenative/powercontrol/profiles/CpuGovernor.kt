@@ -1,8 +1,11 @@
 package app.gamenative.powercontrol.profiles
 
+import kotlinx.serialization.Serializable
+
 /**
  * CPU governor types available on Android devices
  */
+@Serializable
 enum class CpuGovernor(val governorName: String) {
     POWERSAVE("powersave"),
     CONSERVATIVE("conservative"),

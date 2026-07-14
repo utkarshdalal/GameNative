@@ -1406,4 +1406,12 @@ object PrefManager {
                 setPref(NEXUS_LAST_PLACEMENT_JSON, value)
             }
         }
+
+    // Power Control Profile (JSON string)
+    private val POWER_CONTROL_PROFILE = stringPreferencesKey("power_control_profile")
+    var powerControlProfile: String
+        get() = getPref(POWER_CONTROL_PROFILE, "")
+        set(value) {
+            setPref(POWER_CONTROL_PROFILE, value)
+        }
 }
