@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.gamenative.PluviaApp
@@ -723,7 +724,8 @@ abstract class BaseAppScreen {
 
     @Composable
     private fun getFavouriteOption(libraryItem: LibraryItem): AppMenuOption {
-        val isFavourite = FavouritesManager.isFavourite(libraryItem.appId)
+        val favourites by FavouritesManager.favourites.collectAsStateWithLifecycle()
+        val isFavourite = favourites.contains(libraryItem.appId)
         return AppMenuOption(
             optionType = if (isFavourite) {
                 AppOptionMenuType.RemoveFromFavourites
