@@ -1,6 +1,9 @@
 package app.gamenative.powercontrol.drivers
 
 import android.content.Context
+import app.gamenative.powercontrol.PowerProfile
+import app.gamenative.powercontrol.profiles.CpuGovernor
+import app.gamenative.powercontrol.profiles.PerformancePreset
 import com.samsung.sdk.sperf.CustomParams
 import com.samsung.sdk.sperf.PerformanceManager
 import com.samsung.sdk.sperf.SPerf
@@ -86,6 +89,13 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to stop Samsung Performance Manager")
         }
+    }
+
+    override fun beginUpdate() {
+    }
+
+    override fun commit(): Boolean {
+        return true
     }
 
     override fun getCurrentMinCpuValue(): Long {
@@ -208,5 +218,20 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
             Timber.tag(TAG).e(e, "Failed to set GPU max level")
             false
         }
+    }
+
+    override fun getDefaultProfile(): PowerProfile {
+        // Samsung driver uses integer levels (1-4), not frequencies
+        // Return Balanced profile (middle performance)
+        // Level 2-3 represents balanced performance
+
+        return PowerProfile(
+            name = PerformancePreset.BALANCED.displayName,
+            governor = CpuGovernor.SCHEDUTIL, // Samsung doesn't use governors, but we need a value
+            minCpuFreq = 2, // CPU level 2
+            maxCpuFreq = 3, // CPU level 3
+            minGpuPowerLevel = 2, // GPU level 2
+            maxGpuPowerLevel = 3  // GPU level 3
+        )
     }
 }

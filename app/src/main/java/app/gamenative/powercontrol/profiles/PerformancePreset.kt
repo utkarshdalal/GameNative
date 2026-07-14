@@ -1,8 +1,11 @@
 package app.gamenative.powercontrol.profiles
 
+import kotlinx.serialization.Serializable
+
 /**
  * Performance preset names
  */
+@Serializable
 enum class PerformancePreset(val displayName: String) {
     POWER_SAVE("Power Save"),
     BALANCED("Balanced"),

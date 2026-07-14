@@ -1,8 +1,12 @@
 package app.gamenative.powercontrol.drivers
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.os.IBinder
 import android.os.Parcel
+import app.gamenative.powercontrol.PowerProfile
+import app.gamenative.powercontrol.profiles.CpuGovernor
+import app.gamenative.powercontrol.profiles.PerformancePreset
 import timber.log.Timber
 import java.io.File
 import java.nio.charset.Charset
@@ -12,7 +16,7 @@ import java.nio.charset.Charset
  * (AYN Odin, Retroid Pocket, etc.)
  */
 @SuppressLint("DiscouragedPrivateApi", "PrivateApi")
-class PServerDriver : PerformanceDriver() {
+class PServerDriver(private val context: Context? = null) : PerformanceDriver() {
 
     companion object {
         private const val TAG = "PServerDriver"
@@ -34,6 +38,11 @@ class PServerDriver : PerformanceDriver() {
 
     // Track modified sysfs files for permission restoration
     private val modifiedSysfsFiles = mutableSetOf<String>()
+
+    // Batch update support
+    private var batchCommands = mutableListOf<String>()
+    private var batchFilePaths = mutableSetOf<String>()
+    private var isBatchMode = false
 
     init {
         binder = runCatching {
@@ -108,6 +117,102 @@ class PServerDriver : PerformanceDriver() {
     }
 
     /**
+     * Begin a batch update session.
+     * Collects commands to execute in a single root call for better performance.
+     */
+    override fun beginUpdate() {
+        batchCommands.clear()
+        batchFilePaths.clear()
+        isBatchMode = true
+    }
+
+    /**
+     * Commit all pending updates from the batch session.
+     * Writes commands to a temporary shell script and executes it to avoid Binder size limits.
+     */
+    override fun commit(): Boolean {
+        if (!isBatchMode || batchCommands.isEmpty()) {
+            isBatchMode = false
+            return true
+        }
+
+        var scriptFile: File? = null
+        return try {
+            // Create temporary shell script in app cache directory (or fallback to /data/local/tmp)
+            scriptFile = if (context != null) {
+                File(context.cacheDir, "pserver_batch_${System.currentTimeMillis()}.sh")
+            } else {
+                File("/data/local/tmp/pserver_batch_${System.currentTimeMillis()}.sh")
+            }
+
+            // Write script content directly to file
+            val scriptContent = buildString {
+                appendLine("#!/system/bin/sh")
+
+                // First, make all files writable in a single chmod command
+                if (batchFilePaths.isNotEmpty()) {
+                    val paths = batchFilePaths.joinToString(" ") { "'$it'" }
+                    appendLine("chmod 644 $paths")
+                }
+
+                // Execute all the actual commands (echo operations)
+                for (cmd in batchCommands) {
+                    appendLine(cmd)
+                }
+
+                // Finally, make all files read-only in a single chmod command
+                if (batchFilePaths.isNotEmpty()) {
+                    val paths = batchFilePaths.joinToString(" ") { "'$it'" }
+                    appendLine("chmod 444 $paths")
+                }
+            }
+
+            try {
+                scriptFile.writeText(scriptContent)
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Failed to write batch script to ${scriptFile.absolutePath}")
+                batchCommands.clear()
+                isBatchMode = false
+                return false
+            }
+
+            // Make script executable and run it
+            val chmodResult = executeAsRoot("chmod 755 '${scriptFile.absolutePath}'")
+            if (chmodResult.isFailure) {
+                Timber.tag(TAG).e("Failed to chmod batch script: ${chmodResult.exceptionOrNull()?.message}")
+                batchCommands.clear()
+                isBatchMode = false
+                return false
+            }
+
+            val execResult = executeAsRoot("/system/bin/sh '${scriptFile.absolutePath}'")
+            val success = execResult.isSuccess
+
+            if (execResult.isFailure) {
+                Timber.tag(TAG).e("Failed to execute batch script: ${execResult.exceptionOrNull()?.message}")
+            } else {
+                Timber.tag(TAG).d("Successfully executed ${batchCommands.size} batched commands")
+            }
+
+            batchCommands.clear()
+            isBatchMode = false
+            success
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to commit batch update")
+            batchCommands.clear()
+            isBatchMode = false
+            false
+        } finally {
+            // Clean up script file
+            try {
+                scriptFile?.delete()
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Failed to delete batch script")
+            }
+        }
+    }
+
+    /**
      * Stop the performance driver
      * Restores CPU governor to first available governor and all modified sysfs files to 644 permissions
      * Runs asynchronously on a background thread
@@ -121,6 +226,34 @@ class PServerDriver : PerformanceDriver() {
         // Run restoration on background thread to avoid blocking
         Thread {
             try {
+                // Reset CPU frequencies to maximum before changing governor
+                // This prevents device from staying slow if it was in Power Save mode
+                try {
+                    val availableFrequencies = getAvailableCpuFrequencies()
+                    if (availableFrequencies.isNotEmpty()) {
+                        val minFreq = availableFrequencies.first()
+                        val maxFreq = availableFrequencies.last()
+                        Timber.tag(TAG).d("Resetting CPU frequencies to full range: $minFreq - $maxFreq")
+                        setMinCpuValue(minFreq)
+                        setMaxCpuValue(maxFreq)
+                    }
+                } catch (e: Exception) {
+                    Timber.tag(TAG).e(e, "Failed to reset CPU frequencies")
+                }
+
+                // Reset GPU power levels to maximum if supported
+                // This prevents GPU from staying throttled
+                if (isGpuSupported()) {
+                    try {
+                        val maxGpuLevel = getNumGpuPowerLevels() - 1
+                        Timber.tag(TAG).d("Resetting GPU power levels to full range: 0 - $maxGpuLevel")
+                        setMinGpuPowerLevel(0)
+                        setMaxGpuPowerLevel(maxGpuLevel)
+                    } catch (e: Exception) {
+                        Timber.tag(TAG).e(e, "Failed to reset GPU power levels")
+                    }
+                }
+
                 // Restore governor to first available (typically the default/recommended one)
                 try {
                     val availableGovernors = getAvailableGovernors()
@@ -227,8 +360,18 @@ class PServerDriver : PerformanceDriver() {
     override fun setGovernor(governor: String): Boolean {
         return try {
             val numCpus = getNumCpus()
-            var success = true
 
+            if (isBatchMode) {
+                for (cpu in 0 until numCpus) {
+                    val path = "$CPU_BASE_PATH/cpu$cpu/cpufreq/scaling_governor"
+                    batchFilePaths.add(path)
+                    batchCommands.add("echo '$governor' > '$path'")
+                    modifiedSysfsFiles.add(path)
+                }
+                return true
+            }
+
+            var success = true
             for (cpu in 0 until numCpus) {
                 val path = "$CPU_BASE_PATH/cpu$cpu/cpufreq/scaling_governor"
                 if (!writeSysfsFile(path, governor)) {
@@ -250,8 +393,18 @@ class PServerDriver : PerformanceDriver() {
     override fun setMinCpuValue(value: Long): Boolean {
         return try {
             val numCpus = getNumCpus()
-            var success = true
 
+            if (isBatchMode) {
+                for (cpu in 0 until numCpus) {
+                    val path = "$CPU_BASE_PATH/cpu$cpu/cpufreq/scaling_min_freq"
+                    batchFilePaths.add(path)
+                    batchCommands.add("echo '$value' > '$path'")
+                    modifiedSysfsFiles.add(path)
+                }
+                return true
+            }
+
+            var success = true
             for (cpu in 0 until numCpus) {
                 val path = "$CPU_BASE_PATH/cpu$cpu/cpufreq/scaling_min_freq"
                 if (!writeSysfsFile(path, value.toString())) {
@@ -273,8 +426,18 @@ class PServerDriver : PerformanceDriver() {
     override fun setMaxCpuValue(value: Long): Boolean {
         return try {
             val numCpus = getNumCpus()
-            var success = true
 
+            if (isBatchMode) {
+                for (cpu in 0 until numCpus) {
+                    val path = "$CPU_BASE_PATH/cpu$cpu/cpufreq/scaling_max_freq"
+                    batchFilePaths.add(path)
+                    batchCommands.add("echo '$value' > '$path'")
+                    modifiedSysfsFiles.add(path)
+                }
+                return true
+            }
+
+            var success = true
             for (cpu in 0 until numCpus) {
                 val path = "$CPU_BASE_PATH/cpu$cpu/cpufreq/scaling_max_freq"
                 if (!writeSysfsFile(path, value.toString())) {
@@ -410,6 +573,51 @@ class PServerDriver : PerformanceDriver() {
 
         val maxPath = "$GPU_BASE_PATH/max_pwrlevel"
         return writeGpuPowerLevel(maxPath, sysfsLevel)
+    }
+
+    override fun getDefaultProfile(): PowerProfile {
+        val availableFrequencies = getAvailableCpuFrequencies()
+        val availableGovernors = getAvailableGovernors()
+
+        if (availableFrequencies.isEmpty()) {
+            // Fallback to a safe default
+            return PowerProfile(
+                name = PerformancePreset.BALANCED.displayName,
+                governor = CpuGovernor.SCHEDUTIL,
+                minCpuFreq = 0,
+                maxCpuFreq = 0,
+                minGpuPowerLevel = 0,
+                maxGpuPowerLevel = 0
+            )
+        }
+
+        val midFreq = availableFrequencies[availableFrequencies.size / 2]
+        val maxFreq = availableFrequencies.last()
+
+        // GPU power levels
+        val maxGpuPowerLevel = if (isGpuSupported()) {
+            getNumGpuPowerLevels() - 1
+        } else {
+            0
+        }
+        val midGpuLevel = maxGpuPowerLevel / 2
+
+        // Return Balanced profile (middle performance)
+        val governor = when {
+            availableGovernors.contains(CpuGovernor.SCHEDUTIL.governorName) -> CpuGovernor.SCHEDUTIL
+            availableGovernors.contains(CpuGovernor.CONSERVATIVE.governorName) -> CpuGovernor.CONSERVATIVE
+            availableGovernors.contains(CpuGovernor.INTERACTIVE.governorName) -> CpuGovernor.INTERACTIVE
+            else -> CpuGovernor.SCHEDUTIL
+        }
+
+        return PowerProfile(
+            name = PerformancePreset.BALANCED.displayName,
+            governor = governor,
+            minCpuFreq = midFreq,
+            maxCpuFreq = maxFreq,
+            minGpuPowerLevel = midGpuLevel,
+            maxGpuPowerLevel = maxGpuPowerLevel
+        )
     }
 
     /**

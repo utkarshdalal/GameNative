@@ -1,5 +1,8 @@
 package app.gamenative.powercontrol.drivers
 
+import app.gamenative.powercontrol.PowerProfile
+import app.gamenative.powercontrol.profiles.CpuGovernor
+import app.gamenative.powercontrol.profiles.PerformancePreset
 import timber.log.Timber
 
 class NoOpPerformanceDriver : PerformanceDriver() {
@@ -25,6 +28,10 @@ class NoOpPerformanceDriver : PerformanceDriver() {
     override fun start() {}
 
     override fun stop() {}
+
+    override fun beginUpdate() {}
+
+    override fun commit(): Boolean = false
 
     override fun getCurrentMinCpuValue(): Long = 0L
 
@@ -55,4 +62,16 @@ class NoOpPerformanceDriver : PerformanceDriver() {
     override fun setMinGpuPowerLevel(level: Int): Boolean = false
 
     override fun setMaxGpuPowerLevel(level: Int): Boolean = false
+
+    override fun getDefaultProfile(): PowerProfile {
+        // Return a dummy Balanced profile for devices without driver support
+        return PowerProfile(
+            name = PerformancePreset.BALANCED.displayName,
+            governor = CpuGovernor.SCHEDUTIL,
+            minCpuFreq = 0,
+            maxCpuFreq = 0,
+            minGpuPowerLevel = 0,
+            maxGpuPowerLevel = 0
+        )
+    }
 }

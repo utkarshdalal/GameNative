@@ -1,5 +1,7 @@
 package app.gamenative.powercontrol.drivers
 
+import app.gamenative.powercontrol.PowerProfile
+
 /**
  * Abstract base class for device-specific performance management drivers.
  *
@@ -55,6 +57,20 @@ abstract class PerformanceDriver {
      * Stop the performance driver
      */
     abstract fun stop()
+
+    /**
+     * Begin a batch update session.
+     * For PServerDriver, this starts collecting commands to execute in a single call.
+     * For SamsungDriver, this is a no-op as CustomParams already handles batching.
+     */
+    abstract fun beginUpdate()
+
+    /**
+     * Commit all pending updates from the batch session.
+     * For PServerDriver, this executes all collected commands in a single root call.
+     * For SamsungDriver, this is a no-op as each setter already calls start(params).
+     */
+    abstract fun commit(): Boolean
 
     // ========================================
     // CPU Control
@@ -138,4 +154,9 @@ abstract class PerformanceDriver {
      * Set GPU maximum power level (0 = fastest, higher = slower)
      */
     abstract fun setMaxGpuPowerLevel(level: Int): Boolean
+
+    /**
+     * Get Default Profile
+     */
+    abstract fun getDefaultProfile(): PowerProfile
 }

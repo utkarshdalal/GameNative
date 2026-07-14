@@ -19,6 +19,7 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
      - `isFanSupported()` - Fan control support (future)
      - `start()` - Initialize driver when game starts
      - `stop()` - Cleanup driver when game stops
+     - `getDefaultProfile()` - Returns default Balanced profile for the device
      - CPU: `getCurrentMinCpuValue()`, `getCurrentMaxCpuValue()`, `getCurrentGovernor()`
      - CPU: `setMinCpuValue(value)`, `setMaxCpuValue(value)`, `setGovernor(governor)`
      - CPU: `getAvailableGovernors()`, `getAvailableCpuFrequencies()`
@@ -54,7 +55,34 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
    - Delegates all operations to the active PerformanceDriver
    - Provides data classes: `CpuInfo`, `GpuInfo`
    - Exposes methods for CPU governor, frequency, and GPU control
+   - **Profile Management**: Tracks `currentProfile` and synchronizes it with driver state
+   - **Profile Persistence**: Saves/restores profiles via `PrefManager` using JSON serialization
+   - **Automatic Sync**: All setter methods update both driver and `currentProfile` data
    - Maintains backward compatibility with existing UI code
+
+5. **PowerProfile** (Data Class)
+   - Location: `PowerProfile.kt`
+   - Serializable data class representing a complete performance configuration
+   - Fields (all mutable `var`):
+     - `name: String` - Profile name (e.g., "Balanced", "Performance", "Custom")
+     - `governor: CpuGovernor` - CPU governor enum
+     - `minCpuFreq: Long` - Minimum CPU frequency/level
+     - `maxCpuFreq: Long` - Maximum CPU frequency/level
+     - `minGpuPowerLevel: Int` - Minimum GPU power level (default: 0)
+     - `maxGpuPowerLevel: Int` - Maximum GPU power level (default: 0)
+   - Used for profile persistence, UI state, and default profiles
+
+6. **PowerProfiles** (Object)
+   - Location: `PowerProfile.kt`
+   - Provides `getDefaultProfiles()` factory method
+   - Generates device-specific preset profiles:
+     - **Power Save**: Low frequencies (25% CPU, 25% GPU), powersave governor
+     - **Balanced**: Mid frequencies (50% CPU, 50-100% GPU), schedutil/conservative/interactive governor
+     - **Performance**: High frequencies (75% CPU, 75-100% GPU), performance governor
+     - **On Demand**: Full range (0-100% CPU/GPU), ondemand governor
+     - **WALT**: Full range (0-100% CPU/GPU), walt governor
+   - Dynamically calculates frequency tiers based on available frequencies
+   - GPU power levels calculated as percentages of max GPU power level
 
 ## Supported Features
 
@@ -75,8 +103,14 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
 - ❌ Direct GPU frequency setting (not supported by hardware)
 
 **Lifecycle:**
-- ✅ `start()` - No-op (PServer doesn't require initialization)
-- ✅ `stop()` - Restores CPU governor to first available governor, then restores all modified sysfs files to 644 permissions using concatenated chmod commands (runs asynchronously on background thread)
+- ✅ `start()` - Restores saved profile from preferences (or applies default Balanced profile)
+- ✅ `stop()` - **Critical performance restoration**:
+  1. Resets CPU frequencies to full range (min to max available)
+  2. Resets GPU power levels to full range (0 to max)
+  3. Restores CPU governor to first available governor
+  4. Restores all modified sysfs files to 644 permissions
+  - Runs asynchronously on background thread
+  - **Prevents device slowness** when exiting from Power Save mode
 
 ### Current (SamsungPerformanceDriver)
 
@@ -94,8 +128,8 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
 - ❌ Direct GPU frequency setting (not supported)
 
 **Lifecycle:**
-- ✅ `start()` - No-op (performance controls started by individual setters via `performanceManager.start(params)`)
-- ✅ `stop()` - Calls `performanceManager.stop()` to stop all active performance controls
+- ✅ `start()` - Restores saved profile from preferences (or applies default Balanced profile)
+- ✅ `stop()` - Calls `performanceManager.stop()` to stop all active performance controls, then saves current profile
 
 ### Future Candidates
 - ⏳ Fan speed control
@@ -147,6 +181,41 @@ All drivers expose a **normalized power level interface** where **higher = bette
 - `setMaxGpuPowerLevel(level)` - Sets maximum performance cap via `max_pwrlevel`
 - GPU frequency is read-only and managed by the GPU governor within the power level constraints
 
+### Profile Persistence
+
+PowerManager automatically saves and restores performance profiles across app sessions:
+
+**Persistence Mechanism:**
+- Profiles are serialized to JSON using `kotlinx.serialization`
+- Stored in `PrefManager.powerControlProfile` (DataStore preference)
+- Includes all profile fields: name, governor, CPU frequencies, GPU power levels
+
+**Lifecycle Integration:**
+1. **On `start()`**:
+   - Attempts to restore saved profile from preferences
+   - If no saved profile exists, applies default Balanced profile from `driver.getDefaultProfile()`
+   - Applies the profile to hardware via driver methods
+
+2. **On `stop()`**:
+   - Saves `currentProfile` to preferences (if not null)
+   - Ensures user's last settings are preserved for next session
+
+3. **During Runtime**:
+   - All setter methods (`setGovernor`, `setMinCpuValue`, etc.) automatically update `currentProfile`
+   - Profile name is set to "Custom" when individual settings are changed
+   - Profile name is preserved when applying preset profiles
+
+**Profile Synchronization:**
+- `PowerManager.currentProfile` always reflects the actual driver state
+- Setter methods update both driver and `currentProfile` atomically
+- Only updates profile if driver operation succeeds
+- Ensures persistence data matches hardware state
+
+**UI Integration:**
+- UI matches profiles by name against `PowerManager.currentProfile?.name`
+- Dropdown shows "Custom" when settings don't match any preset
+- Profile selection updates both UI state and PowerManager immediately
+
 ## Driver Selection
 
 PowerManager automatically selects the appropriate driver during initialization:
@@ -159,31 +228,56 @@ The selection happens in `PowerManager.initialize(context)` which should be call
 
 ## Driver Lifecycle
 
-Drivers follow a game lifecycle pattern:
+Drivers follow a game lifecycle pattern with automatic profile persistence:
 
 1. **Game Environment Setup** (`XServerScreen.kt`)
    - After `PluviaApp.xEnvironment` is initialized
    - `PowerManager.start()` is called
+   - **Profile Restoration**:
+     - Attempts to load saved profile from `PrefManager.powerControlProfile`
+     - If no saved profile, applies default Balanced profile from `driver.getDefaultProfile()`
+     - Applies profile settings to hardware via driver methods
    - Driver-specific initialization occurs
 
 2. **Game Running**
    - User can adjust performance settings via UI
    - Each setting change calls the appropriate driver method
+   - **Automatic Profile Sync**:
+     - All setter methods update both driver and `PowerManager.currentProfile`
+     - Profile name changes to "Custom" when individual settings are modified
+     - Preset profile names are preserved when applying complete profiles
    - PServerDriver: Writes to sysfs and sets files to 444 (read-only)
    - SamsungPerformanceDriver: Calls `performanceManager.start(params)` with new settings
 
 3. **Game Environment Shutdown** (`PluviaApp.shutdownEnvironment()`)
    - `PowerManager.stop()` is called
-   - PServerDriver: Restores CPU governor to first available governor, then restores all modified sysfs files to 644 permissions
-   - SamsungPerformanceDriver: Calls `performanceManager.stop()` to stop all performance controls
+   - **Profile Persistence**:
+     - Saves `currentProfile` to preferences for next session
+   - **Hardware Restoration**:
+     - PServerDriver:
+       1. Resets CPU frequencies to full range (prevents slowness from Power Save)
+       2. Resets GPU power levels to full range
+       3. Restores CPU governor to first available governor
+       4. Restores all modified sysfs files to 644 permissions
+     - SamsungPerformanceDriver: Calls `performanceManager.stop()` to stop all performance controls
 
 ## Adding New Drivers
 
 To add support for a new device:
 
 1. Create a new driver class in `drivers/` folder extending `PerformanceDriver`
-2. Implement all abstract methods according to device capabilities
-3. Update `PowerManager.initialize()` to include the new driver in the selection logic:
+2. Implement all abstract methods according to device capabilities:
+   - **Required**: `getDefaultProfile()` - Return a Balanced profile for the device
+     - Should return middle-performance settings (50% CPU, 50% GPU)
+     - Use `PerformancePreset.BALANCED.displayName` for the profile name
+     - Calculate appropriate values based on device's available frequencies/levels
+3. Add necessary imports:
+   ```kotlin
+   import app.gamenative.powercontrol.PowerProfile
+   import app.gamenative.powercontrol.profiles.CpuGovernor
+   import app.gamenative.powercontrol.profiles.PerformancePreset
+   ```
+4. Update `PowerManager.initialize()` to include the new driver in the selection logic:
 
 ```kotlin
 fun initialize(context: Context) {
@@ -191,7 +285,7 @@ fun initialize(context: Context) {
         NewDriver(context).isDriverSupported() -> NewDriver(context)
         SamsungPerformanceDriver(context).isDriverSupported() -> SamsungPerformanceDriver(context)
         PServerDriver().isDriverSupported() -> PServerDriver()
-        else -> PServerDriver() // Fallback
+        else -> NoOpPerformanceDriver() // Fallback
     }
 }
 ```
