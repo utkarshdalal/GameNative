@@ -150,8 +150,7 @@ object SteamUtils {
      * few proprietary ones, so we special-case those and derive the rest. A name the schema doesn't
      * carry falls back to English per-achievement when it is read.
      */
-    fun steamLanguageForAppLocale(): String {
-        val locale = Locale.getDefault()
+    fun steamLanguageForAppLocale(locale: Locale = Locale.getDefault()): String {
         return when (locale.language) {
             "ko" -> "koreana"
             // Steam splits Spanish into Castilian ("spanish") and Latin American ("latam").
