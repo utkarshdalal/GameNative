@@ -278,6 +278,11 @@ class SteamService : Service(), IChallengeUrlChanged {
     private val pendingSyncFileLock = Any()
     private val pendingSyncFile by lazy { File(applicationContext.filesDir, "pending_achievement_sync.txt") }
 
+    // Debounce fields for onLicenseList — coalesces rapid callback bursts (e.g. bulk
+    // activations) into one processing run so parallel in-flight coroutines don't OOM.
+    private var licenseListDebounceJob: Job? = null
+    @Volatile private var pendingLicenseCallback: LicenseListCallback? = null
+
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = {
         Companion.stop()
     }
@@ -583,9 +588,14 @@ class SteamService : Service(), IChallengeUrlChanged {
          * Get licenses from database for use with DepotDownloader
          */
         suspend fun getLicensesFromDb(): List<License> = withContext(Dispatchers.IO) {
-            val cached = instance?.cachedLicenseDao?.getAll() ?: return@withContext emptyList()
-            cached.mapNotNull { cachedLicense ->
-                LicenseSerializer.deserializeLicense(cachedLicense.licenseJson)
+            val inst = instance ?: return@withContext emptyList()
+            val cached = inst.cachedLicenseDao.getAll()
+            if (cached.isNotEmpty()) {
+                cached.mapNotNull { LicenseSerializer.deserializeLicense(it.licenseJson) }
+            } else {
+                // Return the licences from memory-cache. Will eventually be correct and sync
+                Timber.w("getLicensesFromDb: cachedLicenseDao empty, using in-memory licenses")
+                inst.licenses
             }
         }
 
@@ -2955,7 +2965,14 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         suspend fun getOwnedGames(friendID: Long): List<OwnedGames> = withContext(Dispatchers.IO) {
-            instance?._unifiedFriends!!.getOwnedGames(friendID)
+            try {
+                instance?._unifiedFriends?.getOwnedGames(friendID) ?: emptyList()
+            } catch (e: Exception) {
+                // ensureActive() rethrows if *our* coroutine was genuinely cancelled
+                ensureActive()
+                Timber.w(e, "getOwnedGames($friendID) failed; returning empty")
+                emptyList()
+            }
         }
 
         // Add helper to detect if any downloads or cloud sync are in progress
@@ -4133,80 +4150,123 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         Timber.i("Received License List ${callback.result}, size: ${callback.licenseList.size}")
 
-        scope.launch {
-            db.withTransaction {
-                // Note: I assume with every launch we do, in fact, update the licenses for app the apps if we join or get removed
-                //      from family sharing... We really can't test this as there is a 1-year cooldown.
-                //      Then 'findStaleLicences' will find these now invalid items to remove.
+        // Coalesce rapid callbacks (e.g. bulk activations) so only the last in a burst triggers
+        // the expensive DB + PICS work, preventing parallel in-flight coroutines from OOMing.
+        pendingLicenseCallback = callback
+        licenseListDebounceJob?.cancel()
+        licenseListDebounceJob = scope.launch {
+            delay(5.seconds)
+            val pending = pendingLicenseCallback ?: return@launch
 
-                // Chunk the input to reduce memory pressures for very large items.
-                licenses = callback.licenseList
-                cachedLicenseDao.deleteAll()
-                callback.licenseList.chunked(MAX_PICS_BUFFER).forEach { chunk ->
-                    cachedLicenseDao.insertAll(
-                        chunk.map { license ->
-                            CachedLicense(licenseJson = LicenseSerializer.serializeLicense(license))
-                        },
+            // Set the in-memory field immediately — DepotDownloader uses this for auth during the
+            // current session; the DB writes below are for persistence across restarts.
+            licenses = pending.licenseList
+
+            // --- CPU work BEFORE acquiring any write lock ---
+            // Previously this groupBy/map ran inside withTransaction, holding the write lock
+            // during expensive CPU work on the full (potentially 30k+) license list.
+            val licensesToAdd = pending.licenseList
+                .groupBy { it.packageID }
+                .map { licensesEntry ->
+                    val preferred = licensesEntry.value.firstOrNull {
+                        it.ownerAccountID == userSteamId?.accountID?.toInt()
+                    } ?: licensesEntry.value.first()
+                    SteamLicense(
+                        packageId = licensesEntry.key,
+                        lastChangeNumber = preferred.lastChangeNumber,
+                        timeCreated = preferred.timeCreated,
+                        timeNextProcess = preferred.timeNextProcess,
+                        minuteLimit = preferred.minuteLimit,
+                        minutesUsed = preferred.minutesUsed,
+                        paymentMethod = preferred.paymentMethod,
+                        licenseFlags = licensesEntry.value
+                            .map { it.licenseFlags }
+                            .reduceOrNull { first, second ->
+                                val combined = EnumSet.copyOf(first)
+                                combined.addAll(second)
+                                combined
+                            } ?: EnumSet.noneOf(ELicenseFlags::class.java),
+                        purchaseCode = preferred.purchaseCode,
+                        licenseType = preferred.licenseType,
+                        territoryCode = preferred.territoryCode,
+                        accessToken = preferred.accessToken,
+                        ownerAccountId = licensesEntry.value.map { it.ownerAccountID },
+                        masterPackageID = preferred.masterPackageID,
                     )
                 }
-                val licensesToAdd = callback.licenseList
-                    .groupBy { it.packageID }
-                    .map { licensesEntry ->
-                        val preferred = licensesEntry.value.firstOrNull {
-                            it.ownerAccountID == userSteamId?.accountID?.toInt()
-                        } ?: licensesEntry.value.first()
-                        SteamLicense(
-                            packageId = licensesEntry.key,
-                            lastChangeNumber = preferred.lastChangeNumber,
-                            timeCreated = preferred.timeCreated,
-                            timeNextProcess = preferred.timeNextProcess,
-                            minuteLimit = preferred.minuteLimit,
-                            minutesUsed = preferred.minutesUsed,
-                            paymentMethod = preferred.paymentMethod,
-                            licenseFlags = licensesEntry.value
-                                .map { it.licenseFlags }
-                                .reduceOrNull { first, second ->
-                                    val combined = EnumSet.copyOf(first)
-                                    combined.addAll(second)
-                                    combined
-                                } ?: EnumSet.noneOf(ELicenseFlags::class.java),
-                            purchaseCode = preferred.purchaseCode,
-                            licenseType = preferred.licenseType,
-                            territoryCode = preferred.territoryCode,
-                            accessToken = preferred.accessToken,
-                            ownerAccountId = licensesEntry.value.map { it.ownerAccountID }, // Read note above
-                            masterPackageID = preferred.masterPackageID,
-                        )
-                    }
 
-                if (licensesToAdd.isNotEmpty()) {
-                    Timber.i("Adding ${licensesToAdd.size} licenses")
-                    licensesToAdd.chunked(MAX_PICS_BUFFER).forEach { chunk ->
-                        licenseDao.insertAll(chunk)
-                    }
+            // --- Diff against the DB before acquiring the write lock ---
+            // getLicenseStubs() fetches only packageId + lastChangeNumber + accessToken, avoiding
+            // deserialization of the large app_ids/depot_ids lists for every row.
+            val existingStubs = licenseDao.getLicenseStubs().associateBy { it.packageId }
+            val incomingIds = licensesToAdd.mapTo(HashSet(licensesToAdd.size)) { it.packageId }
+
+            val newLicenses = licensesToAdd.filter { it.packageId !in existingStubs }
+            val changedLicenses = licensesToAdd.filter { pkg ->
+                val stub = existingStubs[pkg.packageId]
+                stub != null && stub.lastChangeNumber != pkg.lastChangeNumber
+            }
+            val staleIds = existingStubs.keys.filterNot { it in incomingIds }
+
+            Timber.i(
+                "onLicenseList diff: ${newLicenses.size} new, ${changedLicenses.size} changed, " +
+                    "${staleIds.size} stale, " +
+                    "${licensesToAdd.size - newLicenses.size - changedLicenses.size} unchanged",
+            )
+
+            // For changed licenses, read their existing PICS-derived columns (app_ids/depot_ids) so
+            // we can carry them forward — licensesToAdd is built from the callback, which doesn't
+            // carry those. We only fetch full rows for the small changed subset, not the whole list.
+            val mergedChangedLicenses = if (changedLicenses.isNotEmpty()) {
+                val existingPics = licenseDao.findLicenses(changedLicenses.map { it.packageId })
+                    .associateBy { it.packageId }
+                changedLicenses.map { updated ->
+                    val pics = existingPics[updated.packageId]
+                    updated.copy(
+                        appIds = pics?.appIds ?: emptyList(),
+                        depotIds = pics?.depotIds ?: emptyList(),
+                    )
                 }
+            } else {
+                emptyList()
+            }
 
-                Timber.i("Finished adding ${licensesToAdd.size} licenses")
-
-                val licensesToRemove = licenseDao.findStaleLicences(
-                    packageIds = callback.licenseList.map { it.packageID },
-                )
-
-                if (licensesToRemove.isNotEmpty()) {
-                    Timber.i("Removing ${licensesToRemove.size} (stale) licenses")
-                    val packageIds = licensesToRemove.map { it.packageId }
-                    licenseDao.deleteStaleLicenses(packageIds)
+            // transaction - Only update based on new and changed licences
+            db.withTransaction {
+                val toWrite = newLicenses + mergedChangedLicenses
+                if (toWrite.isNotEmpty()) {
+                    toWrite.chunked(MAX_PICS_BUFFER).forEach { licenseDao.insertAll(it) }
                 }
+                if (staleIds.isNotEmpty()) {
+                    Timber.i("Removing ${staleIds.size} (stale) licenses")
+                    licenseDao.deleteStaleLicenses(staleIds)
+                }
+            }
 
-                Timber.i("Getting licenses from DB")
-                // Get PICS information with the current license database.
-                licenseDao.getLicensesForPics()
+            // queue only new and changed packages for PICS to reduce db load.
+            val toQueue = newLicenses + changedLicenses
+            if (toQueue.isNotEmpty()) {
+                toQueue
                     .map { PICSRequest(it.packageId, it.accessToken) }
                     .chunked(MAX_PICS_BUFFER)
                     .forEach { chunk ->
                         Timber.d("onLicenseList: Queueing ${chunk.size} package(s) for PICS")
                         packagePicsChannel.send(chunk)
                     }
+            } else {
+                Timber.i("onLicenseList: no packages need PICS sync, skipping queue")
+            }
+
+            // --- Transaction 2: raw license persistence for DepotDownloader ---
+            // JSON serialization of the full license list happens here (outside T1) so T1's lock
+            // window stays short. Chunked writes cap peak allocation and keep each lock window
+            // to milliseconds. Runs after PICS is queued so it doesn't delay the pipeline.
+            db.withTransaction { cachedLicenseDao.deleteAll() }
+            pending.licenseList.chunked(MAX_PICS_BUFFER).forEach { chunk ->
+                val cachedChunk = chunk.map { license ->
+                    CachedLicense(licenseJson = LicenseSerializer.serializeLicense(license))
+                }
+                db.withTransaction { cachedLicenseDao.insertAll(cachedChunk) }
             }
         }
     }

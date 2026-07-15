@@ -8,6 +8,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import app.gamenative.data.SteamLicense
 import app.gamenative.data.SteamLicenseForPics
+import app.gamenative.data.SteamLicenseStub
 import kotlin.math.min
 
 val SQLITE_MAX_VARS = 999
@@ -29,6 +30,10 @@ interface SteamLicenseDao {
 
     @Query("SELECT * FROM steam_license")
     suspend fun getAllLicenses(): List<SteamLicense>
+
+    //lightweight difffs for steamlicences
+    @Query("SELECT packageId, last_change_number, access_token FROM steam_license")
+    suspend fun getLicenseStubs(): List<SteamLicenseStub>
 
     @Query("SELECT packageId, access_token FROM steam_license")
     suspend fun getLicensesForPics(): List<SteamLicenseForPics>
