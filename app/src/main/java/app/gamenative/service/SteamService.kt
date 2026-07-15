@@ -4351,10 +4351,30 @@ class SteamService : Service(), IChallengeUrlChanged {
                             )
 
                             ensureActive()
+
+                            // Batch the DB reads that the per-app decision needs, instead of
+                            // issuing two point queries (findApp + findLicense) per app. For a
+                            // 30K-game library the per-app path was ~512 queries per 256-app
+                            // batch, each findApp deserializing the full depots/config/UFS blob
+                            // just to compare a change number. Here we do two batched reads:
+                            // a slim metadata projection keyed by appId, and the licenses keyed
+                            // by packageId, then decide everything in memory.
+                            val appMetaById = appDao
+                                .findAppPicsMeta(picsCallback.apps.values.map { it.id })
+                                .associateBy { it.id }
+                            val licensesByPkgId = licenseDao
+                                .findLicenses(
+                                    appMetaById.values
+                                        .map { it.packageId }
+                                        .filter { it != INVALID_PKG_ID }
+                                        .distinct(),
+                                )
+                                .associateBy { it.packageId }
+
                             val steamAppsMap = picsCallback.apps.values.mapNotNull { app ->
-                                val appFromDb = appDao.findApp(app.id)
-                                val packageId = appFromDb?.packageId ?: INVALID_PKG_ID
-                                val packageFromDb = if (packageId != INVALID_PKG_ID) licenseDao.findLicense(packageId) else null
+                                val appMeta = appMetaById[app.id]
+                                val packageId = appMeta?.packageId ?: INVALID_PKG_ID
+                                val packageFromDb = if (packageId != INVALID_PKG_ID) licensesByPkgId[packageId] else null
                                 val ownerAccountId = packageFromDb?.ownerAccountId ?: emptyList()
 
                                 // Apps with -1 for the ownerAccountId should be added.
@@ -4362,9 +4382,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                                 // TODO maybe apps with -1 for the ownerAccountId can be stripped with necessities and name.
 
-                                val ufsParseVersionOutdated = appFromDb != null && appFromDb.ufsParseVersion < CURRENT_UFS_PARSE_VERSION
+                                val ufsParseVersionOutdated = appMeta != null && appMeta.ufsParseVersion < CURRENT_UFS_PARSE_VERSION
 
-                                if (app.changeNumber != appFromDb?.lastChangeNumber || ufsParseVersionOutdated) {
+                                if (app.changeNumber != appMeta?.lastChangeNumber || ufsParseVersionOutdated) {
                                     val newApp = app.keyValues.generateSteamApp().copy(
                                         packageId = packageId,
                                         ownerAccountId = ownerAccountId,
@@ -4447,10 +4467,33 @@ class SteamService : Service(), IChallengeUrlChanged {
                             // To fix that we (a) process user-owned packages last so they win the
                             // last-write-wins assignment within this batch and (b) refuse to downgrade an
                             // existing user-owned packageId across batches.
+                            //
+                            // For large libraries the per-app path used to issue a findApp (full-blob
+                            // read) plus an insert/update per app, per package. Instead we now batch the
+                            // reads (one slim metadata projection for every referenced app, one license
+                            // lookup) and resolve the winning packageId per app in memory, then flush
+                            // inserts/updates grouped by target package at the end of the batch.
                             val accountId = userSteamId?.accountID?.toInt()
+
+                            // Every appId referenced by this callback's packages.
+                            val referencedAppIds = picsCallback.packages.values
+                                .flatMap { pkg -> pkg.keyValues["appids"].children.map { it.asInteger() } }
+                                .distinct()
+
+                            // Existing packageId per app (absent => app not yet in the DB).
+                            val originalPkgById: Map<Int, Int> = appDao
+                                .findAppPicsMeta(referencedAppIds)
+                                .associate { it.id to it.packageId }
+
+                            // Licenses for the callback's packages AND for any package an existing app
+                            // already points at (needed for the cross-batch downgrade guard below).
                             val packageLicenses: Map<Int, SteamLicense> = if (accountId != null) {
-                                val packageIds = picsCallback.packages.values.map { it.id }
-                                licenseDao.findLicenses(packageIds).associateBy { it.packageId }
+                                val lookupIds = (
+                                    picsCallback.packages.values.map { it.id } + originalPkgById.values
+                                    )
+                                    .filter { it != INVALID_PKG_ID }
+                                    .distinct()
+                                licenseDao.findLicenses(lookupIds).associateBy { it.packageId }
                             } else {
                                 emptyMap()
                             }
@@ -4469,7 +4512,22 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 return if (expired) 1 else 2
                             }
 
+                            fun licenseRank(pkgId: Int): Int {
+                                if (accountId == null || pkgId == INVALID_PKG_ID) return 0
+                                val license = packageLicenses[pkgId]
+                                return when {
+                                    license == null -> 0
+                                    !license.ownerAccountId.contains(accountId) -> 0
+                                    ELicenseFlags.Expired in license.licenseFlags -> 1
+                                    else -> 2
+                                }
+                            }
+
                             val orderedPackages = picsCallback.packages.values.sortedBy { pkgRank(it.id) }
+
+                            // Current winning packageId per app; seeded with the DB state and mutated
+                            // in memory as packages are applied, so later packages see earlier wins.
+                            val assignedPkgById = HashMap<Int, Int>(originalPkgById)
 
                             orderedPackages.forEach { pkg ->
                                 val appIds = pkg.keyValues["appids"].children.map { it.asInteger() }
@@ -4478,33 +4536,39 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 val depotIds = pkg.keyValues["depotids"].children.map { it.asInteger() }
                                 licenseDao.updateDepots(pkg.id, depotIds)
 
-                                // Insert a stub row (or update) of SteamApps to the database.
+                                // Resolve the winning packageId for each app (last-write-wins, but a
+                                // user-owned assignment refuses to be downgraded by a lesser package).
                                 appIds.forEach { appid ->
-                                    val existing = appDao.findApp(appid)
-                                    if (existing == null) {
-                                        appDao.insert(SteamApp(id = appid, packageId = pkg.id))
-                                        return@forEach
+                                    val current = assignedPkgById[appid]
+                                    when {
+                                        // Not in the DB and not yet assigned this batch: first writer wins.
+                                        current == null -> assignedPkgById[appid] = pkg.id
+                                        current == pkg.id -> Unit
+                                        licenseRank(current) > pkgRank(pkg.id) -> Unit
+                                        else -> assignedPkgById[appid] = pkg.id
                                     }
-                                    if (existing.packageId == pkg.id) {
-                                        return@forEach
-                                    }
-                                    if (accountId != null && existing.packageId != INVALID_PKG_ID) {
-                                        val existingLicense = packageLicenses[existing.packageId]
-                                            ?: licenseDao.findLicense(existing.packageId)
-                                        val existingRank = when {
-                                            existingLicense == null -> 0
-                                            !existingLicense.ownerAccountId.contains(accountId) -> 0
-                                            ELicenseFlags.Expired in existingLicense.licenseFlags -> 1
-                                            else -> 2
-                                        }
-                                        if (existingRank > pkgRank(pkg.id)) {
-                                            return@forEach
-                                        }
-                                    }
-                                    appDao.update(existing.copy(packageId = pkg.id))
                                 }
 
                                 queue.addAll(appIds)
+                            }
+
+                            // Flush: brand-new apps become stub inserts; existing apps whose winning
+                            // package changed get a batched package_id update grouped by target package.
+                            val stubs = mutableListOf<SteamApp>()
+                            val updatesByPkg = HashMap<Int, MutableList<Int>>()
+                            assignedPkgById.forEach { (appId, pkgId) ->
+                                val original = originalPkgById[appId]
+                                if (original == null) {
+                                    stubs += SteamApp(id = appId, packageId = pkgId)
+                                } else if (original != pkgId) {
+                                    updatesByPkg.getOrPut(pkgId) { mutableListOf() }.add(appId)
+                                }
+                            }
+                            if (stubs.isNotEmpty()) {
+                                appDao.insertAll(stubs)
+                            }
+                            updatesByPkg.forEach { (pkgId, appIds) ->
+                                appDao.updatePackageIdForApps(pkgId, appIds)
                             }
                         }
 

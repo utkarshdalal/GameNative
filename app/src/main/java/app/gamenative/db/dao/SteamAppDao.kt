@@ -7,7 +7,9 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import app.gamenative.data.SteamApp
+import app.gamenative.data.SteamAppPicsMeta
 import app.gamenative.service.SteamService.Companion.INVALID_PKG_ID
+import kotlin.math.min
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -199,5 +201,56 @@ interface SteamAppDao {
     suspend fun findSteamAppWithInstallDir(dirName: String): List<SteamApp>
 
     @Query("SELECT * FROM steam_app WHERE id IN (:appIds)")
-    suspend fun findSteamAppWithAppIds(appIds: List<Int>): List<SteamApp>
+    suspend fun _findSteamAppWithAppIds(appIds: List<Int>): List<SteamApp>
+
+    // batched to stay under SQLite's 999 bind-variable limit
+    @Transaction
+    suspend fun findSteamAppWithAppIds(appIds: List<Int>): List<SteamApp> {
+        if (appIds.isEmpty()) return emptyList()
+        val results = mutableListOf<SteamApp>()
+        for (chunkStart in appIds.indices step SQLITE_MAX_VARS) {
+            val chunkEnd = min(chunkStart + SQLITE_MAX_VARS, appIds.size)
+            results += _findSteamAppWithAppIds(appIds.subList(chunkStart, chunkEnd))
+        }
+        return results
+    }
+
+    @Query(
+        "SELECT id, package_id, last_change_number, ufs_parse_version " +
+            "FROM steam_app WHERE id IN (:appIds)",
+    )
+    suspend fun _findAppPicsMeta(appIds: List<Int>): List<SteamAppPicsMeta>
+
+    @Query("UPDATE steam_app SET package_id = :packageId WHERE id IN (:appIds)")
+    suspend fun _updatePackageIdForApps(packageId: Int, appIds: List<Int>)
+
+    /**
+     * Reassigns package ownership for a set of apps in one statement per chunk,
+     * instead of read-modify-writing each full SteamApp row. Batched to stay
+     * under SQLite's 999-parameter ceiling.
+     */
+    @Transaction
+    suspend fun updatePackageIdForApps(packageId: Int, appIds: List<Int>) {
+        if (appIds.isEmpty()) return
+        for (chunkStart in appIds.indices step SQLITE_MAX_VARS) {
+            val chunkEnd = min(chunkStart + SQLITE_MAX_VARS, appIds.size)
+            _updatePackageIdForApps(packageId, appIds.subList(chunkStart, chunkEnd))
+        }
+    }
+
+    /**
+     * Lightweight projection of the columns the PICS collectors read to decide
+     * whether an app needs (re)processing. Batched to stay under SQLite's
+     * 999-parameter ceiling; avoids deserializing the full row/blobs per app.
+     */
+    @Transaction
+    suspend fun findAppPicsMeta(appIds: List<Int>): List<SteamAppPicsMeta> {
+        if (appIds.isEmpty()) return emptyList()
+        val results = mutableListOf<SteamAppPicsMeta>()
+        for (chunkStart in appIds.indices step SQLITE_MAX_VARS) {
+            val chunkEnd = min(chunkStart + SQLITE_MAX_VARS, appIds.size)
+            results += _findAppPicsMeta(appIds.subList(chunkStart, chunkEnd))
+        }
+        return results
+    }
 }
