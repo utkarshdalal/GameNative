@@ -48,11 +48,13 @@ object NexusUrlParser {
         if (trimmed.isEmpty()) return null
 
         val uri = runCatching { URI(trimmed) }.getOrNull() ?: return null
-        return when (uri.scheme?.lowercase()) {
-            "http", "https" -> parseWebUrl(uri)
-            "nxm" -> parseNxmUrl(uri)
-            else -> null
-        }
+        return runCatching {
+            when (uri.scheme?.lowercase()) {
+                "http", "https" -> parseWebUrl(uri)
+                "nxm" -> parseNxmUrl(uri)
+                else -> null
+            }
+        }.getOrNull()
     }
 
     private fun parseWebUrl(uri: URI): NexusModReference? {
@@ -147,7 +149,7 @@ object NexusCollectionUrlParser {
             .firstOrNull { it.first().equals("revisions", ignoreCase = true) || it.first().equals("revision", ignoreCase = true) }
             ?.getOrNull(1)
             ?.toIntOrNull()
-        val query = NexusUrlParser.parseQuery(uri.rawQuery)
+        val query = runCatching { NexusUrlParser.parseQuery(uri.rawQuery) }.getOrNull() ?: return null
         val revisionFromQuery = query["revision"]?.toIntOrNull()
             ?: query["revision_id"]?.toIntOrNull()
             ?: query["rev"]?.toIntOrNull()

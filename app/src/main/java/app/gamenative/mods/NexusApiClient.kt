@@ -95,7 +95,6 @@ class NexusApiException(
     val hourlyRemaining: Int? = null,
     val dailyRemaining: Int? = null,
     val reason: NexusApiErrorReason = NexusApiErrorReason.OTHER,
-    val serverMessage: String? = null,
     cause: Throwable? = null,
 ) : IOException(message, cause)
 
@@ -469,7 +468,6 @@ class NexusApiClient(
             val daily = response.header("x-rl-daily-remaining")?.toIntOrNull()
             val body = response.body.string()
             if (!response.isSuccessful) {
-                val serverMessage = parseServerErrorMessage(body)
                 val message = when (response.code) {
                     401 -> "Nexus API key was rejected"
                     403 -> "Nexus denied access to this resource"
@@ -487,7 +485,6 @@ class NexusApiClient(
                     hourlyRemaining = hourly,
                     dailyRemaining = daily,
                     reason = response.code.toApiErrorReason(),
-                    serverMessage = serverMessage,
                 )
             }
             return body
@@ -499,7 +496,6 @@ class NexusApiClient(
             val hourly = response.header("x-rl-hourly-remaining")?.toIntOrNull()
             val daily = response.header("x-rl-daily-remaining")?.toIntOrNull()
             if (!response.isSuccessful) {
-                val serverMessage = parseServerErrorMessage(response.body.string())
                 val message = when (response.code) {
                     401 -> "Nexus API key was rejected"
                     403 -> "Nexus denied access to this resource"
@@ -512,7 +508,6 @@ class NexusApiClient(
                     hourlyRemaining = hourly,
                     dailyRemaining = daily,
                     reason = response.code.toApiErrorReason(),
-                    serverMessage = serverMessage,
                 )
             }
             return response.body.byteStream().use { it.readLimitedBytes(maxBytes) }
@@ -533,7 +528,7 @@ class NexusApiClient(
             403 -> if (hasAuthorization) {
                 "Nexus rejected this website download authorization. Return to Nexus Mods and authorize the file again." to
                     NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_INVALID
-            } else if (isPremiumAccount == true) {
+            } else if (isPremiumAccount != false) {
                 return this
             } else {
                 "Nexus requires website authorization for this download. Free accounts must continue on Nexus Mods first." to
@@ -553,7 +548,6 @@ class NexusApiClient(
             hourlyRemaining = hourlyRemaining,
             dailyRemaining = dailyRemaining,
             reason = downloadReason,
-            serverMessage = serverMessage,
             cause = this,
         )
     }
@@ -564,13 +558,6 @@ class NexusApiClient(
         404 -> NexusApiErrorReason.NOT_FOUND
         429 -> NexusApiErrorReason.RATE_LIMITED
         else -> NexusApiErrorReason.OTHER
-    }
-
-    private fun parseServerErrorMessage(body: String): String? {
-        if (body.isBlank()) return null
-        return runCatching {
-            JSONObject(body).optString("message").trim().takeIf { it.isNotBlank() }
-        }.getOrNull()?.take(500)
     }
 
     private fun looksLikeJsonObject(bytes: ByteArray): Boolean =

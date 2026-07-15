@@ -10,6 +10,7 @@ import java.net.UnknownHostException
 internal object NexusImportState {
     private const val WEBSITE_AUTHORIZATION_REQUIRED_KEY = "websiteAuthorizationRequired"
     private const val DOWNLOAD_COMPLETE_KEY = "downloadComplete"
+    private const val DOWNLOAD_COMPLETE_BYTES_KEY = "downloadCompleteBytes"
 
     val reusableStatuses = setOf(
         ModInstallStatus.READY.name,
@@ -68,9 +69,13 @@ internal object NexusImportState {
         now: Long = System.currentTimeMillis(),
     ): ModInstall {
         val metadata = runCatching { JSONObject(install.metadataJson) }.getOrElse { JSONObject() }
-            .put("summary", runCatching { JSONObject(install.metadataJson).optString("summary") }.getOrDefault(""))
+        val summary = metadata.optString("summary")
+        metadata
+            .put("summary", summary)
             .put("error", message)
             .put(WEBSITE_AUTHORIZATION_REQUIRED_KEY, true)
+            .put(DOWNLOAD_COMPLETE_KEY, false)
+        metadata.remove(DOWNLOAD_COMPLETE_BYTES_KEY)
         return install.copy(
             status = ModInstallStatus.PAUSED.name,
             updatedAt = now,
@@ -83,18 +88,23 @@ internal object NexusImportState {
             JSONObject(install.metadataJson).optBoolean(WEBSITE_AUTHORIZATION_REQUIRED_KEY, false)
         }.getOrDefault(false)
 
-    fun markDownloadComplete(install: ModInstall): ModInstall {
+    fun markDownloadComplete(install: ModInstall, downloadedBytes: Long): ModInstall {
         val metadata = runCatching { JSONObject(install.metadataJson) }.getOrElse { JSONObject() }
             .put(DOWNLOAD_COMPLETE_KEY, true)
+            .put(DOWNLOAD_COMPLETE_BYTES_KEY, downloadedBytes)
+            .put(WEBSITE_AUTHORIZATION_REQUIRED_KEY, false)
         return install.copy(
             updatedAt = System.currentTimeMillis(),
             metadataJson = metadata.toString(),
         )
     }
 
-    fun hasCompletedDownload(install: ModInstall?): Boolean =
+    fun hasCompletedDownload(install: ModInstall?, archiveBytes: Long): Boolean =
         install != null && runCatching {
-            JSONObject(install.metadataJson).optBoolean(DOWNLOAD_COMPLETE_KEY, false)
+            val metadata = JSONObject(install.metadataJson)
+            metadata.optBoolean(DOWNLOAD_COMPLETE_KEY, false) &&
+                archiveBytes > 0L &&
+                metadata.optLong(DOWNLOAD_COMPLETE_BYTES_KEY, -1L) == archiveBytes
         }.getOrDefault(false)
 
     fun userMessage(error: Throwable, fallback: String = "Failed to import Nexus mod"): String {

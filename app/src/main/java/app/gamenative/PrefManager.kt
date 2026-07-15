@@ -32,6 +32,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 
@@ -1409,7 +1411,8 @@ object PrefManager {
         set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
 
     private val NEXUS_API_KEY_ENC = byteArrayPreferencesKey("nexus_api_key_enc")
-    var nexusApiKey: String
+    private val nexusApiKeySaveMutex = Mutex()
+    val nexusApiKey: String
         get() {
             val encryptedBytes = getPref(NEXUS_API_KEY_ENC, ByteArray(0))
             return if (encryptedBytes.isEmpty()) {
@@ -1423,24 +1426,21 @@ object PrefManager {
                     .getOrDefault("")
             }
         }
-        set(value) {
-            scope.launch {
-                runCatching { saveNexusApiKey(value) }
-            }
-        }
 
     suspend fun saveNexusApiKey(value: String) {
-        if (value.isBlank()) {
-            dataStore.edit { it.remove(NEXUS_API_KEY_ENC) }
-            return
+        nexusApiKeySaveMutex.withLock {
+            if (value.isBlank()) {
+                dataStore.edit { it.remove(NEXUS_API_KEY_ENC) }
+                return@withLock
+            }
+            val encrypted = try {
+                Crypto.encrypt(value.toByteArray())
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to encrypt Nexus API key")
+                throw e
+            }
+            dataStore.edit { it[NEXUS_API_KEY_ENC] = encrypted }
         }
-        val encrypted = try {
-            Crypto.encrypt(value.toByteArray())
-        } catch (e: Exception) {
-            Timber.w(e, "Failed to encrypt Nexus API key")
-            throw e
-        }
-        dataStore.edit { it[NEXUS_API_KEY_ENC] = encrypted }
     }
 
     private val NEXUS_LAST_PLACEMENT_JSON = stringPreferencesKey("nexus_last_placement_json")

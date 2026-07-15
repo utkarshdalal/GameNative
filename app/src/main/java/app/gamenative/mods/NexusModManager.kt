@@ -115,7 +115,7 @@ object NexusModManager {
         return tempArchiveFile.isFile &&
             (
                 (install.sizeBytes > 0L && tempArchiveFile.length() == install.sizeBytes) ||
-                    NexusImportState.hasCompletedDownload(install)
+                    NexusImportState.hasCompletedDownload(install, tempArchiveFile.length())
             )
     }
 
@@ -185,7 +185,10 @@ object NexusModManager {
         val archiveFile = File(archiveDir, sanitizeFileName("${installId}_${file.fileName}"))
         val tempArchiveFile = File(archiveDir, "${archiveFile.name}.part")
         val previousInstall = dao.getInstall(installId)
-        val previousDownloadCompleted = NexusImportState.hasCompletedDownload(previousInstall)
+        val previousDownloadCompleted = NexusImportState.hasCompletedDownload(
+            previousInstall,
+            tempArchiveFile.length(),
+        )
         val restorablePreviousInstall = NexusImportState.restorablePreviousInstall(previousInstall)
         val importing = ModInstall(
             installId = installId,
@@ -275,7 +278,7 @@ object NexusModManager {
                 }
             }
             downloadCompleted = true
-            dao.upsertInstall(NexusImportState.markDownloadComplete(importing))
+            dao.upsertInstall(NexusImportState.markDownloadComplete(importing, tempArchiveFile.length()))
             val unpacking = ModImportProgress("Unpacking", progress = 0f)
             ModDownloadRegistry.update(installId, 0f, unpacking.status)
             onDetailedProgress(unpacking)

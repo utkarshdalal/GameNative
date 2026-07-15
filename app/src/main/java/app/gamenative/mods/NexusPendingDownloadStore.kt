@@ -88,6 +88,7 @@ object NexusPendingDownloadStore {
     private fun PendingNexusWebsiteDownload.withoutAuthorization(): PendingNexusWebsiteDownload =
         copy(reference = reference.copy(downloadAuthorization = null))
 
+    // NXM callbacks contain no app ID, so only the newest request for an exact file can be routed safely.
     private fun PendingNexusWebsiteDownload.sameFile(other: PendingNexusWebsiteDownload): Boolean =
         matches(other.reference)
 
