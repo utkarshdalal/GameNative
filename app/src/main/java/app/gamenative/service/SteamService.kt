@@ -310,6 +310,10 @@ class SteamService : Service(), IChallengeUrlChanged {
     companion object {
         const val MAX_PICS_BUFFER = 256
 
+        // Bulk PICS requests (large libraries) can take longer than AsyncJob's 10s default
+        // to get a first response; give them more headroom before treating them as timed out.
+        const val PICS_JOB_TIMEOUT_MS = 30_000L
+
         const val MAX_RETRY_ATTEMPTS = 20
 
         const val INVALID_APP_ID: Int = Int.MAX_VALUE
@@ -4332,10 +4336,12 @@ class SteamService : Service(), IChallengeUrlChanged {
                     val steamApps = instance?._steamApps ?: return@collect
 
                     try {
-                        val callback = steamApps.picsGetProductInfo(
+                        val job = steamApps.picsGetProductInfo(
                             apps = appRequests,
                             packages = emptyList(),
-                        ).await()
+                        )
+                        job.timeout = PICS_JOB_TIMEOUT_MS
+                        val callback = job.await()
 
                         callback.results.forEachIndexed { index, picsCallback ->
                             Timber.d(
@@ -4384,6 +4390,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 }
                             }
                         }
+                    } catch (e: CancellationException) {
+                        // A timed-out AsyncJobMultiple with zero results calls future.cancel()
+                        // rather than failing the future, so this looks like coroutine
+                        // cancellation. Only rethrow if this collector's own job was cancelled;
+                        // otherwise skip the batch so later batches on the channel still run.
+                        ensureActive()
+                        Timber.w("PICS product info request timed out for ${appRequests.size} app(s); skipping batch")
                     } catch (e: AsyncJobFailedException) {
                         Timber.w("Could not get PICS product info $e")
                     }
@@ -4401,10 +4414,24 @@ class SteamService : Service(), IChallengeUrlChanged {
                     if (!isLoggedIn) return@collect
                     val steamApps = instance?._steamApps ?: return@collect
 
-                    val callback = steamApps.picsGetProductInfo(
-                        apps = emptyList(),
-                        packages = packageRequests,
-                    ).await()
+                    val callback = try {
+                        val job = steamApps.picsGetProductInfo(
+                            apps = emptyList(),
+                            packages = packageRequests,
+                        )
+                        job.timeout = PICS_JOB_TIMEOUT_MS
+                        job.await()
+                    } catch (e: CancellationException) {
+                        // See the app-channel collector above: a timed-out AsyncJobMultiple
+                        // cancels its future instead of failing it, so only rethrow if this
+                        // collector's own job was actually cancelled.
+                        ensureActive()
+                        Timber.w("PICS product info request timed out for ${packageRequests.size} package(s); skipping batch")
+                        return@collect
+                    } catch (e: AsyncJobFailedException) {
+                        Timber.w("Could not get PICS product info for packages $e")
+                        return@collect
+                    }
 
                     callback.results.forEach { picsCallback ->
                         // Don't race the queue.
@@ -4482,11 +4509,12 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
 
                         try {
-                            // TODO: This could be an issue. (Stalling)
-                            steamApps.picsGetAccessTokens(
+                            val tokensJob = steamApps.picsGetAccessTokens(
                                 appIds = queue,
                                 packageIds = emptyList(),
-                            ).await()
+                            )
+                            tokensJob.timeout = PICS_JOB_TIMEOUT_MS
+                            tokensJob.await()
                                 .appTokens
                                 .forEach { (key, value) ->
                                     appTokens[key] = value
@@ -4500,6 +4528,12 @@ class SteamService : Service(), IChallengeUrlChanged {
                                     Timber.d("bufferedPICSGetProductInfo: Queueing ${chunk.size} for PICS")
                                     appPicsChannel.send(chunk)
                                 }
+                        } catch (e: CancellationException) {
+                            // See the app-channel collector above: a timed-out AsyncJobSingle
+                            // cancels its future instead of failing it, so only rethrow if this
+                            // collector's own job was actually cancelled.
+                            ensureActive()
+                            Timber.w("PICS access token request timed out for ${queue.size} app(s); skipping batch")
                         } catch (e: AsyncJobFailedException) {
                             Timber.w("Could not get PICS product info $e")
                         }
