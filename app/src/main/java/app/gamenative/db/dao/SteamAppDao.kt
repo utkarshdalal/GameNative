@@ -224,11 +224,7 @@ interface SteamAppDao {
     @Query("UPDATE steam_app SET package_id = :packageId WHERE id IN (:appIds)")
     suspend fun _updatePackageIdForApps(packageId: Int, appIds: List<Int>)
 
-    /**
-     * Reassigns package ownership for a set of apps in one statement per chunk,
-     * instead of read-modify-writing each full SteamApp row. Batched to stay
-     * under SQLite's 999-parameter ceiling.
-     */
+    // Reassigns package ownership for a set of apps in one statement per chunk
     @Transaction
     suspend fun updatePackageIdForApps(packageId: Int, appIds: List<Int>) {
         if (appIds.isEmpty()) return
@@ -238,11 +234,7 @@ interface SteamAppDao {
         }
     }
 
-    /**
-     * Lightweight projection of the columns the PICS collectors read to decide
-     * whether an app needs (re)processing. Batched to stay under SQLite's
-     * 999-parameter ceiling; avoids deserializing the full row/blobs per app.
-     */
+    // Lightweight projection of the columns the PICS collectors read to decide whether an app needs (re)processing
     @Transaction
     suspend fun findAppPicsMeta(appIds: List<Int>): List<SteamAppPicsMeta> {
         if (appIds.isEmpty()) return emptyList()
