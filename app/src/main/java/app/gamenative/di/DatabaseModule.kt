@@ -39,11 +39,11 @@ class DatabaseModule {
                 ROOM_MIGRATION_V23_to_V24,
             )
             .fallbackToDestructiveMigration(true)
-            // Use unbounded thread pools for reads/writes so a long-running query (e.g. the
-            // library COUNT/paged load during a large PICS sync) can't starve the default
-            // single-threaded executors and deadlock the connection pool. SQLite still
-            // serializes writers, so this only removes the scheduling deadlock
-            .setQueryExecutor(Executors.newCachedThreadPool())
+            // Bound the query thread pool so PICS-sync bursts can't spin up an unbounded
+            // number of threads. Size to at least 4 threads so short queries aren't blocked
+            // behind long-running ones; the transaction executor stays unbounded so writers
+            // (which serialise at the SQLite level) don't deadlock waiting for a thread.
+            .setQueryExecutor(Executors.newFixedThreadPool(maxOf(4, Runtime.getRuntime().availableProcessors() * 2)))
             .setTransactionExecutor(Executors.newCachedThreadPool())
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onOpen(db: SupportSQLiteDatabase) {

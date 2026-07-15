@@ -224,12 +224,14 @@ interface SteamAppDao {
     @Query("UPDATE steam_app SET package_id = :packageId WHERE id IN (:appIds)")
     suspend fun _updatePackageIdForApps(packageId: Int, appIds: List<Int>)
 
-    // Reassigns package ownership for a set of apps in one statement per chunk
+    // Reassigns package ownership for a set of apps in one statement per chunk.
+    // The query binds :packageId (1 var) plus each element of :appIds, so the chunk
+    // size is SQLITE_MAX_VARS - 1 to stay within the 999-variable limit.
     @Transaction
     suspend fun updatePackageIdForApps(packageId: Int, appIds: List<Int>) {
         if (appIds.isEmpty()) return
-        for (chunkStart in appIds.indices step SQLITE_MAX_VARS) {
-            val chunkEnd = min(chunkStart + SQLITE_MAX_VARS, appIds.size)
+        for (chunkStart in appIds.indices step SQLITE_MAX_VARS - 1) {
+            val chunkEnd = min(chunkStart + SQLITE_MAX_VARS - 1, appIds.size)
             _updatePackageIdForApps(packageId, appIds.subList(chunkStart, chunkEnd))
         }
     }
