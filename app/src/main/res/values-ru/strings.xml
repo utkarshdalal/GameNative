@@ -1564,6 +1564,7 @@ https://gamenative.app
     <string name="nexus_authorize_in_browser">Nexus требует подтверждения на сайте для этой учётной записи. В браузере выберите Download with Manager, а затем Slow Download; GameNative автоматически возобновит загрузку.</string>
     <string name="nexus_open_browser_failed">Не удалось открыть Nexus Mods в браузере.</string>
     <string name="nexus_authorization_timed_out">Время ожидания авторизации на сайте Nexus истекло. Повторите попытку для файла и завершите Download with Manager в браузере.</string>
+    <string name="nexus_authorization_expired">Срок действия разрешения на загрузку с сайта Nexus истёк. Откройте Nexus Mods и снова разрешите загрузку файла.</string>
     <string name="nexus_authorization_already_pending">GameNative уже ожидает, пока Nexus авторизует этот файл. Завершите запрос на загрузку в браузере или отмените действие и повторите попытку.</string>
     <string name="nexus_authorized_file_received">Nexus авторизовал этот файл. Нажмите на него, чтобы начать загрузку в GameNative.</string>
     <string name="nexus_authorization_wrong_account">Авторизация на сайте Nexus относится к другой учётной записи. Войдите в ту же учётную запись Nexus в браузере и в GameNative.</string>

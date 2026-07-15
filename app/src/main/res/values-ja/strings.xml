@@ -1595,6 +1595,7 @@
     <string name="nexus_authorize_in_browser">このアカウントでは、Nexus のウェブサイトでの確認が必要です。ブラウザで「Download with Manager」、続いて「Slow Download」を選択してください。GameNative が自動的に再開します。</string>
     <string name="nexus_open_browser_failed">ブラウザで Nexus Mods を開けませんでした。</string>
     <string name="nexus_authorization_timed_out">Nexus ウェブサイトでの認証がタイムアウトしました。ファイルを再試行し、ブラウザで「Download with Manager」を完了してください。</string>
+    <string name="nexus_authorization_expired">Nexus ウェブサイトのダウンロード認証の有効期限が切れました。Nexus Mods を開き、ファイルを再度認証してください。</string>
     <string name="nexus_authorization_already_pending">GameNative はすでに、このファイルが Nexus で認証されるのを待っています。ブラウザのダウンロード確認を完了するか、キャンセルして再試行してください。</string>
     <string name="nexus_authorized_file_received">このファイルは Nexus で認証されました。タップして GameNative でのダウンロードを開始してください。</string>
     <string name="nexus_authorization_wrong_account">Nexus ウェブサイトでの認証は別のアカウントのものです。ブラウザと GameNative で同じ Nexus アカウントにログインしてください。</string>

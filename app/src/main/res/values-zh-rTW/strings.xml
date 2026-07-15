@@ -1647,6 +1647,7 @@
     <string name="nexus_authorize_in_browser">此帳號需要在 Nexus 網站上確認。請在瀏覽器中依序選擇「Download with Manager」和「Slow Download」，GameNative 將自動繼續。</string>
     <string name="nexus_open_browser_failed">無法在瀏覽器中開啟 Nexus Mods。</string>
     <string name="nexus_authorization_timed_out">Nexus 網站授權逾時。請重試此檔案，並在瀏覽器中完成「Download with Manager」操作。</string>
+    <string name="nexus_authorization_expired">Nexus 網站下載授權已過期。請開啟 Nexus Mods 並重新授權該檔案。</string>
     <string name="nexus_authorization_already_pending">GameNative 已在等待 Nexus 授權此檔案。請完成瀏覽器中的下載確認，或取消後重試。</string>
     <string name="nexus_authorized_file_received">Nexus 已授權此檔案。點選即可開始在 GameNative 中下載。</string>
     <string name="nexus_authorization_wrong_account">Nexus 網站授權屬於其他帳號。請在瀏覽器和 GameNative 中登入相同的 Nexus 帳號。</string>

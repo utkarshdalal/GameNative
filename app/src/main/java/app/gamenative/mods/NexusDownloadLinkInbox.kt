@@ -49,7 +49,10 @@ object NexusDownloadLinkInbox {
     fun callbacksFor(appId: String): Flow<AuthorizedNexusWebsiteDownload> =
         synchronized(pendingLock) { callbackChannelFor(appId) }.receiveAsFlow()
 
-    fun expect(download: PendingNexusWebsiteDownload): Boolean =
+    fun expect(
+        download: PendingNexusWebsiteDownload,
+        onAccepted: () -> Unit = {},
+    ): Boolean =
         synchronized(pendingLock) {
             removeExpiredPendingDownloads()
             val key = download.fileKey()
@@ -62,6 +65,7 @@ object NexusDownloadLinkInbox {
             ) {
                 return@synchronized false
             }
+            onAccepted()
             pendingWebsiteDownloads[key] = download
             true
         }

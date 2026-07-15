@@ -1639,6 +1639,7 @@
     <string name="nexus_authorize_in_browser">Nexus necesită confirmarea pe site pentru acest cont. În browser, alege Download with Manager, apoi Slow Download; GameNative va relua automat descărcarea.</string>
     <string name="nexus_open_browser_failed">Nexus Mods nu a putut fi deschis într-un browser.</string>
     <string name="nexus_authorization_timed_out">Autorizarea pe site-ul Nexus a expirat. Reîncearcă fișierul și finalizează Download with Manager în browser.</string>
+    <string name="nexus_authorization_expired">Autorizarea descărcării de pe site-ul Nexus a expirat. Deschide Nexus Mods și autorizează din nou fișierul.</string>
     <string name="nexus_authorization_already_pending">GameNative așteaptă deja ca Nexus să autorizeze acest fișier. Finalizează solicitarea de descărcare din browser sau anulează și reîncearcă.</string>
     <string name="nexus_authorized_file_received">Nexus a autorizat acest fișier. Atinge-l pentru a începe descărcarea în GameNative.</string>
     <string name="nexus_authorization_wrong_account">Autorizarea de pe site-ul Nexus aparține unui alt cont. Autentifică-te cu același cont Nexus în browser și în GameNative.</string>

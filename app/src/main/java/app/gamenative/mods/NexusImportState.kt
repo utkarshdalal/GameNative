@@ -171,7 +171,7 @@ internal object NexusImportState {
             NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_INVALID ->
                 "Nexus rejected the website download authorization. Make sure the browser and GameNative use the same Nexus account, then try again."
             NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED ->
-                "The Nexus website download authorization expired. Open Nexus Mods and authorize the file again."
+                error.message ?: "The Nexus website download authorization expired. Open Nexus Mods and authorize the file again."
             NexusApiErrorReason.NOT_FOUND -> error.message ?: "Nexus could not find this mod, file, or collection revision."
             NexusApiErrorReason.RATE_LIMITED -> "Nexus API rate limit reached."
             NexusApiErrorReason.OTHER -> when (error.statusCode) {

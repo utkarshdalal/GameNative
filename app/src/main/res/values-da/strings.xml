@@ -1508,6 +1508,7 @@
     <string name="nexus_authorize_in_browser">Nexus kræver bekræftelse på webstedet for denne konto. Vælg Download with Manager og derefter Slow Download i browseren; GameNative genoptager automatisk.</string>
     <string name="nexus_open_browser_failed">Nexus Mods kunne ikke åbnes i en browser.</string>
     <string name="nexus_authorization_timed_out">Godkendelsen på Nexus-webstedet fik timeout. Prøv filen igen, og fuldfør Download with Manager i browseren.</string>
+    <string name="nexus_authorization_expired">Nexus-webstedets downloadgodkendelse er udløbet. Åbn Nexus Mods, og godkend filen igen.</string>
     <string name="nexus_authorization_already_pending">GameNative venter allerede på, at Nexus godkender denne fil. Fuldfør downloadprompten i browseren, eller annuller og prøv igen.</string>
     <string name="nexus_authorized_file_received">Nexus har godkendt denne fil. Tryk på den for at starte downloadingen i GameNative.</string>
     <string name="nexus_authorization_wrong_account">Godkendelsen fra Nexus-webstedet tilhører en anden konto. Log ind på den samme Nexus-konto i browseren og GameNative.</string>

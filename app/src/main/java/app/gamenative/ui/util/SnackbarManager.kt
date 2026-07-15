@@ -22,12 +22,16 @@ class SnackbarHostController {
     val rootOwnsHost: Boolean get() = overlayOwners.isEmpty()
 
     fun register(owner: Any) {
-        overlayOwners.remove(owner)
+        overlayOwners.indexOfFirst { it === owner }
+            .takeIf { it >= 0 }
+            ?.let(overlayOwners::removeAt)
         overlayOwners.add(owner)
     }
 
     fun unregister(owner: Any) {
-        overlayOwners.remove(owner)
+        overlayOwners.indexOfFirst { it === owner }
+            .takeIf { it >= 0 }
+            ?.let(overlayOwners::removeAt)
     }
 
     fun ownsHost(owner: Any): Boolean = overlayOwners.lastOrNull() === owner

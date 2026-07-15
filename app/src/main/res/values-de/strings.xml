@@ -1578,6 +1578,7 @@
     <string name="nexus_authorize_in_browser">Nexus erfordert für dieses Konto eine Bestätigung auf der Website. Wähle im Browser Download with Manager und anschließend Slow Download aus; GameNative fährt automatisch fort.</string>
     <string name="nexus_open_browser_failed">Nexus Mods konnte nicht in einem Browser geöffnet werden.</string>
     <string name="nexus_authorization_timed_out">Zeitüberschreitung bei der Autorisierung auf der Nexus-Website. Versuche die Datei erneut und schließe Download with Manager im Browser ab.</string>
+    <string name="nexus_authorization_expired">Die Download-Autorisierung der Nexus-Website ist abgelaufen. Öffne Nexus Mods und autorisiere die Datei erneut.</string>
     <string name="nexus_authorization_already_pending">GameNative wartet bereits darauf, dass Nexus diese Datei autorisiert. Schließe die Download-Abfrage im Browser ab oder brich ab und versuche es erneut.</string>
     <string name="nexus_authorized_file_received">Nexus hat diese Datei autorisiert. Tippe darauf, um den Download in GameNative zu starten.</string>
     <string name="nexus_authorization_wrong_account">Die Autorisierung der Nexus-Website gehört zu einem anderen Konto. Melde dich im Browser und in GameNative mit demselben Nexus-Konto an.</string>

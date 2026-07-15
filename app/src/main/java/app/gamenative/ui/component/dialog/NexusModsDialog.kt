@@ -1490,7 +1490,9 @@ fun NexusModsDialog(
             nexusUserId = nexusUserId,
             requestId = requestId,
         )
-        val expected = NexusDownloadLinkInbox.expect(pending)
+        val expected = NexusDownloadLinkInbox.expect(pending) {
+            NexusPendingDownloadStore.remember(context, pending)
+        }
         if (!expected) {
             val failure = NexusWebsiteAuthorizationException(
                 context.getString(R.string.nexus_authorization_already_pending),
@@ -1499,7 +1501,6 @@ fun NexusModsDialog(
             SnackbarManager.show(failure.message.orEmpty())
             return false
         }
-        NexusPendingDownloadStore.remember(context, pending)
         val websiteUrl = NexusDownloadLinkInbox.websiteDownloadUrl(pendingReference, file.fileId)
         val launchError = runCatching {
             context.startActivity(Intent(Intent.ACTION_VIEW, websiteUrl.toUri()))
@@ -1643,12 +1644,12 @@ fun NexusModsDialog(
         if (matchingPending.appId != libraryItem.appId) return
         if (authorization.isExpired()) {
             val error = NexusApiException(
-                message = "The Nexus website download authorization expired",
+                message = context.getString(R.string.nexus_authorization_expired),
                 statusCode = 410,
                 reason = NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED,
             )
             matchingPending.requestId?.let { websiteAuthorizationWaiters.remove(it)?.completeExceptionally(error) }
-            SnackbarManager.show(NexusImportState.userMessage(error))
+            SnackbarManager.show(error.message.orEmpty())
             return
         }
 

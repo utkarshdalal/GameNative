@@ -1507,7 +1507,8 @@
     <string name="nexus_nxm_callback_received">Autorização de download do Nexus recebida. Volte para Gerenciar mods Nexus se o download não for retomado automaticamente.</string>
     <string name="nexus_authorize_in_browser">O Nexus exige uma confirmação no site para esta conta. No navegador, escolha Download with Manager e depois Slow Download; o GameNative retomará automaticamente.</string>
     <string name="nexus_open_browser_failed">Não foi possível abrir o Nexus Mods em um navegador.</string>
-    <string name="nexus_authorization_timed_out">A autorização no site do Nexus expirou. Tente o arquivo novamente e conclua Download with Manager no navegador.</string>
+    <string name="nexus_authorization_timed_out">A autorização no site do Nexus expirou. Tente baixar o arquivo novamente e conclua Download with Manager no navegador.</string>
+    <string name="nexus_authorization_expired">A autorização de download do site do Nexus expirou. Abra o Nexus Mods e autorize o arquivo novamente.</string>
     <string name="nexus_authorization_already_pending">O GameNative já está aguardando o Nexus autorizar este arquivo. Conclua a solicitação de download no navegador ou cancele e tente novamente.</string>
     <string name="nexus_authorized_file_received">O Nexus autorizou este arquivo. Toque nele para iniciar o download no GameNative.</string>
     <string name="nexus_authorization_wrong_account">A autorização do site do Nexus pertence a uma conta diferente. Entre na mesma conta do Nexus no navegador e no GameNative.</string>

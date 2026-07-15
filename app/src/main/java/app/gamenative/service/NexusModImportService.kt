@@ -45,8 +45,14 @@ import java.util.concurrent.atomic.AtomicInteger
 class NexusModImportService : Service() {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val resumeRequested = AtomicBoolean(false)
     private val delayedStop = Runnable {
-        if (activeTasks.get() <= 0 && pendingTasks.isEmpty() && !resumeInProgress.get()) {
+        if (
+            activeTasks.get() <= 0 &&
+            pendingTasks.isEmpty() &&
+            !resumeInProgress.get() &&
+            !resumeRequested.get()
+        ) {
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
@@ -63,7 +69,7 @@ class NexusModImportService : Service() {
         if (intent?.action == ACTION_RUN_IMPORT) {
             startQueuedTask(intent.getStringExtra(EXTRA_TASK_ID), intent)
         } else if (intent == null || intent.action == ACTION_RESUME_IMPORTS) {
-            resumeInterruptedImports()
+            requestResumeInterruptedImports()
         } else if (activeTasks.get() == 0 && pendingTasks.isEmpty()) {
             scheduleStopIfIdle()
         }
@@ -82,7 +88,7 @@ class NexusModImportService : Service() {
         val task = taskId?.let { pendingTasks.remove(it) }
         val request = task?.request ?: decodeImportRequest(intent)
         if (request == null) {
-            scheduleStopIfIdle()
+            resumeOrStopIfIdle()
             return
         }
         val displayName = task?.displayName ?: request.modInfo.name
@@ -110,9 +116,7 @@ class NexusModImportService : Service() {
                 Timber.w(e, "Nexus mod import failed")
                 task?.deferred?.completeExceptionally(e)
             } finally {
-                if (activeTasks.decrementAndGet() <= 0) {
-                    scheduleStopIfIdle()
-                }
+                finishActiveTask()
             }
         }
     }
@@ -122,9 +126,29 @@ class NexusModImportService : Service() {
     }
 
     private fun scheduleStopIfIdle() {
-        if (activeTasks.get() > 0 || pendingTasks.isNotEmpty() || resumeInProgress.get()) return
+        if (
+            activeTasks.get() > 0 ||
+            pendingTasks.isNotEmpty() ||
+            resumeInProgress.get() ||
+            resumeRequested.get()
+        ) return
         mainHandler.removeCallbacks(delayedStop)
         mainHandler.postDelayed(delayedStop, STOP_GRACE_MS)
+    }
+
+    private fun requestResumeInterruptedImports() {
+        resumeRequested.set(true)
+        resumeInterruptedImports()
+    }
+
+    private fun finishActiveTask() {
+        if (activeTasks.decrementAndGet() <= 0) {
+            mainHandler.post { resumeOrStopIfIdle() }
+        }
+    }
+
+    private fun resumeOrStopIfIdle() {
+        if (resumeRequested.get()) resumeInterruptedImports() else scheduleStopIfIdle()
     }
 
     private fun updateNotification(content: String) {
@@ -134,13 +158,12 @@ class NexusModImportService : Service() {
 
     private fun resumeInterruptedImports() {
         if (activeTasks.get() > 0 || pendingTasks.isNotEmpty()) {
-            scheduleStopIfIdle()
             return
         }
         if (!resumeInProgress.compareAndSet(false, true)) {
-            scheduleStopIfIdle()
             return
         }
+        resumeRequested.set(false)
         activeTasks.incrementAndGet()
         scope.launch {
             try {
@@ -216,9 +239,7 @@ class NexusModImportService : Service() {
                 }
             } finally {
                 resumeInProgress.set(false)
-                if (activeTasks.decrementAndGet() <= 0) {
-                    scheduleStopIfIdle()
-                }
+                finishActiveTask()
             }
         }
     }

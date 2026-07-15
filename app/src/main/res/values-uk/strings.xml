@@ -1632,6 +1632,7 @@
     <string name="nexus_authorize_in_browser">Nexus вимагає підтвердження на вебсайті для цього облікового запису. У браузері виберіть Download with Manager, а потім Slow Download; GameNative автоматично продовжить завантаження.</string>
     <string name="nexus_open_browser_failed">Не вдалося відкрити Nexus Mods у браузері.</string>
     <string name="nexus_authorization_timed_out">Час очікування авторизації на вебсайті Nexus минув. Повторіть спробу для файлу та завершіть Download with Manager у браузері.</string>
+    <string name="nexus_authorization_expired">Термін дії дозволу на завантаження із сайту Nexus минув. Відкрийте Nexus Mods і знову авторизуйте файл.</string>
     <string name="nexus_authorization_already_pending">GameNative уже очікує, поки Nexus авторизує цей файл. Завершіть запит на завантаження в браузері або скасуйте дію та повторіть спробу.</string>
     <string name="nexus_authorized_file_received">Nexus авторизував цей файл. Торкніться його, щоб почати завантаження в GameNative.</string>
     <string name="nexus_authorization_wrong_account">Авторизація на вебсайті Nexus належить іншому обліковому запису. Увійдіть у той самий обліковий запис Nexus у браузері та GameNative.</string>
