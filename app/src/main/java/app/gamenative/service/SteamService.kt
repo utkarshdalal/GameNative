@@ -4194,7 +4194,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     licenseDao.deleteStaleLicenses(packageIds)
                 }
 
-                Timber.i("Getting licences from DB")
+                Timber.i("Getting licenses from DB")
                 // Get PICS information with the current license database.
                 licenseDao.getLicensesForPics()
                     .map { PICSRequest(it.packageId, it.accessToken) }
