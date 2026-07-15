@@ -428,13 +428,13 @@
     <string name="button_y">Bouton Y</string>
     <string name="button_y_subtitle">Bouton de face supérieur</string>
     <string name="shoulder_buttons">Gâchettes</string>
-    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">Gâchette gauche</string>
-    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">Gâchette droite</string>
-    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">Détente gauche</string>
-    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">Détente droite</string>
     <string name="menu_buttons">Boutons de menu</string>
     <string name="button_start">Start / Options</string>
@@ -466,6 +466,7 @@
     <string name="settings_save_logcat_subtitle">Enregistre un instantané du logcat uniquement pour le PID de cette application</string>
     <string name="settings_save_logcat_title">Enregistrer le logcat</string>
     <string name="settings_achievement_show_notification">Afficher les notifications de succès</string>
+    <string name="settings_achievement_play_sound">Jouer le son des succès</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Gestion des drapeaux sur les opcodes CALL/RET<br /><br />
@@ -738,6 +739,8 @@
     <string name="enable_xinput_api">Activer l\'API XInput</string>
     <string name="enable_directinput_api">Activer l\'API DirectInput</string>
     <string name="directinput_mapper_type">Type de mappeur DirectInput</string>
+    <string name="show_controller_debug_menu">Afficher le menu de débogage des contrôleurs</string>
+    <string name="show_controller_debug_menu_subtitle">Afficher le panneau en direct des emplacements de contrôleurs P1-P4 dans le menu rapide en jeu</string>
     <string name="disable_mouse_input">Désactiver l\'entrée souris</string>
     <string name="touchscreen_mode">Mode écran tactile</string>
     <string name="touchscreen_mode_description">Pour les visual novels et jeux de stratégie en temps réel</string>
@@ -1484,7 +1487,7 @@
     <string name="review_mostly_negative">Plutôt négatif</string>
     <string name="review_overwhelmingly_negative">Extrêmement négatif</string>
     <string name="settings_interface_show_recommendations_title">Afficher les recommandations de jeux</string>
-    <string name="settings_interface_show_recommendations_subtitle">Affiche des jeux indés sélectionnés dans votre bibliothèque. Garder cette option activée aide à soutenir les développeurs indés et GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Affiche des recommandations personnalisées. Le laisser activé aide à soutenir GameNative.</string>
      <string name="steam_save_export_success">Sauvegardes exportées</string>
      <string name="steam_save_export_no_saves_found">Aucune sauvegarde trouvée</string>
      <string name="steam_save_export_failed">Échec de l\'exportation des sauvegardes : %s</string>
@@ -2052,4 +2055,35 @@
     <string name="toast_no_buttons_to_copy_appearance">Aucun autre contrôle disponible pour copier apparence</string>
     <string name="toast_copied_button_appearance">Apparence du contrôle copiée</string>
     <string name="toast_applied_button_appearance">Apparence appliquée à tous les contrôles</string>
+    <string name="rec_disclosure_title">Recommandations de jeux</string>
+    <string name="rec_disclosure_body">Pour des recommandations personnalisées, nous partageons les jeux auxquels vous jouez avec GOG. Désactivable à tout moment dans les Paramètres.</string>
+    <string name="rec_disclosure_allow">Autoriser</string>
+    <string name="rec_disclosure_not_now">Pas maintenant</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Sponsorisé</string>
+    <string name="featured_action_wishlist">Liste de souhaits</string>
+    <string name="featured_action_wishlist_on">Ajouter sur %1$s</string>
+    <string name="featured_action_preorder">Précommander</string>
+    <string name="featured_action_preorder_on">Précommander sur %1$s</string>
+    <string name="featured_action_buy">Acheter</string>
+    <string name="featured_action_buy_on">Acheter sur %1$s</string>
+    <string name="featured_action_notify">Me prévenir</string>
+    <string name="featured_action_visit">En savoir plus</string>
+    <string name="featured_status_coming_soon_title">Bientôt disponible</string>
+    <string name="featured_status_coming_soon_body">Ajoutez-le à vos souhaits pour être averti dès sa sortie</string>
+    <string name="featured_status_early_access_title">Accès anticipé</string>
+    <string name="featured_status_early_access_body">Disponible dès maintenant en accès anticipé</string>
+    <string name="featured_status_preorder_title">Précommander</string>
+    <string name="featured_status_preorder_body">Précommandez pour être prêt au lancement</string>
+    <string name="featured_status_out_now_title">Disponible</string>
+    <string name="featured_status_out_now_body">Disponible maintenant</string>
+    <string name="tab_recommended">Recommandés</string>
+    <string name="gog_rec_empty">Ajoutez ou lancez des jeux pour obtenir des recommandations GOG basées sur votre bibliothèque.</string>
+    <string name="steam_collections_removed">Une collection enregistrée a été supprimée dans Steam et n\'est plus filtrée.</string>
+    <string name="steam_collections_title">Collections Steam</string>
+    <string name="steam_collections_loading">Chargement des collections…</string>
+    <string name="steam_collections_offline">Affichage des dernières collections synchronisées. Connectez-vous pour mettre à jour.</string>
+    <string name="steam_collections_clear">Effacer</string>
+    <string name="steam_collections_smart_unsupported">Seules les collections standard sont affichées. Les collections dynamiques ne sont pas encore prises en charge.</string>
 </resources>

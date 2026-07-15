@@ -160,14 +160,14 @@
     <string name="button_b">Кнопка B</string>
     <string name="button_b_subtitle">Правая лицевая кнопка (Назад)</string>
     <string name="button_home">Home / Guide / PS</string>
-    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">Левый бампер</string>
-    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">Левый триггер</string>
     <string name="button_l3">L3 (клик левого джойстика)</string>
-    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">Правый бампер</string>
-    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">Правый триггер</string>
     <string name="button_r3">R3 (клик правого джойстика)</string>
     <string name="button_select">Select / View / Share</string>
@@ -299,6 +299,8 @@
     <string name="developer">Разработчик</string>
     <string name="direct3d">Direct3D</string>
     <string name="directinput_mapper_type">Тип отображения DirectInput</string>
+    <string name="show_controller_debug_menu">Показывать меню отладки контроллеров</string>
+    <string name="show_controller_debug_menu_subtitle">Показывать живую панель слотов контроллеров P1-P4 в игровом быстром меню</string>
     <string name="direction_down">Вниз</string>
     <string name="direction_left">Влево</string>
     <string name="direction_right">Вправо</string>
@@ -1084,6 +1086,7 @@ https://gamenative.app
     <string name="settings_save_logcat_subtitle">Сохраняет снимок logcat только для PID этого приложения</string>
     <string name="settings_save_logcat_title">Сохранить logcat</string>
     <string name="settings_achievement_show_notification">Показывать уведомления о достижениях</string>
+    <string name="settings_achievement_play_sound">Воспроизводить звук достижений</string>
     <string name="settings_saving_restarting">Сохранение настроек и перезагрузка…</string>
     <string name="settings_select_language">Выберите язык</string>
     <string name="settings_subtitle">Настройте ваш опыт</string>
@@ -1410,7 +1413,7 @@ https://gamenative.app
     <string name="review_mostly_negative">В основном отрицательные</string>
     <string name="review_overwhelmingly_negative">Крайне отрицательные</string>
     <string name="settings_interface_show_recommendations_title">Показывать рекомендации игр</string>
-    <string name="settings_interface_show_recommendations_subtitle">Показывает подобранные инди-игры в вашей библиотеке. Оставляя это включённым, вы поддерживаете инди-разработчиков и GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Показывает персональные рекомендации. Оставив это включённым, вы помогаете поддержать GameNative.</string>
      <string name="steam_save_export_success">Сохранения экспортированы</string>
      <string name="steam_save_export_no_saves_found">Сохранения не найдены</string>
      <string name="steam_save_export_failed">Не удалось экспортировать сохранения: %s</string>
@@ -1978,4 +1981,35 @@ https://gamenative.app
     <string name="toast_no_buttons_to_copy_appearance">Нет других элементов для копирования внешнего вида</string>
     <string name="toast_copied_button_appearance">Внешний вид элемента скопирован</string>
     <string name="toast_applied_button_appearance">Внешний вид применен ко всем элементам</string>
+    <string name="rec_disclosure_title">Рекомендации игр</string>
+    <string name="rec_disclosure_body">Для персональных рекомендаций мы передаём игры, в которые вы играете, сервису GOG. Отключить можно в любой момент в Настройках.</string>
+    <string name="rec_disclosure_allow">Разрешить</string>
+    <string name="rec_disclosure_not_now">Не сейчас</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Спонсировано</string>
+    <string name="featured_action_wishlist">Список желаемого</string>
+    <string name="featured_action_wishlist_on">В список желаемого в %1$s</string>
+    <string name="featured_action_preorder">Предзаказ</string>
+    <string name="featured_action_preorder_on">Предзаказ в %1$s</string>
+    <string name="featured_action_buy">Купить</string>
+    <string name="featured_action_buy_on">Купить в %1$s</string>
+    <string name="featured_action_notify">Уведомить меня</string>
+    <string name="featured_action_visit">Подробнее</string>
+    <string name="featured_status_coming_soon_title">Скоро</string>
+    <string name="featured_status_coming_soon_body">Добавьте в список желаемого, чтобы получить уведомление о выходе</string>
+    <string name="featured_status_early_access_title">Ранний доступ</string>
+    <string name="featured_status_early_access_body">Уже доступно в раннем доступе</string>
+    <string name="featured_status_preorder_title">Оформить предзаказ</string>
+    <string name="featured_status_preorder_body">Оформите предзаказ, чтобы быть готовым к выходу</string>
+    <string name="featured_status_out_now_title">Уже вышло</string>
+    <string name="featured_status_out_now_body">Доступно сейчас</string>
+    <string name="tab_recommended">Рекомендации</string>
+    <string name="gog_rec_empty">Добавьте или поиграйте в игры, чтобы получить рекомендации GOG на основе вашей библиотеки.</string>
+    <string name="steam_collections_removed">Сохранённая коллекция была удалена в Steam и больше не используется для фильтрации.</string>
+    <string name="steam_collections_title">Коллекции Steam</string>
+    <string name="steam_collections_loading">Загрузка коллекций…</string>
+    <string name="steam_collections_offline">Показаны последние синхронизированные коллекции. Подключитесь для обновления.</string>
+    <string name="steam_collections_clear">Очистить</string>
+    <string name="steam_collections_smart_unsupported">Показаны только обычные коллекции. Умные коллекции пока не поддерживаются.</string>
 </resources>

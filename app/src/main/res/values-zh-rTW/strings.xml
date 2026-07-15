@@ -419,13 +419,13 @@
     <string name="button_y">Y 按鈕</string>
     <string name="button_y_subtitle">頂部正面按鈕</string>
     <string name="shoulder_buttons">肩部按鈕</string>
-    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">左側肩部按鈕</string>
-    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">右側肩部按鈕</string>
-    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">左側扳機</string>
-    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">右側扳機</string>
     <string name="menu_buttons">選單按鈕</string>
     <string name="button_start">Start / Options</string>
@@ -457,6 +457,7 @@
     <string name="settings_save_logcat_subtitle">保存此應用程序 PID 的 logcat 快照</string>
     <string name="settings_save_logcat_title">保存 logcat</string>
     <string name="settings_achievement_show_notification">顯示成就通知</string>
+    <string name="settings_achievement_play_sound">播放成就音效</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         CALL/RET opcodes 的 flags 處理方式<br /><br />
@@ -725,6 +726,8 @@
     <string name="enable_xinput_api">啟用 XInput API</string>
     <string name="enable_directinput_api">啟用 DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput Mapper 類型</string>
+    <string name="show_controller_debug_menu">顯示控制器除錯選單</string>
+    <string name="show_controller_debug_menu_subtitle">在遊戲內快速選單中顯示 P1-P4 控制器插槽即時面板</string>
     <string name="disable_mouse_input">停用滑鼠輸入</string>
     <string name="touchscreen_mode">觸屏模式</string>
     <string name="touchscreen_mode_description">適用於視覺小說與即時戰略遊戲</string>
@@ -1455,7 +1458,7 @@
     <string name="review_mostly_negative">大多負評</string>
     <string name="review_overwhelmingly_negative">壓倒性負評</string>
     <string name="settings_interface_show_recommendations_title">顯示遊戲推薦</string>
-    <string name="settings_interface_show_recommendations_subtitle">在遊戲庫中顯示精選獨立遊戲。保持開啟有助於支持獨立開發者和 GameNative。</string>
+    <string name="settings_interface_show_recommendations_subtitle">顯示個人化推薦。保持開啟有助於支持 GameNative。</string>
      <string name="steam_save_export_success">存檔已匯出</string>
      <string name="steam_save_export_no_saves_found">未找到存檔檔案</string>
      <string name="steam_save_export_failed">匯出存檔失敗：%s</string>
@@ -2061,4 +2064,35 @@
     <string name="toast_no_buttons_to_copy_appearance">沒有其他可複製外觀的控制項</string>
     <string name="toast_copied_button_appearance">已複製控制項外觀</string>
     <string name="toast_applied_button_appearance">已將外觀套用到所有控制項</string>
+    <string name="rec_disclosure_title">遊戲推薦</string>
+    <string name="rec_disclosure_body">為提供個人化推薦，我們會將你玩過的遊戲分享給 GOG。可隨時在設定中關閉。</string>
+    <string name="rec_disclosure_allow">允許</string>
+    <string name="rec_disclosure_not_now">暫不</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">贊助</string>
+    <string name="featured_action_wishlist">願望清單</string>
+    <string name="featured_action_wishlist_on">在 %1$s 加入願望清單</string>
+    <string name="featured_action_preorder">預購</string>
+    <string name="featured_action_preorder_on">在 %1$s 預購</string>
+    <string name="featured_action_buy">購買</string>
+    <string name="featured_action_buy_on">在 %1$s 購買</string>
+    <string name="featured_action_notify">提醒我</string>
+    <string name="featured_action_visit">了解更多</string>
+    <string name="featured_status_coming_soon_title">即將推出</string>
+    <string name="featured_status_coming_soon_body">立即加入願望清單，發售時第一時間收到通知</string>
+    <string name="featured_status_early_access_title">搶先體驗</string>
+    <string name="featured_status_early_access_body">搶先體驗現已推出</string>
+    <string name="featured_status_preorder_title">立即預購</string>
+    <string name="featured_status_preorder_body">預購以在發售時做好準備</string>
+    <string name="featured_status_out_now_title">現已推出</string>
+    <string name="featured_status_out_now_body">現在可用</string>
+    <string name="tab_recommended">推薦</string>
+    <string name="gog_rec_empty">新增或試玩一些遊戲，即可根據你的遊戲庫獲得 GOG 推薦。</string>
+    <string name="steam_collections_removed">已儲存的收藏已在 Steam 中移除，不再用於篩選。</string>
+    <string name="steam_collections_title">Steam 收藏</string>
+    <string name="steam_collections_loading">正在載入收藏…</string>
+    <string name="steam_collections_offline">正在顯示上次同步的收藏。請連線以更新。</string>
+    <string name="steam_collections_clear">清除</string>
+    <string name="steam_collections_smart_unsupported">僅顯示標準收藏。智慧型收藏尚不支援。</string>
 </resources>

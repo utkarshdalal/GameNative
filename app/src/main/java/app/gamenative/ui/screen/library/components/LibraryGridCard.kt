@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Face4
 import androidx.compose.material3.Card
@@ -42,13 +44,12 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,6 +57,7 @@ import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.gog.GogRecommendationsRepository
 import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.component.focusRing
@@ -268,11 +270,6 @@ internal fun GridViewCard(
                             text = appInfo.name,
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                shadow = Shadow(
-                                    color = Color.Black,
-                                    offset = Offset(1f, 1f),
-                                    blurRadius = 2f,
-                                ),
                             ),
                             color = Color.White,
                             maxLines = if (paneType == PaneType.GRID_CAPSULE) 2 else 1,
@@ -283,31 +280,86 @@ internal fun GridViewCard(
                         GridStatusIcons(appInfo = appInfo)
                     }
 
-                    GameStatsRow(
-                        stats = gameStats,
-                        tint = Color.White.copy(alpha = 0.55f),
-                        onDark = true,
-                        animate = animateStats,
-                    )
+                    if (appInfo.isRecommended && appInfo.recStoreCard && appInfo.recPrice != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            appInfo.recBasePrice?.let { base ->
+                                Text(
+                                    text = base,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        textDecoration = TextDecoration.LineThrough,
+                                    ),
+                                    color = Color.White.copy(alpha = 0.6f),
+                                )
+                            }
+                            Text(
+                                text = appInfo.recPrice,
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White,
+                                modifier = if (appInfo.recBasePrice != null) Modifier.padding(start = 6.dp) else Modifier,
+                            )
+                        }
+                    }
+
+                    if (!appInfo.isFeatured) {
+                        GameStatsRow(
+                            stats = gameStats,
+                            tint = Color.White.copy(alpha = 0.55f),
+                            animate = animateStats,
+                        )
+                    }
                 }
 
-                // Compatibility / Recommended badge (top left)
-                val badgeStatus = if (appInfo.isRecommended) {
-                    GameCompatibilityStatus.RECOMMENDED
-                } else {
-                    compatibilityStatus
-                }
-                badgeStatus?.let { status ->
-                    CompatibilityBadge(
-                        status = status,
-                        showLabel = true,
+                // Top-left: Featured badge, GOG rating (store rec), or Recommended/compat badge
+                if (appInfo.isFeatured) {
+                    FeaturedBadge(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(top = topOverlayPadding, start = topOverlayPadding),
                     )
+                } else if (appInfo.isRecommended && appInfo.recStoreCard) {
+                    val productId = appInfo.recommendedGameId.toLongOrNull()
+                    val rating by produceState(initialValue = appInfo.recRating, productId) {
+                        if (value == null && productId != null) {
+                            value = GogRecommendationsRepository.getRating(productId)
+                        }
+                    }
+                    rating?.let {
+                        RecRatingPill(
+                            rating = it,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(top = topOverlayPadding, start = topOverlayPadding),
+                        )
+                    }
+                } else {
+                    val badgeStatus = if (appInfo.isRecommended) {
+                        GameCompatibilityStatus.RECOMMENDED
+                    } else {
+                        compatibilityStatus
+                    }
+                    badgeStatus?.let { status ->
+                        CompatibilityBadge(
+                            status = status,
+                            showLabel = true,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(top = topOverlayPadding, start = topOverlayPadding),
+                        )
+                    }
                 }
 
-                if (!appInfo.isRecommended) {
+                // Top-right: seed-game badge (store rec), source icon for normal cards
+                if (appInfo.isRecommended && appInfo.recStoreCard) {
+                    if (!appInfo.recSeedIconUrl.isNullOrBlank() || appInfo.recSeedCount >= 2) {
+                        RecSimilarBadge(
+                            iconUrl = appInfo.recSeedIconUrl,
+                            extraCount = (appInfo.recSeedCount - 1).coerceAtLeast(0),
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = topOverlayPadding, end = topOverlayPadding),
+                        )
+                    }
+                } else if (!appInfo.isRecommended) {
                     GameSourceIcon(
                         gameSource = appInfo.gameSource,
                         modifier = Modifier
@@ -357,6 +409,95 @@ private fun CapsuleFallbackBackdrop(
                     ),
                 ),
         )
+    }
+}
+
+@Composable
+private fun FeaturedBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFFFC107))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Star,
+            contentDescription = null,
+            tint = Color.Black,
+            modifier = Modifier.size(12.dp),
+        )
+        Text(
+            text = stringResource(R.string.featured_badge),
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = Color.Black,
+            modifier = Modifier.padding(start = 3.dp),
+        )
+    }
+}
+
+@Composable
+private fun RecRatingPill(rating: Int, modifier: Modifier = Modifier) {
+    val color = when {
+        rating >= 70 -> Color(0xFF4CAF50)
+        rating >= 40 -> Color(0xFFB9A074)
+        else -> Color(0xFFE57373)
+    }
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.55f))
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Star,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(12.dp),
+        )
+        Text(
+            text = "$rating%",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = Color.White,
+            modifier = Modifier.padding(start = 3.dp),
+        )
+    }
+}
+
+@Composable
+private fun RecSimilarBadge(iconUrl: String?, extraCount: Int, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.55f))
+            .padding(horizontal = 4.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (!iconUrl.isNullOrBlank()) {
+            CoilImage(
+                imageModel = { iconUrl },
+                imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Rounded.ArrowUpward,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(12.dp),
+            )
+        }
+        if (extraCount > 0) {
+            Text(
+                text = "+$extraCount",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                color = Color.White,
+                modifier = Modifier.padding(start = 3.dp, end = 2.dp),
+            )
+        }
     }
 }
 

@@ -114,6 +114,7 @@ class PluviaApp : SplitCompatApplication() {
             personProfiles = PersonProfiles.ALWAYS
         }
         PostHogAndroid.setup(this, postHogConfig)
+        com.posthog.PostHog.register("build_flavor", BuildConfig.FLAVOR)
 
         if (PrefManager.usageAnalyticsEnabled) {
             com.posthog.PostHog.capture(

@@ -426,13 +426,13 @@
     <string name="button_y">Buton Y</string>
     <string name="button_y_subtitle">Buton frontal superior</string>
     <string name="shoulder_buttons">Butoane shoulder</string>
-    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">Bumper stânga</string>
-    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">Bumper dreapta</string>
-    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">Trigger stânga</string>
-    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">Trigger dreapta</string>
     <string name="menu_buttons">Butoane meniu</string>
     <string name="button_start">Start / Options</string>
@@ -464,6 +464,7 @@
     <string name="settings_save_logcat_subtitle">Salvează un snapshot al logcat doar pentru PID-ul acestei aplicații</string>
     <string name="settings_save_logcat_title">Salvează logcat</string>
     <string name="settings_achievement_show_notification">Afișați notificările de realizări</string>
+    <string name="settings_achievement_play_sound">Redați sunetul de realizări</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
             Gestionarea flag-urilor pentru opcode‑urile CALL/RET<br /><br />
             <b>0</b> : Tratează CALL/RET ca și cum nu ar avea nevoie de flag-uri (mai rapid, instabil)<br />
@@ -739,6 +740,8 @@
 	<string name="enable_xinput_api">Activează API XInput</string>
 	<string name="enable_directinput_api">Activează API DirectInput</string>
 	<string name="directinput_mapper_type">Tip mapper DirectInput</string>
+	<string name="show_controller_debug_menu">Afișează meniul de depanare pentru controllere</string>
+	<string name="show_controller_debug_menu_subtitle">Afișează panoul live cu sloturile controllerelor P1-P4 în meniul rapid din joc</string>
 	<string name="disable_mouse_input">Dezactivează input-ul de mouse</string>
 	<string name="touchscreen_mode">Mod touchscreen</string>
 	<string name="touchscreen_mode_description">Pentru visual novels și jocuri RTS</string>
@@ -1485,7 +1488,7 @@
     <string name="review_mostly_negative">Majoritar negativ</string>
     <string name="review_overwhelmingly_negative">Copleșitor de negativ</string>
     <string name="settings_interface_show_recommendations_title">Afișează recomandări de jocuri</string>
-    <string name="settings_interface_show_recommendations_subtitle">Afișează jocuri indie selectate în biblioteca ta. Păstrând această opțiune activată, sprijini dezvoltatorii indie și GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Afișează recomandări personalizate. Menținerea activă ajută la susținerea GameNative.</string>
      <string name="steam_save_export_success">Salvari exportate</string>
      <string name="steam_save_export_no_saves_found">Nu s-au găsit fișiere de salvare</string>
      <string name="steam_save_export_failed">Exportul salvărilor a eșuat: %s</string>
@@ -2053,4 +2056,35 @@
     <string name="toast_no_buttons_to_copy_appearance">Nu există alte controale de la care să copiezi aspectul</string>
     <string name="toast_copied_button_appearance">Aspectul controlului a fost copiat</string>
     <string name="toast_applied_button_appearance">Aspectul a fost aplicat tuturor controalelor</string>
+    <string name="rec_disclosure_title">Recomandări de jocuri</string>
+    <string name="rec_disclosure_body">Pentru recomandări personalizate, partajăm jocurile pe care le joci cu GOG. Poți dezactiva oricând din Setări.</string>
+    <string name="rec_disclosure_allow">Permite</string>
+    <string name="rec_disclosure_not_now">Nu acum</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Sponsorizat</string>
+    <string name="featured_action_wishlist">Listă de dorințe</string>
+    <string name="featured_action_wishlist_on">Adaugă în listă pe %1$s</string>
+    <string name="featured_action_preorder">Precomandă</string>
+    <string name="featured_action_preorder_on">Precomandă pe %1$s</string>
+    <string name="featured_action_buy">Cumpără</string>
+    <string name="featured_action_buy_on">Cumpără pe %1$s</string>
+    <string name="featured_action_notify">Anunță-mă</string>
+    <string name="featured_action_visit">Află mai multe</string>
+    <string name="featured_status_coming_soon_title">În curând</string>
+    <string name="featured_status_coming_soon_body">Adaugă în lista de dorințe ca să fii anunțat la lansare</string>
+    <string name="featured_status_early_access_title">Acces timpuriu</string>
+    <string name="featured_status_early_access_body">Disponibil acum în acces timpuriu</string>
+    <string name="featured_status_preorder_title">Precomandă acum</string>
+    <string name="featured_status_preorder_body">Precomandă ca să fii pregătit la lansare</string>
+    <string name="featured_status_out_now_title">Disponibil acum</string>
+    <string name="featured_status_out_now_body">Acum disponibil</string>
+    <string name="tab_recommended">Recomandate</string>
+    <string name="gog_rec_empty">Adaugă sau joacă câteva jocuri pentru a primi recomandări GOG pe baza bibliotecii tale.</string>
+    <string name="steam_collections_removed">O colecție salvată a fost eliminată în Steam și nu mai este filtrată.</string>
+    <string name="steam_collections_title">Colecții Steam</string>
+    <string name="steam_collections_loading">Se încarcă colecțiile…</string>
+    <string name="steam_collections_offline">Se afișează ultimele colecții sincronizate. Conectează-te pentru a actualiza.</string>
+    <string name="steam_collections_clear">Șterge</string>
+    <string name="steam_collections_smart_unsupported">Sunt afișate doar colecțiile standard. Colecțiile inteligente nu sunt încă acceptate.</string>
 </resources>

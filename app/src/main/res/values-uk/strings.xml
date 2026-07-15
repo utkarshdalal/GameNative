@@ -423,13 +423,13 @@
     <string name="button_y">Кнопка Y</string>
     <string name="button_y_subtitle">Верхня кнопка</string>
     <string name="shoulder_buttons">Плечові кнопки</string>
-    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">Лівий бампер</string>
-    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">Правий бампер</string>
-    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">Лівий тригер</string>
-    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">Правий тригер</string>
     <string name="menu_buttons">Кнопки меню</string>
     <string name="button_start">Start / Options</string>
@@ -461,6 +461,7 @@
     <string name="settings_save_logcat_subtitle">Зберігає знімок logcat лише для PID цього застосунку</string>
     <string name="settings_save_logcat_title">Зберегти logcat</string>
     <string name="settings_achievement_show_notification">Показувати сповіщення про досягнення</string>
+    <string name="settings_achievement_play_sound">Відтворювати звук досягнень</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Обробка прапорців для опкодів CALL/RET<br /><br />
@@ -733,6 +734,8 @@
     <string name="enable_xinput_api">Увімкнути XInput API</string>
     <string name="enable_directinput_api">Увімкнути DirectInput API</string>
     <string name="directinput_mapper_type">Тип мапера DirectInput</string>
+    <string name="show_controller_debug_menu">Показувати меню налагодження контролерів</string>
+    <string name="show_controller_debug_menu_subtitle">Показувати живу панель слотів контролерів P1-P4 у швидкому меню гри</string>
     <string name="disable_mouse_input">Вимкнути введення мишею</string>
     <string name="touchscreen_mode">Режим сенсорного екрану</string>
     <string name="touchscreen_mode_description">Для візуальних романів та ігор RTS</string>
@@ -1478,7 +1481,7 @@
     <string name="review_mostly_negative">Переважно негативні</string>
     <string name="review_overwhelmingly_negative">Надзвичайно негативні</string>
     <string name="settings_interface_show_recommendations_title">Показувати рекомендації ігор</string>
-    <string name="settings_interface_show_recommendations_subtitle">Показує підібрані інді-ігри у вашій бібліотеці. Залишаючи це увімкненим, ви підтримуєте інді-розробників та GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Показує персональні рекомендації. Залишивши це ввімкненим, ви допомагаєте підтримати GameNative.</string>
      <string name="steam_save_export_success">Збереження експортовано</string>
      <string name="steam_save_export_no_saves_found">Збереження не знайдено</string>
      <string name="steam_save_export_failed">Не вдалося експортувати збереження: %s</string>
@@ -2046,4 +2049,35 @@
     <string name="toast_no_buttons_to_copy_appearance">Немає інших елементів для копіювання вигляду</string>
     <string name="toast_copied_button_appearance">Вигляд елемента скопійовано</string>
     <string name="toast_applied_button_appearance">Вигляд застосовано до всіх елементів</string>
+    <string name="rec_disclosure_title">Рекомендації ігор</string>
+    <string name="rec_disclosure_body">Для персональних рекомендацій ми надаємо ігри, у які ви граєте, сервісу GOG. Вимкнути можна будь-коли в Налаштуваннях.</string>
+    <string name="rec_disclosure_allow">Дозволити</string>
+    <string name="rec_disclosure_not_now">Не зараз</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Спонсовано</string>
+    <string name="featured_action_wishlist">Список бажань</string>
+    <string name="featured_action_wishlist_on">До списку бажань у %1$s</string>
+    <string name="featured_action_preorder">Передзамовити</string>
+    <string name="featured_action_preorder_on">Передзамовити у %1$s</string>
+    <string name="featured_action_buy">Придбати</string>
+    <string name="featured_action_buy_on">Придбати у %1$s</string>
+    <string name="featured_action_notify">Сповістити мене</string>
+    <string name="featured_action_visit">Докладніше</string>
+    <string name="featured_status_coming_soon_title">Незабаром</string>
+    <string name="featured_status_coming_soon_body">Додайте до списку бажань, щоб отримати сповіщення про вихід</string>
+    <string name="featured_status_early_access_title">Ранній доступ</string>
+    <string name="featured_status_early_access_body">Уже доступно в ранньому доступі</string>
+    <string name="featured_status_preorder_title">Передзамовити зараз</string>
+    <string name="featured_status_preorder_body">Передзамовте, щоб бути готовим до виходу</string>
+    <string name="featured_status_out_now_title">Уже вийшло</string>
+    <string name="featured_status_out_now_body">Доступно зараз</string>
+    <string name="tab_recommended">Рекомендовані</string>
+    <string name="gog_rec_empty">Додайте або пограйте в ігри, щоб отримати рекомендації GOG на основі вашої бібліотеки.</string>
+    <string name="steam_collections_removed">Збережену колекцію було видалено в Steam, і вона більше не фільтрується.</string>
+    <string name="steam_collections_title">Колекції Steam</string>
+    <string name="steam_collections_loading">Завантаження колекцій…</string>
+    <string name="steam_collections_offline">Показано останні синхронізовані колекції. Підключіться, щоб оновити.</string>
+    <string name="steam_collections_clear">Очистити</string>
+    <string name="steam_collections_smart_unsupported">Показано лише звичайні колекції. Розумні колекції ще не підтримуються.</string>
 </resources>

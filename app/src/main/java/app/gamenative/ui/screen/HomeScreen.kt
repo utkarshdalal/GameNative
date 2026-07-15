@@ -27,7 +27,8 @@ fun HomeScreen(
     onLogout: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onGoOnline: () -> Unit,
-    isOffline: Boolean = false
+    isOffline: Boolean = false,
+    isSteamConnected: Boolean = false,
 ) {
     val homeState by viewModel.homeState.collectAsStateWithLifecycle()
 
@@ -50,6 +51,7 @@ fun HomeScreen(
             onGoOnline = onGoOnline,
             onDownloadsClick = { viewModel.onDestination(HomeDestination.Downloads) },
             isOffline = isOffline,
+            isSteamConnected = isSteamConnected,
         )
         HomeDestination.Downloads -> HomeDownloadsScreen(
             onBack = { viewModel.onDestination(HomeDestination.Library) },

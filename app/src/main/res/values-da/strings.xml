@@ -357,13 +357,13 @@
     <string name="button_y">Y-knap</string>
     <string name="button_y_subtitle">Top ansigtsknap</string>
     <string name="shoulder_buttons">Skulderknapper</string>
-    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">Venstre bumper</string>
-    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">Højre bumper</string>
-    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">Venstre trigger</string>
-    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">Højre trigger</string>
     <string name="menu_buttons">Menuknapper</string>
     <string name="button_start">Start / Options</string>
@@ -561,6 +561,8 @@
     <string name="enable_xinput_api">Aktivér XInput API</string>
     <string name="enable_directinput_api">Aktivér DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput-mappertype</string>
+    <string name="show_controller_debug_menu">Vis controller-fejlfindingsmenu</string>
+    <string name="show_controller_debug_menu_subtitle">Vis det live P1-P4-controller-slotpanel i hurtigmenuen i spillet</string>
     <string name="disable_mouse_input">Deaktivér musinput</string>
     <string name="touchscreen_mode">Touchskærmstilstand</string>
     <string name="touchscreen_mode_description">Til visuelle romaner og RTS-spil</string>
@@ -1229,6 +1231,7 @@
     <string name="settings_save_logcat_subtitle">Gemmer et snapshot af logcat kun for denne apps PID</string>
     <string name="settings_save_logcat_title">Gem logcat</string>
     <string name="settings_achievement_show_notification">Vis præstationsmeddelelser</string>
+    <string name="settings_achievement_play_sound">Afspil præstationslyd</string>
 
     <!-- Misc additions -->
     <string name="calculating_space_requirements">Beregner pladskrav...</string>
@@ -1354,7 +1357,7 @@
     <string name="review_mostly_negative">Overvejende negativ</string>
     <string name="review_overwhelmingly_negative">Overvældende negativ</string>
     <string name="settings_interface_show_recommendations_title">Vis spilanbefalinger</string>
-    <string name="settings_interface_show_recommendations_subtitle">Vis udvalgte indie-spil i dit bibliotek. At holde dette aktiveret hjælper med at støtte indie-udviklere og GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Vis personlige anbefalinger. At holde dette slået til hjælper med at støtte GameNative.</string>
      <string name="steam_save_export_success">Gemte filer eksporteret</string>
      <string name="steam_save_export_no_saves_found">Ingen gemte filer fundet</string>
      <string name="steam_save_export_failed">Kunne ikke eksportere gemte filer: %s</string>
@@ -1922,4 +1925,35 @@
     <string name="toast_no_buttons_to_copy_appearance">Ingen andre kontroller at kopiere udseende fra</string>
     <string name="toast_copied_button_appearance">Kontroludseende kopieret</string>
     <string name="toast_applied_button_appearance">Udseende anvendt på alle kontroller</string>
+    <string name="rec_disclosure_title">Spilanbefalinger</string>
+    <string name="rec_disclosure_body">For personlige anbefalinger deler vi de spil, du spiller, med GOG. Slå fra når som helst i Indstillinger.</string>
+    <string name="rec_disclosure_allow">Tillad</string>
+    <string name="rec_disclosure_not_now">Ikke nu</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Sponsoreret</string>
+    <string name="featured_action_wishlist">Ønskeliste</string>
+    <string name="featured_action_wishlist_on">Føj til ønskeliste på %1$s</string>
+    <string name="featured_action_preorder">Forudbestil</string>
+    <string name="featured_action_preorder_on">Forudbestil på %1$s</string>
+    <string name="featured_action_buy">Køb</string>
+    <string name="featured_action_buy_on">Køb på %1$s</string>
+    <string name="featured_action_notify">Giv mig besked</string>
+    <string name="featured_action_visit">Læs mere</string>
+    <string name="featured_status_coming_soon_title">Kommer snart</string>
+    <string name="featured_status_coming_soon_body">Føj til ønskelisten nu for at få besked, så snart det udkommer</string>
+    <string name="featured_status_early_access_title">Early Access</string>
+    <string name="featured_status_early_access_body">Tilgængelig nu i Early Access</string>
+    <string name="featured_status_preorder_title">Forudbestil nu</string>
+    <string name="featured_status_preorder_body">Forudbestil for at være klar ved lanceringen</string>
+    <string name="featured_status_out_now_title">Ude nu</string>
+    <string name="featured_status_out_now_body">Tilgængelig nu</string>
+    <string name="tab_recommended">Anbefalet</string>
+    <string name="gog_rec_empty">Tilføj eller spil nogle spil for at få GOG-anbefalinger baseret på dit bibliotek.</string>
+    <string name="steam_collections_removed">En gemt samling blev fjernet i Steam og filtreres ikke længere.</string>
+    <string name="steam_collections_title">Steam-samlinger</string>
+    <string name="steam_collections_loading">Indlæser samlinger…</string>
+    <string name="steam_collections_offline">Viser senest synkroniserede samlinger. Opret forbindelse for at opdatere.</string>
+    <string name="steam_collections_clear">Ryd</string>
+    <string name="steam_collections_smart_unsupported">Kun standardsamlinger vises. Smarte samlinger understøttes ikke endnu.</string>
 </resources>

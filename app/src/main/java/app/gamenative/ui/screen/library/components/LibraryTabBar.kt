@@ -230,27 +230,37 @@ private fun CompactLibraryTabBar(
                                 indication = null,
                                 onClick = { onTabSelected(tab) },
                             )
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                            .padding(horizontal = if (tab.icon != null) 8.dp else 14.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         val count = tabCounts[tab]
-                        val label = if (count != null && count > 0) {
-                            stringResource(R.string.library_tab_with_count, stringResource(tab.labelResId), count)
-                        } else {
-                            stringResource(tab.labelResId)
+                        val tabColor = when {
+                            isSelected -> MaterialTheme.colorScheme.onPrimary
+                            isTabFocused -> MaterialTheme.colorScheme.primary
+                            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         }
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = when {
-                                isSelected -> MaterialTheme.colorScheme.onPrimary
-                                isTabFocused -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            },
-                        )
+                        if (tab.icon != null) {
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = stringResource(tab.labelResId),
+                                tint = tabColor,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        } else {
+                            val label = if (count != null && count > 0) {
+                                stringResource(R.string.library_tab_with_count, stringResource(tab.labelResId), count)
+                            } else {
+                                stringResource(tab.labelResId)
+                            }
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = tabColor,
+                            )
+                        }
                     }
                 }
             }
@@ -623,21 +633,33 @@ private fun TabItem(
                 indication = null,
                 onClick = onClick,
             )
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = if (tab.icon != null) 10.dp else 20.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = when {
-                isSelected -> MaterialTheme.colorScheme.onPrimary
-                else -> MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha)
-            },
-            textAlign = TextAlign.Center,
-        )
+        if (tab.icon != null) {
+            Icon(
+                imageVector = tab.icon,
+                contentDescription = stringResource(tab.labelResId),
+                tint = when {
+                    isSelected -> MaterialTheme.colorScheme.onPrimary
+                    else -> MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha)
+                },
+                modifier = Modifier.size(20.dp),
+            )
+        } else {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = when {
+                    isSelected -> MaterialTheme.colorScheme.onPrimary
+                    else -> MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha)
+                },
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 

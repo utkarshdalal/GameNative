@@ -26,6 +26,7 @@ import android.view.InputDevice
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import app.gamenative.BuildConfig
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -35,7 +36,10 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -65,6 +69,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -262,6 +268,29 @@ private fun detectMaxRefreshRateHz(context: Context, attachedView: View?): Int {
 private data class XServerViewReleaseBinding(
     val xServerView: XServerRendererView,
     val windowModificationListener: WindowManager.OnWindowModificationListener,
+)
+
+private data class ControllerSlotUiState(
+    val slotIndex: Int,
+    val enabled: Boolean,
+    val status: String,
+    val controllerName: String,
+    val deviceId: String,
+    val androidInputSource: String,
+    val guestInputMethod: String,
+)
+
+private data class ConnectedControllerUiState(
+    val name: String,
+    val deviceId: String,
+    val slotLabel: String,
+    val androidInputSource: String,
+)
+
+private data class ControllerStatusSnapshot(
+    val slots: List<ControllerSlotUiState>,
+    val connectedControllers: List<ConnectedControllerUiState>,
+    val guestApi: String,
 )
 
 private val CORE_WINE_PROCESSES = setOf(
@@ -497,6 +526,7 @@ fun XServerScreen(
     var quickMenuWineProcesses by remember { mutableStateOf<List<ProcessInfo>>(emptyList()) }
     var quickMenuWineProcessesLoading by remember { mutableStateOf(false) }
     var hasPhysicalController by remember { mutableStateOf(false) }
+    var controllerSlotStatusVersion by remember { mutableIntStateOf(0) }
     var keepPausedForEditor by remember { mutableStateOf(false) }
     var hasPhysicalKeyboard by remember { mutableStateOf(false) }
     var hasPhysicalMouse by remember { mutableStateOf(false) }
@@ -898,8 +928,10 @@ fun XServerScreen(
             isMouse && !device.isVirtual && isExternal
         }
         val controllerManager = ControllerManager.getInstance()
-        controllerManager.scanForDevices()
+        controllerManager.autoAssignConnectedDevices()
         hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
+        controllerSlotStatusVersion++
+        xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
 
         if (!usingScreenMirror &&
             !hasInternalTouchpad && !hasPhysicalMouse && !hasPhysicalKeyboard && !hasPhysicalController &&
@@ -970,7 +1002,10 @@ fun XServerScreen(
         }
         val isGamepad = ExternalController.isGameController(device)
         if (isGamepad) {
-            xServerView!!.getxServer().winHandler.setCurrentController(device.id);
+            ControllerManager.getInstance().onDeviceConnected(device.id)
+            controllerSlotStatusVersion++
+            xServerView?.getxServer()?.winHandler?.setCurrentController(device.id)
+            xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
             if (!showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
                 !container.isTouchscreenMode &&
                 !hasUpdatedScreenGamepad) {
@@ -1316,16 +1351,19 @@ fun XServerScreen(
 
         val deviceListener = object : InputManager.InputDeviceListener {
             override fun onInputDeviceAdded(deviceId: Int) {
+                ControllerManager.getInstance().onDeviceConnected(deviceId)
+                scanForExternalDevices()
                 val device = InputDevice.getDevice(deviceId) ?: return
                 evaluateDevice(device)
             }
 
             override fun onInputDeviceRemoved(deviceId: Int) {
-                // Re-scan since we don't know which type was removed
+                ControllerManager.getInstance().onDeviceDisconnected(deviceId)
                 scanForExternalDevices()
             }
 
             override fun onInputDeviceChanged(deviceId: Int) {
+                ControllerManager.getInstance().onDeviceConnected(deviceId)
                 scanForExternalDevices()
                 val device = InputDevice.getDevice(deviceId) ?: return
                 evaluateDevice(device)
@@ -1413,11 +1451,17 @@ fun XServerScreen(
         } else {
             var handled = false
             if (isGamepad) {
-                xServerView!!.getxServer().winHandler.setCurrentController(it.event.device.id);
-                handled = physicalControllerHandler?.onKeyEvent(it.event) == true
-                if (!handled) handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
-                // Final fallback to WinHandler passthrough
-                if (!handled) handled = xServerView!!.getxServer().winHandler.onKeyEvent(it.event)
+                val winHandler = xServerView!!.getxServer().winHandler
+                val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
+                if (assignedSlot >= 0) {
+                    handled = winHandler.onKeyEvent(it.event)
+                } else {
+                    winHandler.setCurrentController(it.event.device.id)
+                    handled = physicalControllerHandler?.onKeyEvent(it.event) == true
+                    if (!handled) handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
+                    // Final fallback to WinHandler passthrough
+                    if (!handled) handled = winHandler.onKeyEvent(it.event)
+                }
             }
             if (!handled && isKeyboard) {
                 val isShiftEscPressed = it.event.keyCode == KeyEvent.KEYCODE_ESCAPE &&
@@ -1448,6 +1492,8 @@ fun XServerScreen(
             handled
         }
     }
+
+
     val onMotionEvent: (AndroidEvent.MotionEvent) -> Boolean = {
         val isGamepad = ExternalController.isGameController(it.event?.device)
 
@@ -1457,11 +1503,17 @@ fun XServerScreen(
         } else {
             var handled = false
             if (isGamepad && it.event != null) {
-                xServerView!!.getxServer().winHandler.setCurrentController(it.event.device.id);
-                handled = physicalControllerHandler?.onGenericMotionEvent(it.event!!) == true
-                if (!handled) handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
-                // Final fallback to WinHandler passthrough
-                if (!handled) handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
+                val winHandler = xServerView!!.getxServer().winHandler
+                val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
+                if (assignedSlot >= 0) {
+                    handled = winHandler.onGenericMotionEvent(it.event)
+                } else {
+                    winHandler.setCurrentController(it.event.device.id)
+                    handled = physicalControllerHandler?.onGenericMotionEvent(it.event!!) == true
+                    if (!handled) handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
+                    // Final fallback to WinHandler passthrough
+                    if (!handled) handled = winHandler.onGenericMotionEvent(it.event)
+                }
             }
             if (PluviaApp.touchpadView?.hasPointerCapture() != true && !PluviaApp.isOverlayPaused) {
                 if ((it.event != null) && (it.event.device != null)) {
@@ -1558,6 +1610,9 @@ fun XServerScreen(
                     Lifecycle.Event.ON_RESUME -> {
                         Timber.d("Synchronizing XServerView renderer for lifecycle event: $event")
                         syncRendererToCurrentLifecycleState()
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            xServerView?.getxServer()?.winHandler?.reassertPrimaryController()
+                        }
                     }
                     else -> Unit
                 }
@@ -2564,6 +2619,17 @@ fun XServerScreen(
             },
         )
 
+        if (showQuickMenu && PrefManager.showControllerDebugMenu) {
+            ControllerSlotStatusOverlay(
+                container = container,
+                areControlsVisible = areControlsVisible,
+                refreshKey = controllerSlotStatusVersion,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp),
+            )
+        }
+
         if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu && !keepPausedForEditor) {
             Box(
                 modifier = Modifier
@@ -2959,7 +3025,7 @@ private fun hideInputControls() {
     PluviaApp.inputControlsView?.setShowTouchscreenControls(false)
     PluviaApp.inputControlsView?.setVisibility(View.GONE)
     PluviaApp.inputControlsView?.setProfile(null)
-    PluviaApp.xServerView?.getxServer()?.winHandler?.refreshControllerMappings()
+    PluviaApp.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
 
     PluviaApp.touchpadView?.setSensitivity(1.0f)
     PluviaApp.touchpadView?.setPointerButtonLeftEnabled(true)
@@ -2971,6 +3037,305 @@ private fun hideInputControls() {
         }
     }
     PluviaApp.inputControlsView?.invalidate()
+}
+
+@Composable
+private fun ControllerSlotStatusOverlay(
+    container: Container,
+    areControlsVisible: Boolean,
+    refreshKey: Int,
+    modifier: Modifier = Modifier,
+) {
+    var listenerRefreshKey by remember { mutableIntStateOf(0) }
+    val controllerManager = remember { ControllerManager.getInstance() }
+    val mainHandler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
+
+    DisposableEffect(controllerManager) {
+        val listener = ControllerManager.OnSlotsChangedListener {
+            mainHandler.post {
+                listenerRefreshKey++
+            }
+        }
+        controllerManager.addOnSlotsChangedListener(listener)
+        onDispose {
+            controllerManager.removeOnSlotsChangedListener(listener)
+        }
+    }
+
+    val snapshot = remember(
+        controllerManager,
+        container.containerVariant,
+        container.inputType,
+        areControlsVisible,
+        refreshKey,
+        listenerRefreshKey,
+    ) {
+        buildControllerStatusSnapshot(
+            controllerManager = controllerManager,
+            container = container,
+            areControlsVisible = areControlsVisible,
+        )
+    }
+
+    Surface(
+        modifier = modifier
+            .widthIn(min = 320.dp, max = 440.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+        color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.78f),
+        contentColor = androidx.compose.ui.graphics.Color.White,
+        border = BorderStroke(1.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = 0.18f)),
+        shadowElevation = 8.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Gamepad,
+                    contentDescription = null,
+                    tint = androidx.compose.ui.graphics.Color.White,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    text = "Controller slots",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = snapshot.guestApi,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.72f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                snapshot.slots.forEach { slot ->
+                    ControllerSlotRow(slot)
+                }
+            }
+
+            HorizontalDivider(color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.16f))
+
+            Text(
+                text = "Connected controllers",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.86f),
+            )
+            if (snapshot.connectedControllers.isEmpty()) {
+                Text(
+                    text = "None detected",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.64f),
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    snapshot.connectedControllers.forEach { controller ->
+                        ConnectedControllerRow(controller)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ControllerSlotRow(slot: ControllerSlotUiState) {
+    val accent = when {
+        slot.status == "Connected" -> androidx.compose.ui.graphics.Color(0xFF8BD67D)
+        slot.enabled -> androidx.compose.ui.graphics.Color(0xFFFFC857)
+        else -> androidx.compose.ui.graphics.Color.White.copy(alpha = 0.44f)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.08f),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+            )
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            text = "P${slot.slotIndex + 1}",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = accent,
+            modifier = Modifier.width(28.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = slot.status,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = accent,
+                    modifier = Modifier.padding(end = 8.dp),
+                )
+                Text(
+                    text = slot.controllerName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = androidx.compose.ui.graphics.Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                text = "${slot.deviceId} | ${slot.androidInputSource}",
+                style = MaterialTheme.typography.labelSmall,
+                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.62f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = slot.guestInputMethod,
+                style = MaterialTheme.typography.labelSmall,
+                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.62f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConnectedControllerRow(controller: ConnectedControllerUiState) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = controller.slotLabel,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = androidx.compose.ui.graphics.Color.White,
+            modifier = Modifier.width(40.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = controller.name,
+                style = MaterialTheme.typography.bodySmall,
+                color = androidx.compose.ui.graphics.Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "${controller.deviceId} | ${controller.androidInputSource}",
+                style = MaterialTheme.typography.labelSmall,
+                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.62f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+private fun buildControllerStatusSnapshot(
+    controllerManager: ControllerManager,
+    container: Container,
+    areControlsVisible: Boolean,
+): ControllerStatusSnapshot {
+    controllerManager.autoAssignConnectedDevices()
+    val guestApi = describePreferredInputApi(container)
+    val slots = (0 until WinHandler.MAX_PLAYERS).map { slot ->
+        val assignedDevice = controllerManager.getAssignedDeviceForSlot(slot)
+        val virtualGamepadActive =
+            slot == 0 &&
+                areControlsVisible &&
+                PluviaApp.inputControlsView?.profile?.isVirtualGamepad() == true
+        val enabled = controllerManager.isSlotEnabled(slot)
+        when {
+            assignedDevice != null -> ControllerSlotUiState(
+                slotIndex = slot,
+                enabled = enabled,
+                status = "Connected",
+                controllerName = assignedDevice.name,
+                deviceId = "deviceId=${assignedDevice.id}",
+                androidInputSource = describeControllerSources(assignedDevice),
+                guestInputMethod = "Physical controller -> $guestApi",
+            )
+            virtualGamepadActive -> ControllerSlotUiState(
+                slotIndex = slot,
+                enabled = enabled,
+                status = "Connected",
+                controllerName = PluviaApp.inputControlsView?.profile?.name ?: "On-screen controls",
+                deviceId = "virtual",
+                androidInputSource = "Touch controls",
+                guestInputMethod = "Virtual gamepad -> $guestApi",
+            )
+            enabled -> ControllerSlotUiState(
+                slotIndex = slot,
+                enabled = true,
+                status = "Waiting",
+                controllerName = "No controller assigned",
+                deviceId = "empty",
+                androidInputSource = "No active input",
+                guestInputMethod = "Provisioned for $guestApi",
+            )
+            else -> ControllerSlotUiState(
+                slotIndex = slot,
+                enabled = false,
+                status = "Disabled",
+                controllerName = "Slot disabled",
+                deviceId = "empty",
+                androidInputSource = "No active input",
+                guestInputMethod = "No guest input",
+            )
+        }
+    }
+    val connectedControllers = controllerManager.getDetectedDevices().map { device ->
+        val slot = controllerManager.getSlotForDevice(device.id)
+        ConnectedControllerUiState(
+            name = device.name,
+            deviceId = "deviceId=${device.id}",
+            slotLabel = if (slot >= 0) "P${slot + 1}" else "Free",
+            androidInputSource = describeControllerSources(device),
+        )
+    }
+    return ControllerStatusSnapshot(
+        slots = slots,
+        connectedControllers = connectedControllers,
+        guestApi = guestApi,
+    )
+}
+
+private fun describePreferredInputApi(container: Container): String {
+    val inputType = container.inputType
+    val api = PreferredInputApi.values().getOrElse(inputType) { PreferredInputApi.BOTH }
+    val apiLabel = when (api) {
+        PreferredInputApi.AUTO -> "Auto"
+        PreferredInputApi.DINPUT -> "DirectInput"
+        PreferredInputApi.XINPUT -> "XInput"
+        PreferredInputApi.BOTH -> "XInput + DirectInput"
+    }
+    val transport = if (container.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
+        "shared memory"
+    } else {
+        "WinHandler"
+    }
+    return "$apiLabel ($transport)"
+}
+
+private fun describeControllerSources(device: InputDevice): String {
+    val sources = mutableListOf<String>()
+    if (device.supportsSource(InputDevice.SOURCE_GAMEPAD)) sources += "Gamepad"
+    if (device.supportsSource(InputDevice.SOURCE_JOYSTICK)) sources += "Joystick"
+    if (device.supportsSource(InputDevice.SOURCE_KEYBOARD)) sources += "Keyboard"
+    if (device.supportsSource(InputDevice.SOURCE_DPAD)) sources += "D-pad"
+    return if (sources.isEmpty()) {
+        "sources=0x${device.sources.toString(16)}"
+    } else {
+        sources.joinToString(" + ")
+    }
 }
 
 /**
@@ -3552,6 +3917,7 @@ private fun setupXEnvironment(
                 displayNameMap = displayNameMap,
                 iconUrlMap = iconUrlMap,
                 configDirectory = configDirectory,
+                context = context,
             ).also { it.start() }
         } else {
             Timber.tag("achievements").w("Skipping achievement watcher, no steam_settings dir found for appId=$appId")

@@ -436,13 +436,13 @@
     <string name="button_y">Przycisk Y</string>
     <string name="button_y_subtitle">Górny przycisk akcji</string>
     <string name="shoulder_buttons">Przyciski boczne (Shoulder)</string>
-    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">Lewy bumper</string>
-    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">Prawy bumper</string>
-    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">Lewy spust</string>
-    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">Prawy spust</string>
     <string name="menu_buttons">Przyciski Menu</string>
     <string name="button_start">Start / Options</string>
@@ -474,6 +474,7 @@
     <string name="settings_save_logcat_subtitle">Zapisuje migawkę logcat tylko dla PID tej aplikacji</string>
     <string name="settings_save_logcat_title">Zapisz logcat</string>
     <string name="settings_achievement_show_notification">Pokaż powiadomienia o osiągnięciach</string>
+    <string name="settings_achievement_play_sound">Odtwarzaj dźwięk osiągnięć</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Obsługa flag w instrukcjach CALL/RET<br /><br />
@@ -747,6 +748,8 @@
     <string name="enable_xinput_api">Włącz API XInput</string>
     <string name="enable_directinput_api">Włącz API DirectInput</string>
     <string name="directinput_mapper_type">Typ mapowania DirectInput</string>
+    <string name="show_controller_debug_menu">Pokaż menu debugowania kontrolerów</string>
+    <string name="show_controller_debug_menu_subtitle">Pokaż panel na żywo slotów kontrolerów P1-P4 w szybkim menu w grze</string>
     <string name="disable_mouse_input">Wyłącz wejście myszy</string>
     <string name="touchscreen_mode">Tryb ekranu dotykowego</string>
     <string name="touchscreen_mode_description">Dla powieści wizualnych i gier RTS</string>
@@ -1482,7 +1485,7 @@
     <string name="review_mostly_negative">W większości negatywne</string>
     <string name="review_overwhelmingly_negative">Przytłaczająco negatywne</string>
     <string name="settings_interface_show_recommendations_title">Pokaż rekomendacje gier</string>
-    <string name="settings_interface_show_recommendations_subtitle">Wyświetla wyselekcjonowane gry indie w twojej bibliotece. Pozostawienie tego włączonego wspiera niezależnych deweloperów i GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Pokazuje spersonalizowane rekomendacje. Pozostawienie tej opcji włączonej wspiera GameNative.</string>
      <string name="steam_save_export_success">Zapisy wyeksportowane</string>
      <string name="steam_save_export_no_saves_found">Nie znaleziono plików zapisów</string>
      <string name="steam_save_export_failed">Nie udało się wyeksportować zapisów: %s</string>
@@ -2050,4 +2053,35 @@
     <string name="toast_no_buttons_to_copy_appearance">Brak innych elementów do skopiowania wyglądu</string>
     <string name="toast_copied_button_appearance">Skopiowano wygląd elementu</string>
     <string name="toast_applied_button_appearance">Zastosowano wygląd do wszystkich elementów</string>
+    <string name="rec_disclosure_title">Polecane gry</string>
+    <string name="rec_disclosure_body">Aby zapewnić spersonalizowane rekomendacje, udostępniamy ograne przez Ciebie gry serwisowi GOG. Możesz to wyłączyć w Ustawieniach.</string>
+    <string name="rec_disclosure_allow">Zezwól</string>
+    <string name="rec_disclosure_not_now">Nie teraz</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Sponsorowane</string>
+    <string name="featured_action_wishlist">Lista życzeń</string>
+    <string name="featured_action_wishlist_on">Dodaj do listy życzeń na %1$s</string>
+    <string name="featured_action_preorder">Zamów przedpremierowo</string>
+    <string name="featured_action_preorder_on">Zamów przedpremierowo na %1$s</string>
+    <string name="featured_action_buy">Kup</string>
+    <string name="featured_action_buy_on">Kup na %1$s</string>
+    <string name="featured_action_notify">Powiadom mnie</string>
+    <string name="featured_action_visit">Dowiedz się więcej</string>
+    <string name="featured_status_coming_soon_title">Wkrótce</string>
+    <string name="featured_status_coming_soon_body">Dodaj do listy życzeń, aby otrzymać powiadomienie w dniu premiery</string>
+    <string name="featured_status_early_access_title">Wczesny dostęp</string>
+    <string name="featured_status_early_access_body">Dostępne teraz we wczesnym dostępie</string>
+    <string name="featured_status_preorder_title">Zamów teraz</string>
+    <string name="featured_status_preorder_body">Zamów przedpremierowo, aby być gotowym na premierę</string>
+    <string name="featured_status_out_now_title">Już dostępne</string>
+    <string name="featured_status_out_now_body">Dostępne teraz</string>
+    <string name="tab_recommended">Polecane</string>
+    <string name="gog_rec_empty">Dodaj lub zagraj w kilka gier, aby otrzymać rekomendacje GOG na podstawie Twojej biblioteki.</string>
+    <string name="steam_collections_removed">Zapisana kolekcja została usunięta w Steam i nie jest już filtrowana.</string>
+    <string name="steam_collections_title">Kolekcje Steam</string>
+    <string name="steam_collections_loading">Wczytywanie kolekcji…</string>
+    <string name="steam_collections_offline">Wyświetlanie ostatnio zsynchronizowanych kolekcji. Połącz się, aby zaktualizować.</string>
+    <string name="steam_collections_clear">Wyczyść</string>
+    <string name="steam_collections_smart_unsupported">Wyświetlane są tylko standardowe kolekcje. Kolekcje inteligentne nie są jeszcze obsługiwane.</string>
 </resources>

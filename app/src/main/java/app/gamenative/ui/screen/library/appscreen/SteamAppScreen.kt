@@ -724,6 +724,12 @@ class SteamAppScreen : BaseAppScreen() {
                     context.startActivity(browserIntent)
                 },
             ),
+            AppMenuOption(
+                AppOptionMenuType.ChangeBranch,
+                onClick = {
+                    showBranchDialog(gameId)
+                },
+            ),
         )
 
         if (!isInstalled || isDownloadInProgress) {
@@ -795,12 +801,6 @@ class SteamAppScreen : BaseAppScreen() {
                         ),
                     )
                 },
-            ),
-            AppMenuOption(
-                AppOptionMenuType.ChangeBranch,
-                onClick = {
-                    showBranchDialog(gameId)
-                }
             ),
             AppMenuOption(
                 AppOptionMenuType.ForceCloudSync,
@@ -1339,7 +1339,11 @@ class SteamAppScreen : BaseAppScreen() {
                 onGetDisplayInfo = { context ->
                     return@GameManagerDialog getGameDisplayInfo(context, libraryItem)
                 },
+                branch = gameManagerDialogState.branch,
                 onInstall = { dlcAppIds ->
+                    val branch = gameManagerDialogState.branch
+                        ?: SteamService.getInstalledApp(gameId)?.branch
+                        ?: "public"
                     hideGameManagerDialog(gameId)
 
                     val installedApp = SteamService.getInstalledApp(gameId)
@@ -1354,7 +1358,7 @@ class SteamAppScreen : BaseAppScreen() {
                         properties = mapOf("game_name" to (appInfo?.name ?: ""))
                     )
                     CoroutineScope(Dispatchers.IO).launch {
-                        SteamService.downloadApp(gameId, dlcAppIds, isUpdateOrVerify = false)
+                        SteamService.downloadApp(gameId, dlcAppIds, branch = branch, isUpdateOrVerify = false)
                     }
                 },
                 onDismissRequest = {
@@ -1496,21 +1500,28 @@ class SteamAppScreen : BaseAppScreen() {
                 },
                 onConfirm = { selectedBranch ->
                     hideBranchDialog(gameId)
-                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
-                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
-                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-                        val dlcAppIds = SteamService.getInstalledApp(gameId)
-                            ?.dlcDepots.orEmpty()
-                        SteamService.downloadApp(
+                    if (SteamService.getInstalledApp(gameId) == null) {
+                        showGameManagerDialog(
                             gameId,
-                            dlcAppIds,
-                            branch = selectedBranch,
-                            isUpdateOrVerify = true,
+                            GameManagerDialogState(visible = true, branch = selectedBranch),
                         )
-                        container.isNeedsUnpacking = true
-                        container.saveData()
+                    } else {
+                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
+                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+                            val dlcAppIds = SteamService.getInstalledApp(gameId)
+                                ?.dlcDepots.orEmpty()
+                            SteamService.downloadApp(
+                                gameId,
+                                dlcAppIds,
+                                branch = selectedBranch,
+                                isUpdateOrVerify = true,
+                            )
+                            container.isNeedsUnpacking = true
+                            container.saveData()
+                        }
                     }
                 },
                 onDismissRequest = { hideBranchDialog(gameId) },

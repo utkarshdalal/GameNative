@@ -434,13 +434,13 @@
     <string name="button_y">Y 버튼</string>
     <string name="button_y_subtitle">위쪽 페이스 버튼</string>
     <string name="shoulder_buttons">숄더 버튼</string>
-    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">왼쪽 범퍼</string>
-    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">오른쪽 범퍼</string>
-    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">왼쪽 트리거</string>
-    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">오른쪽 트리거</string>
     <string name="menu_buttons">메뉴 버튼</string>
     <string name="button_start">Start / Options</string>
@@ -472,6 +472,7 @@
     <string name="settings_save_logcat_subtitle">이 앱의 PID에 대한 logcat 스냅샷만 저장합니다</string>
     <string name="settings_save_logcat_title">logcat 저장</string>
     <string name="settings_achievement_show_notification">업적 알림 표시</string>
+    <string name="settings_achievement_play_sound">업적 소리 재생</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         CALL/RET 명령어의 플래그 처리<br /><br />
@@ -741,6 +742,8 @@
     <string name="enable_xinput_api">XInput API 활성화</string>
     <string name="enable_directinput_api">DirectInput API 활성화</string>
     <string name="directinput_mapper_type">DirectInput 매퍼 유형</string>
+    <string name="show_controller_debug_menu">컨트롤러 디버그 메뉴 표시</string>
+    <string name="show_controller_debug_menu_subtitle">게임 내 빠른 메뉴에 P1-P4 컨트롤러 슬롯 실시간 패널 표시</string>
     <string name="disable_mouse_input">마우스 입력 비활성화</string>
     <string name="touchscreen_mode">터치스크린 모드</string>
     <string name="shooter_mode_toggle">슈터 모드</string>
@@ -1460,7 +1463,7 @@
     <string name="review_mostly_negative">대체로 부정적</string>
     <string name="review_overwhelmingly_negative">압도적으로 부정적</string>
     <string name="settings_interface_show_recommendations_title">게임 추천 표시</string>
-    <string name="settings_interface_show_recommendations_subtitle">라이브러리에 엄선된 인디 게임을 표시합니다. 이 기능을 켜두면 인디 개발자와 GameNative를 지원하는 데 도움이 됩니다.</string>
+    <string name="settings_interface_show_recommendations_subtitle">맞춤 추천을 표시합니다. 켜 두면 GameNative를 지원하는 데 도움이 됩니다.</string>
      <string name="steam_save_export_success">세이브 데이터 내보내기 완료</string>
      <string name="steam_save_export_no_saves_found">세이브 파일을 찾을 수 없음</string>
      <string name="steam_save_export_failed">세이브 데이터 내보내기 실패: %s</string>
@@ -2050,4 +2053,35 @@
     <string name="toast_no_buttons_to_copy_appearance">모양을 복사할 다른 컨트롤이 없습니다</string>
     <string name="toast_copied_button_appearance">컨트롤 모양을 복사했습니다</string>
     <string name="toast_applied_button_appearance">모든 컨트롤에 모양을 적용했습니다</string>
+    <string name="rec_disclosure_title">게임 추천</string>
+    <string name="rec_disclosure_body">맞춤 추천을 위해 플레이한 게임을 GOG와 공유합니다. 설정에서 언제든지 끌 수 있습니다.</string>
+    <string name="rec_disclosure_allow">허용</string>
+    <string name="rec_disclosure_not_now">나중에</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">스폰서</string>
+    <string name="featured_action_wishlist">위시리스트</string>
+    <string name="featured_action_wishlist_on">%1$s에서 위시리스트에 추가</string>
+    <string name="featured_action_preorder">예약 구매</string>
+    <string name="featured_action_preorder_on">%1$s에서 예약 구매</string>
+    <string name="featured_action_buy">구매</string>
+    <string name="featured_action_buy_on">%1$s에서 구매</string>
+    <string name="featured_action_notify">알림 받기</string>
+    <string name="featured_action_visit">자세히 보기</string>
+    <string name="featured_status_coming_soon_title">출시 예정</string>
+    <string name="featured_status_coming_soon_body">지금 위시리스트에 추가하고 출시되는 순간 알림을 받으세요</string>
+    <string name="featured_status_early_access_title">앞서 해보기</string>
+    <string name="featured_status_early_access_body">지금 앞서 해보기로 이용 가능</string>
+    <string name="featured_status_preorder_title">지금 예약 구매</string>
+    <string name="featured_status_preorder_body">예약 구매하고 출시에 대비하세요</string>
+    <string name="featured_status_out_now_title">출시됨</string>
+    <string name="featured_status_out_now_body">지금 이용 가능</string>
+    <string name="tab_recommended">추천</string>
+    <string name="gog_rec_empty">게임을 추가하거나 플레이하면 라이브러리를 기반으로 한 GOG 추천을 받을 수 있습니다.</string>
+    <string name="steam_collections_removed">저장된 컬렉션이 Steam에서 제거되어 더 이상 필터링되지 않습니다.</string>
+    <string name="steam_collections_title">Steam 컬렉션</string>
+    <string name="steam_collections_loading">컬렉션 불러오는 중…</string>
+    <string name="steam_collections_offline">마지막으로 동기화된 컬렉션을 표시하고 있습니다. 업데이트하려면 연결하세요.</string>
+    <string name="steam_collections_clear">지우기</string>
+    <string name="steam_collections_smart_unsupported">표준 컬렉션만 표시됩니다. 스마트 컬렉션은 아직 지원되지 않습니다.</string>
 </resources>

@@ -449,13 +449,13 @@
     <string name="button_y">Yボタン</string>
     <string name="button_y_subtitle">天面ボタン</string>
     <string name="shoulder_buttons">肩ボタン</string>
-    <string name="button_l1">L1/LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">左バンパー</string>
-    <string name="button_r1">R1/RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">右バンパー</string>
-    <string name="button_l2">L2/LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">左トリガー</string>
-    <string name="button_r2">R2/RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">右トリガー</string>
     <string name="menu_buttons">メニューボタン</string>
     <string name="button_start">スタート/オプション</string>
@@ -487,6 +487,7 @@
     <string name="settings_save_logcat_subtitle">この app\'s PID のみの logcat のスナップショットを保存します</string>
     <string name="settings_save_logcat_title">ログキャットを保存する</string>
     <string name="settings_achievement_show_notification">達成通知を表示する</string>
+    <string name="settings_achievement_play_sound">達成サウンドを再生する</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[CALL/RET オペコードのフラグの処理<br /><br />
         <b>0</b> : CALL/RET をフラグを必要としなかったかのように扱います (高速、不安定)<br />
         <b>1</b> : ほとんどの RET にはフラグが必要ですが、ほとんどの CALLS には必要ありません<br />
@@ -748,6 +749,8 @@
     <string name="enable_xinput_api">XInput API を有効にする</string>
     <string name="enable_directinput_api">DirectInput API を有効にする</string>
     <string name="directinput_mapper_type">DirectInput マッパーのタイプ</string>
+    <string name="show_controller_debug_menu">コントローラー デバッグ メニューを表示</string>
+    <string name="show_controller_debug_menu_subtitle">ゲーム内クイックメニューに P1-P4 コントローラー スロットのライブパネルを表示します</string>
     <string name="disable_mouse_input">マウス入力を無効にする</string>
     <string name="touchscreen_mode">タッチスクリーンモード</string>
     <string name="shooter_mode_toggle">シューターモード</string>
@@ -1535,7 +1538,7 @@
     <string name="lsfg_installing">Lossless Scaling をダウンロード中…</string>
     <string name="lsfg_performance_mode_desc">スループットを上げるために品質を下げる</string>
     <string name="settings_interface_show_recommendations_title">ゲームのおすすめを表示</string>
-    <string name="settings_interface_show_recommendations_subtitle">厳選されたインディー ゲームのおすすめをライブラリに表示します。これをオンにしておくと、インディー開発者と GameNative のサポートに役立ちます。</string>
+    <string name="settings_interface_show_recommendations_subtitle">パーソナライズされたおすすめを表示します。オンのままにすると GameNative の支援につながります。</string>
     <!-- Game Launch Tips -->
     <string name="game_launch_tip_1">初回起動時は起動に数分かかる場合があります</string>
     <string name="game_launch_tip_2">ヒント: ゲーム設定で \"%s\" を押すと、ゲーム ファイルを表示できます。</string>
@@ -2009,4 +2012,35 @@
     <string name="toast_no_buttons_to_copy_appearance">外観をコピーできる他のコントロールがありません</string>
     <string name="toast_copied_button_appearance">コントロールの外観をコピーしました</string>
     <string name="toast_applied_button_appearance">すべてのコントロールに外観を適用しました</string>
+    <string name="rec_disclosure_title">ゲームのおすすめ</string>
+    <string name="rec_disclosure_body">パーソナライズされたおすすめのため、プレイしたゲームを GOG と共有します。設定でいつでもオフにできます。</string>
+    <string name="rec_disclosure_allow">許可</string>
+    <string name="rec_disclosure_not_now">後で</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">スポンサー</string>
+    <string name="featured_action_wishlist">ウィッシュリスト</string>
+    <string name="featured_action_wishlist_on">%1$s でウィッシュリストに追加</string>
+    <string name="featured_action_preorder">予約購入</string>
+    <string name="featured_action_preorder_on">%1$s で予約購入</string>
+    <string name="featured_action_buy">購入</string>
+    <string name="featured_action_buy_on">%1$s で購入</string>
+    <string name="featured_action_notify">通知を受け取る</string>
+    <string name="featured_action_visit">詳細を見る</string>
+    <string name="featured_status_coming_soon_title">近日公開</string>
+    <string name="featured_status_coming_soon_body">ウィッシュリストに追加すると、リリース時に通知されます</string>
+    <string name="featured_status_early_access_title">早期アクセス</string>
+    <string name="featured_status_early_access_body">早期アクセスで配信中</string>
+    <string name="featured_status_preorder_title">今すぐ予約購入</string>
+    <string name="featured_status_preorder_body">予約購入してリリースに備えよう</string>
+    <string name="featured_status_out_now_title">配信中</string>
+    <string name="featured_status_out_now_body">現在利用可能</string>
+    <string name="tab_recommended">おすすめ</string>
+    <string name="gog_rec_empty">ゲームを追加またはプレイすると、ライブラリに基づいたGOGのおすすめが表示されます。</string>
+    <string name="steam_collections_removed">保存されたコレクションが Steam で削除されたため、フィルターから除外されました。</string>
+    <string name="steam_collections_title">Steam コレクション</string>
+    <string name="steam_collections_loading">コレクションを読み込み中…</string>
+    <string name="steam_collections_offline">最後に同期されたコレクションを表示しています。更新するには接続してください。</string>
+    <string name="steam_collections_clear">クリア</string>
+    <string name="steam_collections_smart_unsupported">標準コレクションのみ表示されます。スマートコレクションはまだ対応していません。</string>
 </resources>

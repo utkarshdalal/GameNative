@@ -418,13 +418,13 @@
     <string name="button_y">Y-Taste</string>
     <string name="button_y_subtitle">Obere Fronttaste</string>
     <string name="shoulder_buttons">Schultertasten</string>
-    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">Linker Bumper</string>
-    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">Rechter Bumper</string>
-    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">Linker Trigger</string>
-    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">Rechter Trigger</string>
     <string name="menu_buttons">Menütasten</string>
     <string name="button_start">Start / Optionen</string>
@@ -454,6 +454,7 @@
     <string name="settings_save_logcat_subtitle">Speichert einen Logcat-Snapshot nur für diese App</string>
     <string name="settings_save_logcat_title">Logcat speichern</string>
     <string name="settings_achievement_show_notification">Errungenschaften-Benachrichtigungen anzeigen</string>
+    <string name="settings_achievement_play_sound">Erfolgs-Sound abspielen</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Behandlung von Flags bei CALL/RET-Befehlen<br /><br />
         <b>0</b> : Behandelt CALL/RET als ob nie Flags benötigt werden (schneller, instabil)<br />
@@ -712,6 +713,8 @@
     <string name="enable_xinput_api">XInput-API aktivieren</string>
     <string name="enable_directinput_api">DirectInput-API aktivieren</string>
     <string name="directinput_mapper_type">DirectInput-Mapper-Typ</string>
+    <string name="show_controller_debug_menu">Controller-Debug-Menü anzeigen</string>
+    <string name="show_controller_debug_menu_subtitle">Live-P1-P4-Controller-Slot-Panel im Schnellmenü im Spiel anzeigen</string>
     <string name="disable_mouse_input">Mauseingabe deaktivieren</string>
     <string name="touchscreen_mode">Touchscreen-Modus</string>
     <string name="touchscreen_mode_description">Für Visual Novels und RTS-Spiele</string>
@@ -1424,7 +1427,7 @@
     <string name="review_mostly_negative">Größtenteils negativ</string>
     <string name="review_overwhelmingly_negative">Überwältigend negativ</string>
     <string name="settings_interface_show_recommendations_title">Spielempfehlungen anzeigen</string>
-    <string name="settings_interface_show_recommendations_subtitle">Zeigt kuratierte Indie-Spiele in deiner Bibliothek. Aktiviert lassen unterstützt Indie-Entwickler und GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Zeigt personalisierte Empfehlungen. Wenn du dies aktiviert lässt, unterstützt du GameNative.</string>
      <string name="steam_save_export_success">Spielstände exportiert</string>
      <string name="steam_save_export_no_saves_found">Keine Spielstände gefunden</string>
      <string name="steam_save_export_failed">Spielstände konnten nicht exportiert werden: %s</string>
@@ -1992,4 +1995,35 @@
     <string name="toast_no_buttons_to_copy_appearance">Keine anderen Steuerungen zum Kopieren der Darstellung verfügbar</string>
     <string name="toast_copied_button_appearance">Steuerungsdarstellung kopiert</string>
     <string name="toast_applied_button_appearance">Darstellung auf alle Steuerungen angewendet</string>
+    <string name="rec_disclosure_title">Spielempfehlungen</string>
+    <string name="rec_disclosure_body">Für personalisierte Empfehlungen teilen wir die von dir gespielten Spiele mit GOG. Jederzeit in den Einstellungen deaktivierbar.</string>
+    <string name="rec_disclosure_allow">Zulassen</string>
+    <string name="rec_disclosure_not_now">Nicht jetzt</string>
+
+    <!-- Sponsorship (featured slot) -->
+    <string name="featured_badge">Gesponsert</string>
+    <string name="featured_action_wishlist">Wunschliste</string>
+    <string name="featured_action_wishlist_on">Auf %1$s auf die Wunschliste</string>
+    <string name="featured_action_preorder">Vorbestellen</string>
+    <string name="featured_action_preorder_on">Auf %1$s vorbestellen</string>
+    <string name="featured_action_buy">Kaufen</string>
+    <string name="featured_action_buy_on">Auf %1$s kaufen</string>
+    <string name="featured_action_notify">Benachrichtigen</string>
+    <string name="featured_action_visit">Mehr erfahren</string>
+    <string name="featured_status_coming_soon_title">Demnächst</string>
+    <string name="featured_status_coming_soon_body">Jetzt auf die Wunschliste setzen und zum Launch benachrichtigt werden</string>
+    <string name="featured_status_early_access_title">Early Access</string>
+    <string name="featured_status_early_access_body">Jetzt im Early Access verfügbar</string>
+    <string name="featured_status_preorder_title">Jetzt vorbestellen</string>
+    <string name="featured_status_preorder_body">Vorbestellen und zum Launch bereit sein</string>
+    <string name="featured_status_out_now_title">Jetzt erhältlich</string>
+    <string name="featured_status_out_now_body">Jetzt verfügbar</string>
+    <string name="tab_recommended">Empfohlen</string>
+    <string name="gog_rec_empty">Füge Spiele hinzu oder spiele welche, um GOG-Empfehlungen basierend auf deiner Bibliothek zu erhalten.</string>
+    <string name="steam_collections_removed">Eine gespeicherte Sammlung wurde in Steam entfernt und wird nicht mehr gefiltert.</string>
+    <string name="steam_collections_title">Steam-Sammlungen</string>
+    <string name="steam_collections_loading">Sammlungen werden geladen…</string>
+    <string name="steam_collections_offline">Es werden die zuletzt synchronisierten Sammlungen angezeigt. Zum Aktualisieren verbinden.</string>
+    <string name="steam_collections_clear">Löschen</string>
+    <string name="steam_collections_smart_unsupported">Es werden nur Standardsammlungen angezeigt. Intelligente Sammlungen werden noch nicht unterstützt.</string>
 </resources>

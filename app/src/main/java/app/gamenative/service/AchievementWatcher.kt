@@ -1,5 +1,7 @@
 package app.gamenative.service
 
+import android.content.Context
+import android.media.MediaPlayer
 import android.os.FileObserver
 import app.gamenative.ui.util.AchievementNotificationManager
 import kotlinx.coroutines.CoroutineScope
@@ -10,6 +12,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import app.gamenative.PrefManager
+import app.gamenative.R
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
@@ -20,12 +23,16 @@ class AchievementWatcher(
     private val displayNameMap: Map<String, String>,
     private val iconUrlMap: Map<String, String?>,
     private val configDirectory: String?,
+    context: Context
 ) {
     private val observers = mutableListOf<FileObserver>()
     private val notifiedNames = mutableSetOf<String>()
     private val uploadedNames = mutableSetOf<String>()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var uploadJob: Job? = null
+
+    private val soundLock = Any()
+    private val achievementSoundPlayer: MediaPlayer? = MediaPlayer.create(context.applicationContext, R.raw.achievement_pop)
 
     fun start() {
         Timber.tag("achievements").d("Achievement Watcher Started for appId=$appId")
@@ -70,6 +77,9 @@ class AchievementWatcher(
         observers.forEach { it.stopWatching() }
         observers.clear()
         scope.cancel()
+        synchronized(soundLock) {
+            achievementSoundPlayer?.release()
+        }
         Timber.tag("achievements").d("AchievementWatcher stopped")
     }
 
@@ -88,8 +98,11 @@ class AchievementWatcher(
                 val displayName = displayNameMap[name] ?: name
                 val iconUrl = iconUrlMap[name]
 
-                if(PrefManager.achievementShowNotification) {
+                if (PrefManager.achievementShowNotification) {
                     AchievementNotificationManager.show(displayName, iconUrl)
+                }
+                if (PrefManager.achievementPlaySound) {
+                    playUnlockSound()
                 }
                 Timber.tag("achievements").i("Achievement unlocked: $name ($displayName)")
             }
@@ -99,6 +112,22 @@ class AchievementWatcher(
 
         if (hasNewUnlocks) {
             scheduleUpload()
+        }
+    }
+
+    /** Plays the unlock sound, restarting it from the beginning if a prior unlock is still playing. */
+    private fun playUnlockSound() {
+        val player = achievementSoundPlayer ?: return
+        synchronized(soundLock) {
+            try {
+                if (player.isPlaying) {
+                    player.seekTo(0)
+                } else {
+                    player.start()
+                }
+            } catch (e: Exception) {
+                Timber.tag("achievements").w(e, "Failed to play achievement unlock sound")
+            }
         }
     }
 
