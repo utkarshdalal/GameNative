@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -35,6 +36,8 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.PhotoSizeSelectActual
 import androidx.compose.material.icons.filled.Schedule
@@ -46,15 +49,21 @@ import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Stars
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -66,6 +75,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.SteamCollection
 import app.gamenative.ui.component.GameStatsKey
 import app.gamenative.ui.component.OptionListItem
 import app.gamenative.ui.component.OptionRadioItem
@@ -87,6 +97,14 @@ fun LibraryOptionsPanel(
     onSortOptionChanged: (SortOption) -> Unit,
     currentView: PaneType,
     onViewChanged: (PaneType) -> Unit,
+    steamCollections: List<SteamCollection>?,
+    selectedSteamCollectionIds: Set<String>,
+    steamCollectionCounts: Map<String, Int>,
+    skippedDynamicCollections: Boolean,
+    isSteamConnected: Boolean,
+    isOffline: Boolean,
+    onSteamCollectionToggle: (String) -> Unit,
+    onClearSteamCollections: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
@@ -304,6 +322,116 @@ fun LibraryOptionsPanel(
                             )
                         }
 
+                        // Steam collections — local view filter, shown only when Steam is connected.
+                        if (isSteamConnected) {
+                            Spacer(modifier = Modifier.height(20.dp))
+                            var collectionsExpanded by rememberSaveable {
+                                mutableStateOf(selectedSteamCollectionIds.isNotEmpty())
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { collectionsExpanded = !collectionsExpanded }
+                                    .padding(end = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                OptionSectionHeader(text = stringResource(R.string.steam_collections_title))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (selectedSteamCollectionIds.isNotEmpty()) {
+                                        TextButton(onClick = onClearSteamCollections) {
+                                            Text(stringResource(R.string.steam_collections_clear))
+                                        }
+                                    }
+                                    Icon(
+                                        imageVector = if (collectionsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            AnimatedVisibility(visible = collectionsExpanded) {
+                                Column {
+                                    when {
+                                        steamCollections == null -> {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(18.dp),
+                                                    strokeWidth = 2.dp,
+                                                )
+                                                Spacer(modifier = Modifier.width(12.dp))
+                                                Text(
+                                                    text = stringResource(R.string.steam_collections_loading),
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                        }
+                                        steamCollections.isEmpty() -> {
+                                            // No static collections to list, but still explain why (offline /
+                                            // only smart collections) so the section doesn't look broken.
+                                            if (isOffline) {
+                                                Text(
+                                                    text = stringResource(R.string.steam_collections_offline),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                                )
+                                            }
+                                            if (skippedDynamicCollections) {
+                                                Text(
+                                                    text = stringResource(R.string.steam_collections_smart_unsupported),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                                )
+                                            }
+                                        }
+                                        else -> {
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .focusGroup()
+                                                    .padding(horizontal = 8.dp),
+                                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                                            ) {
+                                                steamCollections.sortedBy { it.name.lowercase() }.forEach { collection ->
+                                                    OptionListItem(
+                                                        text = collection.name,
+                                                        selected = selectedSteamCollectionIds.contains(collection.id),
+                                                        onClick = { onSteamCollectionToggle(collection.id) },
+                                                        trailingText = steamCollectionCounts[collection.id]?.toString(),
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                    )
+                                                }
+                                            }
+                                            if (isOffline) {
+                                                Text(
+                                                    text = stringResource(R.string.steam_collections_offline),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                                )
+                                            }
+                                            if (skippedDynamicCollections) {
+                                                Text(
+                                                    text = stringResource(R.string.steam_collections_smart_unsupported),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
@@ -357,6 +485,17 @@ private fun Preview_LibraryOptionsPanel() {
                     onSortOptionChanged = { },
                     currentView = PaneType.GRID_HERO,
                     onViewChanged = { },
+                    steamCollections = listOf(
+                        SteamCollection(id = "fav", name = "Favorites", appIds = setOf(440, 570)),
+                        SteamCollection(id = "rpg", name = "RPGs", appIds = setOf(292030)),
+                    ),
+                    selectedSteamCollectionIds = setOf("fav"),
+                    steamCollectionCounts = mapOf("fav" to 2, "rpg" to 1),
+                    skippedDynamicCollections = true,
+                    isSteamConnected = true,
+                    isOffline = false,
+                    onSteamCollectionToggle = { },
+                    onClearSteamCollections = { },
                 )
             }
         }

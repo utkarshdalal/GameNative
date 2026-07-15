@@ -106,6 +106,8 @@
     <string name="downloads_cancel_confirm">Cancel download and delete files for %1$s?</string>
 
     <!-- Library Tabs -->
+    <string name="tab_recommended">Recommended</string>
+    <string name="gog_rec_empty">Add or play some games to get GOG recommendations based on your library.</string>
     <string name="tab_all">All</string>
     <string name="tab_steam">Steam</string>
     <string name="tab_gog">GOG</string>
@@ -115,6 +117,12 @@
     <string name="tab_local">Custom</string>
     <string name="library_tab_with_count">%1$s (%2$d)</string>
     <string name="library_search_close">Close search</string>
+    <string name="steam_collections_removed">A saved collection was removed in Steam and is no longer filtered.</string>
+    <string name="steam_collections_title">Steam collections</string>
+    <string name="steam_collections_loading">Loading collections…</string>
+    <string name="steam_collections_offline">Showing last synced collections. Connect to update.</string>
+    <string name="steam_collections_clear">Clear</string>
+    <string name="steam_collections_smart_unsupported">Only standard collections are shown. Smart collections aren\'t supported yet.</string>
     <string name="default_user_name">User</string>
 
     <!-- Custom Games -->
@@ -536,13 +544,13 @@
     <string name="button_y">Y Button</string>
     <string name="button_y_subtitle">Top face button</string>
     <string name="shoulder_buttons">Shoulder Buttons</string>
-    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">Left bumper</string>
-    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">Right bumper</string>
-    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">Left trigger</string>
-    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">Right trigger</string>
     <string name="menu_buttons">Menu Buttons</string>
     <string name="button_start">Start / Options</string>
@@ -574,6 +582,7 @@
     <string name="settings_save_logcat_subtitle">Saves a snapshot of the logcat only for this app\'s PID</string>
     <string name="settings_save_logcat_title">Save logcat</string>
     <string name="settings_achievement_show_notification">Show Achievement Notifications</string>
+    <string name="settings_achievement_play_sound">Play Achievement Sound</string>
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Handling of flags on CALL/RET opcodes<br /><br />
         <b>0</b> : Treats CALL/RET as if it never needed flags (faster, unstable)<br />
@@ -860,6 +869,8 @@
     <string name="enable_xinput_api">Enable XInput API</string>
     <string name="enable_directinput_api">Enable DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput Mapper Type</string>
+    <string name="show_controller_debug_menu">Show Controller Debug Menu</string>
+    <string name="show_controller_debug_menu_subtitle">Show the live P1-P4 controller slot panel in the in-game quick menu</string>
     <string name="disable_mouse_input">Disable Mouse Input</string>
     <string name="touchscreen_mode">Touchscreen Mode</string>
     <string name="shooter_mode_toggle">Shooter Mode</string>
@@ -1974,6 +1985,25 @@
     <string name="recommended_support_message">Purchasing through this link helps support the development of GameNative.</string>
     <string name="recommended_about_heading">About This Game</string>
     <string name="recommended_review_count">Based on %1$s reviews</string>
+
+    <!-- FeaturedItem (server-driven promoted slot) -->
+    <string name="featured_badge">Sponsored</string>
+    <string name="featured_action_wishlist">Wishlist</string>
+    <string name="featured_action_wishlist_on">Wishlist on %1$s</string>
+    <string name="featured_action_preorder">Pre-order</string>
+    <string name="featured_action_preorder_on">Pre-order on %1$s</string>
+    <string name="featured_action_buy">Buy</string>
+    <string name="featured_action_buy_on">Buy on %1$s</string>
+    <string name="featured_action_notify">Notify me</string>
+    <string name="featured_action_visit">Learn more</string>
+    <string name="featured_status_coming_soon_title">Coming Soon</string>
+    <string name="featured_status_coming_soon_body">Wishlist now to get notified the moment it launches</string>
+    <string name="featured_status_early_access_title">Early Access</string>
+    <string name="featured_status_early_access_body">Available now in Early Access</string>
+    <string name="featured_status_preorder_title">Pre-order Now</string>
+    <string name="featured_status_preorder_body">Pre-order to be ready at launch</string>
+    <string name="featured_status_out_now_title">Out Now</string>
+    <string name="featured_status_out_now_body">Available now</string>
     <string name="review_overwhelmingly_positive">Overwhelmingly Positive</string>
     <string name="review_very_positive">Very Positive</string>
     <string name="review_mostly_positive">Mostly Positive</string>
@@ -1995,8 +2025,12 @@
     <string name="lsfg_install_message">This will download Lossless Scaling from Steam to enable frame generation.</string>
     <string name="lsfg_installing">Downloading Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Reduces quality for higher throughput</string>
+    <string name="rec_disclosure_title">Game recommendations</string>
+    <string name="rec_disclosure_body">For personalized recommendations, we share the games you play with GOG. Turn off anytime in Settings.</string>
+    <string name="rec_disclosure_allow">Allow</string>
+    <string name="rec_disclosure_not_now">Not now</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
-    <string name="settings_interface_show_recommendations_subtitle">Show curated indie game picks in your library. Keeping this on helps support indie developers and GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Show personalized recommendations. Keeping this on helps support GameNative.</string>
 
     <!-- HLTB (How Long To Beat) -->
     <string name="hltb_main_story">Main Story</string>

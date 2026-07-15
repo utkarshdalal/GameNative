@@ -10,11 +10,17 @@ import androidx.lifecycle.viewModelScope
 import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.gog.GogRecommendationsRepository
+import app.gamenative.data.gog.GogSeedCollector
+import app.gamenative.service.gog.GOGAuthManager
 import app.gamenative.data.LibraryPlayHistory
 import app.gamenative.data.SteamApp
+import app.gamenative.data.SteamCollection
+import app.gamenative.data.SteamCollectionRepository
 import app.gamenative.events.AndroidEvent
 import app.gamenative.data.GOGGame
 import app.gamenative.data.EpicGame
@@ -30,6 +36,7 @@ import app.gamenative.service.amazon.AmazonArtwork
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.steam.SteamCollectionFilter
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.data.statsFor
 import app.gamenative.ui.enums.AppFilter
@@ -37,6 +44,7 @@ import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.enums.LibraryTab.Companion.next
 import app.gamenative.ui.enums.LibraryTab.Companion.previous
 import app.gamenative.ui.enums.SortOption
+import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.data.RecommendationRepository
 import app.gamenative.data.RecommendedGame
@@ -98,7 +106,7 @@ class LibraryViewModel @Inject constructor(
     }
 
     private val onRecommendationToggleChanged: (AndroidEvent.RecommendationToggleChanged) -> Unit = {
-        onFilterApps(paginationCurrentPage)
+        refreshRecommendationHero()
     }
 
     // How many items loaded on one page of results
@@ -112,11 +120,14 @@ class LibraryViewModel @Inject constructor(
     private var amazonGameList: List<AmazonGame> = emptyList()
     private var playHistoryByAppId: Map<String, Long> = emptyMap()
 
+    @Volatile private var steamCollections: List<SteamCollection>? = null
+
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
 
     // Cached recommendation (fetched once at startup)
     @Volatile private var cachedRecommendation: RecommendedGame? = null
+    @Volatile private var cachedFeatured: app.gamenative.data.FeaturedItem? = null
 
     // Track debounce job for search
     private var searchDebounceJob: Job? = null
@@ -232,15 +243,65 @@ class LibraryViewModel @Inject constructor(
             }
         }
 
+        // Load any cached collections immediately, then observe live updates.
+        SteamCollectionRepository.loadFromCache()
+        viewModelScope.launch(Dispatchers.IO) {
+            SteamCollectionRepository.collections.collect { collections ->
+                steamCollections = collections
+                // Reconcile the persisted selection against freshly-loaded collections.
+                val current = _state.value.selectedSteamCollectionIds
+                val recon = SteamCollectionFilter.reconcile(current, collections)
+                if (recon.removedAny) {
+                    PrefManager.librarySteamCollections = recon.cleaned
+                }
+                _state.update {
+                    it.copy(
+                        steamCollections = collections,
+                        selectedSteamCollectionIds = recon.cleaned,
+                    )
+                }
+                if (recon.removedAny) {
+                    SnackbarManager.show(context.getString(R.string.steam_collections_removed))
+                }
+                onFilterApps(paginationCurrentPage)
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            SteamCollectionRepository.skippedDynamic.collect { skipped ->
+                _state.update { it.copy(skippedDynamicCollections = skipped) }
+            }
+        }
+
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
         PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
         PluviaApp.events.on<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
 
+        refreshRecommendationHero()
+    }
+
+    private fun refreshRecommendationHero() {
         viewModelScope.launch(Dispatchers.IO) {
-            cachedRecommendation = RecommendationRepository.getCurrentRecommendation(context)
-            if (cachedRecommendation != null) {
-                onFilterApps(paginationCurrentPage)
+            val hero = RecommendationRepository.getHero(context)
+            cachedFeatured = hero.featured
+            cachedRecommendation = when {
+                // A live featured takes the slot (still gated by the showRecommendations
+                // toggle at display time), regardless of GOG consent.
+                hero.featured != null -> null
+                PrefManager.showRecommendations && PrefManager.recDisclosureShown -> runCatching {
+                    val owned = GogSeedCollector.collect(
+                        context,
+                        libraryPlayHistoryDao,
+                        gogGameDao,
+                        epicGameDao,
+                        amazonGameDao,
+                    )
+                    val userId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
+                    val daySeed = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
+                    GogRecommendationsRepository.getDailyHero(context, owned, userId, daySeed)
+                }.getOrNull() ?: hero.recommendation
+                else -> hero.recommendation
             }
+            onFilterApps(paginationCurrentPage)
         }
     }
 
@@ -360,6 +421,24 @@ class LibraryViewModel @Inject constructor(
             currentState.copy(appInfoSortType = updatedFilter)
         }
 
+        onFilterApps()
+    }
+
+    fun onSteamCollectionToggle(id: String) {
+        _state.update { currentState ->
+            val updated = currentState.selectedSteamCollectionIds.toMutableSet()
+            if (!updated.add(id)) updated.remove(id)
+            PrefManager.librarySteamCollections = updated
+            currentState.copy(selectedSteamCollectionIds = updated)
+        }
+        onFilterApps()
+    }
+
+    fun onClearSteamCollections() {
+        _state.update { currentState ->
+            PrefManager.librarySteamCollections = emptySet()
+            currentState.copy(selectedSteamCollectionIds = emptySet())
+        }
         onFilterApps()
     }
 
@@ -505,7 +584,7 @@ class LibraryViewModel @Inject constructor(
                 return status == GameCompatibilityStatus.COMPATIBLE || status == GameCompatibilityStatus.GPU_COMPATIBLE
             }
 
-            val steamFilteredBeforeCompatibility: List<SteamApp> = appList
+            val steamOwnerTypeFiltered: List<SteamApp> = appList
                 .asSequence()
                 .filter { item ->
                     SteamService.familyMembers.ifEmpty {
@@ -548,6 +627,27 @@ class LibraryViewModel @Inject constructor(
                     }
                 }
                 .toList()
+
+            // Per-collection counts: computed from the owner/type/search-filtered set (independent of the
+            // current collection selection) so each collection shows how many games it would contribute.
+            val steamCollectionCounts: Map<String, Int> = steamCollections?.associate { collection ->
+                collection.id to steamOwnerTypeFiltered.count { it.id in collection.appIds }
+            } ?: emptyMap()
+
+            // Apply the Steam collection filter — union/OR, fail-open (see SteamCollectionFilter).
+            // Resolve the allowed app-id set once for the whole pass instead of per app.
+            val allowedSteamAppIds = SteamCollectionFilter.allowedAppIds(
+                selectedIds = currentState.selectedSteamCollectionIds,
+                collections = steamCollections,
+            )
+            val steamFilteredBeforeCompatibility: List<SteamApp> =
+                (
+                    if (allowedSteamAppIds == null) {
+                        steamOwnerTypeFiltered
+                    } else {
+                        steamOwnerTypeFiltered.filter { it.id in allowedSteamAppIds }
+                    }
+                )
 
             // Filter Steam apps first (no pagination yet)
             // Note: Don't sort individual lists - we'll sort the combined list for consistent ordering
@@ -842,12 +942,16 @@ class LibraryViewModel @Inject constructor(
                 }.thenBy { it.item.name.lowercase() }
             }
 
+            // A Steam collection can only contain Steam apps, so when one is selected the non-Steam
+            // sources can't match it — keep them out of the combined list (and their tab counts).
+            val steamCollectionSelected = allowedSteamAppIds != null
+
             val combined = buildList {
                 if (includeSteam) addAll(steamEntries)
-                if (includeOpen) addAll(customEntries)
-                if (includeGOG) addAll(gogEntries)
-                if (includeEpic) addAll(epicEntries)
-                if (includeAmazon) addAll(amazonEntries)
+                if (includeOpen && !steamCollectionSelected) addAll(customEntries)
+                if (includeGOG && !steamCollectionSelected) addAll(gogEntries)
+                if (includeEpic && !steamCollectionSelected) addAll(epicEntries)
+                if (includeAmazon && !steamCollectionSelected) addAll(amazonEntries)
             }.sortedWith(sortComparator).mapIndexed { idx, entry ->
                 entry.item.copy(index = idx, isInstalled = entry.isInstalled)
             }
@@ -864,25 +968,46 @@ class LibraryViewModel @Inject constructor(
             val endIndex = min((paginationPage + 1) * pageSize, totalFound)
             var pagedList = combined.take(endIndex)
 
-            // Prepend recommendation as first item on ALL tab when enabled and not searching
+            // Prepend the hero (featured > recommendation) as first item on ALL tab when
+            // enabled and not searching.
+            val featured = cachedFeatured
             val rec = cachedRecommendation
-            if (rec != null
-                && PrefManager.showRecommendations
+            if (PrefManager.showRecommendations
                 && currentTab == LibraryTab.ALL
                 && currentState.searchQuery.isEmpty()
             ) {
-                val recItem = LibraryItem(
-                    index = -1,
-                    appId = "RECOMMENDED_${rec.id}",
-                    name = rec.name,
-                    heroImageUrl = rec.heroImageUrl,
-                    capsuleImageUrl = rec.capsuleImageUrl,
-                    iconHash = rec.iconUrl ?: rec.capsuleImageUrl,
-                    isRecommended = true,
-                    recommendedGameId = rec.id,
-                    gameSource = GameSource.STEAM,
-                )
-                pagedList = listOf(recItem) + pagedList.map { it.copy(index = it.index + 1) }
+                val heroItem = when {
+                    featured != null -> LibraryItem(
+                        index = -1,
+                        appId = "FEATURED_${featured.campaignId}",
+                        name = featured.title,
+                        heroImageUrl = featured.heroImageUrl,
+                        headerImageUrl = featured.heroImageUrl,
+                        capsuleImageUrl = featured.capsuleImageUrl ?: featured.heroImageUrl,
+                        iconHash = featured.iconUrl ?: featured.capsuleImageUrl ?: featured.heroImageUrl,
+                        isRecommended = true,
+                        isFeatured = true,
+                        recommendedGameId = featured.campaignId,
+                        recSource = "hero",
+                        gameSource = GameSource.STEAM,
+                    )
+                    rec != null -> LibraryItem(
+                        index = -1,
+                        appId = "RECOMMENDED_${rec.id}",
+                        name = rec.name,
+                        heroImageUrl = rec.heroImageUrl,
+                        capsuleImageUrl = rec.capsuleImageUrl,
+                        iconHash = rec.iconUrl ?: rec.capsuleImageUrl,
+                        isRecommended = true,
+                        recommendedGameId = rec.id,
+                        recSource = "hero",
+                        gameSource = GameSource.STEAM,
+                    )
+                    else -> null
+                }
+                if (heroItem != null) {
+                    pagedList = listOf(heroItem) + pagedList.map { it.copy(index = it.index + 1) }
+                }
             }
 
             Timber.tag("LibraryViewModel").d("Filtered list size (with Custom Games): $totalFound")
@@ -913,6 +1038,7 @@ class LibraryViewModel @Inject constructor(
                     epicCount = if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0,
                     amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
                     localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
+                    steamCollectionCounts = steamCollectionCounts,
                 )
             }
         }

@@ -11,10 +11,15 @@ on:
       - '.github/ISSUE_TEMPLATE/**'
   workflow_dispatch:
 
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
 
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
     - uses: actions/checkout@v4
@@ -83,6 +88,9 @@ jobs:
         cp app/build/outputs/bundle/legacyRelease/app-legacy-release.aab app-release.aab
         cp app/build/outputs/bundle/modernRelease/app-modern-release.aab app-modern-release.aab
         cp app/build/outputs/bundle/legacyXrRelease/app-legacyXr-release.aab app-legacy-xr-release.aab
+
+    - name: Stop Gradle daemon to free memory
+      run: ./gradlew --stop
 
     - name: Extract APKs from Bundles
       run: |

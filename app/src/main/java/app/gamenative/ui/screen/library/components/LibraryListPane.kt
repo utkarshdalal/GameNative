@@ -155,7 +155,7 @@ internal fun LibraryListPane(
 
             PaneType.GRID_CAPSULE -> {
                 val minSize = when (windowWidthClass) {
-                    WindowWidthClass.COMPACT -> 110.dp
+                    WindowWidthClass.COMPACT -> 130.dp
                     WindowWidthClass.MEDIUM -> 130.dp
                     WindowWidthClass.EXPANDED -> 150.dp
                 }

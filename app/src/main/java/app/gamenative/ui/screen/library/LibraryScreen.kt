@@ -94,6 +94,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.screen.library.components.LibraryCarouselPane
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import app.gamenative.ui.screen.library.components.LibraryListPane
+import app.gamenative.ui.screen.library.components.RecommendationDisclosureDialog
 import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
 import app.gamenative.ui.screen.library.components.LibrarySearchBar
 import app.gamenative.ui.screen.library.components.LibrarySourceNotLoggedInSplash
@@ -126,6 +127,7 @@ fun HomeLibraryScreen(
     onGoOnline: () -> Unit,
     onDownloadsClick: () -> Unit = {},
     isOffline: Boolean = false,
+    isSteamConnected: Boolean = false,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -150,11 +152,14 @@ fun HomeLibraryScreen(
         onSourceToggle = viewModel::onSourceToggle,
         onAddCustomGameFolder = viewModel::addCustomGameFolder,
         onSortOptionChanged = viewModel::onSortOptionChanged,
+        onSteamCollectionToggle = viewModel::onSteamCollectionToggle,
+        onClearSteamCollections = viewModel::onClearSteamCollections,
         onOptionsPanelToggle = viewModel::onOptionsPanelToggle,
         onTabChanged = viewModel::onTabChanged,
         onPreviousTab = viewModel::onPreviousTab,
         onNextTab = viewModel::onNextTab,
         isOffline = isOffline,
+        isSteamConnected = isSteamConnected,
     )
 }
 
@@ -188,11 +193,14 @@ private fun LibraryScreenContent(
     onSourceToggle: (GameSource) -> Unit,
     onAddCustomGameFolder: (String) -> Unit,
     onSortOptionChanged: (SortOption) -> Unit,
+    onSteamCollectionToggle: (String) -> Unit,
+    onClearSteamCollections: () -> Unit,
     onOptionsPanelToggle: (Boolean) -> Unit,
     onTabChanged: (LibraryTab) -> Unit,
     onPreviousTab: () -> Unit,
     onNextTab: () -> Unit,
     isOffline: Boolean = false,
+    isSteamConnected: Boolean = false,
 ) {
     val context = LocalContext.current
     val lifecycleScope = LocalLifecycleOwner.current.lifecycleScope
@@ -306,6 +314,7 @@ private fun LibraryScreenContent(
     val carouselListState = rememberLazyListState()
     val isViewWide = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var currentPaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
+    var recDisclosureShown by remember { mutableStateOf(PrefManager.recDisclosureShown) }
 
     // Initialize layout if undecided
     LaunchedEffect(Unit) {
@@ -892,6 +901,28 @@ private fun LibraryScreenContent(
             // Use Box to allow content to scroll behind the tab bar
             Box(modifier = Modifier.fillMaxSize()) {
                 // When on Steam/GOG/Epic/Amazon tab and not logged in, or LOCAL tab with no custom games, show splash
+                if (state.currentTab == LibraryTab.RECOMMENDED) {
+                    if (recDisclosureShown) {
+                        RecommendedTabPane(
+                            currentPaneType = currentPaneType,
+                            onNavigate = { item ->
+                                selectedAppId = item.appId
+                                selectedLibraryItem = item
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize())
+                        RecommendationDisclosureDialog(
+                            onContinue = {
+                                PrefManager.recDisclosureShown = true
+                                recDisclosureShown = true
+                                PluviaApp.events.emit(AndroidEvent.RecommendationToggleChanged)
+                            },
+                            onDismiss = { onTabChanged(LibraryTab.ALL) },
+                        )
+                    }
+                } else {
                 val showEmptyStateSplash = when (state.currentTab) {
                     LibraryTab.STEAM -> !SteamUtils.hasStoredCredentials() && !state.isLoading
                     LibraryTab.GOG -> !GOGService.hasStoredCredentials(context)
@@ -968,6 +999,7 @@ private fun LibraryScreenContent(
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
+                }
                 }
 
                 // Top overlay: Tab bar OR Search bar
@@ -1127,6 +1159,14 @@ private fun LibraryScreenContent(
                     PrefManager.libraryLayout = newPaneType
                     currentPaneType = newPaneType
                 },
+                steamCollections = state.steamCollections,
+                selectedSteamCollectionIds = state.selectedSteamCollectionIds,
+                steamCollectionCounts = state.steamCollectionCounts,
+                skippedDynamicCollections = state.skippedDynamicCollections,
+                isSteamConnected = isSteamConnected,
+                isOffline = isOffline,
+                onSteamCollectionToggle = onSteamCollectionToggle,
+                onClearSteamCollections = onClearSteamCollections,
             )
 
             // System menu (START) - renders on top of everything
@@ -1296,6 +1336,8 @@ private fun Preview_LibraryScreenContent() {
             onSourceToggle = {},
             onAddCustomGameFolder = {},
             onSortOptionChanged = {},
+            onSteamCollectionToggle = {},
+            onClearSteamCollections = {},
             onOptionsPanelToggle = { isOpen ->
                 state = state.copy(isOptionsPanelOpen = isOpen)
             },

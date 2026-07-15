@@ -1,7 +1,11 @@
 package app.gamenative.ui.enums
 
 import androidx.annotation.StringRes
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.ui.graphics.vector.ImageVector
 import app.gamenative.BuildConfig
+import app.gamenative.PrefManager
 import app.gamenative.R
 
 enum class LibraryTab(
@@ -12,7 +16,18 @@ enum class LibraryTab(
     val showEpic: Boolean,
     val showAmazon: Boolean,
     val installedOnly: Boolean,
+    val icon: ImageVector? = null,
 ) {
+    RECOMMENDED(
+        labelResId = R.string.tab_recommended,
+        showCustom = false,
+        showSteam = false,
+        showGoG = false,
+        showEpic = false,
+        showAmazon = false,
+        installedOnly = false,
+        icon = Icons.Rounded.Explore,
+    ),
     ALL(
         labelResId = R.string.tab_all,
         showCustom = true,
@@ -74,7 +89,11 @@ enum class LibraryTab(
          * legacy storage flavors have, so the tab is hidden on modern (scoped-storage) builds.
          */
         val visibleEntries: List<LibraryTab>
-            get() = if (BuildConfig.MODERN_ANDROID) entries.filter { it != LOCAL } else entries
+            get() {
+                var result = if (BuildConfig.MODERN_ANDROID) entries.filter { it != LOCAL } else entries.toList()
+                if (!PrefManager.showRecommendations) result = result.filter { it != RECOMMENDED }
+                return result
+            }
 
         fun LibraryTab.next(): LibraryTab {
             val values = visibleEntries

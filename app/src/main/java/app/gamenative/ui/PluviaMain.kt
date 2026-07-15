@@ -1448,6 +1448,7 @@ fun PluviaMain(
                             )
                         },
                         isOffline = isOffline,
+                        isSteamConnected = state.isSteamConnected,
                     )
                 }
 
