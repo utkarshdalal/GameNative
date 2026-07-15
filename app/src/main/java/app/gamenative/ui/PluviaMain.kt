@@ -18,7 +18,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -91,6 +90,7 @@ import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
 import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.LocalSnackbarHostController
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
@@ -1107,12 +1107,12 @@ fun PluviaMain(
         }
     }
 
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarController = LocalSnackbarHostController.current
     var exitSnackbarVisible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(snackbarController) {
         SnackbarManager.messages.collect { message ->
-            snackbarHostState.showSnackbar(message)
+            snackbarController.hostState.showSnackbar(message)
             // snackbar dismissed (timeout or new message) — reset exit flag
             exitSnackbarVisible = false
         }
@@ -1527,28 +1527,30 @@ fun PluviaMain(
                 }
             }
 
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility)
-                    .padding(bottom = 16.dp),
-            ) { data ->
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.BottomCenter,
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(24.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shadowElevation = 4.dp,
+            if (snackbarController.rootOwnsHost) {
+                SnackbarHost(
+                    hostState = snackbarController.hostState,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility)
+                        .padding(bottom = 16.dp),
+                ) { data ->
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.BottomCenter,
                     ) {
-                        Text(
-                            text = data.visuals.message,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(24.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            shadowElevation = 4.dp,
+                        ) {
+                            Text(
+                                text = data.visuals.message,
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
                     }
                 }
             }

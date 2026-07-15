@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -35,6 +36,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -56,6 +58,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.net.toUri
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
@@ -72,6 +75,7 @@ import app.gamenative.mods.BethesdaPlugin
 import app.gamenative.mods.BethesdaPluginAssetIssue
 import app.gamenative.mods.BethesdaPluginDependencyIssue
 import app.gamenative.mods.BethesdaPluginManager
+import app.gamenative.mods.AuthorizedNexusWebsiteDownload
 import app.gamenative.mods.FomodInstaller
 import app.gamenative.mods.FomodAutoSelector
 import app.gamenative.mods.FomodInstallerDetector
@@ -94,28 +98,39 @@ import app.gamenative.mods.ModProfileManager
 import app.gamenative.mods.ModStorageBreakdown
 import app.gamenative.mods.ModTargetResolver
 import app.gamenative.mods.NexusApiClient
+import app.gamenative.mods.NexusApiErrorReason
 import app.gamenative.mods.NexusApiException
 import app.gamenative.mods.NexusCollectionFile
 import app.gamenative.mods.NexusCollectionInfo
 import app.gamenative.mods.NexusCollectionPrioritySuggester
 import app.gamenative.mods.NexusCollectionReusePolicy
 import app.gamenative.mods.NexusCollectionUrlParser
+import app.gamenative.mods.NexusDownloadLinkInbox
 import app.gamenative.mods.NexusImportState
 import app.gamenative.mods.NexusModFile
 import app.gamenative.mods.NexusModInfo
 import app.gamenative.mods.NexusModManager
 import app.gamenative.mods.NexusModReference
+import app.gamenative.mods.NexusPendingDownloadStore
+import app.gamenative.mods.NexusUserInfo
+import app.gamenative.mods.PendingNexusWebsiteDownload
 import app.gamenative.mods.NexusUrlParser
 import app.gamenative.service.NexusModImportService
+import app.gamenative.ui.util.LocalSnackbarHostController
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.StorageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
+import java.util.UUID
 internal data class RecipeDraft(
     val sourceSubpath: String = "",
     val targetRoot: String = ModTargetRoot.GAME_DIR.name,
@@ -140,6 +155,12 @@ private enum class ManageModsTab {
 }
 
 private const val MIN_APPLY_FREE_BYTES = 2L * 1024L * 1024L * 1024L
+private const val WEBSITE_AUTHORIZATION_TIMEOUT_MS = 15L * 60L * 1000L
+
+private class NexusWebsiteAuthorizationException(
+    message: String,
+    cause: Throwable? = null,
+) : IOException(message, cause)
 
 internal data class ApiKeyValidationState(
     val checking: Boolean = false,
@@ -578,6 +599,12 @@ fun NexusModsDialog(
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val snackbarController = LocalSnackbarHostController.current
+    val snackbarOwner = remember { Any() }
+    DisposableEffect(snackbarController, snackbarOwner) {
+        snackbarController.register(snackbarOwner)
+        onDispose { snackbarController.unregister(snackbarOwner) }
+    }
     val dao = remember(context) { NexusModManager.dao(context) }
     val installs by dao.observeInstallsForApp(libraryItem.appId).collectAsState(initial = emptyList())
     val activeDownloads by ModDownloadRegistry.observeDownloads().collectAsState()
@@ -606,6 +633,9 @@ fun NexusModsDialog(
 
     var apiKey by remember { mutableStateOf(PrefManager.nexusApiKey) }
     var apiKeyValidation by remember { mutableStateOf<ApiKeyValidationState?>(null) }
+    var apiKeyValidationJob by remember { mutableStateOf<Job?>(null) }
+    var apiKeyValidationGeneration by remember { mutableStateOf(0L) }
+    var nexusUserInfo by remember { mutableStateOf<NexusUserInfo?>(null) }
     var nexusUrl by remember { mutableStateOf("") }
     var loadingMessage by remember { mutableStateOf<String?>(null) }
     var progress by remember { mutableFloatStateOf(0f) }
@@ -624,8 +654,10 @@ fun NexusModsDialog(
     var pendingCollectionSelection by remember { mutableStateOf<PendingCollectionSelection?>(null) }
     var selectedCollectionKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
     val collectionQueue = remember { mutableStateMapOf<String, CollectionQueueItem>() }
+    val websiteAuthorizationWaiters = remember { mutableMapOf<String, CompletableDeferred<NexusModReference>>() }
     var collectionPaused by remember { mutableStateOf(false) }
     var collectionCancelRequested by remember { mutableStateOf(false) }
+    var collectionImportRunning by remember { mutableStateOf(false) }
     var activeCollectionInstallId by remember { mutableStateOf<String?>(null) }
     var pendingApply by remember { mutableStateOf<PendingApply?>(null) }
     var pendingProfileApply by remember { mutableStateOf<PendingProfileApply?>(null) }
@@ -645,6 +677,56 @@ fun NexusModsDialog(
     var healthReport by remember(libraryItem.appId) { mutableStateOf<ModHealthReport?>(null) }
     var healthLoading by remember(libraryItem.appId) { mutableStateOf(false) }
     var diagnosticsPaused by remember { mutableStateOf(false) }
+
+    fun invalidateApiKeyValidation() {
+        apiKeyValidationGeneration++
+        apiKeyValidationJob?.cancel()
+        apiKeyValidationJob = null
+        if (
+            apiKeyValidation?.checking == true &&
+            loadingMessage == context.getString(R.string.nexus_validating_api_key)
+        ) {
+            loadingMessage = null
+        }
+        nexusUserInfo = null
+        apiKeyValidation = null
+    }
+
+    fun validateApiKey() {
+        val requestedKey = apiKey.trim()
+        if (requestedKey.isBlank()) return
+        apiKeyValidationJob?.cancel()
+        val generation = apiKeyValidationGeneration + 1L
+        apiKeyValidationGeneration = generation
+        val validatingMessage = context.getString(R.string.nexus_validating_api_key)
+        apiKeyValidation = ApiKeyValidationState(checking = true, message = validatingMessage)
+        loadingMessage = validatingMessage
+        apiKeyValidationJob = scope.launch {
+            try {
+                val user = apiClient.validateKey(requestedKey)
+                if (apiKeyValidationGeneration != generation) return@launch
+                PrefManager.saveNexusApiKey(requestedKey)
+                if (apiKeyValidationGeneration != generation) return@launch
+                nexusUserInfo = user
+                val connectedMessage = context.getString(R.string.nexus_connected_nexus_user, user.name)
+                apiKeyValidation = ApiKeyValidationState(message = connectedMessage, success = true)
+                SnackbarManager.show(connectedMessage)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (apiKeyValidationGeneration != generation) return@launch
+                nexusUserInfo = null
+                val errorMessage = e.message ?: context.getString(R.string.nexus_api_key_validation_failed)
+                apiKeyValidation = ApiKeyValidationState(message = errorMessage, success = false)
+                SnackbarManager.show(errorMessage)
+            } finally {
+                if (apiKeyValidationGeneration == generation) {
+                    if (loadingMessage == validatingMessage) loadingMessage = null
+                    apiKeyValidationJob = null
+                }
+            }
+        }
+    }
 
     fun refreshLastPlacement() {
         lastPlacementDrafts = NexusModManager.lastPlacementRecipesForApp(libraryItem.appId, "")
@@ -1389,10 +1471,122 @@ fun NexusModsDialog(
         }
     }
 
+    fun requestWebsiteDownloadAuthorization(
+        reference: NexusModReference,
+        modInfo: NexusModInfo,
+        file: NexusModFile,
+        requestId: String? = null,
+        nexusUserId: Long? = nexusUserInfo?.userId,
+    ): Boolean {
+        val pendingReference = reference.copy(
+            fileId = file.fileId,
+            downloadAuthorization = null,
+        )
+        val pending = PendingNexusWebsiteDownload(
+            appId = libraryItem.appId,
+            reference = pendingReference,
+            modInfo = modInfo,
+            file = file,
+            nexusUserId = nexusUserId,
+            requestId = requestId,
+        )
+        val expected = NexusDownloadLinkInbox.expect(pending)
+        if (!expected) {
+            val failure = NexusWebsiteAuthorizationException(
+                context.getString(R.string.nexus_authorization_already_pending),
+            )
+            requestId?.let { websiteAuthorizationWaiters[it]?.completeExceptionally(failure) }
+            SnackbarManager.show(failure.message.orEmpty())
+            return false
+        }
+        NexusPendingDownloadStore.remember(context, pending)
+        val websiteUrl = NexusDownloadLinkInbox.websiteDownloadUrl(pendingReference, file.fileId)
+        val launchError = runCatching {
+            context.startActivity(Intent(Intent.ACTION_VIEW, websiteUrl.toUri()))
+        }.exceptionOrNull()
+        if (launchError == null) {
+            SnackbarManager.show(context.getString(R.string.nexus_authorize_in_browser))
+            return true
+        }
+        NexusDownloadLinkInbox.cancelExpected(libraryItem.appId, pendingReference, requestId)
+        NexusPendingDownloadStore.removeMatching(context, libraryItem.appId, pendingReference, requestId)
+        val failure = NexusWebsiteAuthorizationException(
+            context.getString(R.string.nexus_open_browser_failed),
+            launchError,
+        )
+        requestId?.let { websiteAuthorizationWaiters[it]?.completeExceptionally(failure) }
+        SnackbarManager.show(failure.message.orEmpty())
+        return false
+    }
+
+    suspend fun awaitWebsiteDownloadAuthorization(
+        reference: NexusModReference,
+        modInfo: NexusModInfo,
+        file: NexusModFile,
+        nexusUserId: Long?,
+    ): NexusModReference? {
+        val requestId = UUID.randomUUID().toString()
+        val callback = CompletableDeferred<NexusModReference>()
+        websiteAuthorizationWaiters[requestId] = callback
+        requestWebsiteDownloadAuthorization(reference, modInfo, file, requestId, nexusUserId)
+        var preserveExpectationForRecreation = false
+        return try {
+            val deadline = System.currentTimeMillis() + WEBSITE_AUTHORIZATION_TIMEOUT_MS
+            while (!callback.isCompleted && System.currentTimeMillis() < deadline) {
+                if (collectionCancelRequested) return null
+                delay(250L)
+            }
+            if (!callback.isCompleted) {
+                throw NexusWebsiteAuthorizationException(context.getString(R.string.nexus_authorization_timed_out))
+            }
+            callback.await()
+        } catch (e: CancellationException) {
+            // The Activity/dialog can be recreated while the browser is open. Keep
+            // the non-secret expected tuple so the returning NXM grant can be routed
+            // to this app; the new dialog will recover it as a single authorized file.
+            preserveExpectationForRecreation = true
+            throw e
+        } finally {
+            websiteAuthorizationWaiters.remove(requestId)
+            if (!preserveExpectationForRecreation) {
+                val pendingReference = reference.copy(fileId = file.fileId, downloadAuthorization = null)
+                NexusDownloadLinkInbox.cancelExpected(
+                    appId = libraryItem.appId,
+                    reference = pendingReference,
+                    requestId = requestId,
+                )
+                NexusPendingDownloadStore.removeMatching(
+                    context = context,
+                    appId = libraryItem.appId,
+                    reference = pendingReference,
+                    requestId = requestId,
+                )
+            }
+        }
+    }
+
     fun importFile(reference: NexusModReference, modInfo: NexusModInfo, file: NexusModFile) {
-        PrefManager.nexusApiKey = apiKey.trim()
+        val requestedKey = apiKey.trim()
+        val knownUser = nexusUserInfo
+        if (reference.downloadAuthorization?.isExpired() == true) {
+            requestWebsiteDownloadAuthorization(reference, modInfo, file)
+            return
+        }
         scope.launch {
             try {
+                val user = knownUser ?: apiClient.validateKey(requestedKey).also {
+                    if (apiKey.trim() == requestedKey) nexusUserInfo = it
+                }
+                PrefManager.saveNexusApiKey(requestedKey)
+                val authorizationUserId = reference.downloadAuthorization?.userId
+                if (authorizationUserId != null && authorizationUserId != user.userId) {
+                    SnackbarManager.show(context.getString(R.string.nexus_authorization_wrong_account))
+                    return@launch
+                }
+                if (!user.isPremium && reference.downloadAuthorization == null) {
+                    requestWebsiteDownloadAuthorization(reference, modInfo, file, nexusUserId = user.userId)
+                    return@launch
+                }
                 val cleanup = NexusModManager.cleanupOrphanedFilesForApp(context, libraryItem.appId)
                 if (cleanup.reclaimedBytes > 0L) {
                     SnackbarManager.show(context.getString(R.string.nexus_cleaned_old_temp_files, StorageUtils.formatBinarySize(cleanup.reclaimedBytes)))
@@ -1418,6 +1612,7 @@ fun NexusModsDialog(
                     modInfo = modInfo,
                     file = file,
                     displayName = modInfo.name,
+                    isPremiumAccount = user.isPremium,
                 ).await()
                 selectedInstall = install
                 pendingFileSelection = null
@@ -1429,12 +1624,68 @@ fun NexusModsDialog(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                SnackbarManager.show(NexusImportState.userMessage(e))
+                if (NexusImportState.requiresWebsiteAuthorization(e)) {
+                    requestWebsiteDownloadAuthorization(reference, modInfo, file)
+                } else {
+                    SnackbarManager.show(NexusImportState.userMessage(e))
+                }
             } finally {
                 loadingMessage = null
                 importProgress = null
             }
         }
+    }
+
+    suspend fun receiveAuthorizedDownload(download: AuthorizedNexusWebsiteDownload) {
+        val reference = download.reference
+        val matchingPending = download.pending
+        val authorization = reference.downloadAuthorization ?: return
+        if (matchingPending.appId != libraryItem.appId) return
+        if (authorization.isExpired()) {
+            val error = NexusApiException(
+                message = "The Nexus website download authorization expired",
+                statusCode = 410,
+                reason = NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED,
+            )
+            matchingPending.requestId?.let { websiteAuthorizationWaiters.remove(it)?.completeExceptionally(error) }
+            SnackbarManager.show(NexusImportState.userMessage(error))
+            return
+        }
+
+        if (
+            matchingPending.nexusUserId != null &&
+            authorization.userId != null &&
+            matchingPending.nexusUserId != authorization.userId
+        ) {
+            val error = NexusApiException(
+                message = context.getString(R.string.nexus_authorization_wrong_account),
+                statusCode = 400,
+                reason = NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_INVALID,
+            )
+            matchingPending.requestId?.let { websiteAuthorizationWaiters.remove(it)?.completeExceptionally(error) }
+            SnackbarManager.show(error.message.orEmpty())
+            return
+        }
+        matchingPending.requestId?.let { requestId ->
+            val waiter = websiteAuthorizationWaiters.remove(requestId)
+            if (waiter != null) {
+                waiter.complete(reference)
+                return
+            }
+            // The collection coroutine disappeared (for example after Activity
+            // recreation). Recover the exact authorized file without silently
+            // restarting the old collection queue.
+            pendingCollectionSelection = null
+            pendingFileSelection = PendingFileSelection(reference, matchingPending.modInfo, listOf(matchingPending.file))
+            selectedTab = ManageModsTab.IMPORT
+            SnackbarManager.show(context.getString(R.string.nexus_authorized_file_received))
+            return
+        }
+        importFile(reference, matchingPending.modInfo, matchingPending.file)
+    }
+
+    LaunchedEffect(apiClient, libraryItem.appId) {
+        NexusDownloadLinkInbox.callbacksFor(libraryItem.appId).collect(::receiveAuthorizedDownload)
     }
 
     fun retryInstall(install: ModInstall) {
@@ -1468,7 +1719,7 @@ fun NexusModsDialog(
         else -> status
     }
 
-    suspend fun resolveCollectionMod(collectionFile: NexusCollectionFile): PendingCollectionMod {
+    suspend fun resolveCollectionMod(collectionFile: NexusCollectionFile, apiKey: String): PendingCollectionMod {
         if (collectionFile.modId <= 0L || collectionFile.fileId <= 0L) {
             return PendingCollectionMod(
                 collectionFile = collectionFile,
@@ -1478,8 +1729,8 @@ fun NexusModsDialog(
             )
         }
         return try {
-            val modInfo = apiClient.getModInfo(collectionFile.gameDomain, collectionFile.modId)
-            val files = apiClient.getModFiles(collectionFile.gameDomain, collectionFile.modId)
+            val modInfo = apiClient.getModInfo(collectionFile.gameDomain, collectionFile.modId, apiKey)
+            val files = apiClient.getModFiles(collectionFile.gameDomain, collectionFile.modId, apiKey)
             val file = files.firstOrNull { it.fileId == collectionFile.fileId }
                 ?: collectionFile.toFallbackNexusFile()
             PendingCollectionMod(collectionFile, modInfo, file)
@@ -1509,13 +1760,14 @@ fun NexusModsDialog(
     }
 
     fun resolveCollection(reference: app.gamenative.mods.NexusCollectionReference) {
-        PrefManager.nexusApiKey = apiKey.trim()
+        val requestedKey = apiKey.trim()
         scope.launch {
             try {
                 loadingMessage = context.getString(R.string.nexus_resolving_nexus_collection)
                 progress = 0f
                 importProgress = null
-                val collection = apiClient.getCollectionRevision(reference)
+                val collection = apiClient.getCollectionRevision(reference, requestedKey)
+                PrefManager.saveNexusApiKey(requestedKey)
                 if (collection.files.isEmpty()) {
                     SnackbarManager.show(context.getString(R.string.nexus_collection_no_downloadable_mods))
                     return@launch
@@ -1523,7 +1775,7 @@ fun NexusModsDialog(
                 val resolvedMods = mutableListOf<PendingCollectionMod>()
                 collection.files.forEachIndexed { index, file ->
                     loadingMessage = context.getString(R.string.nexus_resolving_collection_item, index + 1, collection.files.size)
-                    resolvedMods += resolveCollectionMod(file)
+                    resolvedMods += resolveCollectionMod(file, requestedKey)
                 }
                 pendingFileSelection = null
                 pendingCollectionSelection = PendingCollectionSelection(collection, resolvedMods)
@@ -1540,12 +1792,15 @@ fun NexusModsDialog(
     }
 
     fun importCollection(pending: PendingCollectionSelection, selectedKeys: Set<String>) {
+        if (collectionImportRunning) return
         val collectionMods = pending.mods.filter { it.canImport && it.collectionKey() in selectedKeys }
         if (collectionMods.isEmpty()) {
             SnackbarManager.show(context.getString(R.string.nexus_no_selected_collection_mods_ready))
             return
         }
-        PrefManager.nexusApiKey = apiKey.trim()
+        val requestedKey = apiKey.trim()
+        val knownUser = nexusUserInfo
+        collectionImportRunning = true
         scope.launch {
             var imported = 0
             var reused = 0
@@ -1570,6 +1825,19 @@ fun NexusModsDialog(
                     error = error,
                     startedAt = startedAt ?: current?.startedAt ?: 0L,
                 )
+            }
+            fun failQueuedItems(error: String) {
+                collectionMods.forEach { pendingMod ->
+                    if (collectionQueue[pendingMod.collectionKey()]?.status == CollectionQueueStatus.QUEUED) {
+                        failed++
+                        updateQueue(
+                            pendingMod,
+                            status = CollectionQueueStatus.FAILED,
+                            message = context.getString(R.string.nexus_queue_failed),
+                            error = error,
+                        )
+                    }
+                }
             }
             suspend fun existingReusableInstall(pendingMod: PendingCollectionMod): ModInstall? {
                 return withContext(Dispatchers.IO) {
@@ -1709,6 +1977,22 @@ fun NexusModsDialog(
                         modsNeedingDownload += pendingMod
                     }
                 }
+                val nexusUserForDownloads = if (modsNeedingDownload.isNotEmpty()) {
+                    try {
+                        (knownUser ?: apiClient.validateKey(requestedKey).also {
+                            if (apiKey.trim() == requestedKey) nexusUserInfo = it
+                        }).also { PrefManager.saveNexusApiKey(requestedKey) }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        val errorMessage = NexusImportState.userMessage(e)
+                        failQueuedItems(errorMessage)
+                        SnackbarManager.show(errorMessage)
+                        return@launch
+                    }
+                } else {
+                    null
+                }
                 val storage = NexusModManager.checkImportStorage(
                     context = context,
                     appId = libraryItem.appId,
@@ -1716,13 +2000,13 @@ fun NexusModsDialog(
                     sequential = true,
                 )
                 if (!storage.canImport) {
-                    SnackbarManager.show(
-                        context.getString(
-                            R.string.nexus_not_enough_storage_import,
-                            StorageUtils.formatBinarySize(storage.estimatedRequiredBytes),
-                            StorageUtils.formatBinarySize(storage.availableBytes),
-                        ),
+                    val errorMessage = context.getString(
+                        R.string.nexus_not_enough_storage_import,
+                        StorageUtils.formatBinarySize(storage.estimatedRequiredBytes),
+                        StorageUtils.formatBinarySize(storage.availableBytes),
                     )
+                    failQueuedItems(errorMessage)
+                    SnackbarManager.show(errorMessage)
                     return@launch
                 }
                 val suggestedPriorities = NexusCollectionPrioritySuggester.priorities(collectionMods.map { it.collectionFile })
@@ -1755,7 +2039,6 @@ fun NexusModsDialog(
                             modId = reference.modId,
                             fileId = reference.fileId ?: file.fileId,
                         )
-                        activeCollectionInstallId = installId
                         loadingMessage = context.getString(R.string.nexus_preparing_collection_item, index + 1, collectionMods.size, modInfo.name)
                         progress = 0f
                         importProgress = null
@@ -1801,6 +2084,45 @@ fun NexusModsDialog(
                             )
                             continue
                         }
+                        val downloadReference = if (nexusUserForDownloads?.isPremium == false) {
+                            loadingMessage = context.getString(
+                                R.string.nexus_waiting_for_website_authorization,
+                                index + 1,
+                                collectionMods.size,
+                                modInfo.name,
+                            )
+                            updateQueue(
+                                pendingMod,
+                                status = CollectionQueueStatus.IMPORTING,
+                                message = context.getString(R.string.nexus_waiting_for_nexus),
+                                startedAt = System.currentTimeMillis(),
+                            )
+                            val authorizedReference = awaitWebsiteDownloadAuthorization(
+                                reference,
+                                modInfo,
+                                file,
+                                nexusUserForDownloads?.userId,
+                            )
+                            if (authorizedReference == null) {
+                                updateQueue(
+                                    pendingMod,
+                                    status = CollectionQueueStatus.CANCELED,
+                                    message = context.getString(R.string.nexus_queue_canceled),
+                                )
+                                break
+                            }
+                            authorizedReference
+                        } else {
+                            reference
+                        }
+                        if (collectionCancelRequested) {
+                            updateQueue(
+                                pendingMod,
+                                status = CollectionQueueStatus.CANCELED,
+                                message = context.getString(R.string.nexus_queue_canceled),
+                            )
+                            break
+                        }
                         loadingMessage = context.getString(R.string.nexus_starting_collection_item, index + 1, collectionMods.size, modInfo.name)
                         updateQueue(
                             pendingMod,
@@ -1808,13 +2130,15 @@ fun NexusModsDialog(
                             message = context.getString(R.string.nexus_queue_starting),
                             startedAt = System.currentTimeMillis(),
                         )
+                        activeCollectionInstallId = installId
                         val install = NexusModImportService.enqueueImport(
                             context = context,
                             appId = libraryItem.appId,
-                            reference = reference,
+                            reference = downloadReference,
                             modInfo = modInfo,
                             file = file,
                             displayName = context.getString(R.string.nexus_collection_display_name, index + 1, collectionMods.size, modInfo.name),
+                            isPremiumAccount = nexusUserForDownloads?.isPremium,
                             onProgress = { detail ->
                                 scope.launch(Dispatchers.Main) {
                                     updateQueue(
@@ -1847,6 +2171,19 @@ fun NexusModsDialog(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
+                        if (e is NexusWebsiteAuthorizationException || NexusImportState.requiresWebsiteAuthorization(e)) {
+                            failed++
+                            collectionCancelRequested = true
+                            val errorMessage = NexusImportState.userMessage(e)
+                            updateQueue(
+                                pendingMod,
+                                status = CollectionQueueStatus.FAILED,
+                                message = context.getString(R.string.nexus_queue_failed),
+                                error = errorMessage,
+                            )
+                            SnackbarManager.show(errorMessage)
+                            break
+                        }
                         failed++
                         val canceled = e.message?.contains("canceled", ignoreCase = true) == true || collectionCancelRequested
                         updateQueue(
@@ -1857,6 +2194,17 @@ fun NexusModsDialog(
                         )
                     } finally {
                         activeCollectionInstallId = null
+                    }
+                }
+                if (collectionCancelRequested) {
+                    collectionMods.forEach { pendingMod ->
+                        if (collectionQueue[pendingMod.collectionKey()]?.status == CollectionQueueStatus.QUEUED) {
+                            updateQueue(
+                                pendingMod,
+                                status = CollectionQueueStatus.CANCELED,
+                                message = context.getString(R.string.nexus_queue_canceled),
+                            )
+                        }
                     }
                 }
                 val prepared = imported + reused
@@ -1872,7 +2220,14 @@ fun NexusModsDialog(
                         applyProfileOrder(allowOverwrite = false)?.join()
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val errorMessage = NexusImportState.userMessage(e)
+                failQueuedItems(errorMessage)
+                SnackbarManager.show(errorMessage)
             } finally {
+                collectionImportRunning = false
                 activeCollectionInstallId = null
                 loadingMessage = null
                 importProgress = null
@@ -1891,14 +2246,15 @@ fun NexusModsDialog(
             SnackbarManager.show(context.getString(R.string.nexus_enter_valid_nexus_url))
             return
         }
-        PrefManager.nexusApiKey = apiKey.trim()
+        val requestedKey = apiKey.trim()
         scope.launch {
             try {
                 loadingMessage = context.getString(R.string.nexus_resolving_nexus_mod)
                 progress = 0f
                 importProgress = null
-                val modInfo = apiClient.getModInfo(reference.gameDomain, reference.modId)
-                val files = apiClient.getModFiles(reference.gameDomain, reference.modId)
+                val modInfo = apiClient.getModInfo(reference.gameDomain, reference.modId, requestedKey)
+                val files = apiClient.getModFiles(reference.gameDomain, reference.modId, requestedKey)
+                PrefManager.saveNexusApiKey(requestedKey)
                 if (files.isEmpty()) {
                     SnackbarManager.show(context.getString(R.string.nexus_no_downloadable_files_mod))
                     return@launch
@@ -2089,6 +2445,14 @@ fun NexusModsDialog(
         }
     }
 
+    fun requestDialogDismiss() {
+        if (collectionImportRunning) {
+            SnackbarManager.show(context.getString(R.string.nexus_cancel_collection_before_closing))
+        } else {
+            onDismissRequest()
+        }
+    }
+
     @Composable
     fun CollectionSelectionContent(pending: PendingCollectionSelection) {
         val selectedFiles = pending.mods
@@ -2101,6 +2465,7 @@ fun NexusModsDialog(
             availableBytes = NexusModManager.cacheRoot(context, libraryItem.appId).usableSpace,
             estimatedRequiredBytes = NexusModManager.estimateSequentialImportScratchBytes(selectedFiles),
             paused = collectionPaused,
+            controlsEnabled = !collectionImportRunning,
             cancelEnabled = activeCollectionInstallId != null || collectionQueue.values.any {
                 it.status == CollectionQueueStatus.QUEUED || it.status == CollectionQueueStatus.IMPORTING
             },
@@ -2126,18 +2491,12 @@ fun NexusModsDialog(
         )
     }
     Dialog(
-        onDismissRequest = onDismissRequest,
+        onDismissRequest = ::requestDialogDismiss,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
             dismissOnClickOutside = false,
         ),
     ) {
-        val dialogSnackbarHostState = remember { SnackbarHostState() }
-        LaunchedEffect(dialogSnackbarHostState) {
-            SnackbarManager.messages.collect { message ->
-                dialogSnackbarHostState.showSnackbar(message)
-            }
-        }
         Box(Modifier.fillMaxSize()) {
             Surface(
                 modifier = Modifier.fillMaxSize(),
@@ -2162,7 +2521,7 @@ fun NexusModsDialog(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    TextButton(onClick = onDismissRequest) {
+                    TextButton(onClick = ::requestDialogDismiss) {
                         Text(stringResource(R.string.close))
                     }
                 }
@@ -2211,30 +2570,11 @@ fun NexusModsDialog(
                             ApiKeySection(
                                 apiKey = apiKey,
                                 validationState = apiKeyValidation,
-                                onApiKeyChange = { apiKey = it },
-                                onValidate = {
-                                    PrefManager.nexusApiKey = apiKey.trim()
-                                    scope.launch {
-                                        try {
-                                            apiKeyValidation = ApiKeyValidationState(checking = true, message = context.getString(R.string.nexus_validating_api_key))
-                                            loadingMessage = context.getString(R.string.nexus_validating_api_key)
-                                            val user = apiClient.validateKey()
-                                            apiKeyValidation = ApiKeyValidationState(
-                                                message = context.getString(R.string.nexus_connected_nexus_user, user.name),
-                                                success = true,
-                                            )
-                                            SnackbarManager.show(context.getString(R.string.nexus_connected_nexus_user, user.name))
-                                        } catch (e: Exception) {
-                                            apiKeyValidation = ApiKeyValidationState(
-                                                message = e.message ?: context.getString(R.string.nexus_api_key_validation_failed),
-                                                success = false,
-                                            )
-                                            SnackbarManager.show(e.message ?: context.getString(R.string.nexus_api_key_validation_failed))
-                                        } finally {
-                                            loadingMessage = null
-                                        }
-                                    }
+                                onApiKeyChange = {
+                                    invalidateApiKeyValidation()
+                                    apiKey = it
                                 },
+                                onValidate = ::validateApiKey,
                             )
                             ImportSection(
                                 nexusUrl = nexusUrl,
@@ -2244,7 +2584,18 @@ fun NexusModsDialog(
                             pendingFileSelection?.let { pending ->
                                 FileSelectionSection(
                                     pending = pending,
-                                    onImport = { file -> importFile(pending.reference, pending.modInfo, file) },
+                                    onImport = { file ->
+                                        val authorization = pending.reference.downloadAuthorization
+                                            ?.takeIf { pending.reference.fileId == file.fileId }
+                                        importFile(
+                                            reference = pending.reference.copy(
+                                                fileId = file.fileId,
+                                                downloadAuthorization = authorization,
+                                            ),
+                                            modInfo = pending.modInfo,
+                                            file = file,
+                                        )
+                                    },
                                 )
                             }
                             pendingCollectionSelection?.let { pending -> CollectionSelectionContent(pending) }
@@ -2480,13 +2831,15 @@ fun NexusModsDialog(
                 }
                 }
             }
-            NexusDialogSnackbarHost(
-                hostState = dialogSnackbarHostState,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility)
-                    .padding(bottom = 16.dp),
-            )
+            if (snackbarController.ownsHost(snackbarOwner)) {
+                NexusDialogSnackbarHost(
+                    hostState = snackbarController.hostState,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility)
+                        .padding(bottom = 16.dp),
+                )
+            }
         }
     }
 

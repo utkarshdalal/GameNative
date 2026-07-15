@@ -75,7 +75,7 @@ class NexusImportStateTest {
     @Test
     fun userMessage_classifiesCommonImportFailures() {
         assertEquals(
-            "Nexus API authentication failed. Check the API key and account access.",
+            "Nexus denied access to this resource for the current account.",
             NexusImportState.userMessage(NexusApiException("Download failed (403)", statusCode = 403)),
         )
         assertEquals(

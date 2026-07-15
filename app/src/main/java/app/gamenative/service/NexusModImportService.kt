@@ -16,11 +16,16 @@ import app.gamenative.MainActivity
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.ModInstall
+import app.gamenative.data.ModInstallStatus
+import app.gamenative.mods.ModDownloadRegistry
 import app.gamenative.mods.ModImportProgress
+import app.gamenative.mods.NexusImportState
 import app.gamenative.mods.NexusModFile
 import app.gamenative.mods.NexusModInfo
 import app.gamenative.mods.NexusModManager
 import app.gamenative.mods.NexusModReference
+import app.gamenative.mods.NexusDownloadAuthorization
+import app.gamenative.mods.NexusApiClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +34,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import timber.log.Timber
 import java.util.UUID
@@ -74,7 +80,7 @@ class NexusModImportService : Service() {
 
     private fun startQueuedTask(taskId: String?, intent: Intent) {
         val task = taskId?.let { pendingTasks.remove(it) }
-        val request = task?.request ?: intent.toImportRequest()
+        val request = task?.request ?: decodeImportRequest(intent)
         if (request == null) {
             scheduleStopIfIdle()
             return
@@ -90,6 +96,7 @@ class NexusModImportService : Service() {
                     reference = request.reference,
                     modInfo = request.modInfo,
                     file = request.file,
+                    isPremiumAccount = request.isPremiumAccount,
                     onDetailedProgress = { progress ->
                         updateNotification("$displayName: ${progress.status}")
                         task?.progressSink?.invoke(progress)
@@ -126,6 +133,10 @@ class NexusModImportService : Service() {
     }
 
     private fun resumeInterruptedImports() {
+        if (activeTasks.get() > 0 || pendingTasks.isNotEmpty()) {
+            scheduleStopIfIdle()
+            return
+        }
         if (!resumeInProgress.compareAndSet(false, true)) {
             scheduleStopIfIdle()
             return
@@ -137,8 +148,36 @@ class NexusModImportService : Service() {
                 val interrupted = NexusModManager.resumableImportStatuses
                     .flatMap { status -> dao.getInstallsByStatus(status) }
                     .distinctBy { it.installId }
+                    .filter { ModDownloadRegistry.get(it.installId) == null }
+                    .filterNot(NexusImportState::isWaitingForWebsiteAuthorization)
                 if (interrupted.isEmpty()) return@launch
-                interrupted.forEach { install ->
+                val (completeArchives, downloadsNeedingLinks) = interrupted.partition {
+                    NexusModManager.hasCompletePendingArchive(applicationContext, it)
+                }
+                val nexusUser = if (downloadsNeedingLinks.isNotEmpty()) {
+                    try {
+                        NexusApiClient().validateKey()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Timber.w(e, "Could not validate Nexus account before resuming imports")
+                        downloadsNeedingLinks.forEach { install ->
+                            dao.updateInstallStatus(install.installId, ModInstallStatus.PAUSED.name)
+                        }
+                        null
+                    }
+                } else {
+                    null
+                }
+                if (nexusUser?.isPremium == false) {
+                    val message = getString(R.string.nexus_resume_requires_website_authorization)
+                    downloadsNeedingLinks.forEach { install ->
+                        dao.upsertInstall(NexusImportState.pauseForWebsiteAuthorization(install, message))
+                    }
+                    Timber.i("Paused free-account Nexus imports until the user authorizes each file on the website")
+                }
+                val resumable = completeArchives + if (nexusUser?.isPremium == true) downloadsNeedingLinks else emptyList()
+                resumable.forEach { install ->
                     updateNotification("${install.modName}: Resuming")
                     try {
                         NexusModManager.importNexusFile(
@@ -164,6 +203,7 @@ class NexusModImportService : Service() {
                                 uploadedTimestamp = 0L,
                                 isPrimary = true,
                             ),
+                            isPremiumAccount = nexusUser?.isPremium,
                             onDetailedProgress = { progress ->
                                 updateNotification("${install.modName}: ${progress.status}")
                             },
@@ -243,6 +283,10 @@ class NexusModImportService : Service() {
         private const val EXTRA_FILE_DISPLAY_NAME = "file_display_name"
         private const val EXTRA_FILE_VERSION = "file_version"
         private const val EXTRA_FILE_SIZE_BYTES = "file_size_bytes"
+        private const val EXTRA_DOWNLOAD_AUTHORIZATION_KEY = "download_authorization_key"
+        private const val EXTRA_DOWNLOAD_AUTHORIZATION_EXPIRES = "download_authorization_expires"
+        private const val EXTRA_DOWNLOAD_AUTHORIZATION_USER_ID = "download_authorization_user_id"
+        private const val EXTRA_IS_PREMIUM_ACCOUNT = "is_premium_account"
         private const val CHANNEL_ID = "nexus_mod_imports"
         private const val NOTIFICATION_ID = 42
         private const val STOP_GRACE_MS = 15_000L
@@ -258,8 +302,16 @@ class NexusModImportService : Service() {
             modInfo: NexusModInfo,
             file: NexusModFile,
             displayName: String,
+            isPremiumAccount: Boolean? = null,
             onProgress: (ModImportProgress) -> Unit = {},
         ): Deferred<ModInstall> {
+            if (reference.fileId != null && reference.fileId != file.fileId) {
+                return CompletableDeferred<ModInstall>().also {
+                    it.completeExceptionally(
+                        IllegalArgumentException("The Nexus authorization does not match the selected file"),
+                    )
+                }
+            }
             val appContext = context.applicationContext
             val taskId = UUID.randomUUID().toString()
             val deferred = CompletableDeferred<ModInstall>()
@@ -268,6 +320,7 @@ class NexusModImportService : Service() {
                 reference = reference.copy(fileId = reference.fileId ?: file.fileId),
                 modInfo = modInfo,
                 file = file,
+                isPremiumAccount = isPremiumAccount,
             )
             pendingTasks[taskId] = ImportTask(
                 displayName = displayName,
@@ -291,10 +344,17 @@ class NexusModImportService : Service() {
             return deferred
         }
 
-        fun resumeInterruptedImports(context: Context) {
-            if (PrefManager.nexusApiKey.isBlank()) return
-
+        suspend fun resumeInterruptedImports(context: Context) {
             val appContext = context.applicationContext
+            val hasInterruptedImports = withContext(Dispatchers.IO) {
+                val dao = NexusModManager.dao(appContext)
+                NexusModManager.resumableImportStatuses.any { status ->
+                    dao.getInstallsByStatus(status).any { install ->
+                        !NexusImportState.isWaitingForWebsiteAuthorization(install)
+                    }
+                }
+            }
+            if (!hasInterruptedImports) return
             try {
                 ContextCompat.startForegroundService(
                     appContext,
@@ -307,7 +367,7 @@ class NexusModImportService : Service() {
             }
         }
 
-        private fun putImportRequest(intent: Intent, request: NexusImportRequest) {
+        internal fun putImportRequest(intent: Intent, request: NexusImportRequest) {
             intent.putExtra(EXTRA_APP_ID, request.appId)
             intent.putExtra(EXTRA_GAME_DOMAIN, request.reference.gameDomain)
             intent.putExtra(EXTRA_MOD_ID, request.reference.modId)
@@ -319,6 +379,55 @@ class NexusModImportService : Service() {
             intent.putExtra(EXTRA_FILE_DISPLAY_NAME, request.file.name)
             intent.putExtra(EXTRA_FILE_VERSION, request.file.version)
             intent.putExtra(EXTRA_FILE_SIZE_BYTES, request.file.sizeBytes)
+            request.reference.downloadAuthorization?.let { authorization ->
+                intent.putExtra(EXTRA_DOWNLOAD_AUTHORIZATION_KEY, authorization.key)
+                intent.putExtra(EXTRA_DOWNLOAD_AUTHORIZATION_EXPIRES, authorization.expires)
+                authorization.userId?.let { intent.putExtra(EXTRA_DOWNLOAD_AUTHORIZATION_USER_ID, it) }
+            }
+            request.isPremiumAccount?.let { intent.putExtra(EXTRA_IS_PREMIUM_ACCOUNT, it) }
+        }
+
+        internal fun decodeImportRequest(intent: Intent): NexusImportRequest? = with(intent) {
+            val appId = getStringExtra(EXTRA_APP_ID)?.takeIf { it.isNotBlank() } ?: return null
+            val gameDomain = getStringExtra(EXTRA_GAME_DOMAIN)?.takeIf { it.isNotBlank() } ?: return null
+            val modId = getLongExtra(EXTRA_MOD_ID, 0L).takeIf { it > 0L } ?: return null
+            val fileId = getLongExtra(EXTRA_FILE_ID, 0L).takeIf { it > 0L } ?: return null
+            val fileName = getStringExtra(EXTRA_FILE_NAME).orEmpty()
+            val downloadAuthorization = getStringExtra(EXTRA_DOWNLOAD_AUTHORIZATION_KEY)
+                ?.takeIf { it.isNotBlank() && it.length <= 2048 }
+                ?.let { key ->
+                    val expires = getLongExtra(EXTRA_DOWNLOAD_AUTHORIZATION_EXPIRES, 0L).takeIf { it > 0L }
+                        ?: return@let null
+                    NexusDownloadAuthorization(
+                        key = key,
+                        expires = expires,
+                        userId = getLongExtra(EXTRA_DOWNLOAD_AUTHORIZATION_USER_ID, 0L).takeIf { it > 0L },
+                    )
+                }
+            NexusImportRequest(
+                appId = appId,
+                reference = NexusModReference(gameDomain, modId, fileId, downloadAuthorization),
+                modInfo = NexusModInfo(
+                    modId = modId,
+                    name = getStringExtra(EXTRA_MOD_NAME).orEmpty().ifBlank { "Nexus mod $modId" },
+                    summary = getStringExtra(EXTRA_MOD_SUMMARY).orEmpty(),
+                    version = getStringExtra(EXTRA_MOD_VERSION).orEmpty(),
+                ),
+                file = NexusModFile(
+                    fileId = fileId,
+                    name = getStringExtra(EXTRA_FILE_DISPLAY_NAME).orEmpty().ifBlank { fileName },
+                    version = getStringExtra(EXTRA_FILE_VERSION).orEmpty(),
+                    fileName = fileName.ifBlank { "mod_$fileId" },
+                    sizeBytes = getLongExtra(EXTRA_FILE_SIZE_BYTES, 0L),
+                    uploadedTimestamp = 0L,
+                    isPrimary = true,
+                ),
+                isPremiumAccount = if (hasExtra(EXTRA_IS_PREMIUM_ACCOUNT)) {
+                    getBooleanExtra(EXTRA_IS_PREMIUM_ACCOUNT, false)
+                } else {
+                    null
+                },
+            )
         }
     }
 
@@ -329,39 +438,14 @@ class NexusModImportService : Service() {
         val deferred: CompletableDeferred<ModInstall>,
     )
 
-    private data class NexusImportRequest(
+    internal data class NexusImportRequest(
         val appId: String,
         val reference: NexusModReference,
         val modInfo: NexusModInfo,
         val file: NexusModFile,
+        val isPremiumAccount: Boolean? = null,
     )
 
-    private fun Intent.toImportRequest(): NexusImportRequest? {
-        val appId = getStringExtra(EXTRA_APP_ID)?.takeIf { it.isNotBlank() } ?: return null
-        val gameDomain = getStringExtra(EXTRA_GAME_DOMAIN)?.takeIf { it.isNotBlank() } ?: return null
-        val modId = getLongExtra(EXTRA_MOD_ID, 0L).takeIf { it > 0L } ?: return null
-        val fileId = getLongExtra(EXTRA_FILE_ID, 0L).takeIf { it > 0L } ?: return null
-        val fileName = getStringExtra(EXTRA_FILE_NAME).orEmpty()
-        return NexusImportRequest(
-            appId = appId,
-            reference = NexusModReference(gameDomain, modId, fileId),
-            modInfo = NexusModInfo(
-                modId = modId,
-                name = getStringExtra(EXTRA_MOD_NAME).orEmpty().ifBlank { "Nexus mod $modId" },
-                summary = getStringExtra(EXTRA_MOD_SUMMARY).orEmpty(),
-                version = getStringExtra(EXTRA_MOD_VERSION).orEmpty(),
-            ),
-            file = NexusModFile(
-                fileId = fileId,
-                name = getStringExtra(EXTRA_FILE_DISPLAY_NAME).orEmpty().ifBlank { fileName },
-                version = getStringExtra(EXTRA_FILE_VERSION).orEmpty(),
-                fileName = fileName.ifBlank { "mod_$fileId" },
-                sizeBytes = getLongExtra(EXTRA_FILE_SIZE_BYTES, 0L),
-                uploadedTimestamp = 0L,
-                isPrimary = true,
-            ),
-        )
-    }
 }
 
 private fun ModInstall.metadataSummary(): String =

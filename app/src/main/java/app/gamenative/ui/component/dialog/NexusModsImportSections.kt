@@ -83,7 +83,10 @@ internal fun ApiKeySection(
                 label = { Text(stringResource(R.string.nexus_personal_api_key)) },
                 singleLine = true,
             )
-            OutlinedButton(onClick = onValidate, enabled = apiKey.isNotBlank()) {
+            OutlinedButton(
+                onClick = onValidate,
+                enabled = apiKey.isNotBlank() && validationState?.checking != true,
+            ) {
                 Text(stringResource(R.string.nexus_save_check_key))
             }
             validationState?.let { state ->
@@ -186,6 +189,7 @@ internal fun CollectionSelectionSection(
     availableBytes: Long,
     estimatedRequiredBytes: Long,
     paused: Boolean,
+    controlsEnabled: Boolean,
     cancelEnabled: Boolean,
     onToggle: (String, Boolean) -> Unit,
     onSelectAll: () -> Unit,
@@ -282,10 +286,10 @@ internal fun CollectionSelectionSection(
                 val compact = maxWidth < 420.dp
                 val firstRow: @Composable () -> Unit = {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = onSelectAll, enabled = importable > 0) {
+                        TextButton(onClick = onSelectAll, enabled = controlsEnabled && importable > 0) {
                             Text(stringResource(R.string.nexus_select_all))
                         }
-                        TextButton(onClick = onClearSelection, enabled = selectedCount > 0) {
+                        TextButton(onClick = onClearSelection, enabled = controlsEnabled && selectedCount > 0) {
                             Text(stringResource(R.string.nexus_clear))
                         }
                     }
@@ -293,7 +297,7 @@ internal fun CollectionSelectionSection(
                 val secondRow: @Composable () -> Unit = {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (failedQueueCount > 0) {
-                            TextButton(onClick = onRetryFailed) {
+                            TextButton(onClick = onRetryFailed, enabled = controlsEnabled) {
                                 Text(stringResource(R.string.nexus_retry_failed))
                             }
                         }
@@ -346,7 +350,7 @@ internal fun CollectionSelectionSection(
                 ) {
                     Checkbox(
                         checked = selected,
-                        enabled = mod.canImport && queueItem?.status != CollectionQueueStatus.IMPORTING,
+                        enabled = controlsEnabled && mod.canImport && queueItem?.status != CollectionQueueStatus.IMPORTING,
                         onCheckedChange = { onToggle(key, it) },
                     )
                     Text("${index + 1}.", style = MaterialTheme.typography.labelMedium)
@@ -419,7 +423,7 @@ internal fun CollectionSelectionSection(
                 val compact = maxWidth < 420.dp
                 if (compact) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        Button(onClick = onImportSelected, enabled = selectedCount > 0, modifier = Modifier.fillMaxWidth()) {
+                        Button(onClick = onImportSelected, enabled = controlsEnabled && selectedCount > 0, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(8.dp))
                             Text(stringResource(R.string.nexus_download_selected))
@@ -435,7 +439,7 @@ internal fun CollectionSelectionSection(
                     }
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Button(onClick = onImportSelected, enabled = selectedCount > 0) {
+                        Button(onClick = onImportSelected, enabled = controlsEnabled && selectedCount > 0) {
                             Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(8.dp))
                             Text(stringResource(R.string.nexus_download_selected))

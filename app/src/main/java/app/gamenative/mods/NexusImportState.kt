@@ -8,6 +8,9 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 
 internal object NexusImportState {
+    private const val WEBSITE_AUTHORIZATION_REQUIRED_KEY = "websiteAuthorizationRequired"
+    private const val DOWNLOAD_COMPLETE_KEY = "downloadComplete"
+
     val reusableStatuses = setOf(
         ModInstallStatus.READY.name,
         ModInstallStatus.APPLIED.name,
@@ -59,13 +62,52 @@ internal object NexusImportState {
             }
             .toString()
 
+    fun pauseForWebsiteAuthorization(
+        install: ModInstall,
+        message: String,
+        now: Long = System.currentTimeMillis(),
+    ): ModInstall {
+        val metadata = runCatching { JSONObject(install.metadataJson) }.getOrElse { JSONObject() }
+            .put("summary", runCatching { JSONObject(install.metadataJson).optString("summary") }.getOrDefault(""))
+            .put("error", message)
+            .put(WEBSITE_AUTHORIZATION_REQUIRED_KEY, true)
+        return install.copy(
+            status = ModInstallStatus.PAUSED.name,
+            updatedAt = now,
+            metadataJson = metadata.toString(),
+        )
+    }
+
+    fun isWaitingForWebsiteAuthorization(install: ModInstall): Boolean =
+        runCatching {
+            JSONObject(install.metadataJson).optBoolean(WEBSITE_AUTHORIZATION_REQUIRED_KEY, false)
+        }.getOrDefault(false)
+
+    fun markDownloadComplete(install: ModInstall): ModInstall {
+        val metadata = runCatching { JSONObject(install.metadataJson) }.getOrElse { JSONObject() }
+            .put(DOWNLOAD_COMPLETE_KEY, true)
+        return install.copy(
+            updatedAt = System.currentTimeMillis(),
+            metadataJson = metadata.toString(),
+        )
+    }
+
+    fun hasCompletedDownload(install: ModInstall?): Boolean =
+        install != null && runCatching {
+            JSONObject(install.metadataJson).optBoolean(DOWNLOAD_COMPLETE_KEY, false)
+        }.getOrDefault(false)
+
     fun userMessage(error: Throwable, fallback: String = "Failed to import Nexus mod"): String {
         val raw = error.message.orEmpty()
         val normalized = raw.lowercase()
+        if (error is ModImportPausedException) {
+            return raw.ifBlank { "Import paused because Wi-Fi/LAN-only downloads are enabled." }
+        }
+        if (error is ModImportCanceledException) {
+            return raw.ifBlank { "Import canceled." }
+        }
+        apiException(error)?.let { return apiMessage(it, fallback) }
         return when (error) {
-            is ModImportPausedException -> raw.ifBlank { "Import paused because Wi-Fi/LAN-only downloads are enabled." }
-            is ModImportCanceledException -> raw.ifBlank { "Import canceled." }
-            is NexusApiException -> apiMessage(error, fallback)
             is UnknownHostException -> "Network connection failed. Check your connection and try again."
             is SocketTimeoutException -> "Network request timed out. Check your connection and try again."
             is IOException -> when {
@@ -85,16 +127,50 @@ internal object NexusImportState {
         }
     }
 
-    private fun apiMessage(error: NexusApiException, fallback: String): String {
-        val quota = buildString {
-            error.hourlyRemaining?.let { append(" Hourly remaining: $it.") }
-            error.dailyRemaining?.let { append(" Daily remaining: $it.") }
+    fun apiException(error: Throwable): NexusApiException? {
+        var current: Throwable? = error
+        val visited = mutableSetOf<Throwable>()
+        while (current != null && visited.add(current)) {
+            if (current is NexusApiException) return current
+            current = current.cause
         }
-        val base = when (error.statusCode) {
-            401, 403 -> "Nexus API authentication failed. Check the API key and account access."
-            404 -> error.message ?: "Nexus could not find this mod, file, or collection revision."
-            429 -> "Nexus API rate limit reached."
-            else -> error.message ?: fallback
+        return null
+    }
+
+    fun requiresWebsiteAuthorization(error: Throwable): Boolean =
+        apiException(error)?.reason in setOf(
+            NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_REQUIRED,
+            NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_INVALID,
+            NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED,
+        )
+
+    private fun apiMessage(error: NexusApiException, fallback: String): String {
+        val quota = if (error.reason == NexusApiErrorReason.RATE_LIMITED || error.statusCode == 429) {
+            buildString {
+                error.hourlyRemaining?.let { append(" Hourly remaining: $it.") }
+                error.dailyRemaining?.let { append(" Daily remaining: $it.") }
+            }
+        } else {
+            ""
+        }
+        val base = when (error.reason) {
+            NexusApiErrorReason.AUTHENTICATION -> "Nexus rejected the API key. Reconnect the Nexus account and try again."
+            NexusApiErrorReason.FORBIDDEN -> "Nexus denied access to this resource for the current account."
+            NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_REQUIRED ->
+                "Free Nexus accounts must authorize this file on the Nexus Mods website before GameNative can download it."
+            NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_INVALID ->
+                "Nexus rejected the website download authorization. Make sure the browser and GameNative use the same Nexus account, then try again."
+            NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED ->
+                "The Nexus website download authorization expired. Open Nexus Mods and authorize the file again."
+            NexusApiErrorReason.NOT_FOUND -> error.message ?: "Nexus could not find this mod, file, or collection revision."
+            NexusApiErrorReason.RATE_LIMITED -> "Nexus API rate limit reached."
+            NexusApiErrorReason.OTHER -> when (error.statusCode) {
+                401 -> "Nexus rejected the API key. Reconnect the Nexus account and try again."
+                403 -> "Nexus denied access to this resource for the current account."
+                404 -> error.message ?: "Nexus could not find this mod, file, or collection revision."
+                429 -> "Nexus API rate limit reached."
+                else -> error.message ?: fallback
+            }
         }
         return base + quota
     }

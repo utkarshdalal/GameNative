@@ -1424,17 +1424,24 @@ object PrefManager {
             }
         }
         set(value) {
-            if (value.isBlank()) {
-                removePref(NEXUS_API_KEY_ENC)
-            } else {
-                runCatching { Crypto.encrypt(value.toByteArray()) }
-                    .onSuccess { setPref(NEXUS_API_KEY_ENC, it) }
-                    .onFailure {
-                        Timber.w(it, "Failed to encrypt Nexus API key; clearing saved key")
-                        removePref(NEXUS_API_KEY_ENC)
-                    }
+            scope.launch {
+                runCatching { saveNexusApiKey(value) }
             }
         }
+
+    suspend fun saveNexusApiKey(value: String) {
+        if (value.isBlank()) {
+            dataStore.edit { it.remove(NEXUS_API_KEY_ENC) }
+            return
+        }
+        val encrypted = try {
+            Crypto.encrypt(value.toByteArray())
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to encrypt Nexus API key")
+            throw e
+        }
+        dataStore.edit { it[NEXUS_API_KEY_ENC] = encrypted }
+    }
 
     private val NEXUS_LAST_PLACEMENT_JSON = stringPreferencesKey("nexus_last_placement_json")
     var nexusLastPlacementJson: String

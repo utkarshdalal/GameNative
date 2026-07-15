@@ -78,12 +78,26 @@ data class NexusCollectionInfo(
     val manifestInfo: NexusCollectionManifestInfo = NexusCollectionManifestInfo.EMPTY,
 )
 
+enum class NexusApiErrorReason {
+    AUTHENTICATION,
+    FORBIDDEN,
+    DOWNLOAD_AUTHORIZATION_REQUIRED,
+    DOWNLOAD_AUTHORIZATION_INVALID,
+    DOWNLOAD_AUTHORIZATION_EXPIRED,
+    NOT_FOUND,
+    RATE_LIMITED,
+    OTHER,
+}
+
 class NexusApiException(
     message: String,
     val statusCode: Int? = null,
     val hourlyRemaining: Int? = null,
     val dailyRemaining: Int? = null,
-) : IOException(message)
+    val reason: NexusApiErrorReason = NexusApiErrorReason.OTHER,
+    val serverMessage: String? = null,
+    cause: Throwable? = null,
+) : IOException(message, cause)
 
 class NexusApiClient(
     private val client: OkHttpClient = OkHttpClient(),
@@ -159,9 +173,34 @@ class NexusApiClient(
         gameDomain: String,
         modId: Long,
         fileId: Long,
+        downloadAuthorization: NexusDownloadAuthorization? = null,
+        isPremiumAccount: Boolean? = null,
         apiKey: String = PrefManager.nexusApiKey,
     ): List<NexusDownloadLink> = withContext(Dispatchers.IO) {
-        val array = getArray("/games/$gameDomain/mods/$modId/files/$fileId/download_link.json", apiKey)
+        val path = "/games/$gameDomain/mods/$modId/files/$fileId/download_link.json"
+        val url = (baseUrl.trimEnd('/') + path).toHttpUrlOrNull()
+            ?: throw NexusApiException("Invalid Nexus download-link URL")
+        val authorizedUrl = url.newBuilder()
+            .apply {
+                downloadAuthorization?.let { authorization ->
+                    addQueryParameter("key", authorization.key)
+                    addQueryParameter("expires", authorization.expires.toString())
+                }
+            }
+            .build()
+        val array = try {
+            JSONArray(
+                execute(
+                    request = baseRequest(authorizedUrl.toString(), apiKey).build(),
+                    displayPath = path,
+                ),
+            )
+        } catch (error: NexusApiException) {
+            throw error.asDownloadLinkError(
+                hasAuthorization = downloadAuthorization != null,
+                isPremiumAccount = isPremiumAccount,
+            )
+        }
         buildList {
             for (i in 0 until array.length()) {
                 val item = array.optJSONObject(i) ?: continue
@@ -430,8 +469,10 @@ class NexusApiClient(
             val daily = response.header("x-rl-daily-remaining")?.toIntOrNull()
             val body = response.body.string()
             if (!response.isSuccessful) {
+                val serverMessage = parseServerErrorMessage(body)
                 val message = when (response.code) {
-                    401, 403 -> "Nexus API key was rejected"
+                    401 -> "Nexus API key was rejected"
+                    403 -> "Nexus denied access to this resource"
                     404 -> if (displayPath.contains("download_link", ignoreCase = true)) {
                         "This Nexus file is no longer downloadable"
                     } else {
@@ -440,7 +481,14 @@ class NexusApiClient(
                     429 -> "Nexus API rate limit reached"
                     else -> "Nexus API request failed (${response.code})"
                 }
-                throw NexusApiException(message, response.code, hourly, daily)
+                throw NexusApiException(
+                    message = message,
+                    statusCode = response.code,
+                    hourlyRemaining = hourly,
+                    dailyRemaining = daily,
+                    reason = response.code.toApiErrorReason(),
+                    serverMessage = serverMessage,
+                )
             }
             return body
         }
@@ -451,16 +499,78 @@ class NexusApiClient(
             val hourly = response.header("x-rl-hourly-remaining")?.toIntOrNull()
             val daily = response.header("x-rl-daily-remaining")?.toIntOrNull()
             if (!response.isSuccessful) {
-                response.body.string()
+                val serverMessage = parseServerErrorMessage(response.body.string())
                 val message = when (response.code) {
-                    401, 403 -> "Nexus API key was rejected"
+                    401 -> "Nexus API key was rejected"
+                    403 -> "Nexus denied access to this resource"
                     429 -> "Nexus API rate limit reached"
                     else -> "Nexus API request failed (${response.code})"
                 }
-                throw NexusApiException(message, response.code, hourly, daily)
+                throw NexusApiException(
+                    message = message,
+                    statusCode = response.code,
+                    hourlyRemaining = hourly,
+                    dailyRemaining = daily,
+                    reason = response.code.toApiErrorReason(),
+                    serverMessage = serverMessage,
+                )
             }
             return response.body.byteStream().use { it.readLimitedBytes(maxBytes) }
         }
+    }
+
+    private fun NexusApiException.asDownloadLinkError(
+        hasAuthorization: Boolean,
+        isPremiumAccount: Boolean?,
+    ): NexusApiException {
+        val (message, downloadReason) = when (statusCode) {
+            400 -> if (hasAuthorization) {
+                "Nexus rejected this website download authorization. Make sure the browser and GameNative use the same Nexus account." to
+                    NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_INVALID
+            } else {
+                return this
+            }
+            403 -> if (hasAuthorization) {
+                "Nexus rejected this website download authorization. Return to Nexus Mods and authorize the file again." to
+                    NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_INVALID
+            } else if (isPremiumAccount == true) {
+                return this
+            } else {
+                "Nexus requires website authorization for this download. Free accounts must continue on Nexus Mods first." to
+                    NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_REQUIRED
+            }
+            410 -> if (hasAuthorization) {
+                "The Nexus website download authorization expired. Return to Nexus Mods and authorize the file again." to
+                    NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED
+            } else {
+                return this
+            }
+            else -> return this
+        }
+        return NexusApiException(
+            message = message,
+            statusCode = statusCode,
+            hourlyRemaining = hourlyRemaining,
+            dailyRemaining = dailyRemaining,
+            reason = downloadReason,
+            serverMessage = serverMessage,
+            cause = this,
+        )
+    }
+
+    private fun Int.toApiErrorReason(): NexusApiErrorReason = when (this) {
+        401 -> NexusApiErrorReason.AUTHENTICATION
+        403 -> NexusApiErrorReason.FORBIDDEN
+        404 -> NexusApiErrorReason.NOT_FOUND
+        429 -> NexusApiErrorReason.RATE_LIMITED
+        else -> NexusApiErrorReason.OTHER
+    }
+
+    private fun parseServerErrorMessage(body: String): String? {
+        if (body.isBlank()) return null
+        return runCatching {
+            JSONObject(body).optString("message").trim().takeIf { it.isNotBlank() }
+        }.getOrNull()?.take(500)
     }
 
     private fun looksLikeJsonObject(bytes: ByteArray): Boolean =
