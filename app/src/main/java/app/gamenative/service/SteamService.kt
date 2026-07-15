@@ -4162,9 +4162,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             // current session; the DB writes below are for persistence across restarts.
             licenses = pending.licenseList
 
-            // --- CPU work BEFORE acquiring any write lock ---
-            // Previously this groupBy/map ran inside withTransaction, holding the write lock
-            // during expensive CPU work on the full (potentially 30k+) license list.
             val licensesToAdd = pending.licenseList
                 .groupBy { it.packageID }
                 .map { licensesEntry ->
@@ -4195,9 +4192,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                     )
                 }
 
-            // --- Diff against the DB before acquiring the write lock ---
-            // getLicenseStubs() fetches only packageId + lastChangeNumber + accessToken, avoiding
-            // deserialization of the large app_ids/depot_ids lists for every row.
+
+            // Compare the new and changed licences so we only update/add what we need
             val existingStubs = licenseDao.getLicenseStubs().associateBy { it.packageId }
             val incomingIds = licensesToAdd.mapTo(HashSet(licensesToAdd.size)) { it.packageId }
 
@@ -4257,7 +4253,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.i("onLicenseList: no packages need PICS sync, skipping queue")
             }
 
-            // --- Transaction 2: raw license persistence for DepotDownloader ---
             // JSON serialization of the full license list happens here (outside T1) so T1's lock
             // window stays short. Chunked writes cap peak allocation and keep each lock window
             // to milliseconds. Runs after PICS is queued so it doesn't delay the pipeline.
