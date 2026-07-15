@@ -1,5 +1,5 @@
 # Privacy Policy for GameNative
-<sub>Last Updated: June 26, 2026</sub>
+<sub>Last Updated: July 12, 2026</sub>
 
 GameNative is an unofficial client application that lets you access your libraries from supported PC game stores and play your owned games on your device.
 
@@ -26,6 +26,20 @@ This data:
 - Is used only to improve game compatibility, recommend working settings, and prioritize development fixes
 
 GameNative does not build user profiles, track browsing activity, or sell data to third parties.
+
+## Game Recommendations
+
+GameNative can suggest games you might like from GOG.com, based on the games you already play. **We do not send any of your game or account information to GOG unless you explicitly opt in by accepting an in-app consent prompt.** Until you consent, nothing about the games you play is shared with GOG. You can turn the feature off again at any time in **Settings → Interface → Show game recommendations**.
+
+Once you have opted in:
+
+- The app looks at which games you play most and most recently on your device, and shares the corresponding game identifiers with GOG's recommendation service to generate suggestions.
+- If you are signed into GOG, your GOG account identifier is included, so recommendations can be tailored and games you already own can be excluded.
+- These identifiers are sent directly to GOG's recommendation, catalog, and games-database services. GOG's handling of them is governed by GOG's own privacy policy.
+
+Recommended games link to GOG's store through an affiliate program (Commission Junction). If you follow one of these links, the affiliate network may record the click for attribution, and GameNative may earn a commission on any resulting purchase. This does not change the price you pay.
+
+Turning recommendations off stops all of the above: no game or account information is sent to GOG for recommendations, and the recommendations section is hidden.
 
 ## Third-Party Services
 

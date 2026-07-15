@@ -383,7 +383,7 @@ class PhysicalControllerHandler(
                 }
 
                 if (winHandler != null) {
-                    val controller = winHandler.currentController
+                    val controller = winHandler.getCurrentController()
                     if (controller != null) {
                         controller.state.copy(state)
                     }

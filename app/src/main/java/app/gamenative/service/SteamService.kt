@@ -74,7 +74,11 @@ import `in`.dragonbra.javasteam.enums.EPersonaState
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.networking.steam3.ProtocolTypes
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesCloudconfigstoreSteamclient
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesFamilygroupsSteamclient
+import app.gamenative.data.SteamCollectionRepository
+import app.gamenative.steam.CloudConfigStoreService
+import app.gamenative.steam.SteamCollectionParser
 import `in`.dragonbra.javasteam.rpc.service.FamilyGroups
 import `in`.dragonbra.javasteam.steam.authentication.AuthPollResult
 import `in`.dragonbra.javasteam.steam.authentication.AuthSessionDetails
@@ -290,6 +294,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     private var picsGetProductInfoJob: Job? = null
     private var picsChangesCheckerJob: Job? = null
     private var friendCheckerJob: Job? = null
+    private var steamCollectionsJob: Job? = null
 
     private val _isPlayingBlocked = MutableStateFlow(false)
     val isPlayingBlocked = _isPlayingBlocked.asStateFlow()
@@ -2883,6 +2888,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             PrefManager.clearSteamSessionPreferences()
             instance?.clearPendingSync()
             clearDatabase(clearCloudSyncState = clearCloudSyncState)
+            SteamCollectionRepository.clear()
         }
 
         private fun shouldClearUserDataForLoggedOnFailure(result: EResult): Boolean = when (result) {
@@ -2927,6 +2933,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             instance?.picsGetProductInfoJob?.cancel()
             instance?.picsChangesCheckerJob?.cancel()
             instance?.friendCheckerJob?.cancel()
+            // Stop an in-flight collections fetch so a slow RPC can't repopulate the repo after logout.
+            instance?.steamCollectionsJob?.cancel()
         }
 
         private fun performLogOffDuties(clearCloudSyncState: Boolean = false) {
@@ -3749,6 +3757,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // retrieve persona data of logged in user
                 scope.launch { requestUserPersona() }
 
+                // fetch the user's Steam collections for the library filter
+                steamCollectionsJob = scope.launch { fetchSteamCollections() }
+
                 // Request family share info if we have a familyGroupId.
                 if (callback.familyGroupId != 0L) {
                     scope.launch {
@@ -4050,6 +4061,62 @@ class SteamService : Service(), IChallengeUrlChanged {
                 val event = SteamEvent.PersonaStateReceived(localPersona.value)
                 PluviaApp.events.emit(event)
             }
+        }
+    }
+
+    /**
+     * Downloads the user's Steam collections from CloudConfigStore and publishes the
+     * parsed static collections to [SteamCollectionRepository] for the library filter.
+     */
+    internal suspend fun fetchSteamCollections() {
+        val client = steamClient
+        // Remember who we fetched for, so a slow RPC can't write one account's collections into another.
+        val fetchSteamId = client?.steamID?.convertToUInt64()
+        val um = client?.getHandler<SteamUnifiedMessages>()
+        if (um == null) {
+            Timber.tag("SteamCollections").w("UnifiedMessages handler unavailable; cannot fetch collections")
+            return
+        }
+        try {
+            val request = SteammessagesCloudconfigstoreSteamclient.CCloudConfigStore_Download_Request.newBuilder()
+                .addVersions(
+                    SteammessagesCloudconfigstoreSteamclient.CCloudConfigStore_NamespaceVersion.newBuilder()
+                        .setEnamespace(1) // user collections namespace
+                        .setVersion(0L), // 0 = full download
+                )
+                .build()
+
+            // A registered service is required: JavaSteam routes ServiceMethodResponse packets by
+            // service name, so the generic sendMessage alone never receives the reply.
+            val service = um.createService(CloudConfigStoreService::class.java)
+            val job = service.download(request)
+            // The fetch fires during the post-login burst (PICS for the whole library), so give the
+            // response generous headroom beyond the default job timeout.
+            job.timeout = 60_000L
+            val response = job.toFuture().await()
+
+            val body = response.body.build()
+            val rawEntries = body.dataList.flatMap { ns ->
+                ns.entriesList.map { entry ->
+                    SteamCollectionParser.RawEntry(
+                        key = entry.key,
+                        value = entry.value,
+                        isDeleted = entry.isDeleted,
+                    )
+                }
+            }
+
+            val parsed = SteamCollectionParser.parse(rawEntries)
+            Timber.tag("SteamCollections").i(
+                "Fetched ${parsed.collections.size} Steam collections " +
+                    "(${parsed.skippedDynamicCount} dynamic skipped)",
+            )
+            // Drop the result if we logged out or switched accounts while the RPC was in flight.
+            if (isLoggedIn && steamClient?.steamID?.convertToUInt64() == fetchSteamId) {
+                SteamCollectionRepository.update(parsed)
+            }
+        } catch (t: Throwable) {
+            Timber.tag("SteamCollections").e(t, "Failed to fetch Steam collections; keeping cached snapshot")
         }
     }
 

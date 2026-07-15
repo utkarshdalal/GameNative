@@ -86,6 +86,14 @@ public enum Binding {
                 return "SHOW KEYBOARD";
             case ALT_ENTER:
                 return "ALT + ENTER";
+            case GAMEPAD_BUTTON_L1:
+                return "BUTTON LB";
+            case GAMEPAD_BUTTON_R1:
+                return "BUTTON RB";
+            case GAMEPAD_BUTTON_L2:
+                return "BUTTON LT";
+            case GAMEPAD_BUTTON_R2:
+                return "BUTTON RT";
             default:
                 return super.toString().replaceAll("^(MOUSE_)|(KEY_)|(GAMEPAD_)", "").replace("KP_", "NUMPAD_").replace("_", " ");
         }
