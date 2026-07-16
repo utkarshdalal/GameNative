@@ -596,8 +596,8 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             return PowerProfile(
                 name = PerformancePreset.BALANCED.displayName,
                 governor = CpuGovernor.SCHEDUTIL,
-                minCpuFreq = 0,
-                maxCpuFreq = 0,
+                minCpuFreq = getCurrentMinCpuValue(),
+                maxCpuFreq = getCurrentMaxCpuValue(),
                 minGpuPowerLevel = 0,
                 maxGpuPowerLevel = 0
             )
