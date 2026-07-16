@@ -23,8 +23,13 @@ object PerfLoop {
 
     fun isRunning(): Boolean = job?.isActive == true
 
+    private fun policyFor(preset: PerfPreset): Policy = when (preset) {
+        PerfPreset.BATTERY -> DynamicCapPolicy()
+        PerfPreset.BALANCED, PerfPreset.PERFORMANCE -> HoldTopPolicy()
+    }
+
     @Synchronized
-    fun start(context: Context, preset: PerfPreset = PerfPreset.BALANCED, policy: Policy = HoldTopPolicy()) {
+    fun start(context: Context, preset: PerfPreset = PerfPreset.BALANCED, policy: Policy = policyFor(preset)) {
         if (isRunning()) {
             Timber.tag(TAG).d("Already running, ignoring start")
             return
@@ -46,6 +51,7 @@ object PerfLoop {
                         gpuBusyPercent = Sensors.readGpuBusyPercent(),
                         gpuClkHz = Sensors.readGpuClkHz(),
                         frameStats = Sensors.readFrameStats(ctx),
+                        frameStatsAgeMs = Sensors.frameStatsAgeMs(ctx),
                         battTempC = Sensors.readBatteryTempC(params),
                         boardTempC = Sensors.readBoardTempC(params),
                         gpuNumLevels = gpuInfo?.numGpuPowerLevels ?: 0,
@@ -79,6 +85,8 @@ object PerfLoop {
         PowerManager.update {
             decision.cpuMinKhz?.let { minCpuValue(it) }
             decision.cpuMaxKhz?.let { maxCpuValue(it) }
+            decision.clusterMax?.forEach { (policy, khz) -> clusterMaxCpuValue(policy, khz) }
+            decision.clusterMin?.forEach { (policy, khz) -> clusterMinCpuValue(policy, khz) }
             if (PowerManager.isGpuSupported() && numGpuLevels > 0 &&
                 (decision.gpuMinLevel != null || decision.gpuMaxLevel != null)) {
                 minGpuPowerLevel(0)

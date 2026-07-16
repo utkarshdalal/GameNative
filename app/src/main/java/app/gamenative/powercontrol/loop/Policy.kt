@@ -4,6 +4,7 @@ data class Snapshot(
     val gpuBusyPercent: Int? = null,
     val gpuClkHz: Long? = null,
     val frameStats: FrameStats? = null,
+    val frameStatsAgeMs: Long? = null,
     val battTempC: Double? = null,
     val boardTempC: Double? = null,
     val gpuNumLevels: Int = 0,
@@ -14,11 +15,14 @@ data class Decision(
     val gpuMaxLevel: Int? = null,
     val cpuMinKhz: Long? = null,
     val cpuMaxKhz: Long? = null,
+    val clusterMax: Map<Int, Long>? = null,
+    val clusterMin: Map<Int, Long>? = null,
     val sysfs: Map<String, String> = emptyMap(),
 ) {
     val isEmpty: Boolean
         get() = gpuMinLevel == null && gpuMaxLevel == null &&
-            cpuMinKhz == null && cpuMaxKhz == null && sysfs.isEmpty()
+            cpuMinKhz == null && cpuMaxKhz == null &&
+            clusterMax.isNullOrEmpty() && clusterMin.isNullOrEmpty() && sysfs.isEmpty()
 }
 
 enum class PerfPreset {

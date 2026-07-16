@@ -54,6 +54,13 @@ object Sensors {
         }
     }
 
+    /** Age of the frame-stats file in milliseconds, or null if it does not exist. */
+    fun frameStatsAgeMs(context: Context): Long? {
+        val file = File(context.filesDir, PERF_STATS_FILE)
+        if (!file.exists()) return null
+        return (System.currentTimeMillis() - file.lastModified()).coerceAtLeast(0)
+    }
+
     fun readBatteryTempC(params: DeviceParams? = null): Double? {
         val zone = params?.thermal?.battZone ?: DEFAULT_BATT_ZONE
         return readThermalZoneC(zone)

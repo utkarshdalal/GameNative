@@ -65,6 +65,7 @@ data class GpuLevel(
 data class CpuParams(
     @SerialName("freq_steps_khz") val freqStepsKhz: List<Long> = emptyList(),
     @SerialName("floor_watts") val floorWatts: Map<String, Double> = emptyMap(),
+    @SerialName("gpu_bound_cap_khz") val gpuBoundCapKhz: Long? = null,
 )
 
 @Serializable
