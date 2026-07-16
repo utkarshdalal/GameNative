@@ -6,6 +6,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -113,6 +114,54 @@ class NexusApiClientTest {
 
         assertTrue(error is NexusApiException)
         assertEquals("This Nexus file is no longer downloadable", error?.message)
+    }
+
+    @Test
+    fun getDownloadLinks_freeAccount403_requiresWebsiteAuthorization() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(403)
+                .setBody("{}"),
+        )
+
+        val error = runCatching {
+            client.getDownloadLinks(
+                gameDomain = "newvegas",
+                modId = 58_277,
+                fileId = 123_456,
+                isPremiumAccount = false,
+                apiKey = "key",
+            )
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(
+            NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_REQUIRED,
+            (error as NexusApiException).reason,
+        )
+        assertTrue(NexusImportState.requiresWebsiteAuthorization(error))
+    }
+
+    @Test
+    fun getDownloadLinks_unknownAccount403_remainsForbidden() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(403)
+                .setBody("{}"),
+        )
+
+        val error = runCatching {
+            client.getDownloadLinks(
+                gameDomain = "newvegas",
+                modId = 58_277,
+                fileId = 123_456,
+                apiKey = "key",
+            )
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(NexusApiErrorReason.FORBIDDEN, (error as NexusApiException).reason)
+        assertFalse(NexusImportState.requiresWebsiteAuthorization(error))
     }
 
     @Test

@@ -45,7 +45,6 @@ import java.util.concurrent.atomic.AtomicInteger
 class NexusModImportService : Service() {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val resumeRequested = AtomicBoolean(false)
     private val delayedStop = Runnable {
         if (
             activeTasks.get() <= 0 &&
@@ -315,6 +314,7 @@ class NexusModImportService : Service() {
         private val pendingTasks = ConcurrentHashMap<String, ImportTask>()
         private val activeTasks = AtomicInteger(0)
         private val resumeInProgress = AtomicBoolean(false)
+        private val resumeRequested = AtomicBoolean(false)
 
         fun enqueueImport(
             context: Context,

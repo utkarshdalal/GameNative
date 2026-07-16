@@ -252,7 +252,7 @@ object NexusModManager {
             } else {
                 if (reference.downloadAuthorization?.isExpired() == true) {
                     throw NexusApiException(
-                        message = "The Nexus website download authorization expired",
+                        message = "The Nexus website download authorization expired. Open Nexus Mods and authorize the file again.",
                         statusCode = 410,
                         reason = NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED,
                     )

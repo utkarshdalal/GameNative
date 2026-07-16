@@ -29,6 +29,15 @@ class NexusUrlParserTest {
     }
 
     @Test
+    fun parse_nxmUrlWithMalformedPercentEscape_returnsNull() {
+        assertNull(
+            NexusUrlParser.parse(
+                "nxm://newvegas/mods/58277/files/123456?key=%ZZ&expires=4000000000",
+            ),
+        )
+    }
+
+    @Test
     fun parse_nonNexusUrl_returnsNull() {
         assertNull(NexusUrlParser.parse("https://example.com/skyrim/mods/1"))
     }
