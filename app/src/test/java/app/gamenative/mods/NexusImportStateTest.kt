@@ -130,6 +130,23 @@ class NexusImportStateTest {
         )
     }
 
+    @Test
+    fun userMessage_expiredAuthorizationPrefersLocalizedOverride() {
+        val error = NexusApiException(
+            message = "The Nexus website download authorization expired",
+            statusCode = 410,
+            reason = NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED,
+        )
+
+        assertEquals(
+            "Autorisierung abgelaufen",
+            NexusImportState.userMessage(
+                error = error,
+                expiredAuthorizationMessage = "Autorisierung abgelaufen",
+            ),
+        )
+    }
+
     private fun install(
         status: ModInstallStatus,
         fileId: Long,

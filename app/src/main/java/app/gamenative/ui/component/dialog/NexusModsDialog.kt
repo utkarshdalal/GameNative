@@ -2175,7 +2175,10 @@ fun NexusModsDialog(
                         if (e is NexusWebsiteAuthorizationException || NexusImportState.requiresWebsiteAuthorization(e)) {
                             failed++
                             collectionCancelRequested = true
-                            val errorMessage = NexusImportState.userMessage(e)
+                            val errorMessage = NexusImportState.userMessage(
+                                error = e,
+                                expiredAuthorizationMessage = context.getString(R.string.nexus_authorization_expired),
+                            )
                             updateQueue(
                                 pendingMod,
                                 status = CollectionQueueStatus.FAILED,

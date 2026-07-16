@@ -110,7 +110,11 @@ internal object NexusImportState {
                 metadata.optLong(DOWNLOAD_COMPLETE_BYTES_KEY, -1L) == archiveBytes
         }.getOrDefault(false)
 
-    fun userMessage(error: Throwable, fallback: String = "Failed to import Nexus mod"): String {
+    fun userMessage(
+        error: Throwable,
+        fallback: String = "Failed to import Nexus mod",
+        expiredAuthorizationMessage: String? = null,
+    ): String {
         val raw = error.message.orEmpty()
         val normalized = raw.lowercase()
         if (error is ModImportPausedException) {
@@ -119,7 +123,9 @@ internal object NexusImportState {
         if (error is ModImportCanceledException) {
             return raw.ifBlank { "Import canceled." }
         }
-        apiException(error)?.let { return apiMessage(it, fallback) }
+        apiException(error)?.let {
+            return apiMessage(it, fallback, expiredAuthorizationMessage)
+        }
         return when (error) {
             is UnknownHostException -> "Network connection failed. Check your connection and try again."
             is SocketTimeoutException -> "Network request timed out. Check your connection and try again."
@@ -157,7 +163,11 @@ internal object NexusImportState {
             NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED,
         )
 
-    private fun apiMessage(error: NexusApiException, fallback: String): String {
+    private fun apiMessage(
+        error: NexusApiException,
+        fallback: String,
+        expiredAuthorizationMessage: String?,
+    ): String {
         val quota = if (error.reason == NexusApiErrorReason.RATE_LIMITED || error.statusCode == 429) {
             buildString {
                 error.hourlyRemaining?.let { append(" Hourly remaining: $it.") }
@@ -174,7 +184,8 @@ internal object NexusImportState {
             NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_INVALID ->
                 "Nexus rejected the website download authorization. Make sure the browser and GameNative use the same Nexus account, then try again."
             NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED ->
-                error.message
+                expiredAuthorizationMessage
+                    ?: error.message
                     ?.takeUnless { it.trimEnd('.') == BARE_EXPIRED_AUTHORIZATION_MESSAGE }
                     ?: EXPIRED_AUTHORIZATION_MESSAGE
             NexusApiErrorReason.NOT_FOUND -> error.message ?: "Nexus could not find this mod, file, or collection revision."

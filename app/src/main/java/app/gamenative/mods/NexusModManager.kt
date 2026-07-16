@@ -3,6 +3,7 @@ package app.gamenative.mods
 import android.content.Context
 import app.gamenative.NetworkMonitor
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.ModInstall
 import app.gamenative.data.ModInstallStatus
 import app.gamenative.data.ModOverwriteManifest
@@ -252,7 +253,7 @@ object NexusModManager {
             } else {
                 if (reference.downloadAuthorization?.isExpired() == true) {
                     throw NexusApiException(
-                        message = "The Nexus website download authorization expired. Open Nexus Mods and authorize the file again.",
+                        message = context.getString(R.string.nexus_authorization_expired),
                         statusCode = 410,
                         reason = NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED,
                     )
@@ -362,7 +363,10 @@ object NexusModManager {
                 tempArchiveFile.delete()
             }
             tempExtractDir.deleteRecursively()
-            val message = NexusImportState.userMessage(e)
+            val message = NexusImportState.userMessage(
+                error = e,
+                expiredAuthorizationMessage = context.getString(R.string.nexus_authorization_expired),
+            )
             recordTerminalImport(ModInstallStatus.ERROR, message)
             if (e is NexusApiException) throw e
             throw IOException(message, e)
