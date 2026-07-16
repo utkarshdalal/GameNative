@@ -129,7 +129,7 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
 
 **Lifecycle:**
 - ✅ `start()` - Restores saved profile from preferences (or applies default Balanced profile)
-- ✅ `stop()` - Calls `performanceManager.stop()` to stop all active performance controls, then saves current profile
+- ✅ `stop()` - Calls `performanceManager.stop()` to stop all active performance controls. PowerManager saves the current profile before calling this method.
 
 ### Future Candidates
 - ⏳ Fan speed control
