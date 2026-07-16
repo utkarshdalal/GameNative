@@ -2168,6 +2168,8 @@
     <string name="power_control_gpu_freq">Частота ГП</string>
     <string name="power_control_gpu_min_power">Мінімальна потужність ГП</string>
     <string name="power_control_gpu_max_power">Максимальна потужність ГП</string>
+    <string name="power_control_ram_min_power">Мінімальна частота ОЗП</string>
+    <string name="power_control_ram_max_power">Максимальна частота ОЗП</string>
     <string name="power_control_available_frequencies">Доступні частоти</string>
     <string name="power_control_pserver_required">PServer недоступний</string>
     <string name="power_control_pserver_required_desc">Ця функція потребує служби PServer (доступна на пристроях AYN та Retroid). Ви можете переглядати поточні налаштування, але не можете вносити зміни без PServer.</string>

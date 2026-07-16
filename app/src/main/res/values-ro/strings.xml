@@ -2173,6 +2173,8 @@
     <string name="power_control_gpu_freq">Frecvență GPU</string>
     <string name="power_control_gpu_min_power">Putere minimă GPU</string>
     <string name="power_control_gpu_max_power">Putere maximă GPU</string>
+    <string name="power_control_ram_min_power">Frecvență minimă RAM</string>
+    <string name="power_control_ram_max_power">Frecvență maximă RAM</string>
     <string name="power_control_available_frequencies">Frecvențe disponibile</string>
     <string name="power_control_pserver_required">PServer indisponibil</string>
     <string name="power_control_pserver_required_desc">Această funcție necesită serviciul PServer (disponibil pe dispozitivele AYN și Retroid). Poți vizualiza setările curente, dar nu poți face modificări fără PServer.</string>

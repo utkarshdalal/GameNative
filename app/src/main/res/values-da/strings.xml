@@ -2040,6 +2040,8 @@
     <string name="power_control_gpu_freq">GPU-frekvens</string>
     <string name="power_control_gpu_min_power">Minimum GPU-effekt</string>
     <string name="power_control_gpu_max_power">Maksimum GPU-effekt</string>
+    <string name="power_control_ram_min_power">Minimum RAM-frekvens</string>
+    <string name="power_control_ram_max_power">Maksimum RAM-frekvens</string>
     <string name="power_control_available_frequencies">Tilgængelige frekvenser</string>
     <string name="power_control_pserver_required">PServer ikke tilgængelig</string>
     <string name="power_control_pserver_required_desc">Denne funktion kræver PServer-tjenesten (tilgængelig på AYN- og Retroid-enheder). Du kan se de aktuelle indstillinger, men kan ikke foretage ændringer uden PServer.</string>

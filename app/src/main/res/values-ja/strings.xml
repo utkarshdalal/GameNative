@@ -2125,6 +2125,8 @@
     <string name="power_control_gpu_freq">GPU周波数</string>
     <string name="power_control_gpu_min_power">最小GPUパワー</string>
     <string name="power_control_gpu_max_power">最大GPUパワー</string>
+    <string name="power_control_ram_min_power">最小RAM周波数</string>
+    <string name="power_control_ram_max_power">最大RAM周波数</string>
     <string name="power_control_available_frequencies">利用可能な周波数</string>
     <string name="power_control_pserver_required">PServerが利用できません</string>
     <string name="power_control_pserver_required_desc">この機能にはPServerサービスが必要です（AYNおよびRetroidデバイスで利用可能）。現在の設定を表示できますが、PServerなしでは変更できません。</string>

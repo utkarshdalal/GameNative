@@ -2040,6 +2040,8 @@
     <string name="power_control_gpu_freq">Frequência da GPU</string>
     <string name="power_control_gpu_min_power">Potência mínima da GPU</string>
     <string name="power_control_gpu_max_power">Potência máxima da GPU</string>
+    <string name="power_control_ram_min_power">Frequência mínima da RAM</string>
+    <string name="power_control_ram_max_power">Frequência máxima da RAM</string>
     <string name="power_control_available_frequencies">Frequências disponíveis</string>
     <string name="power_control_pserver_required">PServer não disponível</string>
     <string name="power_control_pserver_required_desc">Este recurso requer o serviço PServer (disponível em dispositivos AYN e Retroid). Você pode visualizar as configurações atuais, mas não pode fazer alterações sem o PServer.</string>
