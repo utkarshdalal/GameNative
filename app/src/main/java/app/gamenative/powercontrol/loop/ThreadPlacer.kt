@@ -3,7 +3,7 @@ package app.gamenative.powercontrol.loop
 import timber.log.Timber
 import java.io.File
 
-data class ThreadInfo(val tid: Int, val comm: String)
+data class ThreadInfo(val tid: Int, val comm: String, val cpuJiffies: Long = 0L)
 
 object ThreadPlacer {
 
@@ -17,7 +17,7 @@ object ThreadPlacer {
             tids.mapNotNull { name ->
                 val tid = name.toIntOrNull() ?: return@mapNotNull null
                 val comm = readComm(pid, tid)
-                ThreadInfo(tid, comm)
+                ThreadInfo(tid, comm, readCpuJiffies(pid, tid))
             }
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "Failed to list tasks for pid $pid")
@@ -30,6 +30,27 @@ object ThreadPlacer {
             File("/proc/$pid/task/$tid/comm").readText().trim()
         } catch (e: Exception) {
             ""
+        }
+    }
+
+    /**
+     * Total CPU jiffies (utime + stime) for a task, read from
+     * /proc/<pid>/task/<tid>/stat. Two snapshots subtracted give the busy delta
+     * used for hot-thread ranking. comm (field 2) may contain spaces/parens, so
+     * we parse from the last ')' to reach the numeric fields safely.
+     */
+    private fun readCpuJiffies(pid: Int, tid: Int): Long {
+        return try {
+            val stat = File("/proc/$pid/task/$tid/stat").readText()
+            val rparen = stat.lastIndexOf(')')
+            if (rparen < 0) return 0L
+            // Fields after ')': [0]=state(f3) [1]=ppid(f4) ... utime=f14 stime=f15
+            val fields = stat.substring(rparen + 1).trim().split(Regex("\\s+"))
+            val utime = fields.getOrNull(11)?.toLongOrNull() ?: 0L
+            val stime = fields.getOrNull(12)?.toLongOrNull() ?: 0L
+            utime + stime
+        } catch (e: Exception) {
+            0L
         }
     }
 
