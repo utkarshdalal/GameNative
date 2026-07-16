@@ -453,6 +453,38 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         }
     }
 
+    /**
+     * Set maximum CPU frequency in KHz for a single cpufreq policy (cluster)
+     */
+    override fun setClusterMaxCpuValue(policy: Int, khz: Long): Boolean {
+        val path = "$CPUFREQ_PATH/policy$policy/scaling_max_freq"
+
+        if (isBatchMode) {
+            batchFilePaths.add(path)
+            batchCommands.add("echo '$khz' > '$path'")
+            modifiedSysfsFiles.add(path)
+            return true
+        }
+
+        return writeSysfsFile(path, khz.toString())
+    }
+
+    /**
+     * Set minimum CPU frequency in KHz for a single cpufreq policy (cluster)
+     */
+    override fun setClusterMinCpuValue(policy: Int, khz: Long): Boolean {
+        val path = "$CPUFREQ_PATH/policy$policy/scaling_min_freq"
+
+        if (isBatchMode) {
+            batchFilePaths.add(path)
+            batchCommands.add("echo '$khz' > '$path'")
+            modifiedSysfsFiles.add(path)
+            return true
+        }
+
+        return writeSysfsFile(path, khz.toString())
+    }
+
     // ========================================
     // GPU Control - Getters
     // ========================================

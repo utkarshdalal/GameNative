@@ -186,6 +186,16 @@ object PowerManager {
             return this
         }
 
+        fun clusterMaxCpuValue(policy: Int, khz: Long): UpdateBuilder {
+            setClusterMaxCpuValue(policy, khz)
+            return this
+        }
+
+        fun clusterMinCpuValue(policy: Int, khz: Long): UpdateBuilder {
+            setClusterMinCpuValue(policy, khz)
+            return this
+        }
+
         fun build(): Boolean {
             return commit()
         }
@@ -274,6 +284,20 @@ object PowerManager {
             currentProfile?.maxCpuFreq = frequency
         }
         return result
+    }
+
+    /**
+     * Set maximum CPU frequency in KHz for a single cpufreq policy (cluster)
+     */
+    fun setClusterMaxCpuValue(policy: Int, khz: Long): Boolean {
+        return getDriver().setClusterMaxCpuValue(policy, khz)
+    }
+
+    /**
+     * Set minimum CPU frequency in KHz for a single cpufreq policy (cluster)
+     */
+    fun setClusterMinCpuValue(policy: Int, khz: Long): Boolean {
+        return getDriver().setClusterMinCpuValue(policy, khz)
     }
 
     // ========================================

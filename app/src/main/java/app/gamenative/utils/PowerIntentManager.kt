@@ -16,11 +16,13 @@ import timber.log.Timber
  * Intent: action app.gamenative.SET_POWER, extra "power_state" = JSON, e.g.
  *   {"gpuMinLevel":8,"gpuMaxLevel":8,"governor":"performance",
  *    "cpuMinKhz":1344000,"cpuMaxKhz":2016000,
+ *    "clusters":{"0":{"maxKhz":1900000},"3":{"minKhz":940800,"maxKhz":2400000},"7":{"maxKhz":3200000}},
  *    "sysfs":{"/sys/devices/system/cpu/bus_dcvs/DDR/hw_min_freq":"2736000",
  *             "/sys/class/qcom-battery/usb_charge_now":"0"}}
  * Power-level semantics match PowerManager (UI-friendly: higher = faster). Omitted fields
- * are left untouched. cpuMin/Max are applied uniformly to all clusters for now; per-cluster
- * prime/mid floors are a pending PServerDriver extension (see harness PLAN.md).
+ * are left untouched. cpuMin/Max are applied uniformly to all clusters; "clusters" keys are
+ * cpufreq policy numbers (RP6: policy0=little, policy3=mid, policy7=prime) and override the
+ * uniform value for that policy only.
  *
  * "sysfs" entries are raw root writes for knobs PowerManager has no typed API for yet —
  * DDR/L3/LLCC bus floors (bus_dcvs) and charge-bypass (usb_charge_now=0 discharges the
@@ -36,6 +38,7 @@ object PowerIntentManager {
         "/sys/devices/system/cpu/bus_dcvs/",
         "/sys/class/kgsl/kgsl-3d0/",
         "/sys/class/qcom-battery/usb_charge_now",
+        "/sys/devices/system/cpu/cpufreq/",
     )
 
     fun isSetPowerIntent(intent: Intent): Boolean = intent.action == ACTION_SET_POWER
@@ -73,6 +76,20 @@ object PowerIntentManager {
                     }
                     if (o.has("gpuMinLevel")) {
                         minGpuPowerLevel(o.getInt("gpuMinLevel")); applied += "gpuMin=${o.getInt("gpuMinLevel")}"
+                    }
+                }
+                o.optJSONObject("clusters")?.let { clusters ->
+                    for (policyKey in clusters.keys()) {
+                        val policy = policyKey.toIntOrNull() ?: continue
+                        val cluster = clusters.getJSONObject(policyKey)
+                        if (cluster.has("maxKhz")) {
+                            clusterMaxCpuValue(policy, cluster.getLong("maxKhz"))
+                            applied += "cluster${policy}Max=${cluster.getLong("maxKhz")}"
+                        }
+                        if (cluster.has("minKhz")) {
+                            clusterMinCpuValue(policy, cluster.getLong("minKhz"))
+                            applied += "cluster${policy}Min=${cluster.getLong("minKhz")}"
+                        }
                     }
                 }
             }

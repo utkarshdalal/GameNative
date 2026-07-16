@@ -25,6 +25,18 @@ abstract class PerformanceDriver {
      */
     open fun writeRawSysfs(path: String, value: String): Boolean = false
 
+    /**
+     * Set maximum CPU frequency in KHz for a single cpufreq policy (cluster). Only
+     * PServerDriver can honor this; others return false.
+     */
+    open fun setClusterMaxCpuValue(policy: Int, khz: Long): Boolean = false
+
+    /**
+     * Set minimum CPU frequency in KHz for a single cpufreq policy (cluster). Only
+     * PServerDriver can honor this; others return false.
+     */
+    open fun setClusterMinCpuValue(policy: Int, khz: Long): Boolean = false
+
     // ========================================
     // General / Driver Support
     // ========================================
