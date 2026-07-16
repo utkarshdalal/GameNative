@@ -1453,7 +1453,7 @@ fun XServerScreen(
             if (isGamepad) {
                 val winHandler = xServerView!!.getxServer().winHandler
                 val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
-                if (assignedSlot >= 0) {
+                if (assignedSlot > 0) {
                     handled = winHandler.onKeyEvent(it.event)
                 } else {
                     winHandler.setCurrentController(it.event.device.id)
@@ -1505,7 +1505,7 @@ fun XServerScreen(
             if (isGamepad && it.event != null) {
                 val winHandler = xServerView!!.getxServer().winHandler
                 val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
-                if (assignedSlot >= 0) {
+                if (assignedSlot > 0) {
                     handled = winHandler.onGenericMotionEvent(it.event)
                 } else {
                     winHandler.setCurrentController(it.event.device.id)
