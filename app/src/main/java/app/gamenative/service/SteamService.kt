@@ -4070,53 +4070,68 @@ class SteamService : Service(), IChallengeUrlChanged {
      */
     internal suspend fun fetchSteamCollections() {
         val client = steamClient
-        // Remember who we fetched for, so a slow RPC can't write one account's collections into another.
         val fetchSteamId = client?.steamID?.convertToUInt64()
+        // Same login + account as when we started, so a slow RPC can't cross accounts.
+        fun sameSession() = isLoggedIn && steamClient?.steamID?.convertToUInt64() == fetchSteamId
         val um = client?.getHandler<SteamUnifiedMessages>()
         if (um == null) {
             Timber.tag("SteamCollections").w("UnifiedMessages handler unavailable; cannot fetch collections")
             return
         }
-        try {
-            val request = SteammessagesCloudconfigstoreSteamclient.CCloudConfigStore_Download_Request.newBuilder()
-                .addVersions(
-                    SteammessagesCloudconfigstoreSteamclient.CCloudConfigStore_NamespaceVersion.newBuilder()
-                        .setEnamespace(1) // user collections namespace
-                        .setVersion(0L), // 0 = full download
-                )
-                .build()
-
-            // A registered service is required: JavaSteam routes ServiceMethodResponse packets by
-            // service name, so the generic sendMessage alone never receives the reply.
-            val service = um.createService(CloudConfigStoreService::class.java)
-            val job = service.download(request)
-            // The fetch fires during the post-login burst (PICS for the whole library), so give the
-            // response generous headroom beyond the default job timeout.
-            job.timeout = 60_000L
-            val response = job.toFuture().await()
-
-            val body = response.body.build()
-            val rawEntries = body.dataList.flatMap { ns ->
-                ns.entriesList.map { entry ->
-                    SteamCollectionParser.RawEntry(
-                        key = entry.key,
-                        value = entry.value,
-                        isDeleted = entry.isDeleted,
-                    )
-                }
-            }
-
-            val parsed = SteamCollectionParser.parse(rawEntries)
-            Timber.tag("SteamCollections").i(
-                "Fetched ${parsed.collections.size} Steam collections " +
-                    "(${parsed.skippedDynamicCount} dynamic skipped)",
-            )
-            // Drop the result if we logged out or switched accounts while the RPC was in flight.
-            if (isLoggedIn && steamClient?.steamID?.convertToUInt64() == fetchSteamId) {
-                SteamCollectionRepository.update(parsed)
-            }
+        // A registered service is required: JavaSteam routes ServiceMethodResponse packets by
+        // service name, so the generic sendMessage alone never receives the reply.
+        val service = try {
+            um.createService(CloudConfigStoreService::class.java)
         } catch (t: Throwable) {
-            Timber.tag("SteamCollections").e(t, "Failed to fetch Steam collections; keeping cached snapshot")
+            Timber.tag("SteamCollections").e(t, "Cannot create CloudConfigStore service; keeping cached snapshot")
+            return
+        }
+
+        val request = SteammessagesCloudconfigstoreSteamclient.CCloudConfigStore_Download_Request.newBuilder()
+            .addVersions(
+                SteammessagesCloudconfigstoreSteamclient.CCloudConfigStore_NamespaceVersion.newBuilder()
+                    .setEnamespace(1) // user collections namespace
+                    .setVersion(0L), // 0 = full download
+            )
+            .build()
+
+        // Reply can be starved or dropped during the post-login PICS burst; retry with backoff.
+        val backoffsMs = longArrayOf(3_000L, 8_000L, 20_000L)
+        val maxAttempts = backoffsMs.size + 1
+        repeat(maxAttempts) { attempt ->
+            if (!sameSession()) return
+            try {
+                val job = service.download(request)
+                job.timeout = 30_000L
+                val response = job.toFuture().await()
+
+                val body = response.body.build()
+                val rawEntries = body.dataList.flatMap { ns ->
+                    ns.entriesList.map { entry ->
+                        SteamCollectionParser.RawEntry(
+                            key = entry.key,
+                            value = entry.value,
+                            isDeleted = entry.isDeleted,
+                        )
+                    }
+                }
+
+                val parsed = SteamCollectionParser.parse(rawEntries)
+                Timber.tag("SteamCollections").i(
+                    "Fetched ${parsed.collections.size} Steam collections " +
+                        "(${parsed.skippedDynamicCount} dynamic skipped) on attempt ${attempt + 1}",
+                )
+                if (sameSession()) SteamCollectionRepository.update(parsed)
+                return
+            } catch (t: Throwable) {
+                val lastAttempt = attempt == maxAttempts - 1
+                Timber.tag("SteamCollections").w(
+                    t,
+                    "Steam collections fetch attempt ${attempt + 1}/$maxAttempts failed" +
+                        if (lastAttempt) "; keeping cached snapshot" else "; retrying",
+                )
+                if (!lastAttempt) delay(backoffsMs[attempt])
+            }
         }
     }
 
