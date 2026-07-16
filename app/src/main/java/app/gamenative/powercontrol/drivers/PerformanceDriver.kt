@@ -39,6 +39,11 @@ abstract class PerformanceDriver {
     abstract fun isGpuSupported(): Boolean
 
     /**
+     * Check if RAM bus control is supported
+     */
+    abstract fun isBusSupported(): Boolean
+
+    /**
      * Check if fan control is supported
      */
     abstract fun isFanSupported(): Boolean
@@ -159,4 +164,33 @@ abstract class PerformanceDriver {
      * Get Default Profile
      */
     abstract fun getDefaultProfile(): PowerProfile
+
+    // ========================================
+    // RAM Bus Control
+    // ========================================
+
+    /**
+     * Get current minimum RAM bus performance level
+     */
+    abstract fun getCurrentMinBusLevel(): Int
+
+    /**
+     * Get current maximum RAM bus performance level
+     */
+    abstract fun getCurrentMaxBusLevel(): Int
+
+    /**
+     * Get number of RAM bus levels available
+     */
+    abstract fun getNumBusLevels(): Int
+
+    /**
+     * Set minimum RAM bus performance level
+     */
+    abstract fun setMinBusLevel(level: Int): Boolean
+
+    /**
+     * Set maximum RAM bus performance level
+     */
+    abstract fun setMaxBusLevel(level: Int): Boolean
 }

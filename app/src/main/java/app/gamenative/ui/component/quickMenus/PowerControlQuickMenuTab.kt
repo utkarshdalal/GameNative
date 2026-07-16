@@ -31,6 +31,7 @@ sealed class PowerControlUiState {
     data class Success(
         val cpuInfo: CpuDisplayInfo,
         val gpuInfo: GpuDisplayInfo?,
+        val ramInfo: RamDisplayInfo?,
         val selectedProfile: PowerProfile,
         val availableProfiles: List<PowerProfile>
     ) : PowerControlUiState()
@@ -49,6 +50,12 @@ data class CpuDisplayInfo(
 data class GpuDisplayInfo(
     val availableFrequencies: List<Long>,
     val currentFreqIndex: Int,
+    val minPowerLevel: Int,
+    val maxPowerLevel: Int,
+    val maxAvailablePowerLevel: Int
+)
+
+data class RamDisplayInfo(
     val minPowerLevel: Int,
     val maxPowerLevel: Int,
     val maxAvailablePowerLevel: Int
@@ -80,6 +87,10 @@ fun PowerControlQuickMenuTab(
                     if (PowerManager.isGpuSupported()) {
                         minGpuPowerLevel(profile.minGpuPowerLevel)
                         maxGpuPowerLevel(profile.maxGpuPowerLevel)
+                    }
+                    if (PowerManager.isBusSupported()) {
+                        minBusLevel(profile.minBusLevel)
+                        maxBusLevel(profile.maxBusLevel)
                     }
                 }
 
@@ -128,6 +139,20 @@ fun PowerControlQuickMenuTab(
                 refreshTrigger++
             }
         },
+        onMinRamPowerChanged = { powerLevel ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.setProfileName(PerformancePreset.CUSTOM.displayName)
+                PowerManager.setMinBusLevel(powerLevel)
+                refreshTrigger++
+            }
+        },
+        onMaxRamPowerChanged = { powerLevel ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.setProfileName(PerformancePreset.CUSTOM.displayName)
+                PowerManager.setMaxBusLevel(powerLevel)
+                refreshTrigger++
+            }
+        },
         modifier = modifier
             .focusGroup()
             .then(
@@ -152,6 +177,8 @@ private fun rememberPowerControlState(refreshTrigger: Int): State<PowerControlUi
                 maxCpuFreq = 0,
                 minGpuPowerLevel = 0,
                 maxGpuPowerLevel = 0,
+                minBusLevel = 0,
+                maxBusLevel = 0,
             )
         )
     }
@@ -161,6 +188,7 @@ private fun rememberPowerControlState(refreshTrigger: Int): State<PowerControlUi
         withContext(Dispatchers.IO) {
             try {
                 val hasGpuSupport = PowerManager.isGpuSupported()
+                val hasBusSupport = PowerManager.isBusSupported()
 
                 val cpuInfo = PowerManager.getCpuInfo()
                 if (cpuInfo != null) {
@@ -170,13 +198,17 @@ private fun rememberPowerControlState(refreshTrigger: Int): State<PowerControlUi
                     val gpuDisplayInfo = if (hasGpuSupport) {
                         val gpuInfo = PowerManager.getGpuInfo()
                         val availableGpuFrequencies = PowerManager.getAvailableGpuFrequencies()
-                        if (gpuInfo != null && availableGpuFrequencies.isNotEmpty()) {
+                        if (gpuInfo != null) {
                             val maxGpuPowerLevel = if (gpuInfo.numGpuPowerLevels > 0) {
                                 gpuInfo.numGpuPowerLevels - 1
                             } else 0
-                            val currentFreqIndex = availableGpuFrequencies.indexOfFirst {
-                                it >= gpuInfo.currentGpuValue
-                            }.coerceAtLeast(0)
+                            val currentFreqIndex = if (availableGpuFrequencies.isNotEmpty()) {
+                                availableGpuFrequencies.indexOfFirst {
+                                    it >= gpuInfo.currentGpuValue
+                                }.coerceAtLeast(0)
+                            } else {
+                                0
+                            }
                             GpuDisplayInfo(
                                 availableFrequencies = availableGpuFrequencies,
                                 currentFreqIndex = currentFreqIndex,
@@ -186,6 +218,22 @@ private fun rememberPowerControlState(refreshTrigger: Int): State<PowerControlUi
                             )
                         } else null
                     } else null
+
+                    val ramDisplayInfo = if (hasBusSupport) {
+                        val busInfo = PowerManager.getBusInfo()
+
+                        if (busInfo != null && busInfo.numBusLevels > 0) {
+                            RamDisplayInfo(
+                                minPowerLevel = busInfo.minBusLevel,
+                                maxPowerLevel = busInfo.maxBusLevel,
+                                maxAvailablePowerLevel = busInfo.numBusLevels - 1
+                            )
+                        } else {
+                            null
+                        }
+                    } else {
+                        null
+                    }
 
                     val selectedMinFreqIndex = availableFrequencies.indexOfFirst {
                         it >= cpuInfo.currentMinValue
@@ -218,7 +266,9 @@ private fun rememberPowerControlState(refreshTrigger: Int): State<PowerControlUi
                         minCpuFreq = cpuInfo.currentMinValue,
                         maxCpuFreq = cpuInfo.currentMaxValue,
                         minGpuPowerLevel = gpuDisplayInfo?.minPowerLevel ?: 0,
-                        maxGpuPowerLevel = gpuDisplayInfo?.maxPowerLevel ?: 0
+                        maxGpuPowerLevel = gpuDisplayInfo?.maxPowerLevel ?: 0,
+                        minBusLevel = ramDisplayInfo?.minPowerLevel ?: 0,
+                        maxBusLevel = ramDisplayInfo?.maxPowerLevel ?: 0
                     )
 
                     if (!isInitialized) {
@@ -237,7 +287,8 @@ private fun rememberPowerControlState(refreshTrigger: Int): State<PowerControlUi
                         ),
                         gpuInfo = gpuDisplayInfo,
                         selectedProfile = selectedProfile,
-                        availableProfiles = profiles
+                        availableProfiles = profiles,
+                        ramInfo = ramDisplayInfo,
                     )
                 }
             } catch (e: Exception) {
@@ -260,7 +311,9 @@ fun PowerControlLoadingPreview() {
             onMinFreqChanged = {},
             onMaxFreqChanged = {},
             onMinGpuPowerChanged = {},
-            onMaxGpuPowerChanged = {}
+            onMaxGpuPowerChanged = {},
+            onMinRamPowerChanged = {},
+            onMaxRamPowerChanged = {}
         )
     }
 }
@@ -306,14 +359,17 @@ fun PowerControlSuccessCpuOnlyPreview() {
                         minCpuFreq = 300000,
                         maxCpuFreq = 1400000
                     )
-                )
+                ),
+                ramInfo = null
             ),
             onProfileSelected = {},
             onGovernorSelected = {},
             onMinFreqChanged = {},
             onMaxFreqChanged = {},
             onMinGpuPowerChanged = {},
-            onMaxGpuPowerChanged = {}
+            onMaxGpuPowerChanged = {},
+            onMinRamPowerChanged = {},
+            onMaxRamPowerChanged = {}
         )
     }
 }
@@ -359,14 +415,21 @@ fun PowerControlSuccessWithGpuPreview() {
                         minCpuFreq = 300000,
                         maxCpuFreq = 2200000
                     )
-                )
+                ),
+                ramInfo = RamDisplayInfo(
+                    minPowerLevel = 0,
+                    maxPowerLevel = 4,
+                    maxAvailablePowerLevel = 4
+                ),
             ),
             onProfileSelected = {},
             onGovernorSelected = {},
             onMinFreqChanged = {},
             onMaxFreqChanged = {},
             onMinGpuPowerChanged = {},
-            onMaxGpuPowerChanged = {}
+            onMaxGpuPowerChanged = {},
+            onMinRamPowerChanged = {},
+            onMaxRamPowerChanged = {}
         )
     }
 }

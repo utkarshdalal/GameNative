@@ -63,6 +63,18 @@ class NoOpPerformanceDriver : PerformanceDriver() {
 
     override fun setMaxGpuPowerLevel(level: Int): Boolean = false
 
+    override fun isBusSupported(): Boolean = false
+
+    override fun getCurrentMinBusLevel(): Int = 0
+
+    override fun getCurrentMaxBusLevel(): Int = 0
+
+    override fun getNumBusLevels(): Int = 0
+
+    override fun setMinBusLevel(level: Int): Boolean = false
+
+    override fun setMaxBusLevel(level: Int): Boolean = false
+
     override fun getDefaultProfile(): PowerProfile {
         // Return a dummy Balanced profile for devices without driver support
         return PowerProfile(

@@ -11,7 +11,9 @@ data class PowerProfile(
     var minCpuFreq: Long,
     var maxCpuFreq: Long,
     var minGpuPowerLevel: Int = 0,
-    var maxGpuPowerLevel: Int = 0
+    var maxGpuPowerLevel: Int = 0,
+    var minBusLevel: Int = 0,
+    var maxBusLevel: Int = 0
 )
 
 object PowerProfiles {

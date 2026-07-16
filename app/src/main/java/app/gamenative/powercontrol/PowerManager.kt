@@ -76,6 +76,12 @@ object PowerManager {
         val numGpuPowerLevels: Int
     )
 
+    data class BusInfo(
+        val minBusLevel: Int,
+        val maxBusLevel: Int,
+        val numBusLevels: Int
+    )
+
     // ========================================
     // General Settings
     // ========================================
@@ -175,6 +181,16 @@ object PowerManager {
 
         fun maxGpuPowerLevel(level: Int): UpdateBuilder {
             setMaxGpuPowerLevel(level)
+            return this
+        }
+
+        fun minBusLevel(level: Int): UpdateBuilder {
+            setMinBusLevel(level)
+            return this
+        }
+
+        fun maxBusLevel(level: Int): UpdateBuilder {
+            setMaxBusLevel(level)
             return this
         }
 
@@ -327,6 +343,49 @@ object PowerManager {
     }
 
     // ========================================
+    // RAM Bus Control
+    // ========================================
+
+    fun isBusSupported(): Boolean {
+        return getDriver().isBusSupported()
+    }
+
+    fun getBusInfo(): BusInfo? {
+        return try {
+            if (!getDriver().isBusSupported()) return null
+
+            BusInfo(
+                minBusLevel = getDriver().getCurrentMinBusLevel(),
+                maxBusLevel = getDriver().getCurrentMaxBusLevel(),
+                numBusLevels = getDriver().getNumBusLevels()
+            )
+        } catch (e: Exception) {
+            Timber.tag("PowerManager").e(e, "Failed to get RAM bus info")
+            null
+        }
+    }
+
+    fun setMinBusLevel(level: Int): Boolean {
+        val result = getDriver().setMinBusLevel(level)
+
+        if (result) {
+            currentProfile?.minBusLevel = level
+        }
+
+        return result
+    }
+
+    fun setMaxBusLevel(level: Int): Boolean {
+        val result = getDriver().setMaxBusLevel(level)
+
+        if (result) {
+            currentProfile?.maxBusLevel = level
+        }
+
+        return result
+    }
+
+    // ========================================
     // Profile Persistence
     // ========================================
 
@@ -367,6 +426,10 @@ object PowerManager {
                 if (isGpuSupported()) {
                     minGpuPowerLevel(currentProfile!!.minGpuPowerLevel)
                     maxGpuPowerLevel(currentProfile!!.maxGpuPowerLevel)
+                }
+                if (isBusSupported()) {
+                    minBusLevel(currentProfile!!.minBusLevel)
+                    maxBusLevel(currentProfile!!.maxBusLevel)
                 }
             }
 

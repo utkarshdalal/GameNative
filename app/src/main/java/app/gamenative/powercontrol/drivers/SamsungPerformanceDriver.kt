@@ -16,10 +16,13 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
 
         private const val DEFAULT_TIMEOUT_MS = 0
 
-        private const val CPU_LEVEL_MIN = 1
+        private const val CPU_LEVEL_MIN = 0
         private const val CPU_LEVEL_MAX = 4
-        private const val GPU_LEVEL_MIN = 1
+        private const val GPU_LEVEL_MIN = 0
         private const val GPU_LEVEL_MAX = 4
+
+        private const val BUS_LEVEL_MIN = 0
+        private const val BUS_LEVEL_MAX = 4
 
         /**
          * Check if device is a Samsung device
@@ -37,6 +40,8 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
     private var currentCpuMaxLevel: Int = CPU_LEVEL_MAX
     private var currentGpuMinLevel: Int = GPU_LEVEL_MIN
     private var currentGpuMaxLevel: Int = GPU_LEVEL_MAX
+    private var currentBusMinLevel: Int = BUS_LEVEL_MIN
+    private var currentBusMaxLevel: Int = BUS_LEVEL_MAX
 
     init {
         performanceManager = try {
@@ -61,6 +66,10 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
     }
 
     override fun isGpuSupported(): Boolean {
+        return isSamsungSdkAvailable
+    }
+
+    override fun isBusSupported(): Boolean {
         return isSamsungSdkAvailable
     }
 
@@ -220,18 +229,71 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
         }
     }
 
+    override fun getCurrentMinBusLevel(): Int {
+        return currentBusMinLevel
+    }
+
+    override fun getCurrentMaxBusLevel(): Int {
+        return currentBusMaxLevel
+    }
+
+    override fun getNumBusLevels(): Int {
+        return BUS_LEVEL_MAX - BUS_LEVEL_MIN + 1
+    }
+
+    override fun setMinBusLevel(level: Int): Boolean {
+        if (!isBusSupported()) return false
+
+        return try {
+            val busLevel = level.coerceIn(BUS_LEVEL_MIN, BUS_LEVEL_MAX)
+
+            val params = CustomParams()
+            params.add(CustomParams.TYPE_BUS_MIN, busLevel, DEFAULT_TIMEOUT_MS)
+
+            performanceManager?.start(params)
+            currentBusMinLevel = busLevel
+
+            Timber.tag(TAG).d("Set RAM bus min level to $busLevel")
+            true
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to set RAM bus min level")
+            false
+        }
+    }
+
+    override fun setMaxBusLevel(level: Int): Boolean {
+        if (!isBusSupported()) return false
+
+        return try {
+            val busLevel = level.coerceIn(BUS_LEVEL_MIN, BUS_LEVEL_MAX)
+
+            val params = CustomParams()
+            params.add(CustomParams.TYPE_BUS_MAX, busLevel, DEFAULT_TIMEOUT_MS)
+
+            performanceManager?.start(params)
+            currentBusMaxLevel = busLevel
+
+            Timber.tag(TAG).d("Set RAM bus max level to $busLevel")
+            true
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to set RAM bus max level")
+            false
+        }
+    }
+
     override fun getDefaultProfile(): PowerProfile {
-        // Samsung driver uses integer levels (1-4), not frequencies
-        // Return Balanced profile (middle performance)
-        // Level 2-3 represents balanced performance
+        // Samsung driver uses integer levels (0-4)
+        // Default: Balanced profile (full range)
 
         return PowerProfile(
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL, // Samsung doesn't use governors, but we need a value
-            minCpuFreq = 2, // CPU level 2
-            maxCpuFreq = 3, // CPU level 3
-            minGpuPowerLevel = 2, // GPU level 2
-            maxGpuPowerLevel = 3  // GPU level 3
+            minCpuFreq = 0, // CPU level 0
+            maxCpuFreq = 4, // CPU level 4
+            minGpuPowerLevel = 0, // GPU level 0
+            maxGpuPowerLevel = 4,  // GPU level 4
+            minBusLevel = 0,
+            maxBusLevel = 4
         )
     }
 }

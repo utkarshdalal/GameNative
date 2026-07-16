@@ -71,6 +71,18 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     // General / Driver Support
     // ========================================
 
+    override fun isBusSupported(): Boolean = false
+
+    override fun getCurrentMinBusLevel(): Int = 0
+
+    override fun getCurrentMaxBusLevel(): Int = 0
+
+    override fun getNumBusLevels(): Int = 0
+
+    override fun setMinBusLevel(level: Int): Boolean = false
+
+    override fun setMaxBusLevel(level: Int): Boolean = false
+
     /**
      * Check if PServer driver is available on this device
      */

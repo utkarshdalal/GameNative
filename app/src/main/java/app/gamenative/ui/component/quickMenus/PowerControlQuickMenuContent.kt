@@ -48,6 +48,8 @@ fun PowerControlQuickMenuContent(
     onMaxFreqChanged: (Int) -> Unit,
     onMinGpuPowerChanged: (Int) -> Unit,
     onMaxGpuPowerChanged: (Int) -> Unit,
+    onMinRamPowerChanged: (Int) -> Unit,
+    onMaxRamPowerChanged: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -71,7 +73,9 @@ fun PowerControlQuickMenuContent(
                     onMinFreqChanged = onMinFreqChanged,
                     onMaxFreqChanged = onMaxFreqChanged,
                     onMinGpuPowerChanged = onMinGpuPowerChanged,
-                    onMaxGpuPowerChanged = onMaxGpuPowerChanged
+                    onMaxGpuPowerChanged = onMaxGpuPowerChanged,
+                    onMinRamPowerChanged = onMinRamPowerChanged,
+                    onMaxRamPowerChanged = onMaxRamPowerChanged
                 )
             }
         }
@@ -133,7 +137,9 @@ private fun SuccessView(
     onMinFreqChanged: (Int) -> Unit,
     onMaxFreqChanged: (Int) -> Unit,
     onMinGpuPowerChanged: (Int) -> Unit,
-    onMaxGpuPowerChanged: (Int) -> Unit
+    onMaxGpuPowerChanged: (Int) -> Unit,
+    onMinRamPowerChanged: (Int) -> Unit,
+    onMaxRamPowerChanged: (Int) -> Unit
 ) {
     var isProfileDropdownExpanded by remember { mutableStateOf(false) }
     var isGovernorDropdownExpanded by remember { mutableStateOf(false) }
@@ -141,6 +147,8 @@ private fun SuccessView(
     var selectedMaxFreqIndex by remember { mutableStateOf(state.cpuInfo.selectedMaxFreqIndex) }
     var selectedMinGpuPowerLevel by remember { mutableStateOf(state.gpuInfo?.minPowerLevel ?: 0) }
     var selectedMaxGpuPowerLevel by remember { mutableStateOf(state.gpuInfo?.maxPowerLevel ?: 0) }
+    var selectedMinRamPowerLevel by remember { mutableStateOf(state.ramInfo?.minPowerLevel ?: 0) }
+    var selectedMaxRamPowerLevel by remember { mutableStateOf(state.ramInfo?.maxPowerLevel ?: 0) }
 
     LaunchedEffect(state.cpuInfo.selectedMinFreqIndex, state.cpuInfo.selectedMaxFreqIndex) {
         selectedMinFreqIndex = state.cpuInfo.selectedMinFreqIndex
@@ -150,6 +158,11 @@ private fun SuccessView(
     LaunchedEffect(state.gpuInfo?.minPowerLevel, state.gpuInfo?.maxPowerLevel) {
         selectedMinGpuPowerLevel = state.gpuInfo?.minPowerLevel ?: 0
         selectedMaxGpuPowerLevel = state.gpuInfo?.maxPowerLevel ?: 0
+    }
+
+    LaunchedEffect(state.ramInfo?.minPowerLevel, state.ramInfo?.maxPowerLevel) {
+        selectedMinRamPowerLevel = state.ramInfo?.minPowerLevel ?: 0
+        selectedMaxRamPowerLevel = state.ramInfo?.maxPowerLevel ?: 0
     }
 
     @SuppressLint("DefaultLocale")
@@ -351,107 +364,193 @@ private fun SuccessView(
                 modifier = Modifier.width(80.dp)
             )
         }
+    }
 
-        state.gpuInfo?.let { gpuInfo ->
-            SectionHeader(title = "GPU")
+    state.gpuInfo?.let { gpuInfo ->
+        SectionHeader(title = "GPU")
 
-            if (gpuInfo.availableFrequencies.isNotEmpty()) {
-                Text(
-                    text = stringResource(R.string.power_control_gpu_freq),
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        if (gpuInfo.availableFrequencies.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.power_control_gpu_freq),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Slider(
+                    value = gpuInfo.currentFreqIndex.toFloat(),
+                    onValueChange = { },
+                    enabled = false,
+                    valueRange = 0f..(gpuInfo.availableFrequencies.size - 1).toFloat(),
+                    steps = gpuInfo.availableFrequencies.size - 2,
+                    modifier = Modifier.weight(1f)
                 )
+                Text(
+                    text = formatFrequency(gpuInfo.availableFrequencies[gpuInfo.currentFreqIndex]),
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(80.dp)
+                )
+            }
+        }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Slider(
-                        value = gpuInfo.currentFreqIndex.toFloat(),
-                        onValueChange = { },
-                        enabled = false,
-                        valueRange = 0f..(gpuInfo.availableFrequencies.size - 1).toFloat(),
-                        steps = gpuInfo.availableFrequencies.size - 2,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = formatFrequency(gpuInfo.availableFrequencies[gpuInfo.currentFreqIndex]),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.width(80.dp)
-                    )
-                }
+        if (gpuInfo.maxAvailablePowerLevel > 0) {
+            Text(
+                text = stringResource(R.string.power_control_gpu_min_power),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Slider(
+                    value = selectedMinGpuPowerLevel.toFloat(),
+                    onValueChange = { newValue ->
+                        val newLevel = newValue.toInt()
+                        if (newLevel <= selectedMaxGpuPowerLevel) {
+                            selectedMinGpuPowerLevel = newLevel
+                        }
+                    },
+                    onValueChangeFinished = {
+                        onMinGpuPowerChanged(selectedMinGpuPowerLevel)
+                    },
+                    valueRange = 0f..gpuInfo.maxAvailablePowerLevel.toFloat(),
+                    steps = gpuInfo.maxAvailablePowerLevel - 1,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = selectedMinGpuPowerLevel.toString(),
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.width(20.dp)
+                )
             }
 
-            if (gpuInfo.maxAvailablePowerLevel > 0) {
+            Text(
+                text = stringResource(R.string.power_control_gpu_max_power),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Slider(
+                    value = selectedMaxGpuPowerLevel.toFloat(),
+                    onValueChange = { newValue ->
+                        val newLevel = newValue.toInt()
+                        if (newLevel >= selectedMinGpuPowerLevel) {
+                            selectedMaxGpuPowerLevel = newLevel
+                        }
+                    },
+                    onValueChangeFinished = {
+                        onMaxGpuPowerChanged(selectedMaxGpuPowerLevel)
+                    },
+                    valueRange = 0f..gpuInfo.maxAvailablePowerLevel.toFloat(),
+                    steps = gpuInfo.maxAvailablePowerLevel - 1,
+                    modifier = Modifier.weight(1f)
+                )
                 Text(
-                    text = stringResource(R.string.power_control_gpu_min_power),
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    text = selectedMaxGpuPowerLevel.toString(),
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.width(20.dp)
+                )
+            }
+        }
+    }
+
+    state.ramInfo?.let { ramInfo ->
+        if (ramInfo.maxAvailablePowerLevel > 0) {
+            SectionHeader(title = "RAM")
+
+            Text(
+                text = stringResource(R.string.power_control_ram_min_power),
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Slider(
+                    value = selectedMinRamPowerLevel.toFloat(),
+                    onValueChange = { newValue ->
+                        val newLevel = newValue.toInt()
+
+                        if (newLevel <= selectedMaxRamPowerLevel) {
+                            selectedMinRamPowerLevel = newLevel
+                        }
+                    },
+                    onValueChangeFinished = {
+                        onMinRamPowerChanged(selectedMinRamPowerLevel)
+                    },
+                    valueRange = 0f..ramInfo.maxAvailablePowerLevel.toFloat(),
+                    steps = (ramInfo.maxAvailablePowerLevel - 1).coerceAtLeast(0),
+                    modifier = Modifier.weight(1f)
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Slider(
-                        value = selectedMinGpuPowerLevel.toFloat(),
-                        onValueChange = { newValue ->
-                            val newLevel = newValue.toInt()
-                            if (newLevel <= selectedMaxGpuPowerLevel) {
-                                selectedMinGpuPowerLevel = newLevel
-                            }
-                        },
-                        onValueChangeFinished = {
-                            onMinGpuPowerChanged(selectedMinGpuPowerLevel)
-                        },
-                        valueRange = 0f..gpuInfo.maxAvailablePowerLevel.toFloat(),
-                        steps = gpuInfo.maxAvailablePowerLevel - 1,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = selectedMinGpuPowerLevel.toString(),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.width(20.dp)
-                    )
-                }
-
                 Text(
-                    text = stringResource(R.string.power_control_gpu_max_power),
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    text = selectedMinRamPowerLevel.toString(),
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.width(20.dp)
+                )
+            }
+
+            Text(
+                text = stringResource(R.string.power_control_ram_max_power),
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Slider(
+                    value = selectedMaxRamPowerLevel.toFloat(),
+                    onValueChange = { newValue ->
+                        val newLevel = newValue.toInt()
+
+                        if (newLevel >= selectedMinRamPowerLevel) {
+                            selectedMaxRamPowerLevel = newLevel
+                        }
+                    },
+                    onValueChangeFinished = {
+                        onMaxRamPowerChanged(selectedMaxRamPowerLevel)
+                    },
+                    valueRange = 0f..ramInfo.maxAvailablePowerLevel.toFloat(),
+                    steps = (ramInfo.maxAvailablePowerLevel - 1).coerceAtLeast(0),
+                    modifier = Modifier.weight(1f)
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Slider(
-                        value = selectedMaxGpuPowerLevel.toFloat(),
-                        onValueChange = { newValue ->
-                            val newLevel = newValue.toInt()
-                            if (newLevel >= selectedMinGpuPowerLevel) {
-                                selectedMaxGpuPowerLevel = newLevel
-                            }
-                        },
-                        onValueChangeFinished = {
-                            onMaxGpuPowerChanged(selectedMaxGpuPowerLevel)
-                        },
-                        valueRange = 0f..gpuInfo.maxAvailablePowerLevel.toFloat(),
-                        steps = gpuInfo.maxAvailablePowerLevel - 1,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = selectedMaxGpuPowerLevel.toString(),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.width(20.dp)
-                    )
-                }
+                Text(
+                    text = selectedMaxRamPowerLevel.toString(),
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.width(20.dp)
+                )
             }
         }
     }
