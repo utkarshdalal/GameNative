@@ -113,6 +113,14 @@ object PowerManager {
     }
 
     /**
+     * Raw privileged sysfs write for knobs without a typed API yet (DDR/bus floors,
+     * charge bypass). Caller is responsible for path vetting.
+     */
+    fun writeSysfs(path: String, value: String): Boolean {
+        return getDriver().writeRawSysfs(path, value)
+    }
+
+    /**
      * Get display unit preference for frequency values
      */
     fun getDisplayUnit(): PerformanceDriver.DisplayUnit {

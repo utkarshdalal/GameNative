@@ -733,6 +733,10 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         }
     }
 
+    override fun writeRawSysfs(path: String, value: String): Boolean {
+        return writeSysfsFile(path, value)
+    }
+
     private fun writeSysfsFile(path: String, value: String): Boolean {
         if (!isPServerAvailable) {
             Timber.tag(TAG).w("PServer not available to write to $path")

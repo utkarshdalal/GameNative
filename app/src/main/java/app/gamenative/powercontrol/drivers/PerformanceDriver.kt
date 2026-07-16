@@ -19,6 +19,12 @@ abstract class PerformanceDriver {
         INTEGER  // Display as raw integer value (e.g., 2400000)
     }
 
+    /**
+     * Raw privileged sysfs write for knobs without a typed API (DDR/bus floors, charge
+     * bypass). Only PServerDriver can honor this; others return false.
+     */
+    open fun writeRawSysfs(path: String, value: String): Boolean = false
+
     // ========================================
     // General / Driver Support
     // ========================================
