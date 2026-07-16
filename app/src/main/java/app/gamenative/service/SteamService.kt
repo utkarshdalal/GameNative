@@ -4123,6 +4123,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 )
                 if (sameSession()) SteamCollectionRepository.update(parsed)
                 return
+            } catch (e: CancellationException) {
+                throw e
             } catch (t: Throwable) {
                 val lastAttempt = attempt == maxAttempts - 1
                 Timber.tag("SteamCollections").w(
