@@ -72,16 +72,6 @@
                 <action android:name="app.gamenative.LAUNCH_GAME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <!-- Debug-only power-state hook for the OEM tuning harness (handler gated to BuildConfig.DEBUG) -->
-            <intent-filter>
-                <action android:name="app.gamenative.SET_POWER" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-            <!-- Debug-only closed-loop performance controller hook (handler gated to BuildConfig.DEBUG) -->
-            <intent-filter>
-                <action android:name="app.gamenative.PERF_LOOP" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
 
             <!--Allows app window to be resized on Oculus Quest VR headsets-->
             <meta-data
@@ -133,6 +123,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
+        <!-- Debug-only power-control hook for the OEM tuning harness. Broadcasts (not
+             activity starts) so power commands never disturb a running game. Handler
+             is gated to BuildConfig.DEBUG. -->
+        <receiver
+            android:name=".utils.PerfControlReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="app.gamenative.SET_POWER" />
+                <action android:name="app.gamenative.PERF_LOOP" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".service.SteamService"
             android:enabled="true"

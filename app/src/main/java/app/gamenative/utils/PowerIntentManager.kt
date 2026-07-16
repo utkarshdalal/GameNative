@@ -62,11 +62,18 @@ object PowerIntentManager {
                 if (o.has("cpuMaxKhz")) {
                     maxCpuValue(o.getLong("cpuMaxKhz")); applied += "cpuMax=${o.getLong("cpuMaxKhz")}"
                 }
-                if (o.has("gpuMinLevel")) {
-                    minGpuPowerLevel(o.getInt("gpuMinLevel")); applied += "gpuMin=${o.getInt("gpuMinLevel")}"
-                }
-                if (o.has("gpuMaxLevel")) {
-                    maxGpuPowerLevel(o.getInt("gpuMaxLevel")); applied += "gpuMax=${o.getInt("gpuMaxLevel")}"
+                if (o.has("gpuMinLevel") || o.has("gpuMaxLevel")) {
+                    // kgsl enforces min_pwrlevel >= max_pwrlevel on the sysfs indices, so a
+                    // single min-then-max write leaves min clamped to the old max when
+                    // raising speed. Open the floor to slowest first, set the ceiling, then
+                    // the floor — converges in one batch either direction.
+                    minGpuPowerLevel(0)
+                    if (o.has("gpuMaxLevel")) {
+                        maxGpuPowerLevel(o.getInt("gpuMaxLevel")); applied += "gpuMax=${o.getInt("gpuMaxLevel")}"
+                    }
+                    if (o.has("gpuMinLevel")) {
+                        minGpuPowerLevel(o.getInt("gpuMinLevel")); applied += "gpuMin=${o.getInt("gpuMinLevel")}"
+                    }
                 }
             }
             o.optJSONObject("sysfs")?.let { sysfs ->

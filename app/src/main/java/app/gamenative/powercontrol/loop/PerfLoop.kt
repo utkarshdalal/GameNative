@@ -79,9 +79,11 @@ object PerfLoop {
         PowerManager.update {
             decision.cpuMinKhz?.let { minCpuValue(it) }
             decision.cpuMaxKhz?.let { maxCpuValue(it) }
-            if (PowerManager.isGpuSupported() && numGpuLevels > 0) {
-                decision.gpuMinLevel?.let { minGpuPowerLevel(it.coerceIn(0, numGpuLevels - 1)) }
+            if (PowerManager.isGpuSupported() && numGpuLevels > 0 &&
+                (decision.gpuMinLevel != null || decision.gpuMaxLevel != null)) {
+                minGpuPowerLevel(0)
                 decision.gpuMaxLevel?.let { maxGpuPowerLevel(it.coerceIn(0, numGpuLevels - 1)) }
+                decision.gpuMinLevel?.let { minGpuPowerLevel(it.coerceIn(0, numGpuLevels - 1)) }
             }
         }
 

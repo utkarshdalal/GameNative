@@ -46,8 +46,6 @@ import app.gamenative.data.GameSource
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
-import app.gamenative.utils.PerfLoopIntentManager
-import app.gamenative.utils.PowerIntentManager
 import app.gamenative.utils.LocaleHelper
 import app.gamenative.ui.util.SnackbarManager
 import com.posthog.PostHog
@@ -291,20 +289,6 @@ class MainActivity : ComponentActivity() {
             return
         }
         Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}, isNewIntent=$isNewIntent")
-
-        // Debug-only power-state hook for the OEM tuning harness. Applies immediately and
-        // returns — it does not launch a game. Gated to debuggable builds.
-        if (BuildConfig.DEBUG && PowerIntentManager.isSetPowerIntent(intent)) {
-            val result = PowerIntentManager.handle(intent)
-            Timber.i("[SetPower]: $result")
-            return
-        }
-
-        if (BuildConfig.DEBUG && PerfLoopIntentManager.isPerfLoopIntent(intent)) {
-            val result = PerfLoopIntentManager.handle(this, intent)
-            Timber.i("[PerfLoop]: $result")
-            return
-        }
 
         try {
             val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
