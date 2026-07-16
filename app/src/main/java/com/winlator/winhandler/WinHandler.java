@@ -95,8 +95,10 @@ public class WinHandler {
     // Serializes vibration apply/cancel across the pollers, keepalive, and UI threads.
     private final Object rumbleLock = new Object();
     // waitForRumble() blocks until the game sends a NEW rumble command, so the poller can't
-    // refresh a held rumble; this is the cadence at which the keepalive re-applies it.
-    private static final int RUMBLE_KEEPALIVE_MS = 240;
+    // refresh a held rumble; this is the cadence at which the keepalive re-applies it. It re-arms
+    // 1s before the controller one-shot expires (long one-shot + rare refresh per upstream #1584 —
+    // far fewer vibrate() IPC/Bluetooth calls than a short one-shot refreshed every ~240ms).
+    private static final int RUMBLE_KEEPALIVE_MS = 9000;
     private final short[] lastLowFreq = new short[MAX_PLAYERS];
     private final short[] lastHighFreq = new short[MAX_PLAYERS];
     private final boolean[] isRumbling = new boolean[MAX_PLAYERS];
@@ -124,9 +126,12 @@ public class WinHandler {
     private static final int STANDALONE_PHONE_RUMBLE_THROTTLE_MS = 120;
 
     // --- Vibration routing (off / controller / device) + intensity ---
-    private static final int CONTROLLER_RUMBLE_MS = 500;
+    // Long one-shots refreshed shortly before expiry: vibrate() replaces the in-flight effect, so
+    // rumble changes/stops still apply instantly, but a held rumble costs one re-arm per period
+    // instead of constant refreshing.
+    private static final int CONTROLLER_RUMBLE_MS = 10000;
     private static final int DEVICE_RUMBLE_MS = 60000;
-    // Refresh the long device one-shot only as it nears expiry (vs. the frequent controller refresh).
+    // Refresh the device one-shot only as it nears expiry (its period is longer than the controller's).
     private static final long DEVICE_RUMBLE_REFRESH_MS = DEVICE_RUMBLE_MS - 5_000L;
     private static final String DEFAULT_VIBRATION_MODE = "controller";
     private static final Set<String> VALID_VIBRATION_MODES =
@@ -890,8 +895,7 @@ public class WinHandler {
                             // Idle: block until a rumble starts (woken by startVibration). No polling.
                             rumbleLock.wait();
                         } else {
-                            // Active: controller one-shots are short and need frequent refresh; the
-                            // device one-shot is long, so only refresh it as it nears expiry.
+                            // Active: re-arm each mode's one-shot shortly before it expires.
                             long interval = "device".equals(vibrationMode)
                                     ? DEVICE_RUMBLE_REFRESH_MS : RUMBLE_KEEPALIVE_MS;
                             rumbleLock.wait(interval);
