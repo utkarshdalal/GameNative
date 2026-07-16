@@ -4,6 +4,7 @@ import static com.winlator.xserver.XClientRequestHandler.RESPONSE_CODE_SUCCESS;
 
 import android.util.SparseArray;
 
+import com.winlator.renderer.ASurfaceRenderer;
 import com.winlator.renderer.GPUImage;
 import com.winlator.renderer.Texture;
 import com.winlator.renderer.VulkanRenderer;
@@ -53,7 +54,7 @@ public class PresentExtension implements Extension {
     }
 
     private final java.util.concurrent.ConcurrentHashMap<Integer, PendingIdle> pendingIdles =
-        new java.util.concurrent.ConcurrentHashMap<>();
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     private volatile android.view.Choreographer choreographer = null;
     private volatile boolean choreographerChecked = false;
@@ -61,8 +62,8 @@ public class PresentExtension implements Extension {
 
     private Thread cpuPacerThread = null;
     private final java.util.concurrent.PriorityBlockingQueue<PendingIdle> cpuQueue =
-        new java.util.concurrent.PriorityBlockingQueue<>(11,
-            java.util.Comparator.comparingLong(p -> p.targetNs));
+            new java.util.concurrent.PriorityBlockingQueue<>(11,
+                    java.util.Comparator.comparingLong(p -> p.targetNs));
 
     private static final long FIRE_EARLY_NS = 700_000L; // 0.7 ms
 
@@ -129,7 +130,7 @@ public class PresentExtension implements Extension {
         choreographerPosted = false;
         boolean anyRemaining = false;
         for (java.util.Iterator<java.util.Map.Entry<Integer, PendingIdle>> it =
-                pendingIdles.entrySet().iterator(); it.hasNext(); ) {
+             pendingIdles.entrySet().iterator(); it.hasNext(); ) {
             PendingIdle p = it.next().getValue();
             if (frameTimeNs >= p.targetNs) {
                 if (p.vsyncSkips > 0) {
@@ -154,10 +155,10 @@ public class PresentExtension implements Extension {
 
     private static class WindowTiming { long nextIdleNs = 0; }
     private final java.util.concurrent.ConcurrentHashMap<Integer, WindowTiming> windowTimings =
-        new java.util.concurrent.ConcurrentHashMap<>();
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     private void scheduleIdleNotify(Window window, Pixmap pixmap, int serial,
-                                     int idleFence, int targetFps, VulkanRenderer renderer) {
+                                    int idleFence, int targetFps, VulkanRenderer renderer) {
         if (targetFps <= 0) {
             sendIdleNotify(window, pixmap, serial, idleFence);
             return;
@@ -177,7 +178,7 @@ public class PresentExtension implements Extension {
         android.view.Choreographer ch = tryGetChoreographer(renderer);
         if (ch != null) {
             pendingIdles.put(window.id,
-                new PendingIdle(window, pixmap, serial, idleFence, fireTime, 0));
+                    new PendingIdle(window, pixmap, serial, idleFence, fireTime, 0));
             postChoreographerCallback();
         } else {
             cpuQueue.offer(new PendingIdle(window, pixmap, serial, idleFence, fireTime, 0));
@@ -244,13 +245,6 @@ public class PresentExtension implements Extension {
         }
     }
 
-    private void flushClientOutput(XClient client) {
-        try {
-            try (XStreamLock ignored = client.getOutputStream().lock()) {
-            }
-        } catch (Exception ignored) {}
-    }
-
     private static void queryVersion(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         inputStream.skip(8);
 
@@ -286,40 +280,36 @@ public class PresentExtension implements Extension {
         int contentDepth = content.visual.depth;
         int pixmapDepth = pixmap.drawable.visual.depth;
         boolean depthCompat = (contentDepth == pixmapDepth) ||
-            ((contentDepth == 24 || contentDepth == 32) && (pixmapDepth == 24 || pixmapDepth == 32));
+                ((contentDepth == 24 || contentDepth == 32) && (pixmapDepth == 24 || pixmapDepth == 32));
         if (!depthCompat) throw new BadMatch();
 
         final XServerRenderer xr = client.xServer.getRenderer();
         final VulkanRenderer vr = (xr instanceof VulkanRenderer) ? (VulkanRenderer) xr : null;
+        final ASurfaceRenderer asr = (xr instanceof ASurfaceRenderer) ? (ASurfaceRenderer) xr : null;
         final int targetFps = this.frameRateLimit;
 
         long ust = System.nanoTime() / 1000;
         long msc = ust / (targetFps > 0 ? (1_000_000L / targetFps) : (1_000_000L / 60));
 
         synchronized (content.renderLock) {
-            boolean isNative = vr != null && vr.isNativeMode();
-
-            if (isNative && pixmap.drawable.isDirectScanout()) {
+            if (asr != null) {
                 content.setTexture(pixmap.drawable.getTexture());
-                content.setDirectScanout(true);
                 sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.FLIP, ust, msc);
-                flushClientOutput(client);
                 if (window.attributes.isMapped()) {
-                    vr.onUpdateWindowContent(window);
+                    asr.onUpdateWindowContent(window);
                 }
                 if (targetFps > 0) scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
                 else sendIdleNotify(window, pixmap, serial, idleFence);
             } else if (vr != null && window.attributes.isMapped()) {
                 sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
-                flushClientOutput(client);
                 vr.onUpdateWindowContentDirect(window, pixmap.drawable, xOff, yOff);
                 if (targetFps > 0) scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
                 else sendIdleNotify(window, pixmap, serial, idleFence);
             } else {
+                // GL Renderer
                 content.copyArea((short)0, (short)0, xOff, yOff,
-                    pixmap.drawable.width, pixmap.drawable.height, pixmap.drawable);
+                        pixmap.drawable.width, pixmap.drawable.height, pixmap.drawable);
                 sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
-                flushClientOutput(client);
                 if (targetFps > 0) scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
                 else sendIdleNotify(window, pixmap, serial, idleFence);
             }

@@ -109,6 +109,7 @@ object QuickMenuAction {
     const val PERFORMANCE_HUD = 6
     const val TOUCHSCREEN_MODE = 7
     const val DISABLE_MOUSE = 8
+    const val SHOOTER_MODE = 9
 }
 
 private object QuickMenuTab {
@@ -256,6 +257,8 @@ fun QuickMenu(
     hasPhysicalController: Boolean = false,
     isTouchscreenModeActive: Boolean = false,
     onTouchGestureSettingsClick: () -> Unit = {},
+    isShooterModeActive: Boolean = false,
+    onShooterModeSettingsClick: () -> Unit = {},
     activeToggleIds: Set<Int> = emptySet(),
     // LSFG hot-reload state (tab only visible when isLsfgAvailable)
     isLsfgAvailable: Boolean = false,
@@ -323,6 +326,14 @@ fun QuickMenu(
                 id = QuickMenuAction.TOUCHSCREEN_MODE,
                 icon = Icons.Default.Fingerprint,
                 labelResId = R.string.touchscreen_mode,
+                accentColor = PluviaTheme.colors.accentPurple,
+            )
+        )
+        add(
+            QuickMenuItem(
+                id = QuickMenuAction.SHOOTER_MODE,
+                icon = Icons.Default.Gamepad,
+                labelResId = R.string.shooter_mode_toggle,
                 accentColor = PluviaTheme.colors.accentPurple,
             )
         )
@@ -663,9 +674,20 @@ fun QuickMenu(
                                                     },
                                                     focusRequester = if (index == 0) controllerItemFocusRequester else null,
                                                     secondaryIcon = if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && isTouchscreenModeActive)
-                                                        Icons.Default.Settings else null,
+                                                        Icons.Default.Settings
+                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && isShooterModeActive)
+                                                        Icons.Default.Settings
+                                                    else null,
+                                                    secondaryContentDescriptionResId = if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && isTouchscreenModeActive)
+                                                        R.string.gesture_settings_title
+                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && isShooterModeActive)
+                                                        R.string.shooter_mode_settings_title
+                                                    else null,
                                                     onSecondaryClick = if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && isTouchscreenModeActive)
-                                                        onTouchGestureSettingsClick else null,
+                                                        onTouchGestureSettingsClick
+                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && isShooterModeActive)
+                                                        onShooterModeSettingsClick
+                                                    else null,
                                                 )
                                             }
                                         }
@@ -1218,24 +1240,6 @@ private fun QuickMenuCloseButton(
     Box(
         modifier = modifier
             .size(44.dp)
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        BorderStroke(
-                            2.dp,
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.tertiary,
-                                ),
-                            ),
-                        ),
-                        shape,
-                    )
-                } else {
-                    Modifier
-                }
-            )
             .clip(shape)
             .background(
                 if (isFocused) {
@@ -1244,6 +1248,7 @@ private fun QuickMenuCloseButton(
                     Color.Transparent
                 },
             )
+            .focusRing(interactionSource, shape, width = 2.dp)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -1282,24 +1287,6 @@ private fun QuickMenuTabButton(
     Box(
         modifier = modifier
             .size(56.dp)
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        BorderStroke(
-                            2.dp,
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.tertiary,
-                                ),
-                            ),
-                        ),
-                        shape,
-                    )
-                } else {
-                    Modifier
-                }
-            )
             .clip(shape)
             .background(
                 when {
@@ -1308,6 +1295,7 @@ private fun QuickMenuTabButton(
                     else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                 },
             )
+            .focusRing(interactionSource, shape, width = 2.dp)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -1951,6 +1939,7 @@ private fun QuickMenuItemRow(
     onClick: () -> Unit,
     focusRequester: FocusRequester? = null,
     secondaryIcon: ImageVector? = null,
+    secondaryContentDescriptionResId: Int? = null,
     onSecondaryClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -1970,24 +1959,6 @@ private fun QuickMenuItemRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .then(
-                if (isFocused && isEnabled) {
-                    Modifier.border(
-                        BorderStroke(
-                            2.dp,
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.tertiary,
-                                ),
-                            ),
-                        ),
-                        shape,
-                    )
-                } else {
-                    Modifier
-                }
-            )
             .clip(shape)
             .then(
                 if (isFocused && isEnabled) {
@@ -1999,6 +1970,13 @@ private fun QuickMenuItemRow(
                             ),
                         ),
                     )
+                } else {
+                    Modifier
+                }
+            )
+            .then(
+                if (isEnabled) {
+                    Modifier.focusRing(interactionSource, shape, width = 2.dp)
                 } else {
                     Modifier
                 }
@@ -2077,7 +2055,9 @@ private fun QuickMenuItemRow(
             ) {
                 Icon(
                     imageVector = secondaryIcon,
-                    contentDescription = stringResource(R.string.gesture_settings_title),
+                    contentDescription = stringResource(
+                        secondaryContentDescriptionResId ?: R.string.gesture_settings_title,
+                    ),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp),
                 )

@@ -14,6 +14,7 @@ import app.gamenative.data.TouchGestureConfig;
 import timber.log.Timber;
 
 import com.winlator.core.AppUtils;
+import com.winlator.inputcontrols.Binding;
 import com.winlator.math.Mathf;
 import com.winlator.math.XForm;
 import com.winlator.renderer.ViewTransformation;
@@ -57,6 +58,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private boolean touchscreenMouseDisabled = false;
     private boolean isTouchscreenMode = false;
     private Runnable delayedPress;
+    private String delayedPressAction;
     private Runnable pendingHoldClickRelease;
     private String pendingHoldClickReleaseAction;
 
@@ -1181,14 +1183,18 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 // If there's a new single tap within 'CLICK_DELAYED_TIME' ms
                 // Immediately release the previous down click
                 removeCallbacks(delayedPress);
-                injectRelease(gestureConfig.getTapAction());
+                injectRelease(delayedPressAction);
+                delayedPressAction = null;
             }
+            String tapAction = gestureConfig.getTapAction();
             moveCursorTo((int) pt[0], (int) pt[1]);
-            injectClick(gestureConfig.getTapAction());
+            injectClick(tapAction);
             notifyHighlight(event.getX(actionIndex), event.getY(actionIndex));
             notifyGesture("Tap");
+            delayedPressAction = tapAction;
             delayedPress = () -> {
-                injectRelease(gestureConfig.getTapAction());
+                injectRelease(tapAction);
+                delayedPressAction = null;
                 delayedPress = null;
             };
             postDelayed(delayedPress, CLICK_DELAYED_TIME);
@@ -1413,7 +1419,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             // If there's a new single tap within 'CLICK_DELAYED_TIME' ms
             // Immediately release the previous down click
             removeCallbacks(delayedPress);
-            injectRelease(gestureConfig.getTapAction());
+            injectRelease(delayedPressAction);
+            delayedPressAction = null;
             delayedPress = null;
         }
     }
@@ -1499,6 +1506,10 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             notifyGesture("Keyboard");
             return false;
         }
+        if (TouchGestureConfig.ACTION_KEY_TILDE.equals(action)) {
+            Binding.KEY_TILDE.inject(xServer, true);
+            return true;
+        }
         XKeycode keycode = actionToKeycode(action);
         if (keycode != null) {
             xServer.injectKeyPress(keycode);
@@ -1523,6 +1534,10 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         if (action == null) return;
         if (TouchGestureConfig.ACTION_SHOW_KEYBOARD.equals(action)) {
             return; // One-shot action, no release needed
+        }
+        if (TouchGestureConfig.ACTION_KEY_TILDE.equals(action)) {
+            Binding.KEY_TILDE.inject(xServer, false);
+            return;
         }
         XKeycode keycode = actionToKeycode(action);
         if (keycode != null) {
@@ -1635,11 +1650,20 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             case TouchGestureConfig.PAN_MIDDLE_MOUSE:
                 performMiddleMousePan(dx, dy);
                 break;
+            case TouchGestureConfig.PAN_INVERTED_MIDDLE_MOUSE:
+                performMiddleMousePan(-dx, -dy);
+                break;
             case TouchGestureConfig.PAN_WASD:
                 performKeyPan(dx, dy, XKeycode.KEY_A, XKeycode.KEY_D, XKeycode.KEY_W, XKeycode.KEY_S);
                 break;
+            case TouchGestureConfig.PAN_INVERTED_WASD:
+                performKeyPan(dx, dy, XKeycode.KEY_D, XKeycode.KEY_A, XKeycode.KEY_S, XKeycode.KEY_W);
+                break;
             case TouchGestureConfig.PAN_ARROW_KEYS:
                 performKeyPan(dx, dy, XKeycode.KEY_LEFT, XKeycode.KEY_RIGHT, XKeycode.KEY_UP, XKeycode.KEY_DOWN);
+                break;
+            case TouchGestureConfig.PAN_INVERTED_ARROW_KEYS:
+                performKeyPan(dx, dy, XKeycode.KEY_RIGHT, XKeycode.KEY_LEFT, XKeycode.KEY_DOWN, XKeycode.KEY_UP);
                 break;
             case TouchGestureConfig.PAN_LEFT_CLICK_DRAG:
                 performClickDrag(dx, dy, Pointer.Button.BUTTON_LEFT);

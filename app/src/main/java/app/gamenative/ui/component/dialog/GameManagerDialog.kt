@@ -77,6 +77,7 @@ data class InstallSizeInfo(
 fun GameManagerDialog(
     visible: Boolean,
     onGetDisplayInfo: @Composable (Context) -> GameDisplayInfo,
+    branch: String? = null,
     onInstall: (List<Int>) -> Unit,
     onDismissRequest: () -> Unit
 ) {
@@ -201,7 +202,7 @@ fun GameManagerDialog(
     }
 
     fun getInstallSizeInfo(): InstallSizeInfo {
-        val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
+        val availableBytes = StorageUtils.getAvailableSpaceForUncreatedPath(SteamService.getAppDirPath(gameId))
 
         val baseGameInstallBytes = if (!isBaseGameInstalled) {
             downloadableDepots
@@ -400,6 +401,15 @@ fun GameManagerDialog(
                         Column(
                             modifier = Modifier.fillMaxWidth()
                         ) {
+                            if (branch != null && branch != "public") {
+                                Text(
+                                    text = "Installing the \"$branch\" branch",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                )
+                            }
+
                             // Select All toggle
                             if (selectableAppIds.isNotEmpty()) {
                                 Row(

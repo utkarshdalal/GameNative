@@ -7,6 +7,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -26,6 +27,9 @@ import kotlin.math.roundToInt
 fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
     val config = state.config.value
     val normalizedVibrationMode = PrefManager.normalizeVibrationModeInput(config.vibrationMode)
+    var showControllerDebugMenu by remember {
+        mutableStateOf(PrefManager.showControllerDebugMenu)
+    }
 
     SettingsGroup() {
         if (!default) {
@@ -99,10 +103,13 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
         }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.shooter_mode_toggle)) },
-            subtitle = { Text(text = stringResource(R.string.shooter_mode_toggle_description)) },
-            state = config.shooterMode,
-            onCheckedChange = { state.config.value = config.copy(shooterMode = it) },
+            title = { Text(text = stringResource(R.string.show_controller_debug_menu)) },
+            subtitle = { Text(text = stringResource(R.string.show_controller_debug_menu_subtitle)) },
+            state = showControllerDebugMenu,
+            onCheckedChange = {
+                showControllerDebugMenu = it
+                PrefManager.showControllerDebugMenu = it
+            },
         )
         SettingsListDropdown(
             colors = settingsTileColors(),

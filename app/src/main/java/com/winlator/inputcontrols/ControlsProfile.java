@@ -278,6 +278,15 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 if (elementJSONObject.has("shooterLookType")) element.setShooterLookType(elementJSONObject.getString("shooterLookType"));
                 if (elementJSONObject.has("shooterLookSensitivity")) element.setShooterLookSensitivity((float)elementJSONObject.getDouble("shooterLookSensitivity"));
                 if (elementJSONObject.has("shooterJoystickSize")) element.setShooterJoystickSize((float)elementJSONObject.getDouble("shooterJoystickSize"));
+                if (elementJSONObject.has("buttonColor")) {
+                    element.setButtonColor(ControlElement.parseRgbColor(elementJSONObject.get("buttonColor"), ControlElement.DEFAULT_BUTTON_COLOR));
+                }
+                if (elementJSONObject.has("buttonActiveColor")) {
+                    element.setButtonActiveColor(ControlElement.parseRgbColor(elementJSONObject.get("buttonActiveColor"), ControlElement.DEFAULT_BUTTON_ACTIVE_COLOR), true);
+                }
+                if (elementJSONObject.has("buttonOpacity")) element.setButtonOpacity((float)elementJSONObject.getDouble("buttonOpacity"));
+                if (elementJSONObject.has("buttonStrokeScale")) element.setButtonStrokeScale((float)elementJSONObject.getDouble("buttonStrokeScale"));
+                if (elementJSONObject.has("shooterLookThrough")) element.setShooterLookThrough(elementJSONObject.getBoolean("shooterLookThrough"));
 
                 boolean hasGamepadBinding = true;
                 JSONArray bindingsJSONArray = elementJSONObject.getJSONArray("bindings");

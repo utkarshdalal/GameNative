@@ -208,9 +208,15 @@ class DXWrapperDownloaderTest {
     fun testCachedComponentReuse() = runBlocking {
         val componentId = "vkd3d-2.6"
 
+        // Load manifest to get component name
+        val manifestJson = context.assets.open(DXWrapperDownloader.DXWRAPPER_MANIFEST_FILE).bufferedReader().use { it.readText() }
+        val manifest = Json { ignoreUnknownKeys = true }
+            .decodeFromString<DXWrapperDownloader.DXWrapperManifest>(manifestJson)
+        val component = manifest.components.find { it.id == componentId }!!
+
         // Create a mock cached file
         cacheDir.mkdirs()
-        val cachedFile = File(cacheDir, "$componentId.tzst")
+        val cachedFile = File(cacheDir, component.name)
         cachedFile.writeText("mock cached content")
 
         val retrievedFile = DXWrapperDownloader.ensureDXWrapperAvailable(
@@ -228,19 +234,16 @@ class DXWrapperDownloaderTest {
     }
 
     @Test
-    fun testInvalidComponentThrowsException() = runBlocking {
-        try {
-            DXWrapperDownloader.ensureDXWrapperAvailable(
-                context,
-                "nonexistent_dxvk_xyz"
-            )
-            throw AssertionError("Should have thrown exception for invalid component")
-        } catch (e: Exception) {
-            assertTrue(
-                "Exception message should mention component not found",
-                e.message?.contains("not found") == true
-            )
-        }
+    fun testInvalidComponentReturnsNull() = runBlocking {
+        val result = DXWrapperDownloader.ensureDXWrapperAvailable(
+            context,
+            "nonexistent_dxvk_xyz"
+        )
+        assertEquals(
+            "Invalid component should return null",
+            null,
+            result
+        )
     }
 
     @Test

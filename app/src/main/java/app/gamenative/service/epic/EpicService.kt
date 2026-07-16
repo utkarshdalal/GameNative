@@ -159,6 +159,8 @@ class EpicService : Service() {
 
         private fun setSyncInProgress(inProgress: Boolean) {
             syncInProgress = inProgress
+            if (inProgress) getInstance()?.notifierOrNull?.showSyncing(NotificationHelper.NOTIFICATION_ID_EPIC)
+            else getInstance()?.notifierOrNull?.showIdle(NotificationHelper.NOTIFICATION_ID_EPIC)
         }
 
         fun isSyncInProgress(): Boolean = syncInProgress
@@ -421,6 +423,7 @@ class EpicService : Service() {
 
             instance.activeDownloads[appId] = downloadInfo
             downloadInfo.setActive(true)
+            instance.notifierOrNull?.trackDownload(downloadInfo, game.title ?: "", NotificationHelper.NOTIFICATION_ID_EPIC)
 
             // Start download in background
             val job = instance.scope.launch {
@@ -606,6 +609,8 @@ class EpicService : Service() {
     }
 
     private lateinit var notificationHelper: NotificationHelper
+
+    private val notifierOrNull: NotificationHelper? get() = if (::notificationHelper.isInitialized) notificationHelper else null
 
     @Inject
     lateinit var epicManager: EpicManager

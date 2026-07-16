@@ -204,6 +204,24 @@ object PrefManager {
             setPref(RENDERER_PRESENT_MODE, value)
         }
 
+    private val DISPLAY_RENDERER_MODE = stringPreferencesKey("display_renderer_mode")
+    var displayRendererMode: String
+        get() {
+            val stored = getPref(DISPLAY_RENDERER_MODE, "")
+            if (stored.isNotEmpty()) return stored
+            return if (getPref(USE_LEGACY_RENDERER, false)) "gl" else "vulkan"
+        }
+        set(value) {
+            setPref(DISPLAY_RENDERER_MODE, value)
+        }
+
+    private val SF_COMPAT_MODE = booleanPreferencesKey("sf_compat_mode")
+    var sfCompatMode: Boolean
+        get() = getPref(SF_COMPAT_MODE, true)
+        set(value) {
+            setPref(SF_COMPAT_MODE, value)
+        }
+
     private val USE_LEGACY_RENDERER = booleanPreferencesKey("use_legacy_renderer")
     var useLegacyRenderer: Boolean
         get() = getPref(USE_LEGACY_RENDERER, false)
@@ -328,13 +346,6 @@ object PrefManager {
         get() = getPref(AUDIO_DRIVER, Container.DEFAULT_AUDIO_DRIVER)
         set(value) {
             setPref(AUDIO_DRIVER, value)
-        }
-
-    private val PULSEAUDIO_SUSPEND_BEHAVIOR = stringPreferencesKey("pulseaudio_suspend_behavior")
-    var pulseaudioSuspendBehavior: String
-        get() = getPref(PULSEAUDIO_SUSPEND_BEHAVIOR, PulseAudioComponent.SUSPEND_BEHAVIOR_THREAD)
-        set(value) {
-            setPref(PULSEAUDIO_SUSPEND_BEHAVIOR, value)
         }
 
     private val PULSEAUDIO_LOW_LATENCY = booleanPreferencesKey("pulseaudio_low_latency")
@@ -526,6 +537,12 @@ object PrefManager {
             setPref(LAUNCH_REAL_STEAM, value)
         }
 
+    private val SHOW_CONTROLLER_DEBUG_MENU = booleanPreferencesKey("show_controller_debug_menu")
+    var showControllerDebugMenu: Boolean
+        get() = getPref(SHOW_CONTROLLER_DEBUG_MENU, false)
+        set(value) {
+            setPref(SHOW_CONTROLLER_DEBUG_MENU, value)
+        }
     private val LAUNCH_BIONIC_STEAM = booleanPreferencesKey("launch_bionic_steam")
     var launchBionicSteam: Boolean
         get() = getPref(LAUNCH_BIONIC_STEAM, false)
@@ -886,6 +903,28 @@ object PrefManager {
             setPref(LIBRARY_SORT_KEY, value.key)
         }
 
+    private val LIBRARY_STEAM_COLLECTIONS_CACHE = stringPreferencesKey("library_steam_collections_cache")
+    var librarySteamCollectionsCache: String
+        get() = getPref(LIBRARY_STEAM_COLLECTIONS_CACHE, "")
+        set(value) { setPref(LIBRARY_STEAM_COLLECTIONS_CACHE, value) }
+
+    private val LIBRARY_STEAM_COLLECTIONS_SKIPPED_DYNAMIC = booleanPreferencesKey("library_steam_collections_skipped_dynamic")
+    var librarySteamCollectionsSkippedDynamic: Boolean
+        get() = getPref(LIBRARY_STEAM_COLLECTIONS_SKIPPED_DYNAMIC, false)
+        set(value) { setPref(LIBRARY_STEAM_COLLECTIONS_SKIPPED_DYNAMIC, value) }
+
+    private val LIBRARY_STEAM_COLLECTIONS = stringPreferencesKey("library_steam_collections")
+    private const val COLLECTION_ID_SEPARATOR = "" // unit separator; cannot appear in a collection id
+    var librarySteamCollections: Set<String>
+        get() {
+            val raw = getPref(LIBRARY_STEAM_COLLECTIONS, "")
+            if (raw.isEmpty()) return emptySet()
+            return raw.split(COLLECTION_ID_SEPARATOR).filter { it.isNotEmpty() }.toSet()
+        }
+        set(value) {
+            setPref(LIBRARY_STEAM_COLLECTIONS, value.joinToString(COLLECTION_ID_SEPARATOR))
+        }
+
     /**
      * Get or Set the last known Persona State. See [EPersonaState]
      */
@@ -1152,12 +1191,28 @@ object PrefManager {
             setPref(SHOW_RECOMMENDATIONS, value)
         }
 
+    private val REC_DISCLOSURE_SHOWN = booleanPreferencesKey("rec_disclosure_shown")
+    var recDisclosureShown: Boolean
+        get() = getPref(REC_DISCLOSURE_SHOWN, false)
+        set(value) {
+            setPref(REC_DISCLOSURE_SHOWN, value)
+        }
+
     // Show dialog when adding custom game folder
     private val SHOW_ADD_CUSTOM_GAME_DIALOG = booleanPreferencesKey("show_add_custom_game_dialog")
     var showAddCustomGameDialog: Boolean
         get() = getPref(SHOW_ADD_CUSTOM_GAME_DIALOG, true)
         set(value) {
             setPref(SHOW_ADD_CUSTOM_GAME_DIALOG, value)
+        }
+
+
+    // Import the custom game as a Steam game
+    private val IMPORT_CUSTOM_GAME_AS_STEAM_GAME = booleanPreferencesKey("import_custom_game_as_steam_game")
+    var importCustomGameAsSteamGame: Boolean
+        get() = getPref(IMPORT_CUSTOM_GAME_AS_STEAM_GAME, false)
+        set(value) {
+            setPref(IMPORT_CUSTOM_GAME_AS_STEAM_GAME, value)
         }
 
     // Whether to download games only over Wi-Fi.
@@ -1316,6 +1371,30 @@ object PrefManager {
             setPref(GAME_COMPATIBILITY_CACHE, value)
         }
 
+    // HLTB cache (JSON string)
+    private val HLTB_CACHE = stringPreferencesKey("hltb_cache")
+    var hltbCache: String
+        get() = getPref(HLTB_CACHE, "{}")
+        set(value) {
+            setPref(HLTB_CACHE, value)
+        }
+
+    // Device-wide game stats cache (JSON string)
+    private val DEVICE_GAME_STATS_CACHE = stringPreferencesKey("device_game_stats_cache")
+    var deviceGameStatsCache: String
+        get() = getPref(DEVICE_GAME_STATS_CACHE, "{}")
+        set(value) {
+            setPref(DEVICE_GAME_STATS_CACHE, value)
+        }
+
+    // GPU-wide game stats cache (JSON string)
+    private val GPU_GAME_STATS_CACHE = stringPreferencesKey("gpu_game_stats_cache")
+    var gpuGameStatsCache: String
+        get() = getPref(GPU_GAME_STATS_CACHE, "{}")
+        set(value) {
+            setPref(GPU_GAME_STATS_CACHE, value)
+        }
+
     /* Security / Attestation */
     private val KEY_ATTESTATION_AVAILABLE = booleanPreferencesKey("key_attestation_available")
     var keyAttestationAvailable: Boolean
@@ -1337,6 +1416,11 @@ object PrefManager {
         get() = getPref(ACHIEVEMENT_SHOW_NOTIFICATION, true)
         set(value) { setPref(ACHIEVEMENT_SHOW_NOTIFICATION, value) }
 
+    private val ACHIEVEMENT_PLAY_SOUND = booleanPreferencesKey("achievement_play_sound")
+    var achievementPlaySound: Boolean
+        get() = getPref(ACHIEVEMENT_PLAY_SOUND, true)
+        set(value) { setPref(ACHIEVEMENT_PLAY_SOUND, value) }
+
     private val ACHIEVEMENT_NOTIFICATION_POSITION = stringPreferencesKey("achievement_notification_position")
     var achievementNotificationPosition: String
         get() = getPref(ACHIEVEMENT_NOTIFICATION_POSITION, "bottom_right")
@@ -1351,4 +1435,43 @@ object PrefManager {
     var usageAnalyticsEnabled: Boolean
         get() = getPref(USAGE_ANALYTICS_ENABLED, true)
         set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
+
+    private val NEXUS_API_KEY_ENC = byteArrayPreferencesKey("nexus_api_key_enc")
+    var nexusApiKey: String
+        get() {
+            val encryptedBytes = getPref(NEXUS_API_KEY_ENC, ByteArray(0))
+            return if (encryptedBytes.isEmpty()) {
+                ""
+            } else {
+                runCatching { String(Crypto.decrypt(encryptedBytes)) }
+                    .onFailure {
+                        Timber.w(it, "Failed to decrypt Nexus API key; clearing saved key")
+                        removePref(NEXUS_API_KEY_ENC)
+                    }
+                    .getOrDefault("")
+            }
+        }
+        set(value) {
+            if (value.isBlank()) {
+                removePref(NEXUS_API_KEY_ENC)
+            } else {
+                runCatching { Crypto.encrypt(value.toByteArray()) }
+                    .onSuccess { setPref(NEXUS_API_KEY_ENC, it) }
+                    .onFailure {
+                        Timber.w(it, "Failed to encrypt Nexus API key; clearing saved key")
+                        removePref(NEXUS_API_KEY_ENC)
+                    }
+            }
+        }
+
+    private val NEXUS_LAST_PLACEMENT_JSON = stringPreferencesKey("nexus_last_placement_json")
+    var nexusLastPlacementJson: String
+        get() = getPref(NEXUS_LAST_PLACEMENT_JSON, "{}")
+        set(value) {
+            if (value.isBlank() || value == "{}") {
+                removePref(NEXUS_LAST_PLACEMENT_JSON)
+            } else {
+                setPref(NEXUS_LAST_PLACEMENT_JSON, value)
+            }
+        }
 }

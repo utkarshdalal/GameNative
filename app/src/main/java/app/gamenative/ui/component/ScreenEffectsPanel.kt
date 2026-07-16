@@ -1,5 +1,9 @@
 package app.gamenative.ui.component
 
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -46,6 +50,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -62,6 +67,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -72,11 +78,13 @@ import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.ui.util.applyScreenEffectsConfig
 import app.gamenative.ui.util.loadScreenEffectsConfig
 import app.gamenative.ui.util.persistScreenEffectsConfig
+import app.gamenative.utils.BrightnessManager
 import com.winlator.container.Container
 import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.VulkanRenderer
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private const val SCREEN_EFFECT_PERCENT_STEP = 5f
 private const val SCREEN_EFFECT_GAMMA_STEP = 0.1f
@@ -145,6 +153,69 @@ private val GL_BASIC_MODES = listOf(
     ScreenEffectsConfig.SCALING_MODE_FILL,
     ScreenEffectsConfig.SCALING_MODE_STRETCH,
 )
+
+@Composable
+private fun DisplayBrightnessRow(
+    focusRequester: FocusRequester? = null,
+) {
+    val context = LocalContext.current
+    val activity = remember(context) { BrightnessManager.findActivity(context) }
+    // Without an Activity there is no window brightness target to control.
+    if (activity == null) return
+    var displayBrightness by remember(activity) {
+        mutableFloatStateOf(BrightnessManager.readDisplayBrightness(activity))
+    }
+
+    DisposableEffect(activity) {
+        val contentResolver = activity.contentResolver
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                displayBrightness = BrightnessManager.readDisplayBrightness(activity)
+            }
+        }
+
+        contentResolver.registerContentObserver(
+            Settings.System.getUriFor(Settings.System.SCREEN_BRIGHTNESS),
+            false,
+            observer,
+        )
+        contentResolver.registerContentObserver(
+            Settings.System.getUriFor(Settings.System.SCREEN_BRIGHTNESS_MODE),
+            false,
+            observer,
+        )
+
+        onDispose {
+            contentResolver.unregisterContentObserver(observer)
+        }
+    }
+
+    fun setDisplayBrightness(value: Float) {
+        val next = BrightnessManager.snapDisplayBrightness(value)
+        displayBrightness = next
+        BrightnessManager.applyDisplayBrightness(activity, next)
+    }
+
+    ScreenEffectAdjustmentRow(
+        title = stringResource(R.string.display_brightness),
+        valueText = stringResource(
+            R.string.performance_hud_percentage_value,
+            (displayBrightness * 100f).roundToInt(),
+        ),
+        progress = normalizedProgress(
+            displayBrightness,
+            BrightnessManager.DISPLAY_BRIGHTNESS_MIN,
+            BrightnessManager.DISPLAY_BRIGHTNESS_MAX,
+        ),
+        onDecrease = {
+            setDisplayBrightness(displayBrightness - BrightnessManager.DISPLAY_BRIGHTNESS_STEP)
+        },
+        onIncrease = {
+            setDisplayBrightness(displayBrightness + BrightnessManager.DISPLAY_BRIGHTNESS_STEP)
+        },
+        focusRequester = focusRequester,
+    )
+}
 
 @Composable
 fun GLScreenEffectsTabContent(
@@ -236,11 +307,14 @@ fun GLScreenEffectsTabContent(
             .focusGroup()
             .padding(vertical = 12.dp),
     ) {
+        DisplayBrightnessRow(focusRequester = firstItemFocusRequester)
+
+        Spacer(modifier = Modifier.height(20.dp))
+
         ScreenEffectRadioRow(
             title = stringResource(scalingModeLabelRes(ScreenEffectsConfig.SCALING_MODE_NONE)),
             selected = scalingMode == ScreenEffectsConfig.SCALING_MODE_NONE,
             onSelect = { scalingMode = ScreenEffectsConfig.SCALING_MODE_NONE },
-            focusRequester = firstItemFocusRequester,
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -362,7 +436,7 @@ fun GLScreenEffectsTabContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        ScreenEffectActionRow(
+        AccentActionRow(
             title = stringResource(R.string.screen_effects_reset),
             icon = Icons.Default.RestartAlt,
             accentColor = PluviaTheme.colors.accentPurple,
@@ -471,11 +545,14 @@ fun ScreenEffectsTabContent(
             .focusGroup()
             .padding(vertical = 12.dp),
     ) {
+        DisplayBrightnessRow(focusRequester = firstItemFocusRequester)
+
+        Spacer(modifier = Modifier.height(20.dp))
+
         ScreenEffectRadioRow(
             title = stringResource(scalingModeLabelRes(ScreenEffectsConfig.SCALING_MODE_NONE)),
             selected = scalingMode == ScreenEffectsConfig.SCALING_MODE_NONE,
             onSelect = { scalingMode = ScreenEffectsConfig.SCALING_MODE_NONE },
-            focusRequester = firstItemFocusRequester,
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -598,7 +675,7 @@ fun ScreenEffectsTabContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        ScreenEffectActionRow(
+        AccentActionRow(
             title = stringResource(R.string.screen_effects_reset),
             icon = Icons.Default.RestartAlt,
             accentColor = PluviaTheme.colors.accentPurple,
@@ -868,7 +945,7 @@ fun ScreenEffectsPanel(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    ScreenEffectActionRow(
+                    AccentActionRow(
                         title = stringResource(R.string.screen_effects_reset),
                         icon = Icons.Default.RestartAlt,
                         accentColor = PluviaTheme.colors.accentPurple,
@@ -1295,83 +1372,6 @@ private fun ScreenEffectRadioIndicator(selected: Boolean, accentColor: Color) {
                     .background(accentColor),
             )
         }
-    }
-}
-
-@Composable
-private fun ScreenEffectActionRow(
-    title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    accentColor: Color,
-    onClick: () -> Unit,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(
-                if (isFocused) {
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            accentColor.copy(alpha = 0.16f),
-                            accentColor.copy(alpha = 0.08f),
-                        ),
-                    )
-                } else {
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f),
-                        ),
-                    )
-                },
-            )
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        width = 2.dp,
-                        color = accentColor.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(14.dp),
-                    )
-                } else {
-                    Modifier
-                },
-            )
-            .selectable(
-                selected = isFocused,
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(accentColor.copy(alpha = if (isFocused) 0.24f else 0.16f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = accentColor,
-                modifier = Modifier.size(22.dp),
-            )
-        }
-
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
-        )
     }
 }
 

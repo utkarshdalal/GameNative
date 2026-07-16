@@ -9,6 +9,8 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
+import app.gamenative.data.LibraryPlayHistory
+import app.gamenative.db.dao.LibraryPlayHistoryDao
 import app.gamenative.di.IAppTheme
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
@@ -19,7 +21,11 @@ import app.gamenative.ui.enums.Orientation
 import java.util.EnumSet
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
+import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicCloudSavesManager
+import app.gamenative.service.epic.EpicService
+import app.gamenative.service.gog.GOGService
+import app.gamenative.utils.CustomGameScanner
 import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
@@ -53,6 +59,7 @@ import timber.log.Timber
 class MainViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val appTheme: IAppTheme,
+    private val libraryPlayHistoryDao: LibraryPlayHistoryDao,
 ) : ViewModel() {
 
     companion object {
@@ -319,6 +326,10 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(bootingSplashText = value) }
     }
 
+    fun setBootingSplashHeroImageUrl(url: String) {
+        _state.update { it.copy(bootingSplashHeroImageUrl = url) }
+    }
+
     // Connection state management
 
     /**
@@ -446,11 +457,61 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(testGraphics = value) }
     }
 
+    fun setDiagnostics(value: Boolean) {
+        _state.update { it.copy(diagnostics = value) }
+    }
+
     fun launchApp(context: Context, appId: String) {
         // Show booting splash before launching the app
         viewModelScope.launch {
+            viewModelScope.launch(Dispatchers.IO) {
+                libraryPlayHistoryDao.upsert(
+                    LibraryPlayHistory(
+                        appId = appId,
+                        lastPlayed = System.currentTimeMillis(),
+                    ),
+                )
+            }
+
             setShowBootingSplash(true)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
+
+            val heroUrl = withContext(Dispatchers.IO) {
+                val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+                val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+                when (gameSource) {
+                    GameSource.STEAM -> {
+                        val steamApp = SteamService.getAppInfoOf(gameId)
+                        steamApp?.getHeroUrl()?.ifEmpty { steamApp.headerUrl } ?: ""
+                    }
+                    GameSource.GOG -> {
+                        val game = GOGService.getGOGGameOf(gameId.toString())
+                        game?.backgroundUrl?.ifEmpty { game.imageUrl } ?: ""
+                    }
+                    GameSource.EPIC -> {
+                        val game = EpicService.getEpicGameOf(gameId)
+                        game?.artPortrait?.ifEmpty { game.artCover.ifEmpty { game.artSquare } } ?: ""
+                    }
+                    GameSource.AMAZON -> {
+                        val game = AmazonService.getAmazonGameByAppId(gameId)
+                        game?.heroUrl?.ifEmpty { game.artUrl } ?: ""
+                    }
+                    GameSource.CUSTOM_GAME -> {
+                        val folderPath = CustomGameScanner.getFolderPathFromAppId(appId) ?: return@withContext ""
+                        val folder = java.io.File(folderPath)
+                        val heroFile = folder.listFiles()?.firstOrNull { file ->
+                            file.isFile &&
+                                file.name.startsWith("steamgriddb_hero", ignoreCase = true) &&
+                                !file.name.contains("grid_", ignoreCase = true) &&
+                                (file.name.endsWith(".png", ignoreCase = true) ||
+                                    file.name.endsWith(".jpg", ignoreCase = true) ||
+                                    file.name.endsWith(".webp", ignoreCase = true))
+                        }
+                        heroFile?.let { android.net.Uri.fromFile(it).toString() } ?: ""
+                    }
+                }
+            }
+            setBootingSplashHeroImageUrl(heroUrl)
 
             val apiJob = viewModelScope.async(Dispatchers.IO) {
                 val container = ContainerUtils.getOrCreateContainer(context, appId)

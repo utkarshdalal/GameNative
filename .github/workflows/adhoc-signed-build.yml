@@ -87,12 +87,13 @@ jobs:
         yes | "$SDKMANAGER" --install "build-tools;34.0.0"
 
     - name: Build with Gradle
-      run: ./gradlew :app:bundleLegacyRelease :app:bundleModernRelease
+      run: ./gradlew :app:bundleLegacyRelease :app:bundleModernRelease :app:bundleLegacyXrRelease
 
     - name: Stage bundles
       run: |
         cp app/build/outputs/bundle/legacyRelease/app-legacy-release.aab app-release.aab
         cp app/build/outputs/bundle/modernRelease/app-modern-release.aab app-modern-release.aab
+        cp app/build/outputs/bundle/legacyXrRelease/app-legacyXr-release.aab app-legacy-xr-release.aab
 
     - name: Extract APKs from Bundles
       run: |
@@ -100,6 +101,8 @@ jobs:
         unzip -o app-release.apks universal.apk
         java -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app-modern-release.aab --output=app-modern-release.apks --mode=universal
         unzip -p app-modern-release.apks universal.apk > universal-modern.apk
+        java -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app-legacy-xr-release.aab --output=app-legacy-xr-release.apks --mode=universal
+        unzip -p app-legacy-xr-release.apks universal.apk > universal-legacy-xr.apk
 
     - name: Copy lineage file
       run: |
@@ -119,7 +122,7 @@ jobs:
         if [ ! -d "$BUILD_TOOLS_DIR" ]; then
           BUILD_TOOLS_DIR="${ANDROID_SDK_ROOT}/build-tools/34.0.0"
         fi
-        for apk in universal.apk universal-modern.apk; do
+        for apk in universal.apk universal-modern.apk universal-legacy-xr.apk; do
           "${BUILD_TOOLS_DIR}/apksigner" sign \
             --lineage app/keystores/prod-debug.lineage \
             --ks app/keystores/keystore \
@@ -146,3 +149,9 @@ jobs:
       with:
         name: adhoc-signed-modern-${{ steps.meta.outputs.suffix }}
         path: ${{ github.workspace }}/universal-modern.apk
+
+    - name: Upload Legacy XR APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: adhoc-signed-legacy-xr-${{ steps.meta.outputs.suffix }}
+        path: ${{ github.workspace }}/universal-legacy-xr.apk

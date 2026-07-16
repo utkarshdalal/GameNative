@@ -15,6 +15,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.RecommendationRepository
 import app.gamenative.data.RecommendedGame
+import app.gamenative.data.gog.GogRecommendationsRepository
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.screen.library.AppScreen
@@ -28,6 +29,7 @@ internal fun LibraryDetailPane(
     libraryItem: LibraryItem?,
     onClickPlay: (Boolean) -> Unit,
     onTestGraphics: () -> Unit,
+    onPlayWithDiagnostics: () -> Unit,
     onBack: () -> Unit,
 ) {
     Surface {
@@ -54,20 +56,42 @@ internal fun LibraryDetailPane(
                 mutableStateOf<RecommendedGame?>(null)
             }
             LaunchedEffect(libraryItem.recommendedGameId) {
-                game = RecommendationRepository.getCurrentRecommendation(context)
+                game = if (libraryItem.isFeatured) {
+                    RecommendationRepository.getFeaturedGame(context)
+                } else {
+                    GogRecommendationsRepository.getRecommendedGame(libraryItem.recommendedGameId)
+                        ?: RecommendationRepository.getCurrentRecommendation(context)
+                }
                 if (game != null && PrefManager.usageAnalyticsEnabled) {
-                    PostHog.capture(
-                        event = "recommendation_opened",
-                        properties = mapOf(
-                            "game_name" to (game?.name ?: ""),
-                            "game_id" to (game?.id ?: ""),
-                        ),
-                    )
+                    if (libraryItem.isFeatured) {
+                        PostHog.capture(
+                            event = "featured_opened",
+                            properties = mapOf(
+                                "campaign_id" to (game?.id ?: ""),
+                                "game_name" to (game?.name ?: ""),
+                                "source" to libraryItem.recSource,
+                            ),
+                        )
+                    } else {
+                        PostHog.capture(
+                            event = "recommendation_opened",
+                            properties = mapOf(
+                                "game_name" to (game?.name ?: ""),
+                                "game_id" to (game?.id ?: ""),
+                                "rank" to libraryItem.index,
+                                "source" to libraryItem.recSource,
+                                "seed_count" to libraryItem.recSeedCount,
+                                "because_played" to (game?.becausePlayed ?: ""),
+                            ),
+                        )
+                    }
                 }
             }
             game?.let { rec ->
                 RecommendedGameScreen(
                     game = rec,
+                    recRank = libraryItem.index,
+                    recSource = libraryItem.recSource,
                     onBack = onBack,
                 )
             }
@@ -76,6 +100,7 @@ internal fun LibraryDetailPane(
                 libraryItem = libraryItem,
                 onClickPlay = onClickPlay,
                 onTestGraphics = onTestGraphics,
+                onPlayWithDiagnostics = onPlayWithDiagnostics,
                 onBack = onBack,
             )
         }
@@ -101,6 +126,7 @@ private fun Preview_LibraryDetailPane() {
             ),
             onClickPlay = { },
             onTestGraphics = { },
+            onPlayWithDiagnostics = { },
             onBack = { },
         )
     }

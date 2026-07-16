@@ -37,10 +37,9 @@ object DownloadService {
         baseExternalAppDirPath = extFiles?.parentFile?.path ?: ""
 
         val sm = context.getSystemService(android.os.storage.StorageManager::class.java)
-        externalVolumePaths = context.getExternalFilesDirs(null)
-            .filterNotNull()
+        externalVolumePaths = StorageUtils.getAllExternalFilesDirs(context)
             .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
-            .filter { sm.getStorageVolume(it)?.isPrimary != true }
+            .filter { sm?.getStorageVolume(it)?.isPrimary != true }
             .map { it.absolutePath }
     }
 

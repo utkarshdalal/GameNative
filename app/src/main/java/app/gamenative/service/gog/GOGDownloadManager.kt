@@ -2,7 +2,9 @@ package app.gamenative.service.gog
 
 import android.content.Context
 import app.gamenative.data.DownloadInfo
+import app.gamenative.service.gog.api.DepotDirectory
 import app.gamenative.service.gog.api.DepotFile
+import app.gamenative.service.gog.api.DepotLink
 import app.gamenative.service.gog.api.FileChunk
 import app.gamenative.service.gog.api.GOGApiClient
 import app.gamenative.service.gog.api.GOGManifestMeta
@@ -93,6 +95,7 @@ class GOGDownloadManager @Inject constructor(
     companion object {
         private const val CHUNK_BUFFER_SIZE = 1024 * 1024 // 1MB buffer
         private const val MAX_CHUNK_RETRIES = 3 // Maximum retries per chunk
+        private const val MAX_CHUNK_ASSEMBLY_ATTEMPTS = 3 // Re-fetch+reassemble attempts before skipping a chunk
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
         private const val DEPENDENCY_URL = "https://content-system.gog.com/dependencies/repository?generation=2"
         private const val STREAM_PROGRESS_TIME_INTERVAL_MS = 200L
@@ -241,6 +244,10 @@ class GOGDownloadManager @Inject constructor(
             // Track which depot each file came from for proper productId mapping
             data class FileWithDepot(val file: DepotFile, val depotProductId: String)
             val allFilesWithDepots = mutableListOf<FileWithDepot>()
+            // Symlinks and empty directories declared in the depot manifests. These carry no chunks,
+            // so they bypass the chunk download/assemble path and must be created explicitly.
+            val allLinks = mutableListOf<Pair<DepotLink, String>>()
+            val allDirectories = mutableListOf<Pair<DepotDirectory, String>>()
 
             for ((index, depot) in depots.withIndex()) {
                 downloadInfo.updateStatusMessage("Fetching depot ${index + 1}/${depots.size}...")
@@ -252,10 +259,12 @@ class GOGDownloadManager @Inject constructor(
                     )
                 }
 
-                val files = depotResult.getOrThrow().files
-                files.forEach { file ->
+                val depotManifest = depotResult.getOrThrow()
+                depotManifest.files.forEach { file ->
                     allFilesWithDepots.add(FileWithDepot(file, depot.productId))
                 }
+                depotManifest.links.forEach { link -> allLinks.add(link to depot.productId) }
+                depotManifest.directories.forEach { dir -> allDirectories.add(dir to depot.productId) }
             }
 
             val allFiles = allFilesWithDepots.map { it.file }
@@ -439,6 +448,15 @@ class GOGDownloadManager @Inject constructor(
                 MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 return@withContext downloadAndAssembleResult
             }
+
+            // Create declared directories and symlinks (no chunks, so not handled by the assemble path).
+            // Gate by base/DLC ownership the same way files are: only the base product unless DLCs are included.
+            val includeProduct = { productId: String -> productId == gameManifest.baseProductId || withDlcs }
+            createDirectoriesAndLinks(
+                installDir = gameInstallDir,
+                directories = allDirectories.filter { includeProduct(it.second) }.map { it.first },
+                links = allLinks.filter { includeProduct(it.second) }.map { it.first },
+            )
 
             // Download Dependencies (They will either go to root or supportDir depending on )
             if (supportDir != null && dependencies.isNotEmpty()) {
@@ -795,7 +813,11 @@ class GOGDownloadManager @Inject constructor(
             val totalFiles = files.size
             val chunkUsageCounts = ConcurrentHashMap<String, AtomicInteger>()
             val downloadedChunkIds = newKeySet<String>()
+            val chunkAttempts = ConcurrentHashMap<String, AtomicInteger>()
             val pendingChunks = AtomicInteger(chunkHashes.size)
+
+            // Calculate total expected installed size once (sum of all file sizes)
+            val totalExpectedSize = files.sumOf { file -> file.chunks.sumOf { it.size } }
 
             chunkHashes.forEach { chunkMd5 ->
                 chunkUsageCounts[chunkMd5] = AtomicInteger(
@@ -819,16 +841,17 @@ class GOGDownloadManager @Inject constructor(
                     file.chunks.any { chunk -> chunk.compressedMd5 == chunkMd5 }
                 }
 
-                // 2. For each file found, try to assemble if all chunks are ready
+                // 2. For each file found, write this chunk into its position
+                var expectedCount = 0
                 var assemblySuccessCount = 0
 
                 matchedFiles.forEach { file ->
                     file.chunks.withIndex()
                         .filter { (_, chunk) -> chunk.compressedMd5 == chunkMd5 }
                         .forEach { (chunkIndex, chunk) ->
+                            expectedCount++
                             val result = assembleFile(file, chunk, chunkIndex, chunkCacheDir, installDir)
                             if (result.isSuccess) {
-                                // 3. If assembly is successful and all chunks in downloadedChunkIds, increment file counter
                                 assemblySuccessCount++
                             } else {
                                 Timber.tag("GOG").d(result.exceptionOrNull()?.message ?: "Failed to assemble ${file.path}")
@@ -836,13 +859,19 @@ class GOGDownloadManager @Inject constructor(
                         }
                 }
 
-                // 4. Decrement usage count only when assembly is successful
-                if (assemblySuccessCount > 0) {
-                    val usageCount = chunkUsageCounts[chunkMd5]?.addAndGet(-assemblySuccessCount)
-                    if (usageCount != null && usageCount <= 0) {
-                        val cacheFile = File(chunkCacheDir, "${chunkMd5}.chunk")
-                        cacheFile.delete()
-                    }
+                // 3. Only finalize once every position using this chunk has been written; a partial
+                // result is reported as failure so the caller can re-fetch and retry the chunk.
+                if (assemblySuccessCount < expectedCount) {
+                    return Result.failure(
+                        Exception("Assembled $assemblySuccessCount/$expectedCount position(s) for chunk $chunkMd5"),
+                    )
+                }
+
+                // 4. Free the cached chunk once it has been placed into all of its positions
+                val usageCount = chunkUsageCounts[chunkMd5]?.addAndGet(-assemblySuccessCount)
+                if (usageCount != null && usageCount <= 0) {
+                    val cacheFile = File(chunkCacheDir, "${chunkMd5}.chunk")
+                    cacheFile.delete()
                 }
 
                 return Result.success(Unit)
@@ -885,15 +914,23 @@ class GOGDownloadManager @Inject constructor(
                                 downloadedChunkIds.add(chunkMd5)
 
                                 val assembleResult = assembleReady(chunkMd5)
-                                if (assembleResult.isFailure) {
-                                    assemblyFailure = assembleResult.exceptionOrNull()
-                                        ?: Exception("Failed to assemble ready files")
-                                    Timber.tag("GOG").d("Chunk $chunkMd5 assembleReady Failed: ${assemblyFailure.message}")
-
-                                    // Requeue the chunk for retry
-                                    downloadedChunkIds.remove(chunkMd5)
-                                    networkChunkFlow.tryEmit(chunkMd5)
-                                    return@flow
+                                if (assembleResult.isFailure && downloadInfo.isActive()) {
+                                    // A position failed to assemble (e.g. corrupt chunk bytes). The per-chunk
+                                    // md5 is reliable, so re-fetch a fresh copy and retry a few times. If it
+                                    // still fails, skip this chunk and keep installing the rest instead of
+                                    // aborting the whole download.
+                                    val attempts = chunkAttempts.computeIfAbsent(chunkMd5) { AtomicInteger(0) }.incrementAndGet()
+                                    if (attempts <= MAX_CHUNK_ASSEMBLY_ATTEMPTS) {
+                                        Timber.tag("GOG").w(
+                                            "Chunk $chunkMd5 assembly failed (attempt $attempts/$MAX_CHUNK_ASSEMBLY_ATTEMPTS), " +
+                                                "re-fetching: ${assembleResult.exceptionOrNull()?.message}",
+                                        )
+                                        File(chunkCacheDir, "${chunkMd5}.chunk").delete()
+                                        downloadedChunkIds.remove(chunkMd5)
+                                        networkChunkFlow.tryEmit(chunkMd5)
+                                        return@flow
+                                    }
+                                    Timber.tag("GOG").e("Chunk $chunkMd5 could not be assembled after $MAX_CHUNK_ASSEMBLY_ATTEMPTS attempts, skipping")
                                 }
 
                                 val progress = downloadedChunkIds.size.toFloat() / totalChunks
@@ -950,7 +987,15 @@ class GOGDownloadManager @Inject constructor(
 
                 val chunksAdded = mutableListOf<String>()
 
-                files.forEach { file ->
+                // Sort files by total chunk usage (lowest first) - files with less-shared chunks complete faster and free cache sooner
+                val sortedFiles = files.sortedBy { file ->
+                    file.chunks.sumOf { chunk ->
+                        chunkUsageCounts[chunk.compressedMd5]?.get() ?: 0
+                    }
+                }
+                Timber.tag("GOG").d("Processing ${sortedFiles.size} files sorted by chunk usage (least shared first)")
+
+                sortedFiles.forEach { file ->
                     if (!downloadInfo.isActive()) {
                         Timber.tag("GOG").w("Download cancelled during file iteration")
                         return@launch
@@ -995,7 +1040,16 @@ class GOGDownloadManager @Inject constructor(
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
 
-                Timber.tag("GOG").d("Waiting for $currentPendingChunks pending chunks to complete")
+                // Calculate storage usage stats (only scan cache dir, not entire install dir)
+                val chunkCacheSize = calculateDirectorySize(chunkCacheDir)
+
+                Timber.tag("GOG").d(
+                    """Waiting for $currentPendingChunks pending chunks
+                    |  Cache: ${chunkCacheSize / 1_000_000}MB
+                    |  Game files: ${totalExpectedSize / 1_000_000}MB
+                    |  Total disk: ${(chunkCacheSize + totalExpectedSize) / 1_000_000}MB
+                    """.trimMargin()
+                )
 
                 if (currentPendingChunks == lastPendingChunks) {
                     samePendingChunksAttempts++
@@ -1017,8 +1071,8 @@ class GOGDownloadManager @Inject constructor(
                     samePendingChunksAttempts = 0
                 }
 
-                // Wait for 1 second to recheck
-                delay(1000)
+                // Wait for 5 seconds to recheck (not too quick due to added stats causing IO)
+                delay(5000)
 
                 currentPendingChunks = pendingChunks.get()
             }
@@ -1392,7 +1446,7 @@ class GOGDownloadManager @Inject constructor(
                     ?: return@withContext Result.failure(Exception("Empty response for chunk $chunkMd5"))
 
                 val md = MessageDigest.getInstance("MD5")
-                val buffer = ByteArray(256 * 1024) // 256KB
+                val buffer = ByteArray(64 * 1024) // 64KB - reduced from 256KB to minimize memory pressure during parallel downloads
                 var lastProgressEmitAt = System.currentTimeMillis()
 
                 if (tempChunkFile.exists()) tempChunkFile.delete()
@@ -1479,34 +1533,15 @@ class GOGDownloadManager @Inject constructor(
                 )
             }
 
-            // Read compressed data
-            val compressedBytes = chunkFile.readBytes()
-
-            // Decompress chunk
-            val decompressedBytes = decompressChunk(compressedBytes, chunk)
-            if (decompressedBytes.isFailure) {
-                return@withContext Result.failure(
-                    decompressedBytes.exceptionOrNull()
-                        ?: Exception("Failed to decompress chunk ${chunk.compressedMd5}"),
-                )
-            }
-
-            val data = decompressedBytes.getOrThrow()
-
-            // Verify decompressed MD5
-            val actualMd5 = calculateMd5(data)
-            if (actualMd5 != chunk.md5) {
-                return@withContext Result.failure(
-                    Exception("Decompressed MD5 mismatch for chunk: expected ${chunk.md5}, got $actualMd5"),
-                )
-            }
-
             val writeOffset = file.chunks.take(chunkIndex).sumOf { it.size }
 
-            // Write decompressed chunk at specific file offset using RandomAccessFile
-            RandomAccessFile(outputFile.path, "rw").use { randomAccessFile ->
-                randomAccessFile.seek(writeOffset)
-                randomAccessFile.write(data)
+            // Decompress directly to file while calculating MD5
+            val decompressResult = decompressChunkToFile(chunkFile, chunk, outputFile, writeOffset)
+            if (decompressResult.isFailure) {
+                return@withContext Result.failure(
+                    decompressResult.exceptionOrNull()
+                        ?: Exception("Failed to decompress chunk ${chunk.compressedMd5}"),
+                )
             }
 
             // Verify final file hash if provided
@@ -1520,6 +1555,9 @@ class GOGDownloadManager @Inject constructor(
                     // Move the log here for files finally assembled
                     Timber.tag("GOG").v("Assembled: ${file.path} (${outputFile.length()} bytes)")
                 }
+            } else {
+                // For md5 is null, likely it does not need to decompress, need to show log here
+                Timber.tag("GOG").v("Assembled: ${file.path} (${outputFile.length()} bytes)")
             }
 
             Result.success(outputFile)
@@ -1530,62 +1568,107 @@ class GOGDownloadManager @Inject constructor(
     }
 
     /**
-     * Decompress a GOG chunk using zlib
+     * Decompress a GOG chunk directly to file using zlib, streaming to avoid large memory allocations.
+     * Calculates MD5 while decompressing and writes directly to the target file at the specified offset.
      *
-     * GOG chunks are compressed with zlib
-     * If chunk.compressedSize is null, data is uncompressed
-     *
-     * @param compressedBytes Compressed chunk data
+     * @param chunkFile Compressed chunk file
      * @param chunk Chunk metadata
-     * @return Decompressed data
+     * @param outputFile Target file to write decompressed data
+     * @param writeOffset Offset in the output file to write at
+     * @return Result indicating success or failure
      */
-    private fun decompressChunk(compressedBytes: ByteArray, chunk: FileChunk): Result<ByteArray> {
+    internal fun decompressChunkToFile(
+        chunkFile: File,
+        chunk: FileChunk,
+        outputFile: File,
+        writeOffset: Long,
+    ): Result<Unit> {
         return try {
-            // If no compressed size specified, data is already uncompressed
-            if (chunk.compressedSize == null) {
-                return Result.success(compressedBytes)
-            }
+            val md5Digest = MessageDigest.getInstance("MD5")
+            var totalBytesWritten = 0L
 
-            // Decompress using zlib
-            val inflater = Inflater()
-            try {
-                inflater.setInput(compressedBytes)
-                val outputStream = ByteArrayOutputStream(chunk.size.toInt())
-                val buffer = ByteArray(8192)
+            RandomAccessFile(outputFile.path, "rw").use { raf ->
+                raf.seek(writeOffset)
 
-                while (!inflater.finished()) {
-                    val count = inflater.inflate(buffer)
-                    if (count > 0) {
-                        outputStream.write(buffer, 0, count)
-                    } else {
-                        // No bytes produced - check if we need more input or a dictionary
-                        if (inflater.needsInput()) {
-                            throw java.io.IOException(
-                                "Incomplete zlib data: decompression requires more input but none available"
-                            )
-                        } else if (inflater.needsDictionary()) {
-                            throw java.io.IOException(
-                                "Zlib data requires a preset dictionary which is not supported"
-                            )
+                // If no compressed size specified, data is already uncompressed
+                if (chunk.compressedSize == null) {
+                    chunkFile.inputStream().use { input ->
+                        val buffer = ByteArray(8192)
+                        var bytesRead: Int
+                        while (input.read(buffer).also { bytesRead = it } != -1) {
+                            md5Digest.update(buffer, 0, bytesRead)
+                            raf.write(buffer, 0, bytesRead)
+                            totalBytesWritten += bytesRead
                         }
-                        // If neither condition is true, inflater is still processing internally
-                        // Continue loop, but this should be rare
+                    }
+                } else {
+                    // Decompress using zlib and stream directly to file
+                    val inflater = Inflater()
+                    try {
+                        chunkFile.inputStream().buffered().use { input ->
+                            val inputBuffer = ByteArray(8192)
+                            val outputBuffer = ByteArray(8192)
+                            var inputBytesRead: Int
+
+                            while (input.read(inputBuffer).also { inputBytesRead = it } != -1) {
+                                inflater.setInput(inputBuffer, 0, inputBytesRead)
+
+                                while (!inflater.needsInput() && !inflater.finished()) {
+                                    val count = inflater.inflate(outputBuffer)
+                                    if (count > 0) {
+                                        md5Digest.update(outputBuffer, 0, count)
+                                        raf.write(outputBuffer, 0, count)
+                                        totalBytesWritten += count
+                                    } else {
+                                        if (inflater.needsDictionary()) {
+                                            throw java.io.IOException(
+                                                "Zlib data requires a preset dictionary which is not supported"
+                                            )
+                                        }
+                                        break
+                                    }
+                                }
+                            }
+
+                            // Finish any remaining data
+                            while (!inflater.finished()) {
+                                val count = inflater.inflate(outputBuffer)
+                                if (count > 0) {
+                                    md5Digest.update(outputBuffer, 0, count)
+                                    raf.write(outputBuffer, 0, count)
+                                    totalBytesWritten += count
+                                } else {
+                                    if (inflater.needsInput()) {
+                                        throw java.io.IOException(
+                                            "Incomplete zlib data: decompression requires more input but none available"
+                                        )
+                                    }
+                                    break
+                                }
+                            }
+                        }
+                    } finally {
+                        inflater.end()
                     }
                 }
-
-                val decompressed = outputStream.toByteArray()
-
-                // Verify size matches expected
-                if (decompressed.size.toLong() != chunk.size) {
-                    return Result.failure(
-                        Exception("Decompressed size mismatch: expected ${chunk.size}, got ${decompressed.size}"),
-                    )
-                }
-
-                Result.success(decompressed)
-            } finally {
-                inflater.end()
             }
+
+            // Verify size matches expected
+            if (totalBytesWritten != chunk.size) {
+                return Result.failure(
+                    Exception("Decompressed size mismatch: expected ${chunk.size}, got $totalBytesWritten"),
+                )
+            }
+
+            // Verify decompressed MD5
+            val actualMd5 = md5Digest.digest().joinToString("") { "%02x".format(it) }
+            if (actualMd5 != chunk.md5) {
+                return Result.failure(
+                    Exception("Decompressed MD5 mismatch for chunk: expected ${chunk.md5}, got $actualMd5"),
+                )
+            }
+
+            Result.success(Unit)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to decompress chunk ${chunk.compressedMd5}")
             Result.failure(e)
@@ -1603,6 +1686,42 @@ class GOGDownloadManager @Inject constructor(
 
     private fun getSupportInstallPath(path: String): String {
         return if (path.startsWith("app/")) path.removePrefix("app/") else path
+    }
+
+    /**
+     * Create depot-declared empty directories and symlinks. These items carry no chunks, so the
+     * chunk download/assemble path skips them; gogdl creates them separately (prepare_location /
+     * CREATE_SYMLINK) and so must we, or affected games appear partially installed.
+     */
+    private fun createDirectoriesAndLinks(
+        installDir: File,
+        directories: List<DepotDirectory>,
+        links: List<DepotLink>,
+    ) {
+        directories.forEach { dir ->
+            val relPath = dir.path.removePrefix("/")
+            if (relPath.isBlank()) return@forEach
+            try {
+                File(installDir, relPath).mkdirs()
+            } catch (e: Exception) {
+                Timber.tag("GOG").w(e, "Failed to create directory ${dir.path}")
+            }
+        }
+        links.forEach { link ->
+            val relPath = link.path.replace("\\", "/").removePrefix("/")
+            if (relPath.isBlank() || link.target.isBlank()) return@forEach
+            try {
+                val linkFile = File(installDir, relPath)
+                linkFile.parentFile?.mkdirs()
+                if (linkFile.exists() || Files.isSymbolicLink(linkFile.toPath())) {
+                    linkFile.delete()
+                }
+                Files.createSymbolicLink(linkFile.toPath(), java.nio.file.Paths.get(link.target))
+                Timber.tag("GOG").d("Created symlink ${link.path} -> ${link.target}")
+            } catch (e: Exception) {
+                Timber.tag("GOG").w(e, "Failed to create symlink ${link.path} -> ${link.target}")
+            }
+        }
     }
 
     /**

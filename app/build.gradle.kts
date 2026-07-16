@@ -24,8 +24,17 @@ val keystoreProperties: Properties? = if (keystorePropertiesFile.exists()) {
 val posthogApiKey: String = project.findProperty("POSTHOG_API_KEY") as String? ?: System.getenv("POSTHOG_API_KEY") ?: ""
 val posthogHost: String = project.findProperty("POSTHOG_HOST") as String? ?: System.getenv("POSTHOG_HOST") ?: "https://us.i.posthog.com"
 
+val metaAppId: String = project.findProperty("META_APP_ID") as String? ?: System.getenv("META_APP_ID") ?: ""
+val productSku: String = project.findProperty("PRODUCT_SKU") as String? ?: System.getenv("PRODUCT_SKU") ?: ""
+
 room {
     schemaDirectory("$projectDir/schemas")
+}
+
+// Debug-only: package the repo's manifest.json so debug builds read it locally (never in release).
+val copyDebugManifest by tasks.registering(Copy::class) {
+    from(rootProject.file("manifest.json"))
+    into(layout.buildDirectory.dir("generated/debugManifest"))
 }
 
 android {
@@ -51,8 +60,12 @@ android {
 
         minSdk = 26
 
-        versionCode = 14
-        versionName = "1.0.0"
+        manifestPlaceholders["screenOrientation"] = "unspecified"
+        buildConfigField("boolean", "XR_BUILD", "false")
+        buildConfigField("boolean", "MODERN_XR", "false")
+
+        versionCode = 19
+        versionName = "1.1.1"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -116,6 +129,15 @@ android {
             buildConfigField("boolean", "MODERN_ANDROID", "false")
             buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic.so\"")
         }
+        create("legacyXr") {
+            dimension = "androidApi"
+            targetSdk = 28
+            ndk.abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            buildConfigField("boolean", "MODERN_ANDROID", "false")
+            buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic.so\"")
+            buildConfigField("boolean", "XR_BUILD", "true")
+            manifestPlaceholders["screenOrientation"] = "landscape"
+        }
         create("modern") {
             dimension = "androidApi"
             minSdk = 29
@@ -123,6 +145,19 @@ android {
             ndk.abiFilters += listOf("arm64-v8a")
             buildConfigField("boolean", "MODERN_ANDROID", "true")
             buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic-wx.so\"")
+        }
+        create("modernXr") {
+            dimension = "androidApi"
+            minSdk = 29
+            targetSdk = 36
+            ndk.abiFilters += listOf("arm64-v8a")
+            buildConfigField("boolean", "MODERN_ANDROID", "true")
+            buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic-wx.so\"")
+            buildConfigField("boolean", "XR_BUILD", "true")
+            buildConfigField("boolean", "MODERN_XR", "true")
+            buildConfigField("String", "META_APP_ID", "\"$metaAppId\"")
+            buildConfigField("String", "PRODUCT_SKU", "\"$productSku\"")
+            manifestPlaceholders["screenOrientation"] = "landscape"
         }
     }
 
@@ -192,25 +227,61 @@ android {
             isIncludeAndroidResources = true
         }
     }
+
+    lint {
+        // Locale files ship full AndroidX appcompat (abc_*) translations that aren't in the
+        // default locale. These extra translations are harmless and pre-existing; without this
+        // the release-only lintVital pass fails on 150+ ExtraTranslation errors.
+        disable += "ExtraTranslation"
+    }
     dynamicFeatures += setOf(":ubuntufs")
 
     // Configure Assets to be used in different variants
     sourceSets {
         getByName("legacy") {
+            java.srcDir("src/nonXr/java")
             assets {
                 srcDirs("src/legacy/assets", "src/main/assets")
             }
         }
+        getByName("legacyXr") {
+            java.srcDir("src/nonXr/java")
+            manifest.srcFile("src/legacy/AndroidManifest.xml")
+            assets {
+                srcDirs("src/legacy/assets", "src/main/assets")
+            }
+            jniLibs {
+                srcDirs("src/legacy/jniLibs")
+            }
+        }
         getByName("modern") {
+            java.srcDir("src/nonXr/java")
             assets {
                 srcDirs("src/modern/assets", "src/main/assets")
             }
+        }
+        getByName("modernXr") {
+            assets {
+                srcDirs("src/modern/assets", "src/main/assets")
+            }
+            jniLibs {
+                srcDirs("src/modern/jniLibs")
+            }
+        }
+        getByName("debug") {
+            assets.srcDir(copyDebugManifest)
         }
     }
 
     kotlinter {
         ignoreFormatFailures  = false
     }
+
+    // externalNativeBuild {
+    //   cmake {
+    //       path = file("src/main/cpp/asurfacerenderer/CMakeLists.txt")
+    //   }
+    // }
 
     // externalNativeBuild {
     //    cmake {
@@ -260,8 +331,8 @@ dependencies {
     // JavaSteam
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
-        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0.1-18-SNAPSHOT.jar"))
-        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0.1-18-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0.1-22-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0.1-22-SNAPSHOT.jar"))
         implementation(libs.bundles.javasteam.dev)
     } else {
         implementation(libs.javasteam) {
@@ -279,6 +350,7 @@ dependencies {
 
     // Winlator
     implementation(libs.bundles.winlator)
+    implementation(libs.libarchive.android)
     implementation(libs.zstd.jni) { artifact { type = "aar" } }
     implementation(libs.xz)
 
@@ -337,4 +409,7 @@ dependencies {
     implementation("com.posthog:posthog-android:3.8.0")
 
     implementation("com.auth0.android:jwtdecode:2.0.2")
+
+    "modernXrImplementation"("com.meta.horizon.platform.sdk:core-kotlin:0.2.2")
+    "modernXrImplementation"("com.meta.horizon.platform.sdk:iap-kotlin:0.2.2")
 }
