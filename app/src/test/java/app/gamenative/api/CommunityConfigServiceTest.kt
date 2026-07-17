@@ -4,8 +4,10 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import okhttp3.OkHttpClient
+import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -183,6 +185,45 @@ class CommunityConfigServiceTest {
     }
 
     @Test
+    fun findDevices_retriesModelOnlyWhenPrimaryResultsDoNotMatch() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """{
+                    "devices": [{
+                        "id": 9,
+                        "model": "samsung SM-S918U",
+                        "gpu": "Adreno 740",
+                        "androidVer": "16"
+                    }]
+                }""",
+            ),
+        )
+        server.enqueue(
+            MockResponse().setBody(
+                """{
+                    "devices": [{
+                        "id": 10,
+                        "model": "samsung SM-S908U",
+                        "gpu": "Adreno (TM) 730",
+                        "androidVer": "16"
+                    }]
+                }""",
+            ),
+        )
+
+        val result = service.findDevices(
+            manufacturer = "samsung",
+            model = "SM-S908U",
+            gpu = "Qualcomm Adreno 730",
+            androidVersion = "16",
+        )
+
+        assertEquals(listOf(10), result.map { it.id })
+        assertEquals("samsung SM-S908U", server.takeRequest().requestUrl?.queryParameter("model"))
+        assertEquals("SM-S908U", server.takeRequest().requestUrl?.queryParameter("model"))
+    }
+
+    @Test
     fun fetchConfigs_deviceFilterTakesPriorityOverGpu() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
@@ -309,6 +350,92 @@ class CommunityConfigServiceTest {
     }
 
     @Test
+    fun fetchConfigs_paginatesCompatibleDevicesAsOneGlobalList() = runBlocking {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val deviceId = request.requestUrl?.queryParameter("deviceId")?.toIntOrNull()
+                val page = request.requestUrl?.queryParameter("page")?.toIntOrNull()
+                val run = when (deviceId to page) {
+                    11 to 0 -> Triple(1L, 5, 11)
+                    11 to 1 -> Triple(3L, 3, 11)
+                    12 to 0 -> Triple(2L, 4, 12)
+                    12 to 1 -> Triple(4L, 2, 12)
+                    else -> return MockResponse().setResponseCode(404)
+                }
+                return MockResponse().setBody(
+                    configPage(
+                        runId = run.first,
+                        rating = run.second,
+                        deviceId = run.third,
+                        total = 2,
+                        page = page ?: 0,
+                        pageSize = 1,
+                    ),
+                )
+            }
+        }
+
+        val pages = (0..3).map { page ->
+            service.fetchConfigs(
+                gameId = 10,
+                gpu = null,
+                sort = CommunityConfigSort.HIGHEST_RATED,
+                page = page,
+                limit = 1,
+                deviceIds = listOf(11, 12),
+            )
+        }
+
+        assertEquals(listOf(1L, 2L, 3L, 4L), pages.flatMap { it.runs }.map { it.id })
+        assertTrue(pages.take(3).all { it.hasMore })
+        assertFalse(pages.last().hasMore)
+        assertTrue(pages.all { it.runs.size == 1 })
+        assertEquals(4, pages.last().total)
+    }
+
+    @Test
+    fun nullableMetadata_isParsedAsEmptyInsteadOfLiteralNull() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """{
+                    "runs": [{
+                        "id": 1,
+                        "rating": 3,
+                        "tags": [null, "playable"],
+                        "notes": null,
+                        "appVersion": null,
+                        "configs": {
+                            "containerVariant": "bionic",
+                            "wineVersion": "wine",
+                            "dxwrapper": "dxvk",
+                            "dxwrapperConfig": "version=2.6"
+                        },
+                        "device": {
+                            "id": 11,
+                            "model": "test",
+                            "gpu": null,
+                            "androidVer": null,
+                            "soc": null
+                        }
+                    }],
+                    "total": 1,
+                    "page": 0,
+                    "pageSize": 20
+                }""",
+            ),
+        )
+
+        val run = service.fetchConfigs(10, null, CommunityConfigSort.NEWEST, 0).runs.single()
+
+        assertEquals("", run.notes)
+        assertEquals("", run.appVersion)
+        assertEquals(listOf("playable"), run.tags)
+        assertEquals("", run.device.gpu)
+        assertEquals("", run.device.androidVersion)
+        assertEquals("", run.device.soc)
+    }
+
+    @Test
     fun malformedRuns_doNotKeepPaginationAliveAfterServerEnds() = runBlocking {
         server.enqueue(
             MockResponse().setBody(
@@ -342,6 +469,7 @@ class CommunityConfigServiceTest {
                 "wineVersion":"wine",
                 "dxwrapper":"dxvk",
                 "dxwrapperConfig":"version=2.6",
+                "graphicsDriverConfig":{"version":"nested-values-are-not-accepted"},
                 "executablePath":"cmd.exe",
                 "cpuList":"0"
             }""",
@@ -351,6 +479,7 @@ class CommunityConfigServiceTest {
         assertTrue(isValidCommunityConfig(sanitized, allowGlibc = false))
         assertFalse(sanitized.containsKey("executablePath"))
         assertFalse(sanitized.containsKey("cpuList"))
+        assertFalse(sanitized.containsKey("graphicsDriverConfig"))
         assertFalse(isValidCommunityConfig(JsonObject(sanitized - "dxwrapperConfig"), allowGlibc = false))
 
         val glibc = kotlinx.serialization.json.Json.parseToJsonElement(
@@ -360,7 +489,14 @@ class CommunityConfigServiceTest {
         assertTrue(isValidCommunityConfig(glibc, allowGlibc = true))
     }
 
-    private fun configPage(runId: Long, rating: Int, deviceId: Int, total: Int): String =
+    private fun configPage(
+        runId: Long,
+        rating: Int,
+        deviceId: Int,
+        total: Int,
+        page: Int = 0,
+        pageSize: Int = 20,
+    ): String =
         """{
             "runs": [{
                 "id": $runId,
@@ -376,7 +512,7 @@ class CommunityConfigServiceTest {
                 "device": {"id": $deviceId, "model": "test", "gpu": "Adreno 730", "androidVer": "16"}
             }],
             "total": $total,
-            "page": 0,
-            "pageSize": 20
+            "page": $page,
+            "pageSize": $pageSize
         }"""
 }

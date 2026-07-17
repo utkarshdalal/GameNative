@@ -1380,7 +1380,6 @@
     <string name="community_config_same_device">Same device</string>
     <string name="community_config_this_gpu">This GPU</string>
     <string name="community_config_all">All</string>
-    <string name="community_config_all_gpus">All GPUs</string>
     <string name="community_config_load_more">Load more</string>
     <string name="community_config_no_device_results">No configs were found for this device.</string>
     <string name="community_config_no_gpu_results">No configs were found for this GPU.</string>
@@ -1412,7 +1411,6 @@
     <string name="community_config_wine">Wine or Proton</string>
     <string name="community_config_emulator">Emulator</string>
     <string name="community_config_wrapper">DirectX wrapper</string>
-    <string name="community_config_resolution">Resolution</string>
     <string name="community_config_box64_preset">Box64 preset</string>
     <string name="community_config_driver">Graphics driver</string>
     <string name="import_config">Import config</string>

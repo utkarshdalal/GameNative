@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -22,6 +24,13 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+
+private const val MAX_CONCURRENT_DEVICE_REQUESTS = 4
+private const val MAX_CONFIG_VALUE_CHARS = 64 * 1024
+private const val MAX_METADATA_CHARS = 256
+private const val MAX_NOTES_CHARS = 4 * 1024
+private const val MAX_TAGS = 20
+private const val MAX_TAG_CHARS = 64
 
 enum class CommunityConfigSort(val apiValue: String) {
     HIGHEST_RATED("rating"),
@@ -101,16 +110,18 @@ class CommunityConfigService(
         androidVersion: String,
     ): List<CommunityConfigDevice> {
         val query = communityDeviceQuery(manufacturer, model)
-        val devices = searchDevices(query).ifEmpty {
-            if (query.equals(model.trim(), ignoreCase = true)) emptyList() else searchDevices(model)
-        }
-        return selectCommunityDevices(
+        fun select(devices: List<CommunityConfigDevice>) = selectCommunityDevices(
             devices = devices,
             manufacturer = manufacturer,
             model = model,
             currentGpu = gpu,
             androidVersion = androidVersion,
         )
+        val primaryMatches = select(searchDevices(query))
+        if (primaryMatches.isNotEmpty() || query.equals(model.trim(), ignoreCase = true)) {
+            return primaryMatches
+        }
+        return select(searchDevices(model))
     }
 
     suspend fun searchDevices(model: String): List<CommunityConfigDevice> = withContext(Dispatchers.IO) {
@@ -130,36 +141,90 @@ class CommunityConfigService(
         deviceIds: List<Int> = emptyList(),
     ): CommunityConfigPage = withContext(Dispatchers.IO) {
         val validDeviceIds = deviceIds.filter { it > 0 }.distinct()
+        val normalizedPage = page.coerceAtLeast(0)
+        val normalizedLimit = limit.coerceIn(1, 50)
         if (validDeviceIds.size <= 1) {
             return@withContext fetchConfigPage(
                 gameId = gameId,
                 gpu = gpu,
                 sort = sort,
-                page = page,
-                limit = limit,
+                page = normalizedPage,
+                limit = normalizedLimit,
                 deviceId = validDeviceIds.singleOrNull(),
             )
         }
 
-        val pages = coroutineScope {
+        val endExclusive = (normalizedPage + 1L) * normalizedLimit
+        if (endExclusive > Int.MAX_VALUE) {
+            throw CommunityConfigApiException("Compatibility page is too large")
+        }
+        val targetCount = endExclusive.toInt()
+        val requestLimiter = Semaphore(minOf(validDeviceIds.size, MAX_CONCURRENT_DEVICE_REQUESTS))
+        val slices = coroutineScope {
             validDeviceIds.map { deviceId ->
                 async {
-                    fetchConfigPage(
-                        gameId = gameId,
-                        gpu = null,
-                        sort = sort,
-                        page = page,
-                        limit = limit,
-                        deviceId = deviceId,
-                    )
+                    requestLimiter.withPermit {
+                        fetchDeviceConfigSlice(
+                            gameId = gameId,
+                            sort = sort,
+                            deviceId = deviceId,
+                            targetCount = targetCount,
+                            pageSize = normalizedLimit,
+                        )
+                    }
                 }
             }.awaitAll()
         }
+        val mergedRuns = sortCommunityRuns(
+            slices.flatMap { it.runs }.distinctBy { it.id },
+            sort,
+        )
+        val startIndex = (normalizedPage.toLong() * normalizedLimit).toInt()
         CommunityConfigPage(
-            runs = sortCommunityRuns(pages.flatMap { it.runs }.distinctBy { it.id }, sort),
-            total = pages.sumOf { it.total.toLong() }.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
-            page = page.coerceAtLeast(0),
-            hasMore = pages.any { it.hasMore },
+            runs = mergedRuns.drop(startIndex).take(normalizedLimit),
+            total = slices.sumOf { it.total.toLong() }.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+            page = normalizedPage,
+            hasMore = mergedRuns.size > endExclusive || slices.any { it.hasMore },
+        )
+    }
+
+    private data class DeviceConfigSlice(
+        val runs: List<CommunityConfigRun>,
+        val total: Int,
+        val hasMore: Boolean,
+    )
+
+    private fun fetchDeviceConfigSlice(
+        gameId: Int,
+        sort: CommunityConfigSort,
+        deviceId: Int,
+        targetCount: Int,
+        pageSize: Int,
+    ): DeviceConfigSlice {
+        val runs = LinkedHashMap<Long, CommunityConfigRun>()
+        var nextPage = 0
+        var total = 0
+        var hasMore: Boolean
+        do {
+            val result = fetchConfigPage(
+                gameId = gameId,
+                gpu = null,
+                sort = sort,
+                page = nextPage,
+                limit = pageSize,
+                deviceId = deviceId,
+            )
+            result.runs.forEach { runs.putIfAbsent(it.id, it) }
+            total = maxOf(total, result.total)
+            nextPage++
+            val maximumPages = (total.toLong() + pageSize - 1) / pageSize
+            hasMore = result.hasMore && nextPage < maximumPages
+        } while (runs.size < targetCount && hasMore)
+
+        return DeviceConfigSlice(
+            runs = runs.values.toList(),
+            total = total,
+            hasMore = hasMore,
         )
     }
 
@@ -235,7 +300,7 @@ class CommunityConfigService(
                 for (index in 0 until games.length()) {
                     val game = games.optJSONObject(index) ?: continue
                     val id = game.optInt("id", 0)
-                    val name = game.optString("name").trim()
+                    val name = game.cleanString("name")
                     if (id > 0 && name.isNotEmpty()) add(CommunityGame(id, name))
                 }
             }
@@ -304,10 +369,10 @@ class CommunityConfigService(
             rating = run.optInt("rating", 0).coerceIn(0, 5),
             averageFps = if (run.isNull("avgFps")) null else run.optDouble("avgFps").takeIf { it.isFinite() },
             tags = run.optJSONArray("tags").toStringList(),
-            notes = run.optString("notes").trim(),
+            notes = run.cleanString("notes", MAX_NOTES_CHARS),
             config = safeConfig,
-            createdAt = run.optString("createdAt"),
-            appVersion = run.optString("appVersion"),
+            createdAt = run.cleanString("createdAt"),
+            appVersion = run.cleanString("appVersion"),
             device = parseDevice(run.optJSONObject("device"), run.optInt("deviceId", 0))
                 ?: CommunityConfigDevice(0, "", "", "", ""),
         )
@@ -316,14 +381,14 @@ class CommunityConfigService(
     private fun parseDevice(device: JSONObject?, fallbackId: Int = 0): CommunityConfigDevice? {
         device ?: return null
         val id = device.optInt("id", fallbackId)
-        val model = device.optString("model").trim()
+        val model = device.cleanString("model")
         if (model.isEmpty()) return null
         return CommunityConfigDevice(
             id = id,
             model = model,
-            gpu = device.optString("gpu").trim(),
-            androidVersion = device.optString("androidVer").trim(),
-            soc = device.optString("soc").trim(),
+            gpu = device.cleanString("gpu"),
+            androidVersion = device.cleanString("androidVer"),
+            soc = device.cleanString("soc"),
         )
     }
 
@@ -455,7 +520,11 @@ private val communityConfigAllowedKeys = setOf(
 )
 
 internal fun sanitizeCommunityConfig(config: JsonObject): JsonObject = JsonObject(
-    config.filterKeys(communityConfigAllowedKeys::contains),
+    config.filter { (key, value) ->
+        key in communityConfigAllowedKeys &&
+            value is JsonPrimitive &&
+            value.contentOrNull?.length?.let { it <= MAX_CONFIG_VALUE_CHARS } == true
+    },
 )
 
 internal fun isValidCommunityConfig(
@@ -496,8 +565,14 @@ internal fun sortCommunityRuns(
 private fun JSONArray?.toStringList(): List<String> {
     if (this == null) return emptyList()
     return buildList {
-        for (index in 0 until length()) {
-            optString(index).trim().takeIf { it.isNotEmpty() }?.let(::add)
+        for (index in 0 until minOf(length(), MAX_TAGS)) {
+            if (isNull(index)) continue
+            optString(index).trim().take(MAX_TAG_CHARS).takeIf { it.isNotEmpty() }?.let(::add)
         }
     }
+}
+
+private fun JSONObject.cleanString(key: String, maxLength: Int = MAX_METADATA_CHARS): String {
+    if (isNull(key)) return ""
+    return optString(key).trim().take(maxLength)
 }

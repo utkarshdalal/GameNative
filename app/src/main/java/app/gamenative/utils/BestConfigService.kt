@@ -775,7 +775,7 @@ object BestConfigService {
                     resultMap["executablePath"] = originalJson.optString("executablePath", "")
                 }
                 if (originalJson.has("useLegacyDRM") && !originalJson.isNull("useLegacyDRM")) {
-                    resultMap["useLegacyDRM"] = originalJson.optBoolean("useLegacyDRM")
+                    resultMap["useLegacyDRM"] = originalJson.optBoolean("useLegacyDRM", PrefManager.useLegacyDRM)
                 }
                 return ParsedConfigResult(resultMap)
             }

@@ -338,6 +338,8 @@ fun CommunityConfigsDialog(
                         runs.isEmpty() -> CommunityConfigEmptyState(
                             hardwareScope = hardwareScope,
                             gpuAvailable = detectedGpu.isNotBlank(),
+                            hasMore = hasMore,
+                            loadingMore = loadingMore,
                             onBroaden = {
                                 hardwareScope = if (
                                     hardwareScope == CommunityHardwareScope.CURRENT_DEVICE &&
@@ -348,6 +350,7 @@ fun CommunityConfigsDialog(
                                     CommunityHardwareScope.ALL
                                 }
                             },
+                            onLoadMore = ::loadMore,
                             modifier = Modifier.align(Alignment.Center),
                         )
                         else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -562,7 +565,7 @@ private fun CommunityConfigListItem(
     val performance = buildList {
         add(stringResource(R.string.community_config_rating_value, run.rating))
         run.averageFps?.let {
-            add(stringResource(R.string.community_config_fps_value, String.format(Locale.US, "%.1f", it)))
+            add(stringResource(R.string.community_config_fps_value, String.format(Locale.getDefault(), "%.1f", it)))
         }
         formatCommunityConfigDate(run.createdAt).takeIf { it.isNotBlank() }?.let(::add)
     }.joinToString(" | ")
@@ -635,7 +638,10 @@ private fun CommunityConfigError(
 private fun CommunityConfigEmptyState(
     hardwareScope: CommunityHardwareScope,
     gpuAvailable: Boolean,
+    hasMore: Boolean,
+    loadingMore: Boolean,
     onBroaden: () -> Unit,
+    onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -664,6 +670,20 @@ private fun CommunityConfigEmptyState(
                         },
                     ),
                 )
+            }
+        }
+        if (hasMore) {
+            Button(onClick = onLoadMore, enabled = !loadingMore) {
+                if (loadingMore) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Icon(Icons.Default.ExpandMore, null)
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.community_config_load_more))
             }
         }
     }
@@ -737,7 +757,7 @@ private fun CommunityConfigPreviewDialog(
                 run.averageFps?.let {
                     CommunityConfigDetailRow(
                         stringResource(R.string.community_config_average_fps),
-                        stringResource(R.string.community_config_fps_value, String.format(Locale.US, "%.1f", it)),
+                        stringResource(R.string.community_config_fps_value, String.format(Locale.getDefault(), "%.1f", it)),
                     )
                 }
                 CommunityConfigDetailRow(
@@ -855,7 +875,6 @@ private fun communityConfigSummary(run: CommunityConfigRun): List<Pair<String, S
         addValue(R.string.community_config_wine, "wineVersion")
         addValue(R.string.community_config_emulator, "emulator")
         addValue(R.string.community_config_wrapper, "dxwrapper")
-        addValue(R.string.community_config_resolution, "screenSize")
         addValue(R.string.community_config_box64_preset, "box64Preset")
         run.configString("graphicsDriverConfig")
             .settingValue("version")
