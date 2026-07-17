@@ -419,13 +419,13 @@
     <string name="button_y">Y 按钮</string>
     <string name="button_y_subtitle">顶部正面按钮</string>
     <string name="shoulder_buttons">肩部按钮</string>
-    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">左侧肩部按钮</string>
-    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">右侧肩部按钮</string>
-    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">左侧扳机</string>
-    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">右侧扳机</string>
     <string name="menu_buttons">菜单按钮</string>
     <string name="button_start">Start / Options</string>
@@ -724,6 +724,8 @@
     <string name="enable_xinput_api">启用 XInput API</string>
     <string name="enable_directinput_api">启用 DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput 映射器类型</string>
+    <string name="show_controller_debug_menu">显示控制器调试菜单</string>
+    <string name="show_controller_debug_menu_subtitle">在游戏内快捷菜单中显示 P1-P4 控制器槽位实时面板</string>
     <string name="disable_mouse_input">禁用鼠标输入</string>
     <string name="touchscreen_mode">触屏模式</string>
     <string name="touchscreen_mode_description">适用于视觉小说和即时战略游戏</string>

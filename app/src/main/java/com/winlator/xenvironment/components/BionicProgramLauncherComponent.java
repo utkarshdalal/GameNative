@@ -186,11 +186,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     private int execGuestProgram() {
 
-        final int MAX_PLAYERS = 1; // old static method
+        final int MAX_PLAYERS = 4;
 
         // Get the number of enabled players directly from ControllerManager.
-        final int enabledPlayerCount = MAX_PLAYERS;
-        for (int i = 0; i < enabledPlayerCount; i++) {
+        for (int i = 0; i < MAX_PLAYERS; i++) {
             String memPath;
             if (i == 0) {
                 // Player 1 uses the original, non-numbered path that is known to work.
@@ -232,7 +231,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         EnvVars envVars = new EnvVars();
 
         // Use the ControllerManager's dynamic count for the environment variable
-        envVars.put("EVSHIM_MAX_PLAYERS", String.valueOf(enabledPlayerCount));
+        envVars.put("EVSHIM_MAX_PLAYERS", String.valueOf(MAX_PLAYERS));
         if (true) {
             envVars.put("EVSHIM_SHM_ID", 1);
         }

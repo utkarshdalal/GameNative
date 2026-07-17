@@ -509,6 +509,12 @@ object PrefManager {
             setPref(LAUNCH_REAL_STEAM, value)
         }
 
+    private val SHOW_CONTROLLER_DEBUG_MENU = booleanPreferencesKey("show_controller_debug_menu")
+    var showControllerDebugMenu: Boolean
+        get() = getPref(SHOW_CONTROLLER_DEBUG_MENU, false)
+        set(value) {
+            setPref(SHOW_CONTROLLER_DEBUG_MENU, value)
+        }
     private val LAUNCH_BIONIC_STEAM = booleanPreferencesKey("launch_bionic_steam")
     var launchBionicSteam: Boolean
         get() = getPref(LAUNCH_BIONIC_STEAM, false)

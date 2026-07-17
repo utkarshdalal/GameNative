@@ -544,13 +544,13 @@
     <string name="button_y">Y Button</string>
     <string name="button_y_subtitle">Top face button</string>
     <string name="shoulder_buttons">Shoulder Buttons</string>
-    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1">LB</string>
     <string name="button_l1_subtitle">Left bumper</string>
-    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1">RB</string>
     <string name="button_r1_subtitle">Right bumper</string>
-    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2">LT</string>
     <string name="button_l2_subtitle">Left trigger</string>
-    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2">RT</string>
     <string name="button_r2_subtitle">Right trigger</string>
     <string name="menu_buttons">Menu Buttons</string>
     <string name="button_start">Start / Options</string>
@@ -869,6 +869,8 @@
     <string name="enable_xinput_api">Enable XInput API</string>
     <string name="enable_directinput_api">Enable DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput Mapper Type</string>
+    <string name="show_controller_debug_menu">Show Controller Debug Menu</string>
+    <string name="show_controller_debug_menu_subtitle">Show the live P1-P4 controller slot panel in the in-game quick menu</string>
     <string name="disable_mouse_input">Disable Mouse Input</string>
     <string name="touchscreen_mode">Touchscreen Mode</string>
     <string name="shooter_mode_toggle">Shooter Mode</string>
