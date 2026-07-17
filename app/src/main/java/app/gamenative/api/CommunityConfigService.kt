@@ -94,12 +94,34 @@ class CommunityConfigService(
         return selectCommunityGame(query, searchGames(query))
     }
 
+    suspend fun findDevice(
+        manufacturer: String,
+        model: String,
+        gpu: String,
+        androidVersion: String,
+    ): CommunityConfigDevice? {
+        val query = communityDeviceQuery(manufacturer, model)
+        val devices = searchDevices(query).ifEmpty {
+            if (query.equals(model.trim(), ignoreCase = true)) emptyList() else searchDevices(model)
+        }
+        return selectCommunityDevice(devices, gpu, androidVersion)
+    }
+
+    suspend fun searchDevices(model: String): List<CommunityConfigDevice> = withContext(Dispatchers.IO) {
+        if (model.isBlank()) return@withContext emptyList()
+        val url = endpoint("api/devices")
+            .addQueryParameter("model", model.trim())
+            .build()
+        parseDevices(execute(url.toString()))
+    }
+
     suspend fun fetchConfigs(
         gameId: Int,
         gpu: String?,
         sort: CommunityConfigSort,
         page: Int,
         limit: Int = 20,
+        deviceId: Int? = null,
     ): CommunityConfigPage = withContext(Dispatchers.IO) {
         val urlBuilder = endpoint("api/compatibility")
             .addQueryParameter("gameId", gameId.toString())
@@ -107,8 +129,12 @@ class CommunityConfigService(
             .addQueryParameter("dir", "desc")
             .addQueryParameter("page", page.coerceAtLeast(0).toString())
             .addQueryParameter("limit", limit.coerceIn(1, 50).toString())
-        gpu?.trim()?.takeIf { it.isNotEmpty() }?.let {
-            urlBuilder.addQueryParameter("gpu", it)
+        if (deviceId != null && deviceId > 0) {
+            urlBuilder.addQueryParameter("deviceId", deviceId.toString())
+        } else {
+            gpu?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                urlBuilder.addQueryParameter("gpu", it)
+            }
         }
         parseConfigPage(execute(urlBuilder.build().toString()))
     }
@@ -160,6 +186,21 @@ class CommunityConfigService(
         }
     }
 
+    private fun parseDevices(body: String): List<CommunityConfigDevice> {
+        return try {
+            val devices = JSONObject(body).optJSONArray("devices") ?: JSONArray()
+            buildList {
+                for (index in 0 until devices.length()) {
+                    parseDevice(devices.optJSONObject(index))
+                        ?.takeIf { it.id > 0 }
+                        ?.let(::add)
+                }
+            }
+        } catch (error: Exception) {
+            throw CommunityConfigApiException("Invalid device response", cause = error)
+        }
+    }
+
     private fun parseConfigPage(body: String): CommunityConfigPage {
         return try {
             val root = JSONObject(body)
@@ -192,7 +233,6 @@ class CommunityConfigService(
         val config = runCatching {
             Json.parseToJsonElement(configObject.toString()).jsonObject
         }.getOrNull() ?: return null
-        val deviceJson = run.optJSONObject("device") ?: JSONObject()
         val gameName = run.optString("gameName").ifBlank {
             run.optJSONObject("game")?.optString("name").orEmpty()
         }
@@ -206,13 +246,22 @@ class CommunityConfigService(
             createdAt = run.optString("createdAt"),
             appVersion = run.optString("appVersion"),
             gameName = gameName,
-            device = CommunityConfigDevice(
-                id = deviceJson.optInt("id", run.optInt("deviceId", 0)),
-                model = deviceJson.optString("model"),
-                gpu = deviceJson.optString("gpu"),
-                androidVersion = deviceJson.optString("androidVer"),
-                soc = deviceJson.optString("soc"),
-            ),
+            device = parseDevice(run.optJSONObject("device"), run.optInt("deviceId", 0))
+                ?: CommunityConfigDevice(0, "", "", "", ""),
+        )
+    }
+
+    private fun parseDevice(device: JSONObject?, fallbackId: Int = 0): CommunityConfigDevice? {
+        device ?: return null
+        val id = device.optInt("id", fallbackId)
+        val model = device.optString("model").trim()
+        if (model.isEmpty()) return null
+        return CommunityConfigDevice(
+            id = id,
+            model = model,
+            gpu = device.optString("gpu").trim(),
+            androidVersion = device.optString("androidVer").trim(),
+            soc = device.optString("soc").trim(),
         )
     }
 
@@ -233,6 +282,36 @@ internal fun selectCommunityGame(query: String, games: List<CommunityGame>): Com
     val normalizedQuery = normalizeCommunityGameName(query)
     return games.firstOrNull { normalizeCommunityGameName(it.name) == normalizedQuery }
         ?: games.first()
+}
+
+internal fun communityDeviceQuery(manufacturer: String, model: String): String {
+    val cleanManufacturer = manufacturer.trim()
+    val cleanModel = model.trim()
+    if (cleanManufacturer.isEmpty()) return cleanModel
+    if (cleanModel.startsWith(cleanManufacturer, ignoreCase = true)) return cleanModel
+    return "$cleanManufacturer $cleanModel".trim()
+}
+
+internal fun selectCommunityDevice(
+    devices: List<CommunityConfigDevice>,
+    currentGpu: String,
+    androidVersion: String,
+): CommunityConfigDevice? {
+    val canonicalGpu = canonicalCommunityGpu(currentGpu)
+    val canonicalAndroid = androidVersion.lowercase(Locale.ENGLISH).replace("android", "").trim()
+    return devices.maxByOrNull { device ->
+        val gpuScore = when {
+            canonicalGpu.isEmpty() -> 0
+            canonicalCommunityGpu(device.gpu) == canonicalGpu -> 4
+            device.gpu.isBlank() -> 1
+            else -> 0
+        }
+        val androidScore = if (
+            canonicalAndroid.isNotEmpty() &&
+            device.androidVersion.lowercase(Locale.ENGLISH).replace("android", "").trim() == canonicalAndroid
+        ) 2 else 0
+        gpuScore + androidScore
+    }
 }
 
 internal fun communityConfigMatchType(currentGpu: String, configGpu: String): String {

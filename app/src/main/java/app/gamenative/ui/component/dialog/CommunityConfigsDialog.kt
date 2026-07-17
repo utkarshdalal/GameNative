@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.api.CommunityConfigDevice
 import app.gamenative.api.CommunityConfigRun
 import app.gamenative.api.CommunityConfigService
 import app.gamenative.api.CommunityConfigSort
@@ -76,9 +78,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private enum class CommunityGpuScope {
+private enum class CommunityHardwareScope {
+    CURRENT_DEVICE,
     CURRENT_GPU,
-    ALL_GPUS,
+    ALL,
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,9 +98,10 @@ fun CommunityConfigsDialog(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var detectedGpu by remember(gameName) { mutableStateOf("") }
+    var detectedDevice by remember(gameName) { mutableStateOf<CommunityConfigDevice?>(null) }
     var resolvedGame by remember(gameName) { mutableStateOf<CommunityGame?>(null) }
     var sort by remember(gameName) { mutableStateOf(CommunityConfigSort.HIGHEST_RATED) }
-    var gpuScope by remember(gameName) { mutableStateOf(CommunityGpuScope.CURRENT_GPU) }
+    var hardwareScope by remember(gameName) { mutableStateOf(CommunityHardwareScope.CURRENT_DEVICE) }
     var runs by remember(gameName) { mutableStateOf(emptyList<CommunityConfigRun>()) }
     var total by remember(gameName) { mutableIntStateOf(0) }
     var currentPage by remember(gameName) { mutableIntStateOf(0) }
@@ -118,7 +122,25 @@ fun CommunityConfigsDialog(
                 runCatching { GPUInformation.getRenderer(context) }.getOrNull().orEmpty().trim()
             }
             detectedGpu = renderer.takeIf { canonicalCommunityGpu(it).isNotEmpty() }.orEmpty()
-            if (detectedGpu.isBlank()) gpuScope = CommunityGpuScope.ALL_GPUS
+            detectedDevice = try {
+                service.findDevice(
+                    manufacturer = Build.MANUFACTURER,
+                    model = Build.MODEL,
+                    gpu = detectedGpu,
+                    androidVersion = Build.VERSION.RELEASE,
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                null
+            }
+            if (detectedDevice == null) {
+                hardwareScope = if (detectedGpu.isBlank()) {
+                    CommunityHardwareScope.ALL
+                } else {
+                    CommunityHardwareScope.CURRENT_GPU
+                }
+            }
             val game = service.findGame(gameName)
             if (game == null) {
                 errorMessage = context.getString(R.string.community_config_game_not_found, gameName)
@@ -137,7 +159,7 @@ fun CommunityConfigsDialog(
         }
     }
 
-    LaunchedEffect(visible, resolvedGame?.id, detectedGpu, sort, gpuScope, lookupKey) {
+    LaunchedEffect(visible, resolvedGame?.id, detectedGpu, detectedDevice?.id, sort, hardwareScope, lookupKey) {
         val game = resolvedGame ?: return@LaunchedEffect
         loading = true
         errorMessage = null
@@ -147,9 +169,12 @@ fun CommunityConfigsDialog(
         try {
             val result = service.fetchConfigs(
                 gameId = game.id,
-                gpu = detectedGpu.takeIf { gpuScope == CommunityGpuScope.CURRENT_GPU },
+                gpu = detectedGpu.takeIf { hardwareScope == CommunityHardwareScope.CURRENT_GPU },
                 sort = sort,
                 page = 0,
+                deviceId = detectedDevice?.id.takeIf {
+                    hardwareScope == CommunityHardwareScope.CURRENT_DEVICE
+                },
             )
             runs = result.runs
             total = result.total
@@ -170,8 +195,11 @@ fun CommunityConfigsDialog(
         val game = resolvedGame ?: return
         if (loadingMore || runs.size >= total) return
         val requestedSort = sort
-        val requestedScope = gpuScope
-        val requestedGpu = detectedGpu.takeIf { requestedScope == CommunityGpuScope.CURRENT_GPU }
+        val requestedScope = hardwareScope
+        val requestedGpu = detectedGpu.takeIf { requestedScope == CommunityHardwareScope.CURRENT_GPU }
+        val requestedDeviceId = detectedDevice?.id.takeIf {
+            requestedScope == CommunityHardwareScope.CURRENT_DEVICE
+        }
         coroutineScope.launch {
             loadingMore = true
             errorMessage = null
@@ -181,8 +209,9 @@ fun CommunityConfigsDialog(
                     gpu = requestedGpu,
                     sort = requestedSort,
                     page = currentPage + 1,
+                    deviceId = requestedDeviceId,
                 )
-                if (sort == requestedSort && gpuScope == requestedScope && resolvedGame?.id == game.id) {
+                if (sort == requestedSort && hardwareScope == requestedScope && resolvedGame?.id == game.id) {
                     runs = (runs + result.runs).distinctBy { it.id }
                     total = result.total
                     currentPage = result.page
@@ -238,15 +267,18 @@ fun CommunityConfigsDialog(
             ) {
                 CommunityConfigHeader(
                     gameName = resolvedGame?.name ?: gameName,
+                    deviceName = detectedDevice?.model
+                        ?: listOf(Build.MANUFACTURER, Build.MODEL).joinToString(" ").trim(),
                     gpuName = detectedGpu,
                     total = total,
                 )
                 CommunityConfigControls(
                     sort = sort,
-                    gpuScope = gpuScope,
+                    hardwareScope = hardwareScope,
+                    deviceAvailable = detectedDevice != null,
                     gpuAvailable = detectedGpu.isNotBlank(),
                     onSortChange = { sort = it },
-                    onGpuScopeChange = { gpuScope = it },
+                    onHardwareScopeChange = { hardwareScope = it },
                 )
                 HorizontalDivider()
 
@@ -262,8 +294,18 @@ fun CommunityConfigsDialog(
                             modifier = Modifier.align(Alignment.Center),
                         )
                         runs.isEmpty() -> CommunityConfigEmptyState(
-                            gpuFiltered = gpuScope == CommunityGpuScope.CURRENT_GPU,
-                            onShowAll = { gpuScope = CommunityGpuScope.ALL_GPUS },
+                            hardwareScope = hardwareScope,
+                            gpuAvailable = detectedGpu.isNotBlank(),
+                            onBroaden = {
+                                hardwareScope = if (
+                                    hardwareScope == CommunityHardwareScope.CURRENT_DEVICE &&
+                                    detectedGpu.isNotBlank()
+                                ) {
+                                    CommunityHardwareScope.CURRENT_GPU
+                                } else {
+                                    CommunityHardwareScope.ALL
+                                }
+                            },
                             modifier = Modifier.align(Alignment.Center),
                         )
                         else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -332,6 +374,7 @@ fun CommunityConfigsDialog(
 @Composable
 private fun CommunityConfigHeader(
     gameName: String,
+    deviceName: String,
     gpuName: String,
     total: Int,
 ) {
@@ -348,7 +391,10 @@ private fun CommunityConfigHeader(
         },
         supportingContent = {
             Text(
-                text = gpuName.ifBlank { stringResource(R.string.community_config_gpu_unknown) },
+                text = listOf(
+                    deviceName,
+                    gpuName.ifBlank { stringResource(R.string.community_config_gpu_unknown) },
+                ).filter { it.isNotBlank() }.joinToString(" | "),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -363,10 +409,11 @@ private fun CommunityConfigHeader(
 @Composable
 private fun CommunityConfigControls(
     sort: CommunityConfigSort,
-    gpuScope: CommunityGpuScope,
+    hardwareScope: CommunityHardwareScope,
+    deviceAvailable: Boolean,
     gpuAvailable: Boolean,
     onSortChange: (CommunityConfigSort) -> Unit,
-    onGpuScopeChange: (CommunityGpuScope) -> Unit,
+    onHardwareScopeChange: (CommunityHardwareScope) -> Unit,
 ) {
     BoxWithConstraints(
         modifier = Modifier
@@ -376,7 +423,13 @@ private fun CommunityConfigControls(
         val compact = maxWidth < 600.dp
         val content: @Composable (Modifier) -> Unit = { modifier ->
             CommunitySortControl(sort, onSortChange, modifier)
-            CommunityGpuControl(gpuScope, gpuAvailable, onGpuScopeChange, modifier)
+            CommunityHardwareControl(
+                hardwareScope,
+                deviceAvailable,
+                gpuAvailable,
+                onHardwareScopeChange,
+                modifier,
+            )
         }
         if (compact) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -421,26 +474,35 @@ private fun CommunitySortControl(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CommunityGpuControl(
-    selected: CommunityGpuScope,
+private fun CommunityHardwareControl(
+    selected: CommunityHardwareScope,
+    deviceAvailable: Boolean,
     gpuAvailable: Boolean,
-    onSelected: (CommunityGpuScope) -> Unit,
+    onSelected: (CommunityHardwareScope) -> Unit,
     modifier: Modifier,
 ) {
-    val options = CommunityGpuScope.entries
+    val options = CommunityHardwareScope.entries
     SingleChoiceSegmentedButtonRow(modifier = modifier) {
         options.forEachIndexed { index, option ->
             SegmentedButton(
                 selected = selected == option,
                 onClick = { onSelected(option) },
-                enabled = option != CommunityGpuScope.CURRENT_GPU || gpuAvailable,
+                enabled = when (option) {
+                    CommunityHardwareScope.CURRENT_DEVICE -> deviceAvailable
+                    CommunityHardwareScope.CURRENT_GPU -> gpuAvailable
+                    CommunityHardwareScope.ALL -> true
+                },
                 shape = SegmentedButtonDefaults.itemShape(index, options.size),
                 label = {
                     Text(
-                        if (option == CommunityGpuScope.CURRENT_GPU) {
-                            stringResource(R.string.community_config_this_gpu)
-                        } else {
-                            stringResource(R.string.community_config_all_gpus)
+                        when (option) {
+                            CommunityHardwareScope.CURRENT_DEVICE -> {
+                                stringResource(R.string.community_config_same_device)
+                            }
+                            CommunityHardwareScope.CURRENT_GPU -> {
+                                stringResource(R.string.community_config_this_gpu)
+                            }
+                            CommunityHardwareScope.ALL -> stringResource(R.string.community_config_all)
                         },
                         maxLines = 1,
                     )
@@ -529,8 +591,9 @@ private fun CommunityConfigError(
 
 @Composable
 private fun CommunityConfigEmptyState(
-    gpuFiltered: Boolean,
-    onShowAll: () -> Unit,
+    hardwareScope: CommunityHardwareScope,
+    gpuAvailable: Boolean,
+    onBroaden: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -540,17 +603,25 @@ private fun CommunityConfigEmptyState(
     ) {
         Text(
             text = stringResource(
-                if (gpuFiltered) {
-                    R.string.community_config_no_gpu_results
-                } else {
-                    R.string.community_config_no_results
+                when (hardwareScope) {
+                    CommunityHardwareScope.CURRENT_DEVICE -> R.string.community_config_no_device_results
+                    CommunityHardwareScope.CURRENT_GPU -> R.string.community_config_no_gpu_results
+                    CommunityHardwareScope.ALL -> R.string.community_config_no_results
                 },
             ),
             style = MaterialTheme.typography.bodyLarge,
         )
-        if (gpuFiltered) {
-            Button(onClick = onShowAll) {
-                Text(stringResource(R.string.community_config_show_all_gpus))
+        if (hardwareScope != CommunityHardwareScope.ALL) {
+            Button(onClick = onBroaden) {
+                Text(
+                    stringResource(
+                        if (hardwareScope == CommunityHardwareScope.CURRENT_DEVICE && gpuAvailable) {
+                            R.string.community_config_show_this_gpu
+                        } else {
+                            R.string.community_config_show_all_gpus
+                        },
+                    ),
+                )
             }
         }
     }

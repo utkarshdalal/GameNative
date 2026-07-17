@@ -1374,11 +1374,15 @@
     <string name="community_config_result_count">%1$d configs</string>
     <string name="community_config_highest_rated">Highest rated</string>
     <string name="community_config_newest">Newest</string>
+    <string name="community_config_same_device">Same device</string>
     <string name="community_config_this_gpu">This GPU</string>
+    <string name="community_config_all">All</string>
     <string name="community_config_all_gpus">All GPUs</string>
     <string name="community_config_load_more">Load more</string>
+    <string name="community_config_no_device_results">No configs were found for this device.</string>
     <string name="community_config_no_gpu_results">No configs were found for this GPU.</string>
     <string name="community_config_no_results">No community configs were found for this game.</string>
+    <string name="community_config_show_this_gpu">Show this GPU</string>
     <string name="community_config_show_all_gpus">Show all GPUs</string>
     <string name="community_config_rating_value">%1$d/5</string>
     <string name="community_config_fps_value">%1$s FPS</string>

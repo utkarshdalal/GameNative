@@ -142,6 +142,57 @@ class CommunityConfigServiceTest {
     }
 
     @Test
+    fun searchDevices_parsesExactModelResults() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {
+                  "devices": [
+                    {
+                      "id": 45701,
+                      "model": "samsung SM-F968U1",
+                      "gpu": "Adreno (TM) 830",
+                      "androidVer": "16",
+                      "soc": "SM8750"
+                    }
+                  ]
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        val devices = service.searchDevices("samsung SM-F968U1")
+
+        assertEquals(45701, devices.single().id)
+        assertEquals("SM8750", devices.single().soc)
+        assertEquals(
+            "samsung SM-F968U1",
+            server.takeRequest().requestUrl?.queryParameter("model"),
+        )
+    }
+
+    @Test
+    fun fetchConfigs_deviceFilterTakesPriorityOverGpu() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{ "runs": [], "total": 0, "page": 0, "pageSize": 20 }""",
+            ),
+        )
+
+        service.fetchConfigs(
+            gameId = 10,
+            gpu = "Adreno 830",
+            sort = CommunityConfigSort.NEWEST,
+            page = 0,
+            deviceId = 45701,
+        )
+
+        val request = server.takeRequest().requestUrl
+        assertEquals("45701", request?.queryParameter("deviceId"))
+        assertNull(request?.queryParameter("gpu"))
+    }
+
+    @Test
     fun httpError_exposesStatusWithoutParsingRuns() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(503).setBody(
@@ -182,5 +233,18 @@ class CommunityConfigServiceTest {
             communityConfigMatchType("Adreno 730", "Adreno 740"),
         )
         assertTrue(canonicalCommunityGpu("Unknown GPU").isBlank())
+    }
+
+    @Test
+    fun deviceMatcher_prefersCurrentGpuAndAndroidVersion() {
+        val devices = listOf(
+            CommunityConfigDevice(1, "samsung SM-S908U", "Adreno 730", "15", "SM8450"),
+            CommunityConfigDevice(2, "samsung SM-S908U", "Adreno (TM) 730", "16", "SM8450"),
+            CommunityConfigDevice(3, "samsung SM-S908U", "", "16", ""),
+        )
+
+        assertEquals(2, selectCommunityDevice(devices, "Qualcomm Adreno 730", "16")?.id)
+        assertEquals("samsung SM-F968U1", communityDeviceQuery("samsung", "SM-F968U1"))
+        assertEquals("AYN Odin2", communityDeviceQuery("AYN", "AYN Odin2"))
     }
 }
