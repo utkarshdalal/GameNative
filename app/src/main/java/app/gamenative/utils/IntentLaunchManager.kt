@@ -260,7 +260,7 @@ object IntentLaunchManager {
 
         return ContainerData(
             name = override.name.ifEmpty { base.name },
-            screenSize = if (override.screenSize != PluviaApp.getDefaultScreenSize()) {
+            screenSize = if (override.screenSize != base.screenSize) {
                 override.screenSize
             } else {
                 base.screenSize
