@@ -73,12 +73,11 @@ jobs:
           yes | "$SDKMANAGER" --install "build-tools;34.0.0"
 
       - name: Build with Gradle
-        run: ./gradlew :app:bundleLegacyRelease :app:bundleModernRelease :app:bundleLegacyXrRelease
+        run: ./gradlew :app:bundleLegacyRelease :app:bundleLegacyXrRelease
 
       - name: Stage bundles
         run: |
           cp app/build/outputs/bundle/legacyRelease/app-legacy-release.aab app-release.aab
-          cp app/build/outputs/bundle/modernRelease/app-modern-release.aab app-modern-release.aab
           cp app/build/outputs/bundle/legacyXrRelease/app-legacyXr-release.aab app-legacy-xr-release.aab
 
       - name: Extract APKs from Bundles
@@ -88,11 +87,6 @@ jobs:
             --output=app-release.apks \
             --mode=universal
           unzip -o app-release.apks universal.apk
-          java -jar tools/bundletool-all-1.17.2.jar build-apks \
-            --bundle=app-modern-release.aab \
-            --output=app-modern-release.apks \
-            --mode=universal
-          unzip -p app-modern-release.apks universal.apk > universal-modern.apk
           java -jar tools/bundletool-all-1.17.2.jar build-apks \
             --bundle=app-legacy-xr-release.aab \
             --output=app-legacy-xr-release.apks \
@@ -117,7 +111,7 @@ jobs:
           if [ ! -d "$BUILD_TOOLS_DIR" ]; then
             BUILD_TOOLS_DIR="${ANDROID_SDK_ROOT}/build-tools/34.0.0"
           fi
-          for apk in universal.apk universal-modern.apk universal-legacy-xr.apk; do
+          for apk in universal.apk universal-legacy-xr.apk; do
             "${BUILD_TOOLS_DIR}/apksigner" sign \
               --lineage app/keystores/prod-debug.lineage \
               --ks app/keystores/keystore \
@@ -139,7 +133,6 @@ jobs:
           name: universal-apk
           path: |
             universal.apk
-            universal-modern.apk
             universal-legacy-xr.apk
 
   release:
@@ -157,7 +150,6 @@ jobs:
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           mv universal.apk "gamenative-$TAG.apk"
-          mv universal-modern.apk "gamenative-$TAG-modern.apk"
           mv universal-legacy-xr.apk "gamenative-$TAG-legacy-xr.apk"
 
       - name: Create GitHub Release
@@ -170,12 +162,10 @@ jobs:
           append_body: true
           body: |
             ## Downloads
-            - **`gamenative-${{ github.ref_name }}.apk`** — Standard build (Android 8–14). Recommended for most users.
-            - **`gamenative-${{ github.ref_name }}-modern.apk`** — Play Store build (Android 11+). Built for the latest Android, so **no security warning** about an outdated target. No D drive access and no custom game support; glibc not supported, external storage location moved.
-            - **`gamenative-${{ github.ref_name }}-legacy-xr.apk`** — Quest/VR sideload build. Legacy storage with all-files access and D drive support, forced landscape. Sideload only (not for the store).
+            - **`gamenative-${{ github.ref_name }}.apk`** — Standard build. Recommended for most users.
+            - **`gamenative-${{ github.ref_name }}-legacy-xr.apk`** — XR build for Quest headsets.
           files: |
             gamenative-${{ github.ref_name }}.apk
-            gamenative-${{ github.ref_name }}-modern.apk
             gamenative-${{ github.ref_name }}-legacy-xr.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

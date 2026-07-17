@@ -687,7 +687,7 @@
     <string name="image_cache_size">圖像快取大小</string>
     <string name="dx_wrapper">DX Wrapper</string>
     <string name="sf_compat_mode">相容模式</string>
-    <string name="sf_compat_mode_description">關閉以提升效能。開啟以修正顏色反轉。</string>
+    <string name="sf_compat_mode_description">關閉以提升效能。開啟以修正顏色反轉並防止當機。</string>
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">使用 DRI3</string>
     <string name="use_dri3_description">在某些裝置上停用此功能或許能修復圖形故障</string>

@@ -745,7 +745,7 @@
     <string name="dx_wrapper">Wrapper de DX</string>
     <string name="display_renderer">Renderizador de pantalla</string>
     <string name="sf_compat_mode">Modo de compatibilidad</string>
-    <string name="sf_compat_mode_description">Desactívalo para mejorar el rendimiento. Mantenlo activado para corregir los colores invertidos.</string>
+    <string name="sf_compat_mode_description">Desactívalo para mejorar el rendimiento. Mantenlo activado para corregir los colores invertidos y evitar cierres inesperados.</string>
     <string name="vkd3d_feature_level">Feature Level de VKD3D</string>
     <string name="use_dri3">Usar DRI3</string>
     <string name="use_dri3_description">Desactivarlo puede corregir fallos gráficos en algunos dispositivos.</string>

@@ -704,7 +704,7 @@
     <string name="dx_wrapper">DX Wrapper</string>
     <string name="display_renderer">디스플레이 렌더러</string>
     <string name="sf_compat_mode">호환 모드</string>
-    <string name="sf_compat_mode_description">성능 향상을 위해 끄세요. 색상 반전을 수정하려면 켜 두세요.</string>
+    <string name="sf_compat_mode_description">성능 향상을 위해 끄세요. 색상 반전을 수정하고 충돌을 방지하려면 켜 두세요.</string>
     <string name="vkd3d_feature_level">VKD3D 기능 수준</string>
     <string name="use_dri3">DRI3 사용</string>
     <string name="use_dri3_description">비활성화하면 일부 장치에서 그래픽 결함이 수정될 수 있습니다</string>

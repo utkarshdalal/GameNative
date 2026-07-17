@@ -701,7 +701,7 @@
 	<string name="dx_wrapper">Wrapper DX</string>
     <string name="display_renderer">Renderer de afișaj</string>
     <string name="sf_compat_mode">Mod de compatibilitate</string>
-    <string name="sf_compat_mode_description">Dezactivează pentru performanță mai bună. Lasă activat pentru a corecta culorile inversate.</string>
+    <string name="sf_compat_mode_description">Dezactivează pentru performanță mai bună. Lasă activat pentru a corecta culorile inversate și a preveni blocările.</string>
 	<string name="vkd3d_feature_level">Nivel funcțional VKD3D</string>
 	<string name="use_dri3">Folosește DRI3</string>
 	<string name="use_dri3_description">Dezactivarea poate rezolva artefacte grafice pe unele dispozitive</string>

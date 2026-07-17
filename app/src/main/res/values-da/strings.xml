@@ -536,7 +536,7 @@
     <string name="dx_wrapper">DX-wrapper</string>
     <string name="display_renderer">Display-renderer</string>
     <string name="sf_compat_mode">Kompatibilitetstilstand</string>
-    <string name="sf_compat_mode_description">Slå fra for bedre ydeevne. Lad være tændt for at rette omvendte farver.</string>
+    <string name="sf_compat_mode_description">Slå fra for bedre ydeevne. Lad være tændt for at rette omvendte farver og forhindre nedbrud.</string>
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">Brug DRI3</string>
     <string name="use_dri3_description">Deaktivering kan løse grafiske fejl på nogle enheder</string>

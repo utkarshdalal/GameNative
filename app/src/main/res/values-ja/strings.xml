@@ -710,7 +710,7 @@
     <string name="dx_wrapper">DXラッパー</string>
     <string name="display_renderer">ディスプレイレンダラー</string>
     <string name="sf_compat_mode">互換モード</string>
-    <string name="sf_compat_mode_description">オフにするとパフォーマンスが向上します。色の反転を修正するにはオンのままにします。</string>
+    <string name="sf_compat_mode_description">オフにするとパフォーマンスが向上します。色の反転を修正し、クラッシュを防ぐにはオンのままにします。</string>
     <string name="vkd3d_feature_level">VKD3D 機能レベル</string>
     <string name="use_dri3">DRI3 を使用する</string>
     <string name="use_dri3_description">無効にすると、一部のデバイスでのグラフィックの不具合が修正される場合があります</string>

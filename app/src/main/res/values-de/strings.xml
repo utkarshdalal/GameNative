@@ -676,7 +676,7 @@
     <string name="dx_wrapper">DX-Wrapper</string>
     <string name="display_renderer">Display-Renderer</string>
     <string name="sf_compat_mode">Kompatibilitätsmodus</string>
-    <string name="sf_compat_mode_description">Zum Verbessern der Leistung ausschalten. Eingeschaltet lassen, um invertierte Farben zu korrigieren.</string>
+    <string name="sf_compat_mode_description">Zum Verbessern der Leistung ausschalten. Eingeschaltet lassen, um invertierte Farben zu korrigieren und Abstürze zu verhindern.</string>
     <string name="vkd3d_feature_level">VKD3D-Featurelevel</string>
     <string name="use_dri3">DRI3 verwenden</string>
     <string name="use_dri3_description">Deaktivieren kann Grafikprobleme auf manchen Geräten beheben</string>

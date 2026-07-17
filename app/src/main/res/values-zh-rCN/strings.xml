@@ -685,7 +685,7 @@
     <string name="image_cache_size">图像缓存大小</string>
     <string name="dx_wrapper">DX 封装器</string>
     <string name="sf_compat_mode">兼容模式</string>
-    <string name="sf_compat_mode_description">关闭以提升性能。开启以修正颜色反转。</string>
+    <string name="sf_compat_mode_description">关闭以提升性能。开启以修正颜色反转并防止崩溃。</string>
     <string name="vkd3d_feature_level">VKD3D 功能级别</string>
     <string name="use_dri3">使用 DRI3</string>
     <string name="use_dri3_description">在某些设备上禁用此功能或许能修复图形故障</string>

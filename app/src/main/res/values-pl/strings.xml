@@ -709,7 +709,7 @@
     <string name="dx_wrapper">Wrapper DX</string>
     <string name="display_renderer">Renderer wyświetlania</string>
     <string name="sf_compat_mode">Tryb zgodności</string>
-    <string name="sf_compat_mode_description">Wyłącz dla lepszej wydajności. Włącz, aby naprawić odwrócone kolory.</string>
+    <string name="sf_compat_mode_description">Wyłącz dla lepszej wydajności. Włącz, aby naprawić odwrócone kolory i zapobiec awariom.</string>
     <string name="vkd3d_feature_level">Poziom funkcji VKD3D</string>
     <string name="use_dri3">Użyj DRI3</string>
     <string name="use_dri3_description">Wyłączenie może naprawić błędy graficzne na niektórych urządzeniach</string>
