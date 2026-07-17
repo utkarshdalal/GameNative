@@ -1,6 +1,10 @@
 package app.gamenative
 
+import android.hardware.display.DisplayManager
+import android.os.Build
 import android.os.StrictMode
+import android.util.DisplayMetrics
+import android.view.Display
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -267,23 +271,21 @@ class PluviaApp : SplitCompatApplication() {
 
         fun getDefaultScreenSize(): String {
             return try {
-                val windowManager = instance.getSystemService(WINDOW_SERVICE) as? android.view.WindowManager
-                if (windowManager != null) {
-                    val width: Int
-                    val height: Int
+                val displayManager = instance.getSystemService(DISPLAY_SERVICE) as? DisplayManager
+                val display = displayManager?.getDisplay(Display.DEFAULT_DISPLAY)
+                if (display != null) {
+                    val width : Int
+                    val height : Int
 
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                        // API 30+ - Use WindowMetrics
-                        val windowMetrics = windowManager.currentWindowMetrics
-                        val bounds = windowMetrics.bounds
-                        width = bounds.width()
-                        height = bounds.height()
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        val mode = display.mode
+                        width = mode.physicalWidth
+                        height = mode.physicalHeight
                     } else {
                         // API < 30 - Use deprecated Display API
+                        val displayMetrics = DisplayMetrics()
                         @Suppress("DEPRECATION")
-                        val displayMetrics = android.util.DisplayMetrics()
-                        @Suppress("DEPRECATION")
-                        windowManager.defaultDisplay.getRealMetrics(displayMetrics)
+                        display.getMetrics(displayMetrics)
                         width = displayMetrics.widthPixels
                         height = displayMetrics.heightPixels
                     }
