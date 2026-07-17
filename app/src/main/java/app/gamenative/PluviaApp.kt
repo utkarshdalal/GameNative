@@ -288,7 +288,7 @@ class PluviaApp : SplitCompatApplication() {
                         // API < 30 - Use deprecated Display API
                         val displayMetrics = DisplayMetrics()
                         @Suppress("DEPRECATION")
-                        display.getMetrics(displayMetrics)
+                        display.getRealMetrics(displayMetrics)
                         width = displayMetrics.widthPixels
                         height = displayMetrics.heightPixels
                     }
