@@ -12,6 +12,15 @@ import org.junit.Test
 
 class NexusDownloadLinkInboxTest {
     @Test
+    fun pendingDownload_ttlBoundaryIsStale() {
+        val now = 4_000_000_000L
+        val ttl = NexusDownloadLinkInbox.PENDING_DOWNLOAD_TTL_SECONDS
+
+        assertFalse(pendingDownload("ttl-fresh").copy(createdAtEpochSeconds = now - ttl + 1).isPastPendingTtl(now))
+        assertTrue(pendingDownload("ttl-stale").copy(createdAtEpochSeconds = now - ttl).isPastPendingTtl(now))
+    }
+
+    @Test
     fun acceptedSideEffect_runsOnlyWhenExpectationIsRegistered() {
         val pending = pendingDownload(appId = "accepted-side-effect", requestId = "first")
         var acceptedCount = 0

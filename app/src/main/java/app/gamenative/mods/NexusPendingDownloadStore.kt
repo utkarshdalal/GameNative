@@ -63,7 +63,7 @@ object NexusPendingDownloadStore {
             buildList {
                 for (index in 0 until array.length()) {
                     val pending = array.optJSONObject(index)?.toPendingDownload() ?: continue
-                    if (now - pending.createdAtEpochSeconds < NexusDownloadLinkInbox.PENDING_DOWNLOAD_TTL_SECONDS) {
+                    if (!pending.isPastPendingTtl(now)) {
                         add(pending)
                     }
                 }

@@ -29,8 +29,42 @@ import app.gamenative.mods.ModTargetResolver
 import app.gamenative.mods.NexusCollectionFile
 import app.gamenative.mods.NexusModFile
 import app.gamenative.mods.ResolvedModTargetRoot
-import org.json.JSONObject
 import java.io.File
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.withTimeoutOrNull
+import org.json.JSONObject
+
+internal sealed interface CallbackWaitResult<out T> {
+    data class Received<T>(val value: T) : CallbackWaitResult<T>
+    data object Cancelled : CallbackWaitResult<Nothing>
+}
+
+internal suspend fun <T> awaitCallbackOrCancellation(
+    callback: Deferred<T>,
+    cancellationRequests: Flow<Boolean>,
+    timeoutMillis: Long,
+): CallbackWaitResult<T>? = withTimeoutOrNull(timeoutMillis) {
+    coroutineScope {
+        val cancellation = async(start = CoroutineStart.UNDISPATCHED) {
+            cancellationRequests.first { it }
+        }
+        try {
+            select {
+                callback.onAwait { CallbackWaitResult.Received(it) }
+                cancellation.onAwait { CallbackWaitResult.Cancelled }
+            }
+        } finally {
+            cancellation.cancel()
+        }
+    }
+}
+
 internal fun ModInstall.canPlaceFiles(): Boolean =
     status == ModInstallStatus.READY.name ||
         status == ModInstallStatus.APPLIED.name ||

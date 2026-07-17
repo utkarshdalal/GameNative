@@ -47,6 +47,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -115,6 +116,7 @@ import app.gamenative.mods.NexusPendingDownloadStore
 import app.gamenative.mods.NexusUserInfo
 import app.gamenative.mods.PendingNexusWebsiteDownload
 import app.gamenative.mods.NexusUrlParser
+import app.gamenative.mods.isPastPendingTtl
 import app.gamenative.service.NexusModImportService
 import app.gamenative.ui.util.LocalSnackbarHostController
 import app.gamenative.ui.util.SnackbarManager
@@ -128,6 +130,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -1532,15 +1535,19 @@ fun NexusModsDialog(
         requestWebsiteDownloadAuthorization(reference, modInfo, file, requestId, nexusUserId)
         var preserveExpectationForRecreation = false
         return try {
-            val deadline = System.currentTimeMillis() + WEBSITE_AUTHORIZATION_TIMEOUT_MS
-            while (!callback.isCompleted && System.currentTimeMillis() < deadline) {
-                if (collectionCancelRequested) return null
-                delay(250L)
+            when (
+                val result = awaitCallbackOrCancellation(
+                    callback = callback,
+                    cancellationRequests = snapshotFlow { collectionCancelRequested },
+                    timeoutMillis = WEBSITE_AUTHORIZATION_TIMEOUT_MS,
+                )
+            ) {
+                null -> throw NexusWebsiteAuthorizationException(
+                    context.getString(R.string.nexus_authorization_timed_out),
+                )
+                CallbackWaitResult.Cancelled -> null
+                is CallbackWaitResult.Received -> result.value
             }
-            if (!callback.isCompleted) {
-                throw NexusWebsiteAuthorizationException(context.getString(R.string.nexus_authorization_timed_out))
-            }
-            callback.await()
         } catch (e: CancellationException) {
             // The Activity/dialog can be recreated while the browser is open. Keep
             // the non-secret expected tuple so the returning NXM grant can be routed
@@ -1640,8 +1647,12 @@ fun NexusModsDialog(
     suspend fun receiveAuthorizedDownload(download: AuthorizedNexusWebsiteDownload) {
         val reference = download.reference
         val matchingPending = download.pending
-        val authorization = reference.downloadAuthorization ?: return
         if (matchingPending.appId != libraryItem.appId) return
+        if (matchingPending.isPastPendingTtl()) {
+            Timber.w("[NexusDownload]: Ignoring stale website authorization callback")
+            return
+        }
+        val authorization = reference.downloadAuthorization ?: return
         if (authorization.isExpired()) {
             val error = NexusApiException(
                 message = context.getString(R.string.nexus_authorization_expired),

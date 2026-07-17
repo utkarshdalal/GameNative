@@ -129,9 +129,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 
 private const val PENDING_LAUNCH_TIMEOUT_MS = 10_000L
+private const val SNACKBAR_SHOW_TIMEOUT_MS = 15_000L
 
 /** Used to suspend preLaunchApp while the user decides on large workshop updates. */
 private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
@@ -1112,7 +1114,13 @@ fun PluviaMain(
 
     LaunchedEffect(snackbarController) {
         SnackbarManager.messages.collect { message ->
-            snackbarController.hostState.showSnackbar(message)
+            if (
+                withTimeoutOrNull(SNACKBAR_SHOW_TIMEOUT_MS) {
+                    snackbarController.hostState.showSnackbar(message)
+                } == null
+            ) {
+                Timber.w("[Snackbar]: Display timed out before dismissal")
+            }
             // snackbar dismissed (timeout or new message) — reset exit flag
             exitSnackbarVisible = false
         }

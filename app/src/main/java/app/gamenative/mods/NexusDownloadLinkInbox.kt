@@ -20,6 +20,10 @@ data class AuthorizedNexusWebsiteDownload(
     val reference: NexusModReference,
 )
 
+internal fun PendingNexusWebsiteDownload.isPastPendingTtl(
+    nowEpochSeconds: Long = System.currentTimeMillis() / 1000L,
+): Boolean = nowEpochSeconds - createdAtEpochSeconds >= NexusDownloadLinkInbox.PENDING_DOWNLOAD_TTL_SECONDS
+
 /**
  * Bridges Android's NXM intent callback to the currently open Nexus dialog.
  *
@@ -115,7 +119,7 @@ object NexusDownloadLinkInbox {
 
     private fun removeExpiredPendingDownloads(nowEpochSeconds: Long = System.currentTimeMillis() / 1000L) {
         pendingWebsiteDownloads.entries.removeAll { (_, pending) ->
-            nowEpochSeconds - pending.createdAtEpochSeconds >= PENDING_DOWNLOAD_TTL_SECONDS
+            pending.isPastPendingTtl(nowEpochSeconds)
         }
     }
 
