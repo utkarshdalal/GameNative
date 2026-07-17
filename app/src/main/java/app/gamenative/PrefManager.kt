@@ -166,7 +166,7 @@ object PrefManager {
     /* Container Default Settings */
     private val SCREEN_SIZE = stringPreferencesKey("screen_size")
     var screenSize: String
-        get() = getPref(SCREEN_SIZE, Container.DEFAULT_SCREEN_SIZE)
+        get() = getPref(SCREEN_SIZE, PluviaApp.getDefaultScreenSize())
         set(value) {
             setPref(SCREEN_SIZE, value)
         }

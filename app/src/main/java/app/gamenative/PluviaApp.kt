@@ -51,6 +51,7 @@ class PluviaApp : SplitCompatApplication() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
 
         preloadSystemLibraries()
 
@@ -199,6 +200,8 @@ class PluviaApp : SplitCompatApplication() {
         val events: EventDispatcher = EventDispatcher()
         internal var onDestinationChangedListener: NavChangedListener? = null
 
+        private lateinit var instance: PluviaApp
+
         // TODO: find a way to make this saveable, this is terrible (leak that memory baby)
         internal var xEnvironment: XEnvironment? = null
         internal var xServerView: XServerRendererView? = null
@@ -262,6 +265,50 @@ class PluviaApp : SplitCompatApplication() {
 
         fun isManualSuspendMode(): Boolean = activeSuspendPolicy.equals(Container.SUSPEND_POLICY_MANUAL, ignoreCase = true)
 
+        fun getDefaultScreenSize(): String {
+            return try {
+                val windowManager = instance.getSystemService(WINDOW_SERVICE) as? android.view.WindowManager
+                if (windowManager != null) {
+                    val width: Int
+                    val height: Int
+
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                        // API 30+ - Use WindowMetrics
+                        val windowMetrics = windowManager.currentWindowMetrics
+                        val bounds = windowMetrics.bounds
+                        width = bounds.width()
+                        height = bounds.height()
+                    } else {
+                        // API < 30 - Use deprecated Display API
+                        @Suppress("DEPRECATION")
+                        val displayMetrics = android.util.DisplayMetrics()
+                        @Suppress("DEPRECATION")
+                        windowManager.defaultDisplay.getRealMetrics(displayMetrics)
+                        width = displayMetrics.widthPixels
+                        height = displayMetrics.heightPixels
+                    }
+
+                    // Calculate aspect ratio (always use landscape orientation for calculation)
+                    val aspectRatio = maxOf(width, height).toFloat() / minOf(width, height).toFloat()
+
+                    // Aspect ratio thresholds:
+                    // 4:3 = 1.33
+                    // 16:10 = 1.6
+                    // 16:9 = 1.77
+
+                    when {
+                        aspectRatio < 1.5f -> Container.DEFAULT_SCREEN_SIZE_4_3  // 4:3 aspect ratio devices
+                        aspectRatio < 1.7f -> Container.DEFAULT_SCREEN_SIZE_16_10  // 16:10 aspect ratio devices
+                        else -> Container.DEFAULT_SCREEN_SIZE_16_9  // 16:9 and wider aspect ratio devices
+                    }
+                } else {
+                    Container.DEFAULT_SCREEN_SIZE_16_9  // Fallback to default
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to get device screen size")
+                Container.DEFAULT_SCREEN_SIZE_16_9  // Fallback to default
+            }
+        }
     }
 
     /**
