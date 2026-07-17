@@ -1,10 +1,16 @@
 package app.gamenative.api
 
+import app.gamenative.BuildConfig
 import app.gamenative.utils.Net
+import com.winlator.container.Container
 import java.io.IOException
+import java.time.OffsetDateTime
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -44,14 +50,8 @@ data class CommunityConfigRun(
     val config: JsonObject,
     val createdAt: String,
     val appVersion: String,
-    val gameName: String,
     val device: CommunityConfigDevice,
 ) {
-    val configStore: String?
-        get() = configString("id")
-            .substringBefore('_', missingDelimiterValue = "")
-            .takeIf { it.isNotBlank() }
-
     fun configString(key: String): String {
         val element = config[key] ?: return ""
         return (element as? JsonPrimitive)?.contentOrNull ?: element.toString()
@@ -62,7 +62,7 @@ data class CommunityConfigPage(
     val runs: List<CommunityConfigRun>,
     val total: Int,
     val page: Int,
-    val pageSize: Int,
+    val hasMore: Boolean,
 )
 
 class CommunityConfigApiException(
@@ -77,7 +77,7 @@ class CommunityConfigService(
 ) {
     companion object {
         private const val DEFAULT_BASE_URL = "https://api.gamenative.app"
-        private const val MAX_RESPONSE_CHARS = 4 * 1024 * 1024
+        private const val MAX_RESPONSE_BYTES = 4L * 1024 * 1024
 
         val shared: CommunityConfigService by lazy { CommunityConfigService() }
     }
@@ -94,17 +94,23 @@ class CommunityConfigService(
         return selectCommunityGame(query, searchGames(query))
     }
 
-    suspend fun findDevice(
+    suspend fun findDevices(
         manufacturer: String,
         model: String,
         gpu: String,
         androidVersion: String,
-    ): CommunityConfigDevice? {
+    ): List<CommunityConfigDevice> {
         val query = communityDeviceQuery(manufacturer, model)
         val devices = searchDevices(query).ifEmpty {
             if (query.equals(model.trim(), ignoreCase = true)) emptyList() else searchDevices(model)
         }
-        return selectCommunityDevice(devices, gpu, androidVersion)
+        return selectCommunityDevices(
+            devices = devices,
+            manufacturer = manufacturer,
+            model = model,
+            currentGpu = gpu,
+            androidVersion = androidVersion,
+        )
     }
 
     suspend fun searchDevices(model: String): List<CommunityConfigDevice> = withContext(Dispatchers.IO) {
@@ -121,8 +127,50 @@ class CommunityConfigService(
         sort: CommunityConfigSort,
         page: Int,
         limit: Int = 20,
-        deviceId: Int? = null,
+        deviceIds: List<Int> = emptyList(),
     ): CommunityConfigPage = withContext(Dispatchers.IO) {
+        val validDeviceIds = deviceIds.filter { it > 0 }.distinct()
+        if (validDeviceIds.size <= 1) {
+            return@withContext fetchConfigPage(
+                gameId = gameId,
+                gpu = gpu,
+                sort = sort,
+                page = page,
+                limit = limit,
+                deviceId = validDeviceIds.singleOrNull(),
+            )
+        }
+
+        val pages = coroutineScope {
+            validDeviceIds.map { deviceId ->
+                async {
+                    fetchConfigPage(
+                        gameId = gameId,
+                        gpu = null,
+                        sort = sort,
+                        page = page,
+                        limit = limit,
+                        deviceId = deviceId,
+                    )
+                }
+            }.awaitAll()
+        }
+        CommunityConfigPage(
+            runs = sortCommunityRuns(pages.flatMap { it.runs }.distinctBy { it.id }, sort),
+            total = pages.sumOf { it.total.toLong() }.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+            page = page.coerceAtLeast(0),
+            hasMore = pages.any { it.hasMore },
+        )
+    }
+
+    private fun fetchConfigPage(
+        gameId: Int,
+        gpu: String?,
+        sort: CommunityConfigSort,
+        page: Int,
+        limit: Int,
+        deviceId: Int?,
+    ): CommunityConfigPage {
         val urlBuilder = endpoint("api/compatibility")
             .addQueryParameter("gameId", gameId.toString())
             .addQueryParameter("sort", sort.apiValue)
@@ -136,7 +184,7 @@ class CommunityConfigService(
                 urlBuilder.addQueryParameter("gpu", it)
             }
         }
-        parseConfigPage(execute(urlBuilder.build().toString()))
+        return parseConfigPage(execute(urlBuilder.build().toString()))
     }
 
     private fun endpoint(path: String) = baseUrl
@@ -149,10 +197,7 @@ class CommunityConfigService(
         val request = Request.Builder().url(url).get().build()
         try {
             client.newCall(request).execute().use { response ->
-                val body = response.body?.string().orEmpty()
-                if (body.length > MAX_RESPONSE_CHARS) {
-                    throw CommunityConfigApiException("Compatibility response is too large")
-                }
+                val body = readBoundedBody(response.body)
                 if (!response.isSuccessful) {
                     throw CommunityConfigApiException(
                         message = parseErrorMessage(body).ifBlank { "Compatibility service returned HTTP ${response.code}" },
@@ -168,6 +213,19 @@ class CommunityConfigService(
         } catch (error: IOException) {
             throw CommunityConfigApiException("Unable to reach the compatibility service", cause = error)
         }
+    }
+
+    private fun readBoundedBody(body: okhttp3.ResponseBody?): String {
+        body ?: return ""
+        if (body.contentLength() > MAX_RESPONSE_BYTES) {
+            throw CommunityConfigApiException("Compatibility response is too large")
+        }
+        val source = body.source()
+        source.request(MAX_RESPONSE_BYTES + 1)
+        if (source.buffer.size > MAX_RESPONSE_BYTES) {
+            throw CommunityConfigApiException("Compatibility response is too large")
+        }
+        return source.readString(Charsets.UTF_8)
     }
 
     private fun parseGames(body: String): List<CommunityGame> {
@@ -205,16 +263,20 @@ class CommunityConfigService(
         return try {
             val root = JSONObject(body)
             val runsJson = root.optJSONArray("runs") ?: JSONArray()
+            val rawRunCount = runsJson.length()
             val runs = buildList {
                 for (index in 0 until runsJson.length()) {
                     parseRun(runsJson.optJSONObject(index))?.let(::add)
                 }
             }
+            val page = root.optInt("page", 0).coerceAtLeast(0)
+            val pageSize = root.optInt("pageSize", rawRunCount).coerceAtLeast(rawRunCount).coerceAtLeast(1)
+            val total = root.optInt("total", rawRunCount).coerceAtLeast(rawRunCount)
             CommunityConfigPage(
                 runs = runs,
-                total = root.optInt("total", runs.size).coerceAtLeast(runs.size),
-                page = root.optInt("page", 0).coerceAtLeast(0),
-                pageSize = root.optInt("pageSize", runs.size).coerceAtLeast(runs.size),
+                total = total,
+                page = page,
+                hasMore = rawRunCount > 0 && (page + 1L) * pageSize < total,
             )
         } catch (error: CommunityConfigApiException) {
             throw error
@@ -225,6 +287,8 @@ class CommunityConfigService(
 
     private fun parseRun(run: JSONObject?): CommunityConfigRun? {
         run ?: return null
+        val id = run.optLong("id", 0L)
+        if (id <= 0) return null
         val configObject = when (val value = run.opt("configs")) {
             is JSONObject -> value
             is String -> runCatching { JSONObject(value) }.getOrNull()
@@ -233,19 +297,17 @@ class CommunityConfigService(
         val config = runCatching {
             Json.parseToJsonElement(configObject.toString()).jsonObject
         }.getOrNull() ?: return null
-        val gameName = run.optString("gameName").ifBlank {
-            run.optJSONObject("game")?.optString("name").orEmpty()
-        }
+        val safeConfig = sanitizeCommunityConfig(config)
+        if (!isValidCommunityConfig(safeConfig)) return null
         return CommunityConfigRun(
-            id = run.optLong("id", 0L),
+            id = id,
             rating = run.optInt("rating", 0).coerceIn(0, 5),
             averageFps = if (run.isNull("avgFps")) null else run.optDouble("avgFps").takeIf { it.isFinite() },
             tags = run.optJSONArray("tags").toStringList(),
             notes = run.optString("notes").trim(),
-            config = config,
+            config = safeConfig,
             createdAt = run.optString("createdAt"),
             appVersion = run.optString("appVersion"),
-            gameName = gameName,
             device = parseDevice(run.optJSONObject("device"), run.optInt("deviceId", 0))
                 ?: CommunityConfigDevice(0, "", "", "", ""),
         )
@@ -281,7 +343,6 @@ internal fun selectCommunityGame(query: String, games: List<CommunityGame>): Com
     if (games.isEmpty()) return null
     val normalizedQuery = normalizeCommunityGameName(query)
     return games.firstOrNull { normalizeCommunityGameName(it.name) == normalizedQuery }
-        ?: games.first()
 }
 
 internal fun communityDeviceQuery(manufacturer: String, model: String): String {
@@ -292,26 +353,36 @@ internal fun communityDeviceQuery(manufacturer: String, model: String): String {
     return "$cleanManufacturer $cleanModel".trim()
 }
 
-internal fun selectCommunityDevice(
+internal fun selectCommunityDevices(
     devices: List<CommunityConfigDevice>,
+    manufacturer: String,
+    model: String,
     currentGpu: String,
     androidVersion: String,
-): CommunityConfigDevice? {
+): List<CommunityConfigDevice> {
     val canonicalGpu = canonicalCommunityGpu(currentGpu)
-    val canonicalAndroid = androidVersion.lowercase(Locale.ENGLISH).replace("android", "").trim()
-    return devices.maxByOrNull { device ->
-        val gpuScore = when {
-            canonicalGpu.isEmpty() -> 0
-            canonicalCommunityGpu(device.gpu) == canonicalGpu -> 4
-            device.gpu.isBlank() -> 1
-            else -> 0
+    val canonicalAndroid = canonicalCommunityAndroid(androidVersion)
+    val fullModel = canonicalCommunityDeviceModel(communityDeviceQuery(manufacturer, model))
+    val shortModel = canonicalCommunityDeviceModel(model)
+    return devices
+        .asSequence()
+        .filter { device ->
+            val candidate = canonicalCommunityDeviceModel(device.model)
+            candidate == fullModel || candidate == shortModel
         }
-        val androidScore = if (
-            canonicalAndroid.isNotEmpty() &&
-            device.androidVersion.lowercase(Locale.ENGLISH).replace("android", "").trim() == canonicalAndroid
-        ) 2 else 0
-        gpuScore + androidScore
-    }
+        .filter { device ->
+            val deviceGpu = canonicalCommunityGpu(device.gpu)
+            canonicalGpu.isEmpty() || deviceGpu.isEmpty() || deviceGpu == canonicalGpu
+        }
+        .distinctBy { it.id }
+        .sortedWith(
+            compareByDescending<CommunityConfigDevice> {
+                canonicalGpu.isNotEmpty() && canonicalCommunityGpu(it.gpu) == canonicalGpu
+            }.thenByDescending {
+                canonicalAndroid.isNotEmpty() && canonicalCommunityAndroid(it.androidVersion) == canonicalAndroid
+            }.thenByDescending { it.id },
+        )
+        .toList()
 }
 
 internal fun communityConfigMatchType(currentGpu: String, configGpu: String): String {
@@ -350,6 +421,77 @@ private fun normalizeCommunityGameName(value: String): String = value
     .replace(Regex("[^a-z0-9]+"), " ")
     .trim()
     .replace(Regex("\\s+"), " ")
+
+private fun canonicalCommunityAndroid(value: String): String = value
+    .lowercase(Locale.ENGLISH)
+    .replace("android", "")
+    .trim()
+
+private fun canonicalCommunityDeviceModel(value: String): String = value
+    .lowercase(Locale.ENGLISH)
+    .replace(Regex("[^a-z0-9]+"), "")
+
+private val communityConfigAllowedKeys = setOf(
+    "graphicsDriver",
+    "graphicsDriverVersion",
+    "graphicsDriverConfig",
+    "dxwrapper",
+    "dxwrapperConfig",
+    "startupSelection",
+    "box64Version",
+    "box64Preset",
+    "containerVariant",
+    "wineVersion",
+    "emulator",
+    "fexcoreVersion",
+    "fexcoreTSOMode",
+    "fexcoreX87Mode",
+    "fexcoreMultiBlock",
+    "fexcorePreset",
+    "useLegacyDRM",
+    "audioDriver",
+    "wincomponents",
+    "videoMemorySize",
+)
+
+internal fun sanitizeCommunityConfig(config: JsonObject): JsonObject = JsonObject(
+    config.filterKeys(communityConfigAllowedKeys::contains),
+)
+
+internal fun isValidCommunityConfig(
+    config: JsonObject,
+    allowGlibc: Boolean = !BuildConfig.MODERN_ANDROID,
+): Boolean {
+    fun value(key: String) = (config[key] as? JsonPrimitive)?.contentOrNull?.trim().orEmpty()
+
+    val variant = value("containerVariant")
+    if (!variant.equals(Container.BIONIC, ignoreCase = true) &&
+        !variant.equals(Container.GLIBC, ignoreCase = true)
+    ) {
+        return false
+    }
+    if (!allowGlibc && variant.equals(Container.GLIBC, ignoreCase = true)) return false
+    if (!variant.equals(Container.GLIBC, ignoreCase = true) && value("wineVersion").isEmpty()) return false
+    return value("dxwrapper").isNotEmpty() && value("dxwrapperConfig").isNotEmpty()
+}
+
+internal fun sortCommunityRuns(
+    runs: List<CommunityConfigRun>,
+    sort: CommunityConfigSort,
+): List<CommunityConfigRun> {
+    fun CommunityConfigRun.createdAtMillis(): Long = runCatching {
+        OffsetDateTime.parse(createdAt).toInstant().toEpochMilli()
+    }.getOrDefault(Long.MIN_VALUE)
+
+    val comparator = when (sort) {
+        CommunityConfigSort.HIGHEST_RATED -> compareByDescending<CommunityConfigRun> { it.rating }
+            .thenByDescending { it.createdAtMillis() }
+            .thenByDescending { it.id }
+        CommunityConfigSort.NEWEST -> compareByDescending<CommunityConfigRun> { it.createdAtMillis() }
+            .thenByDescending { it.id }
+    }
+    return runs.sortedWith(comparator)
+}
 
 private fun JSONArray?.toStringList(): List<String> {
     if (this == null) return emptyList()

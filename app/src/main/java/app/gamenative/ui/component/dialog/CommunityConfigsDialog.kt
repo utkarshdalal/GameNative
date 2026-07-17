@@ -53,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,6 +68,7 @@ import app.gamenative.api.CommunityConfigSort
 import app.gamenative.api.CommunityGame
 import app.gamenative.api.canonicalCommunityGpu
 import app.gamenative.api.communityConfigMatchType
+import app.gamenative.api.sortCommunityRuns
 import app.gamenative.utils.BestConfigService
 import com.winlator.core.GPUInformation
 import java.time.OffsetDateTime
@@ -98,50 +100,60 @@ fun CommunityConfigsDialog(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var detectedGpu by remember(gameName) { mutableStateOf("") }
-    var detectedDevice by remember(gameName) { mutableStateOf<CommunityConfigDevice?>(null) }
+    var detectedDevices by remember(gameName) { mutableStateOf(emptyList<CommunityConfigDevice>()) }
     var resolvedGame by remember(gameName) { mutableStateOf<CommunityGame?>(null) }
     var sort by remember(gameName) { mutableStateOf(CommunityConfigSort.HIGHEST_RATED) }
     var hardwareScope by remember(gameName) { mutableStateOf(CommunityHardwareScope.CURRENT_DEVICE) }
     var runs by remember(gameName) { mutableStateOf(emptyList<CommunityConfigRun>()) }
     var total by remember(gameName) { mutableIntStateOf(0) }
+    var hasMore by remember(gameName) { mutableStateOf(false) }
     var currentPage by remember(gameName) { mutableIntStateOf(0) }
     var loading by remember(gameName) { mutableStateOf(true) }
     var loadingMore by remember(gameName) { mutableStateOf(false) }
     var errorMessage by remember(gameName) { mutableStateOf<String?>(null) }
     var selectedRun by remember(gameName) { mutableStateOf<CommunityConfigRun?>(null) }
     var lookupKey by remember(gameName) { mutableIntStateOf(0) }
+    var requestGeneration by remember(gameName) { mutableIntStateOf(0) }
 
     LaunchedEffect(visible, gameName, lookupKey) {
+        val generation = ++requestGeneration
         loading = true
+        loadingMore = false
         errorMessage = null
         runs = emptyList()
         total = 0
+        hasMore = false
         currentPage = 0
+        resolvedGame = null
         try {
             val renderer = withContext(Dispatchers.IO) {
                 runCatching { GPUInformation.getRenderer(context) }.getOrNull().orEmpty().trim()
             }
-            detectedGpu = renderer.takeIf { canonicalCommunityGpu(it).isNotEmpty() }.orEmpty()
-            detectedDevice = try {
-                service.findDevice(
+            val gpu = renderer.takeIf { canonicalCommunityGpu(it).isNotEmpty() }.orEmpty()
+            val devices = try {
+                service.findDevices(
                     manufacturer = Build.MANUFACTURER,
                     model = Build.MODEL,
-                    gpu = detectedGpu,
+                    gpu = gpu,
                     androidVersion = Build.VERSION.RELEASE,
                 )
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {
-                null
+                emptyList()
             }
-            if (detectedDevice == null) {
+            val game = service.findGame(gameName)
+            if (generation != requestGeneration) return@LaunchedEffect
+
+            detectedGpu = gpu
+            detectedDevices = devices
+            if (devices.isEmpty() && hardwareScope == CommunityHardwareScope.CURRENT_DEVICE) {
                 hardwareScope = if (detectedGpu.isBlank()) {
                     CommunityHardwareScope.ALL
                 } else {
                     CommunityHardwareScope.CURRENT_GPU
                 }
             }
-            val game = service.findGame(gameName)
             if (game == null) {
                 errorMessage = context.getString(R.string.community_config_game_not_found, gameName)
                 loading = false
@@ -151,20 +163,33 @@ fun CommunityConfigsDialog(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
-            errorMessage = context.getString(
-                R.string.community_config_load_failed,
-                error.message ?: context.getString(R.string.community_config_unknown_error),
-            )
-            loading = false
+            if (generation == requestGeneration) {
+                errorMessage = context.getString(
+                    R.string.community_config_load_failed,
+                    error.message ?: context.getString(R.string.community_config_unknown_error),
+                )
+                loading = false
+            }
         }
     }
 
-    LaunchedEffect(visible, resolvedGame?.id, detectedGpu, detectedDevice?.id, sort, hardwareScope, lookupKey) {
+    LaunchedEffect(
+        visible,
+        resolvedGame?.id,
+        detectedGpu,
+        detectedDevices.map { it.id },
+        sort,
+        hardwareScope,
+        lookupKey,
+    ) {
         val game = resolvedGame ?: return@LaunchedEffect
+        val generation = ++requestGeneration
         loading = true
+        loadingMore = false
         errorMessage = null
         runs = emptyList()
         total = 0
+        hasMore = false
         currentPage = 0
         try {
             val result = service.fetchConfigs(
@@ -172,34 +197,48 @@ fun CommunityConfigsDialog(
                 gpu = detectedGpu.takeIf { hardwareScope == CommunityHardwareScope.CURRENT_GPU },
                 sort = sort,
                 page = 0,
-                deviceId = detectedDevice?.id.takeIf {
-                    hardwareScope == CommunityHardwareScope.CURRENT_DEVICE
-                },
+                deviceIds = detectedDevices.map { it.id }
+                    .takeIf { hardwareScope == CommunityHardwareScope.CURRENT_DEVICE }
+                    .orEmpty(),
             )
+            if (generation != requestGeneration) return@LaunchedEffect
             runs = result.runs
             total = result.total
             currentPage = result.page
+            hasMore = result.hasMore
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
-            errorMessage = context.getString(
-                R.string.community_config_load_failed,
-                error.message ?: context.getString(R.string.community_config_unknown_error),
-            )
+            if (generation == requestGeneration) {
+                errorMessage = context.getString(
+                    R.string.community_config_load_failed,
+                    error.message ?: context.getString(R.string.community_config_unknown_error),
+                )
+            }
         } finally {
-            loading = false
+            if (generation == requestGeneration) loading = false
         }
     }
 
     fun loadMore() {
         val game = resolvedGame ?: return
-        if (loadingMore || runs.size >= total) return
+        if (loadingMore || !hasMore) return
+        val generation = requestGeneration
         val requestedSort = sort
         val requestedScope = hardwareScope
         val requestedGpu = detectedGpu.takeIf { requestedScope == CommunityHardwareScope.CURRENT_GPU }
-        val requestedDeviceId = detectedDevice?.id.takeIf {
-            requestedScope == CommunityHardwareScope.CURRENT_DEVICE
-        }
+        val requestedDeviceIds = detectedDevices.map { it.id }
+            .takeIf { requestedScope == CommunityHardwareScope.CURRENT_DEVICE }
+            .orEmpty()
+        val requestedPage = currentPage + 1
+        fun requestIsCurrent(): Boolean = generation == requestGeneration &&
+            sort == requestedSort &&
+            hardwareScope == requestedScope &&
+            resolvedGame?.id == game.id &&
+            detectedGpu.takeIf { requestedScope == CommunityHardwareScope.CURRENT_GPU } == requestedGpu &&
+            detectedDevices.map { it.id }
+                .takeIf { requestedScope == CommunityHardwareScope.CURRENT_DEVICE }
+                .orEmpty() == requestedDeviceIds
         coroutineScope.launch {
             loadingMore = true
             errorMessage = null
@@ -208,23 +247,26 @@ fun CommunityConfigsDialog(
                     gameId = game.id,
                     gpu = requestedGpu,
                     sort = requestedSort,
-                    page = currentPage + 1,
-                    deviceId = requestedDeviceId,
+                    page = requestedPage,
+                    deviceIds = requestedDeviceIds,
                 )
-                if (sort == requestedSort && hardwareScope == requestedScope && resolvedGame?.id == game.id) {
-                    runs = (runs + result.runs).distinctBy { it.id }
+                if (requestIsCurrent()) {
+                    runs = sortCommunityRuns((runs + result.runs).distinctBy { it.id }, requestedSort)
                     total = result.total
                     currentPage = result.page
+                    hasMore = result.hasMore
                 }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
-                errorMessage = context.getString(
-                    R.string.community_config_load_failed,
-                    error.message ?: context.getString(R.string.community_config_unknown_error),
-                )
+                if (requestIsCurrent()) {
+                    errorMessage = context.getString(
+                        R.string.community_config_load_failed,
+                        error.message ?: context.getString(R.string.community_config_unknown_error),
+                    )
+                }
             } finally {
-                loadingMore = false
+                if (requestIsCurrent()) loadingMore = false
             }
         }
     }
@@ -267,7 +309,7 @@ fun CommunityConfigsDialog(
             ) {
                 CommunityConfigHeader(
                     gameName = resolvedGame?.name ?: gameName,
-                    deviceName = detectedDevice?.model
+                    deviceName = detectedDevices.firstOrNull()?.model
                         ?: listOf(Build.MANUFACTURER, Build.MODEL).joinToString(" ").trim(),
                     gpuName = detectedGpu,
                     total = total,
@@ -275,7 +317,7 @@ fun CommunityConfigsDialog(
                 CommunityConfigControls(
                     sort = sort,
                     hardwareScope = hardwareScope,
-                    deviceAvailable = detectedDevice != null,
+                    deviceAvailable = detectedDevices.isNotEmpty(),
                     gpuAvailable = detectedGpu.isNotBlank(),
                     onSortChange = { sort = it },
                     onHardwareScopeChange = { hardwareScope = it },
@@ -327,7 +369,7 @@ fun CommunityConfigsDialog(
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
-                            } else if (runs.size < total) {
+                            } else if (hasMore) {
                                 item(key = "load-more") {
                                     Box(
                                         modifier = Modifier
@@ -400,7 +442,7 @@ private fun CommunityConfigHeader(
             )
         },
         trailingContent = {
-            if (total > 0) Text(stringResource(R.string.community_config_result_count, total))
+            if (total > 0) Text(pluralStringResource(R.plurals.community_config_result_count, total, total))
         },
     )
 }
@@ -708,6 +750,9 @@ private fun CommunityConfigPreviewDialog(
                 )
                 run.device.androidVersion.takeIf { it.isNotBlank() }?.let {
                     CommunityConfigDetailRow(stringResource(R.string.community_config_android), it)
+                }
+                run.device.soc.takeIf { it.isNotBlank() }?.let {
+                    CommunityConfigDetailRow(stringResource(R.string.community_config_soc), it)
                 }
                 run.appVersion.takeIf { it.isNotBlank() }?.let {
                     CommunityConfigDetailRow(stringResource(R.string.community_config_app_version), it)

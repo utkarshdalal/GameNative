@@ -1371,7 +1371,10 @@
     <string name="community_config_load_failed">Could not load community configs: %1$s</string>
     <string name="community_config_game_not_found">No compatibility entry was found for %1$s</string>
     <string name="community_config_gpu_unknown">GPU unavailable</string>
-    <string name="community_config_result_count">%1$d configs</string>
+    <plurals name="community_config_result_count">
+        <item quantity="one">%1$d config</item>
+        <item quantity="other">%1$d configs</item>
+    </plurals>
     <string name="community_config_highest_rated">Highest rated</string>
     <string name="community_config_newest">Newest</string>
     <string name="community_config_same_device">Same device</string>
@@ -1394,6 +1397,7 @@
     <string name="community_config_device">Device</string>
     <string name="community_config_gpu">GPU</string>
     <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
     <string name="community_config_app_version">GameNative version</string>
     <string name="community_config_submitted">Submitted</string>
     <string name="community_config_settings">Settings</string>

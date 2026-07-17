@@ -1,11 +1,14 @@
 package app.gamenative.api
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -75,7 +78,12 @@ class CommunityConfigServiceTest {
                       "configs": {
                         "id": "STEAM_1245620",
                         "containerVariant": "bionic",
-                        "wineVersion": "proton-10.0-arm64ec-2"
+                        "wineVersion": "proton-10.0-arm64ec-2",
+                        "dxwrapper": "dxvk",
+                        "dxwrapperConfig": "version=2.6.1",
+                        "executablePath": "../../windows/system32/cmd.exe",
+                        "execArgs": "/c dangerous-command",
+                        "envVars": "UNSAFE=1"
                       },
                       "createdAt": "2026-04-23T18:55:11.115263+00:00",
                       "appVersion": "0.9.0",
@@ -109,8 +117,11 @@ class CommunityConfigServiceTest {
         val run = page.runs.single()
         assertEquals(231820L, run.id)
         assertEquals(28.324, run.averageFps!!, 0.0001)
-        assertEquals("STEAM", run.configStore)
         assertEquals("bionic", run.configString("containerVariant"))
+        assertFalse(run.config.containsKey("id"))
+        assertFalse(run.config.containsKey("executablePath"))
+        assertFalse(run.config.containsKey("execArgs"))
+        assertFalse(run.config.containsKey("envVars"))
         assertEquals("Snapdragon 8 Gen 1", run.device.soc)
         val request = server.takeRequest()
         assertEquals("3405", request.requestUrl?.queryParameter("gameId"))
@@ -184,7 +195,7 @@ class CommunityConfigServiceTest {
             gpu = "Adreno 830",
             sort = CommunityConfigSort.NEWEST,
             page = 0,
-            deviceId = 45701,
+            deviceIds = listOf(45701),
         )
 
         val request = server.takeRequest().requestUrl
@@ -217,6 +228,7 @@ class CommunityConfigServiceTest {
         )
 
         assertEquals(2, selectCommunityGame("ELDEN RING", games)?.id)
+        assertNull(selectCommunityGame("ELDEN RING DELUXE", games))
         assertNull(selectCommunityGame("ELDEN RING", emptyList()))
     }
 
@@ -236,15 +248,135 @@ class CommunityConfigServiceTest {
     }
 
     @Test
-    fun deviceMatcher_prefersCurrentGpuAndAndroidVersion() {
+    fun deviceMatcher_returnsEveryCompatibleRecordForThePhysicalModel() {
         val devices = listOf(
             CommunityConfigDevice(1, "samsung SM-S908U", "Adreno 730", "15", "SM8450"),
             CommunityConfigDevice(2, "samsung SM-S908U", "Adreno (TM) 730", "16", "SM8450"),
             CommunityConfigDevice(3, "samsung SM-S908U", "", "16", ""),
+            CommunityConfigDevice(4, "samsung SM-S908U", "Mali-G715", "16", ""),
+            CommunityConfigDevice(5, "samsung SM-S918U", "Adreno 740", "16", ""),
         )
 
-        assertEquals(2, selectCommunityDevice(devices, "Qualcomm Adreno 730", "16")?.id)
+        val matches = selectCommunityDevices(
+            devices = devices,
+            manufacturer = "samsung",
+            model = "SM-S908U",
+            currentGpu = "Qualcomm Adreno 730",
+            androidVersion = "16",
+        )
+
+        assertEquals(listOf(2, 1, 3), matches.map { it.id })
         assertEquals("samsung SM-F968U1", communityDeviceQuery("samsung", "SM-F968U1"))
         assertEquals("AYN Odin2", communityDeviceQuery("AYN", "AYN Odin2"))
     }
+
+    @Test
+    fun deviceMatcher_rejectsKnownIncompatibleGpus() {
+        val matches = selectCommunityDevices(
+            devices = listOf(
+                CommunityConfigDevice(1, "samsung SM-S908U", "Mali-G715", "16", ""),
+                CommunityConfigDevice(2, "samsung SM-S908U", "Xclipse 920", "16", ""),
+            ),
+            manufacturer = "samsung",
+            model = "SM-S908U",
+            currentGpu = "Adreno 730",
+            androidVersion = "16",
+        )
+
+        assertTrue(matches.isEmpty())
+    }
+
+    @Test
+    fun fetchConfigs_aggregatesCompatibleDeviceIdsAndSortsRuns() = runBlocking {
+        server.enqueue(MockResponse().setBody(configPage(runId = 1, rating = 3, deviceId = 11, total = 1)))
+        server.enqueue(MockResponse().setBody(configPage(runId = 2, rating = 5, deviceId = 12, total = 1)))
+
+        val result = service.fetchConfigs(
+            gameId = 10,
+            gpu = null,
+            sort = CommunityConfigSort.HIGHEST_RATED,
+            page = 0,
+            deviceIds = listOf(11, 12),
+        )
+
+        assertEquals(listOf(2L, 1L), result.runs.map { it.id })
+        assertEquals(2, result.total)
+        assertFalse(result.hasMore)
+        val requestedIds = listOf(server.takeRequest(), server.takeRequest())
+            .mapNotNull { it.requestUrl?.queryParameter("deviceId") }
+            .toSet()
+        assertEquals(setOf("11", "12"), requestedIds)
+    }
+
+    @Test
+    fun malformedRuns_doNotKeepPaginationAliveAfterServerEnds() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """{ "runs": [{ "id": 1, "configs": null }], "total": 1, "page": 0, "pageSize": 1 }""",
+            ),
+        )
+
+        val result = service.fetchConfigs(10, null, CommunityConfigSort.NEWEST, 0)
+
+        assertTrue(result.runs.isEmpty())
+        assertFalse(result.hasMore)
+    }
+
+    @Test
+    fun oversizedResponse_isRejectedBeforeParsing() = runBlocking {
+        server.enqueue(MockResponse().setBody("x".repeat(4 * 1024 * 1024 + 1)))
+
+        val error = runCatching {
+            service.fetchConfigs(10, null, CommunityConfigSort.NEWEST, 0)
+        }.exceptionOrNull()
+
+        assertTrue(error is CommunityConfigApiException)
+        assertEquals("Compatibility response is too large", error?.message)
+    }
+
+    @Test
+    fun communityConfigValidation_rejectsMissingRuntimeFieldsAndGlibcWhenUnsupported() {
+        val unsafe = kotlinx.serialization.json.Json.parseToJsonElement(
+            """{
+                "containerVariant":"bionic",
+                "wineVersion":"wine",
+                "dxwrapper":"dxvk",
+                "dxwrapperConfig":"version=2.6",
+                "executablePath":"cmd.exe",
+                "cpuList":"0"
+            }""",
+        ).jsonObject
+
+        val sanitized = sanitizeCommunityConfig(unsafe)
+        assertTrue(isValidCommunityConfig(sanitized, allowGlibc = false))
+        assertFalse(sanitized.containsKey("executablePath"))
+        assertFalse(sanitized.containsKey("cpuList"))
+        assertFalse(isValidCommunityConfig(JsonObject(sanitized - "dxwrapperConfig"), allowGlibc = false))
+
+        val glibc = kotlinx.serialization.json.Json.parseToJsonElement(
+            """{"containerVariant":"glibc","dxwrapper":"dxvk","dxwrapperConfig":"version=2.6"}""",
+        ).jsonObject
+        assertFalse(isValidCommunityConfig(glibc, allowGlibc = false))
+        assertTrue(isValidCommunityConfig(glibc, allowGlibc = true))
+    }
+
+    private fun configPage(runId: Long, rating: Int, deviceId: Int, total: Int): String =
+        """{
+            "runs": [{
+                "id": $runId,
+                "deviceId": $deviceId,
+                "rating": $rating,
+                "configs": {
+                    "containerVariant": "bionic",
+                    "wineVersion": "wine",
+                    "dxwrapper": "dxvk",
+                    "dxwrapperConfig": "version=2.6"
+                },
+                "createdAt": "2026-01-0${runId}T00:00:00Z",
+                "device": {"id": $deviceId, "model": "test", "gpu": "Adreno 730", "androidVer": "16"}
+            }],
+            "total": $total,
+            "page": 0,
+            "pageSize": 20
+        }"""
 }

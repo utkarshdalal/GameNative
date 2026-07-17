@@ -26,6 +26,8 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.gamenative.PluviaApp
 import app.gamenative.R
+import app.gamenative.api.isValidCommunityConfig
+import app.gamenative.api.sanitizeCommunityConfig
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
@@ -33,27 +35,31 @@ import app.gamenative.mods.ModContainerResolver
 import app.gamenative.mods.NexusModManager
 import app.gamenative.ui.component.dialog.CommunityConfigsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
-import app.gamenative.utils.DiagnosticsLog
-import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.DiagnosticsLog
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
-import kotlinx.coroutines.CancellationException
 import com.winlator.container.ContainerData
 import com.winlator.core.GPUInformation
 import java.io.File
 import kotlin.text.Charsets
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -74,7 +80,6 @@ internal suspend fun installMissingComponentsForConfig(
     gameId: Int,
     configJson: kotlinx.serialization.json.JsonObject,
     matchType: String,
-    uiScope: CoroutineScope,
     matchedGpu: String = "",
 ): Boolean {
     val missingRequests = BestConfigService.resolveMissingManifestInstallRequests(
@@ -84,58 +89,63 @@ internal suspend fun installMissingComponentsForConfig(
         matchedGpu,
     )
     if (missingRequests.isEmpty()) return true
+    val parentContext = currentCoroutineContext()
+    val progressJob = SupervisorJob(parentContext[Job])
+    val progressScope = CoroutineScope(parentContext + progressJob)
 
-    uiScope.launch(Dispatchers.Main.immediate) {
-        BaseAppScreen.showKnownConfigInstallState(
-            gameId,
-            KnownConfigInstallState(
-                visible = true,
-                progress = -1f,
-                label = missingRequests.first().entry.name,
-            ),
-        )
-    }
-
-    for (request in missingRequests) {
-        val label = request.entry.id
-        uiScope.launch(Dispatchers.Main.immediate) {
+    try {
+        withContext(Dispatchers.Main.immediate) {
             BaseAppScreen.showKnownConfigInstallState(
                 gameId,
                 KnownConfigInstallState(
                     visible = true,
                     progress = -1f,
-                    label = label,
+                    label = missingRequests.first().entry.name,
                 ),
             )
         }
-        val result = ManifestInstaller.installManifestEntry(
-            context = context,
-            entry = request.entry,
-            isDriver = request.isDriver,
-            contentType = request.contentType,
-            onProgress = { progress ->
-                val clamped = progress.coerceIn(0f, 1f)
-                uiScope.launch(Dispatchers.Main.immediate) {
-                    BaseAppScreen.showKnownConfigInstallState(
-                        gameId,
-                        KnownConfigInstallState(
-                            visible = true,
-                            progress = clamped,
-                            label = label,
-                        ),
-                    )
-                }
-            },
-        )
-        SnackbarManager.show(result.message)
-        if (!result.success) {
-            uiScope.launch(Dispatchers.Main.immediate) { BaseAppScreen.hideKnownConfigInstallState(gameId) }
-            return false
+
+        for (request in missingRequests) {
+            val label = request.entry.id
+            withContext(Dispatchers.Main.immediate) {
+                BaseAppScreen.showKnownConfigInstallState(
+                    gameId,
+                    KnownConfigInstallState(
+                        visible = true,
+                        progress = -1f,
+                        label = label,
+                    ),
+                )
+            }
+            val result = ManifestInstaller.installManifestEntry(
+                context = context,
+                entry = request.entry,
+                isDriver = request.isDriver,
+                contentType = request.contentType,
+                onProgress = { progress ->
+                    val clamped = progress.coerceIn(0f, 1f)
+                    progressScope.launch(Dispatchers.Main.immediate) {
+                        BaseAppScreen.showKnownConfigInstallState(
+                            gameId,
+                            KnownConfigInstallState(
+                                visible = true,
+                                progress = clamped,
+                                label = label,
+                            ),
+                        )
+                    }
+                },
+            )
+            SnackbarManager.show(result.message)
+            if (!result.success) return false
+        }
+        return true
+    } finally {
+        progressJob.cancel()
+        withContext(NonCancellable + Dispatchers.Main.immediate) {
+            BaseAppScreen.hideKnownConfigInstallState(gameId)
         }
     }
-
-    uiScope.launch(Dispatchers.Main.immediate) { BaseAppScreen.hideKnownConfigInstallState(gameId) }
-    return true
 }
 
 abstract class BaseAppScreen {
@@ -853,7 +863,6 @@ abstract class BaseAppScreen {
                 gameId = gameId,
                 configJson = bestConfig.bestConfig,
                 matchType = bestConfig.matchType,
-                uiScope = uiScope,
                 matchedGpu = bestConfig.matchedGpu,
             )
             if (!installsOk) return
@@ -862,7 +871,7 @@ abstract class BaseAppScreen {
             val configJson = bestConfig.bestConfig
             val matchType = bestConfig.matchType
 
-            val parsedConfig = BestConfigService.parseConfigToContainerData(
+            val parsedResult = BestConfigService.parseConfigResult(
                 context = context,
                 configJson = configJson,
                 matchType = matchType,
@@ -870,7 +879,8 @@ abstract class BaseAppScreen {
                 storeMatch = bestConfig.matchedStore.equals(libraryItem.gameSource.name, ignoreCase = true),
                 matchedGpu = bestConfig.matchedGpu,
             )
-            val missingComponents = BestConfigService.consumeLastMissingComponents()
+            val parsedConfig = parsedResult.config
+            val missingComponents = parsedResult.missingComponents
 
             if (missingComponents.isNotEmpty()) {
                 showMissingComponentsDialog(appId, missingComponents) {
@@ -883,7 +893,7 @@ abstract class BaseAppScreen {
                                 forceApply = true,
                                 matchedGpu = bestConfig.matchedGpu,
                             )
-                            if (forced != null && forced.isNotEmpty()) {
+                            if (!forced.isNullOrEmpty()) {
                                 val c = ContainerUtils.getOrCreateContainer(context, appId)
                                 val cd = ContainerUtils.toContainerData(c)
                                 val updated = ContainerUtils.applyBestConfigMapToContainerData(cd, forced)
@@ -898,7 +908,7 @@ abstract class BaseAppScreen {
                         }
                     }
                 }
-            } else if (parsedConfig != null && parsedConfig.isNotEmpty()) {
+            } else if (parsedConfig.isNotEmpty()) {
                 val container = ContainerUtils.getOrCreateContainer(context, appId)
                 val currentData = ContainerUtils.toContainerData(container)
                 val updatedData = ContainerUtils.applyBestConfigMapToContainerData(
@@ -933,33 +943,37 @@ abstract class BaseAppScreen {
         configJson: kotlinx.serialization.json.JsonObject,
         matchType: String,
         matchedGpu: String,
-        matchedStore: String?,
     ): Boolean {
         val appId = libraryItem.appId
         val gameId = libraryItem.gameId
         val uiScope = CoroutineScope(Dispatchers.Main.immediate)
-        val storeMatch = matchedStore?.equals(libraryItem.gameSource.name, ignoreCase = true) == true
+        val safeConfig = sanitizeCommunityConfig(configJson)
+
+        if (!isValidCommunityConfig(safeConfig)) {
+            SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))
+            return false
+        }
 
         return try {
             val installsOk = installMissingComponentsForConfig(
                 context = context,
                 gameId = gameId,
-                configJson = configJson,
+                configJson = safeConfig,
                 matchType = matchType,
-                uiScope = uiScope,
                 matchedGpu = matchedGpu,
             )
             if (!installsOk) return false
 
-            val parsedConfig = BestConfigService.parseConfigToContainerData(
+            val parsedResult = BestConfigService.parseConfigResult(
                 context = context,
-                configJson = configJson,
+                configJson = safeConfig,
                 matchType = matchType,
                 applyKnownConfig = true,
-                storeMatch = storeMatch,
+                storeMatch = false,
                 matchedGpu = matchedGpu,
             )
-            val missingComponents = BestConfigService.consumeLastMissingComponents()
+            val parsedConfig = parsedResult.config
+            val missingComponents = parsedResult.missingComponents
 
             if (missingComponents.isNotEmpty()) {
                 withContext(Dispatchers.Main.immediate) {
@@ -968,10 +982,10 @@ abstract class BaseAppScreen {
                             try {
                                 val forced = BestConfigService.parseConfigToContainerData(
                                     context = context,
-                                    configJson = configJson,
+                                    configJson = safeConfig,
                                     matchType = matchType,
                                     applyKnownConfig = true,
-                                    storeMatch = storeMatch,
+                                    storeMatch = false,
                                     forceApply = true,
                                     matchedGpu = matchedGpu,
                                 )
@@ -999,7 +1013,7 @@ abstract class BaseAppScreen {
                     }
                 }
                 false
-            } else if (!parsedConfig.isNullOrEmpty()) {
+            } else if (parsedConfig.isNotEmpty()) {
                 withContext(Dispatchers.IO) {
                     val container = ContainerUtils.getOrCreateContainer(context, appId)
                     val currentData = ContainerUtils.toContainerData(container)
@@ -1542,7 +1556,6 @@ abstract class BaseAppScreen {
                             configJson = run.config,
                             matchType = matchType,
                             matchedGpu = run.device.gpu,
-                            matchedStore = run.configStore,
                         )
                     }
                 },
