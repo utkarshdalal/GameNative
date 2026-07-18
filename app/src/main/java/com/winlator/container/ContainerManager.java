@@ -337,7 +337,7 @@ public class ContainerManager {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
-            FileUtils.copy(new File(srcDir, dlname), dstFile);
+            FileUtils.symlink(new File(srcDir, dlname), dstFile);
         }
     }
 
@@ -359,7 +359,7 @@ public class ContainerManager {
                 if (dstFile == null) continue;
             }
             Log.d("Extraction", "copying " + file + " to " + dstFile);
-            FileUtils.copy(file, dstFile);
+            FileUtils.symlink(file, dstFile);
         }
     }
 
