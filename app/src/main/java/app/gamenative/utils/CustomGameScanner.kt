@@ -513,21 +513,27 @@ object CustomGameScanner {
         val items = mutableListOf<LibraryItem>()
         var indexCounter = indexOffsetStart
         val q = query.trim()
+        val existingAppIds = mutableSetOf<String>()
 
-        val manualFolders = PrefManager.customGameManualFolders
-        if (manualFolders.isNotEmpty()) {
-            val existingAppIds = mutableSetOf<String>()
-            for (manualPath in manualFolders) {
-                // Filter by query if provided
-                if (q.isNotEmpty()) {
-                    val folderName = File(manualPath).name
-                    if (!folderName.contains(q, ignoreCase = true)) continue
-                }
+        // Candidate folders: explicitly-added manual folders plus every immediate subfolder
+        // of the default CustomGames folder. The default folder lives in the app's own storage
+        // sandbox (Android/data/<pkg>/CustomGames), so a game dropped in there via adb push, a
+        // file manager, or the in-app import is discovered without any storage permission.
+        val candidateFolders = LinkedHashSet<String>()
+        candidateFolders.addAll(PrefManager.customGameManualFolders)
+        File(defaultRootPath).listFiles { f -> f.isDirectory }?.forEach {
+            candidateFolders.add(it.absolutePath)
+        }
 
-                val manualItem = createLibraryItemFromFolder(manualPath)
-                if (manualItem != null && existingAppIds.add(manualItem.appId)) {
-                    items.add(manualItem.copy(index = indexCounter++))
-                }
+        for (folderPath in candidateFolders) {
+            if (q.isNotEmpty()) {
+                val folderName = File(folderPath).name
+                if (!folderName.contains(q, ignoreCase = true)) continue
+            }
+
+            val item = createLibraryItemFromFolder(folderPath)
+            if (item != null && existingAppIds.add(item.appId)) {
+                items.add(item.copy(index = indexCounter++))
             }
         }
 

@@ -245,6 +245,15 @@ public class WindowManager extends XResourceManager {
         triggerOnChangeWindowZOrder(window);
     }
 
+    public void raiseWindowToTop(Window window) {
+        Window parent = window.getParent();
+        if (parent == null) return;
+        java.util.List<Window> siblings = parent.getChildren();
+        if (siblings.isEmpty() || siblings.get(siblings.size() - 1) == window) return;
+        parent.moveChildAbove(window, null);
+        triggerOnChangeWindowZOrder(window);
+    }
+
     public void configureWindow(Window window, Bitmask valueMask, XInputStream inputStream) throws XRequestError {
         short x = window.getX();
         short y = window.getY();

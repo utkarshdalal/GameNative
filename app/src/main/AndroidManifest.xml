@@ -133,6 +133,8 @@
             <intent-filter>
                 <action android:name="app.gamenative.SET_POWER" />
                 <action android:name="app.gamenative.PERF_LOOP" />
+                <action android:name="app.gamenative.DUMP_THREADS" />
+                <action android:name="app.gamenative.SET_PLACEMENT" />
             </intent-filter>
         </receiver>
 

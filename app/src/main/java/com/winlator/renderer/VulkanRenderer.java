@@ -132,6 +132,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         int effectMask, float brightness, float contrast, float gamma);
 
     private static volatile boolean gpuImageChecked = false;
+    // Temporary: dumps the window tree / render list so we can confirm popup
+    // geometry and whether a mapped popup actually carries pixel content.
+    private static final boolean DEBUG_WINDOWS = true;
 
     private long did(Drawable d) {
         return drawableIds.computeIfAbsent(d, k -> ID_GEN.getAndIncrement());
@@ -357,7 +360,19 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     }
                 }
             }
-            if (viewable) list.add(new RenderableWindow(window.getContent(), x, y));
+            if (viewable) {
+                list.add(new RenderableWindow(window.getContent(), x, y, window));
+                if (DEBUG_WINDOWS) {
+                    Drawable c = window.getContent();
+                    android.util.Log.i("VulkanRenderer",
+                        "collect idx=" + (list.size() - 1)
+                        + " id=" + window.id + " class='" + window.getClassName() + "'"
+                        + " pid=" + window.getProcessId()
+                        + " parentRoot=" + (window.getParent() == xServer.windowManager.rootWindow)
+                        + " x=" + x + " y=" + y + " w=" + window.getWidth() + " h=" + window.getHeight()
+                        + " content=" + (c == null ? "null" : (c.width + "x" + c.height)));
+                }
+            }
         }
         for (Window child : window.getChildren())
             collectWindows(list, child, child.getX() + x, child.getY() + y);
@@ -367,47 +382,83 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         if (nativeHandle == 0) return;
         int screenW = xServer.screenInfo.width, screenH = xServer.screenInfo.height;
 
+        // Split the game's own windows (the opaque base layer) from foreign
+        // overlays: dialogs, the embedded Xbox/CEF sign-in browser, etc. Foreign
+        // windows always composite ABOVE the game so a fullscreen-sized overlay
+        // (e.g. a translucent CEF host window) can't be mistaken for the opaque
+        // base and blank the game out behind it.
+        ArrayList<RenderableWindow> base = new ArrayList<>();
+        ArrayList<RenderableWindow> overlay = new ArrayList<>();
+        int skippedBackdrops = 0;
+        for (RenderableWindow rw : list) {
+            if (rw.window != null && isForeignOverlay(rw.window)) {
+                // A near-fullscreen foreign window is a host/backdrop layer (e.g.
+                // CEF's browser root, which paints an opaque page background - black
+                // or white) with no useful content of its own; the real dialog is a
+                // much smaller sibling. Rendering it just paints a solid box over the
+                // game. Threshold at 70% of screen area so inset hosts (e.g. 1242x720
+                // on a 1280x720 screen) are caught while genuine dialogs are kept.
+                if (rw.content != null
+                        && (long) rw.content.width * rw.content.height * 10L
+                            >= (long) screenW * screenH * 7L) {
+                    skippedBackdrops++;
+                    continue;
+                }
+                overlay.add(rw);
+            } else {
+                base.add(rw);
+            }
+        }
+
+        // Cull anything fully behind the topmost fullscreen-sized GAME window.
         int start = 0;
-        for (int i = list.size() - 1; i >= 0; i--) {
-            RenderableWindow rw = list.get(i);
+        for (int i = base.size() - 1; i >= 0; i--) {
+            RenderableWindow rw = base.get(i);
             if (rw.content != null && rw.content.width >= screenW && rw.content.height >= screenH) {
                 start = i; break;
             }
         }
 
-        if (nativeMode) {
-            ArrayList<RenderableWindow> ns = new ArrayList<>();
-            for (int i = start; i < list.size(); i++) {
-                RenderableWindow rw = list.get(i);
-                if (rw.content != null && (effectsRequireCompositor || !rw.content.isDirectScanout())) ns.add(rw);
-            }
-            int n = ns.size();
-            long[] ids = new long[n]; int[] xs = new int[n]; int[] ys = new int[n];
-            for (int i = 0; i < n; i++) {
-                ids[i] = did(ns.get(i).content); xs[i] = ns.get(i).rootX; ys[i] = ns.get(i).rootY;
-            }
-            nativeSetRenderList(nativeHandle, ids, xs, ys, n);
-            return;
-        }
-        if (fullscreen) {
-            int n = list.size() - start;
-            if (n <= 0) { nativeSetRenderList(nativeHandle, new long[0], new int[0], new int[0], 0); return; }
-            long[] ids = new long[n]; int[] xs = new int[n]; int[] ys = new int[n];
-            for (int i = 0; i < n; i++) {
-                RenderableWindow rw = list.get(start + i);
-                ids[i] = did(rw.content); xs[i] = rw.rootX; ys[i] = rw.rootY;
-            }
-            nativeSetRenderList(nativeHandle, ids, xs, ys, n);
-            return;
+        // Draw overlays smallest-last so an actual dialog (e.g. the sign-in box)
+        // stays on top of any full-window backdrop the same app also mapped,
+        // regardless of how the app churns its own X stacking order.
+        if (overlay.size() > 1) {
+            java.util.Collections.sort(overlay, (a, b) -> Integer.compare(area(b.content), area(a.content)));
         }
 
-        int n = list.size() - start;
+        ArrayList<RenderableWindow> render = new ArrayList<>(base.size() + overlay.size());
+        for (int i = start; i < base.size(); i++) render.add(base.get(i));
+        render.addAll(overlay);
+
+        if (DEBUG_WINDOWS) android.util.Log.i("VulkanRenderer",
+            "pushRenderList base=" + base.size() + " overlay=" + overlay.size()
+            + " skippedBackdrops=" + skippedBackdrops
+            + " start=" + start + " render=" + render.size()
+            + " fullscreen=" + fullscreen + " nativeMode=" + nativeMode
+            + " screen=" + screenW + "x" + screenH);
+
+        ArrayList<RenderableWindow> out = new ArrayList<>(render.size());
+        for (RenderableWindow rw : render) {
+            if (rw.content == null) continue;
+            if (nativeMode && !effectsRequireCompositor && rw.content.isDirectScanout()) continue;
+            out.add(rw);
+        }
+        int n = out.size();
         long[] ids = new long[n]; int[] xs = new int[n]; int[] ys = new int[n];
         for (int i = 0; i < n; i++) {
-            RenderableWindow rw = list.get(start + i);
-            ids[i] = did(rw.content); xs[i] = rw.rootX; ys[i] = rw.rootY;
+            ids[i] = did(out.get(i).content); xs[i] = out.get(i).rootX; ys[i] = out.get(i).rootY;
         }
         nativeSetRenderList(nativeHandle, ids, xs, ys, n);
+    }
+
+    private static int area(Drawable d) { return d == null ? 0 : d.width * d.height; }
+
+    // A window that isn't part of the fullscreen game itself (its WM_CLASS does
+    // not match the launched exe): dialogs, embedded browser sign-in, overlays.
+    // With no forced-fullscreen game there is no "foreign" notion and everything
+    // composites in natural order.
+    private boolean isForeignOverlay(Window w) {
+        return forceFullscreenWMClass != null && !classMatchesFullscreen(w);
     }
 
     private void sendCursorToNative(Cursor cursor) {
@@ -553,7 +604,20 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         });
     }
 
-    @Override public void onMapWindow(Window window) { queueSceneUpdate(); }
+    @Override public void onMapWindow(Window window) {
+        if (forceFullscreenWMClass != null) {
+            try (XLock xl = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
+                Window root = xServer.windowManager.rootWindow;
+                if (isSecondaryTopLevelPopup(window, root)) {
+                    xServer.windowManager.raiseWindowToTop(window);
+                    if (DEBUG_WINDOWS) android.util.Log.i("VulkanRenderer",
+                        "onMapWindow raised popup id=" + window.id + " class='" + window.getClassName()
+                        + "' pid=" + window.getProcessId() + " size=" + window.getWidth() + "x" + window.getHeight());
+                }
+            }
+        }
+        queueSceneUpdate();
+    }
 
     @Override
     public void onUnmapWindow(Window window) {
@@ -564,7 +628,61 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         });
     }
 
-    @Override public void onChangeWindowZOrder(Window window) { queueSceneUpdate(); }
+    @Override public void onChangeWindowZOrder(Window window) {
+        // A borderless fullscreen game frequently re-raises its own top-level window
+        // (e.g. on display-mode changes). Nothing else acts as a window manager here,
+        // so unmanaged popups (Xbox/CEF sign-in, EOS/anti-cheat dialogs) would be left
+        // stacked below the game -> invisible to the compositor and unreachable by input
+        // hit-testing. Keep secondary top-levels above the game whenever it restacks.
+        if (forceFullscreenWMClass != null && isPrimaryTopLevel(window)) {
+            raiseSecondaryPopupsAboveGame();
+        }
+        queueSceneUpdate();
+    }
+
+    private boolean classMatchesFullscreen(Window w) {
+        if (forceFullscreenWMClass == null) return false;
+        String c = w.getClassName();
+        return c != null && c.toLowerCase().contains(forceFullscreenWMClass.toLowerCase());
+    }
+
+    // The game's own fullscreen top-level (its WM_CLASS matches the launched exe).
+    private boolean isPrimaryTopLevel(Window w) {
+        return w.getParent() == xServer.windowManager.rootWindow && classMatchesFullscreen(w);
+    }
+
+    // A separate, mapped, drawable top-level window that isn't the game itself:
+    // the class of thing that should float above the game and receive input.
+    // Excludes unviewable windows (e.g. the explorer.exe desktop container).
+    private boolean isSecondaryTopLevelPopup(Window w, Window root) {
+        return w.getParent() == root
+            && w.isInputOutput()
+            && w.attributes.isMapped()
+            && !classMatchesFullscreen(w)
+            && !isUnviewable(w);
+    }
+
+    private boolean isUnviewable(Window w) {
+        if (unviewableWMClasses == null) return false;
+        String c = w.getClassName();
+        if (c == null) return false;
+        for (String cls : unviewableWMClasses) if (c.contains(cls)) return true;
+        return false;
+    }
+
+    private void raiseSecondaryPopupsAboveGame() {
+        Window root = xServer.windowManager.rootWindow;
+        // Snapshot: raiseWindowToTop mutates root's child list as we go.
+        ArrayList<Window> snapshot = new ArrayList<>(root.getChildren());
+        for (Window child : snapshot) {
+            if (isSecondaryTopLevelPopup(child, root)) {
+                xServer.windowManager.raiseWindowToTop(child);
+                if (DEBUG_WINDOWS) android.util.Log.i("VulkanRenderer",
+                    "re-raised popup id=" + child.id + " class='" + child.getClassName()
+                    + "' pid=" + child.getProcessId() + " size=" + child.getWidth() + "x" + child.getHeight());
+            }
+        }
+    }
 
     @Override
     public void onUpdateWindowGeometry(Window window, boolean resized) {
@@ -839,7 +957,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
             .apply();
     }
     private static class RenderableWindow {
-        public final Drawable content; public int rootX, rootY;
-        public RenderableWindow(Drawable c, int x, int y) { content=c; rootX=x; rootY=y; }
+        public final Drawable content; public int rootX, rootY; public final Window window;
+        public RenderableWindow(Drawable c, int x, int y, Window w) { content=c; rootX=x; rootY=y; window=w; }
     }
 }

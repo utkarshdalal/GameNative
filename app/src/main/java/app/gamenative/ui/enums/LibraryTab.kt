@@ -4,7 +4,6 @@ import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.ui.graphics.vector.ImageVector
-import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.R
 
@@ -90,7 +89,7 @@ enum class LibraryTab(
          */
         val visibleEntries: List<LibraryTab>
             get() {
-                var result = if (BuildConfig.MODERN_ANDROID) entries.filter { it != LOCAL } else entries.toList()
+                var result = entries.toList()
                 if (!PrefManager.showRecommendations) result = result.filter { it != RECOMMENDED }
                 return result
             }
