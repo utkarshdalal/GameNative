@@ -104,9 +104,15 @@ object SteamUtils {
 
     /**
      * The language [depots] should be filtered by: the requested one when the app ships an
-     * installable depot in it, otherwise English, otherwise any language it ships. Used for both the
-     * base game and its DLC so a title that omits the container's language still resolves instead of
-     * yielding zero depots. Untagged (neutral) depots pass the language filter regardless.
+     * installable depot in it, otherwise the language of an installable neutral build, otherwise
+     * English, otherwise any language it ships. Used for both the base game and its DLC so a title
+     * that omits the container's language still resolves instead of yielding zero depots.
+     *
+     * Untagged (neutral) depots pass the language filter for any language, so when the app ships one
+     * the requested language always resolves to the neutral build (e.g. KOTOR keeps English in the
+     * untagged content depot and tags only its French/German/Italian/Spanish localizations). The
+     * fall back to a different shipped language only kicks in when there is no neutral depot, i.e.
+     * the requested language would otherwise install nothing.
      */
     fun effectiveDepotLanguage(
         depots: Map<Int, DepotInfo>,
@@ -131,12 +137,18 @@ object SteamUtils {
         }
 
         // Base-game depots only, so an owned in-app DLC's language can't steer the base game.
-        // Untagged depots are the neutral build and pass the language filter regardless.
-        val availableLanguages = depots.values
-            .filter { it.dlcAppId == SteamService.INVALID_APP_ID && it.language.isNotEmpty() && it.installableInItsLanguage() }
+        val installableBaseGameDepots = depots.values
+            .filter { it.dlcAppId == SteamService.INVALID_APP_ID && it.installableInItsLanguage() }
+        val availableLanguages = installableBaseGameDepots
+            .filter { it.language.isNotEmpty() }
             .mapTo(mutableSetOf()) { it.language }
+        // A neutral depot is the language-agnostic build and installs for any requested language.
+        val hasNeutralDepot = installableBaseGameDepots.any { it.language.isEmpty() }
         return when {
             preferredLanguage in availableLanguages -> preferredLanguage
+            // The neutral build already satisfies the request; don't force a different localization
+            // depot on top of it.
+            hasNeutralDepot -> preferredLanguage
             "english" in availableLanguages -> "english"
             else -> availableLanguages.firstOrNull() ?: preferredLanguage
         }
