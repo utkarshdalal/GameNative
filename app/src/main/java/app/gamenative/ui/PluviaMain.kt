@@ -1664,28 +1664,27 @@ fun preLaunchApp(
             }
         }
 
-        // download any manifest components (wine/proton, dxvk, etc.) missing from config
-        if (ContainerUtils.supportsKnownConfigAutoApply(gameSource)) {
-            try {
-                val configJson = Json.parseToJsonElement(container.containerJson).jsonObject
-                val missingRequests = BestConfigService.resolveMissingManifestInstallRequests(
-                    context, configJson, "exact_gpu_match",
-                )
-                for (request in missingRequests) {
-                    setLoadingMessage(context.getString(R.string.main_downloading_entry, request.entry.name))
-                    try {
-                        ManifestInstaller.installManifestEntry(
-                            context, request.entry, request.isDriver, request.contentType,
-                        ) { progress -> setLoadingProgress(progress.coerceIn(0f, 1f)) }
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to install ${request.entry.name}, continuing")
-                    }
+        // download any manifest components (wine/proton, dxvk, etc.) the container's config
+        // references but that aren't installed yet — all sources, including custom games
+        try {
+            val configJson = Json.parseToJsonElement(container.containerJson).jsonObject
+            val missingRequests = BestConfigService.resolveMissingManifestInstallRequests(
+                context, configJson, "exact_gpu_match",
+            )
+            for (request in missingRequests) {
+                setLoadingMessage(context.getString(R.string.main_downloading_entry, request.entry.name))
+                try {
+                    ManifestInstaller.installManifestEntry(
+                        context, request.entry, request.isDriver, request.contentType,
+                    ) { progress -> setLoadingProgress(progress.coerceIn(0f, 1f)) }
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to install ${request.entry.name}, continuing")
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to install manifest components")
-                setLoadingDialogVisible(false)
-                return@launch
             }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to install manifest components")
+            setLoadingDialogVisible(false)
+            return@launch
         }
 
         // Check if this is a Custom Game and validate executable selection before installing components
