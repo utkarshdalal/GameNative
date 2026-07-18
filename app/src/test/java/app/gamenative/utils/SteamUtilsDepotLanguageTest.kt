@@ -104,15 +104,11 @@ class SteamUtilsDepotLanguageTest {
             depot(depotId = 1, language = ""),
             depot(depotId = 2, language = "german"),
         )
-        // The neutral depot installs regardless of language, so requesting french resolves to the
-        // neutral build rather than being forced into german.
         assertEquals("french", resolve(depots, "french"))
     }
 
     @Test
     fun `kotor layout keeps english against tagged-only localizations`() {
-        // KOTOR (app 32370): English lives in the untagged content depot; only French/German/
-        // Italian/Spanish are tagged. Requesting english must not fall back to a localization.
         val depots = depotsOf(
             depot(depotId = 32371, language = ""),
             depot(depotId = 32372, language = "french"),
@@ -121,7 +117,6 @@ class SteamUtilsDepotLanguageTest {
             depot(depotId = 32375, language = "spanish"),
         )
         assertEquals("english", resolve(depots, "english"))
-        // A tagged language it does ship still wins.
         assertEquals("german", resolve(depots, "german"))
     }
 
