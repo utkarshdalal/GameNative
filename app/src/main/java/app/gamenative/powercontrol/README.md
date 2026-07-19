@@ -38,6 +38,11 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
    - GPU support for Adreno GPUs (Qualcomm Snapdragon devices)
    - **Command optimization**: Concatenates chmod → echo → chmod into single commands for faster execution
    - **Permission management**: Sets sysfs files to 444 (read-only) after writes, restores to 644 on stop
+   - **Policy-based CPU control** (inspired by [GameMode](https://github.com/FeralInteractive/gamemode)):
+     - Discovers CPU policies by resolving symlinks at initialization
+     - Eliminates redundant writes to CPUs sharing the same policy
+     - Reduces IPC calls by 50-75% on typical multi-core devices
+     - Falls back to per-CPU approach if policy discovery fails
 
 3. **SamsungPerformanceDriver** (Implementation)
    - Location: `drivers/SamsungPerformanceDriver.kt`
@@ -345,6 +350,33 @@ Currently not used in SamsungPerformanceDriver (uses CustomParams for fine contr
 
 ### PServerDriver
 
+**Policy-Based CPU Control (GameMode-inspired):**
+
+The driver now uses an optimized policy-based approach for CPU control, inspired by [Feral Interactive's GameMode](https://github.com/FeralInteractive/gamemode):
+
+*Discovery Phase (at driver start):*
+- Triggered when `start()` is called (deferred initialization)
+- Resolves symlinks for each CPU's `scaling_governor` file using `File.canonicalPath`
+- Groups CPUs by their actual policy directory (e.g., `/sys/devices/system/cpu/cpufreq/policy0`)
+- Creates a `CpuPolicy` object for each unique policy containing all associated CPU cores
+- Cached for subsequent operations (only discovered once per driver lifecycle)
+
+*Benefits:*
+- **50-75% reduction in IPC calls** on devices with shared policies (typical for modern SoCs)
+- Example: 8-core device with single policy → 3 IPC calls instead of 24 (87.5% reduction)
+- Eliminates redundant writes to CPUs sharing the same cpufreq policy
+- More robust against race conditions from concurrent policy modifications
+
+*Fallback Behavior:*
+- If policy discovery fails, falls back to per-CPU approach (legacy behavior)
+- Ensures compatibility with all device configurations
+- Logs detailed information about discovered policies for debugging
+
+*Validation:*
+- Checks for CPU frequency scaling support at initialization
+- Validates existence of key sysfs paths (`/sys/devices/system/cpu/cpufreq/policy0`, etc.)
+- Provides helpful warnings if cpufreq is disabled in kernel/BIOS
+
 **Binder Service Communication:**
 - Uses Android Binder IPC via reflection to access `ServiceManager`
 - Connects to `PServerBinder` service on supported devices
@@ -415,6 +447,10 @@ powercontrol/
 
 This implementation was inspired by and references the following projects:
 
+- [GameMode](https://github.com/FeralInteractive/gamemode) - Linux daemon for optimizing system performance on demand (by Feral Interactive)
+  - Policy-based CPU control approach
+  - Sysfs validation techniques
+  - Robust error handling patterns
 - [ClusterTune](https://github.com/AurelioB/ClusterTune) - CPU frequency and governor control for Android devices
 - [Pulse](https://github.com/keiretrogaming/pulse) - Performance tuning for handheld gaming devices
 
