@@ -1614,6 +1614,20 @@ fun preLaunchApp(
         // create container if it does not already exist
         // TODO: combine somehow with container creation in HomeLibraryAppScreen
         val containerManager = ContainerManager(context)
+
+        // If a container already exists and is set to the Android platform, short-circuit before
+        // any Wine-specific setup below. getOrCreateContainer() can extract a Wine container
+        // pattern when creating a brand-new container, which a native Android launch neither
+        // needs nor should be able to fail because of.
+        if (containerManager.hasContainer(appId)) {
+            val existing = containerManager.getContainerById(appId)
+            if (existing?.platform.equals(Container.PLATFORM_ANDROID, ignoreCase = true)) {
+                setLoadingDialogVisible(false)
+                onSuccess(context, appId)
+                return@launch
+            }
+        }
+
         val container = if (useTemporaryOverride) {
             ContainerUtils.getOrCreateContainerWithOverride(context, appId)
         } else {

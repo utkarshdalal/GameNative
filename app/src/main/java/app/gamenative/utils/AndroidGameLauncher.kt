@@ -1,13 +1,18 @@
 package app.gamenative.utils
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Environment
+import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import app.gamenative.service.SteamService
+import kotlinx.coroutines.suspendCancellableCoroutine
 import timber.log.Timber
 import java.io.File
+import kotlin.coroutines.resume
 
 /**
  * Installs/launches the native Android build of a game (Steam Frame / Lepton depot),
@@ -17,16 +22,22 @@ object AndroidGameLauncher {
 
     private const val TAG = "AndroidGameLauncher"
 
+    // Depot content for an Android build is expected to be shallow (apk + an obb/ folder at
+    // most); bound the walk so a huge, deeply-nested Workshop/DLC tree can't make this slow.
+    private const val MAX_SEARCH_DEPTH = 6
+
     private fun findApkFile(gameId: Int): File? {
         val dir = File(SteamService.getAppDirPath(gameId))
         if (!dir.exists()) return null
-        return dir.walkTopDown().firstOrNull { it.isFile && it.extension.equals("apk", ignoreCase = true) }
+        return dir.walkTopDown().maxDepth(MAX_SEARCH_DEPTH)
+            .firstOrNull { it.isFile && it.extension.equals("apk", ignoreCase = true) }
     }
 
     private fun findObbFiles(gameId: Int): List<File> {
         val dir = File(SteamService.getAppDirPath(gameId))
         if (!dir.exists()) return emptyList()
-        return dir.walkTopDown().filter { it.isFile && it.extension.equals("obb", ignoreCase = true) }.toList()
+        return dir.walkTopDown().maxDepth(MAX_SEARCH_DEPTH)
+            .filter { it.isFile && it.extension.equals("obb", ignoreCase = true) }.toList()
     }
 
     private fun getApkPackageName(context: Context, apk: File): String? {
@@ -62,6 +73,23 @@ object AndroidGameLauncher {
             Timber.tag(TAG).i("Copied ${obbFiles.size} OBB file(s) to ${obbRoot.absolutePath}")
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "Could not place OBB files for $packageName (needs broader storage access on Android 11+)")
+        }
+    }
+
+    /**
+     * Copies the downloaded .apk into the app's own cache dir so FileProvider only ever needs to
+     * grant access to a narrow, app-controlled location (already covered by the existing
+     * cache-path entry) instead of the whole install-directory tree.
+     */
+    private fun stageApkForInstall(context: Context, gameId: Int, apk: File): File? {
+        return try {
+            val stagingDir = File(context.cacheDir, "android_game_installs").apply { mkdirs() }
+            val staged = File(stagingDir, "$gameId.apk")
+            apk.copyTo(staged, overwrite = true)
+            staged
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Could not stage APK for install from ${apk.absolutePath}")
+            null
         }
     }
 
@@ -101,8 +129,8 @@ object AndroidGameLauncher {
         }
         if (!isPackageInstalled(context, packageName)) {
             copyObbFiles(gameId, packageName)
-            UpdateInstaller.installApk(context, apk)
-            return Result.InstallStarted
+            val staged = stageApkForInstall(context, gameId, apk) ?: return Result.Failed
+            return if (UpdateInstaller.installApk(context, staged)) Result.InstallStarted else Result.Failed
         }
         val intent = context.packageManager.getLaunchIntentForPackage(packageName)
             ?: return Result.Failed
@@ -112,30 +140,64 @@ object AndroidGameLauncher {
     }
 
     /**
-     * Prompts the system uninstall dialog for the Android package matching this game, if one
-     * is actually installed. Must be called before the downloaded .apk is deleted from disk
-     * (needed to resolve the package name). This is a separate step from GameNative forgetting
-     * the game — the installed app is a distinct entity on the system that Android requires
-     * explicit user confirmation to remove.
+     * Prompts the system uninstall dialog for the Android package matching this game (if one is
+     * actually installed) and suspends until the dialog is dismissed. Uses
+     * ACTION_UNINSTALL_PACKAGE + EXTRA_RETURN_RESULT so the result (confirmed vs. cancelled) comes
+     * back immediately as an activity result, instead of waiting on an ACTION_PACKAGE_REMOVED
+     * broadcast that a cancelled dialog never sends — that previously left the caller's "deleting"
+     * UI stuck for a long fixed timeout on every cancel.
+     *
+     * Returns true when it's safe for the caller to delete the downloaded .apk / GameNative's own
+     * install record: either nothing was installed to begin with, or the system confirmed removal.
+     * Returns false if the user cancelled (or context isn't an Activity capable of launching for a
+     * result), so the caller must NOT delete anything in that case — otherwise the app would be
+     * left installed with no way left to resolve its package name.
+     *
+     * Must be called before the downloaded .apk is deleted from disk (needed to resolve the
+     * package name in the first place).
      */
-    fun requestUninstall(context: Context, gameId: Int) {
+    suspend fun requestUninstall(context: Context, gameId: Int): Boolean {
         val apk = findApkFile(gameId)
         if (apk == null) {
             Timber.tag(TAG).w("requestUninstall: no APK found on disk for game $gameId, skipping system uninstall")
-            return
+            return true
         }
         val packageName = getApkPackageName(context, apk)
         if (packageName == null) {
             Timber.tag(TAG).w("requestUninstall: could not resolve package name from ${apk.absolutePath}")
-            return
+            return true
         }
         if (!isPackageInstalled(context, packageName)) {
-            Timber.tag(TAG).w("requestUninstall: package $packageName is not currently installed, skipping")
-            return
+            Timber.tag(TAG).i("requestUninstall: package $packageName is not currently installed, nothing to do")
+            return true
         }
+        val activity = context as? ComponentActivity
+        if (activity == null) {
+            Timber.tag(TAG).e("requestUninstall: context is not a ComponentActivity, cannot prompt for a result")
+            return false
+        }
+
         Timber.tag(TAG).i("requestUninstall: prompting system uninstall for $packageName")
-        val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName"))
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
+        return suspendCancellableCoroutine { cont ->
+            lateinit var launcher: androidx.activity.result.ActivityResultLauncher<Intent>
+            launcher = activity.activityResultRegistry.register(
+                "android_game_uninstall_$gameId",
+                ActivityResultContracts.StartActivityForResult(),
+            ) { result ->
+                launcher.unregister()
+                if (cont.isActive) cont.resume(result.resultCode == Activity.RESULT_OK)
+            }
+            cont.invokeOnCancellation { runCatching { launcher.unregister() } }
+
+            val intent = Intent(Intent.ACTION_UNINSTALL_PACKAGE, Uri.parse("package:$packageName"))
+                .putExtra(Intent.EXTRA_RETURN_RESULT, true)
+            try {
+                launcher.launch(intent)
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Could not launch system uninstall for $packageName")
+                launcher.unregister()
+                if (cont.isActive) cont.resume(false)
+            }
+        }
     }
 }

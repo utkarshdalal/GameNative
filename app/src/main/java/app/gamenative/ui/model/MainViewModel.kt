@@ -467,14 +467,24 @@ class MainViewModel @Inject constructor(
 
     fun launchApp(context: Context, appId: String) {
         viewModelScope.launch {
-            val container = withContext(Dispatchers.IO) { ContainerUtils.getOrCreateContainer(context, appId) }
+            // Shared by both the Android and Wine paths below.
+            viewModelScope.launch(Dispatchers.IO) {
+                libraryPlayHistoryDao.upsert(
+                    LibraryPlayHistory(
+                        appId = appId,
+                        lastPlayed = System.currentTimeMillis(),
+                    ),
+                )
+            }
+
+            // getOrCreateContainerWithOverride also picks up a temporary per-launch config
+            // (e.g. from an external Intent launch) — falls back to the persisted container
+            // untouched when there's no override, so this is safe unconditionally.
+            val container = withContext(Dispatchers.IO) {
+                ContainerUtils.getOrCreateContainerWithOverride(context, appId)
+            }
             if (container.platform.equals(Container.PLATFORM_ANDROID, ignoreCase = true)) {
                 // Native Android (Steam Frame / Lepton) build: no Wine container involved at all.
-                withContext(Dispatchers.IO) {
-                    libraryPlayHistoryDao.upsert(
-                        LibraryPlayHistory(appId = appId, lastPlayed = System.currentTimeMillis()),
-                    )
-                }
                 val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
                 when (withContext(Dispatchers.IO) { AndroidGameLauncher.installAndLaunch(context, gameId) }) {
                     AndroidGameLauncher.Result.InstallStarted ->
@@ -487,15 +497,6 @@ class MainViewModel @Inject constructor(
             }
 
             // Show booting splash before launching the app
-            viewModelScope.launch(Dispatchers.IO) {
-                libraryPlayHistoryDao.upsert(
-                    LibraryPlayHistory(
-                        appId = appId,
-                        lastPlayed = System.currentTimeMillis(),
-                    ),
-                )
-            }
-
             setShowBootingSplash(true)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 

@@ -283,11 +283,13 @@ fun GeneralTabContent(
             value = config.executablePath,
             onValueChange = { state.config.value = config.copy(executablePath = it) },
             containerData = config,
+            enabled = !state.isAndroidPlatform,
         )
         NoExtractOutlinedTextField(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             value = config.execArgs,
             onValueChange = { state.config.value = config.copy(execArgs = it) },
+            enabled = !state.isAndroidPlatform,
             label = { Text(text = stringResource(R.string.exec_arguments)) },
             placeholder = { Text(text = stringResource(R.string.exec_arguments_example)) },
             singleLine = true,

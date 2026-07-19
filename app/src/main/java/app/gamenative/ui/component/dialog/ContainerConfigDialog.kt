@@ -1408,6 +1408,7 @@ internal fun ExecutablePathDropdown(
     value: String,
     onValueChange: (String) -> Unit,
     containerData: ContainerData,
+    enabled: Boolean = true,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var executables by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -1424,14 +1425,15 @@ internal fun ExecutablePathDropdown(
     }
 
     ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
+        expanded = expanded && enabled,
+        onExpandedChange = { if (enabled) expanded = it },
         modifier = modifier
     ) {
         NoExtractOutlinedTextField(
             value = value,
             onValueChange = onValueChange,
             readOnly = true,
+            enabled = enabled,
             label = { Text(stringResource(R.string.container_config_executable_path)) },
             placeholder = { Text(stringResource(R.string.container_config_executable_path_placeholder)) },
             trailingIcon = {
@@ -1448,7 +1450,7 @@ internal fun ExecutablePathDropdown(
                 // so the anchor never opens via controller. Intercept it here and toggle
                 // the menu. (Up/down focus-escape is handled in NoExtractOutlinedTextField.)
                 .onPreviewKeyEvent { event ->
-                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    if (event.type != KeyEventType.KeyDown || !enabled) return@onPreviewKeyEvent false
                     when (event.key) {
                         Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.Spacebar, Key.ButtonA -> {
                             expanded = !expanded

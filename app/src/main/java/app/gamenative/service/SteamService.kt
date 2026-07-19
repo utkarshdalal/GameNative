@@ -948,7 +948,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         ): Map<Int, DepotInfo> {
             val dlcAppIdsWithSingleDepots = getDlcAppIdsWithSingleDepot(depots)
             val effectiveLanguage = SteamUtils.effectiveDepotLanguage(
-                depots, preferredLanguage, ownedDlc, licensedDepotIds, hasSteamUnlockedBranch,
+                depots, preferredLanguage, ownedDlc, licensedDepotIds, hasSteamUnlockedBranch, wantAndroid,
             )
             val eligible = eligibleDepots(depots, effectiveLanguage, ownedDlc, licensedDepotIds, wantAndroid)
             val has64Bit = eligible.any { it.osArch == OSArch.Arch64 }
@@ -1025,7 +1025,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             // parent app's arch applies to DLC arch selection
             val mainLanguage = SteamUtils.effectiveDepotLanguage(
-                appInfo.depots, preferredLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch,
+                appInfo.depots, preferredLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch, wantAndroid,
             )
             val has64Bit = eligibleDepots(appInfo.depots, mainLanguage, ownedDlc, licensedDepots, wantAndroid)
                 .any { it.osArch == OSArch.Arch64 }
@@ -1036,7 +1036,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 val dlcLicensedDepots = getLicensedDepotIds(dlcApp.id)
                 // Resolve the DLC's own language too, so DLC that omits the container language installs.
                 val dlcLanguage = SteamUtils.effectiveDepotLanguage(
-                    dlcApp.depots, preferredLanguage, null, dlcLicensedDepots, hasSteamUnlockedBranch,
+                    dlcApp.depots, preferredLanguage, null, dlcLicensedDepots, hasSteamUnlockedBranch, wantAndroid,
                 )
                 val dlcEligible = eligibleDepots(dlcApp.depots, dlcLanguage, null, dlcLicensedDepots, wantAndroid)
                 val dlcHasNonDeckWin = dlcEligible.any { !it.steamDeck && (if (wantAndroid) it.isAndroidCompatible else it.isWindowsCompatible) }

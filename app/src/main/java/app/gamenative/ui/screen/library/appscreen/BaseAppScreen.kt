@@ -1079,7 +1079,10 @@ abstract class BaseAppScreen {
         // Android platform games: the actual install happens in the system's own installer UI,
         // outside our control, so listen for its completion broadcast instead of requiring the
         // user to leave and come back to this screen for the Play button to appear.
-        DisposableEffect(libraryItem.appId) {
+        // Keyed on download/install state too: getAndroidPackageName() reads the APK off disk,
+        // which is null until the download finishes, so the effect needs to re-run once that
+        // changes rather than being stuck with the null result from the initial composition.
+        DisposableEffect(libraryItem.appId, isDownloadingState, isInstalledState) {
             val androidPackageName = getAndroidPackageName(context, libraryItem)
             if (androidPackageName == null) {
                 onDispose { }
