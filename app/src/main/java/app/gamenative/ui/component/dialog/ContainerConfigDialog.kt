@@ -401,6 +401,11 @@ fun ContainerConfigDialog(
         val installedWine = installedLists?.wine.orEmpty()
         val installedProton = installedLists?.proton.orEmpty()
         val installedWrapperDrivers = availability?.installedDrivers.orEmpty()
+        val installedWrappers = installedLists?.wrapper.orEmpty()
+
+        val bionicGraphicsDriversMerged = remember(bionicGraphicsDrivers, installedWrappers) {
+            (bionicGraphicsDrivers + installedWrappers.map { "Wrapper-$it" }).distinct()
+        }
 
         val dxvkOptions = remember(dxvkVersionsBase, installedDxvk, manifestDxvk) {
             ManifestComponentHelper.buildVersionOptionList(dxvkVersionsBase, installedDxvk, manifestDxvk)
@@ -660,7 +665,7 @@ fun ContainerConfigDialog(
 
         // Bionic-specific state
         val bionicDriverIndexRef = rememberSaveable {
-            val idx = bionicGraphicsDrivers.indexOfFirst { StringUtils.parseIdentifier(it) == config.graphicsDriver }
+            val idx = bionicGraphicsDriversMerged.indexOfFirst { StringUtils.parseIdentifier(it) == config.graphicsDriver }
             mutableIntStateOf(if (idx >= 0) idx else 0)
         }
         var bionicDriverIndex by bionicDriverIndexRef
@@ -743,6 +748,11 @@ fun ContainerConfigDialog(
             val ver = cfg.get("version", DefaultVersion.WRAPPER)
             val newIdx = wrapperOptions.ids.indexOfFirst { it.equals(ver, true) }.coerceAtLeast(0)
             if (wrapperVersionIndex != newIdx) wrapperVersionIndex = newIdx
+        }
+
+        LaunchedEffect(bionicGraphicsDriversMerged, config.graphicsDriver) {
+            val newIdx = bionicGraphicsDriversMerged.indexOfFirst { StringUtils.parseIdentifier(it) == config.graphicsDriver }
+            if (newIdx >= 0 && bionicDriverIndex != newIdx) bionicDriverIndex = newIdx
         }
 
         val screenSizeIndexRef = rememberSaveable {
@@ -1139,7 +1149,7 @@ fun ContainerConfigDialog(
             bionicWineEntriesBase = bionicWineEntriesBase,
             glibcWineEntriesBase = glibcWineEntriesBase,
             emulatorEntries = emulatorEntries,
-            bionicGraphicsDrivers = bionicGraphicsDrivers,
+            bionicGraphicsDrivers = bionicGraphicsDriversMerged,
             baseWrapperVersions = baseWrapperVersions,
             languages = languages,
             dxvkOptions = dxvkOptions,
