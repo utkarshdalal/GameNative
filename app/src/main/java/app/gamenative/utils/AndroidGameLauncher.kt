@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -47,6 +48,13 @@ object AndroidGameLauncher {
             Timber.tag(TAG).e(e, "Could not read package info from ${apk.absolutePath}")
             null
         }
+    }
+
+    /** Unwraps a possibly-wrapped Context (e.g. a ContextWrapper) to find the backing Activity. */
+    private tailrec fun Context.findActivity(): ComponentActivity? = when (this) {
+        is ComponentActivity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
     }
 
     private fun isPackageInstalled(context: Context, packageName: String): Boolean {
@@ -186,7 +194,7 @@ object AndroidGameLauncher {
             Timber.tag(TAG).i("requestUninstall: package $packageName is not currently installed, nothing to do")
             return true
         }
-        val activity = context as? ComponentActivity
+        val activity = context.findActivity()
         if (activity == null) {
             Timber.tag(TAG).e("requestUninstall: context is not a ComponentActivity, cannot prompt for a result")
             return false

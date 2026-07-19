@@ -1052,6 +1052,14 @@ abstract class BaseAppScreen {
             mutableStateOf(hasLeftoverInstall(context, libraryItem))
         }
 
+        // hasAndroidVersion() can hit the database (SteamService.getAppInfoOf does a blocking
+        // Room query) — compute it off the main thread once per screen visit, instead of
+        // re-running it synchronously on the main thread every time Edit Container is opened.
+        var hasAndroidVersionState by remember(libraryItem.appId) { mutableStateOf(false) }
+        LaunchedEffect(libraryItem.appId) {
+            hasAndroidVersionState = withContext(Dispatchers.IO) { hasAndroidVersion(libraryItem) }
+        }
+
         val uiScope = rememberCoroutineScope()
 
         // Increments on every refresh, unlike isDownloadingState/isInstalledState which can flip
@@ -1127,8 +1135,14 @@ abstract class BaseAppScreen {
         }
 
         val onEditContainer: () -> Unit = {
-            containerData = loadContainerData(context, libraryItem)
-            showConfigDialog = true
+            // loadContainerData() reads/parses the container's JSON off disk (and may create it
+            // on first access) — do that off the main thread so opening this dialog doesn't
+            // freeze the screen while it loads.
+            uiScope.launch {
+                val data = withContext(Dispatchers.IO) { loadContainerData(context, libraryItem) }
+                containerData = data
+                showConfigDialog = true
+            }
         }
 
         // Export for Frontend launcher
@@ -1429,7 +1443,7 @@ abstract class BaseAppScreen {
             ContainerConfigDialog(
                 title = "${displayInfo.name} Config",
                 initialConfig = containerData,
-                hasAndroidVersion = remember(libraryItem.appId) { hasAndroidVersion(libraryItem) },
+                hasAndroidVersion = hasAndroidVersionState,
                 onDismissRequest = { showConfigDialog = false },
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)

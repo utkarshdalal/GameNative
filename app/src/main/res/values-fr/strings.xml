@@ -1629,6 +1629,7 @@
     <string name="filter_five_star_device">Avis 5 étoiles sur l\'appareil</string>
     <string name="filter_five_star_gpu">Avis 5 étoiles sur le GPU</string>
     <string name="filter_proven_gpu">Éprouvé sur votre GPU</string>
+    <string name="app_filter_android">Version Android disponible</string>
     <string name="option_manage_mods">Gérer les mods Nexus</string>
     <string name="nexus_search_clear">Effacer la recherche</string>
     <string name="nexus_filter_all">Tout</string>

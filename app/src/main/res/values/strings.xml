@@ -726,6 +726,7 @@
     <string name="filter_five_star_device">5-star reviews on device</string>
     <string name="filter_five_star_gpu">5-star reviews on GPU</string>
     <string name="filter_proven_gpu">Proven on your GPU</string>
+    <string name="app_filter_android">Android version available</string>
 
     <!-- Login & Connection -->
     <string name="connecting_to_steam">Connecting to Steam…</string>

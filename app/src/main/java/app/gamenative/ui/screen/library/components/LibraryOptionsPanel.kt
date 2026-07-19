@@ -73,6 +73,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.SteamCollection
@@ -259,18 +260,24 @@ fun LibraryOptionsPanel(
                                 .padding(horizontal = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
+                            // Modern/ModernXr builds can't install a native Android build (Horizon
+                            // Store compliance strips the install-package permissions), so this
+                            // filter would just hide games with nothing wrong with them there.
+                            val statusFilters = remember {
+                                buildList {
+                                    add(AppFilter.INSTALLED)
+                                    add(AppFilter.SHARED)
+                                    add(AppFilter.COMPATIBLE)
+                                    add(AppFilter.EXPIRED)
+                                    add(AppFilter.PLAYABLE)
+                                    add(AppFilter.FIVE_STAR)
+                                    add(AppFilter.FIVE_STAR_GPU)
+                                    add(AppFilter.PROVEN_GPU)
+                                    if (!BuildConfig.MODERN_ANDROID) add(AppFilter.ANDROID)
+                                }
+                            }
                             AppFilter.entries.forEach { appFilter ->
-                                if (appFilter in listOf(
-                                        AppFilter.INSTALLED,
-                                        AppFilter.SHARED,
-                                        AppFilter.COMPATIBLE,
-                                        AppFilter.EXPIRED,
-                                        AppFilter.PLAYABLE,
-                                        AppFilter.FIVE_STAR,
-                                        AppFilter.FIVE_STAR_GPU,
-                                        AppFilter.PROVEN_GPU,
-                                    )
-                                ) {
+                                if (appFilter in statusFilters) {
                                     OptionListItem(
                                         text = stringResource(appFilter.displayTextRes),
                                         selected = selectedFilters.contains(appFilter),

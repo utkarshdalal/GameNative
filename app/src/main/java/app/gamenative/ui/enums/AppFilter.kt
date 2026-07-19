@@ -1,6 +1,7 @@
 package app.gamenative.ui.enums
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.AvTimer
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Computer
@@ -83,6 +84,11 @@ enum class AppFilter(
         code = 0x400,
         displayTextRes = R.string.filter_proven_gpu,
         icon = Icons.Rounded.SportsEsports,
+    ),
+    ANDROID(
+        code = 0x1000,
+        displayTextRes = R.string.app_filter_android,
+        icon = Icons.Default.Android,
     ),
     // ALPHABETIC(
     //     code = 0x20,

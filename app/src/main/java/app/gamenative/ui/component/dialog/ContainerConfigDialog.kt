@@ -1415,6 +1415,12 @@ internal fun ExecutablePathDropdown(
     var isLoading by remember { mutableStateOf(true) }
     val context = LocalContext.current
 
+    // Otherwise a stale `expanded = true` from before this field was disabled would keep the
+    // menu open (and its items selectable) even though it's now greyed out.
+    LaunchedEffect(enabled) {
+        if (!enabled) expanded = false
+    }
+
     // Load executables from A: drive when component is first created
     LaunchedEffect(containerData.drives) {
         isLoading = true
@@ -1464,7 +1470,7 @@ internal fun ExecutablePathDropdown(
 
         if (!isLoading && executables.isNotEmpty()) {
             ExposedDropdownMenu(
-                expanded = expanded,
+                expanded = expanded && enabled,
                 onDismissRequest = { expanded = false }
             ) {
                 executables.forEach { executable ->
