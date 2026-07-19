@@ -100,13 +100,6 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
         }
     }
 
-    override fun beginUpdate() {
-    }
-
-    override fun commit(): Boolean {
-        return true
-    }
-
     override fun getCurrentMinCpuValue(): Long {
         return currentCpuMinLevel.toLong()
     }
@@ -115,20 +108,8 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
         return currentCpuMaxLevel.toLong()
     }
 
-    override fun getCurrentGovernor(): String {
-        return "samsung_performance"
-    }
-
-    override fun getAvailableGovernors(): List<String> {
-        return listOf("samsung_performance")
-    }
-
     override fun getAvailableCpuFrequencies(): List<Long> {
         return (CPU_LEVEL_MIN..CPU_LEVEL_MAX).map { it.toLong() }
-    }
-
-    override fun setGovernor(governor: String): Boolean {
-        return false
     }
 
     override fun setMinCpuValue(value: Long): Boolean {

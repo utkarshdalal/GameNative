@@ -73,16 +73,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
 
     override fun isBusSupported(): Boolean = false
 
-    override fun getCurrentMinBusLevel(): Int = 0
-
-    override fun getCurrentMaxBusLevel(): Int = 0
-
-    override fun getNumBusLevels(): Int = 0
-
-    override fun setMinBusLevel(level: Int): Boolean = false
-
-    override fun setMaxBusLevel(level: Int): Boolean = false
-
     /**
      * Check if PServer driver is available on this device
      */
@@ -118,14 +108,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      */
     override fun getDisplayUnit(): DisplayUnit {
         return DisplayUnit.HZ
-    }
-
-    /**
-     * Start the performance driver
-     * Does nothing for PServerDriver
-     */
-    override fun start() {
-        // No-op for PServerDriver
     }
 
     /**

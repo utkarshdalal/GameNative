@@ -1,6 +1,8 @@
 package app.gamenative.powercontrol.drivers
 
 import app.gamenative.powercontrol.PowerProfile
+import app.gamenative.powercontrol.profiles.CpuGovernor
+import app.gamenative.powercontrol.profiles.PerformancePreset
 
 /**
  * Abstract base class for device-specific performance management drivers.
@@ -56,26 +58,26 @@ abstract class PerformanceDriver {
     /**
      * Start the performance driver
      */
-    abstract fun start()
+    open fun start() {}
 
     /**
      * Stop the performance driver
      */
-    abstract fun stop()
+    open fun stop() {}
 
     /**
      * Begin a batch update session.
      * For PServerDriver, this starts collecting commands to execute in a single call.
      * For SamsungDriver, this is a no-op as CustomParams already handles batching.
      */
-    abstract fun beginUpdate()
+    open fun beginUpdate() {}
 
     /**
      * Commit all pending updates from the batch session.
      * For PServerDriver, this executes all collected commands in a single root call.
      * For SamsungDriver, this is a no-op as each setter already calls start(params).
      */
-    abstract fun commit(): Boolean
+    open fun commit(): Boolean = true
 
     // ========================================
     // CPU Control
@@ -84,42 +86,42 @@ abstract class PerformanceDriver {
     /**
      * Get current minimum CPU Value in KHz / Integer
      */
-    abstract fun getCurrentMinCpuValue(): Long
+    open fun getCurrentMinCpuValue(): Long = 0L
 
     /**
      * Get current maximum CPU Value in KHz / Integer
      */
-    abstract fun getCurrentMaxCpuValue(): Long
+    open fun getCurrentMaxCpuValue(): Long = 0L
 
     /**
      * Get current CPU governor
      */
-    abstract fun getCurrentGovernor(): String
+    open fun getCurrentGovernor(): String = "none"
 
     /**
      * Get available CPU governors
      */
-    abstract fun getAvailableGovernors(): List<String>
+    open fun getAvailableGovernors(): List<String> = emptyList()
 
     /**
      * Get available CPU frequencies in KHz
      */
-    abstract fun getAvailableCpuFrequencies(): List<Long>
+    open fun getAvailableCpuFrequencies(): List<Long> = emptyList()
 
     /**
      * Set CPU governor
      */
-    abstract fun setGovernor(governor: String): Boolean
+    open fun setGovernor(governor: String): Boolean = false
 
     /**
      * Set minimum CPU Value in KHz / Integer
      */
-    abstract fun setMinCpuValue(value: Long): Boolean
+    open fun setMinCpuValue(value: Long): Boolean = false
 
     /**
      * Set maximum CPU Value in KHz / Integer
      */
-    abstract fun setMaxCpuValue(value: Long): Boolean
+    open fun setMaxCpuValue(value: Long): Boolean = false
 
     // ========================================
     // GPU Control
@@ -128,42 +130,52 @@ abstract class PerformanceDriver {
     /**
      * Get current GPU Value in KHz / Integer
      */
-    abstract fun getCurrentGpuValue(): Long
+    open fun getCurrentGpuValue(): Long = 0L
 
     /**
      * Get available GPU frequencies in KHz
      */
-    abstract fun getAvailableGpuFrequencies(): List<Long>
+    open fun getAvailableGpuFrequencies(): List<Long> = emptyList()
 
     /**
      * Get current GPU minimum power level (0 = fastest)
      */
-    abstract fun getCurrentMinGpuPowerLevel(): Int
+    open fun getCurrentMinGpuPowerLevel(): Int = 0
 
     /**
      * Get current GPU maximum power level (0 = fastest)
      */
-    abstract fun getCurrentMaxGpuPowerLevel(): Int
+    open fun getCurrentMaxGpuPowerLevel(): Int = 0
 
     /**
      * Get number of GPU power levels available
      */
-    abstract fun getNumGpuPowerLevels(): Int
+    open fun getNumGpuPowerLevels(): Int = 0
 
     /**
      * Set GPU minimum power level (0 = fastest, higher = slower)
      */
-    abstract fun setMinGpuPowerLevel(level: Int): Boolean
+    open fun setMinGpuPowerLevel(level: Int): Boolean = false
 
     /**
      * Set GPU maximum power level (0 = fastest, higher = slower)
      */
-    abstract fun setMaxGpuPowerLevel(level: Int): Boolean
+    open fun setMaxGpuPowerLevel(level: Int): Boolean = false
 
     /**
      * Get Default Profile
      */
-    abstract fun getDefaultProfile(): PowerProfile
+    open fun getDefaultProfile(): PowerProfile {
+        // Return a dummy Balanced profile for devices without driver support
+        return PowerProfile(
+            name = PerformancePreset.BALANCED.displayName,
+            governor = CpuGovernor.SCHEDUTIL,
+            minCpuFreq = 0,
+            maxCpuFreq = 0,
+            minGpuPowerLevel = 0,
+            maxGpuPowerLevel = 0
+        )
+    }
 
     // ========================================
     // RAM Bus Control
@@ -172,25 +184,25 @@ abstract class PerformanceDriver {
     /**
      * Get current minimum RAM bus performance level
      */
-    abstract fun getCurrentMinBusLevel(): Int
+    open fun getCurrentMinBusLevel(): Int = 0
 
     /**
      * Get current maximum RAM bus performance level
      */
-    abstract fun getCurrentMaxBusLevel(): Int
+    open fun getCurrentMaxBusLevel(): Int = 0
 
     /**
      * Get number of RAM bus levels available
      */
-    abstract fun getNumBusLevels(): Int
+    open fun getNumBusLevels(): Int = 0
 
     /**
      * Set minimum RAM bus performance level
      */
-    abstract fun setMinBusLevel(level: Int): Boolean
+    open fun setMinBusLevel(level: Int): Boolean = false
 
     /**
      * Set maximum RAM bus performance level
      */
-    abstract fun setMaxBusLevel(level: Int): Boolean
+    open fun setMaxBusLevel(level: Int): Boolean = false
 }
