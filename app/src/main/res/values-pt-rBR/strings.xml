@@ -1040,7 +1040,7 @@
         <item quantity="one">%1$d configuração</item>
         <item quantity="other">%1$d configurações</item>
     </plurals>
-    <string name="community_config_highest_rated">Melhor avaliadas</string>
+    <string name="community_config_highest_rated">Mais bem avaliadas</string>
     <string name="community_config_newest">Mais recentes</string>
     <string name="community_config_same_device">Mesmo dispositivo</string>
     <string name="community_config_this_gpu">Esta GPU</string>

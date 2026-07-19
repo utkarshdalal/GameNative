@@ -1208,7 +1208,7 @@
         <item quantity="one">%1$d configurazione</item>
         <item quantity="other">%1$d configurazioni</item>
     </plurals>
-    <string name="community_config_highest_rated">Più votate</string>
+    <string name="community_config_highest_rated">Con valutazione più alta</string>
     <string name="community_config_newest">Più recenti</string>
     <string name="community_config_same_device">Stesso dispositivo</string>
     <string name="community_config_this_gpu">Questa GPU</string>

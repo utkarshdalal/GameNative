@@ -1218,7 +1218,7 @@
         <item quantity="few">%1$d configurații</item>
         <item quantity="other">%1$d de configurații</item>
     </plurals>
-    <string name="community_config_highest_rated">Cel mai bine evaluate</string>
+    <string name="community_config_highest_rated">Cele mai bine evaluate</string>
     <string name="community_config_newest">Cele mai recente</string>
     <string name="community_config_same_device">Același dispozitiv</string>
     <string name="community_config_this_gpu">Acest GPU</string>
