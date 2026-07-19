@@ -2203,7 +2203,7 @@ fun XServerScreen(
                                 .takeIf { it.isNotEmpty() }
                                 ?.let { name ->
                                     // Remove .exe extension if present, then add it back
-                                    val baseName = name.substringBefore(".exe", name)
+                                    val baseName = name.replace(Regex("\\.exe$", RegexOption.IGNORE_CASE), "")
                                     PowerManager.pinGameWithRetry(
                                         processName = "$baseName.exe",
                                         maxRetries = 10,
