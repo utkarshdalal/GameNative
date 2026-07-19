@@ -6,6 +6,7 @@ import android.util.Log;
 
 // import com.winlator.R;
 import app.gamenative.R;
+import app.gamenative.utils.VcRedistStep;
 import app.gamenative.utils.downloader.ContainerFilesDownloaderKt;
 import app.gamenative.utils.downloader.ProgressCallback;
 import com.winlator.box86_64.Box86_64Preset;
@@ -337,7 +338,14 @@ public class ContainerManager {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
-            FileUtils.symlink(new File(srcDir, dlname), dstFile);
+            File srcFile = new File(srcDir, dlname);
+            boolean isVcRedistDll = (dstName.equals("system32") && VcRedistStep.INSTANCE.getSystem32Dlls().contains(dlname)) ||
+                                    (dstName.equals("syswow64") && VcRedistStep.INSTANCE.getSyswow64Dlls().contains(dlname));
+            if (isVcRedistDll) {
+                FileUtils.copy(srcFile, dstFile);
+            } else {
+                FileUtils.symlink(srcFile, dstFile);
+            }
         }
     }
 
@@ -359,7 +367,13 @@ public class ContainerManager {
                 if (dstFile == null) continue;
             }
             Log.d("Extraction", "copying " + file + " to " + dstFile);
-            FileUtils.symlink(file, dstFile);
+            boolean isVcRedistDll = (dstName.equals("system32") && VcRedistStep.INSTANCE.getSystem32Dlls().contains(dllName)) ||
+                                    (dstName.equals("syswow64") && VcRedistStep.INSTANCE.getSyswow64Dlls().contains(dllName));
+            if (isVcRedistDll) {
+                FileUtils.copy(file, dstFile);
+            } else {
+                FileUtils.symlink(file, dstFile);
+            }
         }
     }
 

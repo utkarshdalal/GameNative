@@ -48,6 +48,59 @@ private val vcRedistMap: Map<String, String> = mapOf(
 object VcRedistStep : PreInstallStep {
     override val marker: Marker = Marker.VCREDIST_INSTALLED
 
+    val system32Dlls = listOf(
+        "msvcp60.dll",
+        "msvcp70.dll",
+        "msvcp71.dll",
+        "msvcp80.dll",
+        "msvcr80.dll",
+        "msvcp90.dll",
+        "msvcr90.dll",
+        "msvcp100.dll",
+        "msvcr100.dll",
+        "msvcp110.dll",
+        "msvcr110.dll",
+        "vccorlib110.dll",
+        "msvcp120.dll",
+        "msvcr120.dll",
+        "vccorlib120.dll",
+        "msvcp140.dll",
+        "msvcp140_1.dll",
+        "msvcp140_2.dll",
+        "msvcp140_atomic_wait.dll",
+        "msvcp140_codecvt_ids.dll",
+        "vcruntime140.dll",
+        "vcruntime140_1.dll",
+        "vccorlib140.dll",
+        "concrt140.dll"
+    )
+
+    val syswow64Dlls = listOf(
+        "msvcp60.dll",
+        "msvcp70.dll",
+        "msvcp71.dll",
+        "msvcp80.dll",
+        "msvcr80.dll",
+        "msvcp90.dll",
+        "msvcr90.dll",
+        "msvcp100.dll",
+        "msvcr100.dll",
+        "msvcp110.dll",
+        "msvcr110.dll",
+        "vccorlib110.dll",
+        "msvcp120.dll",
+        "msvcr120.dll",
+        "vccorlib120.dll",
+        "msvcp140.dll",
+        "msvcp140_1.dll",
+        "msvcp140_2.dll",
+        "msvcp140_atomic_wait.dll",
+        "msvcp140_codecvt_ids.dll",
+        "vcruntime140.dll",
+        "vccorlib140.dll",
+        "concrt140.dll"
+    )
+
     override fun appliesTo(
         container: Container,
         gameSource: GameSource,
