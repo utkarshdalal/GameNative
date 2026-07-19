@@ -92,6 +92,9 @@ object PowerManager {
     fun start() {
         getDriver().start()
         restoreSavedProfile()
+
+        // Pin PulseAudio to dedicated performance core if PServer is available
+        pinPulseAudioToDedicatedCore()
     }
 
     /**
@@ -402,6 +405,153 @@ object PowerManager {
         } catch (e: Exception) {
             Timber.tag("PowerManager").e(e, "Failed to save power profile")
         }
+    }
+
+    // ========================================
+    // CPU Affinity / Process Pinning
+    // ========================================
+
+    /**
+     * Pin PulseAudio daemon to a dedicated performance core.
+     * Uses first performance core to ensure low-latency audio without game interference.
+     */
+    private fun pinPulseAudioToDedicatedCore() {
+        val driver = getDriver()
+        if (driver !is PServerDriver) return
+
+        Thread {
+            try {
+                // Give PulseAudio time to start if it wasn't already running
+                Thread.sleep(500)
+
+                val audioPid = driver.getProcessId("libpulseaudio.so")
+                if (audioPid != null) {
+                    // Pin to first performance core only (dedicated for audio)
+                    val perfCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE)
+                    if (perfCores.isNotEmpty()) {
+                        val success = driver.setCpuAffinityByCores(audioPid, listOf(perfCores.first()))
+                        if (success) {
+                            Timber.tag("PowerManager").i("Pinned PulseAudio (PID: $audioPid) to CPU ${perfCores.first()}")
+                        }
+                    }
+                } else {
+                    Timber.tag("PowerManager").d("PulseAudio not found, skipping audio pinning")
+                }
+            } catch (e: Exception) {
+                Timber.tag("PowerManager").e(e, "Failed to pin PulseAudio")
+            }
+        }.start()
+    }
+
+    /**
+     * Pin Wine infrastructure processes for optimal game performance.
+     * Pins wineserver, winhandler, and services.exe to performance cores.
+     * Should be called after the game starts to ensure Wine is fully initialized.
+     */
+    fun pinWineInfrastructure() {
+        val driver = getDriver()
+        if (driver !is PServerDriver) return
+
+        Thread {
+            try {
+                // Wait for Wine to fully initialize
+                Thread.sleep(2000)
+
+                val perfCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE)
+                val primeCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME)
+                val allPerfCores = perfCores + primeCores
+
+                if (perfCores.isEmpty()) {
+                    Timber.tag("PowerManager").w("No performance cores found, skipping Wine pinning")
+                    return@Thread
+                }
+
+                // Pin wineserver to all performance cores (critical for Wine IPC)
+                driver.findWineProcessPid("wineserver")?.let { pid ->
+                    val success = driver.setCpuAffinityByCores(pid, perfCores)
+                    if (success) {
+                        Timber.tag("PowerManager").i("Pinned wineserver (PID: $pid) to CPUs ${perfCores.joinToString()}")
+                    }
+                }
+
+                // Pin winhandler to performance + prime cores (handles game window management)
+                driver.findWineProcessPid("winhandler.exe")?.let { pid ->
+                    val success = driver.setCpuAffinityByCores(pid, allPerfCores)
+                    if (success) {
+                        Timber.tag("PowerManager").i("Pinned winhandler.exe (PID: $pid) to CPUs ${allPerfCores.joinToString()}")
+                    }
+                }
+
+                // Pin services.exe to first two performance cores
+                driver.findWineProcessPid("services.exe")?.let { pid ->
+                    val serviceCores = perfCores.take(2)
+                    if (serviceCores.isNotEmpty()) {
+                        val success = driver.setCpuAffinityByCores(pid, serviceCores)
+                        if (success) {
+                            Timber.tag("PowerManager").i("Pinned services.exe (PID: $pid) to CPUs ${serviceCores.joinToString()}")
+                        }
+                    }
+                }
+
+            } catch (e: Exception) {
+                Timber.tag("PowerManager").e(e, "Failed to pin Wine infrastructure")
+            }
+        }.start()
+    }
+
+    /**
+     * Pin a game process with retry logic.
+     * Waits for the process to start before pinning.
+     *
+     * @param processName Process name or package name
+     * @param maxRetries Maximum number of retry attempts (default: 10)
+     * @param retryDelayMs Delay between retries in milliseconds (default: 1000)
+     */
+    fun pinGameWithRetry(
+        processName: String,
+        maxRetries: Int = 10,
+        retryDelayMs: Long = 1000
+    ) {
+        val driver = getDriver()
+        if (driver !is PServerDriver) return
+
+        Thread {
+            try {
+                var retries = maxRetries
+                val isWineExecutable = processName.endsWith(".exe", ignoreCase = true)
+
+                while (retries > 0) {
+                    // Use Wine-specific search for .exe files, regular pidof for others
+                    val pid = if (isWineExecutable) {
+                        driver.findWineProcessPid(processName)
+                    } else {
+                        driver.getProcessId(processName)
+                    }
+
+                    if (pid != null) {
+                        // Pin to performance + prime cores (Strategy A)
+                        val perfCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE)
+                        val primeCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME)
+                        val gameCores = perfCores + primeCores
+
+                        if (gameCores.isNotEmpty()) {
+                            val success = driver.setCpuAffinityByCores(pid, gameCores)
+                            if (success) {
+                                Timber.tag("PowerManager").i(
+                                    "Pinned $processName (PID: $pid) to CPUs ${gameCores.joinToString()} after ${maxRetries - retries + 1} attempts"
+                                )
+                            }
+                        }
+                        return@Thread
+                    }
+                    Thread.sleep(retryDelayMs)
+                    retries--
+                }
+                Timber.tag("PowerManager").w("Failed to find process after $maxRetries attempts: $processName")
+            } catch (e: Exception) {
+                Timber.tag("PowerManager").e(e, "Failed to pin game with retry: $processName")
+            }
+        }.start()
     }
 
     /**

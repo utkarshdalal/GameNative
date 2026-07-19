@@ -2196,6 +2196,25 @@ fun XServerScreen(
                             // Start performance driver after environment is set up
                             PowerManager.start()
 
+                            // Pin game process to performance cores (CPUs 4-7)
+                            container.executablePath
+                                .substringAfterLast('/')
+                                .substringAfterLast('\\')
+                                .takeIf { it.isNotEmpty() }
+                                ?.let { name ->
+                                    // Remove .exe extension if present, then add it back
+                                    val baseName = name.substringBefore(".exe", name)
+                                    PowerManager.pinGameWithRetry(
+                                        processName = "$baseName.exe",
+                                        maxRetries = 10,
+                                        retryDelayMs = 1000
+                                    )
+                                    Timber.tag("XServerScreen").i("Initiated CPU pinning for: $baseName.exe")
+                                }
+
+                            // Pin Wine infrastructure processes for better performance
+                            PowerManager.pinWineInfrastructure()
+
                             if (!PluviaApp.isActivityInForeground && !neverSuspend) {
                                 PluviaApp.xEnvironment?.onPause()
                                 if (manualResumeMode) {

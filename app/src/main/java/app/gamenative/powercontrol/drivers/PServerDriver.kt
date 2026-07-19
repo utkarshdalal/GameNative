@@ -37,8 +37,16 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         val governorPath: String,
         val minFreqPath: String,
         val maxFreqPath: String,
-        val cpuCores: List<Int>
+        val cpuCores: List<Int>,
+        val maxFrequency: Long = 0L
     )
+
+    // CPU cluster types based on frequency
+    enum class CpuCluster {
+        EFFICIENCY,    // Lowest frequency cores
+        PERFORMANCE,   // Mid-high frequency cores
+        PRIME          // Highest frequency core(s)
+    }
 
     // PServer binder interface
     private val binder: IBinder?
@@ -55,6 +63,14 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
 
     // CPU policies discovered at initialization (reduces redundant IPC calls)
     private var cpuPolicies: List<CpuPolicy> = emptyList()
+
+    // CPU cluster mapping for affinity control
+    private var cpuClusters: Map<CpuCluster, List<Int>> = emptyMap()
+
+    // Track current CPU settings (what was requested, not what policy0 has)
+    private var currentMinCpuFreq: Long = 0L
+    private var currentMaxCpuFreq: Long = 0L
+    private var currentGovernor: String = ""
 
     init {
         binder = runCatching {
@@ -227,7 +243,11 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         if (cpuPolicies.isEmpty()) {
             validateCpuFreqSupport()
             cpuPolicies = discoverCpuPolicies()
+            cpuClusters = identifyCpuClusters()
         }
+
+        // Pin app process to efficiency cores to free up performance cores
+        pinAppToEfficiencyCores()
     }
 
     /**
@@ -309,8 +329,12 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
 
                 modifiedSysfsFiles.clear()
 
-                // Clear CPU policies to force re-discovery on next start()
+                // Reset app process CPU affinity to all cores
+                resetAppCpuAffinity()
+
+                // Clear CPU policies and clusters to force re-discovery on next start()
                 cpuPolicies = emptyList()
+                cpuClusters = emptyMap()
             } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "Failed to stop PServerDriver")
             }
@@ -323,23 +347,38 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
 
     /**
      * Get current minimum CPU frequency in KHz
+     * Returns the last requested value, not policy0's value
      */
     override fun getCurrentMinCpuValue(): Long {
-        return readSysfsFile("$POLICY0_PATH/scaling_min_freq")?.toLongOrNull() ?: 0L
+        // If we haven't set anything yet, read from policy0
+        if (currentMinCpuFreq == 0L) {
+            currentMinCpuFreq = readSysfsFile("$POLICY0_PATH/scaling_min_freq")?.toLongOrNull() ?: 0L
+        }
+        return currentMinCpuFreq
     }
 
     /**
      * Get current maximum CPU frequency in KHz
+     * Returns the last requested value, not policy0's value
      */
     override fun getCurrentMaxCpuValue(): Long {
-        return readSysfsFile("$POLICY0_PATH/scaling_max_freq")?.toLongOrNull() ?: 0L
+        // If we haven't set anything yet, read from policy0
+        if (currentMaxCpuFreq == 0L) {
+            currentMaxCpuFreq = readSysfsFile("$POLICY0_PATH/scaling_max_freq")?.toLongOrNull() ?: 0L
+        }
+        return currentMaxCpuFreq
     }
 
     /**
      * Get current CPU governor name
+     * Returns the last set governor, not policy0's governor
      */
     override fun getCurrentGovernor(): String {
-        return readSysfsFile("$POLICY0_PATH/scaling_governor")?.trim() ?: ""
+        // If we haven't set anything yet, read from policy0
+        if (currentGovernor.isEmpty()) {
+            currentGovernor = readSysfsFile("$POLICY0_PATH/scaling_governor")?.trim() ?: ""
+        }
+        return currentGovernor
     }
 
     /**
@@ -357,14 +396,30 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
 
     /**
      * Get list of available CPU frequencies in KHz (sorted)
+     * Collects frequencies from all CPU policies to include all clusters
      */
     override fun getAvailableCpuFrequencies(): List<Long> {
         return try {
-            val freqs = readSysfsFile("$POLICY0_PATH/scaling_available_frequencies")
-            freqs?.split("\\s+".toRegex())
-                ?.mapNotNull { it.toLongOrNull() }
-                ?.sorted()
-                ?: emptyList()
+            val allFrequencies = mutableSetOf<Long>()
+
+            // If policies are discovered, read from each policy
+            if (cpuPolicies.isNotEmpty()) {
+                for (policy in cpuPolicies) {
+                    val policyDir = policy.governorPath.substringBeforeLast("/")
+                    val freqs = readSysfsFile("$policyDir/scaling_available_frequencies")
+                    freqs?.split("\\s+".toRegex())
+                        ?.mapNotNull { it.toLongOrNull() }
+                        ?.let { allFrequencies.addAll(it) }
+                }
+            } else {
+                // Fallback: read from policy0 only
+                val freqs = readSysfsFile("$POLICY0_PATH/scaling_available_frequencies")
+                freqs?.split("\\s+".toRegex())
+                    ?.mapNotNull { it.toLongOrNull() }
+                    ?.let { allFrequencies.addAll(it) }
+            }
+
+            allFrequencies.sorted()
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to get available frequencies")
             emptyList()
@@ -387,8 +442,11 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                     for (policy in cpuPolicies) {
                         batchFilePaths.add(policy.governorPath)
                         batchCommands.add("echo '$governor' > '${policy.governorPath}'")
+                        // Set governor file to read-only (444) to prevent system from changing it
+                        batchCommands.add("chmod 444 '${policy.governorPath}'")
                         modifiedSysfsFiles.add(policy.governorPath)
                     }
+                    currentGovernor = governor
                     return true
                 }
 
@@ -406,6 +464,9 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                             "(CPUs: ${policy.cpuCores.joinToString()})"
                         )
                     }
+                }
+                if (success) {
+                    currentGovernor = governor
                 }
                 return success
             }
@@ -449,19 +510,48 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             if (cpuPolicies.isNotEmpty()) {
                 if (isBatchMode) {
                     for (policy in cpuPolicies) {
+                        // Cap at policy's max frequency
+                        val cappedValue = if (policy.maxFrequency > 0) {
+                            minOf(value, policy.maxFrequency)
+                        } else {
+                            value
+                        }
                         batchFilePaths.add(policy.minFreqPath)
-                        batchCommands.add("echo '$value' > '${policy.minFreqPath}'")
+                        batchCommands.add("echo '$cappedValue' > '${policy.minFreqPath}'")
                         modifiedSysfsFiles.add(policy.minFreqPath)
                     }
+                    currentMinCpuFreq = value
                     return true
                 }
 
                 var success = true
                 for (policy in cpuPolicies) {
-                    if (!writeSysfsFile(policy.minFreqPath, value.toString())) {
+                    // Cap at policy's max frequency
+                    val cappedValue = if (policy.maxFrequency > 0) {
+                        minOf(value, policy.maxFrequency)
+                    } else {
+                        value
+                    }
+
+                    if (!writeSysfsFile(policy.minFreqPath, cappedValue.toString())) {
                         success = false
                         Timber.tag(TAG).e("Failed to set min freq for policy ${policy.policyId}")
+                    } else {
+                        if (cappedValue != value) {
+                            Timber.tag(TAG).d(
+                                "Set min freq to $cappedValue (capped from $value) for policy ${policy.policyId} " +
+                                "(CPUs: ${policy.cpuCores.joinToString()}, max: ${policy.maxFrequency})"
+                            )
+                        } else {
+                            Timber.tag(TAG).d(
+                                "Set min freq to $value for policy ${policy.policyId} " +
+                                "(CPUs: ${policy.cpuCores.joinToString()})"
+                            )
+                        }
                     }
+                }
+                if (success) {
+                    currentMinCpuFreq = value
                 }
                 return success
             }
@@ -497,7 +587,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
 
     /**
      * Set maximum CPU frequency in KHz.
-     * Uses policy-based approach to reduce IPC calls by 50-75%.
+     * Uses policy-based approach and respects each policy's maximum frequency.
      */
     override fun setMaxCpuValue(value: Long): Boolean {
         return try {
@@ -505,19 +595,48 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             if (cpuPolicies.isNotEmpty()) {
                 if (isBatchMode) {
                     for (policy in cpuPolicies) {
+                        // Cap at policy's max frequency
+                        val cappedValue = if (policy.maxFrequency > 0) {
+                            minOf(value, policy.maxFrequency)
+                        } else {
+                            value
+                        }
                         batchFilePaths.add(policy.maxFreqPath)
-                        batchCommands.add("echo '$value' > '${policy.maxFreqPath}'")
+                        batchCommands.add("echo '$cappedValue' > '${policy.maxFreqPath}'")
                         modifiedSysfsFiles.add(policy.maxFreqPath)
                     }
+                    currentMaxCpuFreq = value
                     return true
                 }
 
                 var success = true
                 for (policy in cpuPolicies) {
-                    if (!writeSysfsFile(policy.maxFreqPath, value.toString())) {
+                    // Cap at policy's max frequency
+                    val cappedValue = if (policy.maxFrequency > 0) {
+                        minOf(value, policy.maxFrequency)
+                    } else {
+                        value
+                    }
+
+                    if (!writeSysfsFile(policy.maxFreqPath, cappedValue.toString())) {
                         success = false
                         Timber.tag(TAG).e("Failed to set max freq for policy ${policy.policyId}")
+                    } else {
+                        if (cappedValue != value) {
+                            Timber.tag(TAG).d(
+                                "Set max freq to $cappedValue (capped from $value) for policy ${policy.policyId} " +
+                                "(CPUs: ${policy.cpuCores.joinToString()}, max: ${policy.maxFrequency})"
+                            )
+                        } else {
+                            Timber.tag(TAG).d(
+                                "Set max freq to $value for policy ${policy.policyId} " +
+                                "(CPUs: ${policy.cpuCores.joinToString()})"
+                            )
+                        }
                     }
+                }
+                if (success) {
+                    currentMaxCpuFreq = value
                 }
                 return success
             }
@@ -794,21 +913,28 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             }
         }
 
-        // Convert to CpuPolicy objects
+        // Convert to CpuPolicy objects and read max frequency for each
         val policyList = policies.entries.mapIndexed { index, (policyDir, cpuList) ->
+            val maxFreq = try {
+                readSysfsFile("$policyDir/cpuinfo_max_freq")?.toLongOrNull() ?: 0L
+            } catch (e: Exception) {
+                0L
+            }
+
             CpuPolicy(
                 policyId = index,
                 governorPath = "$policyDir/scaling_governor",
                 minFreqPath = "$policyDir/scaling_min_freq",
                 maxFreqPath = "$policyDir/scaling_max_freq",
-                cpuCores = cpuList.sorted()
+                cpuCores = cpuList.sorted(),
+                maxFrequency = maxFreq
             )
         }
 
         if (policyList.isNotEmpty()) {
             Timber.tag(TAG).i("Discovered ${policyList.size} CPU policies:")
             policyList.forEach { policy ->
-                Timber.tag(TAG).i("  Policy ${policy.policyId}: CPUs ${policy.cpuCores.joinToString()}")
+                Timber.tag(TAG).i("  Policy ${policy.policyId}: CPUs ${policy.cpuCores.joinToString()} (max: ${policy.maxFrequency / 1000} MHz)")
             }
         }
 
@@ -852,6 +978,230 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         }
 
         return allValid
+    }
+
+    /**
+     * Identify CPU clusters based on max frequencies.
+     * Categorizes CPUs into EFFICIENCY, PERFORMANCE, and PRIME clusters.
+     */
+    private fun identifyCpuClusters(): Map<CpuCluster, List<Int>> {
+        if (cpuPolicies.isEmpty()) {
+            Timber.tag(TAG).w("Cannot identify clusters: no policies discovered")
+            return emptyMap()
+        }
+
+        // Read max frequencies for each policy
+        val policiesWithFreq = cpuPolicies.map { policy ->
+            val maxFreq = try {
+                readSysfsFile("${policy.governorPath.substringBeforeLast("/")}/cpuinfo_max_freq")
+                    ?.toLongOrNull() ?: 0L
+            } catch (e: Exception) {
+                0L
+            }
+            policy.copy(maxFrequency = maxFreq)
+        }.sortedBy { it.maxFrequency }
+
+        val clusters = mutableMapOf<CpuCluster, MutableList<Int>>()
+
+        when (policiesWithFreq.size) {
+            1 -> {
+                // Single cluster - all cores are same type
+                clusters[CpuCluster.PERFORMANCE] = policiesWithFreq[0].cpuCores.toMutableList()
+            }
+            2 -> {
+                // Dual cluster (big.LITTLE)
+                clusters[CpuCluster.EFFICIENCY] = policiesWithFreq[0].cpuCores.toMutableList()
+                clusters[CpuCluster.PERFORMANCE] = policiesWithFreq[1].cpuCores.toMutableList()
+            }
+            3 -> {
+                // Tri-cluster (efficiency + performance + prime)
+                clusters[CpuCluster.EFFICIENCY] = policiesWithFreq[0].cpuCores.toMutableList()
+                clusters[CpuCluster.PERFORMANCE] = policiesWithFreq[1].cpuCores.toMutableList()
+                clusters[CpuCluster.PRIME] = policiesWithFreq[2].cpuCores.toMutableList()
+            }
+            else -> {
+                // 4+ clusters - group by frequency ranges
+                clusters[CpuCluster.EFFICIENCY] = policiesWithFreq[0].cpuCores.toMutableList()
+                clusters[CpuCluster.PRIME] = policiesWithFreq.last().cpuCores.toMutableList()
+
+                val perfCores = mutableListOf<Int>()
+                for (i in 1 until policiesWithFreq.size - 1) {
+                    perfCores.addAll(policiesWithFreq[i].cpuCores)
+                }
+                clusters[CpuCluster.PERFORMANCE] = perfCores
+            }
+        }
+
+        Timber.tag(TAG).i("Identified CPU clusters:")
+        clusters.forEach { (cluster, cores) ->
+            val freq = policiesWithFreq.find { cores.intersect(it.cpuCores.toSet()).isNotEmpty() }?.maxFrequency ?: 0
+            Timber.tag(TAG).i("  $cluster: CPUs ${cores.joinToString()} @ ${freq / 1000} MHz")
+        }
+
+        return clusters
+    }
+
+    // ========================================
+    // CPU Affinity / Process Pinning
+    // ========================================
+
+    /**
+     * Get the list of CPU core numbers for a specific cluster.
+     *
+     * @param cluster The CPU cluster type
+     * @return List of CPU core numbers, or empty list if cluster not found
+     */
+    fun getCpuCoresByCluster(cluster: CpuCluster): List<Int> {
+        return cpuClusters[cluster] ?: emptyList()
+    }
+
+    /**
+     * Pin the current app process to efficiency cores.
+     * Frees up performance cores for game processes.
+     *
+     * @return true if successful
+     */
+    fun pinAppToEfficiencyCores(): Boolean {
+        val appPid = android.os.Process.myPid()
+        val effCores = getCpuCoresByCluster(CpuCluster.EFFICIENCY)
+
+        if (effCores.isEmpty()) {
+            Timber.tag(TAG).d("No efficiency cores found, skipping app pinning")
+            return false
+        }
+
+        val success = setCpuAffinityByCores(appPid, effCores)
+        if (success) {
+            Timber.tag(TAG).i("Pinned app process (PID: $appPid) to efficiency CPUs ${effCores.joinToString()}")
+        }
+        return success
+    }
+
+    /**
+     * Reset the current app process to use all available CPU cores.
+     *
+     * @return true if successful
+     */
+    fun resetAppCpuAffinity(): Boolean {
+        val appPid = android.os.Process.myPid()
+
+        // Get all available cores from all clusters
+        val effCores = getCpuCoresByCluster(CpuCluster.EFFICIENCY)
+        val perfCores = getCpuCoresByCluster(CpuCluster.PERFORMANCE)
+        val primeCores = getCpuCoresByCluster(CpuCluster.PRIME)
+        val allCores = (effCores + perfCores + primeCores).sorted()
+
+        if (allCores.isEmpty()) {
+            Timber.tag(TAG).w("No CPU cores found for reset")
+            return false
+        }
+
+        val success = setCpuAffinityByCores(appPid, allCores)
+        if (success) {
+            Timber.tag(TAG).i("Reset app process (PID: $appPid) to all CPUs ${allCores.joinToString()}")
+        }
+        return success
+    }
+
+    /**
+     * Pin a process to specific CPU cores using taskset.
+     *
+     * @param pid Process ID to pin
+     * @param cpuMask CPU affinity mask (e.g., "0xff" for CPUs 0-7, "0x80" for CPU 7 only)
+     * @return true if successful
+     */
+    fun setCpuAffinity(pid: Int, cpuMask: String): Boolean {
+        if (!isPServerAvailable) {
+            Timber.tag(TAG).w("PServer not available for CPU affinity")
+            return false
+        }
+
+        return try {
+            val command = "taskset -p $cpuMask $pid"
+            val result = executeAsRoot(command)
+
+            if (result.isSuccess) {
+                Timber.tag(TAG).i("Set CPU affinity for PID $pid to mask $cpuMask")
+                true
+            } else {
+                Timber.tag(TAG).e("Failed to set CPU affinity: ${result.exceptionOrNull()?.message}")
+                false
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to set CPU affinity for PID $pid")
+            false
+        }
+    }
+
+    /**
+     * Pin a process to specific CPU cores by core list.
+     *
+     * @param pid Process ID to pin
+     * @param cpuList List of CPU core numbers (e.g., listOf(3, 4, 5, 6, 7))
+     * @return true if successful
+     */
+    fun setCpuAffinityByCores(pid: Int, cpuList: List<Int>): Boolean {
+        if (cpuList.isEmpty()) {
+            Timber.tag(TAG).w("Empty CPU list provided")
+            return false
+        }
+
+        // Convert CPU list to bitmask
+        // e.g., [3,4,5,6,7] -> 0xf8 (binary: 11111000)
+        val mask = cpuList.fold(0) { acc, cpu -> acc or (1 shl cpu) }
+        val hexMask = "0x${mask.toString(16)}"
+
+        return setCpuAffinity(pid, hexMask)
+    }
+
+    /**
+     * Get the process ID for a given package name or process name.
+     *
+     * @param packageName Package name (e.g., "app.gamenative") or process name
+     * @return Process ID or null if not found
+     */
+    fun getProcessId(packageName: String): Int? {
+        return try {
+            val result = executeAsRoot("pidof $packageName")
+            result.getOrNull()?.trim()?.toIntOrNull()
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to get PID for $packageName")
+            null
+        }
+    }
+
+    /**
+     * Find Wine process PID by searching for executable name in command line.
+     * This is more reliable for Wine processes than pidof.
+     *
+     * @param executableName Executable name (e.g., "YookaLaylee64.exe")
+     * @return Process ID or null if not found
+     */
+    fun findWineProcessPid(executableName: String): Int? {
+        return try {
+            // Search /proc for processes with this executable in their cmdline
+            // Use grep -l to find matching files, then extract PID from path
+            val command = """
+                for pid in /proc/[0-9]*; do
+                    if [ -f "${'$'}pid/cmdline" ] && grep -q "$executableName" "${'$'}pid/cmdline" 2>/dev/null; then
+                        basename "${'$'}pid"
+                        break
+                    fi
+                done
+            """.trimIndent()
+
+            val result = executeAsRoot(command)
+            val pidStr = result.getOrNull()?.trim()
+            val pid = pidStr?.toIntOrNull()
+
+            if (pid != null) {
+                Timber.tag(TAG).d("Found Wine process PID $pid for $executableName")
+            }
+            pid
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to find Wine process for $executableName")
+            null
+        }
     }
 
     // ========================================
