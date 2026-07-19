@@ -3,5 +3,9 @@
     <cache-path name="cache" path="." />
     <external-cache-path name="external_cache" path="." />
     <files-path name="diagnostics" path="imagefs/usr/tmp/" />
+    <!-- Installed game files can live under the app's internal data dir, external app dir,
+         or an external SD volume (see SteamService.allInstallPaths) — cover all of them for
+         installing downloaded Android game APKs via FileProvider. -->
+    <root-path name="game_files" path="." />
 </paths>
 

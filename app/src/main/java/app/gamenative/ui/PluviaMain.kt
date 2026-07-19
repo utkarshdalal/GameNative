@@ -1620,6 +1620,14 @@ fun preLaunchApp(
             ContainerUtils.getOrCreateContainer(context, appId)
         }
 
+        // Native Android (Steam Frame / Lepton) build: no Wine/Proton container, no manifest
+        // components to resolve — skip straight to launch.
+        if (container.platform.equals(Container.PLATFORM_ANDROID, ignoreCase = true)) {
+            setLoadingDialogVisible(false)
+            onSuccess(context, appId)
+            return@launch
+        }
+
         // Clear session metadata on every launch to ensure fresh values
         container.clearSessionMetadata()
 

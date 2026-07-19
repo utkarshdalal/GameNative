@@ -279,6 +279,7 @@ fun ContainerConfigDialog(
     default: Boolean = false,
     title: String,
     initialConfig: ContainerData = ContainerData(),
+    hasAndroidVersion: Boolean = false,
     onDismissRequest: () -> Unit,
     onSave: (ContainerData) -> Unit,
 ) {
@@ -378,6 +379,7 @@ fun ContainerConfigDialog(
         val installedLists = availability?.installed
 
         val isBionicVariant = config.containerVariant.equals(Container.BIONIC, ignoreCase = true)
+        val isAndroidPlatform = config.platform.equals(Container.PLATFORM_ANDROID, ignoreCase = true)
         val manifestDownloadMessage = if (manifestDownloadLabel.isNotEmpty()) {
             stringResource(R.string.manifest_downloading_item, manifestDownloadLabel)
         } else {
@@ -1175,6 +1177,8 @@ fun ContainerConfigDialog(
             gpuExtensions = gpuExtensions,
             inspectionMode = inspectionMode,
             isBionicVariant = isBionicVariant,
+            isAndroidPlatform = isAndroidPlatform,
+            hasAndroidVersion = hasAndroidVersion,
             nonDeletableDriveLetters = nonDeletableDriveLetters,
             availableDriveLetters = availableDriveLetters,
             launchManifestInstall = { entry, label, isDriver, expectedType, onInstalled ->
@@ -1252,6 +1256,12 @@ fun ContainerConfigDialog(
                     },
                 ) { paddingValues ->
                     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+                    // Android platform doesn't use Wine/Box64 at all: force the user back to
+                    // General (where the platform picker lives) so they can't get stuck on a
+                    // now-disabled tab.
+                    LaunchedEffect(isAndroidPlatform) {
+                        if (isAndroidPlatform) selectedTab = 0
+                    }
                     val tabs = listOf(
                         stringResource(R.string.container_config_tab_general),
                         stringResource(R.string.container_config_tab_graphics),
@@ -1302,6 +1312,7 @@ fun ContainerConfigDialog(
                             tabs.forEachIndexed { index, label ->
                                 Tab(
                                     selected = selectedTab == index,
+                                    enabled = index == 0 || !isAndroidPlatform,
                                     onClick = { selectedTab = index },
                                     text = { Text(text = label) },
                                     modifier = if (index == 0) {

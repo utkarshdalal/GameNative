@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryPlayHistory
@@ -29,11 +30,14 @@ import app.gamenative.utils.CustomGameScanner
 import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.AndroidGameLauncher
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateInfo
 import com.materialkolor.PaletteStyle
+import com.winlator.container.Container
 import com.winlator.xserver.Window
 import dagger.hilt.android.lifecycle.HiltViewModel
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.AppProcessInfo
@@ -462,8 +466,27 @@ class MainViewModel @Inject constructor(
     }
 
     fun launchApp(context: Context, appId: String) {
-        // Show booting splash before launching the app
         viewModelScope.launch {
+            val container = withContext(Dispatchers.IO) { ContainerUtils.getOrCreateContainer(context, appId) }
+            if (container.platform.equals(Container.PLATFORM_ANDROID, ignoreCase = true)) {
+                // Native Android (Steam Frame / Lepton) build: no Wine container involved at all.
+                withContext(Dispatchers.IO) {
+                    libraryPlayHistoryDao.upsert(
+                        LibraryPlayHistory(appId = appId, lastPlayed = System.currentTimeMillis()),
+                    )
+                }
+                val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+                when (withContext(Dispatchers.IO) { AndroidGameLauncher.installAndLaunch(context, gameId) }) {
+                    AndroidGameLauncher.Result.InstallStarted ->
+                        SnackbarManager.show(context.getString(R.string.android_game_install_started))
+                    AndroidGameLauncher.Result.Failed ->
+                        SnackbarManager.show(context.getString(R.string.android_game_launch_failed))
+                    AndroidGameLauncher.Result.Launched -> Unit
+                }
+                return@launch
+            }
+
+            // Show booting splash before launching the app
             viewModelScope.launch(Dispatchers.IO) {
                 libraryPlayHistoryDao.upsert(
                     LibraryPlayHistory(

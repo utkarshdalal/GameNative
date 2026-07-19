@@ -606,6 +606,12 @@ abstract class BaseAppScreen {
 
     protected open fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean = false
 
+    /** Whether this game also has a native Android (Steam Frame / Lepton) depot available. */
+    open fun hasAndroidVersion(libraryItem: LibraryItem): Boolean = false
+
+    /** Package name of the Android app installed/installing for this game, or null if not applicable. */
+    open fun getAndroidPackageName(context: Context, libraryItem: LibraryItem): String? = null
+
     protected open suspend fun exportSaves(
         context: Context,
         libraryItem: LibraryItem,
@@ -1070,6 +1076,39 @@ abstract class BaseAppScreen {
             performStateRefresh(true)
         }
 
+        // Android platform games: the actual install happens in the system's own installer UI,
+        // outside our control, so listen for its completion broadcast instead of requiring the
+        // user to leave and come back to this screen for the Play button to appear.
+        DisposableEffect(libraryItem.appId) {
+            val androidPackageName = getAndroidPackageName(context, libraryItem)
+            if (androidPackageName == null) {
+                onDispose { }
+            } else {
+                val receiver = object : android.content.BroadcastReceiver() {
+                    override fun onReceive(ctx: Context, intent: Intent) {
+                        if (intent.data?.schemeSpecificPart == androidPackageName) {
+                            requestStateRefresh(true)
+                        }
+                    }
+                }
+                val filter = android.content.IntentFilter().apply {
+                    addAction(Intent.ACTION_PACKAGE_ADDED)
+                    addAction(Intent.ACTION_PACKAGE_REPLACED)
+                    addAction(Intent.ACTION_PACKAGE_REMOVED)
+                    addDataScheme("package")
+                }
+                androidx.core.content.ContextCompat.registerReceiver(
+                    context,
+                    receiver,
+                    filter,
+                    androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+                )
+                onDispose {
+                    context.unregisterReceiver(receiver)
+                }
+            }
+        }
+
         var showConfigDialog by androidx.compose.runtime.remember {
             androidx.compose.runtime.mutableStateOf(false)
         }
@@ -1380,6 +1419,7 @@ abstract class BaseAppScreen {
             ContainerConfigDialog(
                 title = "${displayInfo.name} Config",
                 initialConfig = containerData,
+                hasAndroidVersion = remember(libraryItem.appId) { hasAndroidVersion(libraryItem) },
                 onDismissRequest = { showConfigDialog = false },
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)

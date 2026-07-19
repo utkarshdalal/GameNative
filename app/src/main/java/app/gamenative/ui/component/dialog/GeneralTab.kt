@@ -137,7 +137,28 @@ fun GeneralTabContent(
         )
     }
 
-    SettingsGroup() {
+    SettingsGroup {
+        if (state.hasAndroidVersion) {
+            val platformItems = listOf(
+                stringResource(R.string.container_platform_normal),
+                stringResource(R.string.container_platform_android),
+            )
+            val platformIndex = if (config.platform.equals(Container.PLATFORM_ANDROID, ignoreCase = true)) 1 else 0
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = stringResource(R.string.container_platform)) },
+                subtitle = { Text(text = stringResource(R.string.container_platform_description)) },
+                value = platformIndex,
+                items = platformItems,
+                enabled = true,
+                onItemSelected = { idx ->
+                    val newPlatform = if (idx == 1) Container.PLATFORM_ANDROID else Container.PLATFORM_WINDOWS
+                    state.config.value = config.copy(platform = newPlatform)
+                },
+            )
+        }
+    }
+    SettingsGroup(enabled = !state.isAndroidPlatform) {
         run {
             val variantIndex = rememberSaveable {
                 mutableIntStateOf(
@@ -282,7 +303,6 @@ fun GeneralTabContent(
             }
         }
         SettingsListDropdown(
-            enabled = true,
             value = state.languageIndex.value,
             items = state.languages.map(displayNameForLanguage),
             fallbackDisplay = displayNameForLanguage("english"),

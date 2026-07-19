@@ -328,6 +328,7 @@ object ContainerUtils {
             box64Preset = container.box64Preset,
             desktopTheme = container.desktopTheme,
             containerVariant = container.containerVariant,
+            platform = container.platform,
             wineVersion = container.wineVersion,
             emulator = container.emulator,
             fexcoreVersion = container.fexCoreVersion,
@@ -521,6 +522,7 @@ object ContainerUtils {
         container.desktopTheme = containerData.desktopTheme
         container.graphicsDriverVersion = containerData.graphicsDriverVersion
         container.containerVariant = containerData.containerVariant
+        container.platform = containerData.platform
         container.wineVersion = containerData.wineVersion
         container.emulator = containerData.emulator
         container.fexCoreVersion = containerData.fexcoreVersion

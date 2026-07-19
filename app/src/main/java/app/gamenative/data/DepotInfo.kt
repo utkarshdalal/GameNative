@@ -27,8 +27,12 @@ data class DepotInfo(
     val systemDefined: Boolean = false,
     val steamDeck: Boolean = false,
 ) {
-    /** Windows or OS-untagged (neither Linux nor macOS) */
+    /** Windows or OS-untagged (neither Linux, macOS nor Android) */
     val isWindowsCompatible: Boolean
         get() = osList.contains(OS.windows) ||
-            (!osList.contains(OS.linux) && !osList.contains(OS.macos))
+            (!osList.contains(OS.linux) && !osList.contains(OS.macos) && !osList.contains(OS.android))
+
+    /** Explicitly tagged for Android (Steam Frame / Lepton depots) */
+    val isAndroidCompatible: Boolean
+        get() = osList.contains(OS.android)
 }

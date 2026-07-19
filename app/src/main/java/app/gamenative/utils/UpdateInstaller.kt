@@ -64,7 +64,7 @@ object UpdateInstaller {
         }
     }
 
-    private fun installApk(context: Context, apkFile: File) {
+    fun installApk(context: Context, apkFile: File) {
         try {
             // Verify file exists before attempting installation
             if (!apkFile.exists()) {

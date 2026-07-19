@@ -57,6 +57,7 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
+import app.gamenative.utils.AndroidGameLauncher
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamUtils
@@ -367,7 +368,14 @@ class SteamAppScreen : BaseAppScreen() {
     }
 
     override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean {
-        return SteamService.isAppInstalled(libraryItem.gameId)
+        val gameId = libraryItem.gameId
+        if (!SteamService.isAppInstalled(gameId)) return false
+        // Android platform: the depot being downloaded isn't the same as the app actually
+        // being installed on the system — only show Play once it really is.
+        if (SteamService.isAndroidPlatform(gameId)) {
+            return AndroidGameLauncher.isGameInstalled(context, gameId)
+        }
+        return true
     }
 
     override fun isValidToDownload(context: Context, libraryItem: LibraryItem): Boolean {
@@ -863,16 +871,42 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
         val container = getContainer(context, libraryItem.appId)
+        val platformChanged = !container.platform.equals(config.platform, ignoreCase = true)
+        val languageChanged = container.language != config.language
         ContainerUtils.applyToContainer(context, libraryItem.appId, config)
 
-        if (container.language != config.language) {
-            CoroutineScope(Dispatchers.IO).launch {
-                SteamService.downloadApp(libraryItem.gameId)
+        val gameId = libraryItem.gameId
+        when {
+            // Switching platform on an already-installed game: drop the old platform's files
+            // and fetch the newly selected one. Not installed yet -> just remember the choice,
+            // the Install/Play button will pick it up when the user actually installs.
+            platformChanged && SteamService.isAppInstalled(gameId) -> {
+                CoroutineScope(Dispatchers.IO).launch {
+                    SnackbarManager.show(context.getString(R.string.container_platform_switch_reinstalling))
+                    SteamService.deleteApp(gameId)
+                    DownloadService.invalidateCache()
+                    SteamService.downloadApp(gameId)
+                }
+            }
+            languageChanged -> {
+                CoroutineScope(Dispatchers.IO).launch {
+                    SteamService.downloadApp(gameId)
+                }
             }
         }
     }
 
     override fun supportsContainerConfig(): Boolean = true
+
+    override fun hasAndroidVersion(libraryItem: LibraryItem): Boolean {
+        return SteamService.getAppInfoOf(libraryItem.gameId)?.depots?.values?.any { it.isAndroidCompatible } == true
+    }
+
+    override fun getAndroidPackageName(context: Context, libraryItem: LibraryItem): String? {
+        val gameId = libraryItem.gameId
+        if (!SteamService.isAndroidPlatform(gameId)) return null
+        return AndroidGameLauncher.resolvePackageName(context, gameId)
+    }
 
     override fun getExportFileExtension(): String = ".steam"
 
@@ -1008,7 +1042,7 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
-        LaunchedEffect(gameId, hasStoragePermission) {
+        LaunchedEffect(gameId, hasStoragePermission, installDialogState.visible) {
             if (!hasStoragePermission) {
                 installSizeInfo = null
                 return@LaunchedEffect
@@ -1017,7 +1051,8 @@ class SteamAppScreen : BaseAppScreen() {
                 val info = withContext(Dispatchers.IO) {
                     val container = ContainerManager(context).getContainerById("STEAM_$gameId")
                     val language = container?.language ?: PrefManager.containerLanguage
-                    val depots = SteamService.getDownloadableDepots(gameId, language)
+                    val wantAndroid = container?.platform.equals(Container.PLATFORM_ANDROID, ignoreCase = true)
+                    val depots = SteamService.getDownloadableDepots(gameId, language, wantAndroid)
                     Timber.i("There are ${depots.size} depots belonging to ${libraryItem.appId}")
                     val branch = SteamService.getInstalledApp(gameId)?.branch ?: "public"
                     val availableBytes = StorageUtils.getAvailableSpaceForUncreatedPath(SteamService.getAppDirPath(gameId))
@@ -1261,6 +1296,16 @@ class SteamAppScreen : BaseAppScreen() {
                                 try {
                                     val installedAppInfo = getInstalledApp(libraryItem.gameId)
                                     val gameRootDir = getInstallPath(context, libraryItem)?.let(::File)
+
+                                    // The installed Android app (Steam Frame / Lepton games) is a
+                                    // separate system entity from GameNative's own downloaded copy —
+                                    // prompt its uninstall before we delete the .apk we need to
+                                    // resolve the package name from. Checked by looking for an actual
+                                    // .apk on disk rather than the container's current platform
+                                    // setting, which may have since been switched back.
+                                    withContext(Dispatchers.Main) {
+                                        AndroidGameLauncher.requestUninstall(context, gameId)
+                                    }
 
                                     val success = SteamService.deleteApp(gameId)
                                     DownloadService.invalidateCache()

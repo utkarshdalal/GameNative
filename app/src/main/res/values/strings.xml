@@ -767,6 +767,13 @@
     <string name="value">Value</string>
     <string name="no_more_known_variables">No more known variables</string>
     <string name="container_variant">Container Variant</string>
+    <string name="container_platform">Version</string>
+    <string name="container_platform_description">Choose whether to download the Windows version (runs via Wine) or the native Android version, when the game offers one.</string>
+    <string name="container_platform_normal">Normal (Windows)</string>
+    <string name="container_platform_android">Android</string>
+    <string name="container_platform_switch_reinstalling">Switching version — removing the current install and fetching the new one…</string>
+    <string name="android_game_install_started">Installing the Android version — press Play again once it\'s installed.</string>
+    <string name="android_game_launch_failed">Couldn\'t install or launch the Android version of this game.</string>
     <string name="wine_version">Wine Version</string>
     <string name="exec_arguments">Exec Arguments</string>
     <string name="exec_arguments_example">Example: -dx11</string>
