@@ -14,6 +14,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -1053,6 +1054,11 @@ abstract class BaseAppScreen {
 
         val uiScope = rememberCoroutineScope()
 
+        // Increments on every refresh, unlike isDownloadingState/isInstalledState which can flip
+        // true->false within the same recomposition on a very fast download and never be observed
+        // by an effect keyed on them — this always counts as a distinct key.
+        var stateRefreshGeneration by remember(libraryItem.appId) { mutableIntStateOf(0) }
+
         suspend fun performStateRefresh(includeUpdatePending: Boolean) {
             isInstalledState = isInstalled(context, libraryItem)
             isValidToDownloadState = isValidToDownload(context, libraryItem)
@@ -1064,6 +1070,7 @@ abstract class BaseAppScreen {
             if (includeUpdatePending) {
                 isUpdatePendingState = isUpdatePendingSuspend(context, libraryItem)
             }
+            stateRefreshGeneration++
         }
 
         fun requestStateRefresh(includeUpdatePending: Boolean) {
@@ -1079,10 +1086,10 @@ abstract class BaseAppScreen {
         // Android platform games: the actual install happens in the system's own installer UI,
         // outside our control, so listen for its completion broadcast instead of requiring the
         // user to leave and come back to this screen for the Play button to appear.
-        // Keyed on download/install state too: getAndroidPackageName() reads the APK off disk,
-        // which is null until the download finishes, so the effect needs to re-run once that
-        // changes rather than being stuck with the null result from the initial composition.
-        DisposableEffect(libraryItem.appId, isDownloadingState, isInstalledState) {
+        // Keyed on stateRefreshGeneration: getAndroidPackageName() reads the APK off disk, which
+        // is null until the download finishes, so the effect needs to re-run once that changes
+        // rather than being stuck with the null result from the initial composition.
+        DisposableEffect(libraryItem.appId, stateRefreshGeneration) {
             val androidPackageName = getAndroidPackageName(context, libraryItem)
             if (androidPackageName == null) {
                 onDispose { }

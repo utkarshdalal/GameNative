@@ -53,11 +53,11 @@ object UpdateInstaller {
             Timber.i("Download complete: ${destFile.absolutePath}, size: $fileSize bytes")
 
             // Install the APK
-            withContext(Dispatchers.Main) {
+            val installStarted = withContext(Dispatchers.Main) {
                 installApk(context, destFile)
             }
 
-            return@withContext true
+            return@withContext installStarted
         } catch (e: Exception) {
             Timber.e(e, "Error downloading/installing update")
             return@withContext false

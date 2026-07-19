@@ -76,6 +76,8 @@ object AndroidGameLauncher {
         }
     }
 
+    private const val STAGING_DIR_NAME = "android_game_installs"
+
     /**
      * Copies the downloaded .apk into the app's own cache dir so FileProvider only ever needs to
      * grant access to a narrow, app-controlled location (already covered by the existing
@@ -83,13 +85,26 @@ object AndroidGameLauncher {
      */
     private fun stageApkForInstall(context: Context, gameId: Int, apk: File): File? {
         return try {
-            val stagingDir = File(context.cacheDir, "android_game_installs").apply { mkdirs() }
+            val stagingDir = File(context.cacheDir, STAGING_DIR_NAME).apply { mkdirs() }
             val staged = File(stagingDir, "$gameId.apk")
             apk.copyTo(staged, overwrite = true)
             staged
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Could not stage APK for install from ${apk.absolutePath}")
             null
+        }
+    }
+
+    /**
+     * Removes this game's staged install copy, if any. Each staged .apk is only overwritten by a
+     * later install of the *same* game, so without this, every distinct Android game ever
+     * installed leaves a permanent copy behind in the cache dir. Safe to call any time, including
+     * when nothing was ever staged.
+     */
+    fun cleanupStagedApk(context: Context, gameId: Int) {
+        val staged = File(File(context.cacheDir, STAGING_DIR_NAME), "$gameId.apk")
+        if (staged.exists() && !staged.delete()) {
+            Timber.tag(TAG).w("Could not delete staged APK ${staged.absolutePath}")
         }
     }
 

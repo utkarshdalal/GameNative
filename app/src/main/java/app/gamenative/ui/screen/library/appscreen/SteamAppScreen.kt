@@ -914,6 +914,7 @@ class SteamAppScreen : BaseAppScreen() {
                             SnackbarManager.show(context.getString(R.string.android_game_uninstall_cancelled))
                             return@launch
                         }
+                        AndroidGameLauncher.cleanupStagedApk(context, gameId)
                     }
                     SteamService.deleteApp(gameId)
                     DownloadService.invalidateCache()
@@ -1354,6 +1355,7 @@ class SteamAppScreen : BaseAppScreen() {
                                         }
                                         return@launch
                                     }
+                                    AndroidGameLauncher.cleanupStagedApk(context, gameId)
 
                                     val success = SteamService.deleteApp(gameId)
                                     DownloadService.invalidateCache()
