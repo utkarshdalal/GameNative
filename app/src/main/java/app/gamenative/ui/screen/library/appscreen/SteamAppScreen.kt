@@ -872,6 +872,7 @@ class SteamAppScreen : BaseAppScreen() {
     override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
         val container = getContainer(context, libraryItem.appId)
         val platformChanged = !container.platform.equals(config.platform, ignoreCase = true)
+        val wasAndroid = container.platform.equals(Container.PLATFORM_ANDROID, ignoreCase = true)
         val languageChanged = container.language != config.language
         ContainerUtils.applyToContainer(context, libraryItem.appId, config)
 
@@ -883,6 +884,15 @@ class SteamAppScreen : BaseAppScreen() {
             platformChanged && SteamService.isAppInstalled(gameId) -> {
                 CoroutineScope(Dispatchers.IO).launch {
                     SnackbarManager.show(context.getString(R.string.container_platform_switch_reinstalling))
+                    // Resolve and prompt removal of the installed Android app BEFORE its .apk
+                    // is deleted below — that's the only place the package name can still be
+                    // read from, and once the platform is switched away there's no other path
+                    // back to it.
+                    if (wasAndroid) {
+                        withContext(Dispatchers.Main) {
+                            AndroidGameLauncher.requestUninstall(context, gameId)
+                        }
+                    }
                     SteamService.deleteApp(gameId)
                     DownloadService.invalidateCache()
                     SteamService.downloadApp(gameId)

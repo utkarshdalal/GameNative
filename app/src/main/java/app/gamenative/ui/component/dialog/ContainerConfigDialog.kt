@@ -1290,11 +1290,11 @@ fun ContainerConfigDialog(
                                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                                 when (event.key) {
                                     Key.ButtonR1, Key.ButtonR2 -> {
-                                        selectedTab = (selectedTab + 1) % tabs.size
+                                        if (!isAndroidPlatform) selectedTab = (selectedTab + 1) % tabs.size
                                         true
                                     }
                                     Key.ButtonL1, Key.ButtonL2 -> {
-                                        selectedTab = (selectedTab - 1 + tabs.size) % tabs.size
+                                        if (!isAndroidPlatform) selectedTab = (selectedTab - 1 + tabs.size) % tabs.size
                                         true
                                     }
                                     else -> false

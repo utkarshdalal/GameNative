@@ -3,9 +3,15 @@
     <cache-path name="cache" path="." />
     <external-cache-path name="external_cache" path="." />
     <files-path name="diagnostics" path="imagefs/usr/tmp/" />
-    <!-- Installed game files can live under the app's internal data dir, external app dir,
-         or an external SD volume (see SteamService.allInstallPaths) — cover all of them for
-         installing downloaded Android game APKs via FileProvider. -->
+    <!-- Games installed to the external app-scoped dir (SteamService.externalAppInstallPath)
+         map cleanly to this narrower, dedicated path. -->
+    <external-files-path name="external_game_files" path="Steam/steamapps/common/" />
+    <!-- Fallback for the other two install roots SteamService.allInstallPaths supports, neither
+         of which has a narrower FileProvider path type: the internal install root lives directly
+         under the app's private data dir (context.dataDir), not under files/ or cache/, and SD
+         card volumes are discovered per-device at runtime so their paths can't be declared here
+         statically. A hardcoded root-path sub-path (e.g. "data/user/0/<pkg>/...") would be more
+         fragile, not less — it would break on secondary user profiles, which the Quest supports. -->
     <root-path name="game_files" path="." />
 </paths>
 

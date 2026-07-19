@@ -1421,7 +1421,8 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         /** Whether the container for [appId] has the game's Android (Steam Frame / Lepton) depot selected. */
         fun isAndroidPlatform(appId: Int): Boolean {
-            val container = ContainerManager(instance!!.applicationContext).getContainerById("STEAM_${appId}")
+            val context = instance?.applicationContext ?: return false
+            val container = ContainerManager(context).getContainerById("STEAM_${appId}")
             return container?.platform.equals(Container.PLATFORM_ANDROID, ignoreCase = true)
         }
 
