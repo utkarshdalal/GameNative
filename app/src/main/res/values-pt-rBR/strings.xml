@@ -1027,6 +1027,57 @@
     <string name="best_config_apply_anyway">Aplicar mesmo assim</string>
     <string name="best_config_applied_with_defaults">Configuração aplicada, componentes ausentes substituídos por padrões</string>
     <string name="best_config_apply_failed">Falha ao aplicar config: %s</string>
+    <string name="community_config_title">Configurações da comunidade</string>
+    <string name="community_config_close">Fechar configurações da comunidade</string>
+    <string name="community_config_refresh">Atualizar configurações da comunidade</string>
+    <string name="community_config_retry">Tentar novamente</string>
+    <string name="community_config_unknown_error">Erro desconhecido</string>
+    <string name="community_config_unknown">Desconhecido</string>
+    <string name="community_config_load_failed">Não foi possível carregar as configurações da comunidade: %1$s</string>
+    <string name="community_config_game_not_found">Nenhuma entrada de compatibilidade foi encontrada para %1$s</string>
+    <string name="community_config_gpu_unknown">GPU indisponível</string>
+    <plurals name="community_config_result_count">
+        <item quantity="one">%1$d configuração</item>
+        <item quantity="other">%1$d configurações</item>
+    </plurals>
+    <string name="community_config_highest_rated">Melhor avaliadas</string>
+    <string name="community_config_newest">Mais recentes</string>
+    <string name="community_config_same_device">Mesmo dispositivo</string>
+    <string name="community_config_this_gpu">Esta GPU</string>
+    <string name="community_config_all">Todas</string>
+    <string name="community_config_load_more">Carregar mais</string>
+    <string name="community_config_no_device_results">Nenhuma configuração foi encontrada para este dispositivo.</string>
+    <string name="community_config_no_gpu_results">Nenhuma configuração foi encontrada para esta GPU.</string>
+    <string name="community_config_no_results">Nenhuma configuração da comunidade foi encontrada para este jogo.</string>
+    <string name="community_config_show_this_gpu">Mostrar esta GPU</string>
+    <string name="community_config_show_all_gpus">Mostrar todas as GPUs</string>
+    <string name="community_config_rating_value">%1$d/5</string>
+    <string name="community_config_fps_value">%1$s FPS</string>
+    <string name="community_config_details_title">Detalhes da configuração</string>
+    <string name="community_config_other_gpu_warning">Este resultado usa outra GPU. As configurações de driver e wrapper específicas da GPU não serão aplicadas.</string>
+    <string name="community_config_run_details">Execução de teste</string>
+    <string name="community_config_rating">Avaliação</string>
+    <string name="community_config_average_fps">Média de FPS</string>
+    <string name="community_config_device">Dispositivo</string>
+    <string name="community_config_gpu">GPU</string>
+    <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
+    <string name="community_config_app_version">Versão do GameNative</string>
+    <string name="community_config_submitted">Enviado em</string>
+    <string name="community_config_settings">Configurações</string>
+    <string name="community_config_dependencies">Dependências</string>
+    <string name="community_config_dependencies_apply_check">As dependências serão verificadas quando a configuração for aplicada.</string>
+    <string name="community_config_no_downloads">Nenhum download do manifesto é necessário no momento.</string>
+    <string name="community_config_downloads_required">Estes componentes serão baixados automaticamente:\n%1$s</string>
+    <string name="community_config_tags">Tags</string>
+    <string name="community_config_notes">Observações</string>
+    <string name="community_config_apply">Aplicar configuração</string>
+    <string name="community_config_container">Contêiner</string>
+    <string name="community_config_wine">Wine ou Proton</string>
+    <string name="community_config_emulator">Emulador</string>
+    <string name="community_config_wrapper">Wrapper do DirectX</string>
+    <string name="community_config_box64_preset">Predefinição do Box64</string>
+    <string name="community_config_driver">Driver gráfico</string>
     <string name="import_config">Importar configuração</string>
     <string name="export_config">Exportar configuração</string>
 
@@ -1343,6 +1394,7 @@
     <string name="option_submit_feedback">Enviar feedback</string>
     <string name="option_reset_drm">Redefinir DRM</string>
     <string name="option_use_known_config">Usar configuração conhecida</string>
+    <string name="option_browse_community_configs">Procurar configurações da comunidade</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Recomendado</string>

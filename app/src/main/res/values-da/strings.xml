@@ -1027,6 +1027,57 @@
     <string name="best_config_apply_anyway">Anvend alligevel</string>
     <string name="best_config_applied_with_defaults">Konfiguration anvendt, manglende komponenter erstattet med standardværdier</string>
     <string name="best_config_apply_failed">Kunne ikke anvende konfiguration: %s</string>
+    <string name="community_config_title">Fællesskabskonfigurationer</string>
+    <string name="community_config_close">Luk fællesskabskonfigurationer</string>
+    <string name="community_config_refresh">Opdater fællesskabskonfigurationer</string>
+    <string name="community_config_retry">Prøv igen</string>
+    <string name="community_config_unknown_error">Ukendt fejl</string>
+    <string name="community_config_unknown">Ukendt</string>
+    <string name="community_config_load_failed">Fællesskabskonfigurationerne kunne ikke indlæses: %1$s</string>
+    <string name="community_config_game_not_found">Der blev ikke fundet en kompatibilitetspost for %1$s</string>
+    <string name="community_config_gpu_unknown">GPU er ikke tilgængelig</string>
+    <plurals name="community_config_result_count">
+        <item quantity="one">%1$d konfiguration</item>
+        <item quantity="other">%1$d konfigurationer</item>
+    </plurals>
+    <string name="community_config_highest_rated">Bedst bedømte</string>
+    <string name="community_config_newest">Nyeste</string>
+    <string name="community_config_same_device">Samme enhed</string>
+    <string name="community_config_this_gpu">Denne GPU</string>
+    <string name="community_config_all">Alle</string>
+    <string name="community_config_load_more">Indlæs flere</string>
+    <string name="community_config_no_device_results">Der blev ikke fundet konfigurationer til denne enhed.</string>
+    <string name="community_config_no_gpu_results">Der blev ikke fundet konfigurationer til denne GPU.</string>
+    <string name="community_config_no_results">Der blev ikke fundet fællesskabskonfigurationer til dette spil.</string>
+    <string name="community_config_show_this_gpu">Vis denne GPU</string>
+    <string name="community_config_show_all_gpus">Vis alle GPU’er</string>
+    <string name="community_config_rating_value">%1$d/5</string>
+    <string name="community_config_fps_value">%1$s FPS</string>
+    <string name="community_config_details_title">Konfigurationsdetaljer</string>
+    <string name="community_config_other_gpu_warning">Dette resultat bruger en anden GPU. GPU-specifikke driver- og wrapperindstillinger anvendes ikke.</string>
+    <string name="community_config_run_details">Testkørsel</string>
+    <string name="community_config_rating">Bedømmelse</string>
+    <string name="community_config_average_fps">Gennemsnitlig FPS</string>
+    <string name="community_config_device">Enhed</string>
+    <string name="community_config_gpu">GPU</string>
+    <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
+    <string name="community_config_app_version">GameNative-version</string>
+    <string name="community_config_submitted">Indsendt</string>
+    <string name="community_config_settings">Indstillinger</string>
+    <string name="community_config_dependencies">Afhængigheder</string>
+    <string name="community_config_dependencies_apply_check">Afhængighederne kontrolleres, når konfigurationen anvendes.</string>
+    <string name="community_config_no_downloads">Der kræves i øjeblikket ingen downloads fra manifestet.</string>
+    <string name="community_config_downloads_required">Disse komponenter downloades automatisk:\n%1$s</string>
+    <string name="community_config_tags">Mærker</string>
+    <string name="community_config_notes">Noter</string>
+    <string name="community_config_apply">Anvend konfiguration</string>
+    <string name="community_config_container">Container</string>
+    <string name="community_config_wine">Wine eller Proton</string>
+    <string name="community_config_emulator">Emulator</string>
+    <string name="community_config_wrapper">DirectX-wrapper</string>
+    <string name="community_config_box64_preset">Box64-forudindstilling</string>
+    <string name="community_config_driver">Grafikdriver</string>
     <string name="import_config">Importér konfiguration</string>
     <string name="export_config">Eksportér konfiguration</string>
 
@@ -1343,6 +1394,7 @@
     <string name="option_submit_feedback">Send feedback</string>
     <string name="option_reset_drm">Nulstil DRM</string>
     <string name="option_use_known_config">Brug kendt konfiguration</string>
+    <string name="option_browse_community_configs">Gennemse fællesskabskonfigurationer</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Anbefalet</string>
