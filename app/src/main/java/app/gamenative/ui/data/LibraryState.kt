@@ -1,5 +1,6 @@
 package app.gamenative.ui.data
 
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
@@ -11,8 +12,22 @@ import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.enums.SortOption
 import java.util.EnumSet
 
+/**
+ * Modern/ModernXr can't show or toggle the Android filter (see LibraryOptionsPanel), but a
+ * persisted selection from a Legacy install — or a restored backup — could still carry the flag.
+ * Strip it here so it can never silently restrict/empty the library with no way to turn it off.
+ */
+private fun sanitizedLibraryFilter(): EnumSet<AppFilter> {
+    val stored = PrefManager.libraryFilter
+    return if (BuildConfig.MODERN_ANDROID && stored.contains(AppFilter.ANDROID)) {
+        EnumSet.copyOf(stored).apply { remove(AppFilter.ANDROID) }
+    } else {
+        stored
+    }
+}
+
 data class LibraryState(
-    val appInfoSortType: EnumSet<AppFilter> = PrefManager.libraryFilter,
+    val appInfoSortType: EnumSet<AppFilter> = sanitizedLibraryFilter(),
     val appInfoList: List<LibraryItem> = emptyList(),
     val isRefreshing: Boolean = false,
 
