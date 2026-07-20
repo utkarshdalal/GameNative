@@ -5256,7 +5256,8 @@ private suspend fun extractWinComponentFiles(
 
             if (!container.wineVersion.contains("arm64ec") && identifier.contains("opengl") && useNative) continue
 
-            if (useNative) {
+            // Note: GameNative do not bundle directinput and directinput8 dlls, need to skip them and use wine/proton dll instead
+            if (useNative && (identifier != "directinput8" && identifier != "directinput")) {
                 // Download or use cached/bundled wincomponent
                 val componentFile = WinComponentDownloader.ensureWinComponentAvailable(
                     context, identifier
