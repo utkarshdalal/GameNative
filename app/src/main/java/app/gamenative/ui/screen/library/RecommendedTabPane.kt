@@ -41,6 +41,10 @@ fun RecommendedTabPane(
     onNavigate: (LibraryItem) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: GogRecommendationsViewModel = hiltViewModel(),
+    firstCarouselItemFocusRequester: androidx.compose.ui.focus.FocusRequester? = null,
+    firstGridItemFocusRequester: androidx.compose.ui.focus.FocusRequester? = null,
+    focusTargetListIndex: Int = 0,
+    onFocusedIndexChanged: (Int) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -124,6 +128,9 @@ fun RecommendedTabPane(
                     onNavigate = { appId -> items.find { it.appId == appId }?.let(onNavigate) },
                     onRefresh = { viewModel.refresh() },
                     modifier = Modifier.fillMaxSize(),
+                    firstCarouselItemFocusRequester = firstCarouselItemFocusRequester,
+                    focusTargetListIndex = focusTargetListIndex,
+                    onFocusedIndexChanged = onFocusedIndexChanged,
                 )
             }
 
@@ -136,6 +143,8 @@ fun RecommendedTabPane(
                     onNavigate = { appId -> items.find { it.appId == appId }?.let(onNavigate) },
                     onRefresh = { viewModel.refresh() },
                     modifier = Modifier.fillMaxSize(),
+                    firstGridItemFocusRequester = firstGridItemFocusRequester,
+                    focusTargetListIndex = focusTargetListIndex,
                 )
             }
         }

@@ -329,6 +329,22 @@ internal fun LibraryCarouselPane(
         }
     }
 
+    // Auto-focus first item when list becomes non-empty
+    LaunchedEffect(state.appInfoList.size, firstCarouselItemFocusRequester) {
+        if (state.appInfoList.isNotEmpty() && firstCarouselItemFocusRequester != null) {
+            delay(150) // Brief delay to ensure layout is ready
+
+            // Check if focusTargetListIndex still null or 0 after delay
+            if (focusTargetListIndex == null || focusTargetListIndex == 0) {
+                try {
+                    firstCarouselItemFocusRequester.requestFocus()
+                } catch (_: IllegalStateException) {
+                    // FocusRequester not attached yet
+                }
+            }
+        }
+    }
+
     LaunchedEffect(listState, state.appInfoList.size, state.totalAppsInFilter) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .filterNotNull()

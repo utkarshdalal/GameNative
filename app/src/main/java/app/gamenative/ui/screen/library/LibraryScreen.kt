@@ -388,8 +388,11 @@ private fun LibraryScreenContent(
         }
     }
 
+    // Moved all state.appInfoList.isNotEmpty() checking to this function
+    fun isListFocusable(): Boolean = state.appInfoList.isNotEmpty() || state.currentTab == LibraryTab.RECOMMENDED
+
     fun requestGridFocusOrDefer() {
-        if (state.appInfoList.isEmpty()) return
+        if (!isListFocusable()) return
         ensureKeyboardInputMode()
         try {
             gridFirstItemFocusRequester.requestFocus()
@@ -401,7 +404,7 @@ private fun LibraryScreenContent(
     }
 
     fun requestCarouselFocusOrDefer(targetListIndex: Int = currentCarouselFocusTargetIndex()) {
-        if (state.appInfoList.isEmpty()) return
+        if (!isListFocusable()) return
         ensureKeyboardInputMode()
         carouselFocusTargetListIndex = targetListIndex.coerceIn(0, state.appInfoList.lastIndex)
         try {
@@ -414,7 +417,7 @@ private fun LibraryScreenContent(
     }
 
     fun requestContentFocusOrDefer(targetListIndex: Int = preferredContentFocusIndex()) {
-        if (state.appInfoList.isEmpty()) return
+        if (!isListFocusable()) return
         if (currentPaneType == PaneType.CAROUSEL) {
             requestCarouselFocusOrDefer(targetListIndex)
         } else {
@@ -494,7 +497,7 @@ private fun LibraryScreenContent(
             // Brief delay to let the UI settle after transition
             kotlinx.coroutines.delay(100)
             // Restore focus to content area
-            if (state.appInfoList.isNotEmpty()) {
+            if (isListFocusable()) {
                 requestContentFocusOrDefer()
             } else {
                 requestRootFocusSafe()
@@ -534,7 +537,7 @@ private fun LibraryScreenContent(
         // The user may have moved focus up into the tab bar during the delay; don't yank it back.
         if (tabBarHasFocus) return@LaunchedEffect
 
-        if (state.appInfoList.isEmpty()) {
+        if (isListFocusable()) {
             // Empty tab - focus root so bumpers still work
             requestRootFocusSafe()
         } else {
@@ -552,7 +555,7 @@ private fun LibraryScreenContent(
         state.isOptionsPanelOpen,
         state.isSearching,
     ) {
-        if (pendingGridFocusRequest && state.appInfoList.isNotEmpty()) {
+        if (pendingGridFocusRequest && isListFocusable()) {
             if (selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
                 var retries = 0
                 while (pendingGridFocusRequest && retries < 8) {
@@ -578,7 +581,7 @@ private fun LibraryScreenContent(
         state.isOptionsPanelOpen,
         state.isSearching,
     ) {
-        if (pendingCarouselFocusRequest && state.appInfoList.isNotEmpty()) {
+        if (pendingCarouselFocusRequest && isListFocusable()) {
             if (selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
                 val targetIndex = currentCarouselFocusTargetIndex()
                 if (carouselListState.layoutInfo.visibleItemsInfo.none { it.index == targetIndex }) {
@@ -630,7 +633,7 @@ private fun LibraryScreenContent(
             // Give a brief moment for the overlay to animate out
             kotlinx.coroutines.delay(50)
             // Restore focus to the active content layout
-            if (state.appInfoList.isNotEmpty()) {
+            if (isListFocusable()) {
                 requestContentFocusOrDefer()
             } else {
                 // Empty list - focus root so bumpers still work
@@ -652,7 +655,7 @@ private fun LibraryScreenContent(
             !isSystemMenuOpen &&
             !state.isOptionsPanelOpen &&
             !state.isSearching &&
-            state.appInfoList.isNotEmpty() &&
+            isListFocusable() &&
             controllerBootstrapNeeded &&
             !rootHasFocus &&
             !tabBarHasFocus &&
@@ -775,7 +778,7 @@ private fun LibraryScreenContent(
                         !state.isOptionsPanelOpen &&
                         !isSystemMenuOpen &&
                         !state.isSearching &&
-                        state.appInfoList.isNotEmpty() &&
+                        isListFocusable() &&
                         controllerBootstrapNeeded &&
                         // Don't pull focus to the grid while the user is on the tab bar (D-pad
                         // up/left/right and analog nudges aren't consumed by the bar otherwise).
@@ -910,6 +913,10 @@ private fun LibraryScreenContent(
                                 selectedLibraryItem = item
                             },
                             modifier = Modifier.fillMaxSize(),
+                            firstCarouselItemFocusRequester = carouselFocusRequester,
+                            firstGridItemFocusRequester = gridFirstItemFocusRequester,
+                            focusTargetListIndex = if (currentPaneType == PaneType.CAROUSEL) currentCarouselFocusTargetIndex() else gridFocusTargetListIndex,
+                            onFocusedIndexChanged = { carouselFocusTargetListIndex = it },
                         )
                     } else {
                         Box(modifier = Modifier.fillMaxSize())
@@ -1042,7 +1049,7 @@ private fun LibraryScreenContent(
                         onAddGameClick = onAddCustomGameClick,
                         onMenuClick = { isSystemMenuOpen = true },
                         onNavigateDownToGrid = {
-                            if (state.appInfoList.isNotEmpty()) {
+                            if (isListFocusable()) {
                                 requestContentFocusOrDefer()
                             }
                         },
