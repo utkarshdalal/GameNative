@@ -45,6 +45,7 @@ fun RecommendedTabPane(
     firstGridItemFocusRequester: androidx.compose.ui.focus.FocusRequester? = null,
     focusTargetListIndex: Int = 0,
     onFocusedIndexChanged: (Int) -> Unit = {},
+    onItemCountChanged: (Int) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -60,6 +61,10 @@ fun RecommendedTabPane(
 
     val items = remember(state.cards) {
         state.cards.mapIndexed { index, card -> card.toLibraryItem(index) }
+    }
+
+    LaunchedEffect(items.size) {
+        onItemCountChanged(items.size)
     }
 
     // Batched impression tracking: accumulate which cards actually scrolled into view and

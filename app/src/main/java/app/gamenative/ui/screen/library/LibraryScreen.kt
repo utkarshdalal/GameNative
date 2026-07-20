@@ -332,6 +332,8 @@ private fun LibraryScreenContent(
     var pendingGridFocusRequest by remember { mutableStateOf(false) }
     var pendingCarouselFocusRequest by remember { mutableStateOf(false) }
 
+    var recommendationItemCount by remember { mutableIntStateOf(0) }
+
     var isSystemMenuOpen by remember { mutableStateOf(false) }
     // Track previous overlay states to detect when they close
     var wasSystemMenuOpen by remember { mutableStateOf(false) }
@@ -360,8 +362,16 @@ private fun LibraryScreenContent(
     var tabBarHasFocus by remember { mutableStateOf(false) }
     var lastBootstrapAtMs by remember { mutableLongStateOf(0L) }
 
+    fun getContentLastIndex(): Int {
+        return if (state.currentTab == LibraryTab.RECOMMENDED) {
+            (recommendationItemCount - 1).coerceAtLeast(0)
+        } else {
+            state.appInfoList.lastIndex.coerceAtLeast(0)
+        }
+    }
+
     fun firstVisibleContentIndex(): Int {
-        val lastIndex = state.appInfoList.lastIndex
+        val lastIndex = getContentLastIndex()
         if (lastIndex < 0) return 0
 
         return if (currentPaneType == PaneType.CAROUSEL) {
@@ -372,7 +382,7 @@ private fun LibraryScreenContent(
     }
 
     fun currentCarouselFocusTargetIndex(): Int {
-        val lastIndex = state.appInfoList.lastIndex
+        val lastIndex = getContentLastIndex()
         if (lastIndex < 0) return 0
 
         return carouselFocusTargetListIndex.coerceIn(0, lastIndex)
@@ -406,7 +416,7 @@ private fun LibraryScreenContent(
     fun requestCarouselFocusOrDefer(targetListIndex: Int = currentCarouselFocusTargetIndex()) {
         if (!isListFocusable()) return
         ensureKeyboardInputMode()
-        carouselFocusTargetListIndex = targetListIndex.coerceIn(0, state.appInfoList.lastIndex)
+        carouselFocusTargetListIndex = targetListIndex.coerceIn(0, getContentLastIndex())
         try {
             carouselFocusRequester.requestFocus()
             pendingCarouselFocusRequest = false
@@ -917,6 +927,7 @@ private fun LibraryScreenContent(
                             firstGridItemFocusRequester = gridFirstItemFocusRequester,
                             focusTargetListIndex = if (currentPaneType == PaneType.CAROUSEL) currentCarouselFocusTargetIndex() else gridFocusTargetListIndex,
                             onFocusedIndexChanged = { carouselFocusTargetListIndex = it },
+                            onItemCountChanged = { recommendationItemCount = it },
                         )
                     } else {
                         Box(modifier = Modifier.fillMaxSize())
