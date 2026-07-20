@@ -294,6 +294,14 @@ object WorkshopManager {
     private const val MIN_SIZE_VALIDATION_BYTES = 8L * 1024L * 1024L
     private const val SUSPICIOUS_SIZE_RATIO_DIVISOR = 20L
 
+    private fun needsYomiWorkshopZipRestore(item: WorkshopItem, itemDir: File): Boolean {
+        return item.appId == YOMI_HUSTLE_APP_ID &&
+            File(itemDir, ".zip_extracted").isFile &&
+            itemDir.listFiles()?.none {
+                it.isFile && it.extension.equals("zip", ignoreCase = true)
+            } != false
+    }
+
     /**
      * Filters items that need downloading. An item needs sync if:
      * - It has downloadable content (fileUrl or manifestId)
@@ -327,13 +335,7 @@ object WorkshopManager {
             // Older builds extracted YOMI's Workshop ZIPs and deleted the archives.
             // Re-download those items once so the original archive (and therefore
             // its multiplayer hash) is restored instead of rebuilding a different ZIP.
-            if (
-                item.appId == YOMI_HUSTLE_APP_ID &&
-                File(itemDir, ".zip_extracted").isFile &&
-                itemDir.listFiles()?.none {
-                    it.isFile && it.extension.equals("zip", ignoreCase = true)
-                } != false
-            ) {
+            if (needsYomiWorkshopZipRestore(item, itemDir)) {
                 Timber.tag(TAG).i(
                     "Item ${item.publishedFileId} '${item.title}' needs sync: " +
                         "restoring YOMI Workshop ZIP removed by an older build"
@@ -4446,10 +4448,12 @@ object WorkshopManager {
             val marker = File(itemDir, COMPLETE_MARKER)
             val markerExists = marker.exists()
             val hasContent = itemDir.listFiles()?.any { !it.name.startsWith(".") } == true
-            val isMissing = !markerExists || !hasContent
+            val needsYomiZipRestore = needsYomiWorkshopZipRestore(item, itemDir)
+            val isMissing = !markerExists || !hasContent || needsYomiZipRestore
             Timber.tag(TAG).d(
                 "[UpdateCheck] Item ${item.publishedFileId} '${item.title}': " +
                     "marker=$markerExists, hasContent=$hasContent, " +
+                    "needsYomiZipRestore=$needsYomiZipRestore, " +
                     "dirExists=${itemDir.exists()}, isMissing=$isMissing"
             )
             isMissing
