@@ -727,9 +727,9 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="main_later_button">Позже</string>
     <string name="main_launch_anyway">Запустить в любом случае</string>
     <string name="main_loading">Загрузка...</string>
-    <string name="main_multiple_pending_operations">Несколько ожидающих удалённых операций, попробуйте позже. Пожалуйста, перезапустите приложение.</string>
     <string name="main_open_discord">Открыть Discord</string>
     <string name="main_pending_operation_none">Получены ожидающие удалённые операции, операция которых была \'none\'. Пожалуйста, перезапустите приложение.</string>
+    <string name="main_multiple_pending_operations_message">В эту игру недавно играли на другом устройстве, и прогресс той сессии ещё не загружен в облако.\nЕсли вы продолжите, игра на том устройстве будет закрыта, а незагруженный прогресс может быть безвозвратно потерян.</string>
     <string name="main_pending_upload_message">Вы играли в %1$s на устройстве %2$s (%3$s), и это сохранение ещё не в облаке. (загрузка не началась)
 Вы всё ещё можете играть в эту игру, но это может создать конфликт, когда ваш предыдущий прогресс успешно загрузится.</string>
     <string name="main_pending_upload_title">Ожидание загрузки</string>

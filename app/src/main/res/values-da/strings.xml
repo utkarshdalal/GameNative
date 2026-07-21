@@ -957,7 +957,7 @@
     <string name="main_pending_upload_message">Du spillede %1$s på enheden %2$s (%3$s), og den gemfil er ikke i skyen endnu. (upload ikke startet)\nDu kan stadig spille dette spil, men det kan skabe en konflikt når din forrige spilstatus uploades.</string>
     <string name="main_app_session_suspended">App-session suspenderet. Genstart venligst appen.</string>
     <string name="main_pending_operation_none">Modtog ventende fjernoperationer, hvis operation var \'none\'. Genstart venligst appen.</string>
-    <string name="main_multiple_pending_operations">Flere ventende fjernoperationer, prøv igen senere. Genstart venligst appen.</string>
+    <string name="main_multiple_pending_operations_message">Dette spil er for nylig blevet spillet på en anden enhed, og fremskridt fra den session er endnu ikke uploadet til skyen.\nHvis du spiller alligevel, lukkes spillet på den enhed, og det ikke-uploadede fremskridt kan gå permanent tabt.</string>
 
     <!-- TODO: Manual review - Container Config Dialog -->
     <string name="container_config_title">Konfigurér container</string>

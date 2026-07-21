@@ -1083,7 +1083,7 @@
     <string name="main_pending_upload_message">%1$s wurde auf Gerät %2$s (%3$s) gespielt, aber dieser Speicherstand ist noch nicht in der Cloud (Upload nicht gestartet). Du kannst trotzdem spielen, es kann jedoch zu Konflikten kommen, wenn dein vorheriger Speicherstand noch hochgeladen wird.</string>
     <string name="main_app_session_suspended">App-Sitzung unterbrochen. Bitte die App neu starten.</string>
     <string name="main_pending_operation_none">Empfangene ausstehende Remote-Operationen mit \'none\'. Bitte App neu starten.</string>
-    <string name="main_multiple_pending_operations">Mehrere ausstehende Remote-Operationen, später erneut versuchen. Bitte App neu starten.</string>
+    <string name="main_multiple_pending_operations_message">Dieses Spiel wurde kürzlich auf einem anderen Gerät gespielt und der Fortschritt dieser Sitzung wurde noch nicht in die Cloud hochgeladen.\nWenn du trotzdem spielst, wird das Spiel auf dem anderen Gerät beendet und der nicht hochgeladene Fortschritt kann dauerhaft verloren gehen.</string>
     <!-- Container Config Dialog -->
     <string name="container_config_title">Container konfigurieren</string>
     <string name="container_config_unsaved_changes_title">Ungespeicherte Änderungen</string>

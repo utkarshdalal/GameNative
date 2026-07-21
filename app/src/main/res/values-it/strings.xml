@@ -1125,7 +1125,7 @@
     <string name="main_pending_upload_message">Hai giocato a %1$s sul dispositivo %2$s (%3$s), e quel salvataggio non è ancora nel cloud. (caricamento non iniziato)\nPuoi comunque giocare a questo gioco, ma ciò potrebbe creare un conflitto quando il tuo progresso di gioco precedente verrà caricato con successo.</string>
     <string name="main_app_session_suspended">Sessione app sospesa. Riavvia l\'app.</string>
     <string name="main_pending_operation_none">Ricevute operazioni remote in sospeso la cui operazione era \'none\'. Riavvia l\'app.</string>
-    <string name="main_multiple_pending_operations">Molteplici operazioni remote in sospeso, riprova più tardi. Riavvia l\'app.</string>
+    <string name="main_multiple_pending_operations_message">Questo gioco è stato giocato di recente su un altro dispositivo e i progressi di quella sessione non sono ancora stati caricati nel cloud.\nSe giochi comunque, il gioco verrà chiuso su quel dispositivo e i progressi non caricati potrebbero andare persi definitivamente.</string>
 
     <!-- Container Config Dialog -->
     <string name="container_config_title">Configura Container</string>

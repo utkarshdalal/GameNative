@@ -994,13 +994,27 @@ fun PluviaMain(
         }
 
         DialogType.MULTIPLE_PENDING_OPERATIONS -> {
+            onConfirmClick = {
+                setMessageDialogState(MessageDialogState(false))
+                preLaunchApp(
+                    context = context,
+                    appId = state.launchedAppId,
+                    ignorePendingOperations = true,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                    bootToContainer = state.bootToContainer,
+                )
+            }
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
             }
             onDismissRequest = {
                 setMessageDialogState(MessageDialogState(false))
             }
-            onConfirmClick = null
         }
 
         DialogType.CRASH -> {
@@ -2326,16 +2340,37 @@ fun preLaunchApp(
                         }
                     }
                 } else {
-                    // this should probably be handled differently
-                    setMessageDialogState(
-                        MessageDialogState(
-                            visible = true,
-                            type = DialogType.MULTIPLE_PENDING_OPERATIONS,
-                            title = context.getString(R.string.sync_error_title),
-                            message = context.getString(R.string.main_multiple_pending_operations),
-                            dismissBtnText = context.getString(R.string.ok),
-                        ),
-                    )
+                    val uploadInProgress = postSyncInfo.pendingRemoteOperations.firstOrNull {
+                        it.operation == ECloudPendingRemoteOperation.k_ECloudPendingRemoteOperationUploadInProgress
+                    }
+                    if (uploadInProgress != null) {
+                        val gameName = SteamService.getAppInfoOf(ContainerUtils.extractGameIdFromContainerId(appId))?.name ?: ""
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.PENDING_UPLOAD_IN_PROGRESS,
+                                title = context.getString(R.string.main_upload_in_progress_title),
+                                message = context.getString(
+                                    R.string.main_upload_in_progress_message,
+                                    gameName,
+                                    uploadInProgress.machineName,
+                                    Date(uploadInProgress.timeLastUpdated * 1000L).toString(),
+                                ),
+                                dismissBtnText = context.getString(R.string.ok),
+                            ),
+                        )
+                    } else {
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.MULTIPLE_PENDING_OPERATIONS,
+                                title = context.getString(R.string.sync_error_title),
+                                message = context.getString(R.string.main_multiple_pending_operations_message),
+                                confirmBtnText = context.getString(R.string.main_play_anyway),
+                                dismissBtnText = context.getString(R.string.cancel),
+                            ),
+                        )
+                    }
                 }
             }
 

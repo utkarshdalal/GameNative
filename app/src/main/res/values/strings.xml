@@ -1286,7 +1286,7 @@
     <string name="main_pending_upload_message">You played %1$s on the device %2$s (%3$s), and that save is not yet in the cloud. (upload not started)\nYou can still play this game, but that may create a conflict when your previous game progress successfully uploads.</string>
     <string name="main_app_session_suspended">App session suspended. Please restart app.</string>
     <string name="main_pending_operation_none">Received pending remote operations whose operation was \'none\'. Please restart app.</string>
-    <string name="main_multiple_pending_operations">Multiple pending remote operations, try again later. Please restart app.</string>
+    <string name="main_multiple_pending_operations_message">This game was recently played on another device, and progress from that session hasn\'t been uploaded to the cloud yet.\nIf you play anyway, any game running on that device will be closed, and its un-uploaded progress may be permanently lost.</string>
 
     <!-- Container Config Dialog -->
     <string name="container_config_title">Configure Container</string>

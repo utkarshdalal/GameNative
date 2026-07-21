@@ -1142,7 +1142,7 @@
     <string name="main_pending_upload_message">Grałeś w %1$s na urządzeniu %2$s (%3$s), a ten zapis nie jest jeszcze w chmurze (przesyłanie nie rozpoczęte).\nMożesz nadal grać w tę grę, ale może to wywołać konflikt, gdy postęp poprzedniej gry zostanie pomyślnie przesłany.</string>
     <string name="main_app_session_suspended">Sesja aplikacji zawieszona. Uruchom ponownie aplikację.</string>
     <string name="main_pending_operation_none">Otrzymano oczekujące operacje zdalne, których operacja brzmiała „none”. Uruchom ponownie aplikację.</string>
-    <string name="main_multiple_pending_operations">Wiele oczekujących operacji zdalnych, spróbuj ponownie później. Uruchom ponownie aplikację.</string>
+    <string name="main_multiple_pending_operations_message">W tę grę niedawno grano na innym urządzeniu, a postęp z tamtej sesji nie został jeszcze przesłany do chmury.\nJeśli mimo to zagrasz, gra na tamtym urządzeniu zostanie zamknięta, a nieprzesłany postęp może zostać bezpowrotnie utracony.</string>
 
     <!-- Container Config Dialog -->
     <string name="container_config_title">Konfiguruj kontener</string>

@@ -1166,7 +1166,7 @@
     <string name="main_pending_upload_message">%1$s をデバイス %2$s (%3$s) でプレイしましたが、そのセーブデータはまだクラウドにありません。 (アップロード未開始)\nこのゲームは引き続きプレイできますが、以前の進行状況が正常にアップロードされた際に競合が発生する可能性があります。</string>
     <string name="main_app_session_suspended">アプリのセッションが一時停止されました。アプリを再起動してください。</string>
     <string name="main_pending_operation_none">操作が \'none\' である保留中のリモート操作を受信しました。アプリを再起動してください。</string>
-    <string name="main_multiple_pending_operations">保留中のリモート操作が複数あります。後でもう一度試してください。アプリを再起動してください。</string>
+    <string name="main_multiple_pending_operations_message">このゲームは最近別のデバイスでプレイされており、そのセッションの進行状況はまだクラウドにアップロードされていません。\nそれでもプレイすると、そのデバイス上のゲームは終了され、アップロードされていない進行状況は完全に失われる可能性があります。</string>
 
     <!-- Container Config Dialog -->
     <string name="container_config_title">コンテナの構成</string>
