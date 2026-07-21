@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -46,6 +47,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -273,6 +276,8 @@ internal fun LibraryCarouselPane(
     val cardHeight = minOf(baseCardHeight, maxCardHeight * CAROUSEL_CARD_SIZE_MULTIPLIER)
     val cardWidth = cardHeight * CAROUSEL_CARD_ASPECT_RATIO
     val itemContainerHeight = cardHeight + cardTopOverflow + cardBottomOverflow
+    val tiltPivotY = (cardTopOverflow.value + (cardHeight.value + badgeReservedHeight.value) / 2f) /
+        itemContainerHeight.value
     val cardWidthPx = with(density) { cardWidth.toPx() }
     // Keep lazy items composed slightly beyond the viewport because rotation/translation can leave
     // transformed pixels visible after the raw item slot has technically moved offscreen.
@@ -479,9 +484,9 @@ internal fun LibraryCarouselPane(
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.TopCenter)
-                                        .padding(top = cardTopOverflow)
-                                        .width(cardWidth)
-                                        .height(cardHeight + badgeReservedHeight)
+                                        .wrapContentHeight(align = Alignment.Top, unbounded = true)
+                                        .width(carouselItemSlotWidth)
+                                        .height(itemContainerHeight)
                                         .graphicsLayer {
                                             val tiltInput = tiltInputState.value
                                             val distanceFromCenter = tiltInput.distanceFromCenterPx
@@ -531,12 +536,15 @@ internal fun LibraryCarouselPane(
                                             this.rotationY = computedRotationY
                                             this.translationX = computedTranslationX
                                             cameraDistance = cameraDistancePx
+                                            transformOrigin = TransformOrigin(0.5f, tiltPivotY)
                                             clip = false
+                                            compositingStrategy = CompositingStrategy.Offscreen
                                         },
                                 ) {
                                     Box(
                                         modifier = Modifier
                                             .align(Alignment.TopCenter)
+                                            .padding(top = cardTopOverflow)
                                             .width(cardWidth)
                                             .height(cardHeight),
                                         contentAlignment = Alignment.Center,

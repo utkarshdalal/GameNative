@@ -3815,7 +3815,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             else -> {
                 if (shouldClearUserDataForLoggedOnFailure(callback.result)) {
-                    clearUserData()
+                    PrefManager.clearSteamSessionPreferences()
                 }
 
                 _loginResult = LoginResult.Failed
