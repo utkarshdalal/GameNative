@@ -213,8 +213,29 @@ private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStat
             }
         }
 
+    val displayMetrics = context.resources.displayMetrics
+    val nativeWidth = maxOf(displayMetrics.widthPixels, displayMetrics.heightPixels)
+    val nativeHeight = minOf(displayMetrics.widthPixels, displayMetrics.heightPixels)
+    val deviceRes = "${nativeWidth}x${nativeHeight}"
+    val halfRes = "${(nativeWidth * 0.5f).roundToInt()}x${(nativeHeight * 0.5f).roundToInt()}"
+    val optimizedRes = "${(nativeWidth * 0.75f).roundToInt()}x${(nativeHeight * 0.75f).roundToInt()}"
+
+    val baseScreenSizes = stringArrayResource(R.array.screen_size_entries).toList()
+    val adaptiveScreenSizes = mutableListOf<String>()
+
+    // Add device specific resolutions if they don't exactly match existing presets
+    listOf(
+        deviceRes to context.getString(R.string.resolution_native),
+        optimizedRes to context.getString(R.string.resolution_optimized),
+        halfRes to context.getString(R.string.resolution_half)
+    ).forEach { (res, label) ->
+        if (baseScreenSizes.none { it.startsWith(res) }) {
+            adaptiveScreenSizes.add("$res ($label)")
+        }
+    }
+
     return ContainerConfigDialogStaticData(
-        screenSizes = stringArrayResource(R.array.screen_size_entries).toList(),
+        screenSizes = baseScreenSizes + adaptiveScreenSizes,
         baseGraphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList(),
         dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList(),
         displayRenderers = stringArrayResource(R.array.displayrenderers_entries).toList(),

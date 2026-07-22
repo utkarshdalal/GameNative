@@ -190,6 +190,9 @@
     <string name="container_config_custom_resolution_separator">x</string>
     <string name="container_config_custom_resolution_error_nonzero">Width and height must be greater than 0</string>
     <string name="container_config_custom_resolution_error_aspect">Width must be greater than height</string>
+    <string name="resolution_native">Native</string>
+    <string name="resolution_optimized">Optimized</string>
+    <string name="resolution_half">Half</string>
     <string name="storage_info">Storage Info</string>
     <string name="duplicate">Duplicate</string>
     <string name="reconfigure">Reconfigure</string>
