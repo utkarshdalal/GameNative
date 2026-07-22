@@ -281,7 +281,7 @@ class CustomGameAppScreen : BaseAppScreen() {
 
                 if (shouldExtract) {
                     // First, try using the container's selected executable if available
-                    val containerManager = com.winlator.container.ContainerManager(context)
+                    val containerManager = com.winlator.container.ContainerManager.getInstance(context)
                     val hasContainer = containerManager.hasContainer(libraryItem.appId)
                     Timber.tag("CustomGameAppScreen").d("Container exists: $hasContainer")
 

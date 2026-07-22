@@ -115,9 +115,9 @@ internal fun ListViewCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Game icon
+            // Game icon - start with empty to avoid synchronous LibraryItem getter
             val iconUrl by produceState(
-                initialValue = appInfo.clientIconUrl,
+                initialValue = "",
                 key1 = appInfo.appId,
                 key2 = appInfo.clientIconUrl,
             ) {
@@ -220,13 +220,7 @@ private fun InstallStatusBadge(
     }
     val isDownloading = downloadInfo != null && downloadProgress < 1f
     var isInstalled by remember(appInfo.appId) {
-        mutableStateOf(
-            if (isSteam) {
-                SteamService.isAppInstalled(appInfo.gameId)
-            } else {
-                true // Custom Games always installed
-            },
-        )
+        mutableStateOf(appInfo.isInstalled)
     }
 
     LaunchedEffect(isRefreshing) {

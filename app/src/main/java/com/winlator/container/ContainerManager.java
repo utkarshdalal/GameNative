@@ -32,6 +32,14 @@ public class ContainerManager {
     private final ArrayList<Container> containers = new ArrayList<>();
     private final File homeDir;
     private final Context context;
+    private static ContainerManager instance;
+
+    public static ContainerManager getInstance(Context context) {
+        if (instance == null) {
+            instance = new ContainerManager(context.getApplicationContext());
+        }
+        return instance;
+    }
 
     public ContainerManager(Context context) {
         this.context = context;

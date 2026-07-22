@@ -7,6 +7,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -301,19 +303,24 @@ internal fun LibraryListPane(
                                         Modifier
                                     }
 
-                                    if (item.index > 0 && currentLayout == PaneType.LIST) {
-                                        HorizontalDivider()
+                                    Column {
+                                        if (listIndex > 0 && currentLayout == PaneType.LIST) {
+                                            HorizontalDivider(
+                                                modifier = Modifier.padding(horizontal = horizontalPadding),
+                                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                            )
+                                        }
+                                        AppItem(
+                                            modifier = appItemModifier,
+                                            appInfo = item,
+                                            onClick = { onNavigate(item.appId) },
+                                            paneType = currentLayout,
+                                            onFocus = { targetOfScroll = item.index },
+                                            imageRefreshCounter = state.imageRefreshCounter,
+                                            compatibilityStatus = state.compatibilityMap[item.name],
+                                            gameStats = state.statsFor(item),
+                                        )
                                     }
-                                    AppItem(
-                                        modifier = appItemModifier,
-                                        appInfo = item,
-                                        onClick = { onNavigate(item.appId) },
-                                        paneType = currentLayout,
-                                        onFocus = { targetOfScroll = item.index },
-                                        imageRefreshCounter = state.imageRefreshCounter,
-                                        compatibilityStatus = state.compatibilityMap[item.name],
-                                        gameStats = state.statsFor(item),
-                                    )
                                 }
                             }
                             if (state.appInfoList.size < state.totalAppsInFilter) {
@@ -354,12 +361,17 @@ internal fun LibraryListPane(
                         ),
                     ) {
                         items(totalSkeletonCount) { index ->
-                            if (index > 0 && currentLayout == PaneType.LIST) {
-                                HorizontalDivider()
+                            Column {
+                                if (index > 0 && currentLayout == PaneType.LIST) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = horizontalPadding),
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                                    )
+                                }
+                                GameSkeletonLoader(
+                                    paneType = currentLayout,
+                                )
                             }
-                            GameSkeletonLoader(
-                                paneType = currentLayout,
-                            )
                         }
                     }
                 }

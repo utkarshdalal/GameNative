@@ -173,7 +173,7 @@ object CustomGameScanner {
 
         // 2) Try extracting from the selected container executable
         try {
-            val cm = ContainerManager(context)
+            val cm = ContainerManager.getInstance(context)
             if (cm.hasContainer(appId)) {
                 val container = cm.getContainerById(appId)
                 val relExe = container.executablePath
@@ -518,15 +518,19 @@ object CustomGameScanner {
         if (manualFolders.isNotEmpty()) {
             val existingAppIds = mutableSetOf<String>()
             for (manualPath in manualFolders) {
-                // Filter by query if provided
-                if (q.isNotEmpty()) {
-                    val folderName = File(manualPath).name
-                    if (!folderName.contains(q, ignoreCase = true)) continue
-                }
+                try {
+                    // Filter by query if provided
+                    if (q.isNotEmpty()) {
+                        val folderName = File(manualPath).name
+                        if (!folderName.contains(q, ignoreCase = true)) continue
+                    }
 
-                val manualItem = createLibraryItemFromFolder(manualPath)
-                if (manualItem != null && existingAppIds.add(manualItem.appId)) {
-                    items.add(manualItem.copy(index = indexCounter++))
+                    val manualItem = createLibraryItemFromFolder(manualPath)
+                    if (manualItem != null && existingAppIds.add(manualItem.appId)) {
+                        items.add(manualItem.copy(index = indexCounter++))
+                    }
+                } catch (e: Exception) {
+                    Timber.tag("CustomGameScanner").e(e, "Error scanning custom game folder: $manualPath")
                 }
             }
         }
@@ -565,8 +569,13 @@ object CustomGameScanner {
 
     fun createLibraryItemFromFolder(folderPath: String): LibraryItem? {
         val folder = File(folderPath)
-        if (!folder.exists() || !folder.isDirectory) {
-            Timber.tag("CustomGameScanner").w("Folder does not exist or is not a directory: $folderPath")
+        try {
+            if (!folder.exists() || !folder.isDirectory) {
+                Timber.tag("CustomGameScanner").w("Folder does not exist or is not a directory: $folderPath")
+                return null
+            }
+        } catch (e: Exception) {
+            Timber.tag("CustomGameScanner").e(e, "Error accessing folder: $folderPath")
             return null
         }
 
