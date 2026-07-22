@@ -26,7 +26,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 private const val MAX_CONCURRENT_DEVICE_REQUESTS = 4
-private const val MAX_COMPATIBLE_PAGE_REQUESTS = 40
+private const val MAX_API_PAGE_SIZE = 200
 private const val MAX_CONFIG_VALUE_CHARS = 64 * 1024
 private const val MAX_METADATA_CHARS = 256
 private const val MAX_NOTES_CHARS = 4 * 1024
@@ -202,44 +202,34 @@ class CommunityConfigService(
         gameId: Int,
         currentGpu: String,
         sort: CommunityConfigSort,
+        page: Int,
     ): CommunityConfigPage = withContext(Dispatchers.IO) {
         val currentCompatibility = communityGpuCompatibility(currentGpu)
         if (currentCompatibility == CommunityGpuCompatibility.UNKNOWN) {
-            return@withContext CommunityConfigPage(emptyList(), 0, 0, false)
+            return@withContext CommunityConfigPage(emptyList(), 0, page.coerceAtLeast(0), false)
         }
 
-        val runs = LinkedHashMap<Long, CommunityConfigRun>()
         val gpuQuery = "Adreno".takeIf {
             currentCompatibility == CommunityGpuCompatibility.ADRENO_STANDARD ||
                 currentCompatibility == CommunityGpuCompatibility.ADRENO_ELITE
         }
-        var sourcePage = 0
-        var hasMore: Boolean
-        do {
-            if (sourcePage >= MAX_COMPATIBLE_PAGE_REQUESTS) {
-                throw CommunityConfigApiException("Too many compatibility results")
-            }
-            val result = fetchConfigPage(
-                gameId = gameId,
-                gpu = gpuQuery,
-                sort = sort,
-                page = sourcePage,
-                limit = 50,
-                deviceId = null,
-            )
-            result.runs
-                .filter { communityGpuCompatibility(it.device.gpu) == currentCompatibility }
-                .forEach { runs.putIfAbsent(it.id, it) }
-            sourcePage++
-            hasMore = result.hasMore
-        } while (hasMore)
-
-        val sortedRuns = sortCommunityRuns(runs.values.toList(), sort)
+        val result = fetchConfigPage(
+            gameId = gameId,
+            gpu = gpuQuery,
+            sort = sort,
+            page = page.coerceAtLeast(0),
+            limit = MAX_API_PAGE_SIZE,
+            deviceId = null,
+        )
+        val compatibleRuns = sortCommunityRuns(
+            result.runs.filter { communityGpuCompatibility(it.device.gpu) == currentCompatibility },
+            sort,
+        )
         CommunityConfigPage(
-            runs = sortedRuns,
-            total = sortedRuns.size,
-            page = 0,
-            hasMore = false,
+            runs = compatibleRuns,
+            total = compatibleRuns.size,
+            page = result.page,
+            hasMore = result.hasMore,
         )
     }
 
@@ -296,7 +286,7 @@ class CommunityConfigService(
             .addQueryParameter("sort", sort.apiValue)
             .addQueryParameter("dir", "desc")
             .addQueryParameter("page", page.coerceAtLeast(0).toString())
-            .addQueryParameter("limit", limit.coerceIn(1, 50).toString())
+            .addQueryParameter("limit", limit.coerceIn(1, MAX_API_PAGE_SIZE).toString())
         if (deviceId != null && deviceId > 0) {
             urlBuilder.addQueryParameter("deviceId", deviceId.toString())
         } else {

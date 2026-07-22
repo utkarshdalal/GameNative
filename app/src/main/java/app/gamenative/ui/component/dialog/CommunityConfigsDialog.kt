@@ -194,7 +194,7 @@ fun CommunityConfigsDialog(
         currentPage = 0
         try {
             val result = if (hardwareScope == CommunityHardwareScope.COMPATIBLE_GPUS) {
-                service.fetchCompatibleConfigs(game.id, detectedGpu, sort)
+                service.fetchCompatibleConfigs(game.id, detectedGpu, sort, page = 0)
             } else {
                 service.fetchConfigs(
                     gameId = game.id,
@@ -227,11 +227,11 @@ fun CommunityConfigsDialog(
 
     fun loadMore() {
         val game = resolvedGame ?: return
-        if (loadingMore || !hasMore || hardwareScope == CommunityHardwareScope.COMPATIBLE_GPUS) return
+        if (loadingMore || !hasMore) return
         val generation = requestGeneration
         val requestedSort = sort
         val requestedScope = hardwareScope
-        val requestedGpu = detectedGpu.takeIf { requestedScope == CommunityHardwareScope.CURRENT_GPU }
+        val requestedGpu = detectedGpu.takeIf { requestedScope != CommunityHardwareScope.CURRENT_DEVICE }
         val requestedDeviceIds = detectedDevices.map { it.id }
             .takeIf { requestedScope == CommunityHardwareScope.CURRENT_DEVICE }
             .orEmpty()
@@ -240,24 +240,33 @@ fun CommunityConfigsDialog(
             sort == requestedSort &&
             hardwareScope == requestedScope &&
             resolvedGame?.id == game.id &&
-            detectedGpu.takeIf { requestedScope == CommunityHardwareScope.CURRENT_GPU } == requestedGpu &&
+            detectedGpu.takeIf { requestedScope != CommunityHardwareScope.CURRENT_DEVICE } == requestedGpu &&
             detectedDevices.map { it.id }
                 .takeIf { requestedScope == CommunityHardwareScope.CURRENT_DEVICE }
                 .orEmpty() == requestedDeviceIds
+        loadingMore = true
         coroutineScope.launch {
-            loadingMore = true
             errorMessage = null
             try {
-                val result = service.fetchConfigs(
-                    gameId = game.id,
-                    gpu = requestedGpu,
-                    sort = requestedSort,
-                    page = requestedPage,
-                    deviceIds = requestedDeviceIds,
-                )
+                val result = if (requestedScope == CommunityHardwareScope.COMPATIBLE_GPUS) {
+                    service.fetchCompatibleConfigs(game.id, requestedGpu.orEmpty(), requestedSort, requestedPage)
+                } else {
+                    service.fetchConfigs(
+                        gameId = game.id,
+                        gpu = requestedGpu,
+                        sort = requestedSort,
+                        page = requestedPage,
+                        deviceIds = requestedDeviceIds,
+                    )
+                }
                 if (requestIsCurrent()) {
-                    runs = sortCommunityRuns((runs + result.runs).distinctBy { it.id }, requestedSort)
-                    total = result.total
+                    val mergedRuns = sortCommunityRuns((runs + result.runs).distinctBy { it.id }, requestedSort)
+                    runs = mergedRuns
+                    total = if (requestedScope == CommunityHardwareScope.COMPATIBLE_GPUS) {
+                        mergedRuns.size
+                    } else {
+                        result.total
+                    }
                     currentPage = result.page
                     hasMore = result.hasMore
                 }

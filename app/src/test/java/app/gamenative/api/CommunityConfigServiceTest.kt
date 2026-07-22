@@ -307,44 +307,76 @@ class CommunityConfigServiceTest {
     }
 
     @Test
-    fun fetchCompatibleConfigs_scansAndKeepsOnlyTheCurrentCompatibilityBucket() = runBlocking {
-        server.dispatcher = object : Dispatcher() {
-            override fun dispatch(request: RecordedRequest): MockResponse {
-                val page = request.requestUrl?.queryParameter("page")?.toIntOrNull() ?: 0
-                val run = when (page) {
-                    0 -> Triple(1L, 3, "Adreno 830")
-                    1 -> Triple(2L, 5, "Adreno 730")
-                    2 -> Triple(3L, 4, "Adreno 840")
-                    else -> return MockResponse().setResponseCode(404)
-                }
-                return MockResponse().setBody(
-                    configPage(
-                        runId = run.first,
-                        rating = run.second,
-                        deviceId = page + 10,
-                        total = 3,
-                        page = page,
-                        pageSize = 1,
-                        gpu = run.third,
-                    ),
-                )
-            }
-        }
+    fun fetchCompatibleConfigs_filtersOneLargeSourcePageWithoutEagerScanning() = runBlocking {
+        fun run(id: Int, rating: Int, gpu: String) =
+            """{
+                "id": $id,
+                "rating": $rating,
+                "configs": {
+                    "containerVariant": "bionic",
+                    "wineVersion": "wine",
+                    "dxwrapper": "dxvk",
+                    "dxwrapperConfig": "version=2.6"
+                },
+                "createdAt": "2026-01-0${id}T00:00:00Z",
+                "device": {"id": $id, "model": "test", "gpu": "$gpu"}
+            }"""
+        server.enqueue(
+            MockResponse().setBody(
+                """{
+                    "runs": [
+                        ${run(1, 3, "Adreno 830")},
+                        ${run(2, 5, "Adreno 730")},
+                        ${run(3, 4, "Adreno 840")}
+                    ],
+                    "total": 250,
+                    "page": 0,
+                    "pageSize": 200
+                }""",
+            ),
+        )
 
         val result = service.fetchCompatibleConfigs(
             gameId = 10,
             currentGpu = "Adreno (TM) 830",
             sort = CommunityConfigSort.HIGHEST_RATED,
+            page = 0,
         )
 
         assertEquals(listOf(3L, 1L), result.runs.map { it.id })
         assertEquals(2, result.total)
-        assertFalse(result.hasMore)
-        repeat(3) {
-            val request = server.takeRequest().requestUrl
-            assertEquals("Adreno", request?.queryParameter("gpu"))
-            assertEquals("50", request?.queryParameter("limit"))
-        }
+        assertTrue(result.hasMore)
+        assertEquals(1, server.requestCount)
+        val request = server.takeRequest().requestUrl
+        assertEquals("Adreno", request?.queryParameter("gpu"))
+        assertEquals("200", request?.queryParameter("limit"))
+        assertEquals("0", request?.queryParameter("page"))
+    }
+
+    @Test
+    fun fetchCompatibleConfigs_keepsPaginationAvailableWhenCurrentPageHasNoMatches() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                configPage(
+                    runId = 1,
+                    rating = 5,
+                    deviceId = 10,
+                    total = 201,
+                    pageSize = 200,
+                    gpu = "Adreno 730",
+                ),
+            ),
+        )
+
+        val result = service.fetchCompatibleConfigs(
+            gameId = 10,
+            currentGpu = "Adreno 830",
+            sort = CommunityConfigSort.HIGHEST_RATED,
+            page = 0,
+        )
+
+        assertTrue(result.runs.isEmpty())
+        assertTrue(result.hasMore)
     }
 
     @Test
