@@ -102,6 +102,17 @@ fun SettingsGroupEmulation() {
                 PrefManager.autoApplyKnownConfig = it
             },
         )
+        var useSharedContainerBase by rememberSaveable { mutableStateOf(PrefManager.useSharedContainerBase) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            state = useSharedContainerBase,
+            title = { Text(text = stringResource(R.string.settings_emulation_shared_container_base_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_emulation_shared_container_base_subtitle)) },
+            onCheckedChange = {
+                useSharedContainerBase = it
+                PrefManager.useSharedContainerBase = it
+            },
+        )
         SettingsMenuLink(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.settings_emulation_box64_presets_title)) },

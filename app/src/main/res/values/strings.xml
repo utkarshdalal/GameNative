@@ -1027,6 +1027,8 @@
     <string name="settings_emulation_default_config_dialog_title">Default Container Config</string>
     <string name="settings_emulation_auto_apply_known_config_title">Auto-apply known config</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Automatically apply recommended settings for Steam games on first launch</string>
+    <string name="settings_emulation_shared_container_base_title">Use Shared Container Base</string>
+    <string name="settings_emulation_shared_container_base_subtitle">[Experimental] Reduces storage by symlinking common system files. Affects new containers.</string>
     <string name="settings_emulation_box64_presets_title">Box64 Presets</string>
     <string name="settings_emulation_box64_presets_subtitle">View, modify, and create Box64 presets</string>
     <string name="settings_emulation_driver_manager_title">Driver Manager</string>

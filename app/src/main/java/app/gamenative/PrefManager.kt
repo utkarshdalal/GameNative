@@ -1325,6 +1325,11 @@ object PrefManager {
         get() = getPref(USE_ALT_NOTIFICATION_ICON, false)
         set(value) = setPref(USE_ALT_NOTIFICATION_ICON, value)
 
+    private val USE_SHARED_CONTAINER_BASE = booleanPreferencesKey("use_shared_container_base")
+    var useSharedContainerBase: Boolean
+        get() = getPref(USE_SHARED_CONTAINER_BASE, false)
+        set(value) = setPref(USE_SHARED_CONTAINER_BASE, value)
+
     // App language preference (empty string means system default)
     private val APP_LANGUAGE = stringPreferencesKey("app_language")
     var appLanguage: String
