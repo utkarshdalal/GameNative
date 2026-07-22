@@ -6,6 +6,8 @@ import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +21,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -1572,12 +1575,31 @@ fun PluviaMain(
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             shadowElevation = 4.dp,
                         ) {
-                            Text(
-                                text = data.visuals.message,
-                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
+                            val actionLabel = data.visuals.actionLabel
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(
+                                    start = 24.dp,
+                                    end = if (actionLabel != null) 8.dp else 24.dp,
+                                ),
+                            ) {
+                                Text(
+                                    text = data.visuals.message,
+                                    modifier = Modifier.padding(vertical = 12.dp),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                if (actionLabel != null) {
+                                    TextButton(onClick = { data.performAction() }) {
+                                        Text(
+                                            text = actionLabel,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            style = MaterialTheme.typography.labelLarge,
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
