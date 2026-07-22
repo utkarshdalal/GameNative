@@ -50,7 +50,12 @@ import java.util.concurrent.Executors;
 
 import timber.log.Timber;
 
-public class WinHandler {
+public class WinHandler implements ControllerManager.OnSlotsChangedListener {
+
+    @Override
+    public void onSlotsChanged() {
+        refreshControllerMappingsForHotplug();
+    }
 
     private static final String TAG = "WinHandler";
     private final ControllerManager controllerManager;
@@ -493,6 +498,7 @@ public class WinHandler {
 
     public void stop() {
         this.running = false;
+        controllerManager.removeOnSlotsChangedListener(this);
         for (int slot = 0; slot < MAX_PLAYERS; slot++) {
             rumbleTeardown(slot);
         }
@@ -701,6 +707,7 @@ public class WinHandler {
 
     public void start() {
         try {
+            controllerManager.addOnSlotsChangedListener(this);
             this.localhost = InetAddress.getLocalHost();
             Context context = activity.getApplicationContext();
             File gamepadShmDir = new File(

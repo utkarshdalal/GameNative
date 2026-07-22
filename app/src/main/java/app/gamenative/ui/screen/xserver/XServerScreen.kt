@@ -928,7 +928,7 @@ fun XServerScreen(
             isMouse && !device.isVirtual && isExternal
         }
         val controllerManager = ControllerManager.getInstance()
-        controllerManager.autoAssignConnectedDevices()
+        controllerManager.scanForDevices()
         hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
         controllerSlotStatusVersion++
         xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
@@ -1285,10 +1285,14 @@ fun XServerScreen(
             QuickMenuAction.EXIT_GAME -> {
                 PostHog.capture(
                     event = "game_closed",
-                    properties = mapOf(
-                        "game_name" to ContainerUtils.resolveGameName(appId),
-                        "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
-                    ),
+                    properties = buildMap {
+                        put("game_name", ContainerUtils.resolveGameName(appId))
+                        put("game_store", ContainerUtils.extractGameSourceFromContainerId(appId).name)
+                        if (PrefManager.usageAnalyticsEnabled) {
+                            put("max_controllers", ControllerManager.getInstance().sessionPeakClaimedSlots)
+                            put("external_controller_used", ControllerManager.getInstance().sessionUsedExternalController)
+                        }
+                    },
                 )
                 imeInputReceiver?.hideKeyboard()
                 // Resume processes before exiting so they can receive SIGTERM cleanly.
@@ -1371,6 +1375,7 @@ fun XServerScreen(
         }
 
         inputManager.registerInputDeviceListener(deviceListener, null)
+        ControllerManager.getInstance().resetClaims()
         scanForExternalDevices()
 
         onDispose {
@@ -1431,6 +1436,12 @@ fun XServerScreen(
                 else -> false
             }
         } else if ((showElementEditor || keepPausedForEditor || showQuickMenu || isEditMode) && (isGamepad || isKeyboard)) {
+            if (isGamepad) {
+                ControllerManager.getInstance().claimSlotForInput(
+                    it.event.device.id,
+                    it.event.action == KeyEvent.ACTION_DOWN && it.event.repeatCount == 0,
+                )
+            }
             val escPressed = !keepPausedForEditor &&
                 isKeyboard &&
                 it.event.keyCode == KeyEvent.KEYCODE_ESCAPE
@@ -1452,7 +1463,10 @@ fun XServerScreen(
             var handled = false
             if (isGamepad) {
                 val winHandler = xServerView!!.getxServer().winHandler
-                val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
+                val assignedSlot = ControllerManager.getInstance().claimSlotForInput(
+                    it.event.device.id,
+                    it.event.action == KeyEvent.ACTION_DOWN && it.event.repeatCount == 0,
+                )
                 if (assignedSlot > 0) {
                     handled = winHandler.onKeyEvent(it.event)
                 } else {
@@ -1498,13 +1512,22 @@ fun XServerScreen(
         val isGamepad = ExternalController.isGameController(it.event?.device)
 
         if ((showElementEditor || keepPausedForEditor || showQuickMenu || isEditMode) && isGamepad) {
+            if (it.event != null) {
+                ControllerManager.getInstance().claimSlotForInput(
+                    it.event.device.id,
+                    ControllerManager.isClaimMotion(it.event),
+                )
+            }
             // Let Compose consume any gamepad motion while menu is visible.
             false
         } else {
             var handled = false
             if (isGamepad && it.event != null) {
                 val winHandler = xServerView!!.getxServer().winHandler
-                val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
+                val assignedSlot = ControllerManager.getInstance().claimSlotForInput(
+                    it.event.device.id,
+                    ControllerManager.isClaimMotion(it.event),
+                )
                 if (assignedSlot > 0) {
                     handled = winHandler.onGenericMotionEvent(it.event)
                 } else {
@@ -3013,6 +3036,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
 
 
         // Clear any physical device from P1 to prevent conflicts.
+        controllerManager.setSlot0ReservedForVirtual(true)
         controllerManager.unassignSlot(0)
 
 
@@ -3025,6 +3049,7 @@ private fun hideInputControls() {
     PluviaApp.inputControlsView?.setShowTouchscreenControls(false)
     PluviaApp.inputControlsView?.setVisibility(View.GONE)
     PluviaApp.inputControlsView?.setProfile(null)
+    ControllerManager.getInstance().setSlot0ReservedForVirtual(false)
     PluviaApp.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
 
     PluviaApp.touchpadView?.setSensitivity(1.0f)
@@ -3244,7 +3269,7 @@ private fun buildControllerStatusSnapshot(
     container: Container,
     areControlsVisible: Boolean,
 ): ControllerStatusSnapshot {
-    controllerManager.autoAssignConnectedDevices()
+    controllerManager.scanForDevices()
     val guestApi = describePreferredInputApi(container)
     val slots = (0 until WinHandler.MAX_PLAYERS).map { slot ->
         val assignedDevice = controllerManager.getAssignedDeviceForSlot(slot)
