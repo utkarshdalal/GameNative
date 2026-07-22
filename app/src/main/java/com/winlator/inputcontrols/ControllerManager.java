@@ -431,6 +431,10 @@ public class ControllerManager {
         slot0ReservedForVirtual = reserved;
     }
 
+    public boolean isSlot0ReservedForVirtual() {
+        return slot0ReservedForVirtual;
+    }
+
     public static boolean isClaimMotion(MotionEvent event) {
         int[] axes = {
                 MotionEvent.AXIS_X, MotionEvent.AXIS_Y, MotionEvent.AXIS_Z, MotionEvent.AXIS_RZ,

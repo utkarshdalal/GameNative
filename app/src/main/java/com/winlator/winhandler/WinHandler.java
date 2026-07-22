@@ -182,6 +182,10 @@ public class WinHandler implements ControllerManager.OnSlotsChangedListener {
         }
         controllerManager.scanForDevices();
         InputDevice p1Device = controllerManager.getAssignedDeviceForSlot(0);
+        if (p1Device == null && !controllerManager.isSlot0ReservedForVirtual()
+                && !controllerManager.getDetectedDevices().isEmpty()) {
+            p1Device = controllerManager.getDetectedDevices().get(0);
+        }
         if (p1Device != null) {
             currentController = ExternalController.getController(p1Device.getId());
             if (currentController != null) {
