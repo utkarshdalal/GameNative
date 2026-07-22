@@ -202,6 +202,7 @@ internal fun ListViewCard(
             if (!appInfo.isRecommended) {
                 FavoriteStarButton(
                     appId = appInfo.appId,
+                    gameName = appInfo.name,
                     iconSize = 22,
                 )
             }

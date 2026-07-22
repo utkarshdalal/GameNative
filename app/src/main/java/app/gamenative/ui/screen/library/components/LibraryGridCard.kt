@@ -370,6 +370,7 @@ internal fun GridViewCard(
 
                     FavoriteStarButton(
                         appId = appInfo.appId,
+                        gameName = appInfo.name,
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .padding(end = 2.dp, bottom = 2.dp),

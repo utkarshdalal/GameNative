@@ -2200,4 +2200,9 @@
     <string name="option_remove_from_favorites">Elimină de la favorite</string>
     <string name="favorite_add">Adaugă la favorite</string>
     <string name="favorite_remove">Elimină de la favorite</string>
+    <string name="favorite_add_named">Adaugă %1$s la favorite</string>
+    <string name="favorite_remove_named">Elimină %1$s de la favorite</string>
+    <string name="favorite_removed">Eliminat de la favorite</string>
+    <string name="favorite_removed_named">%1$s eliminat de la favorite</string>
+    <string name="undo">Anulează</string>
 </resources>

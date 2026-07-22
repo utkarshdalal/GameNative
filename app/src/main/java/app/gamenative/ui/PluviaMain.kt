@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -1128,13 +1129,17 @@ fun PluviaMain(
     var exitSnackbarVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(snackbarController) {
-        SnackbarManager.messages.collect { message ->
-            if (
-                withTimeoutOrNull(SNACKBAR_SHOW_TIMEOUT_MS) {
-                    snackbarController.hostState.showSnackbar(message)
-                } == null
-            ) {
-                Timber.w("[Snackbar]: Display timed out before dismissal")
+        SnackbarManager.events.collect { event ->
+            val result = withTimeoutOrNull(SNACKBAR_SHOW_TIMEOUT_MS) {
+                snackbarController.hostState.showSnackbar(
+                    message = event.message,
+                    actionLabel = event.actionLabel,
+                )
+            }
+            when {
+                result == null -> Timber.w("[Snackbar]: Display timed out before dismissal")
+                result == SnackbarResult.ActionPerformed -> event.onAction?.invoke()
+                else -> {}
             }
             // snackbar dismissed (timeout or new message) — reset exit flag
             exitSnackbarVisible = false

@@ -38,6 +38,7 @@ import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.ui.screen.library.components.toggleFavoriteWithUndo
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.DiagnosticsLog
@@ -724,6 +725,7 @@ abstract class BaseAppScreen {
 
     @Composable
     private fun getFavoriteOption(libraryItem: LibraryItem): AppMenuOption {
+        val context = LocalContext.current
         val favorites by FavoritesManager.favorites.collectAsStateWithLifecycle()
         val isFavorite = favorites.contains(libraryItem.appId)
         return AppMenuOption(
@@ -733,7 +735,7 @@ abstract class BaseAppScreen {
                 AppOptionMenuType.AddToFavorites
             },
             onClick = {
-                FavoritesManager.toggle(libraryItem.appId)
+                toggleFavoriteWithUndo(context, libraryItem.appId, libraryItem.name)
             },
         )
     }

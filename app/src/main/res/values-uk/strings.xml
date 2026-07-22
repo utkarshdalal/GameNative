@@ -2195,4 +2195,9 @@
     <string name="option_remove_from_favorites">Видалити з вибраного</string>
     <string name="favorite_add">Додати до вибраного</string>
     <string name="favorite_remove">Видалити з вибраного</string>
+    <string name="favorite_add_named">Додати %1$s до вибраного</string>
+    <string name="favorite_remove_named">Видалити %1$s з вибраного</string>
+    <string name="favorite_removed">Видалено з вибраного</string>
+    <string name="favorite_removed_named">%1$s видалено з вибраного</string>
+    <string name="undo">Скасувати</string>
 </resources>

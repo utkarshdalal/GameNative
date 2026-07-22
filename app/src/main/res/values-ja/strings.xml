@@ -2152,4 +2152,9 @@
     <string name="option_remove_from_favorites">お気に入りから削除</string>
     <string name="favorite_add">お気に入りに追加</string>
     <string name="favorite_remove">お気に入りから削除</string>
+    <string name="favorite_add_named">%1$s をお気に入りに追加</string>
+    <string name="favorite_remove_named">%1$s をお気に入りから削除</string>
+    <string name="favorite_removed">お気に入りから削除しました</string>
+    <string name="favorite_removed_named">%1$s をお気に入りから削除しました</string>
+    <string name="undo">元に戻す</string>
 </resources>

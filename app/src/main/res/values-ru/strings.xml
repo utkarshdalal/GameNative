@@ -2127,4 +2127,9 @@ https://gamenative.app
     <string name="option_remove_from_favorites">Удалить из избранного</string>
     <string name="favorite_add">Добавить в избранное</string>
     <string name="favorite_remove">Удалить из избранного</string>
+    <string name="favorite_add_named">Добавить %1$s в избранное</string>
+    <string name="favorite_remove_named">Удалить %1$s из избранного</string>
+    <string name="favorite_removed">Удалено из избранного</string>
+    <string name="favorite_removed_named">%1$s удалено из избранного</string>
+    <string name="undo">Отменить</string>
 </resources>

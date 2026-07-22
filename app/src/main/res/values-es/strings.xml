@@ -2195,4 +2195,9 @@
     <string name="option_remove_from_favorites">Quitar de favoritos</string>
     <string name="favorite_add">Añadir a favoritos</string>
     <string name="favorite_remove">Quitar de favoritos</string>
+    <string name="favorite_add_named">Añadir %1$s a favoritos</string>
+    <string name="favorite_remove_named">Quitar %1$s de favoritos</string>
+    <string name="favorite_removed">Quitado de favoritos</string>
+    <string name="favorite_removed_named">%1$s quitado de favoritos</string>
+    <string name="undo">Deshacer</string>
 </resources>

@@ -2137,4 +2137,9 @@
     <string name="option_remove_from_favorites">Aus Favoriten entfernen</string>
     <string name="favorite_add">Zu Favoriten hinzufügen</string>
     <string name="favorite_remove">Aus Favoriten entfernen</string>
+    <string name="favorite_add_named">%1$s zu Favoriten hinzufügen</string>
+    <string name="favorite_remove_named">%1$s aus Favoriten entfernen</string>
+    <string name="favorite_removed">Aus Favoriten entfernt</string>
+    <string name="favorite_removed_named">%1$s aus Favoriten entfernt</string>
+    <string name="undo">Rückgängig</string>
 </resources>
