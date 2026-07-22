@@ -110,6 +110,11 @@
     <string name="gog_rec_empty">Add or play some games to get GOG recommendations based on your library.</string>
     <string name="tab_all">All</string>
     <string name="tab_favorites">Favorites</string>
+    <string name="favorites_empty_title">No favorites yet</string>
+    <string name="favorites_empty_message">Tap the star on any game to add it here for quick access.</string>
+    <string name="favorites_empty_action">Browse all games</string>
+    <string name="favorites_empty_filtered_title">No favorites to show</string>
+    <string name="favorites_empty_filtered_message">No favorite games match the current search or filters.</string>
     <string name="tab_steam">Steam</string>
     <string name="tab_gog">GOG</string>
     <string name="tab_epic">Epic</string>

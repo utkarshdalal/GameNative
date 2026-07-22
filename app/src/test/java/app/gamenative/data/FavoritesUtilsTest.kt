@@ -75,4 +75,46 @@ class FavoritesUtilsTest {
         assertEquals(0, count)
         assertFalse(count == games.size)
     }
+
+    @Test
+    fun countPresent_countsOnlyFavoritesInEligibleSet() {
+        val count = FavoritesUtils.countPresent(
+            favorites = setOf("1", "2", "3", "orphan"),
+            eligibleIds = setOf("2", "3", "4"),
+        )
+
+        assertEquals(2, count)
+    }
+
+    @Test
+    fun countPresent_isZeroWhenNoOverlap() {
+        val count = FavoritesUtils.countPresent(
+            favorites = setOf("1", "2"),
+            eligibleIds = setOf("3", "4"),
+        )
+
+        assertEquals(0, count)
+    }
+
+    @Test
+    fun countPresent_isZeroWhenFavoritesEmpty() {
+        val count = FavoritesUtils.countPresent(
+            favorites = emptySet(),
+            eligibleIds = setOf("1", "2"),
+        )
+
+        assertEquals(0, count)
+    }
+
+    @Test
+    fun countPresent_ignoresOrphanedFavoritesNotInEligibleSet() {
+        // Favorited games that have disappeared from the library (uninstalled source, revoked
+        // credentials) must not inflate the badge beyond what the tab can actually show.
+        val count = FavoritesUtils.countPresent(
+            favorites = setOf("a", "b", "c"),
+            eligibleIds = emptySet(),
+        )
+
+        assertEquals(0, count)
+    }
 }

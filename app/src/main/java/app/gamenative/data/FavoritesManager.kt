@@ -31,8 +31,16 @@ object FavoritesManager {
     /** The set of favorited app ids. Observe this to react to changes. */
     val favorites: StateFlow<Set<String>> = _favorites.asStateFlow()
 
+    private val _loaded = MutableStateFlow(false)
+
+    /**
+     * Whether the saved set has finished loading from disk. Observe this to tell a genuinely empty
+     * favorites set apart from one that simply hasn't loaded yet, so the UI doesn't flash an
+     * "empty" state before the stored favorites arrive.
+     */
+    val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
+
     private val lock = Any()
-    private var loaded = false
 
     /** Edits made before the saved set finished loading, kept so they can be replayed on top of it. */
     private val pendingEdits = LinkedHashMap<String, Boolean>()
@@ -47,8 +55,11 @@ object FavoritesManager {
                 }
                 val hadPendingEdits = pendingEdits.isNotEmpty()
                 pendingEdits.clear()
-                loaded = true
+                // Publish the loaded set before flipping the loaded flag, so an observer that reacts
+                // to `loaded` never sees `true` while `favorites` is still the initial empty set
+                // (which would briefly render the "no favorites yet" empty state).
                 _favorites.value = result
+                _loaded.value = true
                 // Persist inside the lock so a concurrent toggle cannot be overwritten by a stale
                 // snapshot written after the lock is released.
                 if (hadPendingEdits) {
@@ -68,7 +79,7 @@ object FavoritesManager {
             val updated = FavoritesUtils.apply(_favorites.value, appId, favorite)
             if (updated == _favorites.value) return
             _favorites.value = updated
-            if (loaded) {
+            if (_loaded.value) {
                 PrefManager.favoriteAppIds = updated
             } else {
                 // Still loading: record the intent so the load replays it on top of the saved set.

@@ -2204,6 +2204,11 @@
     <string name="steam_invite_online">在线</string>
     <string name="steam_invite_offline">离线</string>
     <string name="tab_favorites">收藏</string>
+    <string name="favorites_empty_title">还没有收藏</string>
+    <string name="favorites_empty_message">点击任意游戏上的星标即可将其添加到这里，方便快速访问。</string>
+    <string name="favorites_empty_action">浏览所有游戏</string>
+    <string name="favorites_empty_filtered_title">没有可显示的收藏</string>
+    <string name="favorites_empty_filtered_message">没有符合当前搜索或筛选条件的收藏游戏。</string>
     <string name="option_add_to_favorites">添加到收藏</string>
     <string name="option_remove_from_favorites">从收藏中移除</string>
     <string name="favorite_add">添加到收藏</string>

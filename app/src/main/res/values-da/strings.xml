@@ -2058,6 +2058,11 @@
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
     <string name="tab_favorites">Favoritter</string>
+    <string name="favorites_empty_title">Ingen favoritter endnu</string>
+    <string name="favorites_empty_message">Tryk på stjernen på et spil for at tilføje det her for hurtig adgang.</string>
+    <string name="favorites_empty_action">Gennemse alle spil</string>
+    <string name="favorites_empty_filtered_title">Ingen favoritter at vise</string>
+    <string name="favorites_empty_filtered_message">Ingen favoritspil matcher den aktuelle søgning eller filtre.</string>
     <string name="option_add_to_favorites">Føj til favoritter</string>
     <string name="option_remove_from_favorites">Fjern fra favoritter</string>
     <string name="favorite_add">Føj til favoritter</string>

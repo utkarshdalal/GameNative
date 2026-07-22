@@ -2188,6 +2188,11 @@
     <string name="steam_invite_online">En ligne</string>
     <string name="steam_invite_offline">Hors ligne</string>
     <string name="tab_favorites">Favoris</string>
+    <string name="favorites_empty_title">Aucun favori pour l’instant</string>
+    <string name="favorites_empty_message">Appuyez sur l’étoile d’un jeu pour l’ajouter ici et y accéder rapidement.</string>
+    <string name="favorites_empty_action">Parcourir tous les jeux</string>
+    <string name="favorites_empty_filtered_title">Aucun favori à afficher</string>
+    <string name="favorites_empty_filtered_message">Aucun jeu favori ne correspond à la recherche ou aux filtres actuels.</string>
     <string name="option_add_to_favorites">Ajouter aux favoris</string>
     <string name="option_remove_from_favorites">Retirer des favoris</string>
     <string name="favorite_add">Ajouter aux favoris</string>

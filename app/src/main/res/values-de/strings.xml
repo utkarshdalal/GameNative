@@ -2128,6 +2128,11 @@
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
     <string name="tab_favorites">Favoriten</string>
+    <string name="favorites_empty_title">Noch keine Favoriten</string>
+    <string name="favorites_empty_message">Tippe bei einem Spiel auf den Stern, um es für den schnellen Zugriff hier hinzuzufügen.</string>
+    <string name="favorites_empty_action">Alle Spiele durchsuchen</string>
+    <string name="favorites_empty_filtered_title">Keine Favoriten anzuzeigen</string>
+    <string name="favorites_empty_filtered_message">Keine Favoriten-Spiele entsprechen der aktuellen Suche oder den Filtern.</string>
     <string name="option_add_to_favorites">Zu Favoriten hinzufügen</string>
     <string name="option_remove_from_favorites">Aus Favoriten entfernen</string>
     <string name="favorite_add">Zu Favoriten hinzufügen</string>

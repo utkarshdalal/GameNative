@@ -19,4 +19,8 @@ internal object FavoritesUtils {
     /** Counts how many of the [items] are in [favorites]. */
     fun <T> count(items: List<T>, favorites: Set<String>, id: (T) -> String): Int =
         items.count { id(it) in favorites }
+
+    /** Counts how many [favorites] are present in [eligibleIds] (the intersection size). */
+    fun countPresent(favorites: Set<String>, eligibleIds: Set<String>): Int =
+        favorites.count { it in eligibleIds }
 }

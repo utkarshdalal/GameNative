@@ -2184,6 +2184,11 @@
     <string name="steam_invite_online">온라인</string>
     <string name="steam_invite_offline">오프라인</string>
     <string name="tab_favorites">즐겨찾기</string>
+    <string name="favorites_empty_title">아직 즐겨찾기가 없습니다</string>
+    <string name="favorites_empty_message">게임의 별 아이콘을 눌러 여기에 추가하고 빠르게 이용하세요.</string>
+    <string name="favorites_empty_action">모든 게임 보기</string>
+    <string name="favorites_empty_filtered_title">표시할 즐겨찾기가 없습니다</string>
+    <string name="favorites_empty_filtered_message">현재 검색어나 필터와 일치하는 즐겨찾기 게임이 없습니다.</string>
     <string name="option_add_to_favorites">즐겨찾기에 추가</string>
     <string name="option_remove_from_favorites">즐겨찾기에서 제거</string>
     <string name="favorite_add">즐겨찾기에 추가</string>

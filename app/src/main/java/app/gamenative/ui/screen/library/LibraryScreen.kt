@@ -79,6 +79,7 @@ import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
+import app.gamenative.data.FavoritesManager
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
@@ -99,6 +100,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.screen.library.components.LibraryCarouselPane
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import app.gamenative.ui.screen.library.components.LibraryListPane
+import app.gamenative.ui.screen.library.components.LibraryFavoritesEmptyState
 import app.gamenative.ui.screen.library.components.RecommendationDisclosureDialog
 import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
 import app.gamenative.ui.screen.library.components.LibrarySearchBar
@@ -974,6 +976,13 @@ private fun LibraryScreenContent(
                     LibraryTab.LOCAL -> PrefManager.customGamesCount == 0
                     else -> false
                 }
+                // Favorites tab has its own empty state. Only show it once favorites have loaded and
+                // the list has settled, so a genuinely empty tab is explained instead of flashing a
+                // blank screen (or the empty message before stored favorites arrive).
+                val favorites by FavoritesManager.favorites.collectAsStateWithLifecycle()
+                val favoritesLoaded by FavoritesManager.loaded.collectAsStateWithLifecycle()
+                val showFavoritesEmptyState = state.currentTab == LibraryTab.FAVORITES &&
+                    favoritesLoaded && !state.isLoading && state.appInfoList.isEmpty()
                 if (showEmptyStateSplash) {
                     val (messageResId, buttonResId, onAction) = when (state.currentTab) {
                         LibraryTab.STEAM -> Triple(
@@ -1009,6 +1018,24 @@ private fun LibraryScreenContent(
                         onSignInClick = onAction,
                         modifier = Modifier.fillMaxSize(),
                     )
+                } else if (showFavoritesEmptyState) {
+                    if (favorites.isEmpty()) {
+                        LibraryFavoritesEmptyState(
+                            titleResId = R.string.favorites_empty_title,
+                            messageResId = R.string.favorites_empty_message,
+                            actionLabelResId = R.string.favorites_empty_action,
+                            onAction = { onTabChanged(LibraryTab.ALL) },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        // Favorites exist but none are visible — filtered out by the current search
+                        // or unavailable (source logged out / game removed).
+                        LibraryFavoritesEmptyState(
+                            titleResId = R.string.favorites_empty_filtered_title,
+                            messageResId = R.string.favorites_empty_filtered_message,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 } else {
                     // Library list (content scrolls behind tab bar)
                     if (currentPaneType == PaneType.CAROUSEL) {
