@@ -1379,7 +1379,7 @@
     <string name="community_config_newest">Newest</string>
     <string name="community_config_same_device">Same device</string>
     <string name="community_config_this_gpu">Same GPU</string>
-    <string name="community_config_compatible_gpus">Compatible GPUs</string>
+    <string name="community_config_compatible_gpus">Compatible</string>
     <string name="community_config_load_more">Load more</string>
     <string name="community_config_no_device_results">No configs were found for this device.</string>
     <string name="community_config_no_gpu_results">No configs were found for this GPU.</string>

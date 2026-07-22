@@ -1044,7 +1044,7 @@
     <string name="community_config_newest">Mais recentes</string>
     <string name="community_config_same_device">Mesmo dispositivo</string>
     <string name="community_config_this_gpu">Mesma GPU</string>
-    <string name="community_config_compatible_gpus">GPUs compatíveis</string>
+    <string name="community_config_compatible_gpus">Compatíveis</string>
     <string name="community_config_load_more">Carregar mais</string>
     <string name="community_config_no_device_results">Nenhuma configuração foi encontrada para este dispositivo.</string>
     <string name="community_config_no_gpu_results">Nenhuma configuração foi encontrada para esta GPU.</string>

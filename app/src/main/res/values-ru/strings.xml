@@ -131,7 +131,7 @@
     <string name="community_config_newest">Сначала новые</string>
     <string name="community_config_same_device">То же устройство</string>
     <string name="community_config_this_gpu">Тот же GPU</string>
-    <string name="community_config_compatible_gpus">Совместимые GPU</string>
+    <string name="community_config_compatible_gpus">Совместимые</string>
     <string name="community_config_load_more">Загрузить ещё</string>
     <string name="community_config_no_device_results">Для этого устройства не найдено конфигураций.</string>
     <string name="community_config_no_gpu_results">Для этого GPU не найдено конфигураций.</string>

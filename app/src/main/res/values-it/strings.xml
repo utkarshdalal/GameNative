@@ -1212,7 +1212,7 @@
     <string name="community_config_newest">Più recenti</string>
     <string name="community_config_same_device">Stesso dispositivo</string>
     <string name="community_config_this_gpu">Stessa GPU</string>
-    <string name="community_config_compatible_gpus">GPU compatibili</string>
+    <string name="community_config_compatible_gpus">Compatibili</string>
     <string name="community_config_load_more">Carica altro</string>
     <string name="community_config_no_device_results">Nessuna configurazione trovata per questo dispositivo.</string>
     <string name="community_config_no_gpu_results">Nessuna configurazione trovata per questa GPU.</string>

@@ -1044,7 +1044,7 @@
     <string name="community_config_newest">Nyeste</string>
     <string name="community_config_same_device">Samme enhed</string>
     <string name="community_config_this_gpu">Samme GPU</string>
-    <string name="community_config_compatible_gpus">Kompatible GPU’er</string>
+    <string name="community_config_compatible_gpus">Kompatible</string>
     <string name="community_config_load_more">Indlæs flere</string>
     <string name="community_config_no_device_results">Der blev ikke fundet konfigurationer til denne enhed.</string>
     <string name="community_config_no_gpu_results">Der blev ikke fundet konfigurationer til denne GPU.</string>

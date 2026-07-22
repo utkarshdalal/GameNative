@@ -1248,7 +1248,7 @@
     <string name="community_config_newest">新着順</string>
     <string name="community_config_same_device">同じデバイス</string>
     <string name="community_config_this_gpu">同じ GPU</string>
-    <string name="community_config_compatible_gpus">互換 GPU</string>
+    <string name="community_config_compatible_gpus">互換</string>
     <string name="community_config_load_more">さらに読み込む</string>
     <string name="community_config_no_device_results">このデバイス向けの設定は見つかりませんでした。</string>
     <string name="community_config_no_gpu_results">この GPU 向けの設定は見つかりませんでした。</string>

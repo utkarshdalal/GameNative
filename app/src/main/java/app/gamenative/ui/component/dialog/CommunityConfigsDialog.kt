@@ -305,6 +305,7 @@ fun CommunityConfigsDialog(
                     actions = {
                         IconButton(
                             onClick = {
+                                service.clearCache()
                                 resolvedGame = null
                                 lookupKey++
                             },
@@ -333,6 +334,7 @@ fun CommunityConfigsDialog(
                     hardwareScope = hardwareScope,
                     deviceAvailable = detectedDevices.isNotEmpty(),
                     gpuAvailable = detectedGpu.isNotBlank(),
+                    enabled = !loading && !loadingMore,
                     onSortChange = { sort = it },
                     onHardwareScopeChange = { hardwareScope = it },
                 )
@@ -471,6 +473,7 @@ private fun CommunityConfigControls(
     hardwareScope: CommunityHardwareScope,
     deviceAvailable: Boolean,
     gpuAvailable: Boolean,
+    enabled: Boolean,
     onSortChange: (CommunityConfigSort) -> Unit,
     onHardwareScopeChange: (CommunityHardwareScope) -> Unit,
 ) {
@@ -481,11 +484,12 @@ private fun CommunityConfigControls(
     ) {
         val compact = maxWidth < 600.dp
         val content: @Composable (Modifier) -> Unit = { modifier ->
-            CommunitySortControl(sort, onSortChange, modifier)
+            CommunitySortControl(sort, enabled, onSortChange, modifier)
             CommunityHardwareControl(
                 hardwareScope,
                 deviceAvailable,
                 gpuAvailable,
+                enabled,
                 onHardwareScopeChange,
                 modifier,
             )
@@ -506,6 +510,7 @@ private fun CommunityConfigControls(
 @Composable
 private fun CommunitySortControl(
     selected: CommunityConfigSort,
+    enabled: Boolean,
     onSelected: (CommunityConfigSort) -> Unit,
     modifier: Modifier,
 ) {
@@ -515,6 +520,7 @@ private fun CommunitySortControl(
             SegmentedButton(
                 selected = selected == option,
                 onClick = { onSelected(option) },
+                enabled = enabled,
                 shape = SegmentedButtonDefaults.itemShape(index, options.size),
                 label = {
                     Text(
@@ -537,6 +543,7 @@ private fun CommunityHardwareControl(
     selected: CommunityHardwareScope,
     deviceAvailable: Boolean,
     gpuAvailable: Boolean,
+    enabled: Boolean,
     onSelected: (CommunityHardwareScope) -> Unit,
     modifier: Modifier,
 ) {
@@ -546,7 +553,7 @@ private fun CommunityHardwareControl(
             SegmentedButton(
                 selected = selected == option,
                 onClick = { onSelected(option) },
-                enabled = when (option) {
+                enabled = enabled && when (option) {
                     CommunityHardwareScope.CURRENT_DEVICE -> deviceAvailable
                     CommunityHardwareScope.CURRENT_GPU -> gpuAvailable
                     CommunityHardwareScope.COMPATIBLE_GPUS -> gpuAvailable
@@ -565,7 +572,7 @@ private fun CommunityHardwareControl(
                                 stringResource(R.string.community_config_compatible_gpus)
                             }
                         },
-                        maxLines = 2,
+                        maxLines = 1,
                     )
                 },
             )

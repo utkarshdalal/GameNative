@@ -1198,7 +1198,7 @@
     <string name="community_config_newest">最新</string>
     <string name="community_config_same_device">相同裝置</string>
     <string name="community_config_this_gpu">相同 GPU</string>
-    <string name="community_config_compatible_gpus">相容 GPU</string>
+    <string name="community_config_compatible_gpus">相容</string>
     <string name="community_config_load_more">載入更多</string>
     <string name="community_config_no_device_results">找不到適用於此裝置的設定。</string>
     <string name="community_config_no_gpu_results">找不到適用於此 GPU 的設定。</string>

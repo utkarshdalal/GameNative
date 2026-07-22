@@ -5,7 +5,9 @@ import app.gamenative.utils.Net
 import com.winlator.container.Container
 import java.io.IOException
 import java.time.OffsetDateTime
+import java.util.LinkedHashMap
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -32,6 +34,9 @@ private const val MAX_METADATA_CHARS = 256
 private const val MAX_NOTES_CHARS = 4 * 1024
 private const val MAX_TAGS = 20
 private const val MAX_TAG_CHARS = 64
+private const val CACHE_TTL_MILLIS = 2 * 60 * 1000L
+private const val MIN_REQUEST_INTERVAL_MILLIS = 250L
+private const val DEFAULT_RATE_LIMIT_COOLDOWN_MILLIS = 5_000L
 
 enum class CommunityConfigSort(val apiValue: String) {
     HIGHEST_RATED("rating"),
@@ -90,6 +95,37 @@ class CommunityConfigApiException(
     cause: Throwable? = null,
 ) : IOException(message, cause)
 
+private class ExpiringCache<K, V>(
+    private val maxEntries: Int,
+    private val ttlMillis: Long,
+) {
+    private data class Entry<V>(val value: V, val expiresAtNanos: Long)
+
+    private val entries = object : LinkedHashMap<K, Entry<V>>(maxEntries, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, Entry<V>>?): Boolean {
+            return size > maxEntries
+        }
+    }
+
+    @Synchronized
+    fun get(key: K): V? {
+        val entry = entries[key] ?: return null
+        if (System.nanoTime() >= entry.expiresAtNanos) {
+            entries.remove(key)
+            return null
+        }
+        return entry.value
+    }
+
+    @Synchronized
+    fun put(key: K, value: V) {
+        entries[key] = Entry(value, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(ttlMillis))
+    }
+
+    @Synchronized
+    fun clear() = entries.clear()
+}
+
 class CommunityConfigService(
     private val client: OkHttpClient = Net.http,
     private val baseUrl: String = DEFAULT_BASE_URL,
@@ -101,12 +137,38 @@ class CommunityConfigService(
         val shared: CommunityConfigService by lazy { CommunityConfigService() }
     }
 
+    private data class ConfigCacheKey(
+        val gameId: Int,
+        val gpu: String,
+        val sort: CommunityConfigSort,
+        val page: Int,
+        val limit: Int,
+        val deviceIds: List<Int>,
+        val compatibility: CommunityGpuCompatibility?,
+    )
+
+    private val gameSearchCache = ExpiringCache<String, List<CommunityGame>>(12, CACHE_TTL_MILLIS)
+    private val deviceSearchCache = ExpiringCache<String, List<CommunityConfigDevice>>(12, CACHE_TTL_MILLIS)
+    private val configPageCache = ExpiringCache<ConfigCacheKey, CommunityConfigPage>(24, CACHE_TTL_MILLIS)
+    private val requestGate = Any()
+    private var nextRequestAtNanos = 0L
+
+    fun clearCache() {
+        gameSearchCache.clear()
+        deviceSearchCache.clear()
+        configPageCache.clear()
+    }
+
     suspend fun searchGames(query: String): List<CommunityGame> = withContext(Dispatchers.IO) {
         if (query.isBlank()) return@withContext emptyList()
+        val normalizedQuery = query.trim()
+        gameSearchCache.get(normalizedQuery.lowercase(Locale.ENGLISH))?.let { return@withContext it }
         val url = endpoint("api/games/search")
-            .addQueryParameter("q", query.trim())
+            .addQueryParameter("q", normalizedQuery)
             .build()
-        parseGames(execute(url.toString()))
+        parseGames(execute(url.toString())).also {
+            gameSearchCache.put(normalizedQuery.lowercase(Locale.ENGLISH), it)
+        }
     }
 
     suspend fun findGame(query: String): CommunityGame? {
@@ -136,10 +198,14 @@ class CommunityConfigService(
 
     suspend fun searchDevices(model: String): List<CommunityConfigDevice> = withContext(Dispatchers.IO) {
         if (model.isBlank()) return@withContext emptyList()
+        val normalizedModel = model.trim()
+        deviceSearchCache.get(normalizedModel.lowercase(Locale.ENGLISH))?.let { return@withContext it }
         val url = endpoint("api/devices")
-            .addQueryParameter("model", model.trim())
+            .addQueryParameter("model", normalizedModel)
             .build()
-        parseDevices(execute(url.toString()))
+        parseDevices(execute(url.toString())).also {
+            deviceSearchCache.put(normalizedModel.lowercase(Locale.ENGLISH), it)
+        }
     }
 
     suspend fun fetchConfigs(
@@ -150,11 +216,22 @@ class CommunityConfigService(
         limit: Int = 20,
         deviceIds: List<Int> = emptyList(),
     ): CommunityConfigPage = withContext(Dispatchers.IO) {
-        val validDeviceIds = deviceIds.filter { it > 0 }.distinct()
+        val validDeviceIds = deviceIds.filter { it > 0 }.distinct().sorted()
         val normalizedPage = page.coerceAtLeast(0)
         val normalizedLimit = limit.coerceIn(1, 50)
-        if (validDeviceIds.size <= 1) {
-            return@withContext fetchConfigPage(
+        val cacheKey = ConfigCacheKey(
+            gameId = gameId,
+            gpu = gpu.orEmpty().trim().lowercase(Locale.ENGLISH),
+            sort = sort,
+            page = normalizedPage,
+            limit = normalizedLimit,
+            deviceIds = validDeviceIds,
+            compatibility = null,
+        )
+        configPageCache.get(cacheKey)?.let { return@withContext it }
+
+        val result = if (validDeviceIds.size <= 1) {
+            fetchConfigPage(
                 gameId = gameId,
                 gpu = gpu,
                 sort = sort,
@@ -162,40 +239,41 @@ class CommunityConfigService(
                 limit = normalizedLimit,
                 deviceId = validDeviceIds.singleOrNull(),
             )
-        }
-
-        val endExclusive = (normalizedPage + 1L) * normalizedLimit
-        if (endExclusive > Int.MAX_VALUE) {
-            throw CommunityConfigApiException("Compatibility page is too large")
-        }
-        val targetCount = endExclusive.toInt()
-        val requestLimiter = Semaphore(minOf(validDeviceIds.size, MAX_CONCURRENT_DEVICE_REQUESTS))
-        val slices = coroutineScope {
-            validDeviceIds.map { deviceId ->
-                async {
-                    requestLimiter.withPermit {
-                        fetchDeviceConfigSlice(
-                            gameId = gameId,
-                            sort = sort,
-                            deviceId = deviceId,
-                            targetCount = targetCount,
-                            pageSize = normalizedLimit,
-                        )
+        } else {
+            val endExclusive = (normalizedPage + 1L) * normalizedLimit
+            if (endExclusive > Int.MAX_VALUE) {
+                throw CommunityConfigApiException("Compatibility page is too large")
+            }
+            val targetCount = endExclusive.toInt()
+            val requestLimiter = Semaphore(minOf(validDeviceIds.size, MAX_CONCURRENT_DEVICE_REQUESTS))
+            val slices = coroutineScope {
+                validDeviceIds.map { deviceId ->
+                    async {
+                        requestLimiter.withPermit {
+                            fetchDeviceConfigSlice(
+                                gameId = gameId,
+                                sort = sort,
+                                deviceId = deviceId,
+                                targetCount = targetCount,
+                                pageSize = normalizedLimit,
+                            )
+                        }
                     }
-                }
-            }.awaitAll()
+                }.awaitAll()
+            }
+            val mergedRuns = sortCommunityRuns(
+                slices.flatMap { it.runs }.distinctBy { it.id },
+                sort,
+            )
+            val startIndex = (normalizedPage.toLong() * normalizedLimit).toInt()
+            CommunityConfigPage(
+                runs = mergedRuns.drop(startIndex).take(normalizedLimit),
+                total = slices.sumOf { it.total.toLong() }.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                page = normalizedPage,
+                hasMore = mergedRuns.size > endExclusive || slices.any { it.hasMore },
+            )
         }
-        val mergedRuns = sortCommunityRuns(
-            slices.flatMap { it.runs }.distinctBy { it.id },
-            sort,
-        )
-        val startIndex = (normalizedPage.toLong() * normalizedLimit).toInt()
-        CommunityConfigPage(
-            runs = mergedRuns.drop(startIndex).take(normalizedLimit),
-            total = slices.sumOf { it.total.toLong() }.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
-            page = normalizedPage,
-            hasMore = mergedRuns.size > endExclusive || slices.any { it.hasMore },
-        )
+        result.also { configPageCache.put(cacheKey, it) }
     }
 
     suspend fun fetchCompatibleConfigs(
@@ -209,6 +287,17 @@ class CommunityConfigService(
             return@withContext CommunityConfigPage(emptyList(), 0, page.coerceAtLeast(0), false)
         }
 
+        val normalizedPage = page.coerceAtLeast(0)
+        val cacheKey = ConfigCacheKey(
+            gameId = gameId,
+            gpu = "",
+            sort = sort,
+            page = normalizedPage,
+            limit = MAX_API_PAGE_SIZE,
+            deviceIds = emptyList(),
+            compatibility = currentCompatibility,
+        )
+        configPageCache.get(cacheKey)?.let { return@withContext it }
         val gpuQuery = "Adreno".takeIf {
             currentCompatibility == CommunityGpuCompatibility.ADRENO_STANDARD ||
                 currentCompatibility == CommunityGpuCompatibility.ADRENO_ELITE
@@ -217,7 +306,7 @@ class CommunityConfigService(
             gameId = gameId,
             gpu = gpuQuery,
             sort = sort,
-            page = page.coerceAtLeast(0),
+            page = normalizedPage,
             limit = MAX_API_PAGE_SIZE,
             deviceId = null,
         )
@@ -230,7 +319,7 @@ class CommunityConfigService(
             total = compatibleRuns.size,
             page = result.page,
             hasMore = result.hasMore,
-        )
+        ).also { configPageCache.put(cacheKey, it) }
     }
 
     private data class DeviceConfigSlice(
@@ -305,24 +394,57 @@ class CommunityConfigService(
 
     private fun execute(url: String): String {
         val request = Request.Builder().url(url).get().build()
-        try {
-            client.newCall(request).execute().use { response ->
-                val body = readBoundedBody(response.body)
-                if (!response.isSuccessful) {
-                    throw CommunityConfigApiException(
-                        message = parseErrorMessage(body).ifBlank { "Compatibility service returned HTTP ${response.code}" },
-                        statusCode = response.code,
-                    )
+        return synchronized(requestGate) {
+            waitForRequestWindow()
+            try {
+                client.newCall(request).execute().use { response ->
+                    val body = readBoundedBody(response.body)
+                    if (!response.isSuccessful) {
+                        if (response.code == 429) {
+                            val retryAfterMillis = response.header("Retry-After")
+                                ?.trim()
+                                ?.toLongOrNull()
+                                ?.coerceIn(1L, 60L)
+                                ?.times(1_000L)
+                                ?: DEFAULT_RATE_LIMIT_COOLDOWN_MILLIS
+                            postponeRequests(retryAfterMillis)
+                        }
+                        throw CommunityConfigApiException(
+                            message = parseErrorMessage(body)
+                                .ifBlank { "Compatibility service returned HTTP ${response.code}" },
+                            statusCode = response.code,
+                        )
+                    }
+                    body
                 }
-                return body
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: CommunityConfigApiException) {
+                throw error
+            } catch (error: IOException) {
+                throw CommunityConfigApiException("Unable to reach the compatibility service", cause = error)
             }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: CommunityConfigApiException) {
-            throw error
-        } catch (error: IOException) {
-            throw CommunityConfigApiException("Unable to reach the compatibility service", cause = error)
         }
+    }
+
+    private fun waitForRequestWindow() {
+        val waitNanos = nextRequestAtNanos - System.nanoTime()
+        if (waitNanos > 0) {
+            try {
+                TimeUnit.NANOSECONDS.sleep(waitNanos)
+            } catch (error: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw CommunityConfigApiException("Compatibility request was interrupted", cause = error)
+            }
+        }
+        nextRequestAtNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(MIN_REQUEST_INTERVAL_MILLIS)
+    }
+
+    private fun postponeRequests(delayMillis: Long) {
+        nextRequestAtNanos = maxOf(
+            nextRequestAtNanos,
+            System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(delayMillis),
+        )
     }
 
     private fun readBoundedBody(body: okhttp3.ResponseBody?): String {

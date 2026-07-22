@@ -1231,7 +1231,7 @@
     <string name="community_config_newest">Najnowsze</string>
     <string name="community_config_same_device">To samo urządzenie</string>
     <string name="community_config_this_gpu">Ten sam układ GPU</string>
-    <string name="community_config_compatible_gpus">Zgodne układy GPU</string>
+    <string name="community_config_compatible_gpus">Zgodne</string>
     <string name="community_config_load_more">Wczytaj więcej</string>
     <string name="community_config_no_device_results">Nie znaleziono konfiguracji dla tego urządzenia.</string>
     <string name="community_config_no_gpu_results">Nie znaleziono konfiguracji dla tego układu GPU.</string>

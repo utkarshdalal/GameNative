@@ -1215,7 +1215,7 @@
     <string name="community_config_newest">최신순</string>
     <string name="community_config_same_device">동일한 기기</string>
     <string name="community_config_this_gpu">동일한 GPU</string>
-    <string name="community_config_compatible_gpus">호환 GPU</string>
+    <string name="community_config_compatible_gpus">호환</string>
     <string name="community_config_load_more">더 불러오기</string>
     <string name="community_config_no_device_results">이 기기의 구성을 찾을 수 없습니다.</string>
     <string name="community_config_no_gpu_results">이 GPU의 구성을 찾을 수 없습니다.</string>

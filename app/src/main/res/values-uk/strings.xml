@@ -1217,7 +1217,7 @@
     <string name="community_config_newest">Найновіші</string>
     <string name="community_config_same_device">Той самий пристрій</string>
     <string name="community_config_this_gpu">Той самий GPU</string>
-    <string name="community_config_compatible_gpus">Сумісні GPU</string>
+    <string name="community_config_compatible_gpus">Сумісні</string>
     <string name="community_config_load_more">Завантажити ще</string>
     <string name="community_config_no_device_results">Для цього пристрою не знайдено конфігурацій.</string>
     <string name="community_config_no_gpu_results">Для цього GPU не знайдено конфігурацій.</string>

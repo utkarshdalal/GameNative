@@ -1222,7 +1222,7 @@
     <string name="community_config_newest">Cele mai recente</string>
     <string name="community_config_same_device">Același dispozitiv</string>
     <string name="community_config_this_gpu">Același GPU</string>
-    <string name="community_config_compatible_gpus">GPU-uri compatibile</string>
+    <string name="community_config_compatible_gpus">Compatibile</string>
     <string name="community_config_load_more">Încarcă mai multe</string>
     <string name="community_config_no_device_results">Nu au fost găsite configurații pentru acest dispozitiv.</string>
     <string name="community_config_no_gpu_results">Nu au fost găsite configurații pentru acest GPU.</string>
