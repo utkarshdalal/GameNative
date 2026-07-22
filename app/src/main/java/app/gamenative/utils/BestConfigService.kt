@@ -238,6 +238,16 @@ object BestConfigService {
             filteredJson.put("graphicsDriverVersion", "Turnip Adreno Driver T26 (@Mr_Purple_666)")
         }
 
+        if (GPUInformation.isAdreno8Elite(context) &&
+            !GPUInformation.isAdreno8EliteGen5(context) &&
+            !matched.matches(Regex(".*adreno.*\\b83[0-9]\\b.*"))
+        ) {
+            val kvs = KeyValueSet(filteredJson.optString("graphicsDriverConfig", ""))
+            kvs.put("version", ContainerUtils.WRAPPER_ADRENO_8ELITE)
+            filteredJson.put("graphicsDriverConfig", kvs.toString())
+            filteredJson.put("graphicsDriverVersion", ContainerUtils.WRAPPER_ADRENO_8ELITE)
+        }
+
         if (GPUInformation.isAdrenoA12(context) && !matched.matches(Regex(".*adreno.*\\ba12\\b.*"))) {
             val kvs = KeyValueSet(filteredJson.optString("graphicsDriverConfig", ""))
             kvs.put("version", ContainerUtils.WRAPPER_ADRENO_A12)

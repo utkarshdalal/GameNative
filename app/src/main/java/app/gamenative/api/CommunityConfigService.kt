@@ -26,6 +26,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 private const val MAX_CONCURRENT_DEVICE_REQUESTS = 4
+private const val MAX_COMPATIBLE_PAGE_REQUESTS = 40
 private const val MAX_CONFIG_VALUE_CHARS = 64 * 1024
 private const val MAX_METADATA_CHARS = 256
 private const val MAX_NOTES_CHARS = 4 * 1024
@@ -35,6 +36,13 @@ private const val MAX_TAG_CHARS = 64
 enum class CommunityConfigSort(val apiValue: String) {
     HIGHEST_RATED("rating"),
     NEWEST("created_at"),
+}
+
+internal enum class CommunityGpuCompatibility {
+    ADRENO_STANDARD,
+    ADRENO_ELITE,
+    OTHER,
+    UNKNOWN,
 }
 
 data class CommunityGame(
@@ -59,6 +67,8 @@ data class CommunityConfigRun(
     val config: JsonObject,
     val createdAt: String,
     val appVersion: String,
+    val sessionLengthSeconds: Long?,
+    val gameStore: String,
     val device: CommunityConfigDevice,
 ) {
     fun configString(key: String): String {
@@ -185,6 +195,51 @@ class CommunityConfigService(
             total = slices.sumOf { it.total.toLong() }.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
             page = normalizedPage,
             hasMore = mergedRuns.size > endExclusive || slices.any { it.hasMore },
+        )
+    }
+
+    suspend fun fetchCompatibleConfigs(
+        gameId: Int,
+        currentGpu: String,
+        sort: CommunityConfigSort,
+    ): CommunityConfigPage = withContext(Dispatchers.IO) {
+        val currentCompatibility = communityGpuCompatibility(currentGpu)
+        if (currentCompatibility == CommunityGpuCompatibility.UNKNOWN) {
+            return@withContext CommunityConfigPage(emptyList(), 0, 0, false)
+        }
+
+        val runs = LinkedHashMap<Long, CommunityConfigRun>()
+        val gpuQuery = "Adreno".takeIf {
+            currentCompatibility == CommunityGpuCompatibility.ADRENO_STANDARD ||
+                currentCompatibility == CommunityGpuCompatibility.ADRENO_ELITE
+        }
+        var sourcePage = 0
+        var hasMore: Boolean
+        do {
+            if (sourcePage >= MAX_COMPATIBLE_PAGE_REQUESTS) {
+                throw CommunityConfigApiException("Too many compatibility results")
+            }
+            val result = fetchConfigPage(
+                gameId = gameId,
+                gpu = gpuQuery,
+                sort = sort,
+                page = sourcePage,
+                limit = 50,
+                deviceId = null,
+            )
+            result.runs
+                .filter { communityGpuCompatibility(it.device.gpu) == currentCompatibility }
+                .forEach { runs.putIfAbsent(it.id, it) }
+            sourcePage++
+            hasMore = result.hasMore
+        } while (hasMore)
+
+        val sortedRuns = sortCommunityRuns(runs.values.toList(), sort)
+        CommunityConfigPage(
+            runs = sortedRuns,
+            total = sortedRuns.size,
+            page = 0,
+            hasMore = false,
         )
     }
 
@@ -373,9 +428,30 @@ class CommunityConfigService(
             config = safeConfig,
             createdAt = run.cleanString("createdAt"),
             appVersion = run.cleanString("appVersion"),
+            sessionLengthSeconds = parseSessionLength(run, configObject),
+            gameStore = parseGameStore(run, configObject),
             device = parseDevice(run.optJSONObject("device"), run.optInt("deviceId", 0))
                 ?: CommunityConfigDevice(0, "", "", "", ""),
         )
+    }
+
+    private fun parseSessionLength(run: JSONObject, config: JSONObject): Long? {
+        val sessionMetadata = config.optJSONObject("sessionMetadata")
+        return sequenceOf(
+            run.optPositiveLong("sessionLengthSec"),
+            run.optPositiveLong("session_length_sec"),
+            sessionMetadata?.optPositiveLong("sessionLengthSec"),
+            sessionMetadata?.optPositiveLong("session_length_sec"),
+        ).filterNotNull().firstOrNull()
+    }
+
+    private fun parseGameStore(run: JSONObject, config: JSONObject): String {
+        val explicitStore = sequenceOf("gameStore", "game_store", "store")
+            .map { run.cleanString(it) }
+            .firstOrNull { it.isNotEmpty() }
+        return normalizeCommunityGameStore(explicitStore.orEmpty()).ifEmpty {
+            inferCommunityGameStore(config.cleanString("id"))
+        }
     }
 
     private fun parseDevice(device: JSONObject?, fallbackId: Int = 0): CommunityConfigDevice? {
@@ -453,10 +529,51 @@ internal fun selectCommunityDevices(
 internal fun communityConfigMatchType(currentGpu: String, configGpu: String): String {
     val current = canonicalCommunityGpu(currentGpu)
     val candidate = canonicalCommunityGpu(configGpu)
-    return if (current.isNotEmpty() && current == candidate) {
-        "exact_gpu_match"
-    } else {
-        "fallback_match"
+    val currentCompatibility = communityGpuCompatibility(currentGpu)
+    val candidateCompatibility = communityGpuCompatibility(configGpu)
+    return when {
+        current.isNotEmpty() && current == candidate -> "exact_gpu_match"
+        currentCompatibility == candidateCompatibility &&
+            (currentCompatibility == CommunityGpuCompatibility.ADRENO_STANDARD ||
+                currentCompatibility == CommunityGpuCompatibility.ADRENO_ELITE) -> "gpu_family_match"
+        else -> "fallback_match"
+    }
+}
+
+internal fun communityGpuCompatibility(value: String): CommunityGpuCompatibility {
+    return when (val gpu = canonicalCommunityGpu(value)) {
+        "" -> CommunityGpuCompatibility.UNKNOWN
+        else -> when {
+            gpu.matches(Regex("adreno:[67][0-9]{2}")) -> CommunityGpuCompatibility.ADRENO_STANDARD
+            gpu == "adreno:a12" || gpu.matches(Regex("adreno:8[3-5][0-9]")) -> {
+                CommunityGpuCompatibility.ADRENO_ELITE
+            }
+            else -> CommunityGpuCompatibility.OTHER
+        }
+    }
+}
+
+internal fun normalizeCommunityGameStore(value: String): String {
+    val normalized = value.lowercase(Locale.ENGLISH).replace(Regex("[^a-z0-9]+"), "")
+    return when (normalized) {
+        "steam" -> "steam"
+        "epic", "epicgames", "epicgamesstore" -> "epic"
+        "gog", "gogcom" -> "gog"
+        "amazon", "amazongames" -> "amazon"
+        "custom", "customgame" -> "custom"
+        else -> value.trim().take(MAX_METADATA_CHARS)
+    }
+}
+
+private fun inferCommunityGameStore(configId: String): String {
+    val normalized = configId.uppercase(Locale.ENGLISH)
+    return when {
+        normalized.startsWith("STEAM_") -> "steam"
+        normalized.startsWith("EPIC_") -> "epic"
+        normalized.startsWith("GOG_") -> "gog"
+        normalized.startsWith("AMAZON_") -> "amazon"
+        normalized.startsWith("CUSTOM_GAME_") -> "custom"
+        else -> ""
     }
 }
 
@@ -575,4 +692,13 @@ private fun JSONArray?.toStringList(): List<String> {
 private fun JSONObject.cleanString(key: String, maxLength: Int = MAX_METADATA_CHARS): String {
     if (isNull(key)) return ""
     return optString(key).trim().take(maxLength)
+}
+
+private fun JSONObject.optPositiveLong(key: String): Long? {
+    if (!has(key) || isNull(key)) return null
+    return when (val value = opt(key)) {
+        is Number -> value.toLong()
+        is String -> value.trim().toLongOrNull()
+        else -> null
+    }?.takeIf { it > 0 }
 }

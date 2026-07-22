@@ -85,7 +85,10 @@ class CommunityConfigServiceTest {
                         "dxwrapperConfig": "version=2.6.1",
                         "executablePath": "../../windows/system32/cmd.exe",
                         "execArgs": "/c dangerous-command",
-                        "envVars": "UNSAFE=1"
+                        "envVars": "UNSAFE=1",
+                        "sessionMetadata": {
+                          "session_length_sec": 537
+                        }
                       },
                       "createdAt": "2026-04-23T18:55:11.115263+00:00",
                       "appVersion": "0.9.0",
@@ -119,6 +122,8 @@ class CommunityConfigServiceTest {
         val run = page.runs.single()
         assertEquals(231820L, run.id)
         assertEquals(28.324, run.averageFps!!, 0.0001)
+        assertEquals(537L, run.sessionLengthSeconds)
+        assertEquals("steam", run.gameStore)
         assertEquals("bionic", run.configString("containerVariant"))
         assertFalse(run.config.containsKey("id"))
         assertFalse(run.config.containsKey("executablePath"))
@@ -282,10 +287,95 @@ class CommunityConfigServiceTest {
             communityConfigMatchType("Qualcomm Adreno 730", "Adreno (TM) 730"),
         )
         assertEquals(
-            "fallback_match",
+            "gpu_family_match",
             communityConfigMatchType("Adreno 730", "Adreno 740"),
         )
+        assertEquals(
+            "gpu_family_match",
+            communityConfigMatchType("Adreno 830", "Adreno 840"),
+        )
+        assertEquals(
+            "fallback_match",
+            communityConfigMatchType("Adreno 730", "Adreno 830"),
+        )
+        assertEquals(CommunityGpuCompatibility.ADRENO_STANDARD, communityGpuCompatibility("Adreno 619"))
+        assertEquals(CommunityGpuCompatibility.ADRENO_ELITE, communityGpuCompatibility("Adreno (TM) A12"))
+        assertEquals(CommunityGpuCompatibility.ADRENO_ELITE, communityGpuCompatibility("Adreno 850"))
+        assertEquals(CommunityGpuCompatibility.OTHER, communityGpuCompatibility("Adreno 825"))
+        assertEquals(CommunityGpuCompatibility.OTHER, communityGpuCompatibility("Mali-G715"))
         assertTrue(canonicalCommunityGpu("Unknown GPU").isBlank())
+    }
+
+    @Test
+    fun fetchCompatibleConfigs_scansAndKeepsOnlyTheCurrentCompatibilityBucket() = runBlocking {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val page = request.requestUrl?.queryParameter("page")?.toIntOrNull() ?: 0
+                val run = when (page) {
+                    0 -> Triple(1L, 3, "Adreno 830")
+                    1 -> Triple(2L, 5, "Adreno 730")
+                    2 -> Triple(3L, 4, "Adreno 840")
+                    else -> return MockResponse().setResponseCode(404)
+                }
+                return MockResponse().setBody(
+                    configPage(
+                        runId = run.first,
+                        rating = run.second,
+                        deviceId = page + 10,
+                        total = 3,
+                        page = page,
+                        pageSize = 1,
+                        gpu = run.third,
+                    ),
+                )
+            }
+        }
+
+        val result = service.fetchCompatibleConfigs(
+            gameId = 10,
+            currentGpu = "Adreno (TM) 830",
+            sort = CommunityConfigSort.HIGHEST_RATED,
+        )
+
+        assertEquals(listOf(3L, 1L), result.runs.map { it.id })
+        assertEquals(2, result.total)
+        assertFalse(result.hasMore)
+        repeat(3) {
+            val request = server.takeRequest().requestUrl
+            assertEquals("Adreno", request?.queryParameter("gpu"))
+            assertEquals("50", request?.queryParameter("limit"))
+        }
+    }
+
+    @Test
+    fun explicitRunMetadata_takesPriorityOverLegacyConfigInference() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """{
+                    "runs": [{
+                        "id": 1,
+                        "sessionLengthSec": "120",
+                        "gameStore": "Epic Games Store",
+                        "configs": {
+                            "id": "STEAM_10",
+                            "containerVariant": "bionic",
+                            "wineVersion": "wine",
+                            "dxwrapper": "dxvk",
+                            "dxwrapperConfig": "version=2.6"
+                        },
+                        "device": {"id": 1, "model": "test", "gpu": "Adreno 830"}
+                    }],
+                    "total": 1,
+                    "page": 0,
+                    "pageSize": 20
+                }""",
+            ),
+        )
+
+        val run = service.fetchConfigs(10, null, CommunityConfigSort.NEWEST, 0).runs.single()
+
+        assertEquals(120L, run.sessionLengthSeconds)
+        assertEquals("epic", run.gameStore)
     }
 
     @Test
@@ -429,6 +519,8 @@ class CommunityConfigServiceTest {
 
         assertEquals("", run.notes)
         assertEquals("", run.appVersion)
+        assertNull(run.sessionLengthSeconds)
+        assertEquals("", run.gameStore)
         assertEquals(listOf("playable"), run.tags)
         assertEquals("", run.device.gpu)
         assertEquals("", run.device.androidVersion)
@@ -496,6 +588,7 @@ class CommunityConfigServiceTest {
         total: Int,
         page: Int = 0,
         pageSize: Int = 20,
+        gpu: String = "Adreno 730",
     ): String =
         """{
             "runs": [{
@@ -509,7 +602,7 @@ class CommunityConfigServiceTest {
                     "dxwrapperConfig": "version=2.6"
                 },
                 "createdAt": "2026-01-0${runId}T00:00:00Z",
-                "device": {"id": $deviceId, "model": "test", "gpu": "Adreno 730", "androidVer": "16"}
+                "device": {"id": $deviceId, "model": "test", "gpu": "$gpu", "androidVer": "16"}
             }],
             "total": $total,
             "page": $page,
