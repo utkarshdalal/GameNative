@@ -18,7 +18,6 @@ import com.winlator.core.WineInfo;
 import com.winlator.core.WineThemeManager;
 import com.winlator.xenvironment.ImageFs;
 
-import app.gamenative.PrefManager;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -338,11 +337,7 @@ public class ContainerManager {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
-            if (PrefManager.INSTANCE.getUseSharedContainerBase()) {
-                FileUtils.symlink(new File(srcDir, dlname), dstFile);
-            } else {
-                FileUtils.copy(new File(srcDir, dlname), dstFile);
-            }
+            FileUtils.copy(new File(srcDir, dlname), dstFile);
         }
     }
 
@@ -363,12 +358,8 @@ public class ContainerManager {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
-            Log.d("Extraction", (PrefManager.INSTANCE.getUseSharedContainerBase() ? "symlinking " : "copying ") + file + " to " + dstFile);
-            if (PrefManager.INSTANCE.getUseSharedContainerBase()) {
-                FileUtils.symlink(file, dstFile);
-            } else {
-                FileUtils.copy(file, dstFile);
-            }
+            Log.d("Extraction", "copying " + file + " to " + dstFile);
+            FileUtils.copy(file, dstFile);
         }
     }
 
