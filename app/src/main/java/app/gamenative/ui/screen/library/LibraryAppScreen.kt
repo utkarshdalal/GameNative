@@ -52,6 +52,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -107,6 +108,7 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.NetworkMonitor
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.GamepadAction
@@ -514,6 +516,7 @@ fun AppScreen(
     onTestGraphics: () -> Unit,
     onPlayWithDiagnostics: () -> Unit,
     onBack: () -> Unit,
+    onSourceClick: (GameSource) -> Unit = {},
 ) {
     // Get the appropriate screen model based on game source
     val screenModel = remember(libraryItem.gameSource) {
@@ -533,6 +536,7 @@ fun AppScreen(
         onTestGraphics = onTestGraphics,
         onPlayWithDiagnostics = onPlayWithDiagnostics,
         onBack = onBack,
+        onSourceClick = onSourceClick,
     )
 }
 
@@ -571,6 +575,9 @@ internal fun AppScreenContent(
     onBack: () -> Unit = {},
     optionsMenu: List<AppMenuOption>,
     dialogOpen: Boolean = false,
+    otherSources: List<GameSource> = emptyList(),
+    isInstalledOnOtherSource: Boolean = false,
+    onSourceClick: (GameSource) -> Unit = {},
 ) {
     val context = LocalContext.current
     // reactive — recomposes when network state changes
@@ -1056,6 +1063,35 @@ internal fun AppScreenContent(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
+                // Installed elsewhere banner
+                if (!isInstalled && isInstalledOnOtherSource) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.library_already_installed_on, stringResource(R.string.library_other_stores)),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
                 // Game information section
                 Text(
                     text = stringResource(R.string.game_information),
@@ -1173,6 +1209,46 @@ internal fun AppScreenContent(
                     }
                 }
 
+                if (otherSources.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.library_available_on),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        otherSources.forEach { source ->
+                            Surface(
+                                onClick = { onSourceClick(source) },
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    app.gamenative.ui.screen.library.components.GameSourceIcon(gameSource = source, iconSize = 16)
+                                    Text(
+                                        text = when (source) {
+                                            GameSource.STEAM -> stringResource(R.string.tab_steam)
+                                            GameSource.GOG -> stringResource(R.string.tab_gog)
+                                            GameSource.EPIC -> stringResource(R.string.tab_epic)
+                                            GameSource.AMAZON -> stringResource(R.string.tab_amazon)
+                                            GameSource.CUSTOM_GAME -> stringResource(R.string.tab_local)
+                                        },
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 

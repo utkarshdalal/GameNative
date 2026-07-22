@@ -360,13 +360,22 @@ internal fun GridViewCard(
                         )
                     }
                 } else if (!appInfo.isRecommended) {
-                    GameSourceIcon(
-                        gameSource = appInfo.gameSource,
+                    Row(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(top = topIconPadding, end = topIconPadding),
-                        iconSize = if (isCapsule) 14 else 12,
-                    )
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OtherSourcesIcons(
+                            sources = appInfo.otherSources,
+                            iconSize = if (isCapsule) 14 else 12,
+                        )
+                        GameSourceIcon(
+                            gameSource = appInfo.gameSource,
+                            iconSize = if (isCapsule) 14 else 12,
+                        )
+                    }
                 }
             }
         }
@@ -507,12 +516,13 @@ private fun RecSimilarBadge(iconUrl: String?, extraCount: Int, modifier: Modifie
 @Composable
 private fun GridStatusIcons(appInfo: LibraryItem) {
     val isInstalled = appInfo.isInstalled
+    val isInstalledElsewhere = appInfo.isInstalledOnOtherSource
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (isInstalled) {
+        if (isInstalled || isInstalledElsewhere) {
             Box(
                 modifier = Modifier
                     .size(20.dp)
@@ -523,7 +533,7 @@ private fun GridStatusIcons(appInfo: LibraryItem) {
                 Icon(
                     Icons.Filled.Check,
                     contentDescription = stringResource(R.string.library_installed),
-                    tint = PluviaTheme.colors.statusInstalled,
+                    tint = if (isInstalled) PluviaTheme.colors.statusInstalled else PluviaTheme.colors.statusInstalled.copy(alpha = 0.6f),
                     modifier = Modifier.size(12.dp),
                 )
             }

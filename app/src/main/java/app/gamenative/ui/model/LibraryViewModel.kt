@@ -946,12 +946,33 @@ class LibraryViewModel @Inject constructor(
             // sources can't match it — keep them out of the combined list (and their tab counts).
             val steamCollectionSelected = allowedSteamAppIds != null
 
-            val combined = buildList {
+            val rawEntries = buildList {
                 if (includeSteam) addAll(steamEntries)
                 if (includeOpen && !steamCollectionSelected) addAll(customEntries)
                 if (includeGOG && !steamCollectionSelected) addAll(gogEntries)
                 if (includeEpic && !steamCollectionSelected) addAll(epicEntries)
                 if (includeAmazon && !steamCollectionSelected) addAll(amazonEntries)
+            }
+
+            // Group by normalized name to find sibling sources
+            val entriesByNormalizedName = rawEntries.groupBy { it.item.name.unaccent().lowercase().trim() }
+
+            val combined = rawEntries.map { entry ->
+                val normalizedName = entry.item.name.unaccent().lowercase().trim()
+                val siblings = entriesByNormalizedName[normalizedName] ?: emptyList()
+                val otherSources = siblings
+                    .filter { it.item.appId != entry.item.appId }
+                    .map { it.item.gameSource }
+                    .distinct()
+                val isInstalledOnOtherSource = siblings
+                    .any { it.item.appId != entry.item.appId && it.isInstalled }
+
+                entry.copy(
+                    item = entry.item.copy(
+                        otherSources = otherSources,
+                        isInstalledOnOtherSource = isInstalledOnOtherSource
+                    )
+                )
             }.sortedWith(sortComparator).mapIndexed { idx, entry ->
                 entry.item.copy(index = idx, isInstalled = entry.isInstalled)
             }

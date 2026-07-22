@@ -160,6 +160,8 @@ internal fun ListViewCard(
                 ) {
                     InstallStatusBadge(appInfo = appInfo, isRefreshing = isRefreshing)
 
+                    OtherSourcesIcons(sources = appInfo.otherSources)
+
                     // Family share indicator
                     if (appInfo.isShared) {
                         Row(
@@ -247,6 +249,8 @@ private fun InstallStatusBadge(
         isDownloading -> "${(downloadProgress * 100).toInt()}%" to MaterialTheme.colorScheme.primary
 
         isInstalled -> stringResource(R.string.library_installed) to MaterialTheme.colorScheme.tertiary
+
+        appInfo.isInstalledOnOtherSource -> stringResource(R.string.library_installed_elsewhere) to MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f)
 
         else -> stringResource(R.string.library_not_installed) to MaterialTheme.colorScheme.onSurfaceVariant.copy(
             alpha = 0.6f,

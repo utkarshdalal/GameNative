@@ -112,6 +112,7 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.PlatformOAuthHandlers
 import app.gamenative.utils.SteamUtils
+import app.gamenative.utils.unaccent
 import kotlinx.coroutines.launch
 import android.os.SystemClock
 
@@ -1102,6 +1103,19 @@ private fun LibraryScreenContent(
                 onPlayWithDiagnostics = {
                     selectedLibraryItem?.let { libraryItem ->
                         onPlayWithDiagnostics(libraryItem.appId)
+                    }
+                },
+                onSourceClick = { targetSource ->
+                    val normalizedName = selectedLibraryItem?.name?.unaccent()?.lowercase()?.trim()
+                    // Search in ALL games, not just the paged list if possible.
+                    // For now, we search in the current paged list which is likely to have sibling if they were linked.
+                    val targetItem = state.appInfoList.find {
+                        it.gameSource == targetSource &&
+                        it.name.unaccent().lowercase().trim() == normalizedName
+                    }
+                    if (targetItem != null) {
+                        selectedAppId = targetItem.appId
+                        selectedLibraryItem = targetItem
                     }
                 },
             )

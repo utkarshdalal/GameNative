@@ -31,6 +31,7 @@ internal fun LibraryDetailPane(
     onTestGraphics: () -> Unit,
     onPlayWithDiagnostics: () -> Unit,
     onBack: () -> Unit,
+    onSourceClick: (GameSource) -> Unit = {},
 ) {
     Surface {
         if (libraryItem == null) {
@@ -102,6 +103,7 @@ internal fun LibraryDetailPane(
                 onTestGraphics = onTestGraphics,
                 onPlayWithDiagnostics = onPlayWithDiagnostics,
                 onBack = onBack,
+                onSourceClick = onSourceClick,
             )
         }
     }

@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Color
 import app.gamenative.R
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.lazy.LazyColumn
@@ -158,24 +162,46 @@ fun GameSourceIcon(
     modifier: Modifier = Modifier,
     iconSize: Int = 12,
     alignmentBoxSize: Int = 20,
+    tint: Color = Color.Unspecified,
 ) {
+    val alpha = if (tint == Color.Unspecified) 0.7f else 1f
     Box(
         modifier = modifier.size(alignmentBoxSize.dp),
         contentAlignment = androidx.compose.ui.Alignment.Center,
     ) {
         when (gameSource) {
-            GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
-            GameSource.CUSTOM_GAME -> Icon(imageVector = Icons.Filled.Folder, contentDescription = "Custom Game", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
-            GameSource.GOG -> Icon(painter = painterResource(R.drawable.ic_gog), contentDescription = "Gog", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
-            GameSource.EPIC -> Icon(painter = painterResource(R.drawable.ic_epic), contentDescription = "Epic", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
-            GameSource.AMAZON -> Icon(imageVector = Icons.Filled.Amazon, contentDescription = "Amazon", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
+            GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", modifier = Modifier.size(iconSize.dp).alpha(alpha), tint = if (tint == Color.Unspecified) Color.Unspecified else tint)
+            GameSource.CUSTOM_GAME -> Icon(imageVector = Icons.Filled.Folder, contentDescription = "Custom Game", modifier = Modifier.size(iconSize.dp).alpha(alpha), tint = if (tint == Color.Unspecified) Color.Unspecified else tint)
+            GameSource.GOG -> Icon(painter = painterResource(R.drawable.ic_gog), contentDescription = "Gog", modifier = Modifier.size(iconSize.dp).alpha(alpha), tint = if (tint == Color.Unspecified) Color.Unspecified else tint)
+            GameSource.EPIC -> Icon(painter = painterResource(R.drawable.ic_epic), contentDescription = "Epic", modifier = Modifier.size(iconSize.dp).alpha(alpha), tint = if (tint == Color.Unspecified) Color.Unspecified else tint)
+            GameSource.AMAZON -> Icon(imageVector = Icons.Filled.Amazon, contentDescription = "Amazon", modifier = Modifier.size(iconSize.dp).alpha(alpha), tint = if (tint == Color.Unspecified) Color.Unspecified else tint)
         }
     }
 }
 
-/***********
- * PREVIEW *
- ***********/
+@Composable
+fun OtherSourcesIcons(
+    sources: List<GameSource>,
+    modifier: Modifier = Modifier,
+    iconSize: Int = 12,
+    alignmentBoxSize: Int = 18,
+) {
+    if (sources.isEmpty()) return
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy((-4).dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) {
+        sources.forEach { source ->
+            GameSourceIcon(
+                gameSource = source,
+                iconSize = iconSize,
+                alignmentBoxSize = alignmentBoxSize,
+                modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), CircleShape)
+            )
+        }
+    }
+}
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
 @Composable

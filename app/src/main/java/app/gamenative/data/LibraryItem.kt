@@ -46,6 +46,8 @@ data class LibraryItem(
     val recStoreCard: Boolean = false,
     val recSource: String = "",
     val isFeatured: Boolean = false,
+    val otherSources: List<GameSource> = emptyList(),
+    val isInstalledOnOtherSource: Boolean = false,
 ) {
     val clientIconUrl: String
         get() = when (gameSource) {

@@ -1001,6 +1001,7 @@ abstract class BaseAppScreen {
         onTestGraphics: () -> Unit,
         onPlayWithDiagnostics: () -> Unit,
         onBack: () -> Unit,
+        onSourceClick: (GameSource) -> Unit = {},
     ) {
         val context = LocalContext.current
         val displayInfoBase = getGameDisplayInfo(context, libraryItem)
@@ -1360,6 +1361,9 @@ abstract class BaseAppScreen {
             onBack = onBack,
             optionsMenu = optionsMenu,
             dialogOpen = showConfigDialog || manageModsRequested,
+            otherSources = libraryItem.otherSources,
+            isInstalledOnOtherSource = libraryItem.isInstalledOnOtherSource,
+            onSourceClick = onSourceClick,
         )
 
         if (showReadiness && launchActivity != null) {

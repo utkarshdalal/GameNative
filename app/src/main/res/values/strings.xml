@@ -97,6 +97,10 @@
     <string name="cancel">Cancel</string>
     <string name="delete">Delete</string>
     <string name="untitled">Untitled</string>
+    <string name="library_installed_elsewhere">Installed elsewhere</string>
+    <string name="library_available_on">Also available on</string>
+    <string name="library_other_stores">Other stores</string>
+    <string name="library_already_installed_on">This game is already installed via %s</string>
     <string name="confirm_delete">Confirm Deletion</string>
     <string name="destination_library">Library</string>
     <string name="destination_downloads">Downloads &amp; Storage</string>
