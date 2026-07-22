@@ -394,7 +394,9 @@ private fun LibraryScreenContent(
     val inputModeManager = LocalInputModeManager.current
     fun ensureKeyboardInputMode() {
         if (isGameControllerConnected()) {
-            inputModeManager.requestInputMode(InputMode.Keyboard)
+            if (inputModeManager.inputMode != InputMode.Keyboard) {
+                inputModeManager.requestInputMode(InputMode.Keyboard)
+            }
         }
     }
 
@@ -778,7 +780,6 @@ private fun LibraryScreenContent(
                     controllerBootstrapNeeded = true
                 }
             }
-            .focusGroup()
             .onPreviewKeyEvent { keyEvent ->
                 // TODO: consider abstracting this
                 // Handle gamepad buttons
