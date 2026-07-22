@@ -6,7 +6,6 @@ import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -1570,15 +1570,17 @@ fun PluviaMain(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.BottomCenter,
                     ) {
+                        val actionLabel = data.visuals.actionLabel
                         Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
                             shape = RoundedCornerShape(24.dp),
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             shadowElevation = 4.dp,
                         ) {
-                            val actionLabel = data.visuals.actionLabel
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.padding(
                                     start = 24.dp,
                                     end = if (actionLabel != null) 8.dp else 24.dp,
@@ -1586,9 +1588,13 @@ fun PluviaMain(
                             ) {
                                 Text(
                                     text = data.visuals.message,
-                                    modifier = Modifier.padding(vertical = 12.dp),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(vertical = 12.dp),
                                     color = MaterialTheme.colorScheme.onSurface,
                                     style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                                 if (actionLabel != null) {
                                     TextButton(onClick = { data.performAction() }) {
@@ -1596,6 +1602,8 @@ fun PluviaMain(
                                             text = actionLabel,
                                             color = MaterialTheme.colorScheme.primary,
                                             style = MaterialTheme.typography.labelLarge,
+                                            maxLines = 1,
+                                            softWrap = false,
                                         )
                                     }
                                 }
