@@ -394,7 +394,9 @@ private fun LibraryScreenContent(
     val inputModeManager = LocalInputModeManager.current
     fun ensureKeyboardInputMode() {
         if (isGameControllerConnected()) {
-            inputModeManager.requestInputMode(InputMode.Keyboard)
+            if (inputModeManager.inputMode != InputMode.Keyboard) {
+                inputModeManager.requestInputMode(InputMode.Keyboard)
+            }
         }
     }
 
@@ -403,7 +405,6 @@ private fun LibraryScreenContent(
 
     fun requestGridFocusOrDefer() {
         if (!isListFocusable()) return
-        ensureKeyboardInputMode()
         try {
             gridFirstItemFocusRequester.requestFocus()
             pendingGridFocusRequest = false
@@ -415,7 +416,6 @@ private fun LibraryScreenContent(
 
     fun requestCarouselFocusOrDefer(targetListIndex: Int = currentCarouselFocusTargetIndex()) {
         if (!isListFocusable()) return
-        ensureKeyboardInputMode()
         carouselFocusTargetListIndex = targetListIndex.coerceIn(0, getContentLastIndex())
         try {
             carouselFocusRequester.requestFocus()
@@ -437,7 +437,6 @@ private fun LibraryScreenContent(
     }
 
     fun requestRootFocusSafe() {
-        ensureKeyboardInputMode()
         try {
             rootFocusRequester.requestFocus()
         } catch (_: IllegalStateException) {}
@@ -681,6 +680,7 @@ private fun LibraryScreenContent(
 
     DisposableEffect(Unit) {
         val onGlobalKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = { androidEvent ->
+            ensureKeyboardInputMode()
             val event = androidEvent.event
             if (event.action != KeyEvent.ACTION_DOWN) {
                 false
@@ -730,6 +730,7 @@ private fun LibraryScreenContent(
         }
 
         val onGlobalMotionEvent: (AndroidEvent.MotionEvent) -> Boolean = { androidEvent ->
+            ensureKeyboardInputMode()
             val event = androidEvent.event
             if (event == null || !canBootstrapContentFocus()) {
                 false
@@ -778,7 +779,6 @@ private fun LibraryScreenContent(
                     controllerBootstrapNeeded = true
                 }
             }
-            .focusGroup()
             .onPreviewKeyEvent { keyEvent ->
                 // TODO: consider abstracting this
                 // Handle gamepad buttons

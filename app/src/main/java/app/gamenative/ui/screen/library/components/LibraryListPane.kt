@@ -169,22 +169,6 @@ internal fun LibraryListPane(
     val horizontalPadding = AdaptivePadding.horizontal()
     val gridSpacing = AdaptivePadding.gridSpacing()
 
-    // Auto-focus first item when list becomes non-empty
-    LaunchedEffect(state.appInfoList.size, firstGridItemFocusRequester) {
-        if (state.appInfoList.isNotEmpty() && firstGridItemFocusRequester != null) {
-            delay(150) // Brief delay to ensure layout is ready
-
-            // Check if focusTargetListIndex still null or 0 after delay
-            if (focusTargetListIndex == null || focusTargetListIndex == 0) {
-                try {
-                    firstGridItemFocusRequester.requestFocus()
-                } catch (_: IllegalStateException) {
-                    // FocusRequester not attached yet
-                }
-            }
-        }
-    }
-
     LaunchedEffect(listState, state.appInfoList.size) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .filterNotNull()
