@@ -138,7 +138,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 
 private const val PENDING_LAUNCH_TIMEOUT_MS = 10_000L
-private const val SNACKBAR_SHOW_TIMEOUT_MS = 7_500L
+private const val SNACKBAR_SHOW_TIMEOUT_MS = 6_000L
 
 /** Used to suspend preLaunchApp while the user decides on large workshop updates. */
 private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
