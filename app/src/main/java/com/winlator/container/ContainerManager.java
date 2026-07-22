@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.util.Log;
 
 // import com.winlator.R;
+import app.gamenative.PrefManager;
 import app.gamenative.R;
 import app.gamenative.utils.downloader.ContainerFilesDownloaderKt;
 import app.gamenative.utils.downloader.ProgressCallback;
@@ -329,6 +330,7 @@ public class ContainerManager {
     private void extractCommonDlls(String srcName, String dstName, JSONObject commonDlls, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
         File srcDir = new File(ImageFs.find(context).getRootDir(), "/opt/wine/lib/wine/"+srcName);
         JSONArray dlnames = commonDlls.getJSONArray(dstName);
+        boolean useSharedBase = PrefManager.INSTANCE.getSharedContainerBase();
 
         for (int i = 0; i < dlnames.length(); i++) {
             String dlname = dlnames.getString(i);
@@ -337,13 +339,19 @@ public class ContainerManager {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
-            FileUtils.copy(new File(srcDir, dlname), dstFile);
+            File srcFile = new File(srcDir, dlname);
+            if (useSharedBase) {
+                FileUtils.symlink(srcFile, dstFile);
+            } else {
+                FileUtils.copy(srcFile, dstFile);
+            }
         }
     }
 
     private void extractCommonDlls(WineInfo wineInfo, String srcName, String dstName, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
         Log.d("Extraction", "extracting common dlls for bionic: " + srcName);
         File srcDir = new File(wineInfo.path + "/lib/wine/" + srcName);
+        boolean useSharedBase = PrefManager.INSTANCE.getSharedContainerBase();
 
         File[] srcfiles = srcDir.listFiles(file -> file.isFile());
 
@@ -358,8 +366,13 @@ public class ContainerManager {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
-            Log.d("Extraction", "copying " + file + " to " + dstFile);
-            FileUtils.copy(file, dstFile);
+            if (useSharedBase) {
+                Log.d("Extraction", "symlinking " + file + " to " + dstFile);
+                FileUtils.symlink(file, dstFile);
+            } else {
+                Log.d("Extraction", "copying " + file + " to " + dstFile);
+                FileUtils.copy(file, dstFile);
+            }
         }
     }
 

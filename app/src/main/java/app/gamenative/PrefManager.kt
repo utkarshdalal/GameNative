@@ -1337,6 +1337,11 @@ object PrefManager {
         get() = getPref(AUTO_APPLY_KNOWN_CONFIG, true)
         set(value) = setPref(AUTO_APPLY_KNOWN_CONFIG, value)
 
+    private val SHARED_CONTAINER_BASE = booleanPreferencesKey("shared_container_base")
+    var sharedContainerBase: Boolean
+        get() = getPref(SHARED_CONTAINER_BASE, false)
+        set(value) = setPref(SHARED_CONTAINER_BASE, value)
+
     // Game compatibility cache (JSON string)
     private val GAME_COMPATIBILITY_CACHE = stringPreferencesKey("game_compatibility_cache")
     var gameCompatibilityCache: String

@@ -38,8 +38,8 @@
 ## Development Roadmap
 
 1.  **Phase 1 (Delivered)**: Knowledge base establishment and project inventory.
-2.  **Phase 2 (Next)**: Shared-container feasibility investigation.
-    -   Verify the ~2.9GB overhead claim.
-    -   Investigate symlinking/hardlinking `common_dlls` instead of copying.
-    -   Propose an experimental "Shared Base" toggle.
-3.  **Phase 3**: Implementation of the approved Shared-Container plan.
+2.  **Phase 2 (Completed)**: Shared-container feasibility investigation and implementation.
+    -   Verified the ~2.9GB overhead claim (reduced to ~300MB per container).
+    -   Implemented symlinking `common_dlls` instead of copying.
+    -   Added an experimental "Shared Base" toggle in Emulation settings.
+3.  **Phase 3 (Next)**: Optimization of container creation speed.

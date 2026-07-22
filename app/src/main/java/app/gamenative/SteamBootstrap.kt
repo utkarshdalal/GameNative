@@ -130,7 +130,7 @@ object SteamBootstrap {
             delete()
             writeText("INIT")
         }
-        
+
         val logFile = File(cfg.context.cacheDir, "sb_host.log")
 
         val pb = ProcessBuilder(
@@ -224,7 +224,7 @@ object SteamBootstrap {
             if (existingTarget == null && link.exists()) return
             if (existingTarget != "libsqlite3.so.0") {
                 if (existingTarget != null) link.delete()
-                Os.symlink("libsqlite3.so.0", link.absolutePath)
+                com.winlator.core.FileUtils.symlink("libsqlite3.so.0", link.absolutePath)
             }
             sqliteCompatLink = link.absolutePath
         } catch (_: ErrnoException) {
