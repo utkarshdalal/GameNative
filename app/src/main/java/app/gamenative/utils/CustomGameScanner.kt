@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import timber.log.Timber
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.text.ifEmpty
@@ -36,6 +37,8 @@ import kotlin.text.ifEmpty
  * It handles icon extraction, cover image lookup, and library item creation.
  */
 object CustomGameScanner {
+
+    private val activeIconExtractions = ConcurrentHashMap.newKeySet<String>()
 
     // Default root path for Custom Games. Always use the app's external storage sandbox
     // (Android/data/<package>/CustomGames) when available; fall back to internal only if external is unavailable.
@@ -255,6 +258,12 @@ object CustomGameScanner {
      *
      * @return a file:// URI string usable directly as an image URL, or null if none exists.
      */
+    /**
+     * Finds a cover image for the game, prioritizing horizontal "hero" variants.
+     *
+     * @param appId The unique ID of the game.
+     * @return A file:// URI string for the hero cover, or null if not found.
+     */
     fun findHeroCoverForCustomGame(appId: String): String? {
         val folderPath = getFolderPathFromAppId(appId) ?: return null
         return findHeroCoverInFolder(File(folderPath))
@@ -361,6 +370,13 @@ object CustomGameScanner {
      * - "game.exe"
      * - "Binaries/Win64/Game-Win64-Shipping.exe"
      */
+    /**
+     * Finds a unique executable file in a folder.
+     * Searches the root and immediate subdirectories for exactly one .exe file (ignoring uninstallers).
+     *
+     * @param folderPath The absolute path to the folder.
+     * @return The relative path to the unique executable, or null if none or multiple found.
+     */
     fun findUniqueExeRelativeToFolder(folderPath: String): String? = findUniqueExeRelativeToFolder(File(folderPath))
 
     /**
@@ -411,14 +427,20 @@ object CustomGameScanner {
     }
 
     /**
-     * Find all valid executable files in a game folder.
+     * Finds all valid executable files in a game folder.
      * Returns a list of relative paths to all valid .exe files (excluding uninstallers).
      *
-     * @param folderPath The path to the game folder
-     * @return List of relative executable paths, or empty list if folder doesn't exist
+     * @param folderPath The path to the game folder.
+     * @return List of relative executable paths, or empty list if folder doesn't exist.
      */
     fun findAllValidExeFiles(folderPath: String): List<String> = findAllValidExeFiles(File(folderPath))
 
+    /**
+     * Checks all immediate subdirectories for executable files.
+     *
+     * @param folder The parent game folder.
+     * @return A list of relative paths to valid .exe files.
+     */
     fun findAllValidExeFiles(folder: File): List<String> {
         if (!folder.exists() || !folder.isDirectory) return emptyList()
 
@@ -506,8 +528,12 @@ object CustomGameScanner {
     }
 
     /**
-     * All manually added folders are included regardless of content.
-     * Optionally filter by [query] contained in folder name (case-insensitive).
+     * Scans and returns all Custom Games as [LibraryItem] objects.
+     *
+     * @param query Optional search query to filter folders by name.
+     * @param indexOffsetStart Starting index for the items.
+     * @param includeWhenInstalledFilterActive Whether to include items even when "installed" filter is active.
+     * @return A list of [LibraryItem]s representing the custom games.
      */
     fun scanAsLibraryItems(
         query: String = "",
@@ -546,8 +572,18 @@ object CustomGameScanner {
      * Rebuilds the cache entry for a specific game folder.
      * This is useful when a game's metadata or files change.
      */
+    /**
+     * Handles detection of a new custom game, updating the cache and triggering icon extraction.
+     *
+     * @param folder The game folder.
+     * @param appId The generated appId.
+     * @param idPart The numeric ID of the game.
+     */
     private fun handleCustomGameDetection(folder: File, appId: String, idPart: Int) {
         CustomGameCache.addEntry(idPart, folder.absolutePath)
+
+        val folderPath = folder.absolutePath
+        if (!activeIconExtractions.add(folderPath)) return
 
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             try {
@@ -571,6 +607,8 @@ object CustomGameScanner {
                 }
             } catch (e: Exception) {
                 Timber.tag("CustomGameScanner").d(e, "Icon extraction failed for ${folder.name}")
+            } finally {
+                activeIconExtractions.remove(folderPath)
             }
         }
     }
@@ -729,6 +767,13 @@ object CustomGameScanner {
      * Ensures the generated ID is unique across all Custom Games.
      * If generated, stores it in the file for future use.
      */
+    /**
+     * Resolves the numeric game ID from a folder.
+     * Checks metadata file first, then uses directory name hash with collision resolution.
+     *
+     * @param folder The game directory.
+     * @return The unique numeric ID.
+     */
     private fun getOrGenerateGameId(folder: File): Int {
         // First, try to read from .gamenative file
         val storedId = readGameIdFromFile(folder)
@@ -762,6 +807,13 @@ object CustomGameScanner {
      * Finds a custom game by its numeric ID (regardless of appId format).
      * Returns the folder path if found, null otherwise.
      */
+    /**
+     * Finds a game directory given its numeric ID.
+     * Uses the internal cache for O(1) resolution.
+     *
+     * @param gameId The numeric ID.
+     * @return Absolute folder path, or null if not found or no longer exists.
+     */
     fun findCustomGameById(gameId: Int): String? {
         val cache = getOrRebuildCache()
         val folderPath = cache[gameId]
@@ -784,6 +836,12 @@ object CustomGameScanner {
     }
 
     // Helper function to check if game is installed to match pattern of GOG & Steam Service
+    /**
+     * Checks if a custom game is considered "installed" by its numeric ID.
+     *
+     * @param appId The numeric ID of the game.
+     * @return true if the game's folder still exists, false otherwise.
+     */
     fun isGameInstalled(appId: Int): Boolean {
         val isInstalled = findCustomGameById(appId) != null
 

@@ -220,6 +220,7 @@ internal fun ListViewCard(
 
 /**
  * Compact install status badge for list view.
+ * Displays a small dot and status text (Ready, Installed, Not Installed, or progress).
  *
  * @param appInfo The library item to show status for.
  * @param isRefreshing Whether the library is currently refreshing.

@@ -24,7 +24,9 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
@@ -33,7 +35,7 @@ import java.util.concurrent.Future;
  * This class follows the Singleton pattern and should be accessed via [getInstance(Context)].
  */
 public final class ContainerManager {
-    private final ArrayList<Container> containers = new ArrayList<>();
+    private final List<Container> containers = Collections.synchronizedList(new ArrayList<>());
     private final File homeDir;
     private final Context context;
     private static ContainerManager instance;
@@ -58,12 +60,24 @@ public final class ContainerManager {
         loadContainers();
     }
 
-    public ArrayList<Container> getContainers() {
-        return containers;
+    /**
+     * Returns a thread-safe copy of the managed containers list.
+     *
+     * @return A new ArrayList containing all managed containers.
+     */
+    public List<Container> getContainers() {
+        synchronized (containers) {
+            return new ArrayList<>(containers);
+        }
     }
 
+    /**
+     * Loads all containers from the home directory and populates the managed list.
+     * This operation is atomic; it builds a temporary list and swaps it with the
+     * active list within a synchronized block to ensure thread safety.
+     */
     private void loadContainers() {
-        containers.clear();
+        ArrayList<Container> newContainers = new ArrayList<>();
 
         File[] files = homeDir.listFiles();
         if (files != null) {
@@ -84,7 +98,7 @@ public final class ContainerManager {
 
                             JSONObject data = new JSONObject(configContent);
                             container.loadData(data);
-                            containers.add(container);
+                            newContainers.add(container);
                         } catch (Exception e) {
                             // Catch ALL exceptions (NullPointerException, JSONException, etc.)
                             Log.w("ContainerManager", "Could not load container " + containerId + ": " + e.getMessage());
@@ -94,8 +108,19 @@ public final class ContainerManager {
                 }
             }
         }
+
+        synchronized (containers) {
+            containers.clear();
+            containers.addAll(newContainers);
+        }
     }
 
+    /**
+     * Activates a container by setting it as the current Wine prefix.
+     * This creates a symlink from the user home directory to the container's root directory.
+     *
+     * @param container The container to activate.
+     */
     public void activateContainer(Container container) {
         container.setRootDir(new File(homeDir, ImageFs.USER+"-"+container.id));
         File file = new File(homeDir, ImageFs.USER);
@@ -103,6 +128,13 @@ public final class ContainerManager {
         FileUtils.symlink("./"+ImageFs.USER+"-"+container.id, file.getPath());
     }
 
+    /**
+     * Creates a new container asynchronously.
+     *
+     * @param containerId The unique ID for the new container.
+     * @param data The configuration data for the container in JSON format.
+     * @param callback Callback to be invoked with the created container on the main thread.
+     */
     public void createContainerAsync(String containerId, final JSONObject data, Callback<Container> callback) {
         final Handler handler = new Handler();
         Executors.newSingleThreadExecutor().execute(() -> {
@@ -110,9 +142,23 @@ public final class ContainerManager {
             handler.post(() -> callback.call(container));
         });
     }
+    /**
+     * Creates a new container asynchronously and returns a Future.
+     *
+     * @param containerId The unique ID for the new container.
+     * @param data The configuration data for the container in JSON format.
+     * @return A Future that will resolve to the created Container.
+     */
     public Future<Container> createContainerFuture(String containerId, final JSONObject data) {
         return Executors.newSingleThreadExecutor().submit(() -> createContainer(containerId, data));
     }
+    /**
+     * Creates a default container for a specific Wine version.
+     *
+     * @param wineInfo Information about the Wine version to use.
+     * @param containerId The unique ID for the new container.
+     * @return A Future that will resolve to the created Container.
+     */
     public Future<Container> createDefaultContainerFuture(WineInfo wineInfo, String containerId) {
         String name = "container_" + containerId;
         Log.d("XServerScreen", "Creating container $name");
@@ -160,6 +206,12 @@ public final class ContainerManager {
         return createContainerFuture(containerId, data);
     }
 
+    /**
+     * Duplicates an existing container asynchronously.
+     *
+     * @param container The container to duplicate.
+     * @param callback Runnable to be executed on the main thread after duplication completes.
+     */
     public void duplicateContainerAsync(Container container, Runnable callback) {
         final Handler handler = new Handler();
         Executors.newSingleThreadExecutor().execute(() -> {
@@ -168,6 +220,12 @@ public final class ContainerManager {
         });
     }
 
+    /**
+     * Removes a container asynchronously.
+     *
+     * @param container The container to remove.
+     * @param callback Runnable to be executed on the main thread after removal completes.
+     */
     public void removeContainerAsync(Container container, Runnable callback) {
         final Handler handler = new Handler();
         Executors.newSingleThreadExecutor().execute(() -> {
@@ -176,6 +234,13 @@ public final class ContainerManager {
         });
     }
 
+    /**
+     * Internal method to create a container directory and initialize its configuration.
+     *
+     * @param containerId The unique ID for the new container.
+     * @param data The configuration data for the container.
+     * @return The created Container object, or null if creation failed.
+     */
     public Container createContainer(String containerId, JSONObject data) {
         try {
             data.put("id", containerId);
@@ -207,6 +272,11 @@ public final class ContainerManager {
         return null;
     }
 
+    /**
+     * Internal method to duplicate a container's filesystem and configuration.
+     *
+     * @param srcContainer The source container to duplicate.
+     */
     private void duplicateContainer(Container srcContainer) {
         // Generate a unique ID by appending (1), (2), etc. to the original ID
         String baseId = srcContainer.id;
@@ -248,6 +318,13 @@ public final class ContainerManager {
         containers.add(dstContainer);
     }
 
+    /**
+     * Generates a unique container ID based on a preferred name.
+     * If the name is taken, appends a counter (e.g., "(1)").
+     *
+     * @param baseId The preferred ID.
+     * @return A unique ID string.
+     */
     private String generateUniqueContainerId(String baseId) {
         // If the base ID doesn't exist, use it as-is
         if (!hasContainer(baseId)) {
@@ -265,18 +342,30 @@ public final class ContainerManager {
         return candidateId;
     }
 
+    /**
+     * Internal method to delete a container's filesystem and remove it from the list.
+     *
+     * @param container The container to remove.
+     */
     private void removeContainer(Container container) {
         if (FileUtils.delete(container.getRootDir())) containers.remove(container);
     }
 
+    /**
+     * Loads all shortcuts (.desktop files) from all managed containers.
+     *
+     * @return A list of Shortcut objects, sorted by name.
+     */
     public ArrayList<Shortcut> loadShortcuts() {
         ArrayList<Shortcut> shortcuts = new ArrayList<>();
-        for (Container container : containers) {
-            File desktopDir = container.getDesktopDir();
-            File[] files = desktopDir.listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    if (file.getName().endsWith(".desktop")) shortcuts.add(new Shortcut(container, file));
+        synchronized (containers) {
+            for (Container container : containers) {
+                File desktopDir = container.getDesktopDir();
+                File[] files = desktopDir.listFiles();
+                if (files != null) {
+                    for (File file : files) {
+                        if (file.getName().endsWith(".desktop")) shortcuts.add(new Shortcut(container, file));
+                    }
                 }
             }
         }
@@ -285,13 +374,29 @@ public final class ContainerManager {
         return shortcuts;
     }
 
+    /**
+     * Checks if a container with the given ID exists.
+     *
+     * @param id The ID to check.
+     * @return true if the container exists, false otherwise.
+     */
     public boolean hasContainer(String id) {
-        for (Container container : containers) if (container.id.equals(id)) return true;
+        synchronized (containers) {
+            for (Container container : containers) if (container.id.equals(id)) return true;
+        }
         return false;
     }
 
+    /**
+     * Returns a container by its ID.
+     *
+     * @param id The ID of the container to retrieve.
+     * @return The Container object, or null if not found.
+     */
     public Container getContainerById(String id) {
-        for (Container container : containers) if (container.id.equals(id)) return container;
+        synchronized (containers) {
+            for (Container container : containers) if (container.id.equals(id)) return container;
+        }
         return null;
     }
 
@@ -322,6 +427,14 @@ public final class ContainerManager {
         return false;
     }
 
+    /**
+     * Internal method to delete common DLLs that will be replaced during prefix setup.
+     *
+     * @param dstName The destination directory name (e.g., "system32").
+     * @param commonDlls JSONObject mapping destination names to lists of DLLs.
+     * @param containerDir The root directory of the container.
+     * @throws JSONException If the DLL list cannot be parsed.
+     */
     private void deleteCommonDlls(String dstName,
                                   JSONObject commonDlls,
                                   File containerDir) throws JSONException {
@@ -344,6 +457,16 @@ public final class ContainerManager {
         }
     }
 
+    /**
+     * Extracts common DLLs from the internal Wine library into the container.
+     *
+     * @param srcName Source directory name in Wine lib.
+     * @param dstName Destination directory name in Windows prefix.
+     * @param commonDlls JSONObject mapping destination names to lists of DLLs.
+     * @param containerDir The root directory of the container.
+     * @param onExtractFileListener Optional listener for extraction events.
+     * @throws JSONException If the DLL list cannot be parsed.
+     */
     private void extractCommonDlls(String srcName, String dstName, JSONObject commonDlls, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
         File srcDir = new File(ImageFs.find(context).getRootDir(), "/opt/wine/lib/wine/"+srcName);
         JSONArray dlnames = commonDlls.getJSONArray(dstName);
@@ -359,6 +482,16 @@ public final class ContainerManager {
         }
     }
 
+    /**
+     * Extracts common DLLs for Bionic/Arm64 Wine versions.
+     *
+     * @param wineInfo Information about the specific Wine version.
+     * @param srcName Source directory name in Wine lib.
+     * @param dstName Destination directory name in Windows prefix.
+     * @param containerDir The root directory of the container.
+     * @param onExtractFileListener Optional listener for extraction events.
+     * @throws JSONException If the DLL list cannot be parsed.
+     */
     private void extractCommonDlls(WineInfo wineInfo, String srcName, String dstName, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
         Log.d("Extraction", "extracting common dlls for bionic: " + srcName);
         File srcDir = new File(wineInfo.path + "/lib/wine/" + srcName);

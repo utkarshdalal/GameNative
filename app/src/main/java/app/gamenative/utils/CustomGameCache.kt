@@ -33,7 +33,7 @@ internal object CustomGameCache {
     ): Map<Int, String> = synchronized(this) {
         val cache = mutableMapOf<Int, String>()
 
-        val manualFolders = getManualFolders()
+        val manualFolders = getManualFolders().toSet()
         for (path in manualFolders) {
             val folder = File(path)
             if (!folder.exists() || !folder.isDirectory) continue
@@ -64,7 +64,7 @@ internal object CustomGameCache {
         getManualFolders: () -> Set<String>,
         readGameIdFromFile: (File) -> Int?
     ): Map<Int, String> = synchronized(this) {
-        val currentManualFolders = getManualFolders()
+        val currentManualFolders = getManualFolders().toSet()
         val cachedManual = cacheManualFolders
 
         // Rebuild if manual folders changed or cache is null
