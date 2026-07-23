@@ -11,7 +11,7 @@ This plan aims to implement the changes and feedback from [PR #1758](https://git
 
 ### Core Infrastructure
 
-#### [MODIFY] [ContainerManager.java](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/com/winlator/container/ContainerManager.java)
+#### [MODIFY] [ContainerManager.java](app/src/main/java/com/winlator/container/ContainerManager.java)
 - Make the constructor `private`.
 - Make `getInstance(Context)` thread-safe using a synchronized block.
 
